@@ -169,23 +169,25 @@ class CredentialIssuer(
     )
 
     /**
-     * Verifies the [accessToken] to contain a token from [authorizationService],
+     * Verifies the [authorizationHeader] to contain a token from [authorizationService],
      * verifies the proof sent by the client (must contain a nonce sent from [authorizationService]),
      * and issues credentials to the client.
      *
      * Callers need to send the result JSON-serialized back to the client.
      * HTTP status code MUST be 202.
      *
-     * @param accessToken The value of HTTP header `Authorization` sent by the client,
-     *                    with the prefix `Bearer ` removed, so the plain access token
+     * @param authorizationHeader value of HTTP header `Authorization` sent by the client, with all prefixes
      * @param params Parameters the client sent JSON-serialized in the HTTP body
+     * @param dpopHeader value of HTTP header `DPoP` sent by the client
      */
     suspend fun credential(
-        accessToken: String,
+        authorizationHeader: String,
         params: CredentialRequestParameters,
+        dpopHeader: String? = null,
     ): KmmResult<CredentialResponseParameters> = catching {
         val userInfo = authorizationService.getUserInfo(
-            accessToken,
+            authorizationHeader,
+            dpopHeader,
             params.credentialIdentifier,
             params.credentialConfigurationId
         ).getOrElse {

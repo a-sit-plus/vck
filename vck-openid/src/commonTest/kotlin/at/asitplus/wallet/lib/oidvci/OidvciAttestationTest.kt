@@ -86,7 +86,7 @@ class OidvciAttestationTest : FunSpec({
         val scope = credentialFormat.scope.shouldNotBeNull()
         val token = getToken(scope)
         client.createCredentialRequest(token, issuer.metadata, credentialFormat).getOrThrow().forEach {
-            val credential = issuer.credential(token.accessToken, it).getOrThrow()
+            val credential = issuer.credential(token.toHttpHeaderValue(), it).getOrThrow()
             val serializedCredential = credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
 
@@ -119,7 +119,7 @@ class OidvciAttestationTest : FunSpec({
         val token = getToken(scope)
         client.createCredentialRequest(token, issuer.metadata, credentialFormat).getOrThrow().forEach {
             shouldThrow<OAuth2Exception> {
-                issuer.credential(token.accessToken, it).getOrThrow()
+                issuer.credential(token.toHttpHeaderValue(), it).getOrThrow()
             }
         }
     }

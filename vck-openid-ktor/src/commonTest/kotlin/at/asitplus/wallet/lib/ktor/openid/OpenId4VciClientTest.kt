@@ -244,6 +244,8 @@ class OpenId4VciClientTest : FunSpec() {
             authorizationEndpointPath = authorizationEndpointPath,
             tokenEndpointPath = tokenEndpointPath,
             pushedAuthorizationRequestEndpointPath = parEndpointPath,
+            enforceClientAuthentication = true,
+            enforceDpop = true,
         )
         val credentialIssuer = CredentialIssuer(
             authorizationService = authorizationService,
@@ -297,7 +299,8 @@ class OpenId4VciClientTest : FunSpec() {
                     val result = authorizationService.token(
                         params,
                         request.headers["OAuth-Client-Attestation"],
-                        request.headers["OAuth-Client-Attestation-PoP"]
+                        request.headers["OAuth-Client-Attestation-PoP"],
+                        request.headers["DPoP"],
                     ).getOrThrow()
                     respond(
                         vckJsonSerializer.encodeToString(result),
@@ -309,8 +312,11 @@ class OpenId4VciClientTest : FunSpec() {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val authorizationHeader = request.headers[HttpHeaders.Authorization].shouldNotBeNull()
                     val params = CredentialRequestParameters.deserialize(requestBody).getOrThrow()
-                    val accessToken = authorizationHeader.removePrefix("bearer ").removePrefix("Bearer ")
-                    val result = credentialIssuer.credential(accessToken, params).getOrThrow()
+                    val result = credentialIssuer.credential(
+                        authorizationHeader,
+                        params,
+                        request.headers["DPoP"]
+                    ).getOrThrow()
                     respond(
                         vckJsonSerializer.encodeToString(result),
                         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())

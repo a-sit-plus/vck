@@ -104,7 +104,7 @@ class OidvciCodeFlowTest : FreeSpec({
         val scope = credentialFormat.scope.shouldNotBeNull()
         val token = getToken(scope)
         val credential = issuer.credential(
-            token.accessToken,
+            token.toHttpHeaderValue(),
             client.createCredentialRequest(
                 tokenResponse = token,
                 metadata = issuer.metadata,
@@ -134,7 +134,7 @@ class OidvciCodeFlowTest : FreeSpec({
 
         requestOptions.forEach {
             issuer.credential(
-                token.accessToken,
+                token.toHttpHeaderValue(),
                 client.createCredentialRequest(
                     tokenResponse = token,
                     metadata = issuer.metadata,
@@ -165,7 +165,7 @@ class OidvciCodeFlowTest : FreeSpec({
         )
 
         val credentials: Collection<CredentialResponseSingleCredential> =
-            issuer.credential(token.accessToken, credentialRequest)
+            issuer.credential(token.toHttpHeaderValue(), credentialRequest)
                 .getOrThrow()
                 .credentials.shouldNotBeEmpty().shouldHaveSize(2)
         // subject identifies the key of the client, here the keys of different proofs, so they should be unique
@@ -207,7 +207,7 @@ class OidvciCodeFlowTest : FreeSpec({
         val token = getToken(scope)
 
         val credential = issuer.credential(
-            token.accessToken,
+            token.toHttpHeaderValue(),
             client.createCredentialRequest(
                 tokenResponse = token,
                 metadata = issuer.metadata,
@@ -227,7 +227,7 @@ class OidvciCodeFlowTest : FreeSpec({
         val token = getToken(scope, false) // do not set scope in token request, only in authn request
 
         val credential = issuer.credential(
-            token.accessToken,
+            token.toHttpHeaderValue(),
             client.createCredentialRequest(
                 tokenResponse = token,
                 metadata = issuer.metadata,
@@ -279,7 +279,7 @@ class OidvciCodeFlowTest : FreeSpec({
         val token = getToken(authorizationDetails)
 
         val credential = issuer.credential(
-            token.accessToken,
+            token.toHttpHeaderValue(),
             client.createCredentialRequest(
                 tokenResponse = token,
                 metadata = issuer.metadata,
@@ -304,7 +304,7 @@ class OidvciCodeFlowTest : FreeSpec({
         val token = getToken(authorizationDetails, false) // do not set authn details in token request
 
         val credential = issuer.credential(
-            token.accessToken,
+            token.toHttpHeaderValue(),
             client.createCredentialRequest(
                 tokenResponse = token,
                 metadata = issuer.metadata,
@@ -353,7 +353,7 @@ class OidvciCodeFlowTest : FreeSpec({
 
         shouldThrow<OAuth2Exception> {
             issuer.credential(
-                token.accessToken,
+                token.toHttpHeaderValue(),
                 client.createCredentialRequest(
                     tokenResponse = token,
                     metadata = issuer.metadata,
@@ -370,7 +370,8 @@ class OidvciCodeFlowTest : FreeSpec({
 
     "request credential in SD-JWT, using authorization details in token, but scope in credential request" {
         val credentialFormat =
-            client.selectSupportedCredentialFormat(RequestOptions(AtomicAttribute2023, SD_JWT), issuer.metadata).shouldNotBeNull()
+            client.selectSupportedCredentialFormat(RequestOptions(AtomicAttribute2023, SD_JWT), issuer.metadata)
+                .shouldNotBeNull()
         val scope = credentialFormat.scope.shouldNotBeNull()
         val authorizationDetails = client.buildAuthorizationDetails(
             credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(SD_JWT),
@@ -380,7 +381,7 @@ class OidvciCodeFlowTest : FreeSpec({
 
         shouldThrow<OAuth2Exception> {
             issuer.credential(
-                token.accessToken,
+                token.toHttpHeaderValue(),
                 client.createCredentialRequest(
                     tokenResponse = token,
                     metadata = issuer.metadata,
@@ -402,7 +403,8 @@ class OidvciCodeFlowTest : FreeSpec({
         val token = getToken(scope)
 
         val credential = issuer.credential(
-            token.accessToken, client.createCredentialRequest(
+            token.toHttpHeaderValue(),
+            client.createCredentialRequest(
                 tokenResponse = token,
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,

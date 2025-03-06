@@ -5,19 +5,25 @@ import at.asitplus.catching
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
 import at.asitplus.openid.OpenIdConstants.Errors
+import at.asitplus.openid.OpenIdConstants.Errors.INVALID_DPOP_PROOF
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_TOKEN
+import at.asitplus.openid.OpenIdConstants.TOKEN_PREFIX_BEARER
+import at.asitplus.openid.OpenIdConstants.TOKEN_PREFIX_DPOP
+import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_BEARER
+import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.signum.indispensable.josef.JsonWebToken
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.*
+import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.sha256
-import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
-import at.asitplus.wallet.lib.jws.VerifierJwsService
+import at.asitplus.wallet.lib.jws.*
 import at.asitplus.wallet.lib.oidvci.*
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.datetime.Clock
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -29,6 +35,13 @@ import kotlin.time.Duration.Companion.seconds
  * Implemented from
  * [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
  * , Draft 15, 2024-12-19.
+ * Also implements necessary parts of
+ * [OpenID4VC HAIP](https://openid.net/specs/openid4vc-high-assurance-interoperability-profile-1_0.html)
+ * , Draft 03, 2025-02-07, e.g.
+ * [OAuth 2.0 Pushed Authorization Requests](https://datatracker.ietf.org/doc/html/rfc9126),
+ * [Proof Key for Code Exchange by OAuth Public Clients](https://datatracker.ietf.org/doc/html/rfc7636),
+ * [OAuth 2.0 Demonstrating Proof of Possession (DPoP)](https://datatracker.ietf.org/doc/html/rfc9449),
+ * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-05.html)
  */
 class SimpleAuthorizationService(
     /**
@@ -73,14 +86,16 @@ class SimpleAuthorizationService(
     private val codeToUserInfoStore: MapStore<String, IssuedCode> = DefaultMapStore(),
     private val accessTokenToUserInfoStore: MapStore<String, IssuedAccessToken> = DefaultMapStore(),
     private val requestUriToPushedAuthorizationRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
-    /**
-     * Enforce client authentication as defined in OpenID4VC HAIP, i.e. with wallet attestations
-     */
+    /** Enforce client authentication as defined in OpenID4VC HAIP, i.e. with wallet attestations */
     private val enforceClientAuthentication: Boolean = false,
     /** Used to verify client attestation JWTs */
     private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
     /** Callback to verify the client attestation JWT against a set of trusted roots */
     private val verifyClientAttestationJwt: (suspend (JwsSigned<JsonWebToken>) -> Boolean) = { true },
+    /** Enforce DPoP (RFC 9449), as defined in OpenID4VC HAIP, when all clients implement it */
+    private val enforceDpop: Boolean = false,
+    /** Used to sign DPoP (RFC 9449) access tokens, if supported by the client */
+    private val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithoutCert())),
 ) : OAuth2AuthorizationServerAdapter {
 
     override val supportsClientNonce: Boolean = true
@@ -98,6 +113,8 @@ class SimpleAuthorizationService(
             pushedAuthorizationRequestEndpoint = "$publicContext$pushedAuthorizationRequestEndpointPath",
             requirePushedAuthorizationRequests = true, // per OID4VC HAIP
             tokenEndPointAuthMethodsSupported = setOf(AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH), // per OID4VC HAIP
+            dpopSigningAlgValuesSupportedStrings = verifierJwsService.supportedAlgorithms.map { it.identifier }
+                .toSet() // per OID4VC HAIP
         )
     }
 
@@ -214,6 +231,7 @@ class SimpleAuthorizationService(
      * @param request as sent from the client as `POST`
      * @param clientAttestation value of the header `OAuth-Client-Attestation`
      * @param clientAttestationPop value of the header `OAuth-Client-Attestation-PoP`
+     * @param dpop value of the header `DPoP` (RFC 9449)
      *
      * @return [KmmResult] may contain a [OAuth2Exception]
      */
@@ -221,6 +239,7 @@ class SimpleAuthorizationService(
         request: TokenRequestParameters,
         clientAttestation: String? = null,
         clientAttestationPop: String? = null,
+        dpop: String? = null,
     ) = catching {
         Napier.i("token called with $request")
 
@@ -233,14 +252,10 @@ class SimpleAuthorizationService(
         }
 
         authenticateClient(clientAttestation, clientAttestationPop, request.clientId)
-
-        val response = TokenResponseParameters(
-            accessToken = tokenService.provideNonce(),
-            tokenType = OpenIdConstants.TOKEN_TYPE_BEARER,
+        val response = buildToken(dpop).copy(
             expires = 3600.seconds,
             clientNonce = clientNonceService.provideNonce(),
         )
-
         if (request.authorizationDetails != null) {
             if (issuedCode.authorizationDetails == null)
                 throw OAuth2Exception(
@@ -317,6 +332,40 @@ class SimpleAuthorizationService(
             throw OAuth2Exception(Errors.INVALID_REQUEST, "neither authorization details nor scope in request")
         }
     }
+
+    private suspend fun buildToken(dpop: String? = null): TokenResponseParameters =
+        if (dpop != null) {
+            val clientKey = validateDpopJwtForToken(dpop)
+            TokenResponseParameters(
+                tokenType = TOKEN_TYPE_DPOP,
+                accessToken = jwsService.createSignedJwsAddingParams(
+                    header = JwsHeader(
+                        algorithm = jwsService.algorithm,
+                        type = "token"
+                    ),
+                    payload = JsonWebToken(
+                        jwtId = tokenService.provideNonce(),
+                        notBefore = Clock.System.now(),
+                        expiration = Clock.System.now().plus(5.minutes),
+                        confirmationClaim = ConfirmationClaim(
+                            jsonWebKeyThumbprint = clientKey.jwkThumbprintPlain
+                        ),
+                    ),
+                    serializer = JsonWebToken.serializer(),
+                    addKeyId = false,
+                    addJsonWebKey = true,
+                    addX5c = false,
+                ).getOrThrow().serialize()
+            )
+        } else if (enforceDpop == true) {
+            Napier.w("dpop: no JWT provided, but enforced")
+            throw OAuth2Exception(INVALID_DPOP_PROOF, "no DPoP header value")
+        } else {
+            TokenResponseParameters(
+                tokenType = TOKEN_TYPE_BEARER,
+                accessToken = tokenService.provideNonce(),
+            )
+        }
 
     /**
      * Authenticates the client as defined in OpenID4VC HAIP, i.e. with client attestation JWT
@@ -430,14 +479,17 @@ class SimpleAuthorizationService(
      *
      * Also validates that the client has really requested a credential (either identified by [credentialIdentifier]
      * or [credentialConfigurationId]) that has been allowed by this access token issued in [token].
+     *
+     * @param authorizationHeader value of the HTTP header `Authorization`
+     * @param dpopHeader value of the HTTP header `DPoP`
      */
     override suspend fun getUserInfo(
-        accessToken: String,
+        authorizationHeader: String,
+        dpopHeader: String?,
         credentialIdentifier: String?,
         credentialConfigurationId: String?,
     ): KmmResult<OidcUserInfoExtended> = catching {
-        if (!tokenService.verifyNonce(accessToken))
-            throw OAuth2Exception(INVALID_TOKEN, "access token not valid: $accessToken")
+        val accessToken = validateToken(authorizationHeader, dpopHeader)
 
         val result = accessTokenToUserInfoStore.get(accessToken)
             ?: throw OAuth2Exception(INVALID_TOKEN, "could not load user info for access token $accessToken")
@@ -470,5 +522,103 @@ class SimpleAuthorizationService(
             .also { Napier.v("getUserInfo returns $it") }
     }
 
+    private suspend fun validateToken(
+        authorizationHeader: String,
+        dpopHeader: String?,
+    ): String = if (authorizationHeader.startsWith(TOKEN_TYPE_BEARER, ignoreCase = true)) {
+        val bearerToken = authorizationHeader.removePrefix(TOKEN_PREFIX_BEARER).split(" ").last()
+        if (!tokenService.verifyNonce(bearerToken)) { // when to remove them?
+            Napier.w("validateToken: Nonce not known: $bearerToken")
+            throw OAuth2Exception(INVALID_TOKEN, "access token not valid: $bearerToken")
+        }
+        bearerToken
+    } else if (authorizationHeader.startsWith(TOKEN_TYPE_DPOP, ignoreCase = true)) {
+        val dpopToken = authorizationHeader.removePrefix(TOKEN_PREFIX_DPOP).split(" ").last()
+        val dpopTokenJwt = validateDpopToken(dpopToken)
+        validateDpopJwt(dpopHeader, dpopToken, dpopTokenJwt)
+        dpopToken
+    } else {
+        throw OAuth2Exception(INVALID_TOKEN, "authorization header not valid: $authorizationHeader")
+    }
+
+    private fun validateDpopJwtForToken(dpop: String): JsonWebKey {
+        val dpopJwt = parseAndValidate(dpop)
+        if (dpopJwt.header.type != JwsContentTypeConstants.DPOP_JWT) {
+            Napier.w("validateDpopJwtForToken: invalid header type ${dpopJwt.header.type} ")
+            throw OAuth2Exception(INVALID_DPOP_PROOF, "invalid type")
+        }
+        // TODO verify htm, htu, nonce
+        val clientKey = dpopJwt.header.jsonWebKey ?: run {
+            Napier.w("validateDpopJwtForToken: no client key in $dpopJwt")
+            throw OAuth2Exception(INVALID_DPOP_PROOF, "DPoP JWT contains no public key")
+        }
+        return clientKey
+    }
+
+    private fun validateDpopJwt(
+        dpopHeader: String?,
+        dpopToken: String,
+        dpopTokenJwt: JwsSigned<JsonWebToken>,
+    ) {
+        val ath = dpopToken.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
+        if (dpopHeader.isNullOrEmpty()) {
+            Napier.w("validateDpopJwt: No dpop proof in header")
+            throw OAuth2Exception(INVALID_DPOP_PROOF, "no dpop proof")
+        }
+        val dpopJwt = parseAndValidate(dpopHeader)
+        if (dpopTokenJwt.payload.confirmationClaim == null ||
+            dpopJwt.header.jsonWebKey == null ||
+            dpopJwt.header.jsonWebKey!!.jwkThumbprintPlain != dpopTokenJwt.payload.confirmationClaim!!.jsonWebKeyThumbprint
+        ) {
+            Napier.w("validateDpopJwt: jwk not matching cnf.jkt")
+            throw OAuth2Exception(INVALID_DPOP_PROOF, "DPoP JWT JWK not matching cnf.jkt")
+        }
+        // TODO verify htm, htu, nonce
+        if (!dpopJwt.payload.accessTokenHash.equals(ath)) {
+            Napier.w("validateDpopJwt: ath expected $ath, was ${dpopJwt.payload.accessTokenHash}")
+            throw OAuth2Exception(INVALID_DPOP_PROOF, "DPoP JWT ath not correct")
+        }
+    }
+
+    private fun parseAndValidate(dpopHeader: String): JwsSigned<JsonWebToken> =
+        JwsSigned.deserialize(JsonWebToken.serializer(), dpopHeader, vckJsonSerializer)
+            .getOrElse {
+                Napier.w("parse: could not parse DPoP JWT", it)
+                throw OAuth2Exception(INVALID_DPOP_PROOF, "could not parse DPoP JWT", it)
+            }.also {
+                if (!verifierJwsService.verifyJwsObject(it)) {
+                    Napier.w("parse: DPoP not verified")
+                    throw OAuth2Exception(INVALID_DPOP_PROOF, "DPoP JWT not verified")
+                }
+            }
+
+    private suspend fun validateDpopToken(
+        dpopToken: String,
+    ): JwsSigned<JsonWebToken> {
+        val dpopTokenJwt = JwsSigned
+            .deserialize<JsonWebToken>(JsonWebToken.serializer(), dpopToken, vckJsonSerializer)
+            .getOrElse {
+                Napier.w("validateDpopToken: could not parse DPoP Token", it)
+                throw OAuth2Exception(INVALID_TOKEN, "could not parse DPoP Token", it)
+            }
+        if (!verifierJwsService.verifyJws(dpopTokenJwt, jwsService.keyMaterial.jsonWebKey)) {
+            Napier.w("validateDpopToken: DPoP not verified")
+            throw OAuth2Exception(INVALID_TOKEN, "DPoP Token not verified")
+        }
+        if (dpopTokenJwt.payload.jwtId == null || !tokenService.verifyAndRemoveNonce(dpopTokenJwt.payload.jwtId!!)) {
+            Napier.w("validateDpopToken: jti not known: ${dpopTokenJwt.payload.jwtId}")
+            throw OAuth2Exception(INVALID_TOKEN, "jti not valid: ${dpopTokenJwt.payload.jwtId}")
+        }
+        if (dpopTokenJwt.payload.confirmationClaim == null) {
+            Napier.w("validateDpopToken: no confirmation claim: $dpopTokenJwt")
+            throw OAuth2Exception(INVALID_TOKEN, "no confirmation claim")
+        }
+        return dpopTokenJwt
+    }
+
     override suspend fun provideMetadata() = KmmResult.success(metadata)
+
+    private val JsonWebKey.jwkThumbprintPlain
+        get() = this.jwkThumbprint.removePrefix("urn:ietf:params:oauth:jwk-thumbprint:sha256:")
+
 }

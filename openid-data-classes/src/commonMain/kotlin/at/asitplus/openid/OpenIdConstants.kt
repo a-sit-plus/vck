@@ -22,9 +22,11 @@ object OpenIdConstants {
 
     const val TOKEN_PREFIX_BEARER = "Bearer "
 
+    const val TOKEN_PREFIX_DPOP = "DPoP "
+
     const val TOKEN_TYPE_BEARER = "bearer"
 
-    const val TOKEN_TYPE_DPOP = "dpop"
+    const val TOKEN_TYPE_DPOP = "DPoP"
 
     const val URN_TYPE_JWK_THUMBPRINT = "urn:ietf:params:oauth:jwk-thumbprint"
 
@@ -338,6 +340,11 @@ object OpenIdConstants {
          * Invalid access token: `invalid_token`
          */
         const val INVALID_TOKEN = "invalid_token"
+
+        /**
+         * Invalid DPoP proof (RFC 9449): `invalid_dpop_proof`
+         */
+        const val INVALID_DPOP_PROOF = "invalid_dpop_proof"
 
         /**
          * Invalid request in general: `invalid_request`

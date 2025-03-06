@@ -23,10 +23,18 @@ interface OAuth2AuthorizationServerAdapter {
     suspend fun providePreAuthorizedCode(user: OidcUserInfoExtended): String
 
     /**
-     * Get the [OidcUserInfoExtended] (holding [at.asitplus.openid.OidcUserInfo]) associated with the [accessToken],
-     * that was created before at the Authorization Server.
+     * Get the [OidcUserInfoExtended] (holding [at.asitplus.openid.OidcUserInfo]) associated with the access token in
+     * [authorizationHeader], that was created before at the Authorization Server.
+     *
+     * @param authorizationHeader value of the HTTP header `Authorization`
+     * @param dpopHeader value of the HTTP header `DPoP`
      */
-    suspend fun getUserInfo(accessToken: String, credentialIdentifier: String?, credentialConfigurationId: String?): KmmResult<OidcUserInfoExtended>
+    suspend fun getUserInfo(
+        authorizationHeader: String,
+        dpopHeader: String?,
+        credentialIdentifier: String?,
+        credentialConfigurationId: String?,
+    ): KmmResult<OidcUserInfoExtended>
 
     /**
      * Whether this authorization server includes [at.asitplus.openid.TokenResponseParameters.clientNonce] it its

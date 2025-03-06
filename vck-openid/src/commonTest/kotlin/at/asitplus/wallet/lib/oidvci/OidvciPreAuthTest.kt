@@ -74,7 +74,7 @@ class OidvciPreAuthTest : FreeSpec({
             credentialFormat = credentialFormat,
         ).getOrThrow()
 
-        val credential = issuer.credential(token.accessToken, credentialRequest.first())
+        val credential = issuer.credential(token.toHttpHeaderValue(), credentialRequest.first())
             .getOrThrow()
         credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
     }
@@ -99,7 +99,7 @@ class OidvciPreAuthTest : FreeSpec({
                 credentialFormat = credentialFormat,
             ).getOrThrow()
 
-            issuer.credential(token.accessToken, credentialRequest.first())
+            issuer.credential(token.toHttpHeaderValue(), credentialRequest.first())
                 .getOrThrow()
                 .credentials.shouldNotBeEmpty().first()
                 .credentialString.shouldNotBeNull()
@@ -131,7 +131,7 @@ class OidvciPreAuthTest : FreeSpec({
             credentialFormat = supportedCredentialFormat,
         ).getOrThrow()
 
-        issuer.credential(token.accessToken, credentialRequest.first())
+        issuer.credential(token.toHttpHeaderValue(), credentialRequest.first())
             .getOrThrow()
             .credentials.shouldNotBeEmpty().first()
             .credentialString.shouldNotBeNull()
@@ -163,7 +163,7 @@ class OidvciPreAuthTest : FreeSpec({
             )
         )
 
-        val credentials = issuer.credential(token.accessToken, credentialRequest)
+        val credentials = issuer.credential(token.toHttpHeaderValue(), credentialRequest)
             .getOrThrow()
             .credentials.shouldNotBeEmpty()
             .shouldHaveSize(2)

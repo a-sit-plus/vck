@@ -22,6 +22,7 @@ suspend fun JwsService.buildDPoPHeader(
     url: String,
     httpMethod: String = "POST",
     accessToken: String? = null,
+    nonce: String? = null,
 ) = createSignedJwsAddingParams(
     header = JwsHeader(
         algorithm = algorithm,
@@ -33,6 +34,7 @@ suspend fun JwsService.buildDPoPHeader(
         httpTargetUrl = url,
         accessTokenHash = accessToken?.encodeToByteArray()?.sha256()?.encodeToString(Base64UrlStrict),
         issuedAt = Clock.System.now(),
+        nonce = nonce,
     ),
     serializer = JsonWebToken.Companion.serializer(),
     addKeyId = false,

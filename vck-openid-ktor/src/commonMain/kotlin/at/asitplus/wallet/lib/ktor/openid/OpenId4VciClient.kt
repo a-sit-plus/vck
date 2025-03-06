@@ -311,7 +311,7 @@ class OpenId4VciClient(
                 contentType(ContentType.Application.Json)
                 setBody(credentialRequest)
                 headers {
-                    append(HttpHeaders.Authorization, "${tokenResponse.tokenType} ${tokenResponse.accessToken}")
+                    append(HttpHeaders.Authorization, tokenResponse.toHttpHeaderValue())
                     dpopHeader?.let { append(HttpHeaders.DPoP, it) }
                 }
             }.body()
