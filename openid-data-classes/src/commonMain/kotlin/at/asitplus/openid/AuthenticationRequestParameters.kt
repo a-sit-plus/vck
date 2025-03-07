@@ -252,7 +252,7 @@ data class AuthenticationRequestParameters(
      * value of `aud` should be the value of the authorization server (AS) `issuer`, as defined in RFC 8414.
      */
     @SerialName("iss")
-    val issuer: String? = null,
+    override val issuer: String? = null,
 
     /**
      * OPTIONAL. Time at which the request was issued.
