@@ -144,58 +144,66 @@ fun CredentialFormatEnum.toRepresentation() = when (this) {
     else -> CredentialRepresentation.PLAIN_JWT
 }
 
+
+/**
+ * @param transformer may be used to encrypt the credentials before serializing
+ */
 @Suppress("DEPRECATION")
 // TODO In 5.4.0, use DC_SD_JWT instead of VC_SD_JWT
 // TODO After 5.5.0, drop "credential", use only "credentials"
-fun Issuer.IssuedCredential.toCredentialResponseParameters() = when (this) {
+suspend fun Issuer.IssuedCredential.toCredentialResponseParameters(
+    transformer: (suspend (String) -> String) = { it },
+) = when (this) {
     is Issuer.IssuedCredential.Iso -> CredentialResponseParameters(
         format = CredentialFormatEnum.MSO_MDOC,
-        credential = issuerSigned.serialize().encodeToString(Base64UrlStrict),
-        credentials = setOf(
-            CredentialResponseSingleCredential(
-                JsonPrimitive(issuerSigned.serialize().encodeToString(Base64UrlStrict))
-            )
-        ),
+        credential = transformer(toBase64UrlStrict()),
+        credentials = setOf(toCredentialResponseSingleCredential(transformer)),
     )
 
     is Issuer.IssuedCredential.VcJwt -> CredentialResponseParameters(
         format = CredentialFormatEnum.JWT_VC,
-        credential = vcJws,
-        credentials = setOf(
-            CredentialResponseSingleCredential(JsonPrimitive(vcJws))
-        ),
+        credential = transformer(vcJws),
+        credentials = setOf(toCredentialResponseSingleCredential(transformer)),
     )
 
     is Issuer.IssuedCredential.VcSdJwt -> CredentialResponseParameters(
         format = CredentialFormatEnum.VC_SD_JWT,
-        credential = vcSdJwt,
-        credentials = setOf(
-            CredentialResponseSingleCredential(JsonPrimitive(vcSdJwt))
-        ),
+        credential = transformer(vcSdJwt),
+        credentials = setOf(toCredentialResponseSingleCredential(transformer)),
     )
 }
 
-@Suppress("DEPRECATION")
+/**
+ * @param transformer may be used to encrypt the credentials before serializing
+ */
 // TODO In 5.4.0, use DC_SD_JWT instead of VC_SD_JWT
 // TODO After 5.5.0, drop "credential", use only "credentials"
-fun Collection<Issuer.IssuedCredential>.toCredentialResponseParameters() =
-    if (this.size == 1) {
-        this.first().toCredentialResponseParameters()
-    } else {
-        CredentialResponseParameters(
-            credentials = this.map { it.toCredentialResponseSingleCredential() }.toSet()
-        )
-    }
+@Suppress("DEPRECATION")
+suspend fun Collection<Issuer.IssuedCredential>.toCredentialResponseParameters(
+    transformer: (suspend (String) -> String) = { it },
+) = if (size == 1) {
+    first().toCredentialResponseParameters(transformer)
+} else {
+    CredentialResponseParameters(
+        credentials = this.map { it.toCredentialResponseSingleCredential(transformer) }.toSet()
+    )
+}
 
-fun Issuer.IssuedCredential.toCredentialResponseSingleCredential(): CredentialResponseSingleCredential =
+/**
+ * @param transformer may be used to encrypt the credentials before serializing
+ */
+suspend fun Issuer.IssuedCredential.toCredentialResponseSingleCredential(
+    transformer: (suspend (String) -> String) = { it },
+): CredentialResponseSingleCredential = CredentialResponseSingleCredential(
     when (this) {
-        is Issuer.IssuedCredential.Iso -> CredentialResponseSingleCredential(
-            JsonPrimitive(issuerSigned.serialize().encodeToString(Base64UrlStrict))
-        )
-
-        is Issuer.IssuedCredential.VcJwt -> CredentialResponseSingleCredential(JsonPrimitive(vcJws))
-        is Issuer.IssuedCredential.VcSdJwt -> CredentialResponseSingleCredential(JsonPrimitive(vcSdJwt))
+        is Issuer.IssuedCredential.Iso -> JsonPrimitive(transformer(toBase64UrlStrict()))
+        is Issuer.IssuedCredential.VcJwt -> JsonPrimitive(transformer(vcJws))
+        is Issuer.IssuedCredential.VcSdJwt -> JsonPrimitive(transformer(vcSdJwt))
     }
+)
+
+private fun Issuer.IssuedCredential.Iso.toBase64UrlStrict(): String =
+    issuerSigned.serialize().encodeToString(Base64UrlStrict)
 
 class OAuth2Exception : Throwable {
     constructor(error: String, errorDescription: String, cause: Throwable) : super("$error: $errorDescription", cause)

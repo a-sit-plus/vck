@@ -8,26 +8,29 @@ import at.asitplus.openid.OpenIdConstants.KEY_ATTESTATION_JWT_TYPE
 import at.asitplus.openid.OpenIdConstants.PROOF_JWT_TYPE
 import at.asitplus.openid.OpenIdConstants.ProofType
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
+import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
+import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
+import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.HttpMethod
-import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Clock.System
-import kotlin.random.Random
+import kotlinx.serialization.builtins.serializer
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
@@ -91,6 +94,10 @@ class CredentialIssuer(
     private val requireKeyAttestation: Boolean = false,
     /** Used to provide challenge to clients to include in proof of possession of key material. */
     private val clientNonceService: NonceService = DefaultNonceService(),
+    /** Used to optionally encrypt the credential response, if requested by the client. */
+    private val jwsEncryptionService: JwsService = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithoutCert())),
+    /** Whether to indicate in [metadata] if credential response encryption is required. */
+    private val requireEncryption: Boolean = false,
 ) {
     private val supportedCredentialConfigurations = credentialSchemes
         .flatMap { it.toSupportedCredentialFormat(issuer.cryptoAlgorithms).entries }
@@ -125,7 +132,12 @@ class CredentialIssuer(
             credentialEndpointUrl = "$publicContext$credentialEndpointPath",
             nonceEndpointUrl = "$publicContext$nonceEndpointPath",
             supportedCredentialConfigurations = supportedCredentialConfigurations,
-            batchCredentialIssuance = BatchCredentialIssuanceMetadata(1)
+            batchCredentialIssuance = BatchCredentialIssuanceMetadata(1),
+            credentialResponseEncryption = SupportedAlgorithmsContainer(
+                supportedAlgorithmsStrings = setOf(jwsEncryptionService.encryptionAlgorithm.identifier),
+                supportedEncryptionAlgorithmsStrings = setOf(jwsEncryptionService.encryptionEncoding.text),
+                encryptionRequired = requireEncryption,
+            )
         )
     }
 
@@ -250,9 +262,30 @@ class CredentialIssuer(
                     .also { Napier.w("credential: issuer did not issue credential", it) }
             }
         }
-        // TODO Encrypt optionally
-        issuedCredentials.toCredentialResponseParameters()
+        issuedCredentials.toCredentialResponseParameters(params.encrypter())
             .also { Napier.i("credential returns $it") }
+    }
+
+    /** Encrypts the issued credential, if requested so by the client. */
+    private fun CredentialRequestParameters.encrypter(): (suspend (String) -> String) = { it: String ->
+        if (credentialResponseEncryption?.jweEncryption != null) {
+            with(credentialResponseEncryption!!) {
+                jwsEncryptionService.encryptJweObject(
+                    header = JweHeader(
+                        algorithm = jweAlgorithm,
+                        encryption = jweEncryption,
+                        keyId = jsonWebKey.keyId,
+                    ),
+                    payload = it,
+                    serializer = String.serializer(),
+                    recipientKey = jsonWebKey,
+                    jweAlgorithm = jweAlgorithm,
+                    jweEncryption = jweEncryption!!,
+                ).getOrNull()?.serialize() ?: it
+            }
+        } else {
+            it
+        }
     }
 
     private suspend fun validateProofExtractSubjectPublicKeys(params: CredentialRequestParameters): Collection<CryptoPublicKey> =

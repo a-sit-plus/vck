@@ -37,7 +37,7 @@ data class CredentialRequestParameters(
      * is not present, the corresponding credential response returned is not encrypted.
      */
     @SerialName("credential_response_encryption")
-    val credentialResponseEncryption: SupportedAlgorithmsContainer? = null, // TODO other type
+    val credentialResponseEncryption: CredentialResponseEncryption? = null,
 
     @SerialName("doctype")
     @Deprecated("Removed in OID4VCI draft 15")
