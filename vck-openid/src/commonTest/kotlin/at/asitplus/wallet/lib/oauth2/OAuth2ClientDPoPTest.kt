@@ -55,7 +55,9 @@ class OAuth2ClientDPoPTest : FunSpec({
         }
         server = SimpleAuthorizationService(
             strategy = authorizationServiceStrategy,
-            enforceDpop = true,
+            tokenService = TokenService(
+                enforceDpop = true
+            )
         )
         clientKey = EphemeralKeyWithSelfSignedCert()
         jwsService = DefaultJwsService(DefaultCryptoService(clientKey))

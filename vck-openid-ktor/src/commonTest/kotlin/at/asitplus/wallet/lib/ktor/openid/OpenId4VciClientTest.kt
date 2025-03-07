@@ -14,6 +14,7 @@ import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
+import at.asitplus.wallet.lib.oauth2.TokenService
 import at.asitplus.wallet.lib.oidvci.*
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FunSpec
@@ -250,7 +251,9 @@ class OpenId4VciClientTest : FunSpec() {
             tokenEndpointPath = tokenEndpointPath,
             pushedAuthorizationRequestEndpointPath = parEndpointPath,
             enforceClientAuthentication = true,
-            enforceDpop = true,
+            tokenService = TokenService(
+                enforceDpop = true
+            )
         )
         val credentialIssuer = CredentialIssuer(
             authorizationService = authorizationService,
