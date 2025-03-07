@@ -8,6 +8,7 @@ import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
@@ -39,14 +40,16 @@ import kotlin.random.Random
 class OpenId4VciClientTest : FunSpec() {
 
     lateinit var countdownLatch: Mutex
-    lateinit var keyMaterial: KeyMaterial
-    lateinit var cryptoService: CryptoService
+    lateinit var credentialKeyMaterial: KeyMaterial
+    lateinit var dpopKeyMaterial: KeyMaterial
+    lateinit var clientAuthKeyMaterial: KeyMaterial
 
     init {
         beforeEach {
             countdownLatch = Mutex(true)
-            keyMaterial = EphemeralKeyWithoutCert()
-            cryptoService = DefaultCryptoService(keyMaterial)
+            credentialKeyMaterial = EphemeralKeyWithoutCert()
+            dpopKeyMaterial = EphemeralKeyWithoutCert()
+            clientAuthKeyMaterial = EphemeralKeyWithoutCert()
         }
 
         test("loadEuPidCredentialSdJwt") {
@@ -66,7 +69,7 @@ class OpenId4VciClientTest : FunSpec() {
                     .first { it.supportedCredentialFormat.format == CredentialFormatEnum.DC_SD_JWT }
                 // client will call clientBrowser.openUrlExternally
                 client.startProvisioningWithAuthRequest(
-                    credentialIssuer = "http://localhost",
+                    credentialIssuerUrl = "http://localhost",
                     credentialIdentifierInfo = selectedCredential,
                 ).apply {
                     this.isSuccess shouldBe true
@@ -110,15 +113,14 @@ class OpenId4VciClientTest : FunSpec() {
     ): Pair<OpenId4VciClient, CredentialIssuer> {
         val (mockEngine, credentialIssuer) = setupIssuingService(scheme, representation, attributes)
         val subjectCredentialStore = assertAttributeStore(scheme, attributes)
-        val holderAgent = HolderAgent(keyMaterial, subjectCredentialStore)
-        val client = setupClient(mockEngine, holderAgent, keyMaterial)
+        val holderAgent = HolderAgent(credentialKeyMaterial, subjectCredentialStore)
+        val client = setupClient(mockEngine, holderAgent)
         return client to credentialIssuer
     }
 
     private fun setupClient(
         mockEngine: HttpClientEngine,
         holderAgent: HolderAgent,
-        keyMaterial: KeyMaterial,
     ): OpenId4VciClient {
         // This construction is needed to continue with client in the openUrlExternally callback
         var client: OpenId4VciClient? = null
@@ -139,12 +141,15 @@ class OpenId4VciClientTest : FunSpec() {
             loadProvisioningContext = { provisioningContextStore },
             loadClientAttestationJwt = {
                 DefaultJwsService(DefaultCryptoService(EphemeralKeyWithSelfSignedCert()))
-                    .buildClientAttestationJwt(clientId, "issuer", keyMaterial.jsonWebKey).serialize()
+                    .buildClientAttestationJwt(clientId, "issuer", clientAuthKeyMaterial.jsonWebKey).serialize()
             },
-            cryptoService = cryptoService,
+            clientAttestationCryptoService = DefaultCryptoService(clientAuthKeyMaterial),
+            dpopCryptoService = DefaultCryptoService(dpopKeyMaterial),
+            credentialCryptoService = DefaultCryptoService(credentialKeyMaterial),
             holderAgent = holderAgent,
             redirectUrl = "http://localhost/mock/",
-            clientId = clientId
+            clientId = clientId,
+            storeCredential = { holderAgent.storeCredential(it).getOrThrow() }
         )
         return client
     }
@@ -211,15 +216,15 @@ class OpenId4VciClientTest : FunSpec() {
                 require(representation == representationToIssue)
                 var digestId = 0u
                 when (representation) {
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT -> TODO()
-                    ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialToBeIssued.VcSd(
+                    PLAIN_JWT -> TODO()
+                    SD_JWT -> CredentialToBeIssued.VcSd(
                         attributesToIssue.map { ClaimToBeIssued(it.key, it.value) },
                         Clock.System.now(),
                         credentialScheme,
                         subjectPublicKey
                     )
 
-                    ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
+                    ISO_MDOC -> CredentialToBeIssued.Iso(
                         attributesToIssue.map { IssuerSignedItem(digestId++, Random.nextBytes(32), it.key, it.value) },
                         Clock.System.now(),
                         credentialScheme,

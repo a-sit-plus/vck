@@ -54,6 +54,9 @@ data class CredentialResponseParameters(
     @Serializable(with = DurationSecondsIntSerializer::class)
     val clientNonceExpiresIn: Duration? = null,
 ) {
+    @Suppress("DEPRECATION")
+    fun extractCredentials(): List<String> =
+        credentials?.let { it.mapNotNull { it.credentialString } } ?: listOfNotNull(credential)
 
     fun serialize() = odcJsonSerializer.encodeToString(this)
 

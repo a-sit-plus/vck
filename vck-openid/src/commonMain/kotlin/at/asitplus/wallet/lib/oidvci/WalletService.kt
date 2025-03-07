@@ -162,7 +162,7 @@ class WalletService(
     }.toSet()
 
     /**
-     * Build `scope` value for use in [OAuth2Client.createAuthRequest] and [OAuth2Client.createTokenRequestParameters].
+     * Extract [SupportedCredentialFormat] from [metadata] by filtering according to [requestOptions].
      */
     fun selectSupportedCredentialFormat(
         requestOptions: RequestOptions,
@@ -301,19 +301,20 @@ class WalletService(
         ).also { Napier.i("createCredentialRequest returns $it") }
     }
 
-
     internal suspend fun createCredentialRequestProof(
         metadata: IssuerMetadata,
         credentialFormat: SupportedCredentialFormat,
         clientNonce: String?,
         clock: Clock = Clock.System,
     ): CredentialRequestProof =
-        credentialFormat.supportedProofTypes?.get(ProofType.JWT.stringRepresentation)?.let { jwtProof ->
-            val keyAttestationRequired = jwtProof.keyAttestationRequired != null
-            createCredentialRequestProofJwt(clientNonce, metadata.credentialIssuer, clock, keyAttestationRequired)
+        credentialFormat.supportedProofTypes?.get(ProofType.JWT.stringRepresentation)?.let {
+            createCredentialRequestProofJwt(clientNonce, metadata.credentialIssuer, clock, it.keyAttestationRequired())
         } ?: credentialFormat.supportedProofTypes?.get(ProofType.ATTESTATION.stringRepresentation)?.let {
             createCredentialRequestProofAttestation(clientNonce, it.supportedSigningAlgorithms)
         } ?: createCredentialRequestProofJwt(clientNonce, metadata.credentialIssuer, clock)
+
+    private fun CredentialRequestProofSupported.keyAttestationRequired(): Boolean =
+        keyAttestationRequired != null
 
     internal suspend fun createCredentialRequestProofAttestation(
         clientNonce: String?,
@@ -363,22 +364,15 @@ class WalletService(
 
 
     private fun ConstantIndex.CredentialScheme.toCredentialRequestParameters(
-        credentialRepresentation: CredentialRepresentation,
-    ) = when {
-        credentialRepresentation == PLAIN_JWT && supportsVcJwt -> CredentialRequestParameters(
-            credentialConfigurationId = toCredentialIdentifier(credentialRepresentation)
-        )
-
-        credentialRepresentation == SD_JWT && supportsSdJwt -> CredentialRequestParameters(
-            credentialConfigurationId = toCredentialIdentifier(credentialRepresentation)
-        )
-
-        credentialRepresentation == ISO_MDOC && supportsIso -> CredentialRequestParameters(
-            credentialConfigurationId = toCredentialIdentifier(credentialRepresentation)
-        )
-
-        else -> throw IllegalArgumentException("format $credentialRepresentation not applicable to $this")
-    }
+        representation: CredentialRepresentation,
+    ) = CredentialRequestParameters(
+        credentialConfigurationId = when {
+            representation == PLAIN_JWT && supportsVcJwt -> toCredentialIdentifier(representation)
+            representation == SD_JWT && supportsSdJwt -> toCredentialIdentifier(representation)
+            representation == ISO_MDOC && supportsIso -> toCredentialIdentifier(representation)
+            else -> throw IllegalArgumentException("format $representation not applicable to $this")
+        }
+    )
 
     private fun SupportedCredentialFormat.toCredentialRequestParameters() =
         CredentialRequestParameters(
