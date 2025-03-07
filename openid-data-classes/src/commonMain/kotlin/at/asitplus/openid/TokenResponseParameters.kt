@@ -55,6 +55,7 @@ data class TokenResponseParameters(
      * Credential Issuer provides a fresh nonce.
      */
     @SerialName("c_nonce")
+    @Deprecated("Removed in OID4VCI draft 14, see ClientNonceResponse")
     val clientNonce: String? = null,
 
     /**
@@ -63,6 +64,7 @@ data class TokenResponseParameters(
      */
     @SerialName("c_nonce_expires_in")
     @Serializable(with = DurationSecondsIntSerializer::class)
+    @Deprecated("Removed in OID4VCI draft 14, see ClientNonceResponse")
     val clientNonceExpiresIn: Duration? = null,
 
     /**

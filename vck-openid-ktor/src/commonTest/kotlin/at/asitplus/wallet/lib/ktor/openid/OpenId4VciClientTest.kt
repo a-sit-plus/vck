@@ -240,6 +240,7 @@ class OpenId4VciClientTest : FunSpec() {
         val authorizationEndpointPath = "/authorize"
         val tokenEndpointPath = "/token"
         val credentialEndpointPath = "/credential"
+        val nonceEndpointPath = "/nonce"
         val parEndpointPath = "/par"
         val publicContext = "http://issuer.example.com"
         val authorizationService = SimpleAuthorizationService(
@@ -265,6 +266,7 @@ class OpenId4VciClientTest : FunSpec() {
             credentialProvider = credentialProvider,
             publicContext = publicContext,
             credentialEndpointPath = credentialEndpointPath,
+            nonceEndpointPath = nonceEndpointPath,
         )
 
         return Pair(MockEngine { request ->
@@ -315,6 +317,14 @@ class OpenId4VciClientTest : FunSpec() {
                         request.url.toString(),
                         request.method,
                     ).getOrThrow()
+                    respond(
+                        vckJsonSerializer.encodeToString(result),
+                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    )
+                }
+
+                request.url.fullPath.startsWith(nonceEndpointPath) -> {
+                    val result = credentialIssuer.nonce().getOrThrow()
                     respond(
                         vckJsonSerializer.encodeToString(result),
                         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())

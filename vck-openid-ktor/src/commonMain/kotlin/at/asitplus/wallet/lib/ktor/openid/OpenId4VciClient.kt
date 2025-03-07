@@ -318,10 +318,18 @@ class OpenId4VciClient(
         val credentialEndpointUrl = issuerMetadata.credentialEndpointUrl
         Napier.i("postCredentialRequestAndStore: $credentialEndpointUrl")
         Napier.d("postCredentialRequestAndStore: $tokenResponse")
+
+        val clientNonce = issuerMetadata.nonceEndpointUrl?.let { nonceUrl ->
+            client.post(nonceUrl).body<ClientNonceResponse>().clientNonce.also {
+                Napier.i("postCredentialRequestAndStore: $it from $nonceUrl")
+            }
+        }
+
         val credentialRequests = oid4vciService.createCredentialRequest(
             tokenResponse = tokenResponse,
             metadata = issuerMetadata,
             credentialFormat = credentialFormat,
+            clientNonce = clientNonce,
         ).getOrThrow()
 
         val dpopHeader = if (tokenResponse.tokenType.equals(TOKEN_TYPE_DPOP, true))

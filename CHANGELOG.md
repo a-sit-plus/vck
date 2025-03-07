@@ -28,6 +28,7 @@ Release 5.5.0:
    - The `CredentialIssuer` issues more the same credential to different keys, if more than one proof is contained in the credential request
    - Add rudimentary implementation of key attestation proofs in `WalletService` and `CredentialIssuer`
    - Update `OpenId4VciClient` (in `vck-openid-ktor`) to support updated process and all security features with different crypto services
+   - Remove `c_nonce` from token response, migrate to nonce endpoint in `CredentialIssuer`
  - Update implementation of authorization service for [OpenID4VC High Assurance Interoperability Profile](https://openid.net/specs/openid4vc-high-assurance-interoperability-profile-1_0.html) draft 03:
    - `SimpleAuthorizationService` implements pushed authorization requests as defined in [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html)
    - `SimpleAuthorizationService` implements attestation-based client authentication as defined in [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-05.html)

@@ -103,12 +103,14 @@ class OidvciCodeFlowTest : FreeSpec({
         val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata).shouldNotBeNull()
         val scope = credentialFormat.scope.shouldNotBeNull()
         val token = getToken(scope)
+        val clientNonce = issuer.nonce().getOrThrow().clientNonce
         val credential = issuer.credential(
             token.toHttpHeaderValue(),
             client.createCredentialRequest(
                 tokenResponse = token,
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
+                clientNonce = clientNonce,
             ).getOrThrow().first()
         ).getOrThrow()
         credential.format shouldBe CredentialFormatEnum.JWT_VC
@@ -131,6 +133,7 @@ class OidvciCodeFlowTest : FreeSpec({
         }
         val scope = requestOptions.keys.joinToString(" ") { it.scope.shouldNotBeNull() }
         val token = getToken(scope)
+        val clientNonce = issuer.nonce().getOrThrow().clientNonce
 
         requestOptions.forEach {
             issuer.credential(
@@ -139,6 +142,7 @@ class OidvciCodeFlowTest : FreeSpec({
                     tokenResponse = token,
                     metadata = issuer.metadata,
                     credentialFormat = it.key,
+                    clientNonce = clientNonce,
                 ).getOrThrow().first()
             ).getOrThrow().credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
         }
@@ -147,13 +151,14 @@ class OidvciCodeFlowTest : FreeSpec({
     "proof over different keys leads to different credentials" {
         val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
         val scope = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata)?.scope.shouldNotBeNull()
+        val clientNonce = issuer.nonce().getOrThrow().clientNonce
         val token = getToken(scope)
         val proof = client.createCredentialRequestProofJwt(
-            clientNonce = token.clientNonce,
+            clientNonce = clientNonce,
             credentialIssuer = issuer.metadata.credentialIssuer,
         )
         val differentProof = WalletService().createCredentialRequestProofJwt(
-            clientNonce = token.clientNonce,
+            clientNonce = clientNonce,
             credentialIssuer = issuer.metadata.credentialIssuer,
         )
         val credentialRequest = CredentialRequestParameters(
@@ -205,6 +210,7 @@ class OidvciCodeFlowTest : FreeSpec({
         val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata).shouldNotBeNull()
         val scope = credentialFormat.scope.shouldNotBeNull()
         val token = getToken(scope)
+        val clientNonce = issuer.nonce().getOrThrow().clientNonce
 
         val credential = issuer.credential(
             token.toHttpHeaderValue(),
@@ -212,6 +218,7 @@ class OidvciCodeFlowTest : FreeSpec({
                 tokenResponse = token,
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
+                clientNonce = clientNonce,
             ).getOrThrow().first()
         ).getOrThrow()
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
@@ -225,6 +232,7 @@ class OidvciCodeFlowTest : FreeSpec({
         val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata).shouldNotBeNull()
         val scope = credentialFormat.scope.shouldNotBeNull()
         val token = getToken(scope, false) // do not set scope in token request, only in authn request
+        val clientNonce = issuer.nonce().getOrThrow().clientNonce
 
         val credential = issuer.credential(
             token.toHttpHeaderValue(),
@@ -232,6 +240,7 @@ class OidvciCodeFlowTest : FreeSpec({
                 tokenResponse = token,
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
+                clientNonce = clientNonce,
             ).getOrThrow().first()
         ).getOrThrow()
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
@@ -277,6 +286,7 @@ class OidvciCodeFlowTest : FreeSpec({
             .shouldNotBeNull()[credentialConfigurationId]
             .shouldNotBeNull()
         val token = getToken(authorizationDetails)
+        val clientNonce = issuer.nonce().getOrThrow().clientNonce
 
         val credential = issuer.credential(
             token.toHttpHeaderValue(),
@@ -284,6 +294,7 @@ class OidvciCodeFlowTest : FreeSpec({
                 tokenResponse = token,
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
+                clientNonce = clientNonce,
             ).getOrThrow().first()
         ).getOrThrow()
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
@@ -302,6 +313,7 @@ class OidvciCodeFlowTest : FreeSpec({
             .shouldNotBeNull()[credentialConfigurationId]
             .shouldNotBeNull()
         val token = getToken(authorizationDetails, false) // do not set authn details in token request
+        val clientNonce = issuer.nonce().getOrThrow().clientNonce
 
         val credential = issuer.credential(
             token.toHttpHeaderValue(),
@@ -309,6 +321,7 @@ class OidvciCodeFlowTest : FreeSpec({
                 tokenResponse = token,
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
+                clientNonce = clientNonce,
             ).getOrThrow().first()
         ).getOrThrow()
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
@@ -350,6 +363,7 @@ class OidvciCodeFlowTest : FreeSpec({
         val scope = credentialFormat
             ?.scope.shouldNotBeNull()
         val token = getToken(scope)
+        val clientNonce = issuer.nonce().getOrThrow().clientNonce
 
         shouldThrow<OAuth2Exception> {
             issuer.credential(
@@ -358,6 +372,7 @@ class OidvciCodeFlowTest : FreeSpec({
                     tokenResponse = token,
                     metadata = issuer.metadata,
                     credentialFormat = credentialFormat,
+                    clientNonce = clientNonce,
                 ).getOrThrow().first().copy(
                     // enforces error on client, setting credential_identifier, although access token was for scope
                     // (which should be credential_configuration_id in credential request)
@@ -378,6 +393,7 @@ class OidvciCodeFlowTest : FreeSpec({
             authorizationServers = issuer.metadata.authorizationServers
         )
         val token = getToken(authorizationDetails)
+        val clientNonce = issuer.nonce().getOrThrow().clientNonce
 
         shouldThrow<OAuth2Exception> {
             issuer.credential(
@@ -386,6 +402,7 @@ class OidvciCodeFlowTest : FreeSpec({
                     tokenResponse = token,
                     metadata = issuer.metadata,
                     credentialFormat = credentialFormat,
+                    clientNonce = clientNonce,
                 ).getOrThrow().first().copy(
                     // enforces error on client, setting credential_configuration_id, although access token was for
                     // authorization details (which should be credential_identifier in credential request)
@@ -401,6 +418,7 @@ class OidvciCodeFlowTest : FreeSpec({
         val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata).shouldNotBeNull()
         val scope = credentialFormat?.scope.shouldNotBeNull()
         val token = getToken(scope)
+        val clientNonce = issuer.nonce().getOrThrow().clientNonce
 
         val credential = issuer.credential(
             token.toHttpHeaderValue(),
@@ -408,6 +426,7 @@ class OidvciCodeFlowTest : FreeSpec({
                 tokenResponse = token,
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
+                clientNonce = clientNonce,
             ).getOrThrow().first()
         ).getOrThrow()
         credential.format shouldBe CredentialFormatEnum.MSO_MDOC

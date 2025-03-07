@@ -85,7 +85,8 @@ class OidvciAttestationTest : FunSpec({
         val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata).shouldNotBeNull()
         val scope = credentialFormat.scope.shouldNotBeNull()
         val token = getToken(scope)
-        client.createCredentialRequest(token, issuer.metadata, credentialFormat).getOrThrow().forEach {
+        val clientNonce = issuer.nonce().getOrThrow().clientNonce
+        client.createCredentialRequest(token, issuer.metadata, credentialFormat, clientNonce).getOrThrow().forEach {
             val credential = issuer.credential(token.toHttpHeaderValue(), it).getOrThrow()
             val serializedCredential = credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
@@ -117,7 +118,8 @@ class OidvciAttestationTest : FunSpec({
         val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata).shouldNotBeNull()
         val scope = credentialFormat.scope.shouldNotBeNull()
         val token = getToken(scope)
-        client.createCredentialRequest(token, issuer.metadata, credentialFormat).getOrThrow().forEach {
+        val clientNonce = issuer.nonce().getOrThrow().clientNonce
+        client.createCredentialRequest(token, issuer.metadata, credentialFormat, clientNonce).getOrThrow().forEach {
             shouldThrow<OAuth2Exception> {
                 issuer.credential(token.toHttpHeaderValue(), it).getOrThrow()
             }
@@ -134,8 +136,9 @@ class OidvciAttestationTest : FunSpec({
         val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata).shouldNotBeNull()
         val scope = credentialFormat.scope.shouldNotBeNull()
         val token = getToken(scope)
+        val clientNonce = issuer.nonce().getOrThrow().clientNonce
 
-        client.createCredentialRequest(token, issuer.metadata, credentialFormat).isFailure shouldBe true
+        client.createCredentialRequest(token, issuer.metadata, credentialFormat, clientNonce).isFailure shouldBe true
     }
 
 

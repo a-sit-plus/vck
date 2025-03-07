@@ -21,7 +21,6 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock.System
 import kotlin.String
 import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
 
 
 /**
@@ -44,8 +43,6 @@ class SimpleAuthorizationService(
     private val strategy: AuthorizationServiceStrategy,
     /** Used to create and verify authorization codes during issuing. */
     private val codeService: CodeService = DefaultCodeService(),
-    /** Used to provide challenge to clients to include in proof of possession of key material. */
-    private val clientNonceService: NonceService = DefaultNonceService(),
     /** Used in several fields in [OAuth2AuthorizationServerMetadata], to provide endpoint URLs to clients. */
     override val publicContext: String = "https://wallet.a-sit.at/authorization-server",
     /**
@@ -82,7 +79,6 @@ class SimpleAuthorizationService(
     ),
 ) : OAuth2AuthorizationServerAdapter {
 
-    override val supportsClientNonce: Boolean = true
     override val supportsPushedAuthorizationRequests: Boolean = true
 
 
@@ -257,13 +253,8 @@ class SimpleAuthorizationService(
             Napier.w("token: request can not be parsed: $request")
             throw OAuth2Exception(INVALID_REQUEST, "neither authorization details nor scope in request")
         }
-
-        enrichedToken.copy(
-            expires = 3600.seconds,
-            clientNonce = clientNonceService.provideNonce(),
-        ).also {
-            Napier.i("token returns $it")
-        }
+        Napier.i("token returns $enrichedToken")
+        enrichedToken
     }
 
     private suspend fun tokenForScope(
@@ -382,9 +373,6 @@ class SimpleAuthorizationService(
             )
         }
 
-    override suspend fun verifyClientNonce(nonce: String): Boolean =
-        clientNonceService.verifyNonce(nonce)
-
     /**
      * Get the [OidcUserInfoExtended] (holding [at.asitplus.openid.OidcUserInfo]) associated with the token in
      * [authorizationHeader], that was created before at the Authorization Server.
@@ -411,10 +399,7 @@ class SimpleAuthorizationService(
             ?: throw OAuth2Exception(INVALID_TOKEN, "could not load user info for access token $accessToken")
         if (credentialIdentifier != null) {
             if (result.authorizationDetails == null)
-                throw OAuth2Exception(
-                    INVALID_TOKEN,
-                    "no authorization details stored for access token $accessToken"
-                )
+                throw OAuth2Exception(INVALID_TOKEN, "no authorization details stored for access token $accessToken")
             val validCredentialIdentifiers = result.authorizationDetails.flatMap { it.credentialIdentifiers ?: setOf() }
             if (!validCredentialIdentifiers.contains(credentialIdentifier))
                 throw OAuth2Exception(

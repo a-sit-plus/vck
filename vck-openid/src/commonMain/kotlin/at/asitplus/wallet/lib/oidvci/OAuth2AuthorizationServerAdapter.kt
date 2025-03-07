@@ -42,22 +42,10 @@ interface OAuth2AuthorizationServerAdapter {
     ): KmmResult<OidcUserInfoExtended>
 
     /**
-     * Whether this authorization server includes [at.asitplus.openid.TokenResponseParameters.clientNonce] it its
-     * token response, i.e. whether the [CredentialIssuer] needs to verify it using [verifyClientNonce].
-     */
-    val supportsClientNonce: Boolean
-
-    /**
      * Whether this authorization server implements pushed authorization requests as defined in
      * [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html).
      */
     val supportsPushedAuthorizationRequests: Boolean
-
-    /**
-     * Called by [CredentialIssuer] to verify that nonces contained in proof-of-possession statements from clients
-     * are indeed valid.
-     */
-    suspend fun verifyClientNonce(nonce: String): Boolean
 
     /**
      * Provide necessary [OAuth2AuthorizationServerMetadata] JSON for a client to be able to authenticate

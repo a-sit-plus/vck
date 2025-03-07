@@ -249,11 +249,14 @@ class WalletService(
      * @param tokenResponse from the authorization server token endpoint
      * @param metadata the issuer's metadata, see [IssuerMetadata]
      * @param credentialFormat which credential to request (needed to build the correct proof)
+     * @param clientNonce if required by the issuer (see [IssuerMetadata.nonceEndpointUrl]),
+     * the value from there, exactly [ClientNonceResponse.clientNonce]
      */
     suspend fun createCredentialRequest(
         tokenResponse: TokenResponseParameters,
         metadata: IssuerMetadata,
         credentialFormat: SupportedCredentialFormat,
+        clientNonce: String? = null,
         clock: Clock = Clock.System,
     ): KmmResult<Collection<CredentialRequestParameters>> = catching {
         val requests = tokenResponse.authorizationDetails?.let {
@@ -272,7 +275,14 @@ class WalletService(
             }.toSet()
         } ?: throw IllegalArgumentException("Can't parse tokenResponse: $tokenResponse")
         requests.map {
-            it.copy(proof = createCredentialRequestProof(metadata, credentialFormat, tokenResponse.clientNonce, clock))
+            it.copy(
+                proof = createCredentialRequestProof(
+                    metadata = metadata,
+                    credentialFormat = credentialFormat,
+                    clientNonce = clientNonce ?: tokenResponse.clientNonce,
+                    clock = clock
+                )
+            )
         }.also {
             Napier.i("createCredentialRequest returns $it")
         }
