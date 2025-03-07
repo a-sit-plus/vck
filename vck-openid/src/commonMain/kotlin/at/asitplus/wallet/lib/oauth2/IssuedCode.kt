@@ -7,6 +7,6 @@ data class IssuedCode(
     val code: String,
     val userInfoExtended: OidcUserInfoExtended,
     val scope: String? = null,
-    val authorizationDetails: Collection<AuthorizationDetails>? = null,
+    val authnDetails: Collection<AuthorizationDetails>? = null,
     val codeChallenge: String? = null,
 )
