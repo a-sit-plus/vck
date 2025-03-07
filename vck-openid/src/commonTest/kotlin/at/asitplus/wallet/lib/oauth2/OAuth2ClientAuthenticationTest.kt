@@ -53,7 +53,9 @@ class OAuth2ClientAuthenticationTest : FunSpec({
         }
         server = SimpleAuthorizationService(
             strategy = authorizationServiceStrategy,
-            enforceClientAuthentication = true
+            clientAuthenticationService = ClientAuthenticationService(
+                enforceClientAuthentication = true,
+            )
         )
         val attesterBackend = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithSelfSignedCert()))
         clientKey = EphemeralKeyWithSelfSignedCert()
@@ -120,8 +122,10 @@ class OAuth2ClientAuthenticationTest : FunSpec({
         )
         server = SimpleAuthorizationService(
             strategy = authorizationServiceStrategy,
-            enforceClientAuthentication = true,
-            verifyClientAttestationJwt = { false }
+            clientAuthenticationService = ClientAuthenticationService(
+                enforceClientAuthentication = true,
+                verifyClientAttestationJwt = { false }
+            ),
         )
 
         shouldThrow<OAuth2Exception> {

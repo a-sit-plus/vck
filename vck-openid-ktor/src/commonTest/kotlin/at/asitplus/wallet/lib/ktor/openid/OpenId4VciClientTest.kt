@@ -13,6 +13,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.jws.DefaultJwsService
+import at.asitplus.wallet.lib.oauth2.ClientAuthenticationService
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oauth2.TokenService
 import at.asitplus.wallet.lib.oidvci.*
@@ -250,7 +251,9 @@ class OpenId4VciClientTest : FunSpec() {
             authorizationEndpointPath = authorizationEndpointPath,
             tokenEndpointPath = tokenEndpointPath,
             pushedAuthorizationRequestEndpointPath = parEndpointPath,
-            enforceClientAuthentication = true,
+            clientAuthenticationService = ClientAuthenticationService(
+                enforceClientAuthentication = true,
+            ),
             tokenService = TokenService(
                 enforceDpop = true
             )

@@ -37,7 +37,7 @@ class TokenService(
     /** Used as issuer for issued DPoP tokens. */
     val publicContext: String = "https://wallet.a-sit.at/authorization-server",
     /** Used to verify client attestation JWTs */
-    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
+    internal val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
     /** Enforce DPoP (RFC 9449), as defined in OpenID4VC HAIP, when all clients implement it */
     private val enforceDpop: Boolean = false,
     /** Used to sign DPoP (RFC 9449) access tokens, if supported by the client */
