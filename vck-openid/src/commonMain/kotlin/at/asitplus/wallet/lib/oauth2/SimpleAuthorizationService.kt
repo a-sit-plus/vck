@@ -63,11 +63,14 @@ class SimpleAuthorizationService(
      * forward POST requests to that URI (which starts with [publicContext]) to [par].
      */
     private val pushedAuthorizationRequestEndpointPath: String = "/par",
-    private val codeToUserInfoStore: MapStore<String, IssuedCode> = DefaultMapStore(),
-    /** Associates issued refresh token with the requested scope of the client. */
-    private val refreshTokenToUserInfoStore: MapStore<String, IssuedCode> = DefaultMapStore(),
-    private val accessTokenToUserInfoStore: MapStore<String, IssuedAccessToken> = DefaultMapStore(),
-    private val requestUriToPushedAuthorizationRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
+    /** Associates issued codes with the auth request from the client. */
+    private val codeToUserToAuthRequest: MapStore<String, ClientAuthRequest> = DefaultMapStore(),
+    /** Associates issued refresh token with the auth request from the client. *Refresh tokens are usually long-lived!* */
+    private val refreshTokenToAuthRequest: MapStore<String, ClientAuthRequest> = DefaultMapStore(),
+    /** Associates issued access tokens with the auth request from the client. */
+    private val accessTokenToAuthRequest: MapStore<String, IssuedAccessToken> = DefaultMapStore(),
+    /** Associates the issued request_uri to the auth request from the client. */
+    private val requestUriToPushedAuthorizationRequest: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
     val tokenService: TokenService = TokenService(
         nonceService = DefaultNonceService(),
         publicContext = publicContext,
@@ -161,7 +164,7 @@ class SimpleAuthorizationService(
         validateAuthnRequest(actualRequest)
 
         val requestUri = "urn:ietf:params:oauth:request_uri:${uuid4()}".also {
-            requestUriToPushedAuthorizationRequestStore.put(it, actualRequest)
+            requestUriToPushedAuthorizationRequest.put(it, actualRequest)
         }
         PushedAuthenticationResponseParameters(
             requestUri = requestUri,
@@ -193,7 +196,7 @@ class SimpleAuthorizationService(
         Napier.i("authorize called with $input")
 
         val request = if (input.requestUri != null) {
-            val par = requestUriToPushedAuthorizationRequestStore.remove(input.requestUri!!)
+            val par = requestUriToPushedAuthorizationRequest.remove(input.requestUri!!)
                 ?: throw OAuth2Exception(INVALID_REQUEST, "request_uri set, but not found")
                     .also { Napier.w("authorize: client sent invalid request_uri: ${input.requestUri}") }
             if (par.clientId != input.clientId) {
@@ -210,10 +213,10 @@ class SimpleAuthorizationService(
             val userInfo = strategy.loadUserInfo(request, code)
                 ?: throw OAuth2Exception(INVALID_REQUEST, "Could not load user info for code=$code")
                     .also { Napier.w("authorize: could not load user info from $request") }
-            codeToUserInfoStore.put(
+            codeToUserToAuthRequest.put(
                 code,
-                IssuedCode(
-                    code = code,
+                ClientAuthRequest(
+                    issuedCode = code,
                     userInfoExtended = userInfo,
                     scope = request.scope,
                     authnDetails = request.authorizationDetails,
@@ -277,7 +280,7 @@ class SimpleAuthorizationService(
     ): KmmResult<TokenResponseParameters> = catching {
         Napier.i("token called with $request")
 
-        val issuedCode: IssuedCode = request.loadIssuedCode(dpop, requestUrl, requestMethod)
+        val clientAuthRequest: ClientAuthRequest = request.loadIssuedCode(dpop, requestUrl, requestMethod)
             ?: throw OAuth2Exception(INVALID_GRANT, "could not load user info for $request")
                 .also { Napier.w("token: could not load user info for $request}") }
 
@@ -288,19 +291,19 @@ class SimpleAuthorizationService(
         clientAuthenticationService.authenticateClient(clientAttestation, clientAttestationPop, request.clientId)
         val token = tokenService.buildToken(dpop, requestUrl, requestMethod)
         val enrichedToken = if (request.authorizationDetails != null) {
-            tokenForAuthnDetails(token, issuedCode, request.authorizationDetails!!)
+            tokenForAuthnDetails(token, clientAuthRequest, request.authorizationDetails!!)
         } else if (request.scope != null) {
-            tokenForScope(token, issuedCode, request.scope!!)
-        } else if (issuedCode.authnDetails != null) {
-            tokenForAuthnDetails(token, issuedCode.authnDetails, issuedCode)
-        } else if (issuedCode.scope != null) {
-            tokenForScope(token, issuedCode.scope, issuedCode.userInfoExtended)
+            tokenForScope(token, clientAuthRequest, request.scope!!)
+        } else if (clientAuthRequest.authnDetails != null) {
+            tokenForAuthnDetails(token, clientAuthRequest.authnDetails, clientAuthRequest)
+        } else if (clientAuthRequest.scope != null) {
+            tokenForScope(token, clientAuthRequest.scope, clientAuthRequest.userInfoExtended)
         } else {
             Napier.w("token: request can not be parsed: $request")
             throw OAuth2Exception(INVALID_REQUEST, "neither authorization details nor scope in request")
         }
         enrichedToken.refreshToken?.let {
-            refreshTokenToUserInfoStore.put(it, issuedCode)
+            refreshTokenToAuthRequest.put(it, clientAuthRequest)
         }
         Napier.i("token returns $enrichedToken")
         enrichedToken
@@ -319,70 +322,70 @@ class SimpleAuthorizationService(
     private suspend fun tokenForAuthnDetails(
         token: TokenResponseParameters,
         authnDetails: Collection<AuthorizationDetails>,
-        issuedCode: IssuedCode,
+        clientAuthRequest: ClientAuthRequest,
     ): TokenResponseParameters {
         return strategy.filterAuthorizationDetails(
             authnDetails.filterIsInstance<OpenIdAuthorizationDetails>()
         ).let { filtered ->
             if (filtered.isEmpty())
                 throw OAuth2Exception(INVALID_REQUEST, "No valid authorization details in $authnDetails")
-            token.accessToken.store(issuedCode, filtered)
+            token.accessToken.store(clientAuthRequest, filtered)
             token.copy(authorizationDetails = filtered)
         }
     }
 
     private suspend fun tokenForScope(
         token: TokenResponseParameters,
-        issuedCode: IssuedCode,
+        clientAuthRequest: ClientAuthRequest,
         scope: String,
     ): TokenResponseParameters = strategy.filterScope(scope)?.let {
-        if (issuedCode.scope == null)
-            throw OAuth2Exception(INVALID_REQUEST, "Scope not from auth code: $scope, for code ${issuedCode.code}")
+        if (clientAuthRequest.scope == null)
+            throw OAuth2Exception(INVALID_REQUEST, "Scope not from auth code: $scope, for code ${clientAuthRequest.issuedCode}")
         it.split(" ").forEach { singleScope ->
-            if (!issuedCode.scope.contains(singleScope))
+            if (!clientAuthRequest.scope.contains(singleScope))
                 throw OAuth2Exception(INVALID_REQUEST, "Scope not from auth code: $singleScope")
         }
-        token.accessToken.store(issuedCode, it)
+        token.accessToken.store(clientAuthRequest, it)
         return token.copy(scope = it)
     } ?: throw OAuth2Exception(Errors.INVALID_SCOPE, "No valid scope in $scope")
 
     private suspend fun tokenForAuthnDetails(
         token: TokenResponseParameters,
-        issuedCode: IssuedCode,
+        clientAuthRequest: ClientAuthRequest,
         authnDetails: Set<AuthorizationDetails>,
     ): TokenResponseParameters {
-        if (issuedCode.authnDetails == null)
-            throw OAuth2Exception(INVALID_REQUEST, "No authn details for issued code: ${issuedCode.code}")
+        if (clientAuthRequest.authnDetails == null)
+            throw OAuth2Exception(INVALID_REQUEST, "No authn details for issued code: ${clientAuthRequest.issuedCode}")
 
         return strategy.filterAuthorizationDetails(authnDetails).let { filtered ->
             if (filtered.isEmpty())
                 throw OAuth2Exception(INVALID_REQUEST, "No valid authorization details in $authnDetails")
             filtered.forEach { filter ->
-                if (!filter.requestedFromCode(issuedCode))
+                if (!filter.requestedFromCode(clientAuthRequest))
                     throw OAuth2Exception(INVALID_REQUEST, "Authorization details not from auth code: $filter")
             }
-            token.accessToken.store(issuedCode, filtered)
+            token.accessToken.store(clientAuthRequest, filtered)
             token.copy(authorizationDetails = filtered)
         }
     }
 
-    private fun OpenIdAuthorizationDetails.requestedFromCode(issuedCode: IssuedCode): Boolean =
-        issuedCode.authnDetails!!.filterIsInstance<OpenIdAuthorizationDetails>().any { matches(it) }
+    private fun OpenIdAuthorizationDetails.requestedFromCode(clientAuthRequest: ClientAuthRequest): Boolean =
+        clientAuthRequest.authnDetails!!.filterIsInstance<OpenIdAuthorizationDetails>().any { matches(it) }
 
-    private suspend fun String.store(issuedCode: IssuedCode, filtered: Set<OpenIdAuthorizationDetails>) {
-        accessTokenToUserInfoStore.put(this, IssuedAccessToken(this, issuedCode.userInfoExtended, filtered))
+    private suspend fun String.store(clientAuthRequest: ClientAuthRequest, filtered: Set<OpenIdAuthorizationDetails>) {
+        accessTokenToAuthRequest.put(this, IssuedAccessToken(this, clientAuthRequest.userInfoExtended, filtered))
     }
 
     private suspend fun String.store(userInfo: OidcUserInfoExtended, scope: String) {
-        accessTokenToUserInfoStore.put(this, IssuedAccessToken(this, userInfo, scope))
+        accessTokenToAuthRequest.put(this, IssuedAccessToken(this, userInfo, scope))
     }
 
-    private suspend fun String.store(issuedCode: IssuedCode, scope: String) {
-        accessTokenToUserInfoStore.put(this, IssuedAccessToken(this, issuedCode.userInfoExtended, scope))
+    private suspend fun String.store(clientAuthRequest: ClientAuthRequest, scope: String) {
+        accessTokenToAuthRequest.put(this, IssuedAccessToken(this, clientAuthRequest.userInfoExtended, scope))
     }
 
     private suspend fun validateCodeChallenge(code: String, codeVerifier: String?) {
-        codeToUserInfoStore.get(code)?.codeChallenge?.let { codeChallenge ->
+        codeToUserToAuthRequest.get(code)?.codeChallenge?.let { codeChallenge ->
             if (codeVerifier == null) {
                 Napier.w("token: client did not provide any code verifier: $codeVerifier for $code")
                 throw OAuth2Exception(INVALID_GRANT, "code verifier invalid: $codeVerifier for $code")
@@ -400,19 +403,19 @@ class SimpleAuthorizationService(
         dpop: String? = null,
         requestUrl: String? = null,
         requestMethod: HttpMethod? = null,
-    ): IssuedCode? = when (grantType) {
+    ): ClientAuthRequest? = when (grantType) {
         OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE -> {
             if (code == null || !codeService.verifyAndRemove(code!!))
                 throw OAuth2Exception(INVALID_CODE, "code not valid: $code")
                     .also { Napier.w("token: client did not provide correct code: $code") }
-            code?.let { codeToUserInfoStore.remove(it) }
+            code?.let { codeToUserToAuthRequest.remove(it) }
         }
 
         OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE -> {
             if (preAuthorizedCode == null || !codeService.verifyAndRemove(preAuthorizedCode!!))
                 throw OAuth2Exception(INVALID_GRANT, "pre-authorized code not valid: $preAuthorizedCode")
                     .also { Napier.w("token: pre-authorized code not valid: $preAuthorizedCode") }
-            preAuthorizedCode?.let { codeToUserInfoStore.remove(it) }
+            preAuthorizedCode?.let { codeToUserToAuthRequest.remove(it) }
         }
 
         OpenIdConstants.GRANT_TYPE_REFRESH_TOKEN -> {
@@ -420,7 +423,7 @@ class SimpleAuthorizationService(
                 throw OAuth2Exception(INVALID_GRANT, "refresh_token is null")
                     .also { Napier.w("token: refresh_token is null") }
             tokenService.validateRefreshToken(refreshToken!!, dpop, requestUrl, requestMethod)
-            refreshToken?.let { refreshTokenToUserInfoStore.remove(it) }
+            refreshToken?.let { refreshTokenToAuthRequest.remove(it) }
         }
 
         else -> throw OAuth2Exception(INVALID_REQUEST, "grant_type invalid")
@@ -429,9 +432,9 @@ class SimpleAuthorizationService(
 
     override suspend fun providePreAuthorizedCode(user: OidcUserInfoExtended): String =
         codeService.provideCode().also {
-            codeToUserInfoStore.put(
+            codeToUserToAuthRequest.put(
                 it,
-                IssuedCode(it, user, strategy.validScopes(), strategy.validAuthorizationDetails())
+                ClientAuthRequest(it, user, strategy.validScopes(), strategy.validAuthorizationDetails())
             )
         }
 
@@ -457,7 +460,7 @@ class SimpleAuthorizationService(
     ): KmmResult<OidcUserInfoExtended> = catching {
         val accessToken = tokenService.validateToken(authorizationHeader, dpopHeader, requestUrl, requestMethod)
 
-        val result = accessTokenToUserInfoStore.get(accessToken)
+        val result = accessTokenToAuthRequest.get(accessToken)
             ?: throw OAuth2Exception(INVALID_TOKEN, "could not load user info for access token $accessToken")
         if (credentialIdentifier != null) {
             if (result.authorizationDetails == null)

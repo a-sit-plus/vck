@@ -209,8 +209,8 @@ class OAuth2Client(
      * of [IssuerMetadata.credentialIssuer]
      */
     suspend fun createTokenRequestParameters(
-        state: String,
         authorization: AuthorizationForToken,
+        state: String? = null,
         authorizationDetails: Set<AuthorizationDetails>? = null,
         scope: String? = null,
         resource: String? = null,
@@ -218,7 +218,7 @@ class OAuth2Client(
         is AuthorizationForToken.Code -> TokenRequestParameters(
             grantType = OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE,
             code = authorization.code,
-            codeVerifier = stateToCodeStore.remove(state),
+            codeVerifier = state?.let { stateToCodeStore.remove(it) },
             redirectUrl = redirectUrl,
             clientId = clientId,
             authorizationDetails = authorizationDetails,

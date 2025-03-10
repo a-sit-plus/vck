@@ -6,29 +6,31 @@ import at.asitplus.openid.*
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
-import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.jws.DefaultJwsService
+import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.oauth2.ClientAuthenticationService
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oauth2.TokenService
 import at.asitplus.wallet.lib.oidvci.*
+import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.client.*
 import io.ktor.client.engine.*
 import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.util.*
-import io.matthewnelson.encoding.base16.Base16
-import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.test.runTest
@@ -45,6 +47,7 @@ class OpenId4VciClientTest : FunSpec() {
     lateinit var credentialKeyMaterial: KeyMaterial
     lateinit var dpopKeyMaterial: KeyMaterial
     lateinit var clientAuthKeyMaterial: KeyMaterial
+    lateinit var refreshTokenStore: OpenId4VciClient.RefreshTokenInfo
 
     init {
         beforeEach {
@@ -56,12 +59,23 @@ class OpenId4VciClientTest : FunSpec() {
 
         test("loadEuPidCredentialSdJwt") {
             runTest {
+                val expectedFamilyName = uuid4().toString()
                 val (client, credentialIssuer) = setup(
                     scheme = EuPidScheme,
                     representation = SD_JWT,
                     attributes = mapOf(
-                        EuPidScheme.Attributes.FAMILY_NAME to randomString()
-                    )
+                        EuPidScheme.Attributes.FAMILY_NAME to expectedFamilyName
+                    ),
+                    storeCredential = {
+                        it.shouldBeInstanceOf<Holder.StoreCredentialInput.SdJwt>()
+                        it.scheme shouldBe EuPidScheme
+                        val sdJwt =
+                            Validator().verifySdJwt(SdJwtSigned.parse(it.vcSdJwt)!!, credentialKeyMaterial.publicKey)
+                        sdJwt.shouldBeInstanceOf<VerifyCredentialResult.SuccessSdJwt>()
+                        sdJwt.disclosures.values.any { it.claimName == EuPidScheme.Attributes.FAMILY_NAME && it.claimValue.jsonPrimitive.content == expectedFamilyName }
+                            .shouldBeTrue()
+                        countdownLatch.unlock()
+                    }
                 )
 
                 // Load credential identifier infos from Issuing service
@@ -76,19 +90,34 @@ class OpenId4VciClientTest : FunSpec() {
                 ).apply {
                     this.isSuccess shouldBe true
                 }
+                assertCorrectCredentialIssued()
 
+                countdownLatch = Mutex(true)
+                refreshTokenStore.shouldNotBeNull()
+                client.refreshCredential(refreshTokenStore).apply {
+                    this.isSuccess shouldBe true
+                }
                 assertCorrectCredentialIssued()
             }
         }
 
         test("loadEuPidCredentialIsoWithOffer") {
             runTest {
+                val expectedGivenName = uuid4().toString()
                 val (client, credentialIssuer) = setup(
                     scheme = EuPidScheme,
                     representation = ISO_MDOC,
                     attributes = mapOf(
-                        EuPidScheme.Attributes.GIVEN_NAME to randomString()
-                    )
+                        EuPidScheme.Attributes.GIVEN_NAME to expectedGivenName
+                    ),
+                    storeCredential = {
+                        it.shouldBeInstanceOf<Holder.StoreCredentialInput.Iso>()
+                        it.scheme shouldBe EuPidScheme
+                        it.issuerSigned.namespaces?.values?.flatMap { it.entries }?.map { it.value }
+                            ?.any { it.elementIdentifier == EuPidScheme.Attributes.GIVEN_NAME && it.elementValue == expectedGivenName }
+                            ?.shouldNotBeNull()?.shouldBeTrue()
+                        countdownLatch.unlock()
+                    }
                 )
 
                 // Load credential identifier infos from Issuing service
@@ -102,27 +131,31 @@ class OpenId4VciClientTest : FunSpec() {
                     this.isSuccess shouldBe true
                 }
                 assertCorrectCredentialIssued()
+
+                countdownLatch = Mutex(true)
+                refreshTokenStore.shouldNotBeNull()
+                client.refreshCredential(refreshTokenStore).apply {
+                    this.isSuccess shouldBe true
+                }
+                assertCorrectCredentialIssued()
             }
         }
     }
-
-    private fun randomString(): String = Random.nextBytes(32).encodeToString(Base16)
 
     private fun setup(
         scheme: ConstantIndex.CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation,
         attributes: Map<String, String>,
+        storeCredential: (suspend (Holder.StoreCredentialInput) -> Unit) = {},
     ): Pair<OpenId4VciClient, CredentialIssuer> {
         val (mockEngine, credentialIssuer) = setupIssuingService(scheme, representation, attributes)
-        val subjectCredentialStore = assertAttributeStore(scheme, attributes)
-        val holderAgent = HolderAgent(credentialKeyMaterial, subjectCredentialStore)
-        val client = setupClient(mockEngine, holderAgent)
+        val client = setupClient(mockEngine, storeCredential)
         return client to credentialIssuer
     }
 
     private fun setupClient(
         mockEngine: HttpClientEngine,
-        holderAgent: HolderAgent,
+        storeCredential: (suspend (Holder.StoreCredentialInput) -> Unit),
     ): OpenId4VciClient {
         // This construction is needed to continue with client in the openUrlExternally callback
         var client: OpenId4VciClient? = null
@@ -135,7 +168,7 @@ class OpenId4VciClientTest : FunSpec() {
             }
         }
         var provisioningContextStore: ProvisioningContext? = null
-        val clientId = "some client id"
+        val clientId = "https://example.com/rp"
         client = OpenId4VciClient(
             openUrlExternally = { clientBrowser.openUrlExternally(it) },
             engine = mockEngine,
@@ -150,47 +183,10 @@ class OpenId4VciClientTest : FunSpec() {
             credentialCryptoService = DefaultCryptoService(credentialKeyMaterial),
             redirectUrl = "http://localhost/mock/",
             clientId = clientId,
-            storeCredential = { holderAgent.storeCredential(it).getOrThrow() }
+            storeCredential = storeCredential,
+            storeRefreshToken = { refreshTokenStore = it }
         )
         return client
-    }
-
-    private fun assertAttributeStore(
-        expectedScheme: ConstantIndex.CredentialScheme,
-        expectedAttributes: Map<String, String>,
-    ): SubjectCredentialStore = object : SubjectCredentialStore {
-        override suspend fun storeCredential(
-            vc: VerifiableCredentialJws,
-            vcSerialized: String,
-            scheme: ConstantIndex.CredentialScheme,
-        ) = SubjectCredentialStore.StoreEntry.Vc(vcSerialized, vc, scheme.schemaUri)
-
-        override suspend fun storeCredential(
-            vc: VerifiableCredentialSdJwt,
-            vcSerialized: String,
-            disclosures: Map<String, SelectiveDisclosureItem?>,
-            scheme: ConstantIndex.CredentialScheme,
-        ) = SubjectCredentialStore.StoreEntry.SdJwt(vcSerialized, vc, disclosures, scheme.schemaUri).also {
-            if (expectedAttributes.all { attribute ->
-                    disclosures.values.filterNotNull()
-                        .any { it.claimName == attribute.key && it.claimValue.jsonPrimitive.content == attribute.value }
-                } && scheme == expectedScheme) {
-                countdownLatch.unlock()
-            }
-        }
-
-        override suspend fun storeCredential(issuerSigned: IssuerSigned, scheme: ConstantIndex.CredentialScheme) =
-            SubjectCredentialStore.StoreEntry.Iso(issuerSigned, scheme.schemaUri).also {
-                if (expectedAttributes.all { attribute ->
-                        issuerSigned.namespaces?.values?.flatMap { it.entries }?.map { it.value }
-                            ?.any { it.elementIdentifier == attribute.key && it.elementValue == attribute.value } == true
-                    } && scheme == expectedScheme) {
-                    countdownLatch.unlock()
-                }
-            }
-
-        override suspend fun getCredentials(credentialSchemes: Collection<ConstantIndex.CredentialScheme>?): KmmResult<List<SubjectCredentialStore.StoreEntry>> =
-            KmmResult.success(listOf())
     }
 
     // Mocks the Issuing Service, which will be called by [OpenId4VciClient]
@@ -255,7 +251,8 @@ class OpenId4VciClientTest : FunSpec() {
                 enforceClientAuthentication = true,
             ),
             tokenService = TokenService(
-                enforceDpop = true
+                enforceDpop = true,
+                issueRefreshToken = true
             )
         )
         val credentialIssuer = CredentialIssuer(
