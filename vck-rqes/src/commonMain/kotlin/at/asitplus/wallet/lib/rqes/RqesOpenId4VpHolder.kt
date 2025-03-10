@@ -34,7 +34,10 @@ import com.benasher44.uuid.uuid4
 class RqesOpenId4VpHolder(
     private val clientId: String = "https://wallet.a-sit.at/app",
     private val redirectUrl: String = "$clientId/callback",
-    stateToCodeStore: MapStore<String, String> = DefaultMapStore(),
+    private val oauth2Client: OAuth2Client = OAuth2Client(
+        clientId = clientId,
+        redirectUrl = redirectUrl,
+    )
 ) {
     data class SignatureProperties(
         val signatureQualifier: SignatureQualifier = SignatureQualifier.EU_EIDAS_QES,
@@ -55,12 +58,6 @@ class RqesOpenId4VpHolder(
     //TODO check if [CryptoProperties] align with signingCredential otw change it
     var signingCredential: SigningCredential? = null
         private set
-
-    private val oauth2Client: OAuth2Client = OAuth2Client(
-        clientId = clientId,
-        redirectUrl = redirectUrl,
-        stateToCodeStore = stateToCodeStore
-    )
 
     enum class RqesOauthScope(val value: String) {
         SERVICE("service"),

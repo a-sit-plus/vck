@@ -36,9 +36,10 @@ class RequestParser(
     private val buildRequestObjectParameters: suspend () -> RequestObjectParameters? = { null },
 ) {
     /**
-     * Pass in the URL sent by the Verifier (containing the [at.asitplus.openid.RequestParameters] as query parameters),
-     * to create [at.asitplus.openid.AuthenticationResponseParameters] that can be sent back to the Verifier, see
-     * [AuthenticationResponseResult].
+     * Pass in the request by a relying party, that is either a complete URL,
+     * or the POST body (e.g. the form-serialized values of the authorization request),
+     * or a serialized JWS (which may have been extracted from a `request` parameter),
+     * to parse the [AuthenticationRequestParameters], wrapped in [RequestParametersFrom].
      */
     suspend fun parseRequestParameters(input: String): KmmResult<RequestParametersFrom<*>> = catching {
         // maybe it is a request JWS
@@ -65,6 +66,23 @@ class RequestParser(
             extractRequestObject(it)
         } ?: parsedParams
             .also { Napier.i("Parsed authentication request: $it") }
+    }
+
+    /**
+     * Extracts the actual request, referenced by the passed-in [input],
+     * e.g. extracting [AuthenticationRequestParameters.request]
+     * or [AuthenticationRequestParameters.requestUri] if necessary.
+     */
+    suspend fun extractActualRequest(
+        input: AuthenticationRequestParameters,
+    ): KmmResult<AuthenticationRequestParameters> = catching {
+        input.request?.let {
+            parseRequestObjectJws(it)?.parameters as? AuthenticationRequestParameters
+        } ?: input.requestUri?.let { uri ->
+            remoteResourceRetriever.invoke(input.resourceRetrieverInput(uri))?.let {
+                parseRequestParameters(it).getOrNull()?.parameters as? AuthenticationRequestParameters
+            }
+        } ?: input
     }
 
     private suspend fun extractRequestObject(params: AuthenticationRequestParameters): RequestParametersFrom<*>? =

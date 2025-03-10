@@ -14,6 +14,7 @@ import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.*
 import at.asitplus.wallet.lib.oidvci.*
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
+import at.asitplus.wallet.lib.openid.RequestParser
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
@@ -77,10 +78,18 @@ class SimpleAuthorizationService(
         verifierJwsService = DefaultVerifierJwsService(),
         verifyClientAttestationJwt = { true }
     ),
+    /** Used to parse requests from clients, e.g. when using JWT-Secured Authorization Requests (RFC 9101) */
+    val requestParser: RequestParser = RequestParser(
+        /** By default, do not retrieve authn requests referenced by `request_uri`. */
+        remoteResourceRetriever = { null },
+        /** Trust all JWS signatures, client will be authenticated anyway. */
+        requestObjectJwsVerifier = { true },
+        /** Not necessary to load the authn request referenced by `request_uri`. */
+        buildRequestObjectParameters = { null }
+    ),
 ) : OAuth2AuthorizationServerAdapter {
 
     override val supportsPushedAuthorizationRequests: Boolean = true
-
 
     /**
      * Serve this result JSON-serialized under `/.well-known/openid-configuration`,
@@ -97,6 +106,28 @@ class SimpleAuthorizationService(
             dpopSigningAlgValuesSupportedStrings = tokenService.verifierJwsService.supportedAlgorithms.map { it.identifier }
                 .toSet() // per OID4VC HAIP
         )
+    }
+
+    /**
+     * Pushed authorization request endpoint as defined in [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html).
+     * Clients send their authorization request as HTTP `POST` with `application/x-www-form-urlencoded` to the AS.
+     *
+     * Responses have to be sent with HTTP status code `201`.
+     *
+     * @param input as sent from the client as `POST`
+     * @param clientAttestation value of the header `OAuth-Client-Attestation`
+     * @param clientAttestationPop value of the header `OAuth-Client-Attestation-PoP`
+     */
+    suspend fun par(
+        input: String,
+        clientAttestation: String? = null,
+        clientAttestationPop: String? = null,
+    ) = catching {
+        requestParser.parseRequestParameters(input).getOrThrow()
+            .let { it.parameters as? AuthenticationRequestParameters }
+            ?.let { par(it, clientAttestation, clientAttestationPop) }
+            ?: throw OAuth2Exception(INVALID_REQUEST, "Could not parse request parameters from $input")
+                .also { Napier.w("par: could not parse request parameters from $input") }
     }
 
     /**
@@ -122,15 +153,30 @@ class SimpleAuthorizationService(
         }
 
         clientAuthenticationService.authenticateClient(clientAttestation, clientAttestationPop, request.clientId)
-        validateAuthnRequest(request)
+        val actualRequest = requestParser.extractActualRequest(request).getOrThrow()
+        validateAuthnRequest(actualRequest)
 
         val requestUri = "urn:ietf:params:oauth:request_uri:${uuid4()}".also {
-            requestUriToPushedAuthorizationRequestStore.put(it, request)
+            requestUriToPushedAuthorizationRequestStore.put(it, actualRequest)
         }
         PushedAuthenticationResponseParameters(
             requestUri = requestUri,
             expires = 5.minutes,
         )
+    }
+
+    /**
+     * Builds the authentication response.
+     * Send this result as HTTP Header `Location` in a 302 response to the client.
+     * @return URL build from client's `redirect_uri` with a `code` query parameter containing a fresh authorization
+     * code from [codeService].
+     */
+    suspend fun authorize(input: String) = catching {
+        requestParser.parseRequestParameters(input).getOrThrow()
+            .let { it.parameters as? AuthenticationRequestParameters }
+            ?.let { authorize(it) }
+            ?: throw OAuth2Exception(INVALID_REQUEST, "Could not parse request parameters from $input")
+                .also { Napier.w("authorize: could not parse request parameters from $input") }
     }
 
     /**
@@ -152,7 +198,7 @@ class SimpleAuthorizationService(
             }
             par
         } else {
-            input
+            requestParser.extractActualRequest(input).getOrThrow()
         }
         validateAuthnRequest(request)
 
@@ -184,8 +230,6 @@ class SimpleAuthorizationService(
             .also { Napier.i("authorize returns $it") }
     }
 
-    // TODO Also enable JWT-Secured Authorization Request (JAR) RFC9101
-    // see also https://www.rfc-editor.org/rfc/rfc9126.html#name-the-request-request-paramet
     private fun validateAuthnRequest(request: AuthenticationRequestParameters) {
         if (request.redirectUrl == null)
             throw OAuth2Exception(INVALID_REQUEST, "redirect_uri not set")
