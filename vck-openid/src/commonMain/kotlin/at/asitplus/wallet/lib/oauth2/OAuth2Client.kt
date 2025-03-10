@@ -145,10 +145,11 @@ class OAuth2Client(
     }
 
     sealed class AuthorizationForToken {
-        /**
-         * Authorization code from an actual OAuth2 Authorization Server, or [SimpleAuthorizationService.authorize]
-         */
+        /** Authorization code from an actual OAuth2 Authorization Server, or [SimpleAuthorizationService.authorize]. */
         data class Code(val code: String) : AuthorizationForToken()
+
+        /** Refresh token for obtaining a new access token, see [TokenResponseParameters.refreshToken]. */
+        data class RefreshToken(val refreshToken: String) : AuthorizationForToken()
 
         /**
          * Pre-auth code from [CredentialOfferGrantsPreAuthCode.preAuthorizedCode] in
@@ -216,25 +217,34 @@ class OAuth2Client(
     ) = when (authorization) {
         is AuthorizationForToken.Code -> TokenRequestParameters(
             grantType = OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE,
+            code = authorization.code,
+            codeVerifier = stateToCodeStore.remove(state),
             redirectUrl = redirectUrl,
             clientId = clientId,
-            codeVerifier = stateToCodeStore.remove(state),
             authorizationDetails = authorizationDetails,
             scope = scope,
             resource = resource,
-            code = authorization.code,
         )
 
         is AuthorizationForToken.PreAuthCode -> TokenRequestParameters(
             grantType = OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE,
+            preAuthorizedCode = authorization.preAuthorizedCode,
+            transactionCode = authorization.transactionCode,
             redirectUrl = redirectUrl,
             clientId = clientId,
-            codeVerifier = stateToCodeStore.remove(state),
             authorizationDetails = authorizationDetails,
             scope = scope,
             resource = resource,
-            transactionCode = authorization.transactionCode,
-            preAuthorizedCode = authorization.preAuthorizedCode,
+        )
+
+        is AuthorizationForToken.RefreshToken -> TokenRequestParameters(
+            grantType = OpenIdConstants.GRANT_TYPE_REFRESH_TOKEN,
+            refreshToken = authorization.refreshToken,
+            redirectUrl = redirectUrl,
+            clientId = clientId,
+            authorizationDetails = authorizationDetails,
+            scope = scope,
+            resource = resource,
         )
     }
 

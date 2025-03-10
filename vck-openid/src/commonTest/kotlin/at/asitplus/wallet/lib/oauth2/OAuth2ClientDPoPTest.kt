@@ -17,6 +17,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.JsonObject
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.kotest.assertions.throwables.shouldThrow
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.ktor.http.HttpMethod
@@ -56,7 +57,8 @@ class OAuth2ClientDPoPTest : FunSpec({
         server = SimpleAuthorizationService(
             strategy = authorizationServiceStrategy,
             tokenService = TokenService(
-                enforceDpop = true
+                enforceDpop = true,
+                issueRefreshToken = true
             )
         )
         clientKey = EphemeralKeyWithSelfSignedCert()
@@ -96,9 +98,56 @@ class OAuth2ClientDPoPTest : FunSpec({
             resourceUrl,
             accessToken = token.accessToken
         )
+
         // this is our protected resource
         server.getUserInfo(
             token.toHttpHeaderValue(),
+            dpopHeader = dpopForResource,
+            credentialIdentifier = null,
+            credentialConfigurationId = scope,
+            requestUrl = resourceUrl,
+            requestMethod = HttpMethod.Post,
+        ).getOrThrow()
+    }
+
+    test("authorization code flow with DPoP and refresh token") {
+        val state = uuid4().toString()
+        val code = getCode(state)
+
+        val token = server.token(
+            client.createTokenRequestParameters(
+                state = state,
+                authorization = OAuth2Client.AuthorizationForToken.Code(code),
+                scope = scope
+            ),
+            dpop = jwsService.buildDPoPHeader(tokenUrl),
+            requestUrl = tokenUrl,
+            requestMethod = HttpMethod.Post,
+        ).getOrThrow().also {
+            it.tokenType shouldBe TOKEN_TYPE_DPOP
+            it.refreshToken.shouldNotBeNull()
+        }
+
+        val refreshedAccessToken = server.token(
+            client.createTokenRequestParameters(
+                state = state,
+                authorization = OAuth2Client.AuthorizationForToken.RefreshToken(token.refreshToken!!),
+                scope = scope
+            ),
+            dpop = jwsService.buildDPoPHeader(tokenUrl),
+            requestUrl = tokenUrl,
+            requestMethod = HttpMethod.Post,
+        ).getOrThrow()
+        refreshedAccessToken.accessToken shouldNotBe token.accessToken
+
+        val dpopForResource = jwsService.buildDPoPHeader(
+            resourceUrl,
+            accessToken = refreshedAccessToken.accessToken
+        )
+
+        // this is our protected resource
+        server.getUserInfo(
+            refreshedAccessToken.toHttpHeaderValue(),
             dpopHeader = dpopForResource,
             credentialIdentifier = null,
             credentialConfigurationId = scope,

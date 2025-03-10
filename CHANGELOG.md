@@ -51,6 +51,7 @@ Release 5.5.0:
    - In `SimpleAuthorizationService` add constructor parameter to validate the client attestation JWT
    - In `CredentialIssuer.credential()` callers need to pass the whole `Authorization` header instead of just the access token value
    - In `OAuth2Client` add constructor parameter `jwsService` te enable sending [JWT-secured authorization requests](https://www.rfc-editor.org/rfc/rfc9101.html)
+   - Enable issuing and usage of (JWT-based, sender-constrained) refresh tokens, e.g. extend `AuthorizationForToken`, add grant type `refresh_token`
  - Update dependencies:
    - Update `signum` to 3.15.0, supporting X.509 certificates in v1, v2 too
    - Update JsonPath4K

@@ -20,6 +20,8 @@ object OpenIdConstants {
 
     const val GRANT_TYPE_PRE_AUTHORIZED_CODE = "urn:ietf:params:oauth:grant-type:pre-authorized_code"
 
+    const val GRANT_TYPE_REFRESH_TOKEN = "refresh_token"
+
     const val TOKEN_PREFIX_BEARER = "Bearer "
 
     const val TOKEN_PREFIX_DPOP = "DPoP "
