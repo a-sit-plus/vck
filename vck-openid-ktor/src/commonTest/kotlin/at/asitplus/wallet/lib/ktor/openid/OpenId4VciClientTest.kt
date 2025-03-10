@@ -47,7 +47,7 @@ class OpenId4VciClientTest : FunSpec() {
     lateinit var credentialKeyMaterial: KeyMaterial
     lateinit var dpopKeyMaterial: KeyMaterial
     lateinit var clientAuthKeyMaterial: KeyMaterial
-    lateinit var refreshTokenStore: OpenId4VciClient.RefreshTokenInfo
+    lateinit var refreshTokenStore: RefreshTokenInfo
 
     init {
         beforeEach {
@@ -178,11 +178,12 @@ class OpenId4VciClientTest : FunSpec() {
                 DefaultJwsService(DefaultCryptoService(EphemeralKeyWithSelfSignedCert()))
                     .buildClientAttestationJwt(clientId, "issuer", clientAuthKeyMaterial.jsonWebKey).serialize()
             },
-            clientAttestationCryptoService = DefaultCryptoService(clientAuthKeyMaterial),
-            dpopCryptoService = DefaultCryptoService(dpopKeyMaterial),
-            credentialCryptoService = DefaultCryptoService(credentialKeyMaterial),
-            redirectUrl = "http://localhost/mock/",
-            clientId = clientId,
+            clientAttestationJwsService = DefaultJwsService(DefaultCryptoService(clientAuthKeyMaterial)),
+            dpopJwsService = DefaultJwsService(DefaultCryptoService(dpopKeyMaterial)),
+            oid4vciService = WalletService(
+                clientId = clientId,
+                cryptoService = DefaultCryptoService(credentialKeyMaterial),
+            ),
             storeCredential = storeCredential,
             storeRefreshToken = { refreshTokenStore = it }
         )
@@ -237,7 +238,7 @@ class OpenId4VciClientTest : FunSpec() {
         val credentialEndpointPath = "/credential"
         val nonceEndpointPath = "/nonce"
         val parEndpointPath = "/par"
-        val publicContext = "http://issuer.example.com"
+        val publicContext = "https://issuer.example.com"
         val authorizationService = SimpleAuthorizationService(
             strategy = CredentialAuthorizationServiceStrategy(
                 dataProvider = dataProvider,

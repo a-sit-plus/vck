@@ -36,7 +36,7 @@ import kotlinx.datetime.Clock
  */
 class WalletService(
     /** Used to create request parameters, e.g. [AuthenticationRequestParameters], typically a URI. */
-    private val clientId: String = "https://wallet.a-sit.at/app",
+    val clientId: String = "https://wallet.a-sit.at/app",
     /** Used to create [AuthenticationRequestParameters] and [TokenRequestParameters]. */
     private val redirectUrl: String = "$clientId/callback",
     /** Used to prove possession of the key material to create [CredentialRequestProof], i.e. the holder key. */
