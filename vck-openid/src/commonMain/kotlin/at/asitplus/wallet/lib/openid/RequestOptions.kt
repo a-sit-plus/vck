@@ -143,8 +143,7 @@ data class OpenIdRequestOptions(
                 val claims = requestedAttributes.map { (attribute, isRequired) ->
                     when (credential.representation) {
                         CredentialRepresentation.SD_JWT,
-                        CredentialRepresentation.PLAIN_JWT
-                            -> DCQLJsonClaimsQuery(
+                        CredentialRepresentation.PLAIN_JWT -> DCQLJsonClaimsQuery(
                             path = DCQLClaimsPathPointer(attribute)
                         )
 

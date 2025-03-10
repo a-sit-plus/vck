@@ -43,6 +43,7 @@ object PresentationExchangeInputEvaluator {
                 else -> false
             }.let { isMatchingCredentialFormat ->
                 if(!isMatchingCredentialFormat) {
+                    Napier.d("Credential format `$credentialFormat` is not supported by the relying party.")
                     throw InvalidCredentialFormatException()
                 }
             }
@@ -53,6 +54,7 @@ object PresentationExchangeInputEvaluator {
             else -> null
         }?.let { requiredCredentialScheme ->
             if(requiredCredentialScheme != credentialScheme) {
+                Napier.d("Credential scheme `$credentialScheme` is not supported by the relying party.")
                 throw InvalidCredentialSchemeException()
             }
         }
@@ -201,8 +203,8 @@ internal fun JsonElement.satisfiesConstraintFilter(filter: ConstraintFilter): Bo
 
 open class InputEvaluationException(message: String) : Exception(message)
 
-class InvalidCredentialFormatException : Exception("Credential format does not match requirements.")
-class InvalidCredentialSchemeException : Exception("Credential scheme does not match requirements.")
+class InvalidCredentialFormatException() : Exception("Credential format does not match requirements.")
+class InvalidCredentialSchemeException() : Exception("Credential scheme does not match requirements.")
 
 open class ConstraintEvaluationException(message: String) : InputEvaluationException(message)
 
