@@ -2,25 +2,13 @@ package at.asitplus.wallet.lib.data.dif
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.dif.Constraint
-import at.asitplus.dif.ConstraintField
-import at.asitplus.dif.ConstraintFilter
-import at.asitplus.dif.FormatHolder
-import at.asitplus.dif.InputDescriptor
-import at.asitplus.dif.RequirementEnum
+import at.asitplus.dif.*
 import at.asitplus.jsonpath.JsonPath
 import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.CredentialFormatEnum
 import io.github.aakira.napier.Napier
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.doubleOrNull
-import kotlinx.serialization.json.longOrNull
+import kotlinx.serialization.json.*
 
 /**
  * Specification: https://identity.foundation/presentation-exchange/spec/v2.0.0/#input-evaluation
@@ -35,27 +23,35 @@ object PresentationExchangeInputEvaluator {
         pathAuthorizationValidator: (NormalizedJsonPath) -> Boolean,
     ): KmmResult<Map<ConstraintField, NodeList>> = runCatching {
         (inputDescriptor.format ?: fallbackFormatHolder)?.let { formatHolder ->
-            when(credentialFormat) {
-                CredentialFormatEnum.JWT_VC -> formatHolder.jwtVp != null
-                CredentialFormatEnum.VC_SD_JWT,
-                CredentialFormatEnum.DC_SD_JWT -> formatHolder.jwtSd != null || formatHolder.sdJwt != null
-                CredentialFormatEnum.MSO_MDOC -> formatHolder.msoMdoc != null
-                else -> false
-            }.let { isMatchingCredentialFormat ->
-                if(!isMatchingCredentialFormat) {
-                    Napier.d("Credential format `$credentialFormat` is not supported by the relying party.")
-                    throw InvalidCredentialFormatException()
-                }
+            val supportedFormats = listOf(
+                formatHolder.jwtVp to CredentialFormatEnum.JWT_VC,
+                formatHolder.jwtSd to CredentialFormatEnum.DC_SD_JWT,
+                formatHolder.sdJwt to CredentialFormatEnum.DC_SD_JWT,
+                formatHolder.msoMdoc to CredentialFormatEnum.MSO_MDOC,
+            ).filter {
+                it.first != null
+            }.map {
+                it.second
+            }
+            if (credentialFormat !in supportedFormats) {
+                Napier.d("Credential format `$credentialFormat` is not supported by the relying party.")
+                throw InvalidCredentialFormatException(
+                    format = credentialFormat,
+                    expected = supportedFormats,
+                )
             }
         }
 
-        when(credentialFormat) {
+        when (credentialFormat) {
             CredentialFormatEnum.MSO_MDOC -> inputDescriptor.id
             else -> null
         }?.let { requiredCredentialScheme ->
-            if(requiredCredentialScheme != credentialScheme) {
+            if (requiredCredentialScheme != credentialScheme) {
                 Napier.d("Credential scheme `$credentialScheme` is not supported by the relying party.")
-                throw InvalidCredentialSchemeException()
+                throw InvalidCredentialSchemeException(
+                    scheme = credentialScheme,
+                    expected = setOf(requiredCredentialScheme)
+                )
             }
         }
 
@@ -119,7 +115,7 @@ object PresentationExchangeInputEvaluator {
         }
 
         field.predicate?.let {
-            if(field.filter != null) {
+            if (field.filter != null) {
                 throw PredicateFeatureException("Predicate feature is used, but filter is not available.")
             }
 
@@ -203,8 +199,11 @@ internal fun JsonElement.satisfiesConstraintFilter(filter: ConstraintFilter): Bo
 
 open class InputEvaluationException(message: String) : Exception(message)
 
-class InvalidCredentialFormatException() : Exception("Credential format does not match requirements.")
-class InvalidCredentialSchemeException() : Exception("Credential scheme does not match requirements.")
+class InvalidCredentialFormatException(format: CredentialFormatEnum, expected: Collection<CredentialFormatEnum>) :
+    Exception("Credential format `$format` does not match requirements: ${expected}")
+
+class InvalidCredentialSchemeException(scheme: String?, expected: Collection<String?>) :
+    Exception("Credential scheme `$scheme` does not match requirements: ${expected}")
 
 open class ConstraintEvaluationException(message: String) : InputEvaluationException(message)
 
