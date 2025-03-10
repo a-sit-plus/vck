@@ -148,7 +148,6 @@ class OpenId4VciClientTest : FunSpec() {
             clientAttestationCryptoService = DefaultCryptoService(clientAuthKeyMaterial),
             dpopCryptoService = DefaultCryptoService(dpopKeyMaterial),
             credentialCryptoService = DefaultCryptoService(credentialKeyMaterial),
-            holderAgent = holderAgent,
             redirectUrl = "http://localhost/mock/",
             clientId = clientId,
             storeCredential = { holderAgent.storeCredential(it).getOrThrow() }

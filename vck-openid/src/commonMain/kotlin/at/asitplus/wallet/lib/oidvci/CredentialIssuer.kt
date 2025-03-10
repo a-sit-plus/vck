@@ -67,7 +67,7 @@ class CredentialIssuer(
      * Used to build [IssuerMetadata.nonceEndpointUrl], i.e. implementers need to forward requests
      * to that URI (which starts with [publicContext]) to [nonce].
      */
-    private val nonceEndpointPath: String = "/credential",
+    private val nonceEndpointPath: String = "/nonce",
     /**
      * Used during issuance, when issuing credentials (using [issuer]) with data from [OidcUserInfoExtended]
      */
