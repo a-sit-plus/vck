@@ -3,8 +3,8 @@ package at.asitplus.wallet.lib.rqes
 import at.asitplus.rqes.QtspSignatureRequest
 import at.asitplus.rqes.SignDocRequestParameters
 import at.asitplus.rqes.SignHashRequestParameters
-import at.asitplus.rqes.collection_entries.DocumentDigest
 import at.asitplus.rqes.collection_entries.Document
+import at.asitplus.rqes.collection_entries.DocumentDigest
 import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.rqes.enums.SignedEnvelopeProperty
@@ -16,6 +16,7 @@ import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 
@@ -30,7 +31,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
             "c1RPZ3dPbSs0NzRnRmowcTB4MWlTTnNwS3FiY3NlNEllaXFsRGcvSFd1ST0="
         ],
         "hashAlgorithmOID":"2.16.840.1.101.3.4.2.1",
-        "signAlgo":"1.2.840.113549.1.1.1",
+        "signAlgo":"1.2.840.113549.1.1.11",
         "clientData":"12345678"
     }""".trimIndent()
 
@@ -43,7 +44,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
             "c1RPZ3dPbSs0NzRnRmowcTB4MWlTTnNwS3FiY3NlNEllaXFsRGcvSFd1ST0="
         ],
         "hashAlgorithmOID":"2.16.840.1.101.3.4.2.1",
-        "signAlgo":"1.2.840.113549.1.1.1",
+        "signAlgo":"1.2.840.113549.1.1.11",
         "operationMode": "A",
         "clientData":"12345678"
     }""".trimIndent()
@@ -56,7 +57,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
             "c1RPZ3dPbSs0NzRnRmowcTB4MWlTTnNwS3FiY3NlNEllaXFsRGcvSFd1ST0="
         ],
         "hashAlgorithmOID":"2.16.840.1.101.3.4.2.1",
-        "signAlgo":"1.2.840.113549.1.1.1",
+        "signAlgo":"1.2.840.113549.1.1.11",
         "operationMode": "A",
         "clientData":"12345678"
     }""".trimIndent()
@@ -71,14 +72,13 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
                 "hashAlgorithmOID": "2.16.840.1.101.3.4.2.1",
                 "signature_format": "P",
                 "conformance_level": "AdES-B-T",
-                "signAlgo": "1.2.840.113549.1.1.1"
+                "signAlgo": "1.2.840.113549.1.1.11"
             },
             {
                 "hashes": ["HZQzZmMAIWekfGH0/ZKW1nsdt0xg3H6bZYztgsMTLw0="],
                 "hashAlgorithmOID": "2.16.840.1.101.3.4.2.1",
                 "signature_format": "C",
-                "conformance_level": "AdES-B-B",
-                "signAlgo": "1.2.840.113549.1.1.1"
+                "signAlgo": "1.2.840.113549.1.1.11"
             }
         ],
         "clientData": "12345678"
@@ -93,14 +93,12 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
                 "document": "UTJWeWRHbG1hV05oZEdWVFpYSnBZV3hPZFcxaVrigKZLekJUV1dWSldXWlpWWHB0VTNWNU1WVTlEUW89",
                 "signature_format": "P",
                 "conformance_level": "AdES-B-T",
-                "signAlgo": "1.2.840.113549.1.1.1"
+                "signAlgo": "1.2.840.113549.1.1.11"
             },
             {
                 "document": "UTJWeWRHbG1hV05oZEdWVFpYSnBZV3hPZFcxaVrigKZLekJUV1dWSldXWlpWWHB0VTNWNU1WVTlEUW89",
                 "signature_format": "C",
-                "conformance_level": "AdES-B-B",
-                "signed_envelope_property": "Attached",
-                "signAlgo": "1.2.840.113549.1.1.1"
+                "signAlgo": "1.2.840.113549.1.1.11"
             }
         ],
         "clientData": "12345678"
@@ -116,14 +114,13 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
                 "hashAlgorithmOID": "2.16.840.1.101.3.4.2.1",
                 "signature_format": "P",
                 "conformance_level": "AdES-B-T",
-                "signAlgo": "1.2.840.113549.1.1.1"
+                "signAlgo": "1.2.840.113549.1.1.11"
             },
             {
                 "hashes": ["HZQzZmMAIWekfGH0/ZKW1nsdt0xg3H6bZYztgsMTLw0="],
                 "hashAlgorithmOID": "2.16.840.1.101.3.4.2.1",
                 "signature_format": "C",
-                "conformance_level": "AdES-B-B",
-                "signAlgo": "1.2.840.113549.1.1.1"
+                "signAlgo": "1.2.840.113549.1.1.11"
             }
         ],
         "documents": [
@@ -131,14 +128,12 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
                 "document": "UTJWeWRHbG1hV05oZEdWVFpYSnBZV3hPZFcxaVrigKZLekJUV1dWSldXWlpWWHB0VTNWNU1WVTlEUW89",
                 "signature_format": "P",
                 "conformance_level": "AdES-B-T",
-                "signAlgo": "1.2.840.113549.1.1.1"
+                "signAlgo": "1.2.840.113549.1.1.11"
             },
             {
                 "document": "UTJWeWRHbG1hV05oZEdWVFpYSnBZV3hPZFcxaVrigKZLekJUV1dWSldXWlpWWHB0VTNWNU1WVTlEUW89",
                 "signature_format": "C",
-                "conformance_level": "AdES-B-B",
-                "signed_envelope_property": "Attached",
-                "signAlgo": "1.2.840.113549.1.1.1"
+                "signAlgo": "1.2.840.113549.1.1.11"
             }
         ],
         "clientData": "12345678"
@@ -213,7 +208,6 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
         }
     }
 
-    //TODO fix asn1 parsing
     "CSC Test vectors" - {
         listOf(
             adaptedCscTestVectorSignHash1,
@@ -224,20 +218,12 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
             adaptedCscTestVectorSignDoc3
         ).forEachIndexed { i, vec ->
             "Testvector ${i + 1}" - {
-                val expected = rdcJsonSerializer.decodeFromString<JsonObject>(vec)
-                val actual = rdcJsonSerializer.decodeFromString(QtspSignatureRequest.serializer(), vec)
-                val sanitycheck =
-                    rdcJsonSerializer.decodeFromJsonElement(QtspSignatureRequest.serializer(), expected)
-                "sanitycheck" {
-                    actual shouldBe sanitycheck
-                }
+                val expected = rdcJsonSerializer.decodeFromString<JsonObject>(vec).canonicalize()
+                val actual = rdcJsonSerializer.encodeToJsonElement(
+                    rdcJsonSerializer.decodeFromString(QtspSignatureRequest.serializer(), vec)
+                ).canonicalize()
 
-                "actual test".config(enabled = true) {
-                    val test1 = rdcJsonSerializer.encodeToJsonElement(actual).canonicalize()
-                    val test2 = expected.canonicalize()
-                    test1 shouldBe test2
-//                    jsonSerializer.encodeToJsonElement(actual).canonicalize() shouldBe expected.canonicalize()
-                }
+                actual shouldBe expected
             }
         }
     }
