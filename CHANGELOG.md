@@ -45,11 +45,12 @@ Release 5.5.0:
    - `WalletService` supports requesting encrypted credentials
    - `CredentialIssuer` supports encrypting issued credentials
  - Update implementation of authorization service for [OpenID4VC High Assurance Interoperability Profile](https://openid.net/specs/openid4vc-high-assurance-interoperability-profile-1_0.html) draft 03:
-   - `SimpleAuthorizationService` implements pushed authorization requests as defined in [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html)
+   - `SimpleAuthorizationService` implements [pushed authorization requests](https://www.rfc-editor.org/rfc/rfc9126.html)
    - `SimpleAuthorizationService` implements attestation-based client authentication as defined in [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-05.html)
    - `SimpleAuthorizationService` implements sender-constrained access tokens as defined in [OAuth 2.0 Demonstrating Proof of Possession (DPoP)](https://datatracker.ietf.org/doc/html/rfc9449)
    - In `SimpleAuthorizationService` add constructor parameter to validate the client attestation JWT
    - In `CredentialIssuer.credential()` callers need to pass the whole `Authorization` header instead of just the access token value
+   - In `OAuth2Client` add constructor parameter `jwsService` te enable sending [JWT-secured authorization requests](https://www.rfc-editor.org/rfc/rfc9101.html)
  - Update dependencies:
    - Update `signum` to 3.15.0, supporting X.509 certificates in v1, v2 too
    - Update JsonPath4K

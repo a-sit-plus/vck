@@ -29,7 +29,11 @@ import kotlinx.serialization.encodeToString
 class RqesOpenId4VpHolderTest : FreeSpec({
 
     val dummyValueProvider = DummyValueProvider()
-    val rqesWalletService = RqesOpenId4VpHolder()
+    val rqesWalletService = RqesOpenId4VpHolder(
+        oauth2Client = OAuth2Client(
+            jwsService = null,
+        )
+    )
 
     fun CredentialInfo.isValid(): Boolean =
         this.keyParameters.status == KeyParameters.KeyStatusOptions.ENABLED && this.certParameters!!.status == CertificateParameters.CertStatus.VALID
