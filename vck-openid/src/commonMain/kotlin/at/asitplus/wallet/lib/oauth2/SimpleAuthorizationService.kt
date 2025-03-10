@@ -5,6 +5,8 @@ import at.asitplus.catching
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
 import at.asitplus.openid.OpenIdConstants.Errors
+import at.asitplus.openid.OpenIdConstants.Errors.INVALID_CODE
+import at.asitplus.openid.OpenIdConstants.Errors.INVALID_GRANT
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_REQUEST
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_TOKEN
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -62,6 +64,8 @@ class SimpleAuthorizationService(
      */
     private val pushedAuthorizationRequestEndpointPath: String = "/par",
     private val codeToUserInfoStore: MapStore<String, IssuedCode> = DefaultMapStore(),
+    /** Associates issued refresh token with the requested scope of the client. */
+    private val refreshTokenToUserInfoStore: MapStore<String, IssuedCode> = DefaultMapStore(),
     private val accessTokenToUserInfoStore: MapStore<String, IssuedAccessToken> = DefaultMapStore(),
     private val requestUriToPushedAuthorizationRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
     val tokenService: TokenService = TokenService(
@@ -273,15 +277,13 @@ class SimpleAuthorizationService(
     ): KmmResult<TokenResponseParameters> = catching {
         Napier.i("token called with $request")
 
-        val issuedCode: IssuedCode = request.loadIssuedCode()
-            ?: throw OAuth2Exception(INVALID_REQUEST, "could not load user info for $request")
+        val issuedCode: IssuedCode = request.loadIssuedCode(dpop, requestUrl, requestMethod)
+            ?: throw OAuth2Exception(INVALID_GRANT, "could not load user info for $request")
                 .also { Napier.w("token: could not load user info for $request}") }
 
         request.code?.let { code ->
             validateCodeChallenge(code, request.codeVerifier)
         }
-
-        // TODO Also issue refresh tokens, used to later on refresh the credential!
 
         clientAuthenticationService.authenticateClient(clientAttestation, clientAttestationPop, request.clientId)
         val token = tokenService.buildToken(dpop, requestUrl, requestMethod)
@@ -296,6 +298,9 @@ class SimpleAuthorizationService(
         } else {
             Napier.w("token: request can not be parsed: $request")
             throw OAuth2Exception(INVALID_REQUEST, "neither authorization details nor scope in request")
+        }
+        enrichedToken.refreshToken?.let {
+            refreshTokenToUserInfoStore.put(it, issuedCode)
         }
         Napier.i("token returns $enrichedToken")
         enrichedToken
@@ -380,29 +385,42 @@ class SimpleAuthorizationService(
         codeToUserInfoStore.get(code)?.codeChallenge?.let { codeChallenge ->
             if (codeVerifier == null) {
                 Napier.w("token: client did not provide any code verifier: $codeVerifier for $code")
-                throw OAuth2Exception(Errors.INVALID_GRANT, "code verifier invalid: $codeVerifier for $code")
+                throw OAuth2Exception(INVALID_GRANT, "code verifier invalid: $codeVerifier for $code")
             }
             val codeChallengeCalculated = codeVerifier.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
             if (codeChallenge != codeChallengeCalculated) {
                 Napier.w("token: client did not provide correct code verifier: $codeVerifier for $code")
-                throw OAuth2Exception(Errors.INVALID_GRANT, "code verifier invalid: $codeVerifier for $code")
+                throw OAuth2Exception(INVALID_GRANT, "code verifier invalid: $codeVerifier for $code")
             }
         }
     }
 
-    private suspend fun TokenRequestParameters.loadIssuedCode(): IssuedCode? = when (grantType) {
+    // TODO Rename to "requested scope" or something
+    private suspend fun TokenRequestParameters.loadIssuedCode(
+        dpop: String? = null,
+        requestUrl: String? = null,
+        requestMethod: HttpMethod? = null,
+    ): IssuedCode? = when (grantType) {
         OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE -> {
             if (code == null || !codeService.verifyAndRemove(code!!))
-                throw OAuth2Exception(Errors.INVALID_CODE, "code not valid: $code")
+                throw OAuth2Exception(INVALID_CODE, "code not valid: $code")
                     .also { Napier.w("token: client did not provide correct code: $code") }
             code?.let { codeToUserInfoStore.remove(it) }
         }
 
         OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE -> {
             if (preAuthorizedCode == null || !codeService.verifyAndRemove(preAuthorizedCode!!))
-                throw OAuth2Exception(Errors.INVALID_GRANT, "pre-authorized code not valid: $preAuthorizedCode")
+                throw OAuth2Exception(INVALID_GRANT, "pre-authorized code not valid: $preAuthorizedCode")
                     .also { Napier.w("token: pre-authorized code not valid: $preAuthorizedCode") }
             preAuthorizedCode?.let { codeToUserInfoStore.remove(it) }
+        }
+
+        OpenIdConstants.GRANT_TYPE_REFRESH_TOKEN -> {
+            if (refreshToken == null)
+                throw OAuth2Exception(INVALID_GRANT, "refresh_token is null")
+                    .also { Napier.w("token: refresh_token is null") }
+            tokenService.validateRefreshToken(refreshToken!!, dpop, requestUrl, requestMethod)
+            refreshToken?.let { refreshTokenToUserInfoStore.remove(it) }
         }
 
         else -> throw OAuth2Exception(INVALID_REQUEST, "grant_type invalid")

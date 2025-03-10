@@ -40,6 +40,12 @@ data class TokenRequestParameters(
     val resource: String? = null,
 
     /**
+     * RFC6749: OPTIONAL. The refresh token issued to the client.
+     */
+    @SerialName("refresh_token")
+    val refreshToken: String? = null,
+
+    /**
      * RFC6749:
      * REQUIRED, if the "redirect_uri" parameter was included in the authorization request,
      * and their values MUST be identical.

@@ -9,6 +9,8 @@ object JwsContentTypeConstants {
     const val KB_JWT = "kb+jwt"
     /** Access tokens: `at+jwt` */
     const val AT_JWT = "at+jwt"
+    /** Refresh tokens: `rt+jwt+ */
+    const val RT_JWT = "rt+jwt"
     const val OAUTH_AUTHZ_REQUEST = "oauth-authz-req+jwt"
     /** RFC 9449: DPoP: `dpop+jwt` */
     const val DPOP_JWT = "dpop+jwt"

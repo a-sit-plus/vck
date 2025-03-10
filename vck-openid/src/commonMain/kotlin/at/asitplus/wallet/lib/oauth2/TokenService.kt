@@ -22,8 +22,8 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Clock.System
 import kotlin.String
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
 
 
 /**
@@ -47,6 +47,8 @@ class TokenService(
     private val clock: Clock = System,
     /** Time leeway for verification of timestamps in access tokens and refresh tokens. */
     private val timeLeeway: Duration = 5.minutes,
+    /** Whether to issue refresh tokens, which may be used by clients to get a new access token. */
+    private val issueRefreshToken: Boolean = false,
 )  {
 
     suspend fun buildToken(
@@ -57,8 +59,27 @@ class TokenService(
         if (dpop != null) {
             val clientKey = validateDpopJwtForToken(dpop, requestUrl, requestMethod)
             TokenResponseParameters(
-                expires = 3600.seconds,
+                expires = 5.minutes,
                 tokenType = TOKEN_TYPE_DPOP,
+                refreshToken = if (issueRefreshToken) jwsService.createSignedJwsAddingParams(
+                    header = JwsHeader(
+                        algorithm = jwsService.algorithm,
+                        type = JwsContentTypeConstants.RT_JWT
+                    ),
+                    payload = JsonWebToken(
+                        issuer = publicContext,
+                        jwtId = nonceService.provideNonce(),
+                        notBefore = clock.now(),
+                        expiration = clock.now().plus(30.days),
+                        confirmationClaim = ConfirmationClaim(
+                            jsonWebKeyThumbprint = clientKey.jwkThumbprintPlain
+                        ),
+                    ),
+                    serializer = JsonWebToken.serializer(),
+                    addKeyId = false,
+                    addJsonWebKey = true,
+                    addX5c = false,
+                ).getOrThrow().serialize() else null,
                 accessToken = jwsService.createSignedJwsAddingParams(
                     header = JwsHeader(
                         algorithm = jwsService.algorithm,
@@ -84,11 +105,23 @@ class TokenService(
             throw OAuth2Exception(INVALID_DPOP_PROOF, "no DPoP header value")
         } else {
             TokenResponseParameters(
-                expires = 3600.seconds,
+                expires = 5.minutes,
                 tokenType = TOKEN_TYPE_BEARER,
                 accessToken = nonceService.provideNonce(),
             )
         }
+
+    suspend fun validateRefreshToken(
+        refreshToken: String,
+        dpopHeader: String?,
+        requestUrl: String?,
+        requestMethod: HttpMethod?,
+    ): String {
+        val dpopToken = refreshToken.removePrefix(TOKEN_PREFIX_DPOP).split(" ").last()
+        val dpopTokenJwt = validateDpopToken(dpopToken, JwsContentTypeConstants.RT_JWT)
+        validateDpopJwt(dpopHeader, null, dpopTokenJwt, requestUrl, requestMethod)
+        return dpopToken
+    }
 
     suspend fun validateToken(
         authorizationHeader: String,
@@ -104,7 +137,7 @@ class TokenService(
         bearerToken
     } else if (authorizationHeader.startsWith(TOKEN_TYPE_DPOP, ignoreCase = true)) {
         val dpopToken = authorizationHeader.removePrefix(TOKEN_PREFIX_DPOP).split(" ").last()
-        val dpopTokenJwt = validateDpopToken(dpopToken)
+        val dpopTokenJwt = validateDpopToken(dpopToken, JwsContentTypeConstants.AT_JWT)
         validateDpopJwt(dpopHeader, dpopToken, dpopTokenJwt, requestUrl, requestMethod)
         dpopToken
     } else {
@@ -139,12 +172,11 @@ class TokenService(
 
     private fun validateDpopJwt(
         dpopHeader: String?,
-        dpopToken: String,
+        dpopToken: String?,
         dpopTokenJwt: JwsSigned<JsonWebToken>,
         requestUrl: String?,
         requestMethod: HttpMethod?,
     ) {
-        val ath = dpopToken.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
         if (dpopHeader.isNullOrEmpty()) {
             Napier.w("validateDpopJwt: No dpop proof in header")
             throw OAuth2Exception(INVALID_DPOP_PROOF, "no dpop proof")
@@ -166,9 +198,12 @@ class TokenService(
             Napier.w("validateDpopJwt: htm ${jwt.payload.httpMethod} not matching requestMethod $requestMethod")
             throw OAuth2Exception(INVALID_DPOP_PROOF, "DPoP JWT htm incorrect")
         }
-        if (!jwt.payload.accessTokenHash.equals(ath)) {
-            Napier.w("validateDpopJwt: ath expected $ath, was ${jwt.payload.accessTokenHash}")
-            throw OAuth2Exception(INVALID_DPOP_PROOF, "DPoP JWT ath not correct")
+        dpopToken?.let {
+            val ath = dpopToken.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
+            if (!jwt.payload.accessTokenHash.equals(ath)) {
+                Napier.w("validateDpopJwt: ath expected $ath, was ${jwt.payload.accessTokenHash}")
+                throw OAuth2Exception(INVALID_DPOP_PROOF, "DPoP JWT ath not correct")
+            }
         }
     }
 
@@ -186,6 +221,7 @@ class TokenService(
 
     private suspend fun validateDpopToken(
         dpopToken: String,
+        expectedType: String,
     ): JwsSigned<JsonWebToken> {
         val jwt = JwsSigned
             .deserialize<JsonWebToken>(JsonWebToken.serializer(), dpopToken, vckJsonSerializer)
@@ -197,7 +233,7 @@ class TokenService(
             Napier.w("validateDpopToken: DPoP not verified")
             throw OAuth2Exception(INVALID_TOKEN, "DPoP Token not verified")
         }
-        if (jwt.header.type != JwsContentTypeConstants.AT_JWT) {
+        if (jwt.header.type != expectedType) {
             Napier.w("validateDpopToken: typ unexpected: ${jwt.header.type}")
             throw OAuth2Exception(INVALID_TOKEN, "typ not valid: ${jwt.header.type}")
         }
