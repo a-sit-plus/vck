@@ -9,7 +9,7 @@ import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.IssuerSigned
-import at.asitplus.wallet.lib.oauth2.IssuedCode
+import at.asitplus.wallet.lib.oauth2.ClientAuthRequest
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oidvci.WalletService.RequestOptions
@@ -92,10 +92,10 @@ class OidvciCodeFlowTest : FreeSpec({
         return authorizationService.token(tokenRequest).getOrThrow()
     }
 
-    fun defectMapStore() = object : MapStore<String, IssuedCode> {
-        override suspend fun put(key: String, value: IssuedCode) = Unit
-        override suspend fun get(key: String): IssuedCode? = null
-        override suspend fun remove(key: String): IssuedCode? = null
+    fun defectMapStore() = object : MapStore<String, ClientAuthRequest> {
+        override suspend fun put(key: String, value: ClientAuthRequest) = Unit
+        override suspend fun get(key: String): ClientAuthRequest? = null
+        override suspend fun remove(key: String): ClientAuthRequest? = null
     }
 
     "request one credential, using scope" {
@@ -185,7 +185,7 @@ class OidvciCodeFlowTest : FreeSpec({
 
     "authorizationService with defect mapstore leads to an error" {
         authorizationService = SimpleAuthorizationService(
-            codeToUserInfoStore = defectMapStore(),
+            codeToUserToAuthRequest = defectMapStore(),
             strategy = CredentialAuthorizationServiceStrategy(
                 DummyOAuth2DataProvider,
                 setOf(AtomicAttribute2023)

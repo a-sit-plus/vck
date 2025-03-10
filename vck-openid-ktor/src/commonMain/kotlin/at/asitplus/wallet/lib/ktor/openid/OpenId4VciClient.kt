@@ -91,6 +91,8 @@ class OpenId4VciClient(
     private val clientId: String,
     /** Final callback upon receiving credentials from the issuing service. */
     private val storeCredential: (suspend (Holder.StoreCredentialInput) -> Unit) = {},
+    /** Callback to store refresh token with credential info, to refresh it later. */
+    private val storeRefreshToken: suspend (RefreshTokenInfo) -> Unit,
 ) {
     private val client: HttpClient = HttpClient(engine) {
         followRedirects = false
@@ -107,6 +109,7 @@ class OpenId4VciClient(
             }
         }
     }
+    // TODO Migrate to constructor parameter, also below
     val oid4vciService = WalletService(
         clientId = clientId,
         cryptoService = credentialCryptoService,
@@ -114,6 +117,14 @@ class OpenId4VciClient(
     )
     private val clientAttestationJwsService = DefaultJwsService(clientAttestationCryptoService)
     private val dpopJwsService = DefaultJwsService(dpopCryptoService)
+
+    data class RefreshTokenInfo(
+        val refreshToken: String,
+        val issuerMetadata: IssuerMetadata,
+        val oauthMetadata: OAuth2AuthorizationServerMetadata,
+        val credentialFormat: SupportedCredentialFormat,
+        val credentialIdentifier: String,
+    )
 
     /**
      * Loads credential metadata info from [host], parses it, returns list of [CredentialIdentifierInfo].
@@ -253,10 +264,60 @@ class OpenId4VciClient(
 
         postCredentialRequestAndStore(
             issuerMetadata = context.issuerMetadata,
+            oauthMetadata = context.oauthMetadata,
             tokenResponse = tokenResponse,
             credentialFormat = context.credential.supportedCredentialFormat,
+            credentialIdentifier = context.credential.credentialIdentifier,
             credentialScheme = credentialScheme
         )
+    }
+
+    /**
+     * Call to refresh a credential with a stored refresh token (that was received when issuing the credential
+     * for the first time, stored with [storeRefreshToken]).
+     *
+     * Will request a new access token, and use that token to request the same credential again and store it.
+     *
+     * Prefers building the token request by using `scope` (from [SupportedCredentialFormat]), as advised in
+     * [OpenID4VC HAIP](https://openid.net/specs/openid4vc-high-assurance-interoperability-profile-1_0.html),
+     * but falls back to authorization details if needed.
+     */
+    @Throws(Exception::class)
+    suspend fun refreshCredential(
+        refreshTokenInfo: RefreshTokenInfo,
+    ): KmmResult<Unit> = catching {
+        with(refreshTokenInfo) {
+            Napier.i("refreshCredential")
+            Napier.d("refreshCredential: $refreshToken, $credentialFormat, $credentialIdentifier")
+            val hasScope = credentialFormat.scope != null
+            val tokenResponse = postToken(
+                oauthMetadata = oauthMetadata,
+                issuerMetadata = issuerMetadata,
+                tokenRequest = oid4vciService.oauth2Client.createTokenRequestParameters(
+                    authorization = AuthorizationForToken.RefreshToken(refreshToken),
+                    state = null,
+                    scope = credentialFormat.scope,
+                    authorizationDetails = if (!hasScope) oid4vciService.buildAuthorizationDetails(
+                        credentialIdentifier,
+                        issuerMetadata.authorizationServers
+                    ) else null
+                ),
+            )
+            Napier.i("Received token response")
+            Napier.d("Received token response $tokenResponse")
+
+            val credentialScheme = credentialFormat.resolveCredentialScheme()
+                ?: throw Exception("Unknown credential scheme in $credentialFormat")
+
+            postCredentialRequestAndStore(
+                issuerMetadata = issuerMetadata,
+                tokenResponse = tokenResponse,
+                credentialFormat = credentialFormat,
+                credentialScheme = credentialScheme,
+                oauthMetadata = oauthMetadata,
+                credentialIdentifier = credentialIdentifier
+            )
+        }
     }
 
     @Throws(Exception::class)
@@ -312,6 +373,8 @@ class OpenId4VciClient(
         tokenResponse: TokenResponseParameters,
         credentialFormat: SupportedCredentialFormat,
         credentialScheme: ConstantIndex.CredentialScheme,
+        oauthMetadata: OAuth2AuthorizationServerMetadata,
+        credentialIdentifier: String,
     ) {
         val credentialEndpointUrl = issuerMetadata.credentialEndpointUrl
         Napier.i("postCredentialRequestAndStore: $credentialEndpointUrl")
@@ -333,6 +396,18 @@ class OpenId4VciClient(
         val dpopHeader = if (tokenResponse.tokenType.equals(TOKEN_TYPE_DPOP, true))
             dpopJwsService.buildDPoPHeader(url = credentialEndpointUrl, accessToken = tokenResponse.accessToken)
         else null
+
+        if (tokenResponse.refreshToken != null) {
+            storeRefreshToken.invoke(
+                RefreshTokenInfo(
+                    refreshToken = tokenResponse.refreshToken!!,
+                    issuerMetadata = issuerMetadata,
+                    oauthMetadata = oauthMetadata,
+                    credentialFormat = credentialFormat,
+                    credentialIdentifier = credentialIdentifier,
+                )
+            )
+        }
 
         credentialRequests.forEach { credentialRequest ->
             val credentialResponse: CredentialResponseParameters = client.post(credentialEndpointUrl) {
@@ -416,7 +491,9 @@ class OpenId4VciClient(
                 issuerMetadata = issuerMetadata,
                 tokenResponse = tokenResponse,
                 credentialFormat = credentialIdentifierInfo.supportedCredentialFormat,
-                credentialScheme = credentialScheme
+                credentialScheme = credentialScheme,
+                oauthMetadata = oauthMetadata,
+                credentialIdentifier = credentialIdentifierInfo.credentialIdentifier,
             )
         } ?: credentialOffer.grants?.authorizationCode?.let {
             ProvisioningContext(
