@@ -2,8 +2,12 @@
 
 TBA
  - Refactorings in Rqes-Data-Classes
-   - Remove `Csc`-Prefix from all data classes
+   - Remove `Csc`-Prefix from nearly all CSC data classes
    - Rename `CscSignatureRequestParameters` to `QtspSignatureRequest`
+   - Rename `SignatureResponse` to `QtspSignatureResponse`
+   - Rename `SignDocResponse` to `SignDocResponseParameters`
+   - Rename `SignHashResponse` to `SignHashResponseParameters`
+ - Fixed default values for CSC data classes
 
 Release 5.5.0:
  - Remove elements deprecated in 5.4.0 when introducing DCQL:
