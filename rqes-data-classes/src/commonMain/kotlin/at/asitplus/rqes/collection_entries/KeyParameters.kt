@@ -2,9 +2,14 @@ package at.asitplus.rqes.collection_entries
 
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
+import at.asitplus.rqes.CredentialInfo
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+/**
+ * CSC-API v2.0.0.2
+ * Part of [CredentialInfo]
+ */
 @Serializable
 data class KeyParameters(
     /**

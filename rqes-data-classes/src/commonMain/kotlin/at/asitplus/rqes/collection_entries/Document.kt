@@ -5,6 +5,7 @@ import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.rqes.enums.SignedEnvelopeProperty
 import at.asitplus.rqes.getSignAlgorithm
 import at.asitplus.rqes.serializers.Asn1EncodableBase64Serializer
+import at.asitplus.rqes.SignDocRequestParameters
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
@@ -15,7 +16,8 @@ import kotlinx.serialization.Transient
 import kotlinx.serialization.json.JsonObject
 
 /**
- * CSC: Class used as part of [CscSignatureRequestParameters]
+ * CSC-API v2.0.0.2
+ * Part of [SignDocRequestParameters]
  */
 @Serializable
 data class Document(
@@ -33,10 +35,10 @@ data class Document(
     val signatureFormat: SignatureFormat,
 
     /**
-     * Requested conformance level. If omitted its value is "Ades-B-B"
+     * Requested conformance level. If omitted its value is [ConformanceLevel.ADESBB]
      */
     @SerialName("conformance_level")
-    val conformanceLevel: ConformanceLevel? = null,
+    val conformanceLevel: ConformanceLevel? = ConformanceLevel.ADESBB,
 
     /**
      * The OID of the algorithm to use for signing
@@ -54,7 +56,7 @@ data class Document(
     /**
      * Defined in CSC v2.0.0.2 P. 81
      * Defines a second way to encode all attributes, none of which are necessary
-     * Will be ignored until use-case arises
+     * TODO: Not implemented. Will be ignored until use-case arises
      */
     @SerialName("signed_props")
     val signedProps: List<JsonObject>? = null,
@@ -64,7 +66,7 @@ data class Document(
      * `SignedEnvelopeProperty.defaultProperty(signatureFormat)`
      */
     @SerialName("signed_envelope_property")
-    val signedEnvelopeProperty: SignedEnvelopeProperty? = null,
+    val signedEnvelopeProperty: SignedEnvelopeProperty? = SignedEnvelopeProperty.defaultProperty(signatureFormat),
 ) {
     @Transient
     val signAlgorithm: SignatureAlgorithm? = signAlgoOid.getSignAlgorithm(signAlgoParams)

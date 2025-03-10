@@ -49,7 +49,7 @@ data class CredentialInfo(
 
     /**
      * CSC REQUIRED-CONDITIONAL.
-     * May be required depending on the [CredentialInfoRequest]\
+     * May be required depending on the [CredentialInfoRequest]
      * Contains information about the certificate associated with the credential
      */
     @SerialName("cert")

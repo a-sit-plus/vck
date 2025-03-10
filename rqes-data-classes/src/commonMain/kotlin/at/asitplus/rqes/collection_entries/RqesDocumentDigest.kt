@@ -214,7 +214,6 @@ data class RqesDocumentDigestEntry private constructor(
                 dtbsrHashAlgorithmOid = dtbsrHashAlgorithmOID,
             )
         }.wrap()
-
     }
 }
 
