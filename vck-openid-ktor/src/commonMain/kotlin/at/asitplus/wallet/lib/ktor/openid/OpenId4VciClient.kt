@@ -8,7 +8,8 @@ import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
 import at.asitplus.openid.OpenIdConstants.PARAMETER_PROMPT
 import at.asitplus.openid.OpenIdConstants.PARAMETER_PROMPT_LOGIN
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
-import at.asitplus.wallet.lib.agent.CryptoService
+import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.Holder.StoreCredentialInput.*
 import at.asitplus.wallet.lib.data.AttributeIndex
@@ -16,6 +17,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.jws.DefaultJwsService
+import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oauth2.OAuth2Client.AuthorizationForToken
 import at.asitplus.wallet.lib.oidvci.*
 import com.benasher44.uuid.uuid4
@@ -33,9 +35,6 @@ import io.ktor.serialization.kotlinx.json.*
 import io.ktor.util.*
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlin.time.Duration.Companion.minutes
 
@@ -70,28 +69,24 @@ class OpenId4VciClient(
     private val loadProvisioningContext: suspend () -> ProvisioningContext?,
     /**
      * Callback to load the client attestation JWT, which may be needed as authentication at the AS, where the
-     * `clientId` must match [clientId] and the key attested in `cnf` must match [clientAttestationCryptoService]'s
-     * key, see
+     * `clientId` must match [WalletService.clientId] in [oid4vciService] and the key attested in `cnf` must match
+     * the key behind [clientAttestationJwsService], see
      * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-04.html)
      * .
      */
     private val loadClientAttestationJwt: suspend () -> String,
-    /** Crypto service for using client attestation, used for authenticating the client at the authorization server. */
-    private val clientAttestationCryptoService: CryptoService,
-    /** Crypto service for using DPoP, i.e. the key the access token gets bound to. */
-    private val dpopCryptoService: CryptoService,
-    /** Crypto service for the OpenID4VCI process, i.e. providing proof of possession for credential key material */
-    private val credentialCryptoService: CryptoService,
+    /** Used for authenticating the client at the authorization server with client attestation. */
+    private val clientAttestationJwsService: JwsService = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithoutCert())),
+    /** Used to calculate DPoP, i.e. the key the access token and refresh token gets bound to. */
+    private val dpopJwsService: JwsService = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithoutCert())),
     /**
-     * This URL needs to be registered by the mobile operating system for this application,
-     * so the redirection back from the browser (for authorization) works.
+     * Implements OID4VCI protocol, `redirectUrl` needs to be registered by the OS for this application, so redirection
+     * back from browser works, `cryptoService` provides proof of possession for credential key material.
      */
-    val redirectUrl: String,
-    /** Client identifier for use in the OpenID4VCI process. */
-    private val clientId: String,
+    val oid4vciService: WalletService = WalletService(),
     /** Final callback upon receiving credentials from the issuing service. */
-    private val storeCredential: (suspend (Holder.StoreCredentialInput) -> Unit) = {},
-    /** Callback to store refresh token with credential info, to refresh it later. */
+    private val storeCredential: (suspend (Holder.StoreCredentialInput) -> Unit),
+    /** Callback to store refresh tokens received from the AS, to refresh credentials sometime late. */
     private val storeRefreshToken: suspend (RefreshTokenInfo) -> Unit,
 ) {
     private val client: HttpClient = HttpClient(engine) {
@@ -109,22 +104,6 @@ class OpenId4VciClient(
             }
         }
     }
-    // TODO Migrate to constructor parameter, also below
-    val oid4vciService = WalletService(
-        clientId = clientId,
-        cryptoService = credentialCryptoService,
-        redirectUrl = redirectUrl
-    )
-    private val clientAttestationJwsService = DefaultJwsService(clientAttestationCryptoService)
-    private val dpopJwsService = DefaultJwsService(dpopCryptoService)
-
-    data class RefreshTokenInfo(
-        val refreshToken: String,
-        val issuerMetadata: IssuerMetadata,
-        val oauthMetadata: OAuth2AuthorizationServerMetadata,
-        val credentialFormat: SupportedCredentialFormat,
-        val credentialIdentifier: String,
-    )
 
     /**
      * Loads credential metadata info from [host], parses it, returns list of [CredentialIdentifierInfo].
@@ -172,8 +151,8 @@ class OpenId4VciClient(
      * This will call [openUrlExternally] to perform authentication at the authorization server, typically in an
      * external browser to show appropriate user interface.
      * Clients need to call [resumeWithAuthCode] after getting the authorization code back from the authorization
-     * server, e.g. by the Wallet app getting opened (at [redirectUrl]) after the browser being redirecting back from
-     * the authorization server.
+     * server, e.g. by the Wallet app getting opened (see `redirectUrl` at [oid4vciService]) after the browser being
+     * redirecting back from the authorization server.
      *
      * @param credentialIssuerUrl URL of the credential issuer service
      * @param credentialIdentifierInfo credential to request, i.e. picked by user selection
@@ -183,8 +162,6 @@ class OpenId4VciClient(
         credentialIdentifierInfo: CredentialIdentifierInfo,
     ): KmmResult<Unit> = catching {
         Napier.i("startProvisioningWithAuthRequest: $credentialIssuerUrl with $credentialIdentifierInfo")
-        // Load certificate, might trigger biometric prompt?
-        CoroutineScope(Dispatchers.Unconfined).launch { clientAttestationCryptoService.keyMaterial.getCertificate() }
 
         val issuerMetadata = credentialIdentifierInfo.issuerMetadata
         val authorizationServer = issuerMetadata.authorizationServers?.firstOrNull()
@@ -335,7 +312,7 @@ class OpenId4VciClient(
         } else null
         val clientAttestationPoPJwt = if (oauthMetadata.useClientAuth()) {
             clientAttestationJwsService.buildClientAttestationPoPJwt(
-                clientId = clientId,
+                clientId = oid4vciService.clientId,
                 audience = issuerMetadata.credentialIssuer,
                 lifetime = 10.minutes,
             ).serialize()
@@ -607,7 +584,7 @@ class OpenId4VciClient(
         } else null
         val clientAttestationPoPJwt = if (shouldIncludeClientAttestation) {
             clientAttestationJwsService.buildClientAttestationPoPJwt(
-                clientId = clientId,
+                clientId = oid4vciService.clientId,
                 audience = credentialIssuer,
                 lifetime = 10.minutes,
             ).serialize()
@@ -635,7 +612,7 @@ class OpenId4VciClient(
         }
 
         return AuthenticationRequestParameters(
-            clientId = clientId,
+            clientId = oid4vciService.clientId,
             requestUri = response.requestUri,
             state = state,
         )
@@ -664,6 +641,18 @@ data class CredentialIdentifierInfo(
     val issuerMetadata: IssuerMetadata,
     val credentialIdentifier: String,
     val supportedCredentialFormat: SupportedCredentialFormat,
+)
+
+/**
+ * Holds all information needed to refresh a credential, pass it to [OpenId4VciClient.refreshCredential].
+ */
+@Serializable
+data class RefreshTokenInfo(
+    val refreshToken: String,
+    val issuerMetadata: IssuerMetadata,
+    val oauthMetadata: OAuth2AuthorizationServerMetadata,
+    val credentialFormat: SupportedCredentialFormat,
+    val credentialIdentifier: String,
 )
 
 
