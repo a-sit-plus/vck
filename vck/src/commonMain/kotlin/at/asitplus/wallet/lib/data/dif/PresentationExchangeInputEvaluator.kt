@@ -147,54 +147,6 @@ object PresentationExchangeInputEvaluator {
     }
 }
 
-object PresentationExchangeConstraintEvaluator {
-    // filter by constraints
-    fun evaluateConstraintFieldMatches(
-        constraintField: ConstraintField,
-        inputDescriptor: InputDescriptor,
-        credential: JsonElement,
-        pathAuthorizationValidator: (NormalizedJsonPath) -> Boolean,
-    ): NodeList = constraintField.path.flatMap { jsonPath ->
-        val candidates = JsonPath(jsonPath).query(credential)
-        candidates.filter { candidate ->
-            pathAuthorizationValidator(candidate.normalizedJsonPath) && constraintField.filter?.let {
-                candidate.value.satisfiesConstraintFilter(it)
-            } ?: true
-        }
-    }
-}
-
-object PresentationExchangeConstraintFieldMatcher {
-    // filter by constraints
-    fun evaluateConstraintFieldMatches(
-        constraintField: ConstraintField,
-        credential: JsonElement,
-        pathAuthorizationValidator: (NormalizedJsonPath) -> Boolean,
-    ): NodeList = constraintField.path.flatMap { jsonPath ->
-        val candidates = JsonPath(jsonPath).query(credential)
-        candidates.filter { candidate ->
-            pathAuthorizationValidator(candidate.normalizedJsonPath) && constraintField.filter?.let {
-                candidate.value.satisfiesConstraintFilter(it)
-            } ?: true
-        }
-    }
-//            if (fieldQueryResult.isEmpty() && field.optional != true) {
-//                throw FailedFieldQueryException(field).also {
-//                    Napier.v("evaluateFieldQueryResult failed", it)
-//                }
-//            }
-//            field.predicate?.let {
-//                when (it) {
-//                    // TODO: RequirementEnum.NONE is not a valid field value, maybe change member type to new Enum?
-//                    RequirementEnum.NONE -> fieldQueryResult
-//                    RequirementEnum.PREFERRED -> fieldQueryResult
-//                    RequirementEnum.REQUIRED -> throw MissingFeatureSupportException("Predicate feature from https://identity.foundation/presentation-exchange/spec/v2.0.0/#predicate-feature").also {
-//                        Napier.w("evaluateFieldQueryResult failed", it)
-//                    }
-//                }
-//            } ?: fieldQueryResult
-}
-
 internal fun JsonElement.satisfiesConstraintFilter(filter: ConstraintFilter): Boolean {
     // TODO: properly implement constraint filter
     // source: https://json-schema.org/draft-07/schema#
