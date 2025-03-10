@@ -1,10 +1,10 @@
 package at.asitplus.rqes
 
 import at.asitplus.rqes.enums.OperationMode
-import at.asitplus.rqes.serializers.CscSignatureRequestParameterSerializer
+import at.asitplus.rqes.serializers.QtspSignatureRequestSerializer
 import kotlinx.serialization.Serializable
 
-@Serializable(with = CscSignatureRequestParameterSerializer::class)
+@Serializable(with = QtspSignatureRequestSerializer::class)
 sealed interface QtspSignatureRequest {
     val credentialId: String?
     val sad: String?

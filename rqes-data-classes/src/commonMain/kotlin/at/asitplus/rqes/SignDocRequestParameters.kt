@@ -8,8 +8,13 @@ import at.asitplus.rqes.enums.OperationMode
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+/**
+ * CSC API v2.0.0.2
+ * Data class defined in Ch. 11.11
+ * Used to request the creation of one or more AdES signature(s).
+ */
 @Serializable
-data class SignDocParameters(
+data class SignDocRequestParameters(
     /**
      * REQUIRED-CONDITIONAL.
      * The credentialID as defined in the Input parameter table in `/credentials/info`

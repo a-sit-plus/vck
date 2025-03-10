@@ -5,7 +5,7 @@ import at.asitplus.catching
 import at.asitplus.openid.*
 import at.asitplus.rqes.CredentialInfo
 import at.asitplus.rqes.QtspSignatureRequest
-import at.asitplus.rqes.SignHashParameters
+import at.asitplus.rqes.SignHashRequestParameters
 import at.asitplus.rqes.collection_entries.CertificateParameters
 import at.asitplus.rqes.collection_entries.DocumentDigest
 import at.asitplus.rqes.collection_entries.KeyParameters
@@ -185,7 +185,7 @@ class RqesOpenId4VpHolder(
         signatureAlgorithm: X509SignatureAlgorithm,
     ): QtspSignatureRequest = signingCredential?.let {
         require(it.supportedSigningAlgorithms.contains(signatureAlgorithm))
-        SignHashParameters(
+        SignHashRequestParameters(
             credentialId = it.credentialId,
             sad = sad,
             hashes = dtbsr,

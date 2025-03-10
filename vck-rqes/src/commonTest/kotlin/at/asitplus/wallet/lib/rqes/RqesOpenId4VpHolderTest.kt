@@ -7,7 +7,7 @@ import at.asitplus.openid.SignatureQualifier
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.rqes.CredentialInfo
 import at.asitplus.rqes.QtspSignatureRequest
-import at.asitplus.rqes.SignHashParameters
+import at.asitplus.rqes.SignHashRequestParameters
 import at.asitplus.rqes.collection_entries.CertificateParameters
 import at.asitplus.rqes.collection_entries.DocumentDigest
 import at.asitplus.rqes.collection_entries.KeyParameters
@@ -147,7 +147,7 @@ class RqesOpenId4VpHolderTest : FreeSpec({
                 dtbsr = listOf(uuid4().bytes),
                 sad = uuid4().toString(),
                 signatureAlgorithm = rqesWalletService.signingCredential!!.supportedSigningAlgorithms.first(),
-            ).shouldBeInstanceOf<SignHashParameters>()
+            ).shouldBeInstanceOf<SignHashRequestParameters>()
 
             request.credentialId shouldBe validCert.credentialID
             request.signAlgoOid shouldBe validSigningAlgo.oid

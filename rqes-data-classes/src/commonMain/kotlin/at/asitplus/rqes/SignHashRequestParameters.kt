@@ -12,9 +12,13 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 
-
+/**
+ * CSC API v2.0.0.2
+ * Data class defined in Ch. 11.10
+ * Used to request the calculation of remote digital signature(s) of one or multiple hash values.
+ */
 @Serializable
-data class SignHashParameters(
+data class SignHashRequestParameters(
     /**
      * REQUIRED.
      * The credentialID as defined in the Input parameter table in `/credentials/info`
@@ -115,7 +119,7 @@ data class SignHashParameters(
         if (this === other) return true
         if (other == null || this::class != other::class) return false
 
-        other as SignHashParameters
+        other as SignHashRequestParameters
         if (!hashes.contentEquals(other.hashes)) return false
         if (credentialId != other.credentialId) return false
         if (sad != other.sad) return false

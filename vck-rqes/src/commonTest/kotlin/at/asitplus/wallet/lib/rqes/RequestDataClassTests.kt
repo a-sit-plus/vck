@@ -1,8 +1,8 @@
 package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.rqes.QtspSignatureRequest
-import at.asitplus.rqes.SignDocParameters
-import at.asitplus.rqes.SignHashParameters
+import at.asitplus.rqes.SignDocRequestParameters
+import at.asitplus.rqes.SignHashRequestParameters
 import at.asitplus.rqes.collection_entries.DocumentDigest
 import at.asitplus.rqes.collection_entries.Document
 import at.asitplus.rqes.enums.ConformanceLevel
@@ -147,12 +147,12 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
     "SignatureRequestParameters can be serialized/deserialized" - {
         val dummyEntries =
             listOf(
-                SignHashParameters(
+                SignHashRequestParameters(
                     credentialId = "1234",
                     hashes = listOf("abcd".decodeToByteArray(Base64Strict)),
                     signAlgoOid = X509SignatureAlgorithm.ES256.oid
                 ),
-                SignDocParameters(
+                SignDocRequestParameters(
                     credentialId = "1234",
                     documents = listOf(
                         Document(
@@ -175,7 +175,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
                         ),
                     )
                 ),
-                SignDocParameters(
+                SignDocRequestParameters(
                     credentialId = "1234",
                     documentDigests = listOf(
                         DocumentDigest(
