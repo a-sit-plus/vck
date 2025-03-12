@@ -42,12 +42,6 @@ interface OAuth2AuthorizationServerAdapter {
     ): KmmResult<OidcUserInfoExtended>
 
     /**
-     * Whether this authorization server implements pushed authorization requests as defined in
-     * [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html).
-     */
-    val supportsPushedAuthorizationRequests: Boolean
-
-    /**
      * Provide necessary [OAuth2AuthorizationServerMetadata] JSON for a client to be able to authenticate
      */
     suspend fun provideMetadata(): KmmResult<OAuth2AuthorizationServerMetadata>

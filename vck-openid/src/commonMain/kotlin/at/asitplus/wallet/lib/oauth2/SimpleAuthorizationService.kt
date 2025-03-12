@@ -96,8 +96,6 @@ class SimpleAuthorizationService(
     ),
 ) : OAuth2AuthorizationServerAdapter {
 
-    override val supportsPushedAuthorizationRequests: Boolean = true
-
     /**
      * Serve this result JSON-serialized under `/.well-known/openid-configuration`,
      * see [OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION]
