@@ -42,21 +42,13 @@ import kotlin.time.Duration.Companion.minutes
  * , Draft 15, 2024-12-19.
  */
 class CredentialIssuer(
-    /**
-     * Used to get the user data, and access tokens.
-     */
+    /** Used to get the user data, and access tokens. */
     private val authorizationService: OAuth2AuthorizationServerAdapter,
-    /**
-     * Used to actually issue the credential.
-     */
+    /** Used to actually issue the credential. */
     private val issuer: Issuer,
-    /**
-     * List of supported schemes.
-     */
+    /** List of supported schemes. */
     private val credentialSchemes: Set<CredentialScheme>,
-    /**
-     * Used in several fields in [IssuerMetadata], to provide endpoint URLs to clients.
-     */
+    /** Used in several fields in [IssuerMetadata], to provide endpoint URLs to clients. */
     private val publicContext: String = "https://wallet.a-sit.at/credential-issuer",
     /**
      * Used to build [IssuerMetadata.credentialEndpointUrl], i.e. implementers need to forward requests
@@ -68,29 +60,17 @@ class CredentialIssuer(
      * to that URI (which starts with [publicContext]) to [nonce].
      */
     private val nonceEndpointPath: String = "/nonce",
-    /**
-     * Used during issuance, when issuing credentials (using [issuer]) with data from [OidcUserInfoExtended]
-     */
+    /** Used during issuance, when issuing credentials (using [issuer]) with data from [OidcUserInfoExtended]. */
     private val credentialProvider: CredentialIssuerDataProvider,
-    /**
-     * Used to verify signature of proof elements in credential requests
-     */
+    /** Used to verify signature of proof elements in credential requests. */
     private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
-    /**
-     * Clock used to verify timestamps in proof elements in credential requests
-     */
+    /** Clock used to verify timestamps in proof elements in credential requests. */
     private val clock: Clock = System,
-    /**
-     * Time leeway for verification of timestamps in proof elements in credential requests
-     */
+    /** Time leeway for verification of timestamps in proof elements in credential requests. */
     private val timeLeeway: Duration = 5.minutes,
-    /**
-     * Callback to verify a received [KeyAttestationJwt] proof in credential requests
-     */
+    /** Callback to verify a received [KeyAttestationJwt] proof in credential requests. */
     private val verifyAttestationProof: (JwsSigned<KeyAttestationJwt>) -> Boolean = { true },
-    /**
-     * Turn on to require key attestation support in the [metadata]
-     */
+    /** Turn on to require key attestation support in the [metadata]. */
     private val requireKeyAttestation: Boolean = false,
     /** Used to provide challenge to clients to include in proof of possession of key material. */
     private val clientNonceService: NonceService = DefaultNonceService(),
