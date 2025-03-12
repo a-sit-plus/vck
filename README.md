@@ -15,6 +15,7 @@
 [![Kotlin](https://img.shields.io/badge/kotlin-multiplatform--mobile-orange.svg?logo=kotlin)](http://kotlinlang.org)
 [![Kotlin](https://img.shields.io/badge/kotlin-2.1.0-blue.svg?logo=kotlin)](http://kotlinlang.org)
 [![Java](https://img.shields.io/badge/java-17-blue.svg?logo=OPENJDK)](https://www.oracle.com/java/technologies/downloads/#java17)
+[![Android](https://img.shields.io/badge/Android-SDK--30-37AA55?logo=android)](https://developer.android.com/tools/releases/platforms#11)
 [![Maven Central](https://img.shields.io/maven-central/v/at.asitplus.wallet/vck)](https://mvnrepository.com/artifact/at.asitplus.wallet/vck)
 
 </div>

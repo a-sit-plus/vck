@@ -2,8 +2,8 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.signum.indispensable.getJcaPublicKey
 import at.asitplus.signum.indispensable.josef.*
+import at.asitplus.signum.indispensable.toJcaPublicKey
 import at.asitplus.signum.supreme.HazardousMaterials
 import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
 import io.github.aakira.napier.Napier
@@ -86,7 +86,7 @@ actual open class PlatformCryptoShim actual constructor(actual val keyMaterial: 
         recipientKey: JsonWebKey,
         algorithm: JweAlgorithm
     ): KmmResult<ByteArray> = runCatching {
-        val jvmKey = recipientKey.toCryptoPublicKey().getOrThrow().getJcaPublicKey().getOrThrow()
+        val jvmKey = recipientKey.toCryptoPublicKey().getOrThrow().toJcaPublicKey().getOrThrow()
         KeyAgreement.getInstance(algorithm.jcaName).also {
             @OptIn(HazardousMaterials::class)
             it.init(ephemeralKey.key.jcaPrivateKey)
@@ -98,7 +98,7 @@ actual open class PlatformCryptoShim actual constructor(actual val keyMaterial: 
         ephemeralKey: JsonWebKey,
         algorithm: JweAlgorithm
     ): KmmResult<ByteArray> = runCatching {
-        val publicKey = ephemeralKey.toCryptoPublicKey().getOrThrow().getJcaPublicKey().getOrThrow()
+        val publicKey = ephemeralKey.toCryptoPublicKey().getOrThrow().toJcaPublicKey().getOrThrow()
         KeyAgreement.getInstance(algorithm.jcaName).also {
             @OptIn(HazardousMaterials::class)
             it.init(keyMaterial.getUnderLyingSigner().jcaPrivateKey)

@@ -35,7 +35,9 @@ Release 5.5.0:
    - In `SimpleAuthorizationService` add constructor parameter to validate the client attestation JWT
    - In `CredentialIssuer.credential()` callers need to pass the whole `Authorization` header instead of just the access token value
  - Update dependencies:
-   - Update `signum` to 3.14.0, supporting X.509 certificates in v1, v2 too
+   - Update `signum` to 3.15.0, supporting X.509 certificates in v1, v2 too
+   - Update JsonPath4K
+ - Introduce dedicated Android targets, separate from JVM targets, that compileto JDK 8 / API-Level 30
 
 Release 5.4.3:
  - Fix property names for serialized RQES data classes

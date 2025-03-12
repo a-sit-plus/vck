@@ -84,6 +84,7 @@ actual class DefaultZlibService actual constructor() : ZlibService {
     }
 }
 
+@Suppress("NOTHING_TO_INLINE")
 inline fun MemScope.toData(array: ByteArray): NSData =
     NSData.create(
         bytes = allocArrayOf(array),
