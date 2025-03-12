@@ -49,6 +49,8 @@ Release 5.5.0:
    - Add subclasses of `OAuth2Exception` to write more precise error handling code
  - Update dependencies:
    - Update `signum` to 3.15.0, supporting X.509 certificates in v1, v2 too
+   - Update JsonPath4K
+ - Introduce dedicated Android targets, separate from JVM targets, that compile to JDK 8 / API-Level 30
 
 Release 5.4.3:
  - Fix property names for serialized RQES data classes
