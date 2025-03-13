@@ -281,7 +281,7 @@ class SimpleAuthorizationService(
     ): KmmResult<TokenResponseParameters> = catching {
         Napier.i("token called with $request")
 
-        val clientAuthRequest: ClientAuthRequest = request.loadIssuedCode(dpop, requestUrl, requestMethod)
+        val clientAuthRequest: ClientAuthRequest = request.loadClientAuthRequest(dpop, requestUrl, requestMethod)
             ?: throw OAuth2Exception(INVALID_GRANT, "could not load user info for $request")
                 .also { Napier.w("token: could not load user info for $request}") }
 
@@ -402,8 +402,7 @@ class SimpleAuthorizationService(
         }
     }
 
-    // TODO Rename to "requested scope" or something
-    private suspend fun TokenRequestParameters.loadIssuedCode(
+    private suspend fun TokenRequestParameters.loadClientAuthRequest(
         dpop: String? = null,
         requestUrl: String? = null,
         requestMethod: HttpMethod? = null,
