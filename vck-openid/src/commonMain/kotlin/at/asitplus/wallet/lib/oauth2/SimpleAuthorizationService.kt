@@ -7,12 +7,9 @@ import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
 import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_CODE
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_GRANT
-import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_BEARER
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.iso.sha256
-import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.oidvci.*
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.Companion.InvalidRequest
@@ -23,7 +20,6 @@ import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.datetime.Clock.System
 import kotlin.time.Duration.Companion.minutes
 
 
@@ -70,24 +66,18 @@ class SimpleAuthorizationService(
     private val refreshTokenToAuthRequest: MapStore<String, ClientAuthRequest> = DefaultMapStore(),
     /** Associates the issued request_uri to the auth request from the client. */
     private val requestUriToPushedAuthorizationRequest: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
-    val tokenGenerationService: JwtTokenGenerationService = JwtTokenGenerationService(
+    /** Service to create and validate access tokens. */
+    private val tokenService: TokenService = TokenService.bearer(
         nonceService = DefaultNonceService(),
-        publicContext = publicContext,
-        verifierJwsService = DefaultVerifierJwsService(),
-        jwsService = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithoutCert())),
-        clock = System
     ),
-    val tokenVerificationService: JwtTokenVerificationService = JwtTokenVerificationService(
-        nonceService = tokenGenerationService.nonceService,
-        issuerKey = tokenGenerationService.jwsService.keyMaterial.jsonWebKey
-    ),
-    val clientAuthenticationService: ClientAuthenticationService = ClientAuthenticationService(
+    /** Handles client authentication in [par] and [token]. */
+    private val clientAuthenticationService: ClientAuthenticationService = ClientAuthenticationService(
         enforceClientAuthentication = false,
         verifierJwsService = DefaultVerifierJwsService(),
         verifyClientAttestationJwt = { true }
     ),
     /** Used to parse requests from clients, e.g. when using JWT-Secured Authorization Requests (RFC 9101) */
-    val requestParser: RequestParser = RequestParser(
+    private val requestParser: RequestParser = RequestParser(
         /** By default, do not retrieve authn requests referenced by `request_uri`. */
         remoteResourceRetriever = { null },
         /** Trust all JWS signatures, client will be authenticated anyway. */
@@ -96,9 +86,6 @@ class SimpleAuthorizationService(
         buildRequestObjectParameters = { null }
     ),
 ) : OAuth2AuthorizationServerAdapter {
-
-    /** Only for local tests. */
-    private val listOfValidatedAccessToken = mutableListOf<ValidatedAccessToken>()
 
     /**
      * Serve this result JSON-serialized under `/.well-known/openid-configuration`,
@@ -112,8 +99,7 @@ class SimpleAuthorizationService(
             pushedAuthorizationRequestEndpoint = "$publicContext$pushedAuthorizationRequestEndpointPath",
             requirePushedAuthorizationRequests = true, // per OID4VC HAIP
             tokenEndPointAuthMethodsSupported = setOf(AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH), // per OID4VC HAIP
-            dpopSigningAlgValuesSupportedStrings = tokenGenerationService.verifierJwsService.supportedAlgorithms.map { it.identifier }
-                .toSet() // per OID4VC HAIP
+            dpopSigningAlgValuesSupportedStrings = tokenService.dpopSigningAlgValuesSupportedStrings
         )
     }
 
@@ -303,19 +289,14 @@ class SimpleAuthorizationService(
                         throw InvalidRequest("Authorization details not from auth code: $filter")
                 }
             }
-            tokenGenerationService.buildToken(
+            tokenService.generation.buildToken(
                 dpop = dpop,
                 requestUrl = requestUrl,
                 requestMethod = requestMethod,
                 oidcUserInfo = clientAuthRequest.userInfoExtended,
                 authorizationDetails = filtered,
                 scope = null
-            ).also {
-                if (it.tokenType == TOKEN_TYPE_BEARER)
-                    listOfValidatedAccessToken.add(
-                        ValidatedAccessToken(it.accessToken, clientAuthRequest.userInfoExtended, filtered, null)
-                    )
-            }
+            )
         } else if (request.scope != null) {
             if (clientAuthRequest.scope == null)
                 throw InvalidRequest("Scope not from auth code: ${request.scope}, for code ${clientAuthRequest.issuedCode}")
@@ -323,19 +304,14 @@ class SimpleAuthorizationService(
                 if (!clientAuthRequest.scope.contains(singleScope))
                     throw InvalidRequest("Scope not from auth code: $singleScope")
             }
-            tokenGenerationService.buildToken(
+            tokenService.generation.buildToken(
                 dpop = dpop,
                 requestUrl = requestUrl,
                 requestMethod = requestMethod,
                 oidcUserInfo = clientAuthRequest.userInfoExtended,
                 authorizationDetails = null,
                 scope = request.scope
-            ).also {
-                if (it.tokenType == TOKEN_TYPE_BEARER)
-                    listOfValidatedAccessToken.add(
-                        ValidatedAccessToken(it.accessToken, clientAuthRequest.userInfoExtended, null, request.scope)
-                    )
-            }
+            )
         } else if (clientAuthRequest.authnDetails != null) {
             val filtered = strategy.filterAuthorizationDetails(
                 clientAuthRequest.authnDetails.filterIsInstance<OpenIdAuthorizationDetails>()
@@ -343,35 +319,25 @@ class SimpleAuthorizationService(
                 if (it.isEmpty())
                     throw InvalidRequest("No valid authorization details in ${clientAuthRequest.authnDetails}")
             }
-            tokenGenerationService.buildToken(
+            tokenService.generation.buildToken(
                 dpop = dpop,
                 requestUrl = requestUrl,
                 requestMethod = requestMethod,
                 oidcUserInfo = clientAuthRequest.userInfoExtended,
                 authorizationDetails = filtered,
                 scope = null
-            ).also {
-                if (it.tokenType == TOKEN_TYPE_BEARER)
-                    listOfValidatedAccessToken.add(
-                        ValidatedAccessToken(it.accessToken, clientAuthRequest.userInfoExtended, filtered, null)
-                    )
-            }
+            )
         } else if (clientAuthRequest.scope != null) {
             val scope = strategy.filterScope(clientAuthRequest.scope)
                 ?: throw OAuth2Exception(Errors.INVALID_SCOPE, "No valid scope in ${clientAuthRequest.scope}")
-            tokenGenerationService.buildToken(
+            tokenService.generation.buildToken(
                 dpop = dpop,
                 requestUrl = requestUrl,
                 requestMethod = requestMethod,
                 oidcUserInfo = clientAuthRequest.userInfoExtended,
                 authorizationDetails = null,
                 scope = scope
-            ).also {
-                if (it.tokenType == TOKEN_TYPE_BEARER)
-                    listOfValidatedAccessToken.add(
-                        ValidatedAccessToken(it.accessToken, clientAuthRequest.userInfoExtended, null, scope)
-                    )
-            }
+            )
         } else {
             Napier.w("token: request can not be parsed: $request")
             throw InvalidRequest("neither authorization details nor scope in request")
@@ -423,7 +389,7 @@ class SimpleAuthorizationService(
             if (refreshToken == null)
                 throw OAuth2Exception(INVALID_GRANT, "refresh_token is null")
                     .also { Napier.w("token: refresh_token is null") }
-            tokenVerificationService.validateRefreshToken(refreshToken!!, dpop, requestUrl, requestMethod)
+            tokenService.verification.validateRefreshToken(refreshToken!!, dpop, requestUrl, requestMethod)
             refreshToken?.let { refreshTokenToAuthRequest.remove(it) }
         }
 
@@ -459,17 +425,15 @@ class SimpleAuthorizationService(
         requestUrl: String?,
         requestMethod: HttpMethod?,
     ): KmmResult<OidcUserInfoExtended> = catching {
-        val result = runCatching {
-            tokenVerificationService
-                .validateTokenExtractUser(authorizationHeader, dpopHeader, requestUrl, requestMethod)
-        }.getOrElse {
-            listOfValidatedAccessToken.firstOrNull { it.token == authorizationHeader.split(" ").last() }
-                ?: throw it
-        }
+        val result = tokenService.verification
+            .validateTokenExtractUser(authorizationHeader, dpopHeader, requestUrl, requestMethod)
+
         if (credentialIdentifier != null) {
             if (result.authorizationDetails == null)
                 throw InvalidToken("no authorization details stored for header $authorizationHeader")
-            val validCredentialIdentifiers = result.authorizationDetails.flatMap { it.credentialIdentifiers ?: setOf() }
+            val validCredentialIdentifiers = result.authorizationDetails
+                .filterIsInstance<OpenIdAuthorizationDetails>()
+                .flatMap { it.credentialIdentifiers ?: setOf() }
             if (!validCredentialIdentifiers.contains(credentialIdentifier))
                 throw InvalidToken("credential_identifier expected to be in ${validCredentialIdentifiers}, but got $credentialIdentifier")
         } else if (credentialConfigurationId != null) {
