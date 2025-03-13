@@ -18,6 +18,13 @@ import kotlin.String
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
+interface TokenGenerationService {
+    suspend fun buildToken(
+        dpop: String?,
+        requestUrl: String?,
+        requestMethod: HttpMethod?,
+    ): TokenResponseParameters
+}
 
 /**
  * Simple Bearer token and DPoP token implementation for an OAuth 2.0 authorization server.
@@ -25,7 +32,7 @@ import kotlin.time.Duration.Companion.minutes
  * Implemented from
  * [OAuth 2.0 Demonstrating Proof of Possession (DPoP)](https://datatracker.ietf.org/doc/html/rfc9449)
  */
-class TokenGenerationService(
+class JwtTokenGenerationService(
     /** Used to create nonces for tokens during issuing. */
     internal val nonceService: NonceService = DefaultNonceService(),
     /** Used as issuer for issued DPoP tokens. */
@@ -40,9 +47,9 @@ class TokenGenerationService(
     private val clock: Clock = System,
     /** Whether to issue refresh tokens, which may be used by clients to get a new access token. */
     private val issueRefreshToken: Boolean = false,
-)  {
+) : TokenGenerationService {
 
-    suspend fun buildToken(
+    override suspend fun buildToken(
         dpop: String?,
         requestUrl: String?,
         requestMethod: HttpMethod?,
