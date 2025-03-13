@@ -55,6 +55,7 @@ Release 5.5.0:
    - In `OAuth2Client` add constructor parameter `jwsService` te enable sending [JWT-secured authorization requests](https://www.rfc-editor.org/rfc/rfc9101.html)
    - Enable issuing and usage of (JWT-based, sender-constrained) refresh tokens, e.g. extend `AuthorizationForToken`, add grant type `refresh_token`
    - Add method to `OpenId4VciClient` to refresh a credential with a refresh token that has been received when loading the credential
+   - Remove methods from internal interface `OAuth2AuthorizationServerAdapter`
  - Update dependencies:
    - Update `signum` to 3.15.0, supporting X.509 certificates in v1, v2 too
    - Update JsonPath4K

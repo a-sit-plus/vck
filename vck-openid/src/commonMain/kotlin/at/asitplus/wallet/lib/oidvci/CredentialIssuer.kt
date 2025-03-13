@@ -25,6 +25,7 @@ import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.VerifierJwsService
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.Companion.InvalidToken
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.HttpMethod
@@ -207,17 +208,14 @@ class CredentialIssuer(
         requestUrl: String? = null,
         requestMethod: HttpMethod? = null,
     ): KmmResult<CredentialResponseParameters> = catching {
-        val userInfo = authorizationService.getUserInfo(
+        val userInfo = getUserInfo(
             authorizationHeader,
             dpopHeader,
             params.credentialIdentifier,
             params.credentialConfigurationId,
             requestUrl,
             requestMethod,
-        ).getOrElse {
-            Napier.w("credential: access token not valid", it)
-            throw it
-        }
+        )
 
         val (credentialScheme, representation) = params.format?.let { params.extractCredentialScheme(it) }
             ?: params.credentialIdentifier?.let { decodeFromCredentialIdentifier(it) }
@@ -245,6 +243,38 @@ class CredentialIssuer(
         }
         issuedCredentials.toCredentialResponseParameters(params.encrypter())
             .also { Napier.i("credential returns $it") }
+    }
+
+    private suspend fun getUserInfo(
+        authorizationHeader: String,
+        dpopHeader: String?,
+        credentialIdentifier: String?,
+        credentialConfigurationId: String?,
+        requestUrl: String? = null,
+        requestMethod: HttpMethod? = null,
+    ): OidcUserInfoExtended {
+        val result = authorizationService.tokenVerificationService
+            .validateTokenExtractUser(authorizationHeader, dpopHeader, requestUrl, requestMethod)
+
+        if (credentialIdentifier != null) {
+            if (result.authorizationDetails == null)
+                throw InvalidToken("no authorization details stored for header $authorizationHeader")
+            val validCredentialIdentifiers = result.authorizationDetails
+                .filterIsInstance<OpenIdAuthorizationDetails>()
+                .flatMap { it.credentialIdentifiers ?: setOf() }
+            if (!validCredentialIdentifiers.contains(credentialIdentifier))
+                throw InvalidToken("credential_identifier expected to be in ${validCredentialIdentifiers}, but got $credentialIdentifier")
+        } else if (credentialConfigurationId != null) {
+            if (result.scope == null)
+                throw InvalidToken("no scope stored for header $authorizationHeader")
+            if (!result.scope.contains(credentialConfigurationId))
+                throw InvalidToken("credential_configuration_id expected to be ${result.scope}, but got $credentialConfigurationId")
+        } else {
+            throw InvalidToken("neither credential_identifier nor credential_configuration_id set")
+        }
+
+        return result.userInfoExtended!!
+            .also { Napier.v("getUserInfo returns $it") }
     }
 
     /** Encrypts the issued credential, if requested so by the client. */

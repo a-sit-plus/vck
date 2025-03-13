@@ -8,7 +8,6 @@ import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_CODE
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_GRANT
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.oidvci.*
@@ -87,11 +86,15 @@ class SimpleAuthorizationService(
     ),
 ) : OAuth2AuthorizationServerAdapter {
 
+    override val tokenVerificationService: TokenVerificationService
+        get() = tokenService.verification
+
+
     /**
      * Serve this result JSON-serialized under `/.well-known/openid-configuration`,
      * see [OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION]
      */
-    val metadata: OAuth2AuthorizationServerMetadata by lazy {
+    override val metadata: OAuth2AuthorizationServerMetadata by lazy {
         OAuth2AuthorizationServerMetadata(
             issuer = publicContext,
             authorizationEndpoint = "$publicContext$authorizationEndpointPath",
@@ -404,52 +407,6 @@ class SimpleAuthorizationService(
                 ClientAuthRequest(it, user, strategy.validScopes(), strategy.validAuthorizationDetails())
             )
         }
-
-    /**
-     * Get the [OidcUserInfoExtended] (holding [at.asitplus.openid.OidcUserInfo]) associated with the token in
-     * [authorizationHeader], that was created before at the Authorization Server.
-     *
-     * Also validates that the client has really requested a credential (either identified by [credentialIdentifier]
-     * or [credentialConfigurationId]) that has been allowed by this access token issued in [token].
-     *
-     * @param authorizationHeader value of the HTTP header `Authorization`
-     * @param dpopHeader value of the HTTP header `DPoP`
-     * @param requestUrl public-facing URL that the client has used (to validate `DPoP`)
-     * @param requestUrl HTTP method that the client has used (to validate `DPoP`)
-     */
-    override suspend fun getUserInfo(
-        authorizationHeader: String,
-        dpopHeader: String?,
-        credentialIdentifier: String?,
-        credentialConfigurationId: String?,
-        requestUrl: String?,
-        requestMethod: HttpMethod?,
-    ): KmmResult<OidcUserInfoExtended> = catching {
-        val result = tokenService.verification
-            .validateTokenExtractUser(authorizationHeader, dpopHeader, requestUrl, requestMethod)
-
-        if (credentialIdentifier != null) {
-            if (result.authorizationDetails == null)
-                throw InvalidToken("no authorization details stored for header $authorizationHeader")
-            val validCredentialIdentifiers = result.authorizationDetails
-                .filterIsInstance<OpenIdAuthorizationDetails>()
-                .flatMap { it.credentialIdentifiers ?: setOf() }
-            if (!validCredentialIdentifiers.contains(credentialIdentifier))
-                throw InvalidToken("credential_identifier expected to be in ${validCredentialIdentifiers}, but got $credentialIdentifier")
-        } else if (credentialConfigurationId != null) {
-            if (result.scope == null)
-                throw InvalidToken("no scope stored for header $authorizationHeader")
-            if (!result.scope.contains(credentialConfigurationId))
-                throw InvalidToken("credential_configuration_id expected to be ${result.scope}, but got $credentialConfigurationId")
-        } else {
-            throw InvalidToken("neither credential_identifier nor credential_configuration_id set")
-        }
-
-        result.userInfoExtended!!
-            .also { Napier.v("getUserInfo returns $it") }
-    }
-
-    override suspend fun provideMetadata() = KmmResult.success(metadata)
 
 }
 
