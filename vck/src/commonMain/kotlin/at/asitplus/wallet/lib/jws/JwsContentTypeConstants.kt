@@ -7,8 +7,8 @@ object JwsContentTypeConstants {
     const val SD_JWT = "vc+sd-jwt"
     /** Key binding JWT for SD-JWT: `kb+jwt` */
     const val KB_JWT = "kb+jwt"
-    /** Access tokens: `at+jwt` */
-    const val AT_JWT = "at+jwt"
+    /** Access tokens for OID4VCI: `oid4vci+at+jwt` */
+    const val OID4VCI_AT_JWT = "oid4vci+at+jwt"
     /** Refresh tokens: `rt+jwt+ */
     const val RT_JWT = "rt+jwt"
     const val OAUTH_AUTHZ_REQUEST = "oauth-authz-req+jwt"
