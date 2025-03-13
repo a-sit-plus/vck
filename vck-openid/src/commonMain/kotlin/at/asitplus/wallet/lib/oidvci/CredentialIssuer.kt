@@ -159,6 +159,7 @@ class CredentialIssuer(
      *
      * @param user used to create the credential when the wallet app requests the credential
      */
+    // TODO Migrate this to OAuth2AuthorizationServerAdapter?
     suspend fun credentialOfferWithPreAuthnForUser(
         user: OidcUserInfoExtended,
     ): CredentialOffer = CredentialOffer(
