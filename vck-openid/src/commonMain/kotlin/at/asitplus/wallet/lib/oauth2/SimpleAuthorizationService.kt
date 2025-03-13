@@ -7,14 +7,15 @@ import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
 import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_CODE
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_GRANT
-import at.asitplus.openid.OpenIdConstants.Errors.INVALID_TOKEN
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.iso.sha256
-import at.asitplus.wallet.lib.jws.*
+import at.asitplus.wallet.lib.jws.DefaultJwsService
+import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.oidvci.*
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.Companion.InvalidRequest
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.Companion.InvalidToken
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.RequestParser
 import com.benasher44.uuid.uuid4
@@ -22,7 +23,6 @@ import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock.System
-import kotlin.String
 import kotlin.time.Duration.Companion.minutes
 
 
@@ -68,14 +68,13 @@ class SimpleAuthorizationService(
     /** Associates issued refresh token with the auth request from the client. *Refresh tokens are usually long-lived!* */
     private val refreshTokenToAuthRequest: MapStore<String, ClientAuthRequest> = DefaultMapStore(),
     /** Associates issued access tokens with the auth request from the client. */
-    private val accessTokenToAuthRequest: MapStore<String, IssuedAccessToken> = DefaultMapStore(),
+    private val accessTokenToAuthRequest: MapStore<String, ValidatedAccessToken> = DefaultMapStore(),
     /** Associates the issued request_uri to the auth request from the client. */
     private val requestUriToPushedAuthorizationRequest: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
     val tokenGenerationService: JwtTokenGenerationService = JwtTokenGenerationService(
         nonceService = DefaultNonceService(),
         publicContext = publicContext,
         verifierJwsService = DefaultVerifierJwsService(),
-        enforceDpop = false,
         jwsService = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithoutCert())),
         clock = System
     ),
@@ -438,31 +437,21 @@ class SimpleAuthorizationService(
         requestUrl: String?,
         requestMethod: HttpMethod?,
     ): KmmResult<OidcUserInfoExtended> = catching {
-        val accessToken = tokenVerificationService
-            .validateToken(authorizationHeader, dpopHeader, requestUrl, requestMethod)
-
-        val result = accessTokenToAuthRequest.get(accessToken)
-            ?: throw OAuth2Exception(INVALID_TOKEN, "could not load user info for access token $accessToken")
+        val result = tokenVerificationService
+            .validateTokenExtractUser(authorizationHeader, dpopHeader, requestUrl, requestMethod)
         if (credentialIdentifier != null) {
             if (result.authorizationDetails == null)
-                throw OAuth2Exception(INVALID_TOKEN, "no authorization details stored for access token $accessToken")
+                throw InvalidToken("no authorization details stored for header $authorizationHeader")
             val validCredentialIdentifiers = result.authorizationDetails.flatMap { it.credentialIdentifiers ?: setOf() }
             if (!validCredentialIdentifiers.contains(credentialIdentifier))
-                throw OAuth2Exception(
-                    INVALID_TOKEN,
-                    "credential_identifier expected to be in ${validCredentialIdentifiers}, but got $credentialIdentifier"
-                )
+                throw InvalidToken("credential_identifier expected to be in ${validCredentialIdentifiers}, but got $credentialIdentifier")
         } else if (credentialConfigurationId != null) {
             if (result.scope == null)
-                throw OAuth2Exception(INVALID_TOKEN, "no scope stored for access token $accessToken")
+                throw InvalidToken("no scope stored for header $authorizationHeader")
             if (!result.scope.contains(credentialConfigurationId))
-                throw OAuth2Exception(
-                    INVALID_TOKEN,
-                    "credential_configuration_id expected to be ${result.scope}, but got $credentialConfigurationId"
-                )
-
+                throw InvalidToken("credential_configuration_id expected to be ${result.scope}, but got $credentialConfigurationId")
         } else {
-            throw OAuth2Exception(INVALID_TOKEN, "neither credential_identifier nor credential_configuration_id set")
+            throw InvalidToken("neither credential_identifier nor credential_configuration_id set")
         }
 
         result.userInfoExtended

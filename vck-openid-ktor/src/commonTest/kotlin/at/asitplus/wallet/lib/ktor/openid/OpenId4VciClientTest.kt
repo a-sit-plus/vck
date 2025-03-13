@@ -252,7 +252,6 @@ class OpenId4VciClientTest : FunSpec() {
                 enforceClientAuthentication = true,
             ),
             tokenGenerationService = JwtTokenGenerationService(
-                enforceDpop = true,
                 issueRefreshToken = true
             )
         )

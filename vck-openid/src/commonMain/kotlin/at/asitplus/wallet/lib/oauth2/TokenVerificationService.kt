@@ -2,22 +2,24 @@ package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_DPOP_PROOF
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_TOKEN
-import at.asitplus.openid.OpenIdConstants.TOKEN_PREFIX_BEARER
 import at.asitplus.openid.OpenIdConstants.TOKEN_PREFIX_DPOP
-import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_BEARER
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.signum.indispensable.josef.*
+import at.asitplus.signum.indispensable.josef.JsonWebKey
+import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.sha256
-import at.asitplus.wallet.lib.jws.*
-import at.asitplus.wallet.lib.oidvci.*
+import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.jws.VerifierJwsService
+import at.asitplus.wallet.lib.oidvci.NonceService
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Clock.System
-import kotlin.String
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
@@ -30,12 +32,12 @@ interface TokenVerificationService {
         requestMethod: HttpMethod?,
     ): String
 
-    suspend fun validateToken(
+    suspend fun validateTokenExtractUser(
         authorizationHeader: String,
         dpopHeader: String?,
         requestUrl: String?,
         requestMethod: HttpMethod?,
-    ): String
+    ): ValidatedAccessToken
 }
 
 /**
@@ -69,23 +71,16 @@ class JwtTokenVerificationService(
         return dpopToken
     }
 
-    override suspend fun validateToken(
+    override suspend fun validateTokenExtractUser(
         authorizationHeader: String,
         dpopHeader: String?,
         requestUrl: String?,
         requestMethod: HttpMethod?,
-    ): String = if (authorizationHeader.startsWith(TOKEN_TYPE_BEARER, ignoreCase = true)) {
-        val bearerToken = authorizationHeader.removePrefix(TOKEN_PREFIX_BEARER).split(" ").last()
-        if (!nonceService.verifyNonce(bearerToken)) { // when to remove them?
-            Napier.w("validateToken: Nonce not known: $bearerToken")
-            throw OAuth2Exception(INVALID_TOKEN, "access token not valid: $bearerToken")
-        }
-        bearerToken
-    } else if (authorizationHeader.startsWith(TOKEN_TYPE_DPOP, ignoreCase = true)) {
+    ): ValidatedAccessToken = if (authorizationHeader.startsWith(TOKEN_TYPE_DPOP, ignoreCase = true)) {
         val dpopToken = authorizationHeader.removePrefix(TOKEN_PREFIX_DPOP).split(" ").last()
         val dpopTokenJwt = validateDpopToken(dpopToken, JwsContentTypeConstants.AT_JWT)
         validateDpopJwt(dpopHeader, dpopToken, dpopTokenJwt, requestUrl, requestMethod)
-        dpopToken
+        ValidatedAccessToken(dpopToken, TODO(), TODO(), TODO())
     } else {
         throw OAuth2Exception(INVALID_TOKEN, "authorization header not valid: $authorizationHeader")
     }

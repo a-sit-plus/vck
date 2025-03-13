@@ -4,6 +4,7 @@ import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_COSE_KEY
 import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_JWK
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_REQUEST
+import at.asitplus.openid.OpenIdConstants.Errors.INVALID_TOKEN
 import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -212,6 +213,7 @@ class OAuth2Exception : Throwable {
     constructor(error: String, cause: Throwable) : super(error, cause)
     companion object {
         fun InvalidRequest(message: String) = OAuth2Exception(INVALID_REQUEST, message)
+        fun InvalidToken(message: String) = OAuth2Exception(INVALID_TOKEN, message)
     }
 }
 

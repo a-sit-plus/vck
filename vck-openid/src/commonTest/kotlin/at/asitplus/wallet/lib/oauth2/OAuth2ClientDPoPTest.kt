@@ -57,7 +57,6 @@ class OAuth2ClientDPoPTest : FunSpec({
         server = SimpleAuthorizationService(
             strategy = authorizationServiceStrategy,
             tokenGenerationService = JwtTokenGenerationService(
-                enforceDpop = true,
                 issueRefreshToken = true
             )
         )
