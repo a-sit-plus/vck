@@ -22,13 +22,29 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
 
+interface TokenVerificationService {
+    suspend fun validateRefreshToken(
+        refreshToken: String,
+        dpopHeader: String?,
+        requestUrl: String?,
+        requestMethod: HttpMethod?,
+    ): String
+
+    suspend fun validateToken(
+        authorizationHeader: String,
+        dpopHeader: String?,
+        requestUrl: String?,
+        requestMethod: HttpMethod?,
+    ): String
+}
+
 /**
  * Simple Bearer token and DPoP token implementation for an OAuth 2.0 authorization server.
  *
  * Implemented from
  * [OAuth 2.0 Demonstrating Proof of Possession (DPoP)](https://datatracker.ietf.org/doc/html/rfc9449)
  */
-class TokenVerificationService(
+class JwtTokenVerificationService(
     /** Used to verify nonces of tokens. */
     private val nonceService: NonceService,
     /** Used to verify the signature of the DPoP access token. */
@@ -39,9 +55,9 @@ class TokenVerificationService(
     private val clock: Clock = System,
     /** Time leeway for verification of timestamps in access tokens and refresh tokens. */
     private val timeLeeway: Duration = 5.minutes,
-)  {
+) : TokenVerificationService {
 
-    suspend fun validateRefreshToken(
+    override suspend fun validateRefreshToken(
         refreshToken: String,
         dpopHeader: String?,
         requestUrl: String?,
@@ -53,7 +69,7 @@ class TokenVerificationService(
         return dpopToken
     }
 
-    suspend fun validateToken(
+    override suspend fun validateToken(
         authorizationHeader: String,
         dpopHeader: String?,
         requestUrl: String?,

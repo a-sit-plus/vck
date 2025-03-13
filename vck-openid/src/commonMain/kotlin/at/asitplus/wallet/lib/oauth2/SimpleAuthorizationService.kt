@@ -71,7 +71,7 @@ class SimpleAuthorizationService(
     private val accessTokenToAuthRequest: MapStore<String, IssuedAccessToken> = DefaultMapStore(),
     /** Associates the issued request_uri to the auth request from the client. */
     private val requestUriToPushedAuthorizationRequest: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
-    val tokenGenerationService: TokenGenerationService = TokenGenerationService(
+    val tokenGenerationService: JwtTokenGenerationService = JwtTokenGenerationService(
         nonceService = DefaultNonceService(),
         publicContext = publicContext,
         verifierJwsService = DefaultVerifierJwsService(),
@@ -79,7 +79,7 @@ class SimpleAuthorizationService(
         jwsService = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithoutCert())),
         clock = System
     ),
-    val tokenVerificationService: TokenVerificationService = TokenVerificationService(
+    val tokenVerificationService: JwtTokenVerificationService = JwtTokenVerificationService(
         nonceService = tokenGenerationService.nonceService,
         issuerKey = tokenGenerationService.jwsService.keyMaterial.jsonWebKey
     ),
