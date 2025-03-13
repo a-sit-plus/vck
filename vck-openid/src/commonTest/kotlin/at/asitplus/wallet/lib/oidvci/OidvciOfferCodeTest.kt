@@ -15,6 +15,7 @@ import at.asitplus.wallet.lib.openid.DummyOAuth2DataProvider
 import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
@@ -109,6 +110,22 @@ class OidvciOfferCodeTest : FreeSpec({
             params = credentialRequest.first()
         ).getOrThrow()
         credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
+    }
+
+    "process with code after credential offer, wrong issuer_state" {
+        val credentialOffer = authorizationService.credentialOfferWithAuthorizationCode(issuer.publicContext)
+        val credentialIdToRequest = credentialOffer.configurationIds.first()
+        val credentialFormat =
+            issuer.metadata.supportedCredentialConfigurations!![credentialIdToRequest].shouldNotBeNull()
+        val authnRequest = client.oauth2Client.createAuthRequest(
+            state = state,
+            scope = credentialFormat.scope.shouldNotBeNull(),
+            resource = issuer.metadata.credentialIssuer,
+            issuerState = "wrong issuer_state"
+        )
+        shouldThrow<OAuth2Exception> {
+            authorizationService.authorize(authnRequest).getOrThrow()
+        }
     }
 
     "process with code after credential offer, and authorization details for one credential" {
