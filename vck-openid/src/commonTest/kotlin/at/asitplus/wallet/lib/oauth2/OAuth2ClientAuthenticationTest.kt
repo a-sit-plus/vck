@@ -35,22 +35,7 @@ class OAuth2ClientAuthenticationTest : FunSpec({
         scope = randomString()
         client = OAuth2Client()
         user = OidcUserInfoExtended(OidcUserInfo(randomString()))
-        authorizationServiceStrategy = object : AuthorizationServiceStrategy {
-            override suspend fun loadUserInfo(
-                request: AuthenticationRequestParameters,
-                code: String,
-            ): OidcUserInfoExtended? = user
-
-            override fun validScopes(): String = scope
-
-            override fun validAuthorizationDetails(): Collection<OpenIdAuthorizationDetails> = listOf()
-
-            override fun filterAuthorizationDetails(authorizationDetails: Collection<AuthorizationDetails>): Set<OpenIdAuthorizationDetails> =
-                setOf()
-
-            override fun filterScope(scope: String): String? = scope
-
-        }
+        authorizationServiceStrategy = DummyAuthorizationServiceStrategy(user, scope)
         server = SimpleAuthorizationService(
             strategy = authorizationServiceStrategy,
             clientAuthenticationService = ClientAuthenticationService(

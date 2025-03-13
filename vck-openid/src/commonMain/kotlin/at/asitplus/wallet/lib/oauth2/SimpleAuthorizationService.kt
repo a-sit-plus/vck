@@ -59,6 +59,8 @@ class SimpleAuthorizationService(
      * forward POST requests to that URI (which starts with [publicContext]) to [par].
      */
     private val pushedAuthorizationRequestEndpointPath: String = "/par",
+    /** Associates issuer_state for credential offers. */
+    private val issuerStateMap: MapStore<String, String> = DefaultMapStore(),
     /** Associates issued codes with the auth request from the client. */
     private val codeToUserToAuthRequest: MapStore<String, ClientAuthRequest> = DefaultMapStore(),
     /** Associates issued refresh token with the auth request from the client. *Refresh tokens are usually long-lived!* */
@@ -105,6 +107,50 @@ class SimpleAuthorizationService(
             dpopSigningAlgValuesSupportedStrings = tokenService.dpopSigningAlgValuesSupportedStrings
         )
     }
+
+    /**
+     * Offer all available schemes from [strategy] to clients.
+     *
+     * Callers need to encode this in [CredentialOfferUrlParameters], and offer the resulting URL to clients,
+     * i.e. by displaying a QR Code that can be scanned with wallet apps.
+     *
+     * @param credentialIssuer the public context of an [CredentialIssuer]
+     */
+    suspend fun credentialOfferWithAuthorizationCode(
+        credentialIssuer: String,
+    ): CredentialOffer = CredentialOffer(
+        credentialIssuer = credentialIssuer,
+        configurationIds = strategy.allCredentialIdentifier(),
+        grants = CredentialOfferGrants(
+            authorizationCode = CredentialOfferGrantsAuthCode(
+                issuerState = uuid4().toString().also { issuerStateMap.put(it, credentialIssuer) },
+                authorizationServer = publicContext
+            ),
+        )
+    )
+
+    /**
+     * Offer all available schemes from [strategy] to clients.
+     *
+     * Callers need to encode this in [CredentialOfferUrlParameters], and offer the resulting URL to clients,
+     * i.e. by displaying a QR Code that can be scanned with wallet apps.
+     *
+     * @param user used to create the credential when the wallet app requests the credential
+     * @param credentialIssuer the public context of an [CredentialIssuer]
+     */
+    suspend fun credentialOfferWithPreAuthnForUser(
+        user: OidcUserInfoExtended,
+        credentialIssuer: String,
+    ): CredentialOffer = CredentialOffer(
+        credentialIssuer = credentialIssuer,
+        configurationIds = strategy.allCredentialIdentifier(),
+        grants = CredentialOfferGrants(
+            preAuthorizedCode = CredentialOfferGrantsPreAuthCode(
+                preAuthorizedCode = providePreAuthorizedCode(user),
+                authorizationServer = publicContext
+            )
+        )
+    )
 
     /**
      * Pushed authorization request endpoint as defined in [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html).

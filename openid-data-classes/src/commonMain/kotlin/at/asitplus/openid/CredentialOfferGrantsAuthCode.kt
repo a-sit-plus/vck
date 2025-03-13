@@ -9,7 +9,8 @@ data class CredentialOfferGrantsAuthCode(
      * OID4VCI: OPTIONAL. String value created by the Credential Issuer and opaque to the Wallet that is used to bind
      * the subsequent Authorization Request with the Credential Issuer to a context set up during previous steps. If the
      * Wallet decides to use the Authorization Code Flow and received a value for this parameter, it MUST include it in
-     * the subsequent Authorization Request to the Credential Issuer as the `issuer_state` parameter value.
+     * the subsequent Authorization Request to the Credential Issuer as the `issuer_state` parameter value, see
+     * [AuthenticationRequestParameters.issuerState].
      */
     @SerialName("issuer_state")
     val issuerState: String? = null,

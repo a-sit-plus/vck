@@ -10,13 +10,9 @@ import at.asitplus.wallet.lib.oauth2.AuthorizationServiceStrategy
  * Provide authentication and authorization for credential issuance.
  */
 class CredentialAuthorizationServiceStrategy(
-    /**
-     * Source of user data.
-     */
+    /** Source of user data. */
     private val dataProvider: OAuth2DataProvider,
-    /**
-     * List of supported schemes.
-     */
+    /** List of supported schemes. */
     credentialSchemes: Set<ConstantIndex.CredentialScheme>,
 ) : AuthorizationServiceStrategy {
 
@@ -25,6 +21,8 @@ class CredentialAuthorizationServiceStrategy(
         .associate { it.key to it.value }
 
     override fun validScopes(): String = supportedCredentialSchemes.map { it.value.scope }.joinToString(" ")
+
+    override fun allCredentialIdentifier(): Collection<String> = supportedCredentialSchemes.map { it.key }
 
     override fun validAuthorizationDetails(): Collection<OpenIdAuthorizationDetails> =
         supportedCredentialSchemes.entries.map {
