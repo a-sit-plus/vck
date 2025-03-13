@@ -50,7 +50,7 @@ class CredentialIssuer(
     /** List of supported schemes. */
     private val credentialSchemes: Set<CredentialScheme>,
     /** Used in several fields in [IssuerMetadata], to provide endpoint URLs to clients. */
-    private val publicContext: String = "https://wallet.a-sit.at/credential-issuer",
+    internal val publicContext: String = "https://wallet.a-sit.at/credential-issuer",
     /**
      * Used to build [IssuerMetadata.credentialEndpointUrl], i.e. implementers need to forward requests
      * to that URI (which starts with [publicContext]) to [credential].
@@ -140,12 +140,12 @@ class CredentialIssuer(
      * Callers need to encode this in [CredentialOfferUrlParameters], and offer the resulting URL to clients,
      * i.e. by displaying a QR Code that can be scanned with wallet apps.
      */
+    @Deprecated("Moved to authorization server", ReplaceWith("authorizationService.credentialOfferWithAuthorizationCode(publicContext)"))
     suspend fun credentialOfferWithAuthorizationCode(): CredentialOffer = CredentialOffer(
         credentialIssuer = publicContext,
         configurationIds = credentialSchemes.flatMap { it.toCredentialIdentifier() },
         grants = CredentialOfferGrants(
             authorizationCode = CredentialOfferGrantsAuthCode(
-                // TODO remember this state, for subsequent requests from the Wallet
                 issuerState = uuid4().toString(),
                 authorizationServer = authorizationService.publicContext
             ),
@@ -160,7 +160,8 @@ class CredentialIssuer(
      *
      * @param user used to create the credential when the wallet app requests the credential
      */
-    // TODO Migrate this to OAuth2AuthorizationServerAdapter?
+    @Suppress("DEPRECATION")
+    @Deprecated("Moved to authorization server", ReplaceWith("authorizationService.credentialOfferWithPreAuthnForUser(user, publicContext)"))
     suspend fun credentialOfferWithPreAuthnForUser(
         user: OidcUserInfoExtended,
     ): CredentialOffer = CredentialOffer(
@@ -201,6 +202,7 @@ class CredentialIssuer(
      * @param requestUrl public-facing URL that the client has used (to validate `DPoP`)
      * @param requestUrl HTTP method that the client has used (to validate `DPoP`)
      */
+    @Suppress("DEPRECATION")
     suspend fun credential(
         authorizationHeader: String,
         params: CredentialRequestParameters,

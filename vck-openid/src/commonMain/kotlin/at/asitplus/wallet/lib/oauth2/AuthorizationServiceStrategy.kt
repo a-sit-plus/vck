@@ -24,5 +24,8 @@ interface AuthorizationServiceStrategy {
     /** Return all valid authorization details for pre-authorized codes, that the client may use in token requests */
     fun validAuthorizationDetails(): Collection<OpenIdAuthorizationDetails>
 
+    /** Return all valid credential identifiers for all schemes. */
+    fun allCredentialIdentifier(): Collection<String>
+
 
 }

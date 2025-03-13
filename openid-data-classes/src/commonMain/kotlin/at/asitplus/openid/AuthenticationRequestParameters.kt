@@ -212,7 +212,8 @@ data class AuthenticationRequestParameters(
     /**
      * OID4VP: OPTIONAL. String value identifying a certain processing context at the Credential Issuer. A value for
      * this parameter is typically passed in a Credential Offer from the Credential Issuer to the Wallet. This request
-     * parameter is used to pass the issuer_state value back to the Credential Issuer.
+     * parameter is used to pass the `issuer_state` value back to the Credential Issuer, see
+     * [CredentialOfferGrantsAuthCode.issuerState].
      */
     @SerialName("issuer_state")
     val issuerState: String? = null,

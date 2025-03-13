@@ -25,6 +25,7 @@ interface OAuth2AuthorizationServerAdapter {
      * Provide a pre-authorized code (for flow defined in OID4VCI), to be used by the Wallet implementation
      * to load credentials.
      */
+    @Deprecated("To be removed")
     suspend fun providePreAuthorizedCode(user: OidcUserInfoExtended): String
 
 }
