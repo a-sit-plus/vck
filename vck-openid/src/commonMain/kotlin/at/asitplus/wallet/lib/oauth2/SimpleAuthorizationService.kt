@@ -77,8 +77,11 @@ class SimpleAuthorizationService(
         verifierJwsService = DefaultVerifierJwsService(),
         enforceDpop = false,
         jwsService = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithoutCert())),
-        clock = System,
-        timeLeeway = 5.minutes
+        clock = System
+    ),
+    val tokenVerificationService: TokenVerificationService = TokenVerificationService(
+        nonceService = tokenGenerationService.nonceService,
+        issuerKey = tokenGenerationService.jwsService.keyMaterial.jsonWebKey
     ),
     val clientAuthenticationService: ClientAuthenticationService = ClientAuthenticationService(
         enforceClientAuthentication = false,
@@ -338,7 +341,10 @@ class SimpleAuthorizationService(
         scope: String,
     ): TokenResponseParameters = strategy.filterScope(scope)?.let {
         if (clientAuthRequest.scope == null)
-            throw OAuth2Exception(INVALID_REQUEST, "Scope not from auth code: $scope, for code ${clientAuthRequest.issuedCode}")
+            throw OAuth2Exception(
+                INVALID_REQUEST,
+                "Scope not from auth code: $scope, for code ${clientAuthRequest.issuedCode}"
+            )
         it.split(" ").forEach { singleScope ->
             if (!clientAuthRequest.scope.contains(singleScope))
                 throw OAuth2Exception(INVALID_REQUEST, "Scope not from auth code: $singleScope")
@@ -420,7 +426,7 @@ class SimpleAuthorizationService(
             if (refreshToken == null)
                 throw OAuth2Exception(INVALID_GRANT, "refresh_token is null")
                     .also { Napier.w("token: refresh_token is null") }
-            tokenGenerationService.validateRefreshToken(refreshToken!!, dpop, requestUrl, requestMethod)
+            tokenVerificationService.validateRefreshToken(refreshToken!!, dpop, requestUrl, requestMethod)
             refreshToken?.let { refreshTokenToAuthRequest.remove(it) }
         }
 
@@ -456,7 +462,8 @@ class SimpleAuthorizationService(
         requestUrl: String?,
         requestMethod: HttpMethod?,
     ): KmmResult<OidcUserInfoExtended> = catching {
-        val accessToken = tokenGenerationService.validateToken(authorizationHeader, dpopHeader, requestUrl, requestMethod)
+        val accessToken = tokenVerificationService
+            .validateToken(authorizationHeader, dpopHeader, requestUrl, requestMethod)
 
         val result = accessTokenToAuthRequest.get(accessToken)
             ?: throw OAuth2Exception(INVALID_TOKEN, "could not load user info for access token $accessToken")
