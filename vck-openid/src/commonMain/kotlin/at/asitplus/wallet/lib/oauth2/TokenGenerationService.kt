@@ -42,8 +42,6 @@ class JwtTokenGenerationService(
     internal val publicContext: String = "https://wallet.a-sit.at/authorization-server",
     /** Used to verify client attestation JWTs. */
     internal val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
-    /** Enforce DPoP (RFC 9449), as defined in OpenID4VC HAIP, when all clients implement it. */
-    private val enforceDpop: Boolean = false,
     /** Used to sign DPoP (RFC 9449) access tokens, if supported by the client. */
     internal val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithoutCert())),
     /** Clock used to verify timestamps in access tokens and refresh tokens. */
@@ -107,9 +105,6 @@ class JwtTokenGenerationService(
                 authorizationDetails = authorizationDetails,
                 scope = scope,
             )
-        } else if (enforceDpop == true) {
-            Napier.w("dpop: no JWT provided, but enforced")
-            throw OAuth2Exception(INVALID_DPOP_PROOF, "no DPoP header value")
         } else {
             TokenResponseParameters(
                 expires = 5.minutes,
