@@ -32,7 +32,7 @@ import kotlin.time.Duration.Companion.minutes
  * Implemented from
  * [OAuth 2.0 Demonstrating Proof of Possession (DPoP)](https://datatracker.ietf.org/doc/html/rfc9449)
  */
-class TokenService(
+class TokenGenerationService(
     /** Used to create and verify nonces for tokens during issuing. */
     private val nonceService: NonceService = DefaultNonceService(),
     /** Used as issuer for issued DPoP tokens. */

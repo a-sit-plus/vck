@@ -71,7 +71,7 @@ class SimpleAuthorizationService(
     private val accessTokenToAuthRequest: MapStore<String, IssuedAccessToken> = DefaultMapStore(),
     /** Associates the issued request_uri to the auth request from the client. */
     private val requestUriToPushedAuthorizationRequest: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
-    val tokenService: TokenService = TokenService(
+    val tokenGenerationService: TokenGenerationService = TokenGenerationService(
         nonceService = DefaultNonceService(),
         publicContext = publicContext,
         verifierJwsService = DefaultVerifierJwsService(),
@@ -108,7 +108,7 @@ class SimpleAuthorizationService(
             pushedAuthorizationRequestEndpoint = "$publicContext$pushedAuthorizationRequestEndpointPath",
             requirePushedAuthorizationRequests = true, // per OID4VC HAIP
             tokenEndPointAuthMethodsSupported = setOf(AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH), // per OID4VC HAIP
-            dpopSigningAlgValuesSupportedStrings = tokenService.verifierJwsService.supportedAlgorithms.map { it.identifier }
+            dpopSigningAlgValuesSupportedStrings = tokenGenerationService.verifierJwsService.supportedAlgorithms.map { it.identifier }
                 .toSet() // per OID4VC HAIP
         )
     }
@@ -287,7 +287,7 @@ class SimpleAuthorizationService(
         }
 
         clientAuthenticationService.authenticateClient(clientAttestation, clientAttestationPop, request.clientId)
-        val token = tokenService.buildToken(dpop, requestUrl, requestMethod)
+        val token = tokenGenerationService.buildToken(dpop, requestUrl, requestMethod)
         val enrichedToken = if (request.authorizationDetails != null) {
             tokenForAuthnDetails(token, clientAuthRequest, request.authorizationDetails!!)
         } else if (request.scope != null) {
@@ -420,7 +420,7 @@ class SimpleAuthorizationService(
             if (refreshToken == null)
                 throw OAuth2Exception(INVALID_GRANT, "refresh_token is null")
                     .also { Napier.w("token: refresh_token is null") }
-            tokenService.validateRefreshToken(refreshToken!!, dpop, requestUrl, requestMethod)
+            tokenGenerationService.validateRefreshToken(refreshToken!!, dpop, requestUrl, requestMethod)
             refreshToken?.let { refreshTokenToAuthRequest.remove(it) }
         }
 
@@ -456,7 +456,7 @@ class SimpleAuthorizationService(
         requestUrl: String?,
         requestMethod: HttpMethod?,
     ): KmmResult<OidcUserInfoExtended> = catching {
-        val accessToken = tokenService.validateToken(authorizationHeader, dpopHeader, requestUrl, requestMethod)
+        val accessToken = tokenGenerationService.validateToken(authorizationHeader, dpopHeader, requestUrl, requestMethod)
 
         val result = accessTokenToAuthRequest.get(accessToken)
             ?: throw OAuth2Exception(INVALID_TOKEN, "could not load user info for access token $accessToken")
