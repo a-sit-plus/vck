@@ -17,6 +17,7 @@ import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.oauth2.ClientAuthenticationService
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oauth2.JwtTokenGenerationService
+import at.asitplus.wallet.lib.oauth2.TokenService
 import at.asitplus.wallet.lib.oidvci.*
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
@@ -251,9 +252,11 @@ class OpenId4VciClientTest : FunSpec() {
             clientAuthenticationService = ClientAuthenticationService(
                 enforceClientAuthentication = true,
             ),
-            tokenGenerationService = JwtTokenGenerationService(
-                issueRefreshToken = true
-            )
+            tokenService = TokenService.jwt(
+                nonceService = DefaultNonceService(),
+                keyMaterial = EphemeralKeyWithoutCert(),
+                issueRefreshTokens = true
+            ),
         )
         val credentialIssuer = CredentialIssuer(
             authorizationService = authorizationService,

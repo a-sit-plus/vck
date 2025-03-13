@@ -8,6 +8,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
+import at.asitplus.wallet.lib.oidvci.DefaultNonceService
 import at.asitplus.wallet.lib.oidvci.buildDPoPHeader
 import at.asitplus.wallet.lib.oidvci.randomString
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
@@ -56,9 +57,11 @@ class OAuth2ClientDPoPTest : FunSpec({
         }
         server = SimpleAuthorizationService(
             strategy = authorizationServiceStrategy,
-            tokenGenerationService = JwtTokenGenerationService(
-                issueRefreshToken = true
-            )
+            tokenService = TokenService.jwt(
+                nonceService = DefaultNonceService(),
+                keyMaterial = EphemeralKeyWithoutCert(),
+                issueRefreshTokens = true
+            ),
         )
         clientKey = EphemeralKeyWithSelfSignedCert()
         jwsService = DefaultJwsService(DefaultCryptoService(clientKey))
@@ -169,6 +172,21 @@ class OAuth2ClientDPoPTest : FunSpec({
                 dpop = jwsService.buildDPoPHeader("https://example.com/somethingelse"),
                 requestUrl = tokenUrl,
                 requestMethod = HttpMethod.Post,
+            ).getOrThrow()
+        }
+    }
+
+    test("authorization code flow without DPoP for token") {
+        val state = uuid4().toString()
+        val code = getCode(state)
+
+        shouldThrow<OAuth2Exception> {
+            server.token(
+                client.createTokenRequestParameters(
+                    state = state,
+                    authorization = OAuth2Client.AuthorizationForToken.Code(code),
+                    scope = scope
+                )
             ).getOrThrow()
         }
     }

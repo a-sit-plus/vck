@@ -25,12 +25,12 @@ interface TokenGenerationService {
         requestMethod: HttpMethod?,
         oidcUserInfo: OidcUserInfoExtended?,
         authorizationDetails: Set<AuthorizationDetails>?,
-        scope: String?
+        scope: String?,
     ): TokenResponseParameters
 }
 
 /**
- * Simple Bearer token and DPoP token implementation for an OAuth 2.0 authorization server.
+ * Simple DPoP token generation for an OAuth 2.0 authorization server, with [OpenId4VciAccessToken] as payload.
  *
  * Implemented from
  * [OAuth 2.0 Demonstrating Proof of Possession (DPoP)](https://datatracker.ietf.org/doc/html/rfc9449)
@@ -58,7 +58,10 @@ class JwtTokenGenerationService(
         authorizationDetails: Set<AuthorizationDetails>?,
         scope: String?,
     ): TokenResponseParameters =
-        if (dpop != null) {
+        if (dpop == null) {
+            Napier.w("dpop: no JWT provided, but enforced")
+            throw OAuth2Exception(INVALID_DPOP_PROOF, "no DPoP header value")
+        } else {
             val clientKey = validateDpopJwtForToken(dpop, requestUrl, requestMethod)
             TokenResponseParameters(
                 expires = 5.minutes,
@@ -110,14 +113,6 @@ class JwtTokenGenerationService(
                 authorizationDetails = authorizationDetails,
                 scope = scope,
             )
-        } else {
-            TokenResponseParameters(
-                expires = 5.minutes,
-                tokenType = TOKEN_TYPE_BEARER,
-                accessToken = nonceService.provideNonce(),
-                authorizationDetails = authorizationDetails,
-                scope = scope,
-            )
         }
 
     private fun validateDpopJwtForToken(
@@ -161,4 +156,42 @@ class JwtTokenGenerationService(
     private val JsonWebKey.jwkThumbprintPlain
         get() = this.jwkThumbprint.removePrefix("urn:ietf:params:oauth:jwk-thumbprint:sha256:")
 
+}
+
+/**
+ * Simple bearer token generation for an OAuth 2.0 authorization server.
+ *
+ * Implemented from
+ * [OAuth 2.0 Demonstrating Proof of Possession (DPoP)](https://datatracker.ietf.org/doc/html/rfc9449)
+ */
+class BearerTokenGenerationService(
+    /** Used to create nonces for tokens during issuing. */
+    internal val nonceService: NonceService = DefaultNonceService(),
+) : TokenGenerationService {
+
+    /** Only for local tests. */
+    private val listOfValidatedAccessToken = mutableListOf<ValidatedAccessToken>()
+
+    override suspend fun buildToken(
+        dpop: String?,
+        requestUrl: String?,
+        requestMethod: HttpMethod?,
+        oidcUserInfo: OidcUserInfoExtended?,
+        authorizationDetails: Set<AuthorizationDetails>?,
+        scope: String?,
+    ): TokenResponseParameters = TokenResponseParameters(
+        expires = 5.minutes,
+        tokenType = TOKEN_TYPE_BEARER,
+        accessToken = nonceService.provideNonce(),
+        authorizationDetails = authorizationDetails,
+        scope = scope,
+    ).also {
+        listOfValidatedAccessToken.add(
+            ValidatedAccessToken(it.accessToken, oidcUserInfo, authorizationDetails, scope)
+        )
+    }
+
+    fun getValidatedAccessToken(accessToken: String): ValidatedAccessToken? {
+        return listOfValidatedAccessToken.firstOrNull { it.token == accessToken }
+    }
 }
