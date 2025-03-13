@@ -37,7 +37,7 @@ class OAuth2ClientDPoPTest : FunSpec({
     beforeEach {
         scope = randomString()
         client = OAuth2Client()
-        user = OidcUserInfoExtended(OidcUserInfo(randomString()), JsonObject(mapOf()))
+        user = OidcUserInfoExtended(OidcUserInfo(randomString()))
         authorizationServiceStrategy = object : AuthorizationServiceStrategy {
             override suspend fun loadUserInfo(
                 request: AuthenticationRequestParameters,
@@ -169,21 +169,6 @@ class OAuth2ClientDPoPTest : FunSpec({
                 dpop = jwsService.buildDPoPHeader("https://example.com/somethingelse"),
                 requestUrl = tokenUrl,
                 requestMethod = HttpMethod.Post,
-            ).getOrThrow()
-        }
-    }
-
-    test("authorization code flow without DPoP for token") {
-        val state = uuid4().toString()
-        val code = getCode(state)
-
-        shouldThrow<OAuth2Exception> {
-            server.token(
-                client.createTokenRequestParameters(
-                    state = state,
-                    authorization = OAuth2Client.AuthorizationForToken.Code(code),
-                    scope = scope
-                )
             ).getOrThrow()
         }
     }

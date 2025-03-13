@@ -23,7 +23,7 @@ class OAuth2ClientTest : FunSpec({
     beforeEach {
         scope = randomString()
         client = OAuth2Client()
-        user = OidcUserInfoExtended(OidcUserInfo(randomString()), JsonObject(mapOf()))
+        user = OidcUserInfoExtended(OidcUserInfo(randomString()))
         server = SimpleAuthorizationService(
             strategy = object : AuthorizationServiceStrategy {
                 override suspend fun loadUserInfo(

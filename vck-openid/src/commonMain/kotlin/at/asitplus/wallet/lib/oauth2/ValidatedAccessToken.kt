@@ -5,7 +5,7 @@ import at.asitplus.openid.OpenIdAuthorizationDetails
 
 data class ValidatedAccessToken(
     val token: String,
-    val userInfoExtended: OidcUserInfoExtended,
-    val scope: String? = null,
+    val userInfoExtended: OidcUserInfoExtended? = null,
     val authorizationDetails: Set<OpenIdAuthorizationDetails>? = null,
+    val scope: String? = null,
 )

@@ -76,8 +76,10 @@ class OidvciPreAuthTest : FreeSpec({
             clientNonce = clientNonce,
         ).getOrThrow()
 
-        val credential = issuer.credential(token.toHttpHeaderValue(), credentialRequest.first())
-            .getOrThrow()
+        val credential = issuer.credential(
+            authorizationHeader = token.toHttpHeaderValue(),
+            params = credentialRequest.first()
+        ).getOrThrow()
         credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
     }
 

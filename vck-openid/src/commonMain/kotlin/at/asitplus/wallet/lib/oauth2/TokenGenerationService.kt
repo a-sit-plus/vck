@@ -68,7 +68,7 @@ class JwtTokenGenerationService(
                         algorithm = jwsService.algorithm,
                         type = JwsContentTypeConstants.RT_JWT
                     ),
-                    payload = JsonWebToken(
+                    payload = OpenId4VciAccessToken(
                         issuer = publicContext,
                         jwtId = nonceService.provideNonce(),
                         notBefore = clock.now(),
@@ -76,8 +76,11 @@ class JwtTokenGenerationService(
                         confirmationClaim = ConfirmationClaim(
                             jsonWebKeyThumbprint = clientKey.jwkThumbprintPlain
                         ),
+                        userInfo = oidcUserInfo?.jsonObject,
+                        scope = scope,
+                        authorizationDetails = authorizationDetails,
                     ),
-                    serializer = JsonWebToken.serializer(),
+                    serializer = OpenId4VciAccessToken.serializer(),
                     addKeyId = false,
                     addJsonWebKey = true,
                     addX5c = false,
@@ -85,10 +88,9 @@ class JwtTokenGenerationService(
                 accessToken = jwsService.createSignedJwsAddingParams(
                     header = JwsHeader(
                         algorithm = jwsService.algorithm,
-                        type = JwsContentTypeConstants.AT_JWT
+                        type = JwsContentTypeConstants.OID4VCI_AT_JWT
                     ),
-                    // TODO custom type for payload, and include oidcUserInfo
-                    payload = JsonWebToken(
+                    payload = OpenId4VciAccessToken(
                         issuer = publicContext,
                         jwtId = nonceService.provideNonce(),
                         notBefore = clock.now(),
@@ -96,8 +98,11 @@ class JwtTokenGenerationService(
                         confirmationClaim = ConfirmationClaim(
                             jsonWebKeyThumbprint = clientKey.jwkThumbprintPlain
                         ),
+                        userInfo = oidcUserInfo?.jsonObject,
+                        scope = scope,
+                        authorizationDetails = authorizationDetails,
                     ),
-                    serializer = JsonWebToken.serializer(),
+                    serializer = OpenId4VciAccessToken.serializer(),
                     addKeyId = false,
                     addJsonWebKey = true,
                     addX5c = false,
