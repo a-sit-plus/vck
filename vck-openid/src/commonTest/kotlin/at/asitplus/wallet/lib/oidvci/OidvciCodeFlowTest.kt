@@ -185,7 +185,7 @@ class OidvciCodeFlowTest : FreeSpec({
 
     "authorizationService with defect mapstore leads to an error" {
         authorizationService = SimpleAuthorizationService(
-            codeToUserToAuthRequest = defectMapStore(),
+            codeToClientAuthRequest = defectMapStore(),
             strategy = CredentialAuthorizationServiceStrategy(
                 DummyOAuth2DataProvider,
                 setOf(AtomicAttribute2023)
