@@ -11,7 +11,6 @@ import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.Holder.StoreCredentialInput.*
-import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -83,7 +82,6 @@ class OpenId4VciClient(
     private val dpopCryptoService: CryptoService,
     /** Crypto service for the OpenID4VCI process, i.e. providing proof of possession for credential key material */
     private val credentialCryptoService: CryptoService,
-    private val holderAgent: HolderAgent,
     /**
      * This URL needs to be registered by the mobile operating system for this application,
      * so the redirection back from the browser (for authorization) works.
@@ -306,7 +304,7 @@ class OpenId4VciClient(
         dpopSigningAlgValuesSupported?.contains(dpopJwsService.algorithm) == true
 
     /**
-     * Will use the [tokenResponse] to request a credential and store it in [holderAgent].
+     * Will use the [tokenResponse] to request a credential and store it with [storeCredential].
      */
     @Throws(Exception::class)
     private suspend fun postCredentialRequestAndStore(
@@ -318,10 +316,18 @@ class OpenId4VciClient(
         val credentialEndpointUrl = issuerMetadata.credentialEndpointUrl
         Napier.i("postCredentialRequestAndStore: $credentialEndpointUrl")
         Napier.d("postCredentialRequestAndStore: $tokenResponse")
+
+        val clientNonce = issuerMetadata.nonceEndpointUrl?.let { nonceUrl ->
+            client.post(nonceUrl).body<ClientNonceResponse>().clientNonce.also {
+                Napier.i("postCredentialRequestAndStore: $it from $nonceUrl")
+            }
+        }
+
         val credentialRequests = oid4vciService.createCredentialRequest(
             tokenResponse = tokenResponse,
             metadata = issuerMetadata,
             credentialFormat = credentialFormat,
+            clientNonce = clientNonce,
         ).getOrThrow()
 
         val dpopHeader = if (tokenResponse.tokenType.equals(TOKEN_TYPE_DPOP, true))

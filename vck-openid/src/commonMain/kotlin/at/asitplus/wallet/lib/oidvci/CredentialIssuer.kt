@@ -10,21 +10,27 @@ import at.asitplus.openid.OpenIdConstants.ProofType
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
+import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
+import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
+import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.HttpMethod
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Clock.System
+import kotlinx.serialization.builtins.serializer
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
@@ -58,6 +64,11 @@ class CredentialIssuer(
      */
     private val credentialEndpointPath: String = "/credential",
     /**
+     * Used to build [IssuerMetadata.nonceEndpointUrl], i.e. implementers need to forward requests
+     * to that URI (which starts with [publicContext]) to [nonce].
+     */
+    private val nonceEndpointPath: String = "/nonce",
+    /**
      * Used during issuance, when issuing credentials (using [issuer]) with data from [OidcUserInfoExtended]
      */
     private val credentialProvider: CredentialIssuerDataProvider,
@@ -81,6 +92,12 @@ class CredentialIssuer(
      * Turn on to require key attestation support in the [metadata]
      */
     private val requireKeyAttestation: Boolean = false,
+    /** Used to provide challenge to clients to include in proof of possession of key material. */
+    private val clientNonceService: NonceService = DefaultNonceService(),
+    /** Used to optionally encrypt the credential response, if requested by the client. */
+    private val jwsEncryptionService: JwsService = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithoutCert())),
+    /** Whether to indicate in [metadata] if credential response encryption is required. */
+    private val requireEncryption: Boolean = false,
 ) {
     private val supportedCredentialConfigurations = credentialSchemes
         .flatMap { it.toSupportedCredentialFormat(issuer.cryptoAlgorithms).entries }
@@ -113,8 +130,14 @@ class CredentialIssuer(
             credentialIssuer = publicContext,
             authorizationServers = setOf(authorizationService.publicContext),
             credentialEndpointUrl = "$publicContext$credentialEndpointPath",
+            nonceEndpointUrl = "$publicContext$nonceEndpointPath",
             supportedCredentialConfigurations = supportedCredentialConfigurations,
-            batchCredentialIssuance = BatchCredentialIssuanceMetadata(1)
+            batchCredentialIssuance = BatchCredentialIssuanceMetadata(1),
+            credentialResponseEncryption = SupportedAlgorithmsContainer(
+                supportedAlgorithmsStrings = setOf(jwsEncryptionService.encryptionAlgorithm.identifier),
+                supportedEncryptionAlgorithmsStrings = setOf(jwsEncryptionService.encryptionEncoding.text),
+                encryptionRequired = requireEncryption,
+            )
         )
     }
 
@@ -168,6 +191,19 @@ class CredentialIssuer(
             )
         )
     )
+
+    /**
+     * Provides a fresh nonce to the clients, for incorporating them into the credential proofs.
+     *
+     * Requests from the client are HTTP POST.
+     *
+     * MUST be delivered with `Cache-Control: no-store` as HTTP header.
+     */
+    suspend fun nonce() = catching {
+        ClientNonceResponse(
+            clientNonce = clientNonceService.provideNonce()
+        )
+    }
 
     /**
      * Verifies the [authorizationHeader] to contain a token from [authorizationService],
@@ -226,9 +262,30 @@ class CredentialIssuer(
                     .also { Napier.w("credential: issuer did not issue credential", it) }
             }
         }
-        // TODO Encrypt optionally
-        issuedCredentials.toCredentialResponseParameters()
+        issuedCredentials.toCredentialResponseParameters(params.encrypter())
             .also { Napier.i("credential returns $it") }
+    }
+
+    /** Encrypts the issued credential, if requested so by the client. */
+    private fun CredentialRequestParameters.encrypter(): (suspend (String) -> String) = { it: String ->
+        if (credentialResponseEncryption?.jweEncryption != null) {
+            with(credentialResponseEncryption!!) {
+                jwsEncryptionService.encryptJweObject(
+                    header = JweHeader(
+                        algorithm = jweAlgorithm,
+                        encryption = jweEncryption,
+                        keyId = jsonWebKey.keyId,
+                    ),
+                    payload = it,
+                    serializer = String.serializer(),
+                    recipientKey = jsonWebKey,
+                    jweAlgorithm = jweAlgorithm,
+                    jweEncryption = jweEncryption!!,
+                ).getOrNull()?.serialize() ?: it
+            }
+        } else {
+            it
+        }
     }
 
     private suspend fun validateProofExtractSubjectPublicKeys(params: CredentialRequestParameters): Collection<CryptoPublicKey> =
@@ -254,12 +311,12 @@ class CredentialIssuer(
             Napier.w("validateJwtProof: invalid typ: $header")
             throw OAuth2Exception(Errors.INVALID_PROOF, "invalid typ: ${header.type}")
         }
-        if (authorizationService.supportsClientNonce) {
-            if (payload.nonce == null || !authorizationService.verifyClientNonce(payload.nonce!!)) {
-                Napier.w("validateJwtProof: invalid nonce: ${payload.nonce}")
-                throw OAuth2Exception(Errors.INVALID_PROOF, "invalid nonce: ${payload.nonce}")
-            }
+
+        if (payload.nonce == null || !clientNonceService.verifyNonce(payload.nonce!!)) {
+            Napier.w("validateJwtProof: invalid nonce: ${payload.nonce}")
+            throw OAuth2Exception(Errors.INVALID_NONCE, "invalid nonce: ${payload.nonce}")
         }
+
         if (payload.audience == null || payload.audience != publicContext) {
             Napier.w("validateJwtProof: invalid audience: ${payload.audience}")
             throw OAuth2Exception(Errors.INVALID_PROOF, "invalid audience: ${payload.audience}")
@@ -290,11 +347,9 @@ class CredentialIssuer(
             Napier.w("validateAttestationProof: invalid typ: $header")
             throw OAuth2Exception(Errors.INVALID_PROOF, "invalid typ: ${header.type}")
         }
-        if (authorizationService.supportsClientNonce) {
-            if (payload.nonce == null || !authorizationService.verifyClientNonce(payload.nonce!!)) {
-                Napier.w("validateAttestationProof: invalid nonce: ${payload.nonce}")
-                throw OAuth2Exception(Errors.INVALID_PROOF, "invalid nonce: ${payload.nonce}")
-            }
+        if (payload.nonce == null || !clientNonceService.verifyNonce(payload.nonce!!)) {
+            Napier.w("validateAttestationProof: invalid nonce: ${payload.nonce}")
+            throw OAuth2Exception(Errors.INVALID_NONCE, "invalid nonce: ${payload.nonce}")
         }
         if (payload.issuedAt > (clock.now() + timeLeeway)) {
             Napier.w("validateAttestationProof: issuedAt in future: ${payload.issuedAt}")

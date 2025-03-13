@@ -23,6 +23,7 @@ import kotlinx.datetime.Clock.System
 import kotlin.String
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 
 /**
@@ -56,6 +57,7 @@ class TokenService(
         if (dpop != null) {
             val clientKey = validateDpopJwtForToken(dpop, requestUrl, requestMethod)
             TokenResponseParameters(
+                expires = 3600.seconds,
                 tokenType = TOKEN_TYPE_DPOP,
                 accessToken = jwsService.createSignedJwsAddingParams(
                     header = JwsHeader(
@@ -82,6 +84,7 @@ class TokenService(
             throw OAuth2Exception(INVALID_DPOP_PROOF, "no DPoP header value")
         } else {
             TokenResponseParameters(
+                expires = 3600.seconds,
                 tokenType = TOKEN_TYPE_BEARER,
                 accessToken = nonceService.provideNonce(),
             )

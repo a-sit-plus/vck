@@ -35,23 +35,13 @@ import kotlinx.datetime.Clock
  * , Draft 15, 2024-12-19.
  */
 class WalletService(
-    /**
-     * Used to create [AuthenticationRequestParameters], [TokenRequestParameters] and [CredentialRequestProof],
-     * typically a URI.
-     */
+    /** Used to create request parameters, e.g. [AuthenticationRequestParameters], typically a URI. */
     private val clientId: String = "https://wallet.a-sit.at/app",
-    /**
-     * Used to create [AuthenticationRequestParameters] and [TokenRequestParameters].
-     */
+    /** Used to create [AuthenticationRequestParameters] and [TokenRequestParameters]. */
     private val redirectUrl: String = "$clientId/callback",
-    /**
-     * Used to prove possession of the key material to create [CredentialRequestProof],
-     * i.e. the holder key.
-     */
+    /** Used to prove possession of the key material to create [CredentialRequestProof], i.e. the holder key. */
     private val cryptoService: CryptoService = DefaultCryptoService(EphemeralKeyWithoutCert()),
-    /**
-     * Used to prove possession of the key material to create [CredentialRequestProof].
-     */
+    /** Used to prove possession of the key material to create [CredentialRequestProof]. */
     private val jwsService: JwsService = DefaultJwsService(cryptoService),
     /**
      * Need to implement if resources are defined by reference, i.e. the URL for a [JsonWebKeySet],
@@ -66,9 +56,16 @@ class WalletService(
      * this should probably be moved to [at.asitplus.wallet.lib.agent.CryptoService].
      */
     private val loadKeyAttestation: (suspend (KeyAttestationInput) -> KmmResult<JwsSigned<KeyAttestationJwt>>)? = null,
+    /** Whether to request encryption of credentials, if the issuer supports it. */
+    private val requestEncryption: Boolean = false,
+    /** Optional key material to advertise for credential response encryption, see [requestEncryption]. */
+    private val decryptionKeyMaterial: KeyMaterial? = null,
 ) {
 
     data class KeyAttestationInput(val clientNonce: String?, val supportedAlgorithms: Collection<String>?)
+
+    private val jweDecryptionService: JwsService? =
+        decryptionKeyMaterial?.let { DefaultJwsService(DefaultCryptoService(decryptionKeyMaterial)) }
 
     val oauth2Client: OAuth2Client = OAuth2Client(clientId, redirectUrl)
 
@@ -249,11 +246,14 @@ class WalletService(
      * @param tokenResponse from the authorization server token endpoint
      * @param metadata the issuer's metadata, see [IssuerMetadata]
      * @param credentialFormat which credential to request (needed to build the correct proof)
+     * @param clientNonce if required by the issuer (see [IssuerMetadata.nonceEndpointUrl]),
+     * the value from there, exactly [ClientNonceResponse.clientNonce]
      */
     suspend fun createCredentialRequest(
         tokenResponse: TokenResponseParameters,
         metadata: IssuerMetadata,
         credentialFormat: SupportedCredentialFormat,
+        clientNonce: String? = null,
         clock: Clock = Clock.System,
     ): KmmResult<Collection<CredentialRequestParameters>> = catching {
         val requests = tokenResponse.authorizationDetails?.let {
@@ -272,11 +272,28 @@ class WalletService(
             }.toSet()
         } ?: throw IllegalArgumentException("Can't parse tokenResponse: $tokenResponse")
         requests.map {
-            it.copy(proof = createCredentialRequestProof(metadata, credentialFormat, tokenResponse.clientNonce, clock))
+            it.copy(
+                proof = createCredentialRequestProof(
+                    metadata = metadata,
+                    credentialFormat = credentialFormat,
+                    clientNonce = clientNonce ?: tokenResponse.clientNonce,
+                    clock = clock
+                ),
+                credentialResponseEncryption = metadata.credentialResponseEncryption()
+            )
         }.also {
             Napier.i("createCredentialRequest returns $it")
         }
     }
+
+    private fun IssuerMetadata.credentialResponseEncryption(): CredentialResponseEncryption? =
+        if (requestEncryption && decryptionKeyMaterial != null && jweDecryptionService != null && credentialResponseEncryption != null) {
+            CredentialResponseEncryption(
+                jsonWebKey = decryptionKeyMaterial.jsonWebKey,
+                jweAlgorithm = jwsService.encryptionAlgorithm,
+                jweEncryptionString = jwsService.encryptionEncoding.text
+            )
+        } else null
 
     @Suppress("DEPRECATION")
     @Deprecated("Removed in OID4VCI draft 15", ReplaceWith("createCredentialRequest(tokenResponse, credentialIssuer)"))

@@ -67,11 +67,13 @@ class OidvciPreAuthTest : FreeSpec({
         val token = getToken(credentialOffer, setOf(credentialIdToRequest))
         token.authorizationDetails.shouldNotBeNull()
             .first().shouldBeInstanceOf<OpenIdAuthorizationDetails>()
+        val clientNonce = issuer.nonce().getOrThrow().clientNonce
 
         val credentialRequest = client.createCredentialRequest(
             tokenResponse = token,
             metadata = issuer.metadata,
             credentialFormat = credentialFormat,
+            clientNonce = clientNonce,
         ).getOrThrow()
 
         val credential = issuer.credential(token.toHttpHeaderValue(), credentialRequest.first())
@@ -86,6 +88,7 @@ class OidvciPreAuthTest : FreeSpec({
             .toSet()
 
         val token = getToken(credentialOffer, credentialIdsToRequest)
+        val clientNonce = issuer.nonce().getOrThrow().clientNonce
         val authnDetails = token.authorizationDetails
             .shouldNotBeNull()
             .shouldHaveSize(4)
@@ -97,6 +100,7 @@ class OidvciPreAuthTest : FreeSpec({
                 tokenResponse = token,
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
+                clientNonce = clientNonce,
             ).getOrThrow()
 
             issuer.credential(token.toHttpHeaderValue(), credentialRequest.first())
@@ -124,11 +128,13 @@ class OidvciPreAuthTest : FreeSpec({
             resource = issuer.metadata.credentialIssuer,
         )
         val token = authorizationService.token(tokenRequest).getOrThrow()
+        val clientNonce = issuer.nonce().getOrThrow().clientNonce
 
         val credentialRequest = client.createCredentialRequest(
             tokenResponse = token,
             metadata = issuer.metadata,
             credentialFormat = supportedCredentialFormat,
+            clientNonce = clientNonce,
         ).getOrThrow()
 
         issuer.credential(token.toHttpHeaderValue(), credentialRequest.first())
@@ -146,12 +152,13 @@ class OidvciPreAuthTest : FreeSpec({
             .filterIsInstance<OpenIdAuthorizationDetails>()
             .first().credentialIdentifiers.shouldNotBeNull().first()
 
+        val clientNonce = issuer.nonce().getOrThrow().clientNonce
         val proof = client.createCredentialRequestProofJwt(
-            clientNonce = token.clientNonce,
+            clientNonce = clientNonce,
             credentialIssuer = issuer.metadata.credentialIssuer,
         )
         val differentProof = WalletService().createCredentialRequestProofJwt(
-            clientNonce = token.clientNonce,
+            clientNonce = clientNonce,
             credentialIssuer = issuer.metadata.credentialIssuer,
         )
 

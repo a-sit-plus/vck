@@ -372,6 +372,11 @@ object OpenIdConstants {
         const val INVALID_PROOF = "invalid_or_missing_proof"
 
         /**
+         * Invalid client nonce in OpenId4VCI: `invalid_nonce`
+         */
+        const val INVALID_NONCE = "invalid_nonce"
+
+        /**
          * OIDC SIOPv2: End-User cancelled the Authorization Request from the RP.
          */
         const val USER_CANCELLED = "user_cancelled"

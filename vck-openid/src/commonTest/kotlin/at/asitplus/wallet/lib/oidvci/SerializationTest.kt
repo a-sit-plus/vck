@@ -52,8 +52,6 @@ class SerializationTest : FunSpec({
         tokenType = TOKEN_TYPE_BEARER,
         expires = Random.nextInt(1, Int.MAX_VALUE).seconds,
         scope = randomString(),
-        clientNonce = randomString(),
-        clientNonceExpiresIn = Random.nextInt(1, Int.MAX_VALUE).seconds,
         authorizationPending = false,
         interval = Random.nextInt(1, Int.MAX_VALUE).seconds,
     )
@@ -124,8 +122,6 @@ class SerializationTest : FunSpec({
         json shouldContain "\"access_token\":"
         json shouldContain "\"token_type\":"
         json shouldContain "\"expires_in\":"
-        json shouldContain "\"c_nonce\":"
-        json shouldContain "\"c_nonce_expires_in\":"
         val parsed: TokenResponseParameters = vckJsonSerializer.decodeFromString(json)
         parsed shouldBe params
     }
