@@ -23,6 +23,9 @@ interface TokenGenerationService {
         dpop: String?,
         requestUrl: String?,
         requestMethod: HttpMethod?,
+        oidcUserInfo: OidcUserInfoExtended?,
+        authorizationDetails: Set<AuthorizationDetails>?,
+        scope: String?
     ): TokenResponseParameters
 }
 
@@ -53,6 +56,9 @@ class JwtTokenGenerationService(
         dpop: String?,
         requestUrl: String?,
         requestMethod: HttpMethod?,
+        oidcUserInfo: OidcUserInfoExtended?,
+        authorizationDetails: Set<AuthorizationDetails>?,
+        scope: String?,
     ): TokenResponseParameters =
         if (dpop != null) {
             val clientKey = validateDpopJwtForToken(dpop, requestUrl, requestMethod)
@@ -83,6 +89,7 @@ class JwtTokenGenerationService(
                         algorithm = jwsService.algorithm,
                         type = JwsContentTypeConstants.AT_JWT
                     ),
+                    // TODO custom type for payload, and include oidcUserInfo
                     payload = JsonWebToken(
                         issuer = publicContext,
                         jwtId = nonceService.provideNonce(),
@@ -96,7 +103,9 @@ class JwtTokenGenerationService(
                     addKeyId = false,
                     addJsonWebKey = true,
                     addX5c = false,
-                ).getOrThrow().serialize()
+                ).getOrThrow().serialize(),
+                authorizationDetails = authorizationDetails,
+                scope = scope,
             )
         } else if (enforceDpop == true) {
             Napier.w("dpop: no JWT provided, but enforced")
@@ -106,6 +115,8 @@ class JwtTokenGenerationService(
                 expires = 5.minutes,
                 tokenType = TOKEN_TYPE_BEARER,
                 accessToken = nonceService.provideNonce(),
+                authorizationDetails = authorizationDetails,
+                scope = scope,
             )
         }
 
