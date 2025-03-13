@@ -101,15 +101,13 @@ class OAuth2ClientDPoPTest : FunSpec({
             accessToken = token.accessToken
         )
 
-        // this is our protected resource
-        server.getUserInfo(
+        // simulate access to protected resource, i.e. verify access token
+        server.tokenVerificationService.validateTokenExtractUser(
             token.toHttpHeaderValue(),
             dpopHeader = dpopForResource,
-            credentialIdentifier = null,
-            credentialConfigurationId = scope,
             requestUrl = resourceUrl,
             requestMethod = HttpMethod.Post,
-        ).getOrThrow()
+        )
     }
 
     test("authorization code flow with DPoP and refresh token") {
@@ -147,15 +145,13 @@ class OAuth2ClientDPoPTest : FunSpec({
             accessToken = refreshedAccessToken.accessToken
         )
 
-        // this is our protected resource
-        server.getUserInfo(
+        // simulate access to protected resource, i.e. verify access token
+        server.tokenVerificationService.validateTokenExtractUser(
             refreshedAccessToken.toHttpHeaderValue(),
             dpopHeader = dpopForResource,
-            credentialIdentifier = null,
-            credentialConfigurationId = scope,
             requestUrl = resourceUrl,
             requestMethod = HttpMethod.Post,
-        ).getOrThrow()
+        )
     }
 
     test("authorization code flow with DPoP and wrong URL") {
@@ -208,14 +204,14 @@ class OAuth2ClientDPoPTest : FunSpec({
             it.tokenType shouldBe TOKEN_TYPE_DPOP
         }
 
-        // this is our protected resource
+        // simulate access to protected resource, i.e. verify access token
         shouldThrow<OAuth2Exception> {
-            server.getUserInfo(
+            server.tokenVerificationService.validateTokenExtractUser(
                 token.toHttpHeaderValue(),
                 dpopHeader = null,
-                credentialIdentifier = null,
-                credentialConfigurationId = scope
-            ).getOrThrow()
+                requestUrl = null,
+                requestMethod = null,
+            )
         }
     }
 
@@ -240,16 +236,14 @@ class OAuth2ClientDPoPTest : FunSpec({
             accessToken = token.accessToken
         )
 
-        // this is our protected resource
+        // simulate access to protected resource, i.e. verify access token
         shouldThrow<OAuth2Exception> {
-            server.getUserInfo(
+            server.tokenVerificationService.validateTokenExtractUser(
                 token.toHttpHeaderValue(),
                 dpopHeader = dpopForResource,
-                credentialIdentifier = null,
-                credentialConfigurationId = scope,
                 requestUrl = resourceUrl,
                 requestMethod = HttpMethod.Post,
-            ).getOrThrow()
+            )
         }
     }
 })
