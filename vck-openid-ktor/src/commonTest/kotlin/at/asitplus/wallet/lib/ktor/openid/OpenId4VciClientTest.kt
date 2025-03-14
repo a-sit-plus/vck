@@ -241,10 +241,8 @@ class OpenId4VciClientTest : FunSpec() {
         val parEndpointPath = "/par"
         val publicContext = "https://issuer.example.com"
         val authorizationService = SimpleAuthorizationService(
-            strategy = CredentialAuthorizationServiceStrategy(
-                dataProvider = dataProvider,
-                credentialSchemes = credentialSchemes
-            ),
+            strategy = CredentialAuthorizationServiceStrategy(credentialSchemes),
+            dataProvider = dataProvider,
             publicContext = publicContext,
             authorizationEndpointPath = authorizationEndpointPath,
             tokenEndpointPath = tokenEndpointPath,

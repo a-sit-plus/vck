@@ -37,8 +37,10 @@ import kotlin.time.Duration.Companion.minutes
  * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-05.html)
  */
 class SimpleAuthorizationService(
-    /** Used to load user data and filter authorization details and scopes. */
+    /** Used to filter authorization details and scopes. */
     private val strategy: AuthorizationServiceStrategy,
+    /** Used to load the actual user data during [authorize]. */
+    private val dataProvider: OAuth2DataProvider,
     /** Used to create and verify authorization codes during issuing. */
     private val codeService: CodeService = DefaultCodeService(),
     /** Used in several fields in [OAuth2AuthorizationServerMetadata], to provide endpoint URLs to clients. */
@@ -248,8 +250,8 @@ class SimpleAuthorizationService(
         validateAuthnRequest(request)
 
         val code = codeService.provideCode().also { code ->
-            val userInfo = strategy.loadUserInfo(request, code)
-                ?: throw InvalidRequest("Could not load user info for code=$code")
+            val userInfo = dataProvider.loadUserInfo(request, code)
+                ?: throw InvalidRequest("Could not load user info for request $request")
                     .also { Napier.w("authorize: could not load user info from $request") }
             codeToClientAuthRequest.put(
                 code,

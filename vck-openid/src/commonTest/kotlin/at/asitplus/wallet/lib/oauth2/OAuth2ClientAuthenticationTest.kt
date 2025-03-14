@@ -28,7 +28,6 @@ class OAuth2ClientAuthenticationTest : FunSpec({
     lateinit var scope: String
     lateinit var client: OAuth2Client
     lateinit var user: OidcUserInfoExtended
-    lateinit var authorizationServiceStrategy: AuthorizationServiceStrategy
     lateinit var server: SimpleAuthorizationService
     lateinit var clientAttestation: JwsSigned<JsonWebToken>
     lateinit var clientAttestationPop: JwsSigned<JsonWebToken>
@@ -38,9 +37,9 @@ class OAuth2ClientAuthenticationTest : FunSpec({
         scope = randomString()
         client = OAuth2Client()
         user = OidcUserInfoExtended(OidcUserInfo(randomString()))
-        authorizationServiceStrategy = DummyAuthorizationServiceStrategy(user, scope)
         server = SimpleAuthorizationService(
-            strategy = authorizationServiceStrategy,
+            strategy = DummyAuthorizationServiceStrategy(scope),
+            dataProvider = DummyDataProvider(user),
             clientAuthenticationService = ClientAuthenticationService(
                 enforceClientAuthentication = true,
             )
@@ -114,7 +113,8 @@ class OAuth2ClientAuthenticationTest : FunSpec({
             scope = scope,
         )
         server = SimpleAuthorizationService(
-            strategy = authorizationServiceStrategy,
+            strategy = DummyAuthorizationServiceStrategy(scope),
+            dataProvider = DummyDataProvider(user),
             clientAuthenticationService = ClientAuthenticationService(
                 enforceClientAuthentication = true,
                 verifyClientAttestationJwt = { false }

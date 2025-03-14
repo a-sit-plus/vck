@@ -60,9 +60,9 @@ class OidvciAttestationTest : FunSpec({
     beforeEach {
         authorizationService = SimpleAuthorizationService(
             strategy = CredentialAuthorizationServiceStrategy(
-                DummyOAuth2DataProvider,
                 setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme)
             ),
+            dataProvider = DummyOAuth2DataProvider,
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,

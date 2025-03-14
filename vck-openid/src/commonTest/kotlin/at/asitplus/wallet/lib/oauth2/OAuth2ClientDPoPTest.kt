@@ -27,7 +27,6 @@ class OAuth2ClientDPoPTest : FunSpec({
     lateinit var scope: String
     lateinit var client: OAuth2Client
     lateinit var user: OidcUserInfoExtended
-    lateinit var authorizationServiceStrategy: AuthorizationServiceStrategy
     lateinit var server: SimpleAuthorizationService
     lateinit var clientKey: KeyMaterial
     lateinit var jwsService: JwsService
@@ -38,9 +37,9 @@ class OAuth2ClientDPoPTest : FunSpec({
         scope = randomString()
         client = OAuth2Client()
         user = OidcUserInfoExtended(OidcUserInfo(randomString()))
-        authorizationServiceStrategy = DummyAuthorizationServiceStrategy(user, scope)
         server = SimpleAuthorizationService(
-            strategy = authorizationServiceStrategy,
+            strategy = DummyAuthorizationServiceStrategy(scope),
+            dataProvider = DummyDataProvider(user),
             tokenService = TokenService.jwt(
                 nonceService = DefaultNonceService(),
                 keyMaterial = EphemeralKeyWithoutCert(),

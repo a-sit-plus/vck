@@ -57,6 +57,7 @@ Release 5.5.0:
    - Enable issuing and usage of (JWT-based, sender-constrained) refresh tokens, e.g. extend `AuthorizationForToken`, add grant type `refresh_token`
    - Add method to `OpenId4VciClient` to refresh a credential with a refresh token that has been received when loading the credential
    - Remove methods from internal interface `OAuth2AuthorizationServerAdapter`
+   - In `CredentialAuthorizationServiceStrategy` move constructor parameter `dataProvider` of type `OAuth2DataProvider` to `SimpleAuthorizationService`
  - Update dependencies:
    - Update `signum` to 3.15.0, supporting X.509 certificates in v1, v2 too
    - Update JsonPath4K
