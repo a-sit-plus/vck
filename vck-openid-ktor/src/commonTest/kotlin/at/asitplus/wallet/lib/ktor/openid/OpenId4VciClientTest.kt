@@ -16,7 +16,7 @@ import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.oauth2.ClientAuthenticationService
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
-import at.asitplus.wallet.lib.oauth2.JwtTokenGenerationService
+import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.TokenService
 import at.asitplus.wallet.lib.oidvci.*
 import com.benasher44.uuid.uuid4
@@ -308,14 +308,7 @@ class OpenId4VciClientTest : FunSpec() {
                 request.url.fullPath.startsWith(tokenEndpointPath) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val params: TokenRequestParameters = requestBody.decodeFromPostBody()
-                    val result = authorizationService.token(
-                        params,
-                        request.headers["OAuth-Client-Attestation"],
-                        request.headers["OAuth-Client-Attestation-PoP"],
-                        request.headers["DPoP"],
-                        request.url.toString(),
-                        request.method,
-                    ).getOrThrow()
+                    val result = authorizationService.token(params, request.toRequestInfo()).getOrThrow()
                     respond(
                         vckJsonSerializer.encodeToString(result),
                         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
@@ -332,15 +325,9 @@ class OpenId4VciClientTest : FunSpec() {
 
                 request.url.fullPath.startsWith(credentialEndpointPath) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
-                    val authorizationHeader = request.headers[HttpHeaders.Authorization].shouldNotBeNull()
+                    val authn = request.headers[HttpHeaders.Authorization].shouldNotBeNull()
                     val params = CredentialRequestParameters.deserialize(requestBody).getOrThrow()
-                    val result = credentialIssuer.credential(
-                        authorizationHeader,
-                        params,
-                        request.headers["DPoP"],
-                        request.url.toString(),
-                        request.method,
-                    ).getOrThrow()
+                    val result = credentialIssuer.credential(authn, params, request.toRequestInfo()).getOrThrow()
                     respond(
                         vckJsonSerializer.encodeToString(result),
                         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
@@ -353,6 +340,14 @@ class OpenId4VciClientTest : FunSpec() {
             }
         }, credentialIssuer)
     }
+
+    private fun HttpRequestData.toRequestInfo(): RequestInfo = RequestInfo(
+        url = url.toString(),
+        method = method,
+        dpop = headers["DPoP"],
+        clientAttestation = headers["OAuth-Client-Attestation"],
+        clientAttestationPop = headers["OAuth-Client-Attestation-PoP"],
+    )
 
     private fun dummyUser(): OidcUserInfoExtended = OidcUserInfoExtended.deserialize("{\"sub\": \"foo\"}").getOrThrow()
 
