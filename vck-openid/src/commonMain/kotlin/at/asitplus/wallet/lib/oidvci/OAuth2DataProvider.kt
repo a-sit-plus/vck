@@ -4,12 +4,10 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OidcUserInfoExtended
 
 /**
- * Interface used in [CredentialAuthorizationServiceStrategy] to actually load user data when client requests
- * and authorization code.
+ * Interface used in [CredentialAuthorizationServiceStrategy] to actually load user data during the OAuth 2.0 flow,
+ * after an authn request (see [AuthenticationRequestParameters]) has been validated.
  */
-interface OAuth2DataProvider {
-    /**
-     * Load user information (i.e. authenticate the client) with data sent from [request].
-     */
+fun interface OAuth2DataProvider {
+    /** [request] has been validated successfully, and this step loads the actual user data, if there is any. */
     suspend fun loadUserInfo(request: AuthenticationRequestParameters, code: String): OidcUserInfoExtended?
 }

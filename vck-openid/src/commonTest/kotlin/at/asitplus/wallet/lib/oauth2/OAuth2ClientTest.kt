@@ -25,7 +25,8 @@ class OAuth2ClientTest : FunSpec({
         client = OAuth2Client()
         user = OidcUserInfoExtended(OidcUserInfo(randomString()))
         server = SimpleAuthorizationService(
-            strategy = DummyAuthorizationServiceStrategy(user, scope)
+            strategy = DummyAuthorizationServiceStrategy(scope),
+            dataProvider = DummyDataProvider(user),
         )
     }
 

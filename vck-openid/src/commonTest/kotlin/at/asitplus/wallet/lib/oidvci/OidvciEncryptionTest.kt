@@ -53,10 +53,8 @@ class OidvciEncryptionTest : FunSpec({
 
     beforeEach {
         authorizationService = SimpleAuthorizationService(
-            strategy = CredentialAuthorizationServiceStrategy(
-                DummyOAuth2DataProvider,
-                setOf(ConstantIndex.AtomicAttribute2023)
-            ),
+            strategy = CredentialAuthorizationServiceStrategy(setOf(ConstantIndex.AtomicAttribute2023)),
+            dataProvider = DummyOAuth2DataProvider,
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,

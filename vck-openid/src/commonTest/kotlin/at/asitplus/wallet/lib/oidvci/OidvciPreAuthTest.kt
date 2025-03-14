@@ -28,10 +28,8 @@ class OidvciPreAuthTest : FreeSpec({
 
     beforeEach {
         authorizationService = SimpleAuthorizationService(
-            strategy = CredentialAuthorizationServiceStrategy(
-                DummyOAuth2DataProvider,
-                setOf(AtomicAttribute2023, MobileDrivingLicenceScheme)
-            ),
+            strategy = CredentialAuthorizationServiceStrategy(setOf(AtomicAttribute2023, MobileDrivingLicenceScheme)),
+            dataProvider = DummyOAuth2DataProvider,
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,

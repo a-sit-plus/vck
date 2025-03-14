@@ -11,6 +11,7 @@ import at.asitplus.openid.OpenIdAuthorizationDetails
  */
 interface AuthorizationServiceStrategy {
 
+    @Deprecated("Moved to SimpleAuthorizationService")
     suspend fun loadUserInfo(request: AuthenticationRequestParameters, code: String): OidcUserInfoExtended?
 
     /** Filter requested authorization details in token requests to ones valued for credential issuance */

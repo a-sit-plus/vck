@@ -1,13 +1,10 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.openid.*
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.openid.AuthorizationDetails
+import at.asitplus.openid.CredentialOffer
+import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
@@ -17,7 +14,6 @@ import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
-import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -31,10 +27,8 @@ class OidvciOfferCodeTest : FreeSpec({
 
     beforeEach {
         authorizationService = SimpleAuthorizationService(
-            strategy = CredentialAuthorizationServiceStrategy(
-                DummyOAuth2DataProvider,
-                setOf(AtomicAttribute2023, MobileDrivingLicenceScheme)
-            ),
+            strategy = CredentialAuthorizationServiceStrategy(setOf(AtomicAttribute2023, MobileDrivingLicenceScheme)),
+            dataProvider = DummyOAuth2DataProvider,
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
