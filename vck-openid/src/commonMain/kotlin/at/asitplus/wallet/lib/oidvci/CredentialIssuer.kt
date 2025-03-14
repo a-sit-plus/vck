@@ -25,10 +25,10 @@ import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.VerifierJwsService
+import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.Companion.InvalidToken
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
-import io.ktor.http.HttpMethod
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Clock.System
 import kotlinx.serialization.builtins.serializer
@@ -140,7 +140,10 @@ class CredentialIssuer(
      * Callers need to encode this in [CredentialOfferUrlParameters], and offer the resulting URL to clients,
      * i.e. by displaying a QR Code that can be scanned with wallet apps.
      */
-    @Deprecated("Moved to authorization server", ReplaceWith("authorizationService.credentialOfferWithAuthorizationCode(publicContext)"))
+    @Deprecated(
+        "Moved to authorization server",
+        ReplaceWith("authorizationService.credentialOfferWithAuthorizationCode(publicContext)")
+    )
     suspend fun credentialOfferWithAuthorizationCode(): CredentialOffer = CredentialOffer(
         credentialIssuer = publicContext,
         configurationIds = credentialSchemes.flatMap { it.toCredentialIdentifier() },
@@ -161,7 +164,10 @@ class CredentialIssuer(
      * @param user used to create the credential when the wallet app requests the credential
      */
     @Suppress("DEPRECATION")
-    @Deprecated("Moved to authorization server", ReplaceWith("authorizationService.credentialOfferWithPreAuthnForUser(user, publicContext)"))
+    @Deprecated(
+        "Moved to authorization server",
+        ReplaceWith("authorizationService.credentialOfferWithPreAuthnForUser(user, publicContext)")
+    )
     suspend fun credentialOfferWithPreAuthnForUser(
         user: OidcUserInfoExtended,
     ): CredentialOffer = CredentialOffer(
@@ -198,26 +204,16 @@ class CredentialIssuer(
      *
      * @param authorizationHeader value of HTTP header `Authorization` sent by the client, with all prefixes
      * @param params Parameters the client sent JSON-serialized in the HTTP body
-     * @param dpopHeader value of HTTP header `DPoP` sent by the client
-     * @param requestUrl public-facing URL that the client has used (to validate `DPoP`)
-     * @param requestUrl HTTP method that the client has used (to validate `DPoP`)
+     * @param request information about the HTTP request the client has made, to validate authentication
      */
     @Suppress("DEPRECATION")
     suspend fun credential(
         authorizationHeader: String,
         params: CredentialRequestParameters,
-        dpopHeader: String? = null,
-        requestUrl: String? = null,
-        requestMethod: HttpMethod? = null,
+        request: RequestInfo? = null,
     ): KmmResult<CredentialResponseParameters> = catching {
-        val userInfo = getUserInfo(
-            authorizationHeader,
-            dpopHeader,
-            params.credentialIdentifier,
-            params.credentialConfigurationId,
-            requestUrl,
-            requestMethod,
-        )
+        val userInfo =
+            getUserInfo(authorizationHeader, params.credentialIdentifier, params.credentialConfigurationId, request)
 
         val (credentialScheme, representation) = params.format?.let { params.extractCredentialScheme(it) }
             ?: params.credentialIdentifier?.let { decodeFromCredentialIdentifier(it) }
@@ -249,14 +245,12 @@ class CredentialIssuer(
 
     private suspend fun getUserInfo(
         authorizationHeader: String,
-        dpopHeader: String?,
         credentialIdentifier: String?,
         credentialConfigurationId: String?,
-        requestUrl: String? = null,
-        requestMethod: HttpMethod? = null,
+        request: RequestInfo? = null,
     ): OidcUserInfoExtended {
         val result = authorizationService.tokenVerificationService
-            .validateTokenExtractUser(authorizationHeader, dpopHeader, requestUrl, requestMethod)
+            .validateTokenExtractUser(authorizationHeader, request)
 
         if (credentialIdentifier != null) {
             if (result.authorizationDetails == null)

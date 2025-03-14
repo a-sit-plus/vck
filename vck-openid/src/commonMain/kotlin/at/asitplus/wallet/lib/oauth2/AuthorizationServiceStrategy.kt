@@ -6,7 +6,8 @@ import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdAuthorizationDetails
 
 /**
- * Strategy to implement authentication and authorization in [SimpleAuthorizationService].
+ * Strategy to implement authorization for credential requests (with `scope` or [OpenIdAuthorizationDetails])
+ * in [SimpleAuthorizationService].
  */
 interface AuthorizationServiceStrategy {
 

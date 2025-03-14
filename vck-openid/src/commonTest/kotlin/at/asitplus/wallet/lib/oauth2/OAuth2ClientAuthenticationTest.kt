@@ -1,6 +1,9 @@
 package at.asitplus.wallet.lib.oauth2
 
-import at.asitplus.openid.*
+import at.asitplus.openid.OidcUserInfo
+import at.asitplus.openid.OidcUserInfoExtended
+import at.asitplus.openid.PushedAuthenticationResponseParameters
+import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
@@ -18,7 +21,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.serialization.json.JsonObject
+import io.ktor.http.*
 
 class OAuth2ClientAuthenticationTest : FunSpec({
 
@@ -56,8 +59,13 @@ class OAuth2ClientAuthenticationTest : FunSpec({
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
             scope = scope
         ),
-        clientAttestation.serialize(),
-        clientAttestationPop.serialize()
+        RequestInfo(
+            url = "https://example.com/",
+            method = HttpMethod.Post,
+            dpop = null,
+            clientAttestation = clientAttestation.serialize(),
+            clientAttestationPop = clientAttestationPop.serialize()
+        )
     ).getOrThrow()
 
     test("pushed authorization request") {

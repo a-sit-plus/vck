@@ -1,29 +1,31 @@
 package at.asitplus.wallet.lib.oauth2
 
-import at.asitplus.openid.*
+import at.asitplus.openid.AuthorizationDetails
+import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_DPOP_PROOF
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_BEARER
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
+import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.*
-import at.asitplus.wallet.lib.oidvci.*
+import at.asitplus.wallet.lib.oidvci.DefaultNonceService
+import at.asitplus.wallet.lib.oidvci.NonceService
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.github.aakira.napier.Napier
-import io.ktor.http.*
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Clock.System
-import kotlin.String
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
+/** Strategy to generate access tokens, to use in [SimpleAuthorizationService]. */
 interface TokenGenerationService {
+    /** Builds an access token, probably with a refresh token. Input parameters are assumed to be validated already. */
     suspend fun buildToken(
-        dpop: String?,
-        requestUrl: String?,
-        requestMethod: HttpMethod?,
-        oidcUserInfo: OidcUserInfoExtended?,
+        httpRequest: RequestInfo?,
+        userInfo: OidcUserInfoExtended?,
         authorizationDetails: Set<AuthorizationDetails>?,
         scope: String?,
     ): TokenResponseParameters
@@ -51,18 +53,16 @@ class JwtTokenGenerationService(
 ) : TokenGenerationService {
 
     override suspend fun buildToken(
-        dpop: String?,
-        requestUrl: String?,
-        requestMethod: HttpMethod?,
-        oidcUserInfo: OidcUserInfoExtended?,
+        httpRequest: RequestInfo?,
+        userInfo: OidcUserInfoExtended?,
         authorizationDetails: Set<AuthorizationDetails>?,
         scope: String?,
     ): TokenResponseParameters =
-        if (dpop == null) {
+        if (httpRequest?.dpop == null) {
             Napier.w("dpop: no JWT provided, but enforced")
             throw OAuth2Exception(INVALID_DPOP_PROOF, "no DPoP header value")
         } else {
-            val clientKey = validateDpopJwtForToken(dpop, requestUrl, requestMethod)
+            val clientKey = validateDpopJwtForToken(httpRequest)
             TokenResponseParameters(
                 expires = 5.minutes,
                 tokenType = TOKEN_TYPE_DPOP,
@@ -79,7 +79,7 @@ class JwtTokenGenerationService(
                         confirmationClaim = ConfirmationClaim(
                             jsonWebKeyThumbprint = clientKey.jwkThumbprintPlain
                         ),
-                        userInfo = oidcUserInfo?.jsonObject,
+                        userInfo = userInfo?.jsonObject,
                         scope = scope,
                         authorizationDetails = authorizationDetails,
                     ),
@@ -101,7 +101,7 @@ class JwtTokenGenerationService(
                         confirmationClaim = ConfirmationClaim(
                             jsonWebKeyThumbprint = clientKey.jwkThumbprintPlain
                         ),
-                        userInfo = oidcUserInfo?.jsonObject,
+                        userInfo = userInfo?.jsonObject,
                         scope = scope,
                         authorizationDetails = authorizationDetails,
                     ),
@@ -116,22 +116,22 @@ class JwtTokenGenerationService(
         }
 
     private fun validateDpopJwtForToken(
-        dpop: String,
-        requestUrl: String?,
-        requestMethod: HttpMethod?,
+        httpRequest: RequestInfo,
     ): JsonWebKey {
-        val jwt = parseAndValidate(dpop)
+        val jwt = httpRequest.dpop?.parseAndValidate()
+            ?: throw OAuth2Exception(INVALID_DPOP_PROOF, "no DPoP header value")
+
         if (jwt.header.type != JwsContentTypeConstants.DPOP_JWT) {
             Napier.w("validateDpopJwtForToken: invalid header type ${jwt.header.type} ")
             throw OAuth2Exception(INVALID_DPOP_PROOF, "invalid type")
         }
         // Verify nonce, but where to get it?
-        if (jwt.payload.httpTargetUrl != requestUrl) {
-            Napier.w("validateDpopJwt: htu ${jwt.payload.httpTargetUrl} not matching requestUrl $requestUrl")
+        if (jwt.payload.httpTargetUrl != httpRequest.url) {
+            Napier.w("validateDpopJwt: htu ${jwt.payload.httpTargetUrl} not matching requestUrl ${httpRequest.url}")
             throw OAuth2Exception(INVALID_DPOP_PROOF, "DPoP JWT htu incorrect")
         }
-        if (jwt.payload.httpMethod != requestMethod?.value?.uppercase()) {
-            Napier.w("validateDpopJwt: htm ${jwt.payload.httpMethod} not matching requestMethod $requestMethod")
+        if (jwt.payload.httpMethod != httpRequest.method.value.uppercase()) {
+            Napier.w("validateDpopJwt: htm ${jwt.payload.httpMethod} not matching requestMethod ${httpRequest.method}")
             throw OAuth2Exception(INVALID_DPOP_PROOF, "DPoP JWT htm incorrect")
         }
         val clientKey = jwt.header.jsonWebKey ?: run {
@@ -141,13 +141,13 @@ class JwtTokenGenerationService(
         return clientKey
     }
 
-    private fun parseAndValidate(dpopHeader: String): JwsSigned<JsonWebToken> =
-        JwsSigned.deserialize(JsonWebToken.serializer(), dpopHeader, vckJsonSerializer)
+    private fun String.parseAndValidate(): JwsSigned<JsonWebToken> =
+        JwsSigned.deserialize(JsonWebToken.serializer(), this, vckJsonSerializer)
             .getOrElse {
                 Napier.w("parse: could not parse DPoP JWT", it)
                 throw OAuth2Exception(INVALID_DPOP_PROOF, "could not parse DPoP JWT", it)
             }.also {
-                if (!verifierJwsService.verifyJwsObject(it)) {
+                if (!this@JwtTokenGenerationService.verifierJwsService.verifyJwsObject(it)) {
                     Napier.w("parse: DPoP not verified")
                     throw OAuth2Exception(INVALID_DPOP_PROOF, "DPoP JWT not verified")
                 }
@@ -173,10 +173,8 @@ class BearerTokenGenerationService(
     private val listOfValidatedAccessToken = mutableListOf<ValidatedAccessToken>()
 
     override suspend fun buildToken(
-        dpop: String?,
-        requestUrl: String?,
-        requestMethod: HttpMethod?,
-        oidcUserInfo: OidcUserInfoExtended?,
+        httpRequest: RequestInfo?,
+        userInfo: OidcUserInfoExtended?,
         authorizationDetails: Set<AuthorizationDetails>?,
         scope: String?,
     ): TokenResponseParameters = TokenResponseParameters(
@@ -187,7 +185,7 @@ class BearerTokenGenerationService(
         scope = scope,
     ).also {
         listOfValidatedAccessToken.add(
-            ValidatedAccessToken(it.accessToken, oidcUserInfo, authorizationDetails, scope)
+            ValidatedAccessToken(it.accessToken, userInfo, authorizationDetails, scope)
         )
     }
 

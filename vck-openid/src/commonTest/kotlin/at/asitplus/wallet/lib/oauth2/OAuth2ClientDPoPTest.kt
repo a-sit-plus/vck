@@ -16,7 +16,6 @@ import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.serialization.json.JsonObject
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.assertions.throwables.shouldThrow
@@ -74,9 +73,7 @@ class OAuth2ClientDPoPTest : FunSpec({
                 authorization = OAuth2Client.AuthorizationForToken.Code(code),
                 scope = scope
             ),
-            dpop = jwsService.buildDPoPHeader(tokenUrl),
-            requestUrl = tokenUrl,
-            requestMethod = HttpMethod.Post,
+            RequestInfo(tokenUrl, HttpMethod.Post, dpop = jwsService.buildDPoPHeader(tokenUrl))
         ).getOrThrow().also {
             it.tokenType shouldBe TOKEN_TYPE_DPOP
         }
@@ -89,9 +86,11 @@ class OAuth2ClientDPoPTest : FunSpec({
         // simulate access to protected resource, i.e. verify access token
         server.tokenVerificationService.validateTokenExtractUser(
             token.toHttpHeaderValue(),
-            dpopHeader = dpopForResource,
-            requestUrl = resourceUrl,
-            requestMethod = HttpMethod.Post,
+            RequestInfo(
+                url = resourceUrl,
+                method = HttpMethod.Post,
+                dpop = dpopForResource
+            )
         )
     }
 
@@ -105,9 +104,7 @@ class OAuth2ClientDPoPTest : FunSpec({
                 authorization = OAuth2Client.AuthorizationForToken.Code(code),
                 scope = scope
             ),
-            dpop = jwsService.buildDPoPHeader(tokenUrl),
-            requestUrl = tokenUrl,
-            requestMethod = HttpMethod.Post,
+            RequestInfo(tokenUrl, HttpMethod.Post, dpop = jwsService.buildDPoPHeader(tokenUrl))
         ).getOrThrow().also {
             it.tokenType shouldBe TOKEN_TYPE_DPOP
             it.refreshToken.shouldNotBeNull()
@@ -119,9 +116,7 @@ class OAuth2ClientDPoPTest : FunSpec({
                 authorization = OAuth2Client.AuthorizationForToken.RefreshToken(token.refreshToken!!),
                 scope = scope
             ),
-            dpop = jwsService.buildDPoPHeader(tokenUrl),
-            requestUrl = tokenUrl,
-            requestMethod = HttpMethod.Post,
+            RequestInfo(tokenUrl, HttpMethod.Post, dpop = jwsService.buildDPoPHeader(tokenUrl))
         ).getOrThrow()
         refreshedAccessToken.accessToken shouldNotBe token.accessToken
 
@@ -133,9 +128,11 @@ class OAuth2ClientDPoPTest : FunSpec({
         // simulate access to protected resource, i.e. verify access token
         server.tokenVerificationService.validateTokenExtractUser(
             refreshedAccessToken.toHttpHeaderValue(),
-            dpopHeader = dpopForResource,
-            requestUrl = resourceUrl,
-            requestMethod = HttpMethod.Post,
+            RequestInfo(
+                url = resourceUrl,
+                method = HttpMethod.Post,
+                dpop = dpopForResource
+            )
         )
     }
 
@@ -150,9 +147,7 @@ class OAuth2ClientDPoPTest : FunSpec({
                     authorization = OAuth2Client.AuthorizationForToken.Code(code),
                     scope = scope
                 ),
-                dpop = jwsService.buildDPoPHeader("https://example.com/somethingelse"),
-                requestUrl = tokenUrl,
-                requestMethod = HttpMethod.Post,
+                RequestInfo(tokenUrl, HttpMethod.Post, dpop = jwsService.buildDPoPHeader("https://somethingelse.com/"))
             ).getOrThrow()
         }
     }
@@ -182,9 +177,7 @@ class OAuth2ClientDPoPTest : FunSpec({
                 authorization = OAuth2Client.AuthorizationForToken.Code(code),
                 scope = scope
             ),
-            dpop = jwsService.buildDPoPHeader(tokenUrl),
-            requestUrl = tokenUrl,
-            requestMethod = HttpMethod.Post,
+            RequestInfo(tokenUrl, HttpMethod.Post, dpop = jwsService.buildDPoPHeader(tokenUrl))
         ).getOrThrow().also {
             it.tokenType shouldBe TOKEN_TYPE_DPOP
         }
@@ -193,9 +186,7 @@ class OAuth2ClientDPoPTest : FunSpec({
         shouldThrow<OAuth2Exception> {
             server.tokenVerificationService.validateTokenExtractUser(
                 token.toHttpHeaderValue(),
-                dpopHeader = null,
-                requestUrl = null,
-                requestMethod = null,
+                null
             )
         }
     }
@@ -210,9 +201,7 @@ class OAuth2ClientDPoPTest : FunSpec({
                 authorization = OAuth2Client.AuthorizationForToken.Code(code),
                 scope = scope
             ),
-            dpop = jwsService.buildDPoPHeader(tokenUrl),
-            requestUrl = tokenUrl,
-            requestMethod = HttpMethod.Post,
+            RequestInfo(tokenUrl, HttpMethod.Post, dpop = jwsService.buildDPoPHeader(tokenUrl))
         ).getOrThrow()
 
         val wrongJwsService = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithoutCert()))
@@ -225,9 +214,11 @@ class OAuth2ClientDPoPTest : FunSpec({
         shouldThrow<OAuth2Exception> {
             server.tokenVerificationService.validateTokenExtractUser(
                 token.toHttpHeaderValue(),
-                dpopHeader = dpopForResource,
-                requestUrl = resourceUrl,
-                requestMethod = HttpMethod.Post,
+                RequestInfo(
+                    url = resourceUrl,
+                    method = HttpMethod.Post,
+                    dpop = dpopForResource
+                )
             )
         }
     }

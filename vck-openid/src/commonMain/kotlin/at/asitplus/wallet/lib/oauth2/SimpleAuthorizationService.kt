@@ -255,7 +255,7 @@ class SimpleAuthorizationService(
                 code,
                 ClientAuthRequest(
                     issuedCode = code,
-                    userInfoExtended = userInfo,
+                    userInfo = userInfo,
                     scope = request.scope,
                     authnDetails = request.authorizationDetails,
                     codeChallenge = request.codeChallenge
@@ -310,33 +310,31 @@ class SimpleAuthorizationService(
      * Send this value JSON-serialized back to the client.
 
      * @param request as sent from the client as `POST`
-     * @param clientAttestation value of the header `OAuth-Client-Attestation`
-     * @param clientAttestationPop value of the header `OAuth-Client-Attestation-PoP`
-     * @param dpop value of the header `DPoP` (RFC 9449)
-     * @param requestUrl public-facing URL that the client has used (to validate `DPoP`)
-     * @param requestUrl HTTP method that the client has used (to validate `DPoP`)
+     * @param httpRequest information about the HTTP request from the client, to validate authentication
      *
      * @return [KmmResult] may contain a [OAuth2Exception]
      */
     suspend fun token(
         request: TokenRequestParameters,
-        clientAttestation: String? = null,
-        clientAttestationPop: String? = null,
-        dpop: String? = null,
-        requestUrl: String? = null,
-        requestMethod: HttpMethod? = null,
+        httpRequest: RequestInfo? = null,
     ): KmmResult<TokenResponseParameters> = catching {
         Napier.i("token called with $request")
 
-        val clientAuthRequest: ClientAuthRequest = request.loadClientAuthRequest(dpop, requestUrl, requestMethod)
+        val clientAuthRequest = request.loadClientAuthRequest(httpRequest)
             ?: throw OAuth2Exception(INVALID_GRANT, "could not load user info for $request")
                 .also { Napier.w("token: could not load user info for $request}") }
 
         request.code?.let { code ->
-            validateCodeChallenge(code, request.codeVerifier)
+            clientAuthRequest.codeChallenge?.let {
+                validateCodeChallenge(code, request.codeVerifier, clientAuthRequest.codeChallenge)
+            }
         }
 
-        clientAuthenticationService.authenticateClient(clientAttestation, clientAttestationPop, request.clientId)
+        clientAuthenticationService.authenticateClient(
+            httpRequest?.clientAttestation,
+            httpRequest?.clientAttestationPop,
+            request.clientId
+        )
         val token = if (request.authorizationDetails != null) {
             if (clientAuthRequest.authnDetails == null)
                 throw InvalidRequest("No authn details for issued code: ${clientAuthRequest.issuedCode}")
@@ -350,10 +348,8 @@ class SimpleAuthorizationService(
                 }
             }
             tokenService.generation.buildToken(
-                dpop = dpop,
-                requestUrl = requestUrl,
-                requestMethod = requestMethod,
-                oidcUserInfo = clientAuthRequest.userInfoExtended,
+                httpRequest = httpRequest,
+                userInfo = clientAuthRequest.userInfo,
                 authorizationDetails = filtered,
                 scope = null
             )
@@ -365,10 +361,8 @@ class SimpleAuthorizationService(
                     throw InvalidRequest("Scope not from auth code: $singleScope")
             }
             tokenService.generation.buildToken(
-                dpop = dpop,
-                requestUrl = requestUrl,
-                requestMethod = requestMethod,
-                oidcUserInfo = clientAuthRequest.userInfoExtended,
+                httpRequest = httpRequest,
+                userInfo = clientAuthRequest.userInfo,
                 authorizationDetails = null,
                 scope = request.scope
             )
@@ -380,10 +374,8 @@ class SimpleAuthorizationService(
                     throw InvalidRequest("No valid authorization details in ${clientAuthRequest.authnDetails}")
             }
             tokenService.generation.buildToken(
-                dpop = dpop,
-                requestUrl = requestUrl,
-                requestMethod = requestMethod,
-                oidcUserInfo = clientAuthRequest.userInfoExtended,
+                httpRequest = httpRequest,
+                userInfo = clientAuthRequest.userInfo,
                 authorizationDetails = filtered,
                 scope = null
             )
@@ -391,10 +383,8 @@ class SimpleAuthorizationService(
             val scope = strategy.filterScope(clientAuthRequest.scope)
                 ?: throw OAuth2Exception(INVALID_SCOPE, "No valid scope in ${clientAuthRequest.scope}")
             tokenService.generation.buildToken(
-                dpop = dpop,
-                requestUrl = requestUrl,
-                requestMethod = requestMethod,
-                oidcUserInfo = clientAuthRequest.userInfoExtended,
+                httpRequest = httpRequest,
+                userInfo = clientAuthRequest.userInfo,
                 authorizationDetails = null,
                 scope = scope
             )
@@ -412,24 +402,20 @@ class SimpleAuthorizationService(
     private fun OpenIdAuthorizationDetails.requestedFromCode(clientAuthRequest: ClientAuthRequest): Boolean =
         clientAuthRequest.authnDetails!!.filterIsInstance<OpenIdAuthorizationDetails>().any { matches(it) }
 
-    private suspend fun validateCodeChallenge(code: String, codeVerifier: String?) {
-        codeToClientAuthRequest.get(code)?.codeChallenge?.let { codeChallenge ->
-            if (codeVerifier == null) {
-                Napier.w("token: client did not provide any code verifier: $codeVerifier for $code")
-                throw OAuth2Exception(INVALID_GRANT, "code verifier invalid: $codeVerifier for $code")
-            }
-            val codeChallengeCalculated = codeVerifier.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
-            if (codeChallenge != codeChallengeCalculated) {
-                Napier.w("token: client did not provide correct code verifier: $codeVerifier for $code")
-                throw OAuth2Exception(INVALID_GRANT, "code verifier invalid: $codeVerifier for $code")
-            }
+    private fun validateCodeChallenge(code: String, codeVerifier: String?, codeChallenge: String) {
+        if (codeVerifier == null) {
+            Napier.w("token: client did not provide any code verifier: $codeVerifier for $code")
+            throw OAuth2Exception(INVALID_GRANT, "code verifier invalid: $codeVerifier for $code")
+        }
+        val codeChallengeCalculated = codeVerifier.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
+        if (codeChallenge != codeChallengeCalculated) {
+            Napier.w("token: client did not provide correct code verifier: $codeVerifier for $code")
+            throw OAuth2Exception(INVALID_GRANT, "code verifier invalid: $codeVerifier for $code")
         }
     }
 
     private suspend fun TokenRequestParameters.loadClientAuthRequest(
-        dpop: String? = null,
-        requestUrl: String? = null,
-        requestMethod: HttpMethod? = null,
+        httpRequest: RequestInfo? = null,
     ): ClientAuthRequest? = when (grantType) {
         OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE -> {
             if (code == null || !codeService.verifyAndRemove(code!!))
@@ -449,7 +435,7 @@ class SimpleAuthorizationService(
             if (refreshToken == null)
                 throw OAuth2Exception(INVALID_GRANT, "refresh_token is null")
                     .also { Napier.w("token: refresh_token is null") }
-            tokenService.verification.validateRefreshToken(refreshToken!!, dpop, requestUrl, requestMethod)
+            tokenService.verification.validateRefreshToken(refreshToken!!, httpRequest)
             refreshToken?.let { refreshTokenToAuthRequest.remove(it) }
         }
 
@@ -462,7 +448,12 @@ class SimpleAuthorizationService(
         codeService.provideCode().also {
             codeToClientAuthRequest.put(
                 it,
-                ClientAuthRequest(it, user, strategy.validScopes(), strategy.validAuthorizationDetails())
+                ClientAuthRequest(
+                    issuedCode = it,
+                    userInfo = user,
+                    scope = strategy.validScopes(),
+                    authnDetails = strategy.validAuthorizationDetails()
+                )
             )
         }
 
