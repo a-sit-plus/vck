@@ -369,12 +369,22 @@ object OpenIdConstants {
         const val INVALID_GRANT = "invalid_grant"
 
         /**
-         * Invalid or missing proofs in OpenId4VCI: `invalid_or_missing_proof`
+         * Invalid proofs in OpenID4VCI: `invalid_proof`
          */
-        const val INVALID_PROOF = "invalid_or_missing_proof"
+        const val INVALID_PROOF = "invalid_proof"
 
         /**
-         * Invalid client nonce in OpenId4VCI: `invalid_nonce`
+         * Unsupported credential type in OpenID4VCI: `unsupported_credential_type`
+         */
+        const val UNSUPPORTED_CREDENTIAL_TYPE = "unsupported_credential_type"
+
+        /**
+         * Credential request denied in OpenID4VCI: `credential_request_denied`
+         */
+        const val CREDENTIAL_REQUEST_DENIED = "credential_request_denied"
+
+        /**
+         * Invalid client nonce in OpenID4VCI: `invalid_nonce`
          */
         const val INVALID_NONCE = "invalid_nonce"
 
