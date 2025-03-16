@@ -8,7 +8,7 @@ import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.json
 import io.github.aakira.napier.Napier
@@ -59,7 +59,7 @@ class RequestParser(
             }.onFailure {
                 Napier.d("parseRequestParameters: Failed for $input", it)
             }.getOrNull()
-            ?: throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST, "parse error")
+            ?: throw InvalidRequest("parse error")
                 .also { Napier.w("Could not parse authentication request: $input") }
 
         (parsedParams.parameters as? AuthenticationRequestParameters)?.let {

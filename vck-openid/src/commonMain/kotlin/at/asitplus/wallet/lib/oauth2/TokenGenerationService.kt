@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OidcUserInfoExtended
-import at.asitplus.openid.OpenIdConstants.Errors.INVALID_DPOP_PROOF
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_BEARER
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.TokenResponseParameters
@@ -13,7 +12,7 @@ import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.*
 import at.asitplus.wallet.lib.oidvci.DefaultNonceService
 import at.asitplus.wallet.lib.oidvci.NonceService
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidDpopProof
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Clock.System
@@ -60,7 +59,7 @@ class JwtTokenGenerationService(
     ): TokenResponseParameters =
         if (httpRequest?.dpop == null) {
             Napier.w("dpop: no JWT provided, but enforced")
-            throw OAuth2Exception(INVALID_DPOP_PROOF, "no DPoP header value")
+            throw InvalidDpopProof("no DPoP header value")
         } else {
             val clientKey = validateDpopJwtForToken(httpRequest)
             TokenResponseParameters(
@@ -119,24 +118,24 @@ class JwtTokenGenerationService(
         httpRequest: RequestInfo,
     ): JsonWebKey {
         val jwt = httpRequest.dpop?.parseAndValidate()
-            ?: throw OAuth2Exception(INVALID_DPOP_PROOF, "no DPoP header value")
+            ?: throw InvalidDpopProof("no DPoP header value")
 
         if (jwt.header.type != JwsContentTypeConstants.DPOP_JWT) {
             Napier.w("validateDpopJwtForToken: invalid header type ${jwt.header.type} ")
-            throw OAuth2Exception(INVALID_DPOP_PROOF, "invalid type")
+            throw InvalidDpopProof("invalid type")
         }
         // Verify nonce, but where to get it?
         if (jwt.payload.httpTargetUrl != httpRequest.url) {
             Napier.w("validateDpopJwt: htu ${jwt.payload.httpTargetUrl} not matching requestUrl ${httpRequest.url}")
-            throw OAuth2Exception(INVALID_DPOP_PROOF, "DPoP JWT htu incorrect")
+            throw InvalidDpopProof("DPoP JWT htu incorrect")
         }
         if (jwt.payload.httpMethod != httpRequest.method.value.uppercase()) {
             Napier.w("validateDpopJwt: htm ${jwt.payload.httpMethod} not matching requestMethod ${httpRequest.method}")
-            throw OAuth2Exception(INVALID_DPOP_PROOF, "DPoP JWT htm incorrect")
+            throw InvalidDpopProof("DPoP JWT htm incorrect")
         }
         val clientKey = jwt.header.jsonWebKey ?: run {
             Napier.w("validateDpopJwtForToken: no client key in $jwt")
-            throw OAuth2Exception(INVALID_DPOP_PROOF, "DPoP JWT contains no public key")
+            throw InvalidDpopProof("DPoP JWT contains no public key")
         }
         return clientKey
     }
@@ -145,11 +144,11 @@ class JwtTokenGenerationService(
         JwsSigned.deserialize(JsonWebToken.serializer(), this, vckJsonSerializer)
             .getOrElse {
                 Napier.w("parse: could not parse DPoP JWT", it)
-                throw OAuth2Exception(INVALID_DPOP_PROOF, "could not parse DPoP JWT", it)
+                throw InvalidDpopProof("could not parse DPoP JWT", it)
             }.also {
                 if (!this@JwtTokenGenerationService.verifierJwsService.verifyJwsObject(it)) {
                     Napier.w("parse: DPoP not verified")
-                    throw OAuth2Exception(INVALID_DPOP_PROOF, "DPoP JWT not verified")
+                    throw InvalidDpopProof("DPoP JWT not verified")
                 }
             }
 
