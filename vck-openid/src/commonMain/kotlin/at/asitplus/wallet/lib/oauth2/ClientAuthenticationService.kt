@@ -1,10 +1,9 @@
 package at.asitplus.wallet.lib.oauth2
 
-import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.*
-import at.asitplus.wallet.lib.oidvci.*
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidClient
 import io.github.aakira.napier.Napier
 import kotlin.String
 
@@ -36,7 +35,7 @@ class ClientAuthenticationService(
         if (enforceClientAuthentication) {
             if (clientAttestation == null || clientAttestationPop == null) {
                 Napier.w("auth: client not sent client attestation")
-                throw OAuth2Exception(Errors.INVALID_CLIENT, "client attestation headers missing")
+                throw InvalidClient("client attestation headers missing")
             }
         }
         if (clientAttestation != null && clientAttestationPop != null) {
@@ -44,33 +43,33 @@ class ClientAuthenticationService(
                 .deserialize<JsonWebToken>(JsonWebToken.serializer(), clientAttestation, vckJsonSerializer)
                 .getOrElse {
                     Napier.w("auth: could not parse client attestation JWT", it)
-                    throw OAuth2Exception(Errors.INVALID_CLIENT, "could not parse client attestation", it)
+                    throw InvalidClient("could not parse client attestation", it)
                 }
             if (!verifierJwsService.verifyJwsObject(clientAttestationJwt)) {
                 Napier.w("auth: client attestation JWT not verified")
-                throw OAuth2Exception(Errors.INVALID_CLIENT, "client attestation JWT not verified")
+                throw InvalidClient("client attestation JWT not verified")
             }
             if (clientAttestationJwt.payload.subject != clientId) {
                 Napier.w("auth: subject ${clientAttestationJwt.payload.subject} not matching client_id $clientId")
-                throw OAuth2Exception(Errors.INVALID_CLIENT, "subject not equal to client_id")
+                throw InvalidClient("subject not equal to client_id")
             }
 
             if (!verifyClientAttestationJwt.invoke(clientAttestationJwt)) {
                 Napier.w("auth: client attestation not verified by callback: $clientAttestationJwt")
-                throw OAuth2Exception(Errors.INVALID_CLIENT, "client attestation not verified")
+                throw InvalidClient("client attestation not verified")
             }
 
             val clientAttestationPopJwt = JwsSigned
                 .deserialize<JsonWebToken>(JsonWebToken.serializer(), clientAttestationPop, vckJsonSerializer)
                 .getOrElse {
                     Napier.w("auth: could not parse client attestation PoP JWT", it)
-                    throw OAuth2Exception(Errors.INVALID_CLIENT, "could not parse client attestation PoP", it)
+                    throw InvalidClient("could not parse client attestation PoP", it)
                 }
             val cnf = clientAttestationJwt.payload.confirmationClaim
-                ?: throw OAuth2Exception(Errors.INVALID_CLIENT, "client attestation has no cnf")
+                ?: throw InvalidClient("client attestation has no cnf")
             if (!verifierJwsService.verifyJws(clientAttestationPopJwt, cnf)) {
                 Napier.w("auth: client attestation PoP JWT not verified")
-                throw OAuth2Exception(Errors.INVALID_CLIENT, "client attestation PoP JWT not verified")
+                throw InvalidClient("client attestation PoP JWT not verified")
             }
         }
     }

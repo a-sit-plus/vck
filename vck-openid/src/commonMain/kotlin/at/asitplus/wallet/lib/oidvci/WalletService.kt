@@ -21,6 +21,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
@@ -123,7 +124,7 @@ class WalletService(
             }
         }.getOrNull() ?: catching {
             CredentialOffer.deserialize(input).getOrThrow()
-        }.getOrNull() ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "could not parse credential offer")
+        }.getOrNull() ?: throw InvalidRequest("could not parse credential offer")
             .also { Napier.w("Could not parse credential offer from $input") }
     }
 

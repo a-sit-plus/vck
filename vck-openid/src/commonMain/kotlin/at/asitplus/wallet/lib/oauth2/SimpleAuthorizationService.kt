@@ -4,14 +4,14 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
-import at.asitplus.openid.OpenIdConstants.Errors.INVALID_CODE
-import at.asitplus.openid.OpenIdConstants.Errors.INVALID_GRANT
-import at.asitplus.openid.OpenIdConstants.Errors.INVALID_SCOPE
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.oidvci.*
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.Companion.InvalidRequest
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidCode
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidGrant
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidScope
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.RequestParser
 import com.benasher44.uuid.uuid4
@@ -284,7 +284,7 @@ class SimpleAuthorizationService(
 
         if (request.scope != null) {
             strategy.filterScope(request.scope!!)
-                ?: throw OAuth2Exception(INVALID_SCOPE, "No matching scope in ${request.scope}")
+                ?: throw InvalidScope("No matching scope in ${request.scope}")
                     .also { Napier.w("authorize: scope ${request.scope} does not contain a valid credential id") }
         }
 
@@ -292,7 +292,7 @@ class SimpleAuthorizationService(
             if (!codeService.verifyAndRemove(request.issuerState!!)
                 || issuerStateToCredentialOffer.remove(request.issuerState!!) == null
             ) {
-                throw OAuth2Exception(INVALID_GRANT, "issuer_state invalid: ${request.issuerState}")
+                throw InvalidGrant("issuer_state invalid: ${request.issuerState}")
                     .also { Napier.w("authorize: issuer_state invalid: ${request.issuerState}") }
             }
             // the actual credential offer is irrelevant, because we're always offering all credentials
@@ -323,7 +323,7 @@ class SimpleAuthorizationService(
         Napier.i("token called with $request")
 
         val clientAuthRequest = request.loadClientAuthRequest(httpRequest)
-            ?: throw OAuth2Exception(INVALID_GRANT, "could not load user info for $request")
+            ?: throw InvalidGrant("could not load user info for $request")
                 .also { Napier.w("token: could not load user info for $request}") }
 
         request.code?.let { code ->
@@ -383,7 +383,7 @@ class SimpleAuthorizationService(
             )
         } else if (clientAuthRequest.scope != null) {
             val scope = strategy.filterScope(clientAuthRequest.scope)
-                ?: throw OAuth2Exception(INVALID_SCOPE, "No valid scope in ${clientAuthRequest.scope}")
+                ?: throw InvalidScope("No valid scope in ${clientAuthRequest.scope}")
             tokenService.generation.buildToken(
                 httpRequest = httpRequest,
                 userInfo = clientAuthRequest.userInfo,
@@ -407,12 +407,12 @@ class SimpleAuthorizationService(
     private fun validateCodeChallenge(code: String, codeVerifier: String?, codeChallenge: String) {
         if (codeVerifier == null) {
             Napier.w("token: client did not provide any code verifier: $codeVerifier for $code")
-            throw OAuth2Exception(INVALID_GRANT, "code verifier invalid: $codeVerifier for $code")
+            throw InvalidGrant("code verifier invalid: $codeVerifier for $code")
         }
         val codeChallengeCalculated = codeVerifier.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
         if (codeChallenge != codeChallengeCalculated) {
             Napier.w("token: client did not provide correct code verifier: $codeVerifier for $code")
-            throw OAuth2Exception(INVALID_GRANT, "code verifier invalid: $codeVerifier for $code")
+            throw InvalidGrant("code verifier invalid: $codeVerifier for $code")
         }
     }
 
@@ -421,21 +421,21 @@ class SimpleAuthorizationService(
     ): ClientAuthRequest? = when (grantType) {
         OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE -> {
             if (code == null || !codeService.verifyAndRemove(code!!))
-                throw OAuth2Exception(INVALID_CODE, "code not valid: $code")
+                throw InvalidCode("code not valid: $code")
                     .also { Napier.w("token: client did not provide correct code: $code") }
             code?.let { codeToClientAuthRequest.remove(it) }
         }
 
         OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE -> {
             if (preAuthorizedCode == null || !codeService.verifyAndRemove(preAuthorizedCode!!))
-                throw OAuth2Exception(INVALID_GRANT, "pre-authorized code not valid: $preAuthorizedCode")
+                throw InvalidGrant("pre-authorized code not valid: $preAuthorizedCode")
                     .also { Napier.w("token: pre-authorized code not valid: $preAuthorizedCode") }
             preAuthorizedCode?.let { codeToClientAuthRequest.remove(it) }
         }
 
         OpenIdConstants.GRANT_TYPE_REFRESH_TOKEN -> {
             if (refreshToken == null)
-                throw OAuth2Exception(INVALID_GRANT, "refresh_token is null")
+                throw InvalidGrant("refresh_token is null")
                     .also { Napier.w("token: refresh_token is null") }
             tokenService.verification.validateRefreshToken(refreshToken!!, httpRequest)
             refreshToken?.let { refreshTokenToAuthRequest.remove(it) }
