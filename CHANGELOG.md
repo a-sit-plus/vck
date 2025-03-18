@@ -48,7 +48,7 @@ Release 5.5.0:
  - Error handling:
    - Add subclasses of `OAuth2Exception` to write more precise error handling code
  - Update dependencies:
-   - Update `signum` to 3.14.0, supporting X.509 certificates in v1, v2 too
+   - Update `signum` to 3.15.0, supporting X.509 certificates in v1, v2 too
 
 Release 5.4.3:
  - Fix property names for serialized RQES data classes

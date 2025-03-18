@@ -37,9 +37,9 @@ object CredentialToJsonConverter {
             val sdJwtSigned = SdJwtSigned.parse(credential.vcSerialized)
             val payloadVc = sdJwtSigned?.getPayloadAsJsonObject()?.getOrNull()
             val reconstructed = sdJwtSigned?.let { SdJwtValidator(it).reconstructedJsonObject }
-            val simpleDisclosureMap = credential.disclosures.map { entry ->
+            val simpleDisclosureMap = credential.disclosures.mapNotNull { entry ->
                 entry.value?.let { it.claimName to it.claimValue }
-            }.filterNotNull().toMap()
+            }.toMap()
 
             buildJsonObject {
                 if (payloadVc?.get(SD_JWT_VC_TYPE) == null)
