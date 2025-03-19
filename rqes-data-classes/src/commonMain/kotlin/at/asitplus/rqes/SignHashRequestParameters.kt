@@ -4,6 +4,7 @@ import at.asitplus.openid.Hashes
 import at.asitplus.openid.contentEquals
 import at.asitplus.openid.contentHashCode
 import at.asitplus.rqes.enums.OperationMode
+import at.asitplus.rqes.serializers.QtspSignatureRequestSerializer
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
@@ -11,6 +12,9 @@ import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
+
+@Deprecated("Renamed", ReplaceWith("SignHashRequestParameters"))
+typealias SignHashParameters = SignHashRequestParameters
 
 /**
  * CSC API v2.0.0.2

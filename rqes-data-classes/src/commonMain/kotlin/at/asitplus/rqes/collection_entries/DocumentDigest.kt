@@ -19,6 +19,9 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import kotlinx.serialization.json.JsonObject
 
+@Deprecated("Renamed", ReplaceWith("DocumentDigest"))
+typealias CscDocumentDigest = DocumentDigest
+
 
 /**
  * CSC-API v2.0.0.2

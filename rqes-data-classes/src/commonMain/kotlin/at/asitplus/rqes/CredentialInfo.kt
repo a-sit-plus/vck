@@ -1,7 +1,7 @@
 package at.asitplus.rqes
 
 import at.asitplus.openid.SignatureQualifier
-import at.asitplus.rqes.collection_entries.AuthParameter
+import at.asitplus.rqes.collection_entries.AuthParameters
 import at.asitplus.rqes.collection_entries.CertificateParameters
 import at.asitplus.rqes.collection_entries.KeyParameters
 import kotlinx.serialization.SerialName
@@ -60,7 +60,7 @@ data class CredentialInfo(
      * Details about the authentication method
      */
     @SerialName("auth")
-    val authParameters: AuthParameter? = null,
+    val authParameters: AuthParameters? = null,
 
     /**
      * Specifies if the RSSP will generate for this credential a signature

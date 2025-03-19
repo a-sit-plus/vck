@@ -4,6 +4,9 @@ import at.asitplus.rqes.enums.CertificateOptions
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+@Deprecated("Renamed", ReplaceWith("CredentialListRequest"))
+typealias CscCredentialListRequest = CredentialListRequest
+
 /**
  * Data class that implements credentialInfo defined
  * in CSC-API v2.0.0.2 Ch. 11.4 "credentials/list" and Ch. 11.5 "credentials/info"

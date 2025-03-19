@@ -5,8 +5,12 @@ import at.asitplus.rqes.collection_entries.DocumentDigest
 import at.asitplus.rqes.collection_entries.Document
 import at.asitplus.rqes.collection_entries.or
 import at.asitplus.rqes.enums.OperationMode
+import at.asitplus.rqes.serializers.QtspSignatureRequestSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+
+@Deprecated("Renamed", ReplaceWith("SignDocRequestParameters"))
+typealias SignDocParameters = SignDocRequestParameters
 
 /**
  * CSC API v2.0.0.2

@@ -6,6 +6,9 @@ import at.asitplus.rqes.CredentialInfo
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+@Deprecated("Renamed", ReplaceWith("KeyParameters"))
+typealias CscKeyParameters = KeyParameters
+
 /**
  * CSC-API v2.0.0.2
  * Part of [CredentialInfo]
