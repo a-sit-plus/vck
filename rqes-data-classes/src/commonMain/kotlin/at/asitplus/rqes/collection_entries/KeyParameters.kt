@@ -53,7 +53,7 @@ data class KeyParameters(
                     X509SignatureAlgorithm.ES512.oid
                 ).toSet()
             ) != emptySet<ObjectIdentifier>() || curve == null
-        )
+        ) { "If curve is specified algorithm must be (supported) EC algorithm"}
     }
 
     enum class KeyStatusOptions {

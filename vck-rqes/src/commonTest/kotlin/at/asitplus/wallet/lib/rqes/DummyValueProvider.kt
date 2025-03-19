@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.openid.SignatureQualifier
 import at.asitplus.rqes.CredentialInfo
-import at.asitplus.rqes.collection_entries.AuthParameter
+import at.asitplus.rqes.collection_entries.AuthParameters
 import at.asitplus.rqes.collection_entries.CertificateParameters
 import at.asitplus.rqes.collection_entries.KeyParameters
 import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
@@ -33,8 +33,8 @@ class DummyValueProvider {
         signatureQualifier = SignatureQualifier.EU_EIDAS_QES,
         keyParameters = validSignatureAlgorithms.random().toCscKeyParameters(isValid),
         certParameters = cscCertificateParameters(isValid),
-        authParameters = AuthParameter(
-            mode = AuthParameter.AuthMode.EXPLICIT,
+        authParameters = AuthParameters(
+            mode = AuthParameters.AuthMode.EXPLICIT,
         ),
         scal = CredentialInfo.ScalOptions.entries.random(),
         multisign = 1U,

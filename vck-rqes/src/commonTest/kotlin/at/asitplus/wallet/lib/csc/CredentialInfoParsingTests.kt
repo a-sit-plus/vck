@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.csc
 import at.asitplus.rqes.CredentialInfoRequest
 import at.asitplus.rqes.CredentialListRequest
 import at.asitplus.rqes.CredentialListResponse
-import at.asitplus.rqes.collection_entries.AuthParameter
+import at.asitplus.rqes.collection_entries.AuthParameters
 import at.asitplus.rqes.collection_entries.CertificateParameters
 import at.asitplus.rqes.collection_entries.KeyParameters
 import at.asitplus.rqes.enums.CertificateOptions
@@ -135,7 +135,7 @@ class CredentialInfoParsingTests : FreeSpec({
             this.credentialID shouldBe decoded.credentialIDs.first()
             this.keyParameters.status shouldBe KeyParameters.KeyStatusOptions.ENABLED
             this.certParameters?.status shouldBe CertificateParameters.CertStatus.VALID
-            this.authParameters?.mode shouldBe AuthParameter.AuthMode.EXPLICIT
+            this.authParameters?.mode shouldBe AuthParameters.AuthMode.EXPLICIT
         }
     }
 
