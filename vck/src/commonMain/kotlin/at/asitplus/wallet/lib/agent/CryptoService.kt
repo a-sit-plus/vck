@@ -189,7 +189,7 @@ open class DefaultCryptoService(
     override fun messageDigest(
         input: ByteArray,
         digest: Digest
-    ) = digest.digest(input)
+    ) = digest.digest(sequenceOf(input))
 }
 
 open class DefaultVerifierCryptoService : VerifierCryptoService {
