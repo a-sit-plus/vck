@@ -1,11 +1,12 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.openid.CredentialOffer
-import at.asitplus.openid.OpenIdAuthorizationDetails
-import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.openid.*
+import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.openid.DummyOAuth2DataProvider
@@ -14,6 +15,7 @@ import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 
@@ -43,7 +45,7 @@ class OidvciPreAuthTest : FreeSpec({
 
     suspend fun getToken(
         credentialOffer: CredentialOffer,
-        credentialIdToRequest: Set<String>
+        credentialIdToRequest: Set<String>,
     ): TokenResponseParameters {
         val preAuth = credentialOffer.grants?.preAuthorizedCode.shouldNotBeNull()
         val tokenRequest = client.oauth2Client.createTokenRequestParameters(
@@ -60,21 +62,23 @@ class OidvciPreAuthTest : FreeSpec({
     "process with pre-authorized code, credential offer, and authorization details for one credential" {
         val credentialOffer = issuer.credentialOfferWithPreAuthnForUser(DummyOAuth2DataProvider.user)
         val credentialIdToRequest = AtomicAttribute2023.toCredentialIdentifier(PLAIN_JWT)
+        val credentialFormat = issuer.metadata.supportedCredentialConfigurations!![credentialIdToRequest].shouldNotBeNull()
 
         val token = getToken(credentialOffer, setOf(credentialIdToRequest))
-        val authorizationDetails = token.authorizationDetails
-            .shouldNotBeNull()
+        token.authorizationDetails.shouldNotBeNull()
+            .first().shouldBeInstanceOf<OpenIdAuthorizationDetails>()
+        val clientNonce = issuer.nonce().getOrThrow().clientNonce
 
-        val first = authorizationDetails.first().shouldBeInstanceOf<OpenIdAuthorizationDetails>()
         val credentialRequest = client.createCredentialRequest(
-            input = WalletService.CredentialRequestInput.CredentialIdentifier(first.credentialConfigurationId!!),
-            clientNonce = token.clientNonce,
-            credentialIssuer = issuer.metadata.credentialIssuer
+            tokenResponse = token,
+            metadata = issuer.metadata,
+            credentialFormat = credentialFormat,
+            clientNonce = clientNonce,
         ).getOrThrow()
 
-        val credential = issuer.credential(token.accessToken, credentialRequest)
+        val credential = issuer.credential(token.toHttpHeaderValue(), credentialRequest.first())
             .getOrThrow()
-        credential.credential.shouldNotBeNull()
+        credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
     }
 
     "process with pre-authorized code, credential offer, and authorization details for all credentials" {
@@ -84,25 +88,25 @@ class OidvciPreAuthTest : FreeSpec({
             .toSet()
 
         val token = getToken(credentialOffer, credentialIdsToRequest)
+        val clientNonce = issuer.nonce().getOrThrow().clientNonce
         val authnDetails = token.authorizationDetails
             .shouldNotBeNull()
             .shouldHaveSize(4)
 
         authnDetails.forEach {
             it.shouldBeInstanceOf<OpenIdAuthorizationDetails>()
-            // Not supporting different credential datasets for one credential configuration at the moment,
-            // so we'll just use the credential identifier, see OID4VCI 6.2
-            val credentialIdentifier = it.credentialIdentifiers?.first()
-                ?: throw IllegalArgumentException("credential_identifiers")
+            val credentialFormat = issuer.metadata.supportedCredentialConfigurations!![it.credentialIdentifiers!!.first()].shouldNotBeNull()
             val credentialRequest = client.createCredentialRequest(
-                input = WalletService.CredentialRequestInput.CredentialIdentifier(credentialIdentifier),
-                clientNonce = token.clientNonce,
-                credentialIssuer = issuer.metadata.credentialIssuer
+                tokenResponse = token,
+                metadata = issuer.metadata,
+                credentialFormat = credentialFormat,
+                clientNonce = clientNonce,
             ).getOrThrow()
 
-            val credential = issuer.credential(token.accessToken, credentialRequest)
+            issuer.credential(token.toHttpHeaderValue(), credentialRequest.first())
                 .getOrThrow()
-            credential.credential.shouldNotBeNull()
+                .credentials.shouldNotBeEmpty().first()
+                .credentialString.shouldNotBeNull()
         }
     }
 
@@ -124,16 +128,60 @@ class OidvciPreAuthTest : FreeSpec({
             resource = issuer.metadata.credentialIssuer,
         )
         val token = authorizationService.token(tokenRequest).getOrThrow()
+        val clientNonce = issuer.nonce().getOrThrow().clientNonce
 
         val credentialRequest = client.createCredentialRequest(
-            input = WalletService.CredentialRequestInput.Format(supportedCredentialFormat),
-            clientNonce = token.clientNonce,
-            credentialIssuer = issuer.metadata.credentialIssuer
+            tokenResponse = token,
+            metadata = issuer.metadata,
+            credentialFormat = supportedCredentialFormat,
+            clientNonce = clientNonce,
         ).getOrThrow()
 
-        val credential = issuer.credential(token.accessToken, credentialRequest)
+        issuer.credential(token.toHttpHeaderValue(), credentialRequest.first())
             .getOrThrow()
-        credential.credential.shouldNotBeNull()
+            .credentials.shouldNotBeEmpty().first()
+            .credentialString.shouldNotBeNull()
+    }
+
+    "two proofs over different keys lead to two credentials" {
+        val credentialOffer = issuer.credentialOfferWithPreAuthnForUser(DummyOAuth2DataProvider.user)
+        val credentialIdToRequest = AtomicAttribute2023.toCredentialIdentifier(PLAIN_JWT)
+
+        val token = getToken(credentialOffer, setOf(credentialIdToRequest))
+        val credentialIdentifier = token.authorizationDetails.shouldNotBeNull()
+            .filterIsInstance<OpenIdAuthorizationDetails>()
+            .first().credentialIdentifiers.shouldNotBeNull().first()
+
+        val clientNonce = issuer.nonce().getOrThrow().clientNonce
+        val proof = client.createCredentialRequestProofJwt(
+            clientNonce = clientNonce,
+            credentialIssuer = issuer.metadata.credentialIssuer,
+        )
+        val differentProof = WalletService().createCredentialRequestProofJwt(
+            clientNonce = clientNonce,
+            credentialIssuer = issuer.metadata.credentialIssuer,
+        )
+
+        val credentialRequest = CredentialRequestParameters(
+            credentialIdentifier = credentialIdentifier,
+            proofs = CredentialRequestProofContainer(
+                proofType = OpenIdConstants.ProofType.JWT,
+                jwt = setOf(proof.jwt!!, differentProof.jwt!!)
+            )
+        )
+
+        val credentials = issuer.credential(token.toHttpHeaderValue(), credentialRequest)
+            .getOrThrow()
+            .credentials.shouldNotBeEmpty()
+            .shouldHaveSize(2)
+        // subject identifies the key of the client, here the keys of different proofs, so they should be unique
+        credentials.map {
+            JwsSigned.deserialize<VerifiableCredentialJws>(
+                VerifiableCredentialJws.serializer(),
+                it.credentialString.shouldNotBeNull(),
+                vckJsonSerializer
+            ).getOrThrow().payload.subject
+        }.toSet().shouldHaveSize(2)
     }
 
 })

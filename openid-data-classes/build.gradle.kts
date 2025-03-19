@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree.Companion.test
 
 plugins {
+    id("com.android.library")
     kotlin("multiplatform")
     kotlin("plugin.serialization")
     id("at.asitplus.gradle.vclib-conventions")
@@ -20,7 +21,6 @@ kotlin {
 
     jvm()
     androidTarget {
-        publishLibraryVariants("release")
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         instrumentedTestVariant.sourceSetTree.set(test)
     }
@@ -32,7 +32,7 @@ kotlin {
         commonMain {
             dependencies {
                 api(project(":dif-data-classes"))
-                implementation(ktor("http"))
+                api(ktor("http"))
                 implementation(napier())
                 api("at.asitplus.signum:indispensable:${VcLibVersions.signum}")
                 api("at.asitplus.signum:indispensable-cosef:${VcLibVersions.signum}")
@@ -45,9 +45,10 @@ kotlin {
 
 setupAndroid()
 
-exportIosFramework(
+exportXCFramework(
     "OpenIdDataClasses",
     transitiveExports = true,
+    static = false,
     project(":dif-data-classes")
 )
 

@@ -1,13 +1,9 @@
-
-
-import at.asitplus.gradle.commonImplementationAndApiDependencies
-import at.asitplus.gradle.exportIosFramework
-import at.asitplus.gradle.setupAndroid
-import at.asitplus.gradle.setupDokka
+import at.asitplus.gradle.*
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree.Companion.test
 
 plugins {
+    id("com.android.library")
     kotlin("multiplatform")
     kotlin("plugin.serialization")
 
@@ -23,10 +19,8 @@ version = artifactVersion
 
 
 kotlin {
-
     jvm()
     androidTarget {
-        publishLibraryVariants("release")
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         instrumentedTestVariant.sourceSetTree.set(test)
     }
@@ -39,12 +33,6 @@ kotlin {
                 api(project(":dif-data-classes"))
                 api(project(":openid-data-classes"))
                 commonImplementationAndApiDependencies()
-            }
-        }
-
-        jvmMain {
-            dependencies {
-                implementation(signum.bcpkix.jdk18on)
             }
         }
         jvmTest {
@@ -61,9 +49,10 @@ kotlin {
 
 setupAndroid()
 
-exportIosFramework(
+exportXCFramework(
     name = "VckKmm",
     transitiveExports = true,
+    static = false,
     project(":dif-data-classes")
 )
 

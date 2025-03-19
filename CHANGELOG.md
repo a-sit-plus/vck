@@ -17,6 +17,40 @@ Release 5.5.0:
    - In `OpenId4VpHolder` remove `finalizeAuthorizationResponse()` taking in `CredentialSubmission`
    - In `OpenId4VpHolder` remove `finalizeAuthorizationResponseParameters()` taking in `CredentialSubmission`
    - In `OpenId4VpWallet` remove `finalizeAuthorizationResponseParameters()` taking in `CredentialSubmission`
+ - Update implementation of [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html) to draft 15:
+   - Remove functionality to request issuance of certain claims only, as this has been dropped from OpenID4VCI entirely
+   - Remove format-specific parameters in credential request, replacing with `credential_configuration_id`
+   - In the credential response (`CredentialResponseParameters`), replace single `credential` with array `credentials`, containing the `credential` itself, but issue both variants for now
+   - In the supported credential formats (`SupportedCredentialFormat`) of the issuer, use the new format for claim names
+   - In the authorization details (`OpenIdAuthorizationDetails`), use the new format for claim names
+   - Deprecate `WalletService.RequestOptions.requestedAttributes`
+   - Deprecate methods in `OpenId4VciClient` containing parameter for `requestedAttributes`
+   - In `OpenId4VciClient.startProvisioningWithAuthRequest()` remove parameter `requestedAttributes`
+   - In `OpenId4VciClient.loadCredentialWithOffer()` remove parameter `requestedAttributes`
+   - In `WalletService`, deprecate `CredentialRequestInput`
+   - In `WalletService`, deprecate `createCredentialRequest(CredentialRequestInput)`, provide new method `createCredentialRequest(TokenResponseParameters)` for direct processing of the token response
+   - In `IssuerMetadata`, set `scope` for `SupportedCredentialFormat` to a unique string (the credential configuration id)
+   - Iron out details for filtering scope and authorization details in `SimpleAuthorizationService`
+   - `SimpleAuthorizationService` correctly validates requested credentials in credential request and issued access tokens
+   - `SimpleAuthorizationService` correctly validates requested credentials in authn request and token request
+   - Remove proof type `cwt`, which has been removed from draft 14
+   - The `CredentialIssuer` issues more the same credential to different keys, if more than one proof is contained in the credential request
+   - Add rudimentary implementation of key attestation proofs in `WalletService` and `CredentialIssuer`
+   - Update `OpenId4VciClient` (in `vck-openid-ktor`) to support updated process and all security features with different crypto services
+   - Remove `c_nonce` from token response, migrate to nonce endpoint in `CredentialIssuer`
+   - `WalletService` supports requesting encrypted credentials
+   - `CredentialIssuer` supports encrypting issued credentials
+ - Update implementation of authorization service for [OpenID4VC High Assurance Interoperability Profile](https://openid.net/specs/openid4vc-high-assurance-interoperability-profile-1_0.html) draft 03:
+   - `SimpleAuthorizationService` implements pushed authorization requests as defined in [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html)
+   - `SimpleAuthorizationService` implements attestation-based client authentication as defined in [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-05.html)
+   - `SimpleAuthorizationService` implements sender-constrained access tokens as defined in [OAuth 2.0 Demonstrating Proof of Possession (DPoP)](https://datatracker.ietf.org/doc/html/rfc9449)
+   - In `SimpleAuthorizationService` add constructor parameter to validate the client attestation JWT
+   - In `CredentialIssuer.credential()` callers need to pass the whole `Authorization` header instead of just the access token value
+ - Update dependencies:
+   - Update `signum` to 3.15.0, supporting X.509 certificates in v1, v2 too
+   - Update JsonPath4K
+ - Introduce dedicated Android targets, separate from JVM targets, that compileto JDK 8 / API-Level 30
+ - Improved error logging and exposing for presentation exchange input evaluation
 
 Release 5.4.3:
  - Fix property names for serialized RQES data classes

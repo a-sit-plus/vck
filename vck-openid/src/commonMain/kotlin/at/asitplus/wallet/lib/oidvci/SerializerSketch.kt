@@ -5,13 +5,7 @@ import io.ktor.http.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.JsonUnquotedLiteral
-import kotlinx.serialization.json.decodeFromJsonElement
-import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.*
 
 typealias Parameters = Map<String, String>
 
@@ -33,7 +27,7 @@ inline fun <reified T> String.decodeFromPostBody(): T = split("&")
     .associate {
         val key = it.substringBefore("=")
         val value = it.substringAfter("=", "")
-        key.safeDecodeUrlQueryComponent() to value.safeDecodeUrlQueryComponent()
+        key.safeDecodeUrlQueryComponent(plusIsSpace = true) to value.safeDecodeUrlQueryComponent(plusIsSpace = true)
     }
     .decode()
 

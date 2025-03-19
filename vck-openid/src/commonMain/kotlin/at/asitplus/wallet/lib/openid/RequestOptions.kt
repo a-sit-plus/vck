@@ -1,7 +1,15 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
-import at.asitplus.dif.*
+import at.asitplus.dif.Constraint
+import at.asitplus.dif.ConstraintField
+import at.asitplus.dif.ConstraintFilter
+import at.asitplus.dif.DifInputDescriptor
+import at.asitplus.dif.FormatContainerJwt
+import at.asitplus.dif.FormatContainerSdJwt
+import at.asitplus.dif.FormatHolder
+import at.asitplus.dif.InputDescriptor
+import at.asitplus.dif.PresentationDefinition
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.AuthenticationRequestParameters
@@ -10,13 +18,22 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.openid.OpenIdConstants.SCOPE_PROFILE
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
-import at.asitplus.openid.dcql.*
+import at.asitplus.openid.dcql.DCQLClaimsPathPointer
+import at.asitplus.openid.dcql.DCQLClaimsQueryList
+import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
+import at.asitplus.openid.dcql.DCQLCredentialQueryInstance
+import at.asitplus.openid.dcql.DCQLCredentialQueryList
+import at.asitplus.openid.dcql.DCQLIsoMdocClaimsQuery
+import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstraints
+import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
+import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import com.benasher44.uuid.uuid4
-import io.ktor.http.*
+import io.ktor.http.quote
 
 typealias RequestedAttributes = Set<String>
 
@@ -117,24 +134,30 @@ data class OpenIdRequestOptions(
                         doctypeValue = credential.credentialScheme.isoDocType!!
                     )
                 }
-                val claims = credential.requestedAttributes?.let { attributes ->
-                    DCQLClaimsQueryList(
-                        attributes.map { attribute ->
-                            when (credential.representation) {
-                                CredentialRepresentation.SD_JWT,
-                                CredentialRepresentation.PLAIN_JWT
-                                    -> DCQLJsonClaimsQuery(
-                                    path = DCQLClaimsPathPointer(attribute)
-                                )
+                val requestedAttributes = (credential.requestedAttributes?.map {
+                    it to true
+                } ?: listOf()) + (credential.requestedOptionalAttributes?.map {
+                    it to false
+                } ?: listOf())
 
-                                CredentialRepresentation.ISO_MDOC -> DCQLIsoMdocClaimsQuery(
-                                    namespace = credential.credentialScheme.isoNamespace!!,
-                                    claimName = attribute,
-                                )
-                            }
-                        }.toNonEmptyList()
-                    )
+                val claims = requestedAttributes.map { (attribute, isRequired) ->
+                    when (credential.representation) {
+                        CredentialRepresentation.SD_JWT,
+                        CredentialRepresentation.PLAIN_JWT -> DCQLJsonClaimsQuery(
+                            path = DCQLClaimsPathPointer(attribute)
+                        )
+
+                        CredentialRepresentation.ISO_MDOC -> DCQLIsoMdocClaimsQuery(
+                            namespace = credential.credentialScheme.isoNamespace!!,
+                            claimName = attribute,
+                        )
+                    }
+                }.ifEmpty {
+                    null // requesting all claims if none are specified
+                }?.toNonEmptyList()?.let {
+                    DCQLClaimsQueryList(it)
                 }
+
                 DCQLCredentialQueryInstance(
                     id = DCQLCredentialQueryIdentifier(uuid4().toString()),
                     format = format,

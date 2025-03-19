@@ -266,7 +266,7 @@ class OpenId4VpHolder(
     private fun RequestParameters.extractAudience(
         clientJsonWebKeySet: JsonWebKeySet?,
     ) = clientId
-        ?: audience
+        ?: issuer
         ?: clientJsonWebKeySet?.keys?.firstOrNull()
             ?.let { it.keyId ?: it.didEncoded ?: it.jwkThumbprint }
         ?: throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST, "could not parse audience")

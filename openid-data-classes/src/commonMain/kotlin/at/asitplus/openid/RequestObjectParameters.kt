@@ -40,6 +40,7 @@ data class RequestObjectParameters(
     override val redirectUrl: String? = null
     override val responseUrl: String? = null
     override val audience: String? = null
+    override val issuer: String? = null
     override val state: String? = null
     override val transactionData: Set<String>? = null
 

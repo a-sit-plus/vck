@@ -15,6 +15,7 @@
 [![Kotlin](https://img.shields.io/badge/kotlin-multiplatform--mobile-orange.svg?logo=kotlin)](http://kotlinlang.org)
 [![Kotlin](https://img.shields.io/badge/kotlin-2.1.0-blue.svg?logo=kotlin)](http://kotlinlang.org)
 [![Java](https://img.shields.io/badge/java-17-blue.svg?logo=OPENJDK)](https://www.oracle.com/java/technologies/downloads/#java17)
+[![Android](https://img.shields.io/badge/Android-SDK--30-37AA55?logo=android)](https://developer.android.com/tools/releases/platforms#11)
 [![Maven Central](https://img.shields.io/maven-central/v/at.asitplus.wallet/vck)](https://mvnrepository.com/artifact/at.asitplus.wallet/vck)
 
 </div>
@@ -59,7 +60,7 @@ When using the plain JWT representation, the single credential itself is an inst
 
 Other libraries implementing credential schemes may call `LibraryInitializer.registerExtensionLibrary()` to register with this library. See our implementation of the [EU PID credential](https://github.com/a-sit-plus/eu-pid-credential) and our implementation of the [Mobile Driving Licence](https://github.com/a-sit-plus/mobile-driving-licence-credential/) for examples. We also maintain a comprehensive list of [all credentials powered by this library](https://github.com/a-sit-plus/credentials-collection).
 
-For the OpenID protocol family, issuing is implemented using [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html), see `WalletService` and `CredentialIssuer`. This library supports several features of the OpenID4VCI draft 14: Pre-authorized code grants, authorization code flow, selecting credentials with authorization details and scopes, pushed authorization requests. Not supported are the deferred credential endpoint and the notification endpoint.
+For the OpenID protocol family, issuing is implemented using [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html), see `WalletService` and `CredentialIssuer`. This library supports several features of the OpenID4VCI draft 15: Pre-authorized code grants, authorization code flow, selecting credentials with authorization details and scopes, pushed authorization requests. Not supported are the deferred credential endpoint and the notification endpoint.
 
 Presentation of credentials is implemented using [Self-Issued OpenID Provider v2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html), supporting [OpenID for Verifiable Presentations](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html), see `OpenId4VpVerifier` and `OpenId4VpHolder`. This library supports several features of the OpenID4VP draft 23: Same device and cross device flows, response mode `direct_post` and `direct_post.jwt`, request objects by value or reference, presentation definitions and submissions, verifier attestations, signed and/or encrypted responses, client identifier schemes embedded in the client identifier. Not supported are the Digital Credential Query Language, using scopes for referencing presentation definitions, client identifier schemes OpenID Federation and DID.
 

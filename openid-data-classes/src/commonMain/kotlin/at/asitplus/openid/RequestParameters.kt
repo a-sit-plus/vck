@@ -6,6 +6,7 @@ interface RequestParameters {
     val clientId: String?
     val redirectUrl: String?
     val responseUrl: String?
+    val issuer: String?
     val audience: String?
     val state: String?
     val transactionData: Set<String>?

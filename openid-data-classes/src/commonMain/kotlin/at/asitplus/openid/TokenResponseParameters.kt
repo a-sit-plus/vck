@@ -2,6 +2,7 @@ package at.asitplus.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
+import io.ktor.http.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -54,6 +55,7 @@ data class TokenResponseParameters(
      * Credential Issuer provides a fresh nonce.
      */
     @SerialName("c_nonce")
+    @Deprecated("Removed in OID4VCI draft 14, see ClientNonceResponse")
     val clientNonce: String? = null,
 
     /**
@@ -62,6 +64,7 @@ data class TokenResponseParameters(
      */
     @SerialName("c_nonce_expires_in")
     @Serializable(with = DurationSecondsIntSerializer::class)
+    @Deprecated("Removed in OID4VCI draft 14, see ClientNonceResponse")
     val clientNonceExpiresIn: Duration? = null,
 
     /**
@@ -100,6 +103,9 @@ data class TokenResponseParameters(
     @SerialName("credentialID")
     val credentialId: String? = null,
 ) {
+
+    fun toHttpHeaderValue() = "$tokenType $accessToken"
+    fun toHttpHeader() = "${HttpHeaders.Authorization}: $tokenType $accessToken"
 
     fun serialize() = odcJsonSerializer.encodeToString(this)
 

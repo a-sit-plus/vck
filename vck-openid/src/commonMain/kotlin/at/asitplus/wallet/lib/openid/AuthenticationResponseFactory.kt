@@ -44,7 +44,6 @@ internal class AuthenticationResponseFactory(
         val responseSerialized = buildJarm(request, response)
         val jarm = AuthenticationResponseParameters(
             response = responseSerialized,
-            state = request.parameters.state
         )
         return AuthenticationResponseResult.Post(url, jarm.encodeToParameters())
     }
