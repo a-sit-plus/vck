@@ -38,7 +38,6 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.datetime.Clock
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
 
@@ -105,7 +104,7 @@ class OpenId4VciClientTest : FunSpec() {
         test("loadEuPidCredentialIsoWithOffer") {
             runTest {
                 val expectedGivenName = uuid4().toString()
-                val (client, credentialIssuer) = setup(
+                val (client, credentialIssuer, authorizationService) = setup(
                     scheme = EuPidScheme,
                     representation = ISO_MDOC,
                     attributes = mapOf(
@@ -127,7 +126,7 @@ class OpenId4VciClientTest : FunSpec() {
                 val selectedCredential = credentialIdentifierInfos
                     .first { it.supportedCredentialFormat.format == CredentialFormatEnum.MSO_MDOC }
 
-                val offer = credentialIssuer.credentialOfferWithPreAuthnForUser(dummyUser())
+                val offer = authorizationService.credentialOfferWithPreAuthnForUser(dummyUser(), credentialIssuer.metadata.credentialIssuer)
                 client.loadCredentialWithOffer(offer, selectedCredential, null).apply {
                     this.isSuccess shouldBe true
                 }
@@ -148,10 +147,10 @@ class OpenId4VciClientTest : FunSpec() {
         representation: ConstantIndex.CredentialRepresentation,
         attributes: Map<String, String>,
         storeCredential: (suspend (Holder.StoreCredentialInput) -> Unit) = {},
-    ): Pair<OpenId4VciClient, CredentialIssuer> {
-        val (mockEngine, credentialIssuer) = setupIssuingService(scheme, representation, attributes)
+    ): SetupResult {
+        val (mockEngine, credentialIssuer, authorizationService) = setupIssuingService(scheme, representation, attributes)
         val client = setupClient(mockEngine, storeCredential)
-        return client to credentialIssuer
+        return SetupResult(client, credentialIssuer, authorizationService)
     }
 
     private fun setupClient(
@@ -196,7 +195,7 @@ class OpenId4VciClientTest : FunSpec() {
         scheme: ConstantIndex.CredentialScheme,
         representationToIssue: ConstantIndex.CredentialRepresentation,
         attributesToIssue: Map<String, String>,
-    ): Pair<HttpClientEngine, CredentialIssuer> {
+    ): Triple<HttpClientEngine, CredentialIssuer, SimpleAuthorizationService> {
         val dataProvider = object : OAuth2DataProvider {
             override suspend fun loadUserInfo(
                 request: AuthenticationRequestParameters,
@@ -266,7 +265,7 @@ class OpenId4VciClientTest : FunSpec() {
             nonceEndpointPath = nonceEndpointPath,
         )
 
-        return Pair(MockEngine { request ->
+        return Triple(MockEngine { request ->
             when {
                 request.url.fullPath == OpenIdConstants.PATH_WELL_KNOWN_CREDENTIAL_ISSUER -> respond(
                     vckJsonSerializer.encodeToString(credentialIssuer.metadata),
@@ -336,7 +335,7 @@ class OpenId4VciClientTest : FunSpec() {
                 else -> respondError(HttpStatusCode.NotFound)
                     .also { Napier.w("NOT MATCHED ${request.url.fullPath}") }
             }
-        }, credentialIssuer)
+        }, credentialIssuer, authorizationService)
     }
 
     private fun HttpRequestData.toRequestInfo(): RequestInfo = RequestInfo(
@@ -358,3 +357,9 @@ class OpenId4VciClientTest : FunSpec() {
         }
     }
 }
+
+data class SetupResult(
+    val openId4VciClient: OpenId4VciClient,
+    val credentialIssuer: CredentialIssuer,
+    val authorizationService: SimpleAuthorizationService,
+)

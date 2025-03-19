@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package at.asitplus.rqes.collection_entries
 
 import at.asitplus.rqes.Method

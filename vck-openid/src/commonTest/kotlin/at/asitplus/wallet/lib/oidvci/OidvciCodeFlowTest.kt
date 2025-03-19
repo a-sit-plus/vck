@@ -111,7 +111,6 @@ class OidvciCodeFlowTest : FreeSpec({
                 clientNonce = clientNonce,
             ).getOrThrow().first()
         ).getOrThrow()
-        credential.format shouldBe CredentialFormatEnum.JWT_VC
         val serializedCredential = credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
 
         JwsSigned.deserialize<VerifiableCredentialJws>(
@@ -217,7 +216,6 @@ class OidvciCodeFlowTest : FreeSpec({
                 clientNonce = clientNonce,
             ).getOrThrow().first()
         ).getOrThrow()
-        credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
         val serializedCredential = credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
 
         serializedCredential.assertSdJwtReceived()
@@ -239,7 +237,6 @@ class OidvciCodeFlowTest : FreeSpec({
                 clientNonce = clientNonce,
             ).getOrThrow().first()
         ).getOrThrow()
-        credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
         val serializedCredential = credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
 
         serializedCredential.assertSdJwtReceived()
@@ -293,7 +290,6 @@ class OidvciCodeFlowTest : FreeSpec({
                 clientNonce = clientNonce,
             ).getOrThrow().first()
         ).getOrThrow()
-        credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
         val serializedCredential = credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
 
         serializedCredential.assertSdJwtReceived()
@@ -320,7 +316,6 @@ class OidvciCodeFlowTest : FreeSpec({
                 clientNonce = clientNonce,
             ).getOrThrow().first()
         ).getOrThrow()
-        credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
         val serializedCredential = credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
 
         serializedCredential.assertSdJwtReceived()
@@ -425,7 +420,6 @@ class OidvciCodeFlowTest : FreeSpec({
                 clientNonce = clientNonce,
             ).getOrThrow().first()
         ).getOrThrow()
-        credential.format shouldBe CredentialFormatEnum.MSO_MDOC
         val serializedCredential = credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
 
         val issuerSigned = IssuerSigned.deserialize(serializedCredential.decodeToByteArray(Base64())).getOrThrow()

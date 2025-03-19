@@ -4,7 +4,6 @@ import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 
 @Serializable
 data class CredentialRequestParameters(
@@ -43,6 +42,7 @@ data class CredentialRequestParameters(
     @Deprecated("Removed in OID4VCI draft 15")
     val docType: String? = null,
 
+    @Suppress("DEPRECATION")
     @SerialName("claims")
     @Deprecated("Removed in OID4VCI draft 15")
     val claims: Map<String, Map<String, RequestedCredentialClaimSpecification>>? = null,

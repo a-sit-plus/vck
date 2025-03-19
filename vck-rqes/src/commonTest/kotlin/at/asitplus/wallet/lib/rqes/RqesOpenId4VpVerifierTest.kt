@@ -156,6 +156,7 @@ private fun getTransactionData(): TransactionData = TransactionData.QesAuthoriza
     credentialId = uuid4().toString(),
 ).getOrThrow()
 
+@Suppress("DEPRECATION")
 private fun getDocumentDigests(): RqesDocumentDigestEntry = RqesDocumentDigestEntry.create(
     label = uuid4().toString(),
     hash = uuid4().bytes,
