@@ -9,6 +9,7 @@ import at.asitplus.rqes.enums.SignedEnvelopeProperty
 import at.asitplus.rqes.getHashAlgorithm
 import at.asitplus.rqes.getSignAlgorithm
 import at.asitplus.rqes.serializers.Asn1EncodableBase64Serializer
+import at.asitplus.rqes.SignDocRequestParameters
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
@@ -18,12 +19,16 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import kotlinx.serialization.json.JsonObject
 
+@Deprecated("Renamed", ReplaceWith("DocumentDigest"))
+typealias CscDocumentDigest = DocumentDigest
+
 
 /**
- * CSC: Class used as part of [SignatureRequestParameters]
+ * CSC-API v2.0.0.2
+ * Part of [SignDocRequestParameters]
  */
 @Serializable
-data class CscDocumentDigest(
+data class DocumentDigest(
     /**
      *
      * One or more hash values representing one or more SDRs. This
@@ -95,7 +100,7 @@ data class CscDocumentDigest(
         if (this === other) return true
         if (other == null || this::class != other::class) return false
 
-        other as CscDocumentDigest
+        other as DocumentDigest
 
         if (!hashes.contentEquals(other.hashes)) return false
         if (hashAlgorithmOid != other.hashAlgorithmOid) return false

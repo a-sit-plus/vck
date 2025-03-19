@@ -4,11 +4,11 @@ import CscAuthorizationDetails
 import at.asitplus.catching
 import at.asitplus.openid.*
 import at.asitplus.rqes.CredentialInfo
-import at.asitplus.rqes.CscSignatureRequestParameters
-import at.asitplus.rqes.SignHashParameters
-import at.asitplus.rqes.collection_entries.CscCertificateParameters
-import at.asitplus.rqes.collection_entries.CscDocumentDigest
-import at.asitplus.rqes.collection_entries.CscKeyParameters
+import at.asitplus.rqes.QtspSignatureRequest
+import at.asitplus.rqes.SignHashRequestParameters
+import at.asitplus.rqes.collection_entries.CertificateParameters
+import at.asitplus.rqes.collection_entries.DocumentDigest
+import at.asitplus.rqes.collection_entries.KeyParameters
 import at.asitplus.rqes.collection_entries.DocumentLocation
 import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
 import at.asitplus.rqes.enums.ConformanceLevel
@@ -75,11 +75,11 @@ class RqesOpenId4VpHolder(
         require(credentialInfo.certParameters != null)
         with(credentialInfo.certParameters!!) {
             require(!this.certificates.isNullOrEmpty())
-            require(this.status == CscCertificateParameters.CertStatus.VALID)
+            require(this.status == CertificateParameters.CertStatus.VALID)
         }
 
         with(credentialInfo.keyParameters) {
-            require(status == CscKeyParameters.KeyStatusOptions.ENABLED)
+            require(status == KeyParameters.KeyStatusOptions.ENABLED)
         }
 
         val signingAlgos =
@@ -128,7 +128,7 @@ class RqesOpenId4VpHolder(
     suspend fun getCscDocumentDigests(
         documentDigests: Collection<OAuthDocumentDigest>,
         signatureAlgorithm: X509SignatureAlgorithm,
-    ): CscDocumentDigest = CscDocumentDigest(
+    ): DocumentDigest = DocumentDigest(
         hashes = documentDigests.map { it.hash },
         signatureFormat = signatureProperties.signatureFormat,
         conformanceLevel = signatureProperties.conformanceLevel,
@@ -183,9 +183,9 @@ class RqesOpenId4VpHolder(
         dtbsr: Hashes,
         sad: String,
         signatureAlgorithm: X509SignatureAlgorithm,
-    ): CscSignatureRequestParameters = signingCredential?.let {
+    ): QtspSignatureRequest = signingCredential?.let {
         require(it.supportedSigningAlgorithms.contains(signatureAlgorithm))
-        SignHashParameters(
+        SignHashRequestParameters(
             credentialId = it.credentialId,
             sad = sad,
             hashes = dtbsr,

@@ -6,16 +6,15 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.SignatureQualifier
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.rqes.CredentialInfo
-import at.asitplus.rqes.CscSignatureRequestParameters
-import at.asitplus.rqes.SignHashParameters
-import at.asitplus.rqes.collection_entries.CscCertificateParameters
-import at.asitplus.rqes.collection_entries.CscDocumentDigest
-import at.asitplus.rqes.collection_entries.CscKeyParameters
+import at.asitplus.rqes.QtspSignatureRequest
+import at.asitplus.rqes.SignHashRequestParameters
+import at.asitplus.rqes.collection_entries.CertificateParameters
+import at.asitplus.rqes.collection_entries.DocumentDigest
+import at.asitplus.rqes.collection_entries.KeyParameters
 import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm.entries
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import com.benasher44.uuid.bytes
@@ -25,7 +24,6 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.encodeToString
 
 class RqesOpenId4VpHolderTest : FreeSpec({
@@ -34,7 +32,7 @@ class RqesOpenId4VpHolderTest : FreeSpec({
     val rqesWalletService = RqesOpenId4VpHolder()
 
     fun CredentialInfo.isValid(): Boolean =
-        this.keyParameters.status == CscKeyParameters.KeyStatusOptions.ENABLED && this.certParameters!!.status == CscCertificateParameters.CertStatus.VALID
+        this.keyParameters.status == KeyParameters.KeyStatusOptions.ENABLED && this.certParameters!!.status == CertificateParameters.CertStatus.VALID
 
     beforeEach {
         rqesWalletService.updateSignatureProperties(
@@ -89,8 +87,8 @@ class RqesOpenId4VpHolderTest : FreeSpec({
                 this.conformanceLevel shouldBe rqesWalletService.signatureProperties.conformanceLevel
                 this.signedEnvelopeProperty shouldBe rqesWalletService.signatureProperties.signedEnvelopeProperty
             }
-            val serialized = vckJsonSerializer.encodeToString(CscDocumentDigest.serializer(), testDocumentDigests)
-            val deserialized = vckJsonSerializer.decodeFromString(CscDocumentDigest.serializer(), serialized)
+            val serialized = vckJsonSerializer.encodeToString(DocumentDigest.serializer(), testDocumentDigests)
+            val deserialized = vckJsonSerializer.decodeFromString(DocumentDigest.serializer(), serialized)
             deserialized shouldNotBe null
             deserialized shouldBe testDocumentDigests
         }
@@ -149,13 +147,13 @@ class RqesOpenId4VpHolderTest : FreeSpec({
                 dtbsr = listOf(uuid4().bytes),
                 sad = uuid4().toString(),
                 signatureAlgorithm = rqesWalletService.signingCredential!!.supportedSigningAlgorithms.first(),
-            ).shouldBeInstanceOf<SignHashParameters>()
+            ).shouldBeInstanceOf<SignHashRequestParameters>()
 
             request.credentialId shouldBe validCert.credentialID
             request.signAlgoOid shouldBe validSigningAlgo.oid
 
             val serialized = vckJsonSerializer.encodeToString(request)
-            vckJsonSerializer.decodeFromString<CscSignatureRequestParameters>(serialized)
+            vckJsonSerializer.decodeFromString<QtspSignatureRequest>(serialized)
                 .shouldBe(request)
         }
     }

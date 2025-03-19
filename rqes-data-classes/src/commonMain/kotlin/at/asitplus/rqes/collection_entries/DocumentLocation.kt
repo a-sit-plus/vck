@@ -5,7 +5,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * Class used as part of [AuthorizationDetails]
+ * Class used as part of [CscAuthorizationDetails]
  */
 @Serializable
 data class DocumentLocation(

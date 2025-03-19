@@ -8,6 +8,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
+ * CSC-API v2.0.0.2
  * The authorization details type credential allows applications to pass the details of a certain
  * credential authorization in a single JSON object
  */

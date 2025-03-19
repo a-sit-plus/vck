@@ -114,10 +114,10 @@ data class RqesDocumentDigestEntry private constructor(
      * - [hash] or [dtbsr]
      */
     init {
-        require(hashAlgorithmOid iff hash)
-        require(dtbsrHashAlgorithmOid iff dataToBeSignedRepresentation)
-        require(documentLocationMethod iff documentLocationUri)
-        require(hash or dataToBeSignedRepresentation)
+        require(hashAlgorithmOid iff hash) {"If any is set both hashAlgorithmOid and hash must be set"}
+        require(dtbsrHashAlgorithmOid iff dataToBeSignedRepresentation) {"If any is set both dtbsrHashAlgorithmOid and dataToBeSignedRepresentation must be set"}
+        require(documentLocationMethod iff documentLocationUri) {"If any is set both documentLocationMethod and documentLocationUri must be set"}
+        require(hash or dataToBeSignedRepresentation) {"Either hash or dataToBeSignedRepresentation must be set"}
     }
 
     override fun equals(other: Any?): Boolean {
@@ -214,7 +214,6 @@ data class RqesDocumentDigestEntry private constructor(
                 dtbsrHashAlgorithmOid = dtbsrHashAlgorithmOID,
             )
         }.wrap()
-
     }
 }
 

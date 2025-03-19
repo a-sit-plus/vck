@@ -2,9 +2,9 @@ package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.openid.SignatureQualifier
 import at.asitplus.rqes.CredentialInfo
-import at.asitplus.rqes.collection_entries.CscAuthParameter
-import at.asitplus.rqes.collection_entries.CscCertificateParameters
-import at.asitplus.rqes.collection_entries.CscKeyParameters
+import at.asitplus.rqes.collection_entries.AuthParameters
+import at.asitplus.rqes.collection_entries.CertificateParameters
+import at.asitplus.rqes.collection_entries.KeyParameters
 import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -33,16 +33,16 @@ class DummyValueProvider {
         signatureQualifier = SignatureQualifier.EU_EIDAS_QES,
         keyParameters = validSignatureAlgorithms.random().toCscKeyParameters(isValid),
         certParameters = cscCertificateParameters(isValid),
-        authParameters = CscAuthParameter(
-            mode = CscAuthParameter.AuthMode.EXPLICIT,
+        authParameters = AuthParameters(
+            mode = AuthParameters.AuthMode.EXPLICIT,
         ),
         scal = CredentialInfo.ScalOptions.entries.random(),
         multisign = 1U,
         lang = "de"
     )
 
-    private suspend fun cscCertificateParameters(isValid: Boolean) = CscCertificateParameters(
-        status = if (isValid) CscCertificateParameters.CertStatus.VALID else CscCertificateParameters.CertStatus.entries.random(),
+    private suspend fun cscCertificateParameters(isValid: Boolean) = CertificateParameters(
+        status = if (isValid) CertificateParameters.CertStatus.VALID else CertificateParameters.CertStatus.entries.random(),
         certificates = listOf(EphemeralKeyWithSelfSignedCert().getCertificate()!!),
         issuerDN = uuid4().toString(),
         serialNumber = uuid4().toString(),
@@ -51,9 +51,9 @@ class DummyValueProvider {
 
     private fun X509SignatureAlgorithm.toCscKeyParameters(
         isValid: Boolean,
-    ): CscKeyParameters = CscKeyParameters(
-        status = if (isValid) CscKeyParameters.KeyStatusOptions.ENABLED else CscKeyParameters.KeyStatusOptions.entries.random(),
-        algo = listOf(oid),
+    ): KeyParameters = KeyParameters(
+        status = if (isValid) KeyParameters.KeyStatusOptions.ENABLED else KeyParameters.KeyStatusOptions.entries.random(),
+        algo = setOf(oid),
         len = digest.outputLength.bits,
         curve = if (isEc) algorithm.toJwsAlgorithm().getOrThrow().ecCurve!!.oid else null
     )
