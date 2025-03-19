@@ -167,6 +167,7 @@ class DeserializationTest : FunSpec({
         credentials.shouldNotBeEmpty()
         val credential = credentials["org.iso.18013.5.1.mDL"].shouldNotBeNull()
         credential.format shouldBe CredentialFormatEnum.MSO_MDOC
+        @Suppress("DEPRECATION")
         val claims = credential.isoClaims.shouldNotBeNull()
         claims.shouldNotBeEmpty()
         val innerClaims = claims["org.iso.18013.5.1"].shouldNotBeNull()
@@ -250,6 +251,7 @@ class DeserializationTest : FunSpec({
         val credential = credentials["SD_JWT_VC_example_in_OpenID4VCI"].shouldNotBeNull()
         @Suppress("DEPRECATION")
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
+        @Suppress("DEPRECATION")
         val claims = credential.sdJwtClaims.shouldNotBeNull()
         claims.shouldNotBeEmpty()
         claims["given_name"]?.display.shouldNotBeNull()
