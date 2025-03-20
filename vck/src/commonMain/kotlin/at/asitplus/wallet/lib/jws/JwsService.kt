@@ -83,7 +83,7 @@ interface JwsService {
         jweEncryption: JweEncryption,
     ): KmmResult<JweEncrypted>
 
-    fun <T : Any> encryptJweObject(
+    suspend fun <T : Any> encryptJweObject(
         type: String,
         payload: T,
         serializer: SerializationStrategy<T>,
@@ -239,7 +239,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         encryptJwe(ephemeralKeyPair, recipientKey, jweAlgorithm, jweEncryption, jweHeader, payload, serializer)
     }
 
-    override fun <T : Any> encryptJweObject(
+    override suspend fun <T : Any> encryptJweObject(
         type: String,
         payload: T,
         serializer: SerializationStrategy<T>,
@@ -262,7 +262,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         encryptJwe(ephemeralKeyPair, recipientKey, jweAlgorithm, jweEncryption, jweHeader, payload, serializer)
     }
 
-    private fun <T : Any> encryptJwe(
+    private suspend fun <T : Any> encryptJwe(
         ephemeralKeyPair: EphemeralKeyHolder,
         recipientKey: JsonWebKey,
         jweAlgorithm: JweAlgorithm,

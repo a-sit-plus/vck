@@ -1,6 +1,7 @@
 package at.asitplus.dif
 
 import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.catching
 import com.benasher44.uuid.uuid4
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -36,9 +37,9 @@ data class PresentationDefinition(
     fun serialize() = ddcJsonSerializer.encodeToString(this)
 
     companion object {
-        fun deserialize(it: String) = kotlin.runCatching {
+        fun deserialize(it: String) = catching {
             ddcJsonSerializer.decodeFromString<PresentationDefinition>(it)
-        }.wrap()
+        }
     }
 }
 
