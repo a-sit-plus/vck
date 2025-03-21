@@ -8,6 +8,7 @@ TBA
    - Rename `SignDocResponse` to `SignDocResponseParameters`
    - Rename `SignHashResponse` to `SignHashResponseParameters`
  - Fixed default values for CSC data classes
+ - Fixed `OpenIdVpWallet` parameter requirements for finalizing an authorization response
 
 Release 5.5.0:
  - Remove elements deprecated in 5.4.0 when introducing DCQL:
