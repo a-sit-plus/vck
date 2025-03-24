@@ -26,6 +26,7 @@ kotlin {
     androidTarget {
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         instrumentedTestVariant.sourceSetTree.set(test)
+        publishLibraryVariants("release")
     }
 
     iosArm64()

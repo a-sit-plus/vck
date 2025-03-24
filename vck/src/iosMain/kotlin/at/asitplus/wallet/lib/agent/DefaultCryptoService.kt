@@ -20,7 +20,7 @@ import kotlin.experimental.ExperimentalNativeApi
  * Beware: It does **not** implement encryption, decryption, key agreement and message digest correctly.
  */
 @Suppress("UNCHECKED_CAST")
-actual open class PlatformCryptoShim actual constructor(actual val keyMaterial: KeyMaterial)  {
+actual open class PlatformCryptoShim {
 
     actual open fun encrypt(
         key: ByteArray,
@@ -49,18 +49,6 @@ actual open class PlatformCryptoShim actual constructor(actual val keyMaterial: 
             KmmResult.success(input.reversedArray())
         else
             KmmResult.failure(IllegalArgumentException())
-    }
-
-    actual open fun performKeyAgreement(
-        ephemeralKey: EphemeralKeyHolder,
-        recipientKey: JsonWebKey,
-        algorithm: JweAlgorithm
-    ): KmmResult<ByteArray> {
-        return KmmResult.success("sharedSecret-${algorithm.identifier}".encodeToByteArray())
-    }
-
-    actual open fun performKeyAgreement(ephemeralKey: JsonWebKey, algorithm: JweAlgorithm): KmmResult<ByteArray> {
-        return KmmResult.success("sharedSecret-${algorithm.identifier}".encodeToByteArray())
     }
 
     actual open fun hmac(key: ByteArray, algorithm: JweEncryption, input: ByteArray): KmmResult<ByteArray> {

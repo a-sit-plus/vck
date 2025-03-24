@@ -3,17 +3,24 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.catching
+import at.asitplus.signum.indispensable.CryptoPrivateKey
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.CryptoSignature
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.ECCurve
+import at.asitplus.signum.indispensable.KeyAgreementPrivateValue
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
+import at.asitplus.signum.supreme.SecretExposure
 import at.asitplus.signum.supreme.SignatureResult
+import at.asitplus.signum.supreme.agree.keyAgreement
 import at.asitplus.signum.supreme.hash.digest
+import at.asitplus.signum.supreme.sign.EphemeralKey
 import at.asitplus.signum.supreme.sign.SignatureInput
+import at.asitplus.signum.supreme.sign.Signer
 import at.asitplus.signum.supreme.sign.Verifier
 import at.asitplus.signum.supreme.sign.verifierFor
 
@@ -40,13 +47,13 @@ interface CryptoService {
 
     fun generateEphemeralKeyPair(ecCurve: ECCurve): EphemeralKeyHolder
 
-    fun performKeyAgreement(
+    suspend fun performKeyAgreement(
         ephemeralKey: EphemeralKeyHolder,
         recipientKey: JsonWebKey,
         algorithm: JweAlgorithm
     ): KmmResult<ByteArray>
 
-    fun performKeyAgreement(ephemeralKey: JsonWebKey, algorithm: JweAlgorithm): KmmResult<ByteArray>
+    suspend fun performKeyAgreement(ephemeralKey: JsonWebKey, algorithm: JweAlgorithm): KmmResult<ByteArray>
 
     fun messageDigest(input: ByteArray, digest: Digest): ByteArray
 
@@ -96,9 +103,8 @@ data class AuthenticatedCiphertext(val ciphertext: ByteArray, val authtag: ByteA
     }
 }
 
-expect open class PlatformCryptoShim(keyMaterial: KeyMaterial) {
+expect open class PlatformCryptoShim() {
 
-    val keyMaterial: KeyMaterial
 
     open fun encrypt(
         key: ByteArray,
@@ -117,17 +123,6 @@ expect open class PlatformCryptoShim(keyMaterial: KeyMaterial) {
         algorithm: JweEncryption
     ): KmmResult<ByteArray>
 
-    open fun performKeyAgreement(
-        ephemeralKey: EphemeralKeyHolder,
-        recipientKey: JsonWebKey,
-        algorithm: JweAlgorithm
-    ): KmmResult<ByteArray>
-
-    open fun performKeyAgreement(
-        ephemeralKey: JsonWebKey,
-        algorithm: JweAlgorithm
-    ): KmmResult<ByteArray>
-
     open fun hmac(
         key: ByteArray,
         algorithm: JweEncryption,
@@ -139,7 +134,7 @@ open class DefaultCryptoService(
     override val keyMaterial: KeyMaterial
 ) : CryptoService {
 
-    private val platformCryptoShim by lazy { PlatformCryptoShim(keyMaterial) }
+    private val platformCryptoShim by lazy { PlatformCryptoShim() }
 
     override suspend fun sign(input: ByteArray) = keyMaterial.sign(input)
 
@@ -165,14 +160,28 @@ open class DefaultCryptoService(
 
     override fun generateEphemeralKeyPair(ecCurve: ECCurve) = DefaultEphemeralKeyHolder(ecCurve)
 
-    override fun performKeyAgreement(
+
+    override suspend fun performKeyAgreement(
         ephemeralKey: EphemeralKeyHolder,
         recipientKey: JsonWebKey,
         algorithm: JweAlgorithm
-    ) = platformCryptoShim.performKeyAgreement(ephemeralKey, recipientKey, algorithm)
+    ): KmmResult<ByteArray> = catching {
+        //this is temporary until we refactor the JWS service and both key agreement functions get merged
+        @OptIn(SecretExposure::class)
+        (recipientKey.toCryptoPublicKey()
+            .getOrThrow() as CryptoPublicKey.EC).keyAgreement(
+            ephemeralKey.key.exportPrivateKey().getOrThrow() as CryptoPrivateKey.WithPublicKey<CryptoPublicKey.EC>
+        ).getOrThrow()
+    }
 
-    override fun performKeyAgreement(ephemeralKey: JsonWebKey, algorithm: JweAlgorithm) =
-        platformCryptoShim.performKeyAgreement(ephemeralKey, algorithm)
+    override suspend fun performKeyAgreement(
+        ephemeralKey: JsonWebKey,
+        algorithm: JweAlgorithm
+    ): KmmResult<ByteArray> = catching {
+        val publicKey = ephemeralKey.toCryptoPublicKey().getOrThrow() as CryptoPublicKey.EC
+        //this is temporary until we refactor the JWS service and both key agreement functions get merged
+        (keyMaterial.getUnderLyingSigner() as Signer.ECDSA).keyAgreement(publicKey).getOrThrow()
+    }
 
     override fun hmac(key: ByteArray, algorithm: JweEncryption, input: ByteArray): KmmResult<ByteArray> =
         platformCryptoShim.hmac(key, algorithm, input)

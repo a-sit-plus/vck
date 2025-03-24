@@ -1,6 +1,9 @@
 # Changelog
 
 TBA
+ - Fix missing Android targets
+ - Kotlin 2.1.20
+ - Delegate key agreement to Signum's implementation -> **key agreement functions are now `suspend`ing**
  - Refactorings in Rqes-Data-Classes
    - Remove `Csc`-Prefix from nearly all CSC data classes
    - Rename `CscSignatureRequestParameters` to `QtspSignatureRequest`
