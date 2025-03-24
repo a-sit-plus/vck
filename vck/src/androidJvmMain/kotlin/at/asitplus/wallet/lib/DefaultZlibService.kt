@@ -1,4 +1,4 @@
-package lib
+package at.asitplus.wallet.lib
 
 import at.asitplus.wallet.lib.ZlibService
 import java.io.ByteArrayOutputStream

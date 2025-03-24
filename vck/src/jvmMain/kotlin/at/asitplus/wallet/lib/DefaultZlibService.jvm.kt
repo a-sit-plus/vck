@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib
 
-import lib.DefaultAndroidJvmZlibService
 import java.io.ByteArrayOutputStream
 import java.io.OutputStream
 import java.util.zip.Deflater

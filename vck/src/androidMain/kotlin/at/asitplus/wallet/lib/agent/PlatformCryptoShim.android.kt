@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.signum.indispensable.josef.JweEncryption
-import lib.agent.AndroidJvmPlatformCryptoShim
 
 actual open class PlatformCryptoShim {
 

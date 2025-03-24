@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import io.github.aakira.napier.Napier
-import lib.agent.AndroidJvmPlatformCryptoShim
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.Security
 

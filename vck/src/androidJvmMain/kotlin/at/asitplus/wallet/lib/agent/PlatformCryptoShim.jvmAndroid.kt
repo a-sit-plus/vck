@@ -1,4 +1,4 @@
-package lib.agent
+package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
