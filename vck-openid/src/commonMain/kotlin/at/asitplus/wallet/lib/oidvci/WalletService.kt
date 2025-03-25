@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.*
-import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.openid.OpenIdConstants.ProofType
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
@@ -249,29 +248,26 @@ class WalletService(
      * @param credentialFormat which credential to request (needed to build the correct proof)
      * @param clientNonce if required by the issuer (see [IssuerMetadata.nonceEndpointUrl]),
      * the value from there, exactly [ClientNonceResponse.clientNonce]
+     * @param previouslyRequestedScope the `scope` value requested in the token request, since the authorization server
+     * may not set it in [tokenResponse]
      */
     suspend fun createCredentialRequest(
         tokenResponse: TokenResponseParameters,
         metadata: IssuerMetadata,
         credentialFormat: SupportedCredentialFormat,
         clientNonce: String? = null,
+        previouslyRequestedScope: String? = null,
         clock: Clock = Clock.System,
     ): KmmResult<Collection<CredentialRequestParameters>> = catching {
-        val requests = tokenResponse.authorizationDetails?.let {
-            it.filterIsInstance<OpenIdAuthorizationDetails>().flatMap {
-                require(it.credentialIdentifiers != null) { "credential_identifiers are null" }
-                it.credentialIdentifiers!!.map {
-                    CredentialRequestParameters(credentialIdentifier = it)
-                }
-            }
-        } ?: tokenResponse.scope?.let { scopes ->
-            scopes.trim().split(" ").map { scope ->
-                val ccId = metadata.supportedCredentialConfigurations
-                    ?.entries?.firstOrNull { it.value.scope == scope }?.key
-                    ?: throw IllegalArgumentException("Can't find scope '$scope' from supported credential configurations")
-                CredentialRequestParameters(credentialConfigurationId = ccId)
-            }.toSet()
-        } ?: throw IllegalArgumentException("Can't parse tokenResponse: $tokenResponse")
+        val requests = (tokenResponse.authorizationDetails?.toCredentialRequest()
+            ?: tokenResponse.scope?.toCredentialRequest(metadata)).let {
+            if (it.isNullOrEmpty())
+                previouslyRequestedScope?.toCredentialRequest(metadata)
+            else it
+        }
+        if (requests == null || requests.isEmpty()) {
+            throw IllegalArgumentException("Can't parse tokenResponse: $tokenResponse")
+        }
         requests.map {
             @Suppress("DEPRECATION")
             it.copy(
@@ -287,6 +283,22 @@ class WalletService(
             Napier.i("createCredentialRequest returns $it")
         }
     }
+
+    private fun Set<AuthorizationDetails>.toCredentialRequest(): List<CredentialRequestParameters> =
+        filterIsInstance<OpenIdAuthorizationDetails>().flatMap {
+            require(it.credentialIdentifiers != null) { "credential_identifiers are null" }
+            it.credentialIdentifiers!!.map {
+                CredentialRequestParameters(credentialIdentifier = it)
+            }
+        }
+
+    private fun String.toCredentialRequest(metadata: IssuerMetadata): Set<CredentialRequestParameters> =
+        trim().split(" ").mapNotNull { scope ->
+            metadata.supportedCredentialConfigurations
+                ?.entries?.firstOrNull { it.value.scope == scope }?.key
+                ?.let { CredentialRequestParameters(credentialConfigurationId = it) }
+                ?: null.also { Napier.w("createCredentialRequest unknown scope $scope") }
+        }.toSet()
 
     private fun IssuerMetadata.credentialResponseEncryption(): CredentialResponseEncryption? =
         if (requestEncryption && decryptionKeyMaterial != null && jweDecryptionService != null && credentialResponseEncryption != null) {

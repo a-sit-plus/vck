@@ -245,7 +245,8 @@ class OpenId4VciClient(
             tokenResponse = tokenResponse,
             credentialFormat = context.credential.supportedCredentialFormat,
             credentialIdentifier = context.credential.credentialIdentifier,
-            credentialScheme = credentialScheme
+            credentialScheme = credentialScheme,
+            previouslyRequestedScope = context.credential.supportedCredentialFormat.scope,
         )
     }
 
@@ -292,7 +293,8 @@ class OpenId4VciClient(
                 credentialFormat = credentialFormat,
                 credentialScheme = credentialScheme,
                 oauthMetadata = oauthMetadata,
-                credentialIdentifier = credentialIdentifier
+                credentialIdentifier = credentialIdentifier,
+                previouslyRequestedScope = credentialFormat.scope,
             )
         }
     }
@@ -352,6 +354,7 @@ class OpenId4VciClient(
         credentialScheme: ConstantIndex.CredentialScheme,
         oauthMetadata: OAuth2AuthorizationServerMetadata,
         credentialIdentifier: String,
+        previouslyRequestedScope: String?
     ) {
         val credentialEndpointUrl = issuerMetadata.credentialEndpointUrl
         Napier.i("postCredentialRequestAndStore: $credentialEndpointUrl")
@@ -368,6 +371,7 @@ class OpenId4VciClient(
             metadata = issuerMetadata,
             credentialFormat = credentialFormat,
             clientNonce = clientNonce,
+            previouslyRequestedScope = previouslyRequestedScope
         ).getOrThrow()
 
         val dpopHeader = if (tokenResponse.tokenType.equals(TOKEN_TYPE_DPOP, true))
@@ -471,6 +475,7 @@ class OpenId4VciClient(
                 credentialScheme = credentialScheme,
                 oauthMetadata = oauthMetadata,
                 credentialIdentifier = credentialIdentifierInfo.credentialIdentifier,
+                previouslyRequestedScope = credentialIdentifierInfo.supportedCredentialFormat.scope,
             )
         } ?: credentialOffer.grants?.authorizationCode?.let {
             ProvisioningContext(
