@@ -10,6 +10,9 @@ import at.asitplus.openid.CredentialFormatEnum
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.json.*
 
+@Deprecated("Renamed", ReplaceWith("PresentationExchangeInputEvaluator"))
+typealias InputEvaluator = PresentationExchangeInputEvaluator
+
 /**
  * Specification: https://identity.foundation/presentation-exchange/spec/v2.0.0/#input-evaluation
  */
@@ -23,9 +26,10 @@ object PresentationExchangeInputEvaluator {
         pathAuthorizationValidator: (NormalizedJsonPath) -> Boolean,
     ): KmmResult<Map<ConstraintField, NodeList>> = runCatching {
         (inputDescriptor.format ?: fallbackFormatHolder)?.let { formatHolder ->
+            @Suppress("DEPRECATION")
             val supportedFormats = listOf(
                 formatHolder.jwtVp to CredentialFormatEnum.JWT_VC,
-                formatHolder.jwtSd to CredentialFormatEnum.DC_SD_JWT,
+                formatHolder.jwtSd to CredentialFormatEnum.VC_SD_JWT,
                 formatHolder.sdJwt to CredentialFormatEnum.DC_SD_JWT,
                 formatHolder.msoMdoc to CredentialFormatEnum.MSO_MDOC,
             ).filter {

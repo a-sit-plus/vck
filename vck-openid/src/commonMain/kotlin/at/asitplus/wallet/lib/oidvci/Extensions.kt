@@ -104,7 +104,7 @@ fun CredentialScheme.toCredentialIdentifier() = listOfNotNull(
 
 @Suppress("DEPRECATION")
 // TODO In 5.4.0, use DC_SD_JWT instead of VC_SD_JWT
-fun CredentialRepresentation.toFormat(): CredentialFormatEnum? = when (this) {
+fun CredentialRepresentation.toFormat(): CredentialFormatEnum = when (this) {
     CredentialRepresentation.PLAIN_JWT -> CredentialFormatEnum.JWT_VC
     CredentialRepresentation.SD_JWT -> CredentialFormatEnum.VC_SD_JWT
     CredentialRepresentation.ISO_MDOC -> CredentialFormatEnum.MSO_MDOC
