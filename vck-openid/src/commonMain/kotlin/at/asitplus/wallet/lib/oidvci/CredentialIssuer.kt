@@ -167,7 +167,6 @@ class CredentialIssuer(
      *
      * @param user used to create the credential when the wallet app requests the credential
      */
-    @Suppress("DEPRECATION")
     @Deprecated(
         "Moved to authorization server",
         ReplaceWith("authorizationService.credentialOfferWithPreAuthnForUser(user, publicContext)")

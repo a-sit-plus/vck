@@ -165,7 +165,7 @@ class OpenId4VpWallet(
         when (response.status.value) {
             HttpStatusCode.InternalServerError.value -> throw Exception(response.bodyAsText())
             in 200..399 -> response.extractRedirectUri()?.let { openUrlExternally.invoke(it) }
-            else -> throw Exception(response.readRawBytes().decodeToString())
+            else -> throw Exception("${response.status}: ${response.readRawBytes().decodeToString()}")
         }
     }
 

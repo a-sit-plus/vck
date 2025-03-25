@@ -114,6 +114,8 @@ internal class AuthenticationResponseFactory(
         ).map { it.serialize() }.getOrElse {
             Napier.w("buildJarm error", it)
             throw InvalidRequest("buildJarm error", it)
+        }.also {
+            Napier.d("buildJarm: signed $payload")
         }
 
     private suspend fun encrypt(
@@ -136,14 +138,16 @@ internal class AuthenticationResponseFactory(
             keyId = recipientKey.keyId,
         )
         val jwe = if (response.requestsSignature()) {
-            jwsService.encryptJweObject(
-                header = header,
-                payload = sign(response.params),
-                serializer = String.serializer(),
-                recipientKey = recipientKey,
-                jweAlgorithm = algorithm,
-                jweEncryption = encryption,
-            )
+            sign(response.params).let { payload ->
+                jwsService.encryptJweObject(
+                    header = header,
+                    payload = payload,
+                    serializer = String.serializer(),
+                    recipientKey = recipientKey,
+                    jweAlgorithm = algorithm,
+                    jweEncryption = encryption,
+                ).also { Napier.d("buildJarm: using $header to encrypt $payload") }
+            }
         } else {
             jwsService.encryptJweObject(
                 header = header,
@@ -152,7 +156,7 @@ internal class AuthenticationResponseFactory(
                 recipientKey = recipientKey,
                 jweAlgorithm = algorithm,
                 jweEncryption = encryption,
-            )
+            ).also { Napier.d("buildJarm: using $header to encrypt ${response.params}") }
         }
         return jwe.map { it.serialize() }.getOrElse {
             Napier.w("buildJarm error", it)

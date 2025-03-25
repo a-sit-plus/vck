@@ -29,7 +29,7 @@ object PresentationExchangeInputEvaluator {
             @Suppress("DEPRECATION")
             val supportedFormats = listOf(
                 formatHolder.jwtVp to CredentialFormatEnum.JWT_VC,
-                formatHolder.jwtSd to CredentialFormatEnum.VC_SD_JWT,
+                formatHolder.jwtSd to CredentialFormatEnum.DC_SD_JWT,
                 formatHolder.sdJwt to CredentialFormatEnum.DC_SD_JWT,
                 formatHolder.msoMdoc to CredentialFormatEnum.MSO_MDOC,
             ).filter {

@@ -331,13 +331,11 @@ class HolderAgent(
         credentialClaimStructure = CredentialToJsonConverter.toJsonElement(credential),
         credentialFormat = when (credential) {
             is SubjectCredentialStore.StoreEntry.Vc -> CredentialFormatEnum.JWT_VC
-            // TODO In 5.4.0, use SD_JWT instead of JWT_SD
             is SubjectCredentialStore.StoreEntry.SdJwt -> CredentialFormatEnum.DC_SD_JWT
             is SubjectCredentialStore.StoreEntry.Iso -> CredentialFormatEnum.MSO_MDOC
         },
         credentialScheme = when (credential) {
             is SubjectCredentialStore.StoreEntry.Vc -> credential.scheme?.vcType
-            // TODO In 5.4.0, use SD_JWT instead of JWT_SD
             is SubjectCredentialStore.StoreEntry.SdJwt -> credential.scheme?.sdJwtType
             is SubjectCredentialStore.StoreEntry.Iso -> credential.scheme?.isoDocType
         },
