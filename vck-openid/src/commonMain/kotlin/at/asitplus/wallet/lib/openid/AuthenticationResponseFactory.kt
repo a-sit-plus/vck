@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.ResponseMode.*
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweHeader
@@ -13,6 +14,7 @@ import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.encodeToString
 import kotlin.coroutines.cancellation.CancellationException
@@ -127,7 +129,7 @@ internal class AuthenticationResponseFactory(
         val recipientKey = response.jsonWebKeys!!.getEcdhEsKey()
         val apv = request.parameters.nonce?.encodeToByteArray()
             ?: Random.nextBytes(16)
-        val apu = response.mdocGeneratedNonce?.encodeToByteArray()
+        val apu = response.mdocGeneratedNonce?.decodeToByteArray(Base64UrlStrict)
             ?: Random.nextBytes(16)
         val header = JweHeader(
             algorithm = algorithm,

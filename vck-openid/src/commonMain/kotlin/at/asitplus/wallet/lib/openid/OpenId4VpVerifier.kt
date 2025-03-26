@@ -557,8 +557,8 @@ open class OpenId4VpVerifier(
                 ?.jweDecrypted?.header?.agreementPartyUInfo
             val apuNested = ((input as? ResponseParametersFrom.JwsSigned)?.parent as? ResponseParametersFrom.JweForJws)
                 ?.jweDecrypted?.header?.agreementPartyUInfo
-            val mdocGeneratedNonce = apuDirect?.decodeToString()
-                ?: apuNested?.decodeToString()
+            val mdocGeneratedNonce = apuDirect?.encodeToString(Base64UrlStrict)
+                ?: apuNested?.encodeToString(Base64UrlStrict)
                 ?: ""
             verifier.verifyPresentationIsoMdoc(
                 input = relatedPresentation.jsonPrimitive.content.decodeToByteArray(Base64UrlStrict)
@@ -582,6 +582,7 @@ open class OpenId4VpVerifier(
         responseUrl: String?,
         expectedNonce: String,
     ): (MobileSecurityObject, Document) -> Boolean = { mso, document ->
+        Napier.d("verifyDocument: mdocGeneratedNonce='$mdocGeneratedNonce', clientId='$clientId', responseUrl='$responseUrl', expectedNonce='$expectedNonce'")
         val deviceSignature = document.deviceSigned.deviceAuth.deviceSignature ?: run {
             Napier.w("DeviceSignature is null: ${document.deviceSigned.deviceAuth}")
             throw IllegalArgumentException("deviceSignature")

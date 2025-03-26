@@ -119,7 +119,7 @@ internal class PresentationFactory(
         val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
         // if it's not encrypted, we have no way of transporting the mdocGeneratedNonce, so we'll use the empty string
         val mdocGeneratedNonce = if (responseWillBeEncrypted)
-            Random.Default.nextBytes(16).encodeToString(Base64Strict) else ""
+            Random.Default.nextBytes(16).encodeToString(Base64UrlStrict) else ""
         val clientIdToHash = ClientIdToHash(
             clientId = clientId,
             mdocGeneratedNonce = mdocGeneratedNonce
