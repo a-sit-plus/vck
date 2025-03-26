@@ -105,6 +105,7 @@ open class OpenId4VpVerifier(
      */
     val metadataWithEncryption by lazy {
         metadata.copy(
+            authorizationSignedResponseAlgString = null,
             authorizationEncryptedResponseAlgString = jwsService.encryptionAlgorithm.identifier,
             authorizationEncryptedResponseEncodingString = jwsService.encryptionEncoding.text,
             jsonWebKeySet = metadata.jsonWebKeySet?.let {
@@ -483,22 +484,8 @@ open class OpenId4VpVerifier(
                 val credentialQuery = credentialQueryMap[credentialQueryId]
                     ?: throw IllegalArgumentException("Unknown credential query identifier.")
 
-                @Suppress("DEPRECATION")
                 verifyPresentationResult(
-                    when (credentialQuery.format) {
-                        CredentialFormatEnum.JWT_VC -> ClaimFormat.JWT_VP
-
-                        CredentialFormatEnum.VC_SD_JWT,
-                        CredentialFormatEnum.DC_SD_JWT,
-                            -> ClaimFormat.SD_JWT
-
-                        CredentialFormatEnum.MSO_MDOC -> ClaimFormat.MSO_MDOC
-
-                        CredentialFormatEnum.NONE,
-                        CredentialFormatEnum.JWT_VC_JSON_LD,
-                        CredentialFormatEnum.JSON_LD,
-                            -> throw IllegalStateException("Unsupported credential format")
-                    },
+                    credentialQuery.format.toClaimFormat(),
                     relatedPresentation,
                     expectedNonce,
                     responseParameters,
@@ -510,6 +497,24 @@ open class OpenId4VpVerifier(
         }
 
         throw IllegalArgumentException("Unsupported presentation mechanism")
+    }
+
+    private fun CredentialFormatEnum.toClaimFormat(): ClaimFormat = when (this) {
+        CredentialFormatEnum.JWT_VC,
+            -> ClaimFormat.JWT_VP
+
+        @Suppress("DEPRECATION")
+        CredentialFormatEnum.VC_SD_JWT,
+        CredentialFormatEnum.DC_SD_JWT,
+            -> ClaimFormat.SD_JWT
+
+        CredentialFormatEnum.MSO_MDOC,
+            -> ClaimFormat.MSO_MDOC
+
+        CredentialFormatEnum.NONE,
+        CredentialFormatEnum.JWT_VC_JSON_LD,
+        CredentialFormatEnum.JSON_LD,
+            -> throw IllegalStateException("Unsupported credential format")
     }
 
     private fun List<AuthnResponseResult>.firstOrList(): AuthnResponseResult =
@@ -563,7 +568,7 @@ open class OpenId4VpVerifier(
             )
         }
 
-        else -> throw IllegalArgumentException("descriptor.format")
+        else -> throw IllegalArgumentException("descriptor.format: $claimFormat")
     }
 
     /**

@@ -273,16 +273,18 @@ internal class PresentationFactory(
     @Throws(OAuth2Exception::class)
     private fun PresentationResponseParameters.DCQLParameters.verifyFormatSupport(supportedFormats: FormatHolder) =
         verifiablePresentations.entries.mapIndexed { _, descriptor ->
-            val format = when (verifiablePresentations.entries.first().value) {
-                is CreatePresentationResult.DeviceResponse -> ClaimFormat.MSO_MDOC
-                is CreatePresentationResult.SdJwt -> ClaimFormat.SD_JWT
-                is CreatePresentationResult.Signed -> ClaimFormat.JWT_VP
-            }
+            val format = this.verifiablePresentations.entries.first().value.toFormat()
             if (supportedFormats.isMissingFormatSupport(format)) {
                 Napier.w("Incompatible JWT algorithms for claim format $format: $supportedFormats")
                 throw RegistrationValueNotSupported("incompatible algorithms")
             }
         }
+
+    private fun CreatePresentationResult.toFormat(): ClaimFormat = when (this) {
+        is CreatePresentationResult.DeviceResponse -> ClaimFormat.MSO_MDOC
+        is CreatePresentationResult.SdJwt -> ClaimFormat.SD_JWT
+        is CreatePresentationResult.Signed -> ClaimFormat.JWT_VP
+    }
 
     @Suppress("DEPRECATION")
     private fun FormatHolder.isMissingFormatSupport(claimFormat: ClaimFormat): Boolean {

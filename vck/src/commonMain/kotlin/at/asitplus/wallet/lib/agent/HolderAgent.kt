@@ -15,6 +15,7 @@ import at.asitplus.openid.dcql.DCQLQueryResult
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.CredentialPresentation
@@ -115,17 +116,17 @@ class HolderAgent(
         return credentials.map { it.toStoredCredential() }
     }
 
-    private suspend fun SubjectCredentialStore.StoreEntry.toStoredCredential() = when (this) {
-        is SubjectCredentialStore.StoreEntry.Iso -> Holder.StoredCredential.Iso(
+    private suspend fun StoreEntry.toStoredCredential() = when (this) {
+        is StoreEntry.Iso -> Holder.StoredCredential.Iso(
             this,
             validator.checkRevocationStatus(issuerSigned),
         )
 
-        is SubjectCredentialStore.StoreEntry.Vc -> Holder.StoredCredential.Vc(
+        is StoreEntry.Vc -> Holder.StoredCredential.Vc(
             this, validator.checkRevocationStatus(vc)
         )
 
-        is SubjectCredentialStore.StoreEntry.SdJwt -> Holder.StoredCredential.SdJwt(
+        is StoreEntry.SdJwt -> Holder.StoredCredential.SdJwt(
             this, validator.checkRevocationStatus(sdJwt)
         )
     }
@@ -140,9 +141,9 @@ class HolderAgent(
             // prefer iso credentials and sd jwt credentials over plain vc credentials
             // -> they support selective disclosure!
             when (it) {
-                is SubjectCredentialStore.StoreEntry.Vc -> 2
-                is SubjectCredentialStore.StoreEntry.SdJwt -> 1
-                is SubjectCredentialStore.StoreEntry.Iso -> 1
+                is StoreEntry.Vc -> 2
+                is StoreEntry.SdJwt -> 1
+                is StoreEntry.Iso -> 1
             }
         }
 
@@ -296,7 +297,7 @@ class HolderAgent(
 
     private fun findInputDescriptorMatches(
         inputDescriptors: Collection<InputDescriptor>,
-        credentials: Collection<SubjectCredentialStore.StoreEntry>,
+        credentials: Collection<StoreEntry>,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: PathAuthorizationValidator?,
     ) = inputDescriptors.associateWith { inputDescriptor ->
@@ -320,7 +321,7 @@ class HolderAgent(
 
     override fun evaluateInputDescriptorAgainstCredential(
         inputDescriptor: InputDescriptor,
-        credential: SubjectCredentialStore.StoreEntry,
+        credential: StoreEntry,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: (NormalizedJsonPath) -> Boolean,
     ) = difInputEvaluator.evaluateInputDescriptorAgainstCredential(
@@ -328,19 +329,19 @@ class HolderAgent(
         fallbackFormatHolder = fallbackFormatHolder,
         credentialClaimStructure = CredentialToJsonConverter.toJsonElement(credential),
         credentialFormat = when (credential) {
-            is SubjectCredentialStore.StoreEntry.Vc -> CredentialFormatEnum.JWT_VC
-            is SubjectCredentialStore.StoreEntry.SdJwt -> CredentialFormatEnum.DC_SD_JWT
-            is SubjectCredentialStore.StoreEntry.Iso -> CredentialFormatEnum.MSO_MDOC
+            is StoreEntry.Vc -> CredentialFormatEnum.JWT_VC
+            is StoreEntry.SdJwt -> CredentialFormatEnum.DC_SD_JWT
+            is StoreEntry.Iso -> CredentialFormatEnum.MSO_MDOC
         },
         credentialScheme = when (credential) {
-            is SubjectCredentialStore.StoreEntry.Vc -> credential.scheme?.vcType
-            is SubjectCredentialStore.StoreEntry.SdJwt -> credential.scheme?.sdJwtType
-            is SubjectCredentialStore.StoreEntry.Iso -> credential.scheme?.isoDocType
+            is StoreEntry.Vc -> credential.scheme?.vcType
+            is StoreEntry.SdJwt -> credential.scheme?.sdJwtType
+            is StoreEntry.Iso -> credential.scheme?.isoDocType
         },
         pathAuthorizationValidator = pathAuthorizationValidator,
     )
 
-    override suspend fun matchDCQLQueryAgainstCredentialStore(dcqlQuery: DCQLQuery): KmmResult<DCQLQueryResult<SubjectCredentialStore.StoreEntry>> {
+    override suspend fun matchDCQLQueryAgainstCredentialStore(dcqlQuery: DCQLQuery): KmmResult<DCQLQueryResult<StoreEntry>> {
         return DCQLQueryAdapter(dcqlQuery).select(
             credentials = getValidCredentialsByPriority()
                 ?: throw PresentationException("Credentials could not be retrieved from the store"),
@@ -349,12 +350,12 @@ class HolderAgent(
 
     /** assume credential format to be supported by the verifier if no format holder is specified */
     @Suppress("DEPRECATION")
-    private fun SubjectCredentialStore.StoreEntry.isFormatSupported(supportedFormats: FormatHolder?): Boolean =
+    private fun StoreEntry.isFormatSupported(supportedFormats: FormatHolder?): Boolean =
         supportedFormats?.let { formatHolder ->
             when (this) {
-                is SubjectCredentialStore.StoreEntry.Vc -> formatHolder.jwtVp != null
-                is SubjectCredentialStore.StoreEntry.SdJwt -> formatHolder.jwtSd != null || formatHolder.sdJwt != null
-                is SubjectCredentialStore.StoreEntry.Iso -> formatHolder.msoMdoc != null
+                is StoreEntry.Vc -> formatHolder.jwtVp != null
+                is StoreEntry.SdJwt -> formatHolder.jwtSd != null || formatHolder.sdJwt != null
+                is StoreEntry.Iso -> formatHolder.msoMdoc != null
             }
         } ?: true
 
@@ -373,19 +374,13 @@ class HolderAgent(
         },
     )
 
-    @Suppress("DEPRECATION")
     private fun PresentationSubmissionDescriptor.Companion.fromMatch(
-        credential: SubjectCredentialStore.StoreEntry,
+        credential: StoreEntry,
         inputDescriptorId: String,
         index: Int?,
     ) = PresentationSubmissionDescriptor(
         id = inputDescriptorId,
-        format = when (credential) {
-            is SubjectCredentialStore.StoreEntry.Vc -> ClaimFormat.JWT_VP
-            // TODO In 5.4.0, use SD_JWT instead of JWT_SD
-            is SubjectCredentialStore.StoreEntry.SdJwt -> ClaimFormat.JWT_SD
-            is SubjectCredentialStore.StoreEntry.Iso -> ClaimFormat.MSO_MDOC
-        },
+        format = credential.toFormat(),
         // from https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#section-6.1-2.4
         // These objects contain a field called path, which, for this specification,
         // MUST have the value $ (top level root path) when only one Verifiable Presentation is contained in the VP Token,
@@ -393,6 +388,14 @@ class HolderAgent(
         // where n is the index to select.
         path = index?.let { "\$[$it]" } ?: "\$",
     )
+
+    @Suppress("DEPRECATION")
+    private fun StoreEntry.toFormat(): ClaimFormat = when (this) {
+        is StoreEntry.Vc -> ClaimFormat.JWT_VP
+        // TODO In 5.4.0, use SD_JWT instead of JWT_SD
+        is StoreEntry.SdJwt -> ClaimFormat.JWT_SD
+        is StoreEntry.Iso -> ClaimFormat.MSO_MDOC
+    }
 
 
     private fun CredentialPresentationRequest.PresentationExchangeRequest.validateSubmission(
