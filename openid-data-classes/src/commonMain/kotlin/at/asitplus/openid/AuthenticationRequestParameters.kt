@@ -8,6 +8,7 @@ import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
 import kotlinx.datetime.Instant
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -365,9 +366,12 @@ data class AuthenticationRequestParameters(
      * parameter set with details about the transaction that the Verifier is requesting the End-User to authorize.
      * The Wallet MUST return an error if a request contains even one unrecognized transaction data type or transaction
      * data not conforming to the respective type definition.
+     *
+     * Transaction data classes are implemented in module [rqes-data-classes] and thus not known at compile time.
+     * For the contextual serializer see [at.asitplus.rqes.serializers.Base64URLTransactionDataSerializer]
      */
     @SerialName("transaction_data")
-    override val transactionData: Set<TransactionData>? = null,
+    override val transactionData: Set<@Contextual TransactionData>? = null,
 ) : RequestParameters {
     fun serialize() = odcJsonSerializer.encodeToString(this)
 

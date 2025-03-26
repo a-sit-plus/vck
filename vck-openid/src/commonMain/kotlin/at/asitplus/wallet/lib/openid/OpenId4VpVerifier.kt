@@ -301,7 +301,14 @@ open class OpenId4VpVerifier(
             requestOptions.toPresentationDefinition(containerJwt, containerSdJwt)
         } else null,
         transactionData = requestOptions.transactionData
-    )
+    ).let {
+        enrichAuthnRequest(it, requestOptions)
+    }
+
+    open suspend fun enrichAuthnRequest(
+        params: AuthenticationRequestParameters,
+        requestOptions: RequestOptions,
+    ): AuthenticationRequestParameters = params
 
     /**
      * Remembers [authenticationRequestParameters] to link responses to requests
