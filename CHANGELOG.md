@@ -65,6 +65,7 @@ Release 5.5.0:
    - Update JsonPath4K
  - Introduce dedicated Android targets, separate from JVM targets, that compileto JDK 8 / API-Level 30
  - Improved error logging and exposing for presentation exchange input evaluation
+ - Release inner disclosures for nested SD-JWT claims too
 
 Release 5.4.3:
  - Fix property names for serialized RQES data classes

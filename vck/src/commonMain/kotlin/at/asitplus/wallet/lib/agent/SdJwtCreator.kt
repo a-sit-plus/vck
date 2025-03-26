@@ -8,10 +8,13 @@ import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclos
 import kotlinx.serialization.json.*
 import kotlin.random.Random
 
+
 /**
  * See [Selective Disclosure for JWTs (SD-JWT)](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-13.html)
  */
 object SdJwtCreator {
+
+    const val NAME_SD = "_sd"
 
     /**
      * Creates a JSON object to contain only digests for the selectively disclosable claims
@@ -73,7 +76,7 @@ object SdJwtCreator {
                 }
                 (objectClaimDigests + dotNotationClaims + dotNotationClaimsPlain + singleClaimsDigests).let { digests ->
                     if (digests.isNotEmpty())
-                        putJsonArray("_sd") { addAll(digests) }
+                        putJsonArray(NAME_SD) { addAll(digests) }
                 }
             }
         } to disclosures

@@ -203,11 +203,9 @@ class HolderAgent(
                 fallbackFormatHolder = credentialPresentation.presentationRequest.fallbackFormatHolder,
             ).getOrThrow().toDefaultSubmission()
 
-        credentialPresentation.presentationRequest.validateSubmission(presentationCredentialSelection).onFailure {
-            throw PresentationException(it)
-        }
+        credentialPresentation.presentationRequest.validateSubmission(presentationCredentialSelection)
+            .onFailure { throw PresentationException(it) }
 
-        val presentationDefinitionId = presentationDefinition.id
         val submissionList = presentationCredentialSelection.mapValues {
             PresentationExchangeCredentialDisclosure(
                 credential = it.value.credential,
@@ -216,7 +214,7 @@ class HolderAgent(
         }.toList()
 
         val presentationSubmission = PresentationSubmission.fromMatches(
-            presentationId = presentationDefinitionId,
+            presentationId = presentationDefinition.id,
             matches = submissionList,
         )
 

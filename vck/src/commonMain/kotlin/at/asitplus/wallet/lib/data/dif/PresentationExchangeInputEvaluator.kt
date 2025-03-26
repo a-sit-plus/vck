@@ -39,10 +39,7 @@ object PresentationExchangeInputEvaluator {
             }
             if (credentialFormat !in supportedFormats) {
                 Napier.d("Credential format `$credentialFormat` is not supported by the relying party.")
-                throw InvalidCredentialFormatException(
-                    format = credentialFormat,
-                    expected = supportedFormats,
-                )
+                throw InvalidCredentialFormatException(credentialFormat, supportedFormats)
             }
         }
 
@@ -52,10 +49,7 @@ object PresentationExchangeInputEvaluator {
         }?.let { requiredCredentialScheme ->
             if (requiredCredentialScheme != credentialScheme) {
                 Napier.d("Credential scheme `$credentialScheme` is not supported by the relying party.")
-                throw InvalidCredentialSchemeException(
-                    scheme = credentialScheme,
-                    expected = setOf(requiredCredentialScheme)
-                )
+                throw InvalidCredentialSchemeException(credentialScheme, setOf(requiredCredentialScheme))
             }
         }
 
