@@ -301,6 +301,7 @@ open class OpenId4VpVerifier(
         dcqlQuery = if (isDcql) toDCQLQuery() else null,
         presentationDefinition = if (isPresentationExchange)
             toPresentationDefinition(containerJwt, containerSdJwt) else null
+        transactionData = transactionData
     )
 
     open suspend fun enrichAuthnRequest(

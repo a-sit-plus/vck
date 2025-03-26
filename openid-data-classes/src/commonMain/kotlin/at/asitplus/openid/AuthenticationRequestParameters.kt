@@ -367,7 +367,7 @@ data class AuthenticationRequestParameters(
      * data not conforming to the respective type definition.
      */
     @SerialName("transaction_data")
-    override val transactionData: Set<String>? = null,
+    override val transactionData: Set<TransactionData>? = null,
 ) : RequestParameters {
     fun serialize() = odcJsonSerializer.encodeToString(this)
 
