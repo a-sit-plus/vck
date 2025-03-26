@@ -6,6 +6,9 @@ Release 5.5.1:
    - Remove mixed-in SIOP parameters in authn requests
  - OAuth2:
    - In `OAuth2Client.createAuthRequest()` add parameter `wrapAsPar` to control wrapping the authn request in a JWS for pushed authorization requests
+ - RQES:
+   - Change `TransactionData` from sealed class to interface
+   - Fix erroneous `TransactionData` encoding in `AuthenticationRequest`
 
 Release 5.5.0:
  - Remove elements deprecated in 5.4.0 when introducing DCQL:

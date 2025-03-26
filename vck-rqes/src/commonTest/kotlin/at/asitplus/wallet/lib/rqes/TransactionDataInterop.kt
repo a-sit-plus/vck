@@ -26,7 +26,6 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.encodeToJsonElement
 
 /**
  * Test vectors taken from "Transaction Data entries as defined in D3.1: UC Specification WP3"
@@ -75,10 +74,17 @@ class TransactionDataInterop : FreeSpec({
         qcHashAlgorithmOid = sha_256
     )
 
-    "Serialization is stable" {
-        val encoded = rdcJsonSerializer.encodeToString<TransactionData>(transactionDataTest)
+    "Polymorphic Serialization is stable" {
+        val encoded =
+            rdcJsonSerializer.encodeToString(PolymorphicSerializer(TransactionData::class), transactionDataTest)
         encoded shouldContain "type"
-        rdcJsonSerializer.decodeFromString<TransactionData>(encoded)
+        rdcJsonSerializer.decodeFromString(PolymorphicSerializer(TransactionData::class), encoded)
+            .shouldBe(transactionDataTest)
+    }
+
+    "Base64Url Serialization is stable" {
+        val encoded = rdcJsonSerializer.encodeToString(Base64URLTransactionDataSerializer, transactionDataTest)
+        rdcJsonSerializer.decodeFromString(Base64URLTransactionDataSerializer, encoded)
             .shouldBe(transactionDataTest)
     }
 
@@ -99,6 +105,7 @@ class TransactionDataInterop : FreeSpec({
             Base64URLTransactionDataSerializer,
             rdcJsonSerializer.encodeToString(testVector)
         )
+
         "Data classes are deserialized correctly" {
             transactionData.shouldBeInstanceOf<QesAuthorization>()
             transactionData.documentDigests shouldNotBe emptyList<RqesDocumentDigestEntry>()
@@ -113,7 +120,9 @@ class TransactionDataInterop : FreeSpec({
             val expected = rdcJsonSerializer.decodeFromString<JsonElement>(
                 testVector.decodeToByteArray(Base64UrlStrict).decodeToString()
             ).canonicalize() as JsonObject
-            val actual = rdcJsonSerializer.encodeToJsonElement(transactionData).canonicalize() as JsonObject
+            val actual =
+                rdcJsonSerializer.encodeToJsonElement(PolymorphicSerializer(TransactionData::class), transactionData)
+                    .canonicalize() as JsonObject
 
             actual["credentialID"] shouldBe expected["credentialID"]
             actual["processID"] shouldBe expected["processID"]
@@ -160,7 +169,8 @@ class TransactionDataInterop : FreeSpec({
                 testVector.decodeToByteArray(Base64UrlStrict).decodeToString()
             ).canonicalize()
 
-            rdcJsonSerializer.encodeToJsonElement(transactionData).canonicalize()
+            rdcJsonSerializer.encodeToJsonElement(PolymorphicSerializer(TransactionData::class), transactionData)
+                .canonicalize()
                 .shouldBe(expected)
         }
     }

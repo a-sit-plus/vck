@@ -1,8 +1,19 @@
 package at.asitplus.openid
+import kotlinx.serialization.PolymorphicSerializer
+import kotlinx.serialization.ContextualSerializer
 
 /**
  * OID4VP Draft 24: OPTIONAL. Array of strings, where each string is a base64url encoded JSON object that contains a typed parameter
  * set with details about the transaction that the Verifier is requesting the End-User to authorize.
+ *
+ * SERIALIZATION:
+ * This module does not contain a TransactionData implementation. This means all serialization is done either
+ * via [ContextualSerializer] (for when the data class is used but not all data classes are known in this module)
+ * or via [PolymorphicSerializer] (when all data class implementations are known). These can be defined as submodules of a serializer.
+ * The contextual serializer can be overridden and the polymorphic scope can be extended.
+ * For an example implementation refer to [at.asitplus.rqes.rdcJsonSerializer] found in Json.kt.
+ * When vck-rqes is used the Initializer will copy this into vckJsonSerializer. In this case the contextual serializer is the default serializer
+ * and the polymorphic serializer needs to be specified when necessary.
  */
 interface TransactionData {
     /**
