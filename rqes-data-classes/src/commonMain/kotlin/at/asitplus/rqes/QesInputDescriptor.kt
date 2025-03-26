@@ -3,7 +3,7 @@ package at.asitplus.rqes
 import at.asitplus.dif.Constraint
 import at.asitplus.dif.FormatHolder
 import at.asitplus.dif.InputDescriptor
-import at.asitplus.rqes.collection_entries.TransactionData
+import at.asitplus.openid.TransactionData
 import at.asitplus.rqes.serializers.Base64URLTransactionDataSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

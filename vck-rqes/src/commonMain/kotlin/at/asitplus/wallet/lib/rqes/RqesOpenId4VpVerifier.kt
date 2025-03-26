@@ -6,11 +6,9 @@ import at.asitplus.dif.InputDescriptor
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.rqes.QesInputDescriptor
-import at.asitplus.rqes.collection_entries.TransactionData
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsService
@@ -25,8 +23,8 @@ import at.asitplus.wallet.lib.openid.OpenIdRequestOptions
 import at.asitplus.wallet.lib.openid.RequestOptions
 import at.asitplus.wallet.lib.rqes.helper.OpenIdRqesParameters
 import com.benasher44.uuid.uuid4
+import io.ktor.util.*
 import kotlinx.datetime.Clock
-import kotlinx.serialization.encodeToString
 
 /**
  * Verifier with access to [TransactionData] class can now generate requests containing [TransactionData]
@@ -81,22 +79,6 @@ class RqesOpenId4VpVerifier(
                 constraints = requestOptionCredential.toConstraint(),
                 transactionData = rqesParameters.transactionData.toList()
             )
-        }
-    }
-
-    override suspend fun enrichAuthnRequest(
-        params: AuthenticationRequestParameters,
-        requestOptions: RequestOptions,
-    ): AuthenticationRequestParameters = with(requestOptions) {
-        when (this) {
-            is OpenIdRequestOptions -> params
-            is ExtendedRequestOptions -> params.copy(
-                transactionData = this.rqesParameters.transactionData.map {
-                    vckJsonSerializer.encodeToString(it)
-                }.toSet()
-            )
-
-            else -> throw NotImplementedError("Unknown RequestOption class: ${this::class}")
         }
     }
 

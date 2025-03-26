@@ -5,6 +5,7 @@ import at.asitplus.rqes.QesInputDescriptor
 import at.asitplus.rqes.collection_entries.RqesDocumentDigestEntry
 import at.asitplus.rqes.collection_entries.TransactionData
 import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.eupid.EuPidScheme.SdJwtAttributes.FAMILY_NAME
 import at.asitplus.wallet.eupid.EuPidScheme.SdJwtAttributes.GIVEN_NAME
@@ -27,6 +28,8 @@ import at.asitplus.wallet.lib.openid.RequestOptionsCredential
 import at.asitplus.wallet.lib.rqes.helper.OpenIdRqesParameters
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
+import io.github.aakira.napier.Napier
+import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -34,6 +37,7 @@ import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.encodeToString
 
 @Suppress("DEPRECATION")
@@ -76,8 +80,9 @@ class RqesOpenId4VpVerifierTest : FreeSpec({
 
         "Authentication request contains transaction data" {
             val authnRequest = rqesVerifier.createAuthnRequest(requestOptions = requestOptions)
-
             authnRequest.transactionData shouldNotBe null
+            val decodedTransactionData = authnRequest.transactionData!!.random().decodeToByteArray(Base64UrlStrict).decodeToString()
+            kotlin.runCatching { vckJsonSerializer.decodeFromString<TransactionData>(decodedTransactionData) }.getOrNull() shouldNotBe null
             authnRequest.presentationDefinition.shouldNotBeNull()
             authnRequest.presentationDefinition!!.inputDescriptors.first()
                 .shouldBeInstanceOf<QesInputDescriptor>()
