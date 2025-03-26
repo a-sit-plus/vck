@@ -1,6 +1,8 @@
 # Changelog
 
 TBA
+ - Change `TransactionData` from sealed class to interface
+ - Fix erroneous `TransactionData` encoding in `AuthenticationRequest`
  - Fix missing Android targets
  - Kotlin 2.1.20
  - Delegate key agreement to Signum's implementation -> **key agreement functions are now `suspend`ing**
