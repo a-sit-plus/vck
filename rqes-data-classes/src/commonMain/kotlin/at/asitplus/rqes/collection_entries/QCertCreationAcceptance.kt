@@ -53,8 +53,6 @@ data class QCertCreationAcceptance(
     @SerialName("QC_hashAlgorithmOID")
     @Serializable(ObjectIdSerializer::class)
     val qcHashAlgorithmOid: ObjectIdentifier,
-
-
 ) : TransactionData {
 
     @SerialName("credential_ids")

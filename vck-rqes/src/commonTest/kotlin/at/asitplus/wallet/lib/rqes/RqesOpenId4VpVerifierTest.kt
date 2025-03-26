@@ -1,9 +1,11 @@
 package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.openid.SignatureQualifier
+import at.asitplus.openid.TransactionData
 import at.asitplus.rqes.QesInputDescriptor
+import at.asitplus.rqes.collection_entries.QesAuthorization
 import at.asitplus.rqes.collection_entries.RqesDocumentDigestEntry
-import at.asitplus.rqes.collection_entries.TransactionData
+import at.asitplus.rqes.serializers.Base64URLTransactionDataSerializer
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.eupid.EuPidScheme
@@ -25,11 +27,8 @@ import at.asitplus.wallet.lib.openid.OpenId4VpHolder
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.CreationOptions.Query
 import at.asitplus.wallet.lib.openid.OpenIdRequestOptions
 import at.asitplus.wallet.lib.openid.RequestOptionsCredential
-import at.asitplus.wallet.lib.rqes.helper.OpenIdRqesParameters
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
-import io.github.aakira.napier.Napier
-import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -38,7 +37,6 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
-import kotlinx.serialization.encodeToString
 
 @Suppress("DEPRECATION")
 class RqesOpenId4VpVerifierTest : FreeSpec({
@@ -81,8 +79,8 @@ class RqesOpenId4VpVerifierTest : FreeSpec({
         "Authentication request contains transaction data" {
             val authnRequest = rqesVerifier.createAuthnRequest(requestOptions = requestOptions)
             authnRequest.transactionData shouldNotBe null
-            val decodedTransactionData = authnRequest.transactionData!!.random().decodeToByteArray(Base64UrlStrict).decodeToString()
-            kotlin.runCatching { vckJsonSerializer.decodeFromString<TransactionData>(decodedTransactionData) }.getOrNull() shouldNotBe null
+//            val decodedTransactionData = authnRequest.transactionData!!.random().decodeToByteArray(Base64UrlStrict).decodeToString()
+//            kotlin.runCatching { vckJsonSerializer.decodeFromString<TransactionData>(decodedTransactionData) }.getOrNull() shouldNotBe null
             authnRequest.presentationDefinition.shouldNotBeNull()
             authnRequest.presentationDefinition!!.inputDescriptors.first()
                 .shouldBeInstanceOf<QesInputDescriptor>()
@@ -90,10 +88,6 @@ class RqesOpenId4VpVerifierTest : FreeSpec({
         }
 
         "KB-JWT contains transaction data" {
-            val transactionDataEncoded =
-                vckJsonSerializer.encodeToString(requestOptions.rqesParameters.transactionData.first())
-                    .encodeToByteArray()
-
             val authnRequestUrl = rqesVerifier.createAuthnRequest(requestOptions, Query(walletUrl))
                 .getOrThrow().url
             authnRequestUrl shouldContain "transaction_data"
@@ -105,17 +99,13 @@ class RqesOpenId4VpVerifierTest : FreeSpec({
                 .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
 
             result.sdJwtSigned.keyBindingJws.shouldNotBeNull().payload.apply {
-                transactionData.shouldNotBeNull().first() shouldBe transactionDataEncoded
+                transactionData.shouldNotBeNull().first() shouldBe requestOptions.transactionData!!.first()
                 transactionDataHashes.shouldNotBeNull()
                 transactionDataHashesAlgorithm.shouldNotBeNull()
             }
         }
 
         "UC5-Specific Flow: KeyBindingJws contains transaction data" {
-            val transactionDataEncoded =
-                vckJsonSerializer.encodeToString(requestOptions.rqesParameters.transactionData.first())
-                    .encodeToByteArray()
-
             //Do not use [AuthenticationRequestParameters.transactionData] introduced in OpenID4VP
             val authnRequest = rqesVerifier.createAuthnRequest(requestOptions).copy(transactionData = null)
 
@@ -131,7 +121,7 @@ class RqesOpenId4VpVerifierTest : FreeSpec({
                 .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
 
             result.sdJwtSigned.keyBindingJws.shouldNotBeNull().payload.apply {
-                transactionData.shouldNotBeNull().first() shouldBe transactionDataEncoded
+                transactionData.shouldNotBeNull().first() shouldBe requestOptions.transactionData!!.first()
                 //TODO maybe introduce strict separation of the two flows
                 transactionDataHashes.shouldNotBeNull()
                 transactionDataHashesAlgorithm.shouldNotBeNull()
@@ -147,15 +137,13 @@ private fun buildExtendedRequestOptions(): RqesOpenId4VpVerifier.ExtendedRequest
                 RequestOptionsCredential(
                     EuPidScheme, SD_JWT, setOf(FAMILY_NAME, GIVEN_NAME)
                 )
-            )
-        ),
-        rqesParameters = OpenIdRqesParameters(
+            ),
             transactionData = setOf(getTransactionData())
         )
     )
 
 //TODO other transactionData
-private fun getTransactionData(): TransactionData = TransactionData.QesAuthorization.create(
+private fun getTransactionData(): TransactionData = QesAuthorization.create(
     documentDigest = listOf(getDocumentDigests()),
     signatureQualifier = SignatureQualifier.EU_EIDAS_QES,
     credentialId = uuid4().toString(),

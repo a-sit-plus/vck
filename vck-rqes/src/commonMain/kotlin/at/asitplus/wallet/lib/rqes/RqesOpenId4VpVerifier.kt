@@ -21,7 +21,6 @@ import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.OpenIdRequestOptions
 import at.asitplus.wallet.lib.openid.RequestOptions
-import at.asitplus.wallet.lib.rqes.helper.OpenIdRqesParameters
 import com.benasher44.uuid.uuid4
 import io.ktor.util.*
 import kotlinx.datetime.Clock
@@ -54,11 +53,11 @@ class RqesOpenId4VpVerifier(
     stateToAuthnRequestStore
 ) {
     /**
-     * ExtendedRequestOptions cannot generate DifInputDescriptors!
+     * Necessary to use [QesInputDescriptor]
+     * ExtendedRequestOptions cannot generate [DifInputDescriptor]!
      */
     data class ExtendedRequestOptions(
         val baseRequestOptions: OpenIdRequestOptions,
-        val rqesParameters: OpenIdRqesParameters,
     ) : RequestOptions by baseRequestOptions {
 
         override fun toPresentationDefinition(
@@ -77,8 +76,22 @@ class RqesOpenId4VpVerifier(
                 id = requestOptionCredential.buildId(),
                 format = requestOptionCredential.toFormatHolder(containerJwt, containerSdJwt),
                 constraints = requestOptionCredential.toConstraint(),
-                transactionData = rqesParameters.transactionData.toList()
+                transactionData = transactionData?.toList()
             )
+        }
+    }
+
+    override suspend fun enrichAuthnRequest(
+        params: AuthenticationRequestParameters,
+        requestOptions: RequestOptions,
+    ): AuthenticationRequestParameters = with(requestOptions) {
+        when (this) {
+            is OpenIdRequestOptions -> params
+            is ExtendedRequestOptions -> params.copy(
+                transactionData = transactionData
+            )
+
+            else -> throw NotImplementedError("Unknown RequestOption class: ${this::class}")
         }
     }
 
