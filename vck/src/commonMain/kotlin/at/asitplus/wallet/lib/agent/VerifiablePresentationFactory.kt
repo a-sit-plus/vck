@@ -229,7 +229,6 @@ class VerifiablePresentationFactory(
 
     private fun JsonArray.strings(): List<String>? = mapNotNull { (it as? JsonPrimitive?)?.content }
 
-    @Suppress("DEPRECATION")
     private suspend fun createKeyBindingJws(
         request: PresentationRequestParameters,
         issuerJwtPlusDisclosures: String,
