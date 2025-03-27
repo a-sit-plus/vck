@@ -114,11 +114,12 @@ class OpenId4VpWallet(
      */
     suspend fun startPresentation(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
+        isCrossDeviceFlow: Boolean = false,
     ): KmmResult<Unit> = catching {
         Napier.i("startPresentation: $request")
         openId4VpHolder.createAuthnResponse(request).getOrThrow().let {
             when (it) {
-                is AuthenticationResponseResult.Post -> postResponse(it)
+                is AuthenticationResponseResult.Post -> postResponse(it, isCrossDeviceFlow)
                 is AuthenticationResponseResult.Redirect -> redirectResponse(it)
             }
         }
@@ -134,6 +135,7 @@ class OpenId4VpWallet(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         clientMetadata: RelyingPartyMetadata?,
         credentialPresentation: CredentialPresentation,
+        isCrossDeviceFlow: Boolean = false,
     ): KmmResult<Unit> = catching {
         Napier.i("startPresentation: $request")
         openId4VpHolder.finalizeAuthorizationResponse(
@@ -142,13 +144,13 @@ class OpenId4VpWallet(
             credentialPresentation = credentialPresentation
         ).getOrThrow().let {
             when (it) {
-                is AuthenticationResponseResult.Post -> postResponse(it)
+                is AuthenticationResponseResult.Post -> postResponse(it, isCrossDeviceFlow)
                 is AuthenticationResponseResult.Redirect -> redirectResponse(it)
             }
         }
     }
 
-    private suspend fun postResponse(it: AuthenticationResponseResult.Post) {
+    private suspend fun postResponse(it: AuthenticationResponseResult.Post, isCrossDeviceFlow: Boolean) {
         Napier.i("postResponse: $it")
         handlePostResponse(
             client.submitForm(
@@ -156,15 +158,16 @@ class OpenId4VpWallet(
                 formParameters = parameters {
                     it.params.forEach { append(it.key, it.value) }
                 }
-            ))
+            ),
+            isCrossDeviceFlow
+        )
     }
 
     @Throws(Exception::class)
-    private suspend fun handlePostResponse(response: HttpResponse) {
+    private suspend fun handlePostResponse(response: HttpResponse, isCrossDeviceFlow: Boolean) {
         Napier.i("handlePostResponse: response $response")
         when (response.status.value) {
-            HttpStatusCode.InternalServerError.value -> throw Exception(response.bodyAsText())
-            in 200..399 -> response.extractRedirectUri()?.let { openUrlExternally.invoke(it) }
+            in 200..399 -> response.extractRedirectUri()?.let { if (!isCrossDeviceFlow) openUrlExternally.invoke(it) }
             else -> throw Exception("${response.status}: ${response.readRawBytes().decodeToString()}")
         }
     }
