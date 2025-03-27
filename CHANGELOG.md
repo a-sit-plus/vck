@@ -66,7 +66,7 @@ Release 5.5.0:
  - Introduce dedicated Android targets, separate from JVM targets, that compileto JDK 8 / API-Level 30
  - Improved error logging and exposing for presentation exchange input evaluation
  - Release inner disclosures for nested SD-JWT claims too
- - Use correct validation of session transcripts in OpenID4VP when using ISO mDoc presentations acc. to 18013-7 Annex B
+ - Temp. allow validation of incorrectly encoded mdoc generated nonces in session transcripts for ISO 18013-7 presentations (see [PR](https://github.com/eu-digital-identity-wallet/eudi-lib-android-wallet-core/pull/153))
 
 Release 5.4.3:
  - Fix property names for serialized RQES data classes

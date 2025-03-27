@@ -10,6 +10,7 @@ import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
@@ -557,15 +558,31 @@ open class OpenId4VpVerifier(
                 ?.jweDecrypted?.header?.agreementPartyUInfo
             val apuNested = ((input as? ResponseParametersFrom.JwsSigned)?.parent as? ResponseParametersFrom.JweForJws)
                 ?.jweDecrypted?.header?.agreementPartyUInfo
-            val mdocGeneratedNonce = apuDirect?.encodeToString(Base64UrlStrict)
-                ?: apuNested?.encodeToString(Base64UrlStrict)
+            val deviceResponse = relatedPresentation.jsonPrimitive.content.decodeToByteArray(Base64UrlStrict)
+                .let { DeviceResponse.deserialize(it).getOrThrow() }
+
+            val mdocGeneratedNonce = apuDirect?.decodeToString()
+                ?: apuNested?.decodeToString()
                 ?: ""
-            verifier.verifyPresentationIsoMdoc(
-                input = relatedPresentation.jsonPrimitive.content.decodeToByteArray(Base64UrlStrict)
-                    .let { DeviceResponse.Companion.deserialize(it).getOrThrow() },
+            val result = verifier.verifyPresentationIsoMdoc(
+                input = deviceResponse,
                 challenge = expectedNonce,
                 verifyDocument = verifyDocument(mdocGeneratedNonce, clientId, responseUrl, expectedNonce)
             )
+            if (result is VerifyPresentationResult.ValidationError) {
+                // This is obviously wrong, but it's implemented that way in EUDIW Ref Wallet for Android
+                // see https://github.com/eu-digital-identity-wallet/eudi-lib-android-wallet-core/pull/153
+                val mdocGeneratedNonce = apuDirect?.encodeToString(Base64UrlStrict)
+                    ?: apuNested?.encodeToString(Base64UrlStrict)
+                    ?: ""
+                verifier.verifyPresentationIsoMdoc(
+                    input = deviceResponse,
+                    challenge = expectedNonce,
+                    verifyDocument = verifyDocument(mdocGeneratedNonce, clientId, responseUrl, expectedNonce)
+                )
+            } else {
+                result
+            }
         }
 
         else -> throw IllegalArgumentException("descriptor.format: $claimFormat")

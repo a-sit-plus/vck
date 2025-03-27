@@ -129,7 +129,7 @@ internal class AuthenticationResponseFactory(
         val recipientKey = response.jsonWebKeys!!.getEcdhEsKey()
         val apv = request.parameters.nonce?.encodeToByteArray()
             ?: Random.nextBytes(16)
-        val apu = response.mdocGeneratedNonce?.decodeToByteArray(Base64UrlStrict)
+        val apu = response.mdocGeneratedNonce?.encodeToByteArray()
             ?: Random.nextBytes(16)
         val header = JweHeader(
             algorithm = algorithm,
