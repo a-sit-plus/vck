@@ -33,17 +33,20 @@ class JwkSerializationTest : FreeSpec({
 
         val parsed = JsonWebKey.deserialize(serialized).getOrThrow()
 
+        parsed.type shouldBe JwkType.EC
         parsed.curve shouldBe curve
         parsed.keyId shouldBe kid
     }
 
-    "Deserialization with unknown curve fails" {
+    "Deserialization with unknown curve does not fail, but sets it to null" {
         val kid = uuid4().toString()
         val serialized = """{"kty": "EC", "crv": "P-111", "kid": "$kid"}"""
 
-        val parsed = JsonWebKey.deserialize(serialized).getOrNull()
+        val parsed = JsonWebKey.deserialize(serialized).getOrThrow()
 
-        parsed.shouldBeNull()
+        parsed.type shouldBe JwkType.EC
+        parsed.curve.shouldBeNull()
+        parsed.keyId shouldBe kid
     }
 
 })

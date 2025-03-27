@@ -61,7 +61,7 @@ Release 5.5.0:
  - Error handling:
    - Add subclasses of `OAuth2Exception` to write more precise error handling code
  - Update dependencies:
-   - Update `signum` to 3.15.0, supporting X.509 certificates in v1, v2 too
+   - Update `signum` to 3.15.2, supporting X.509 certificates in v1, v2 too
    - Update JsonPath4K
  - Introduce dedicated Android targets, separate from JVM targets, that compileto JDK 8 / API-Level 30
  - Improved error logging and exposing for presentation exchange input evaluation
