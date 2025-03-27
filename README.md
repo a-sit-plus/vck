@@ -64,12 +64,42 @@ For the OpenID protocol family, issuing is implemented using [OpenID for Verifia
 
 Presentation of credentials is implemented using [Self-Issued OpenID Provider v2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html), supporting [OpenID for Verifiable Presentations](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html), see `OpenId4VpVerifier` and `OpenId4VpHolder`. This library supports several features of the OpenID4VP draft 23: Same device and cross device flows, response mode `direct_post` and `direct_post.jwt`, request objects by value or reference, presentation definitions and submissions, verifier attestations, signed and/or encrypted responses, client identifier schemes embedded in the client identifier. Not supported are the Digital Credential Query Language, using scopes for referencing presentation definitions, client identifier schemes OpenID Federation and DID.
 
+
 ## Usage
+VC-K uses a modular structure to separate concerns. Hence, depending on the use cases you want to cover, you will need different artefacts:
 
-The library is made up of three artifact which build on each other.
-- In order to use `vck-openid` please call `Initializer.initOpenIdModule()` at the start of your project.
-- In order to use `vck-rqes` please call `Initializer.initRqesModule()` at the start of your project. This initializer fully overrides `Initializer.initOpenIdModule()` which does not need to be called if `vck-rqes` is used.
 
+|       Artefact        | Info                                                                                                                                                                                                                                                 |
+|:---------------------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|         `vck`         | VC-K base functionality. Contains business logic for creating, issuing, presenting, and verifying credentials.                                                                                                                                       |
+|     `vck-openid`      | OpenID protocol implementation, including OpenID4VCI. Contains client and server authentication business logic and the actual issuing protocol.                                                                                                      |
+|   `vck-openid-ktor`   | Contains ktor-based OpenID4VCI client and OpenID4VP wallet implementations. **please call `Initializer.initOpenIdModule()` at the start of your project!**                                                                                           |
+|      `vck-rqes`       | RQES implementation; depends on `vck-openid`  **Please call `Initializer.initRqesModule()` at the start of your project. This initializer fully overrides `Initializer.initOpenIdModule()` which does not need to be called if `vck-rqes` is used.** |
+|  `dif-data-classes`   | [DIF Presentation Exchange v1.0.0](https://identity.foundation/presentation-exchange/spec/v1.0.0/#presentation-definition) data classes. **Does not depend on any other vck artefact** and can hence be used independently of VC-K!                  |
+| `openid-data-classes` | OpenID data classes. **Only depends on `dif-data-classes`** and can hence be used independently of VC-K!                                                                                                                                             |
+|  `rqes-data-classes`  | RQES data classes. **Only depends on `dif-data-classes` and `openid-data-classes`** and can hence be used independently of VC-K!                                                                                                                     |
+
+Simply declare the desired dependency to get going. This will usually be one of:
+
+```kotlin 
+implementation("at.asitplus.wallet:vck:$version")
+```
+
+```kotlin 
+implementation("at.asitplus.wallet:vck-openid:$version")
+```
+
+```kotlin 
+implementation("at.asitplus.wallet:vck-rqes:$version")
+```
+
+Everything else (serialization, crypto through Signum, …) will be taken care of.
+Therefore, **do not** manually add serialization dependencies! In case you are using this project in a codebase with dependencies on `kotlinx-serialization`, plese use the `vck-versionCatalog` artefact to keep versions in sync.
+If you
+As discovered in [#226](https://github.com/a-sit-plus/vck/issues/226), using the deprecated `io.spring.dependency-management` will cause issues.
+
+The actual credentials are provided as discrete artefacts and are maintained separately [over here](https://github.com/a-sit-plus/credentials-collection).
+It is fine to add credentials **and** VC-K to as project dependencies, e. g., to use a version of VC-K that is more recent than the one a certain credentials depends on.
 ## Limitations
 
  - Several parts of the W3C VC Data Model have not been fully implemented, i.e. everything around resolving cryptographic key material.
