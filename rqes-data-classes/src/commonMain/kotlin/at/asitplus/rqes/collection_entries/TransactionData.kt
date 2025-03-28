@@ -109,7 +109,7 @@ sealed class TransactionData {
          * Validation according to D3.1: UC Specification WP3
          */
         init {
-            require(credentialID or signatureQualifier) {"Either credentialID or signatureQualifier must be set"}
+            require(credentialID or signatureQualifier) { "Either credentialID or signatureQualifier must be set" }
         }
 
         companion object {
@@ -121,10 +121,14 @@ sealed class TransactionData {
                 signatureQualifier: SignatureQualifier? = null,
                 credentialId: String? = null,
                 processID: String? = null,
+                credentialIds: Set<String>? = null,
+                transactionDataHashAlgorithms: Set<String>? = null,
             ): KmmResult<TransactionData> = runCatching {
                 QesAuthorization(
                     signatureQualifier = signatureQualifier,
                     credentialID = credentialId,
+                    credentialIds = credentialIds,
+                    transactionDataHashAlgorithms = transactionDataHashAlgorithms,
                     documentDigests = documentDigest,
                     processID = processID,
                 )
