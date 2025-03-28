@@ -85,11 +85,6 @@ open class OpenId4VpVerifier(
             redirectUris = listOfNotNull((clientIdScheme as? ClientIdScheme.RedirectUri)?.redirectUri),
             jsonWebKeySet = JsonWebKeySet(listOf(keyMaterial.publicKey.toJsonWebKey())),
             authorizationSignedResponseAlgString = supportedSignatureVerificationAlgorithm,
-            subjectSyntaxTypesSupported = setOf(
-                OpenIdConstants.URN_TYPE_JWK_THUMBPRINT,
-                OpenIdConstants.PREFIX_DID_KEY,
-                OpenIdConstants.BINDING_METHOD_JWK
-            ),
             vpFormats = FormatHolder(
                 msoMdoc = containerJwt,
                 jwtVp = containerJwt,
@@ -265,7 +260,6 @@ open class OpenId4VpVerifier(
      * Creates [AuthenticationRequestParameters], to be encoded in the URL of the wallet somehow,
      * see [createAuthnRequest]
      */
-    @Suppress("DEPRECATION")
     suspend fun createAuthnRequest(
         requestOptions: RequestOptions,
         requestObjectParameters: RequestObjectParameters? = null,
@@ -283,28 +277,31 @@ open class OpenId4VpVerifier(
     suspend fun prepareAuthnRequest(
         requestOptions: RequestOptions,
         requestObjectParameters: RequestObjectParameters? = null,
-    ) = AuthenticationRequestParameters(
-        responseType = requestOptions.responseType,
+    ) = requestOptions.toAuthnRequest(requestObjectParameters)
+        .let {
+            enrichAuthnRequest(it, requestOptions)
+        }
+
+    private suspend fun RequestOptions.toAuthnRequest(
+        requestObjectParameters: RequestObjectParameters?,
+    ): AuthenticationRequestParameters = AuthenticationRequestParameters(
+        responseType = responseType,
         clientId = clientIdScheme.clientId,
-        redirectUrl = if (!requestOptions.isAnyDirectPost) clientIdScheme.redirectUri else null,
-        responseUrl = requestOptions.responseUrl,
-        //scope = requestOptions.buildScope(), // TODO verify if this is needed
+        redirectUrl = if (!isAnyDirectPost) clientIdScheme.redirectUri else null,
+        responseUrl = responseUrl,
+        // Using scope as an alias for a well-defined Presentation Exchange or DCQL is not supported
+        scope = if (isSiop) buildScope() else null,
         nonce = nonceService.provideNonce(),
         walletNonce = requestObjectParameters?.walletNonce,
-        clientMetadata = clientMetadata(requestOptions),
-        clientMetadataUri = requestOptions.clientMetadataUrl,
-        idTokenType = IdTokenType.SUBJECT_SIGNED.text,
-        responseMode = requestOptions.responseMode,
-        state = requestOptions.state,
-        dcqlQuery = if (requestOptions.presentationMechanism == PresentationMechanismEnum.DCQL) {
-            requestOptions.toDCQLQuery()
-        } else null,
-        presentationDefinition = if (requestOptions.presentationMechanism == PresentationMechanismEnum.PresentationExchange) {
-            requestOptions.toPresentationDefinition(containerJwt, containerSdJwt)
-        } else null
-    ).let {
-        enrichAuthnRequest(it, requestOptions)
-    }
+        clientMetadata = clientMetadata(this),
+        clientMetadataUri = clientMetadataUrl,
+        idTokenType = if (isSiop) IdTokenType.SUBJECT_SIGNED.text else null,
+        responseMode = responseMode,
+        state = state,
+        dcqlQuery = if (isDcql) toDCQLQuery() else null,
+        presentationDefinition = if (isPresentationExchange)
+            toPresentationDefinition(containerJwt, containerSdJwt) else null
+    )
 
     open suspend fun enrichAuthnRequest(
         params: AuthenticationRequestParameters,
@@ -668,31 +665,26 @@ open class OpenId4VpVerifier(
         )
     }
 
-    private fun Verifier.VerifyPresentationResult.mapToAuthnResponseResult(state: String) = when (this) {
-        is Verifier.VerifyPresentationResult.InvalidStructure ->
-            AuthnResponseResult.Error("parse vp failed", state)
-                .also { Napier.w("VP error: $this") }
+    private fun VerifyPresentationResult.mapToAuthnResponseResult(state: String) = when (this) {
+        is VerifyPresentationResult.InvalidStructure -> AuthnResponseResult.Error("parse vp failed", state)
+            .also { Napier.w("VP error: $this") }
 
-        is Verifier.VerifyPresentationResult.ValidationError ->
-            AuthnResponseResult.ValidationError("vpToken", state, cause)
-                .also { Napier.w("VP error: $this", cause) }
+        is VerifyPresentationResult.ValidationError -> AuthnResponseResult.ValidationError("vpToken", state, cause)
+            .also { Napier.w("VP error: $this", cause) }
 
-        is Verifier.VerifyPresentationResult.Success ->
-            AuthnResponseResult.Success(vp, state)
-                .also { Napier.i("VP success: $this") }
+        is VerifyPresentationResult.Success -> AuthnResponseResult.Success(vp, state)
+            .also { Napier.i("VP success: $this") }
 
-        is Verifier.VerifyPresentationResult.SuccessIso ->
-            AuthnResponseResult.SuccessIso(documents, state)
-                .also { Napier.i("VP success: $this") }
+        is VerifyPresentationResult.SuccessIso -> AuthnResponseResult.SuccessIso(documents, state)
+            .also { Napier.i("VP success: $this") }
 
-        is Verifier.VerifyPresentationResult.SuccessSdJwt ->
-            AuthnResponseResult.SuccessSdJwt(
-                sdJwtSigned = sdJwtSigned,
-                verifiableCredentialSdJwt = verifiableCredentialSdJwt,
-                reconstructed = reconstructedJsonObject,
-                disclosures = disclosures,
-                state = state
-            ).also { Napier.i("VP success: $this") }
+        is VerifyPresentationResult.SuccessSdJwt -> AuthnResponseResult.SuccessSdJwt(
+            sdJwtSigned = sdJwtSigned,
+            verifiableCredentialSdJwt = verifiableCredentialSdJwt,
+            reconstructed = reconstructedJsonObject,
+            disclosures = disclosures,
+            state = state
+        ).also { Napier.i("VP success: $this") }
     }
 
 }
