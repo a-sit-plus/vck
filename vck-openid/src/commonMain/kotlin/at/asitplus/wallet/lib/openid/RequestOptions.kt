@@ -138,7 +138,7 @@ data class OpenIdRequestOptions(
                 }
 
                 DCQLCredentialQueryInstance(
-                    id = DCQLCredentialQueryIdentifier(uuid4().toString()),
+                    id = DCQLCredentialQueryIdentifier(credential.id),
                     format = format,
                     meta = meta,
                     claims = claims,
@@ -183,7 +183,7 @@ data class RequestOptionsCredential(
      * or `null` to make no restrictions
      */
     val requestedOptionalAttributes: RequestedAttributes? = null,
-    /** ID to be used in [DifInputDescriptor] or [QesInputDescriptor] */
+    /** ID to be used in [DifInputDescriptor] or [QesInputDescriptor], or [DCQLCredentialQueryInstance] */
     val id: String = uuid4().toString(),
 ) {
     fun buildId() = if (isMdoc) credentialScheme.isoDocType!! else id
