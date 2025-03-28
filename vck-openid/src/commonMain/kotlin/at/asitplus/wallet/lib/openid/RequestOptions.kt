@@ -67,6 +67,15 @@ interface RequestOptions {
         get() = (responseMode == OpenIdConstants.ResponseMode.DirectPost) ||
                 (responseMode == OpenIdConstants.ResponseMode.DirectPostJwt)
 
+    val isSiop: Boolean
+        get() = responseType.contains(OpenIdConstants.ID_TOKEN)
+
+    val isDcql: Boolean
+        get() = presentationMechanism == PresentationMechanismEnum.DCQL
+
+    val isPresentationExchange
+        get() = presentationMechanism == PresentationMechanismEnum.PresentationExchange
+
     fun buildScope(): String = listOf(SCOPE_OPENID, SCOPE_PROFILE).joinToString(" ")
 
     fun toDCQLQuery(): DCQLQuery?
