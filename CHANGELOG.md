@@ -1,5 +1,9 @@
 # Changelog
 
+Release 5.5.1:
+ - OpenID for Verifiable Presentations:
+   - In `RequestOptionsCredential` add `id` as an optional parameter
+
 Release 5.5.0:
  - Remove elements deprecated in 5.4.0 when introducing DCQL:
    - Class `CredentialSubmission`, replaced with `PresentationExchangeCredentialDisclosure`

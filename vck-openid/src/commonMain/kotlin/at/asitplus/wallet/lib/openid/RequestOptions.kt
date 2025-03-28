@@ -21,14 +21,10 @@ import io.ktor.http.quote
 typealias RequestedAttributes = Set<String>
 
 interface RequestOptions {
-    /**
-     * Requested credentials, should be at least one
-     */
+    /** Requested credentials, should be at least one. */
     val credentials: Set<RequestOptionsCredential>
 
-    /**
-     * Presentation mechanism to be used for requesting credentials
-     */
+    /** Presentation mechanism to be used for requesting credentials. */
     val presentationMechanism: PresentationMechanismEnum
 
     /**
@@ -52,9 +48,7 @@ interface RequestOptions {
      */
     val responseType: String
 
-    /**
-     * Opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
-     */
+    /** Opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]. */
     val state: String
 
     /**
@@ -174,13 +168,9 @@ data class OpenIdRequestOptions(
 }
 
 data class RequestOptionsCredential(
-    /**
-     * Credential type to request, or `null` to make no restrictions
-     */
+    /** Credential type to request, or `null` to make no restrictions. */
     val credentialScheme: ConstantIndex.CredentialScheme,
-    /**
-     * Required representation, see [ConstantIndex.CredentialRepresentation]
-     */
+    /** Required representation, see [ConstantIndex.CredentialRepresentation]. */
     val representation: CredentialRepresentation = CredentialRepresentation.PLAIN_JWT,
     /**
      * List of attributes that shall be requested explicitly (selective disclosure),
@@ -193,8 +183,10 @@ data class RequestOptionsCredential(
      * or `null` to make no restrictions
      */
     val requestedOptionalAttributes: RequestedAttributes? = null,
+    /** ID to be used in [DifInputDescriptor] or [QesInputDescriptor] */
+    val id: String = uuid4().toString(),
 ) {
-    fun buildId() = if (isMdoc) credentialScheme.isoDocType!! else uuid4().toString()
+    fun buildId() = if (isMdoc) credentialScheme.isoDocType!! else id
 
     private val isMdoc: Boolean
         get() = credentialScheme.isoDocType != null && representation == CredentialRepresentation.ISO_MDOC
