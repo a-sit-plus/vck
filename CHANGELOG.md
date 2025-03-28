@@ -1,5 +1,8 @@
 # Changelog
 
+Release 5.6.0:
+ - tbd
+
 Release 5.5.0:
  - Remove elements deprecated in 5.4.0 when introducing DCQL:
    - Class `CredentialSubmission`, replaced with `PresentationExchangeCredentialDisclosure`
