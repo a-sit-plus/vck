@@ -1,18 +1,5 @@
 # Changelog
 
-TBA
- - Fix missing Android targets
- - Kotlin 2.1.20
- - Delegate key agreement to Signum's implementation -> **key agreement functions are now `suspend`ing**
- - Refactorings in Rqes-Data-Classes
-   - Remove `Csc`-Prefix from nearly all CSC data classes
-   - Rename `CscSignatureRequestParameters` to `QtspSignatureRequest`
-   - Rename `SignatureResponse` to `QtspSignatureResponse`
-   - Rename `SignDocResponse` to `SignDocResponseParameters`
-   - Rename `SignHashResponse` to `SignHashResponseParameters`
- - Fixed default values for CSC data classes
- - Fixed `OpenId4VpWallet` parameter requirements for finalizing an authorization response
-
 Release 5.5.0:
  - Remove elements deprecated in 5.4.0 when introducing DCQL:
    - Class `CredentialSubmission`, replaced with `PresentationExchangeCredentialDisclosure`
@@ -58,15 +45,25 @@ Release 5.5.0:
    - Add method to `OpenId4VciClient` to refresh a credential with a refresh token that has been received when loading the credential
    - Remove methods from internal interface `OAuth2AuthorizationServerAdapter`
    - In `CredentialAuthorizationServiceStrategy` move constructor parameter `dataProvider` of type `OAuth2DataProvider` to `SimpleAuthorizationService`
+   - Fixed `OpenId4VpWallet` parameter requirements for finalizing an authorization response
+   - Improved error logging and exposing for presentation exchange input evaluation
+   - Release inner disclosures for nested SD-JWT claims too
+   - Temp. allow validation of incorrectly encoded mdoc generated nonces in session transcripts for ISO 18013-7 presentations (see [PR](https://github.com/eu-digital-identity-wallet/eudi-lib-android-wallet-core/pull/153))
  - Error handling:
    - Add subclasses of `OAuth2Exception` to write more precise error handling code
  - Update dependencies:
    - Update `signum` to 3.15.2, supporting X.509 certificates in v1, v2 too
+   - Delegate key agreement to Signum's implementation -> **key agreement functions are now `suspend`ing**
    - Update JsonPath4K
- - Introduce dedicated Android targets, separate from JVM targets, that compileto JDK 8 / API-Level 30
- - Improved error logging and exposing for presentation exchange input evaluation
- - Release inner disclosures for nested SD-JWT claims too
- - Temp. allow validation of incorrectly encoded mdoc generated nonces in session transcripts for ISO 18013-7 presentations (see [PR](https://github.com/eu-digital-identity-wallet/eudi-lib-android-wallet-core/pull/153))
+   - Update to Kotlin 2.1.20
+   - Introduce dedicated Android targets, separate from JVM targets, that compile to JDK 8 / API-Level 30
+ - Refactorings in `rqes-data-classes`:
+   - Remove `Csc`-Prefix from nearly all CSC data classes
+   - Rename `CscSignatureRequestParameters` to `QtspSignatureRequest`
+   - Rename `SignatureResponse` to `QtspSignatureResponse`
+   - Rename `SignDocResponse` to `SignDocResponseParameters`
+   - Rename `SignHashResponse` to `SignHashResponseParameters`
+   - Fixed default values for CSC data classes
 
 Release 5.4.3:
  - Fix property names for serialized RQES data classes
