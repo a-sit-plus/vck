@@ -24,8 +24,8 @@ class JsonWebKeyJvmTest : FreeSpec({
     }
 
     "JWK can be created from Coordinates" - {
-        val xFromBc = (keyPair.public as ECPublicKey).w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes.toInt())
-        val yFromBc = (keyPair.public as ECPublicKey).w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes.toInt())
+        val xFromBc = (keyPair.public as ECPublicKey).w.affineX.toByteArray().ensureSize(ecCurve.coordinateLength.bytes.toInt())
+        val yFromBc = (keyPair.public as ECPublicKey).w.affineY.toByteArray().ensureSize(ecCurve.coordinateLength.bytes.toInt())
         val jsonWebKey = JsonWebKey.fromCoordinates(ecCurve, xFromBc, yFromBc).getOrThrow()
 
         jsonWebKey.x shouldBe xFromBc
@@ -42,8 +42,8 @@ class JsonWebKeyJvmTest : FreeSpec({
     }
 
     "JWK can be created from ANSI X962" - {
-        val xFromBc = (keyPair.public as ECPublicKey).w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes.toInt())
-        val yFromBc = (keyPair.public as ECPublicKey).w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes.toInt())
+        val xFromBc = (keyPair.public as ECPublicKey).w.affineX.toByteArray().ensureSize(ecCurve.coordinateLength.bytes.toInt())
+        val yFromBc = (keyPair.public as ECPublicKey).w.affineY.toByteArray().ensureSize(ecCurve.coordinateLength.bytes.toInt())
         val ansiX962 = byteArrayOf(0x04) + xFromBc + yFromBc
         val jsonWebKey = JsonWebKey.fromCoordinates(ecCurve, xFromBc, yFromBc).getOrThrow()
 

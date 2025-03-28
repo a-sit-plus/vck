@@ -2,28 +2,18 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.signum.indispensable.getJcaPublicKey
 import at.asitplus.signum.indispensable.josef.*
-import at.asitplus.signum.supreme.HazardousMaterials
-import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
-import io.github.aakira.napier.Napier
-import org.bouncycastle.jce.provider.BouncyCastleProvider
-import java.security.Security
+import at.asitplus.wallet.lib.agent.AuthenticatedCiphertext
+import at.asitplus.wallet.lib.agent.CryptoService
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import javax.crypto.Cipher
-import javax.crypto.KeyAgreement
 import javax.crypto.Mac
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
-actual open class PlatformCryptoShim actual constructor(actual val keyMaterial: KeyMaterial) {
-    companion object {
-        init {
-            Napier.d { "Adding BC" }
-            Security.addProvider(BouncyCastleProvider())
-        }
-    }
+class AndroidJvmPlatformCryptoShim  {
 
-    actual open fun encrypt(
+    fun encrypt(
         key: ByteArray,
         iv: ByteArray,
         aad: ByteArray,
@@ -42,7 +32,7 @@ actual open class PlatformCryptoShim actual constructor(actual val keyMaterial: 
         }.doFinal(input)
         if (algorithm.isAuthenticatedEncryption) {
             //FOR AES AEAD it is always block size
-            val ciphertext = jcaCiphertext.dropLast(128/ 8).toByteArray()
+            val ciphertext = jcaCiphertext.dropLast(128 / 8).toByteArray()
             val authtag = jcaCiphertext.takeLast(128 / 8).toByteArray()
             AuthenticatedCiphertext(ciphertext, authtag)
         } else {
@@ -50,7 +40,7 @@ actual open class PlatformCryptoShim actual constructor(actual val keyMaterial: 
         }
     }.wrap()
 
-    actual open suspend fun decrypt(
+     suspend fun decrypt(
         key: ByteArray,
         iv: ByteArray,
         aad: ByteArray,
@@ -71,7 +61,8 @@ actual open class PlatformCryptoShim actual constructor(actual val keyMaterial: 
         }.doFinal(wholeInput)
     }.wrap()
 
-    actual open fun hmac(
+
+     fun hmac(
         key: ByteArray,
         algorithm: JweEncryption,
         input: ByteArray,
@@ -80,31 +71,5 @@ actual open class PlatformCryptoShim actual constructor(actual val keyMaterial: 
             it.init(SecretKeySpec(key, algorithm.jcaKeySpecName))
         }.doFinal(input)
     }.wrap()
-
-    actual open fun performKeyAgreement(
-        ephemeralKey: EphemeralKeyHolder,
-        recipientKey: JsonWebKey,
-        algorithm: JweAlgorithm
-    ): KmmResult<ByteArray> = runCatching {
-        val jvmKey = recipientKey.toCryptoPublicKey().getOrThrow().getJcaPublicKey().getOrThrow()
-        KeyAgreement.getInstance(algorithm.jcaName).also {
-            @OptIn(HazardousMaterials::class)
-            it.init(ephemeralKey.key.jcaPrivateKey)
-            it.doPhase(jvmKey, true)
-        }.generateSecret()
-    }.wrap()
-
-    actual open fun performKeyAgreement(
-        ephemeralKey: JsonWebKey,
-        algorithm: JweAlgorithm
-    ): KmmResult<ByteArray> = runCatching {
-        val publicKey = ephemeralKey.toCryptoPublicKey().getOrThrow().getJcaPublicKey().getOrThrow()
-        KeyAgreement.getInstance(algorithm.jcaName).also {
-            @OptIn(HazardousMaterials::class)
-            it.init(keyMaterial.getUnderLyingSigner().jcaPrivateKey)
-            it.doPhase(publicKey, true)
-        }.generateSecret()
-    }.wrap()
-
 }
 

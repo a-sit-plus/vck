@@ -17,6 +17,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.util.*
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.PolymorphicSerializer
+import kotlinx.serialization.Serializer
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 
@@ -94,6 +95,7 @@ class TransactionDataInterop : FreeSpec({
             transactionData.shouldBeInstanceOf<TransactionData.QesAuthorization>()
             transactionData.documentDigests shouldNotBe emptyList<RqesDocumentDigestEntry>()
             transactionData.documentDigests.first().documentLocationMethod shouldNotBe null
+            @Suppress("DEPRECATION")
             transactionData.documentDigests.first().documentLocationMethod!!.documentAccessMode shouldBe RqesDocumentDigestEntry.DocumentLocationMethod.DocumentAccessMode.OTP
             transactionData.documentDigests.first().documentLocationMethod!!.oneTimePassword shouldNotBe null
         }
@@ -168,12 +170,12 @@ class TransactionDataInterop : FreeSpec({
 /**
  * Sorts all entries of the JsonElement which is necessary in case we want to compare two objects
  */
-fun JsonElement.canonicalize(): JsonElement =
+fun JsonElement.canonicalize(serializer: Json = rdcJsonSerializer): JsonElement =
     when (this) {
         is JsonObject -> JsonObject(this.entries.sortedBy { it.key }
-            .sortedBy { rdcJsonSerializer.encodeToString(it.value) }.associate { it.key to it.value.canonicalize() })
+            .sortedBy { serializer.encodeToString(it.value) }.associate { it.key to it.value.canonicalize(serializer) })
 
-        is JsonArray -> JsonArray(this.map { it.canonicalize() }.sortedBy { rdcJsonSerializer.encodeToString(it) })
+        is JsonArray -> JsonArray(this.map { it.canonicalize() }.sortedBy { serializer.encodeToString(it) })
         is JsonPrimitive -> this
         JsonNull -> this
     }

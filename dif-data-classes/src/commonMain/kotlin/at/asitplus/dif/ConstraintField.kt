@@ -22,6 +22,7 @@ data class ConstraintField(
     val path: List<String>,
     @SerialName("filter")
     val filter: ConstraintFilter? = null,
+    /** Per ISO 18013-7, this value shall be set to `true` or `false`. */
     @SerialName("intent_to_retain")
     val intentToRetain: Boolean? = null,
 )

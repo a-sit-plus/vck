@@ -14,7 +14,7 @@ import kotlinx.serialization.Serializable
  *
  * The method describes the restrictions/way of accessing a document
  */
-@Deprecated("Unify with [at.asitplus.rqes.collection_entries.DocumentDigestEntry.DocumentLocationMethod.DocumentAccessMethod] asap")
+//TODO: Unify with [at.asitplus.rqes.collection_entries.DocumentDigestEntry.DocumentLocationMethod.DocumentAccessMethod] as soon as spec allows
 @Serializable
 @SerialName("method")
 sealed class Method {
@@ -24,6 +24,7 @@ sealed class Method {
      * fetched from [documentLocationUri] with a https-request
      * without further restrictions.
      */
+    @Suppress("DEPRECATION")
     @Serializable
     @SerialName("public")
     data object Public : Method()
@@ -35,6 +36,7 @@ sealed class Method {
      * input the shown value and only then allows to fetch the
      * document corresponding to [hash].
      */
+    @Suppress("DEPRECATION")
     @Serializable
     @SerialName("OTP")
     data class OTP(
@@ -48,6 +50,7 @@ sealed class Method {
      * [documentLocationUri]. The document should be fetched
      * using the ‘Basic’ HTTP Authentication Scheme (RFC 7617).
      */
+    @Suppress("DEPRECATION")
     @Serializable
     @SerialName("Basic_Auth")
     data object Basic : Method()
@@ -58,6 +61,7 @@ sealed class Method {
      * [documentLocationUri]. The document should be fetched
      * using the ‘Digest’ HTTP Authentication Scheme (RFC 7616).
      */
+    @Suppress("DEPRECATION")
     @Serializable
     @SerialName("Digest_Auth")
     data object Digest : Method()
@@ -69,6 +73,7 @@ sealed class Method {
      * using the ‘OAuth 2.0’ Authentication Framework (RFC6749
      * and RFC8252).
      */
+    @Suppress("DEPRECATION")
     @Serializable
     @SerialName("OAuth_20")
     data object Oauth2 : Method()

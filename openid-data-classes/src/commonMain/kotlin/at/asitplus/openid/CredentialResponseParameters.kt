@@ -5,6 +5,8 @@ import at.asitplus.KmmResult.Companion.wrap
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Duration
 
 @Serializable
@@ -14,15 +16,18 @@ data class CredentialResponseParameters(
      * OPTIONAL. JSON string denoting the format of the issued Credential.
      */
     @SerialName("format")
+    @Deprecated("Removed in OID4VCI draft 15")
     val format: CredentialFormatEnum? = null,
 
-    /**
-     * OID4VCI:
-     * OPTIONAL. Contains issued Credential. MUST be present when acceptance_token is not returned.
-     * MAY be a JSON string or a JSON object, depending on the Credential format.
-     */
     @SerialName("credential")
-    val credential: String? = null, // TODO May be a JSON object
+    @Deprecated("Removed in OID4VCI draft 15", ReplaceWith("credentials"))
+    val credential: String? = null,
+
+    /**
+     * OID4VCI: Contains an array of one or more issued Credentials. It MUST NOT be used if the transaction_id parameter is present. The elements of the array MUST be objects.
+     */
+    @SerialName("credentials")
+    val credentials: Set<CredentialResponseSingleCredential>? = null,
 
     /**
      * OID4CI:
@@ -49,6 +54,9 @@ data class CredentialResponseParameters(
     @Serializable(with = DurationSecondsIntSerializer::class)
     val clientNonceExpiresIn: Duration? = null,
 ) {
+    @Suppress("DEPRECATION")
+    fun extractCredentials(): List<String> =
+        credentials?.let { it.mapNotNull { it.credentialString } } ?: listOfNotNull(credential)
 
     fun serialize() = odcJsonSerializer.encodeToString(this)
 
@@ -57,4 +65,19 @@ data class CredentialResponseParameters(
             runCatching { odcJsonSerializer.decodeFromString<CredentialResponseParameters>(input) }.wrap()
     }
 
+}
+
+@Serializable
+data class CredentialResponseSingleCredential(
+    /**
+     * OID4VCI: REQUIRED. Contains one issued Credential. It MAY be a string or an object, depending on the Credential
+     * Format. See Appendix A for the Credential Format-specific encoding requirements.
+     */
+    @SerialName("credential")
+    val credential: JsonElement,
+) {
+    /** Currently, there is no other format defined to transport credentials */
+    val credentialString: String? by lazy {
+        runCatching { credential.jsonPrimitive.content }.getOrNull()
+    }
 }

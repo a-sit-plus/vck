@@ -10,6 +10,7 @@ import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
@@ -18,13 +19,12 @@ import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.*
 import at.asitplus.wallet.lib.oidvci.*
 import io.github.aakira.napier.Napier
-import io.ktor.http.*
+import io.ktor.http.URLBuilder
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToByteArray
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -106,6 +106,7 @@ open class OpenId4VpVerifier(
      */
     val metadataWithEncryption by lazy {
         metadata.copy(
+            authorizationSignedResponseAlgString = null,
             authorizationEncryptedResponseAlgString = jwsService.encryptionAlgorithm.identifier,
             authorizationEncryptedResponseEncodingString = jwsService.encryptionEncoding.text,
             jsonWebKeySet = metadata.jsonWebKeySet?.let {
@@ -295,8 +296,8 @@ open class OpenId4VpVerifier(
         idTokenType = IdTokenType.SUBJECT_SIGNED.text,
         responseMode = requestOptions.responseMode,
         state = requestOptions.state,
-        dcqlQueryString = if (requestOptions.presentationMechanism == PresentationMechanismEnum.DCQL) {
-            requestOptions.toDCQLQuery()?.let { odcJsonSerializer.encodeToString(it) }
+        dcqlQuery = if (requestOptions.presentationMechanism == PresentationMechanismEnum.DCQL) {
+            requestOptions.toDCQLQuery()
         } else null,
         presentationDefinition = if (requestOptions.presentationMechanism == PresentationMechanismEnum.PresentationExchange) {
             requestOptions.toPresentationDefinition(containerJwt, containerSdJwt)
@@ -485,20 +486,7 @@ open class OpenId4VpVerifier(
                     ?: throw IllegalArgumentException("Unknown credential query identifier.")
 
                 verifyPresentationResult(
-                    when (credentialQuery.format) {
-                        CredentialFormatEnum.JWT_VC -> ClaimFormat.JWT_VP
-
-                        CredentialFormatEnum.VC_SD_JWT,
-                        CredentialFormatEnum.DC_SD_JWT,
-                            -> ClaimFormat.SD_JWT
-
-                        CredentialFormatEnum.MSO_MDOC -> ClaimFormat.MSO_MDOC
-
-                        CredentialFormatEnum.NONE,
-                        CredentialFormatEnum.JWT_VC_JSON_LD,
-                        CredentialFormatEnum.JSON_LD,
-                            -> throw IllegalStateException("Unsupported credential format")
-                    },
+                    credentialQuery.format.toClaimFormat(),
                     relatedPresentation,
                     expectedNonce,
                     responseParameters,
@@ -510,6 +498,24 @@ open class OpenId4VpVerifier(
         }
 
         throw IllegalArgumentException("Unsupported presentation mechanism")
+    }
+
+    private fun CredentialFormatEnum.toClaimFormat(): ClaimFormat = when (this) {
+        CredentialFormatEnum.JWT_VC,
+            -> ClaimFormat.JWT_VP
+
+        @Suppress("DEPRECATION")
+        CredentialFormatEnum.VC_SD_JWT,
+        CredentialFormatEnum.DC_SD_JWT,
+            -> ClaimFormat.SD_JWT
+
+        CredentialFormatEnum.MSO_MDOC,
+            -> ClaimFormat.MSO_MDOC
+
+        CredentialFormatEnum.NONE,
+        CredentialFormatEnum.JWT_VC_JSON_LD,
+        CredentialFormatEnum.JSON_LD,
+            -> throw IllegalStateException("Unsupported credential format")
     }
 
     private fun List<AuthnResponseResult>.firstOrList(): AuthnResponseResult =
@@ -552,18 +558,34 @@ open class OpenId4VpVerifier(
                 ?.jweDecrypted?.header?.agreementPartyUInfo
             val apuNested = ((input as? ResponseParametersFrom.JwsSigned)?.parent as? ResponseParametersFrom.JweForJws)
                 ?.jweDecrypted?.header?.agreementPartyUInfo
+            val deviceResponse = relatedPresentation.jsonPrimitive.content.decodeToByteArray(Base64UrlStrict)
+                .let { DeviceResponse.deserialize(it).getOrThrow() }
+
             val mdocGeneratedNonce = apuDirect?.decodeToString()
                 ?: apuNested?.decodeToString()
                 ?: ""
-            verifier.verifyPresentationIsoMdoc(
-                input = relatedPresentation.jsonPrimitive.content.decodeToByteArray(Base64UrlStrict)
-                    .let { DeviceResponse.Companion.deserialize(it).getOrThrow() },
+            val result = verifier.verifyPresentationIsoMdoc(
+                input = deviceResponse,
                 challenge = expectedNonce,
                 verifyDocument = verifyDocument(mdocGeneratedNonce, clientId, responseUrl, expectedNonce)
             )
+            if (result is VerifyPresentationResult.ValidationError) {
+                // This is obviously wrong, but it's implemented that way in EUDIW Ref Wallet for Android
+                // see https://github.com/eu-digital-identity-wallet/eudi-lib-android-wallet-core/pull/153
+                val mdocGeneratedNonce = apuDirect?.encodeToString(Base64UrlStrict)
+                    ?: apuNested?.encodeToString(Base64UrlStrict)
+                    ?: ""
+                verifier.verifyPresentationIsoMdoc(
+                    input = deviceResponse,
+                    challenge = expectedNonce,
+                    verifyDocument = verifyDocument(mdocGeneratedNonce, clientId, responseUrl, expectedNonce)
+                )
+            } else {
+                result
+            }
         }
 
-        else -> throw IllegalArgumentException("descriptor.format")
+        else -> throw IllegalArgumentException("descriptor.format: $claimFormat")
     }
 
     /**
@@ -577,6 +599,7 @@ open class OpenId4VpVerifier(
         responseUrl: String?,
         expectedNonce: String,
     ): (MobileSecurityObject, Document) -> Boolean = { mso, document ->
+        Napier.d("verifyDocument: mdocGeneratedNonce='$mdocGeneratedNonce', clientId='$clientId', responseUrl='$responseUrl', expectedNonce='$expectedNonce'")
         val deviceSignature = document.deviceSigned.deviceAuth.deviceSignature ?: run {
             Napier.w("DeviceSignature is null: ${document.deviceSigned.deviceAuth}")
             throw IllegalArgumentException("deviceSignature")

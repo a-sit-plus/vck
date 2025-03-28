@@ -1,4 +1,4 @@
-import at.asitplus.gradle.exportIosFramework
+import at.asitplus.gradle.exportXCFramework
 import at.asitplus.gradle.ktor
 import at.asitplus.gradle.napier
 import at.asitplus.gradle.setupAndroid
@@ -7,6 +7,7 @@ import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree.Companion.test
 
 plugins {
+    id("com.android.library")
     kotlin("multiplatform")
     kotlin("plugin.serialization")
     id("at.asitplus.gradle.vclib-conventions")
@@ -24,9 +25,9 @@ kotlin {
 
     jvm()
     androidTarget {
-        publishLibraryVariants("release")
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         instrumentedTestVariant.sourceSetTree.set(test)
+        publishLibraryVariants("release")
     }
     iosArm64()
     iosSimulatorArm64()
@@ -51,9 +52,10 @@ kotlin {
 
 setupAndroid()
 
-exportIosFramework(
+exportXCFramework(
     "RqesDataClasses",
     transitiveExports = true,
+    static = false,
     "at.asitplus.signum:indispensable-cosef:${VcLibVersions.signum}",
     "at.asitplus.signum:indispensable-josef:${VcLibVersions.signum}",
     "at.asitplus:jsonpath4k:${VcLibVersions.jsonpath}",

@@ -2,17 +2,13 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.OpenIdConstants
-import at.asitplus.openid.RequestObjectParameters
-import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.openid.*
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.json
 import io.github.aakira.napier.Napier
@@ -40,9 +36,10 @@ class RequestParser(
     private val buildRequestObjectParameters: suspend () -> RequestObjectParameters? = { null },
 ) {
     /**
-     * Pass in the URL sent by the Verifier (containing the [at.asitplus.openid.RequestParameters] as query parameters),
-     * to create [at.asitplus.openid.AuthenticationResponseParameters] that can be sent back to the Verifier, see
-     * [AuthenticationResponseResult].
+     * Pass in the request by a relying party, that is either a complete URL,
+     * or the POST body (e.g. the form-serialized values of the authorization request),
+     * or a serialized JWS (which may have been extracted from a `request` parameter),
+     * to parse the [AuthenticationRequestParameters], wrapped in [RequestParametersFrom].
      */
     suspend fun parseRequestParameters(input: String): KmmResult<RequestParametersFrom<*>> = catching {
         // maybe it is a request JWS
@@ -59,14 +56,33 @@ class RequestParser(
             ?: catching {  // maybe it is already a JSON string
                 val params = vckJsonSerializer.decodeFromString(PolymorphicSerializer(RequestParameters::class), input)
                 matchRequestParameterCases(input, params)
+            }.onFailure {
+                Napier.d("parseRequestParameters: Failed for $input", it)
             }.getOrNull()
-            ?: throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST, "parse error")
+            ?: throw InvalidRequest("parse error")
                 .also { Napier.w("Could not parse authentication request: $input") }
 
         (parsedParams.parameters as? AuthenticationRequestParameters)?.let {
             extractRequestObject(it)
         } ?: parsedParams
             .also { Napier.i("Parsed authentication request: $it") }
+    }
+
+    /**
+     * Extracts the actual request, referenced by the passed-in [input],
+     * e.g. extracting [AuthenticationRequestParameters.request]
+     * or [AuthenticationRequestParameters.requestUri] if necessary.
+     */
+    suspend fun extractActualRequest(
+        input: AuthenticationRequestParameters,
+    ): KmmResult<AuthenticationRequestParameters> = catching {
+        input.request?.let {
+            parseRequestObjectJws(it)?.parameters as? AuthenticationRequestParameters
+        } ?: input.requestUri?.let { uri ->
+            remoteResourceRetriever.invoke(input.resourceRetrieverInput(uri))?.let {
+                parseRequestParameters(it).getOrNull()?.parameters as? AuthenticationRequestParameters
+            }
+        } ?: input
     }
 
     private suspend fun extractRequestObject(params: AuthenticationRequestParameters): RequestParametersFrom<*>? =

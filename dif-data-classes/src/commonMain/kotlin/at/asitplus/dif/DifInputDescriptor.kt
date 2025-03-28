@@ -28,4 +28,9 @@ data class DifInputDescriptor(
         name = name,
         constraints = constraints,
     )
+
+    constructor(constraints: Constraint? = null) : this(
+        id = uuid4().toString(),
+        constraints = constraints,
+    )
 }

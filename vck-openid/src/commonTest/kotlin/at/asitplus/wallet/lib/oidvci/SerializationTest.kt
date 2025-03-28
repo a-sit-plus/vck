@@ -11,6 +11,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.ktor.http.*
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.JsonPrimitive
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
@@ -51,8 +52,6 @@ class SerializationTest : FunSpec({
         tokenType = TOKEN_TYPE_BEARER,
         expires = Random.nextInt(1, Int.MAX_VALUE).seconds,
         scope = randomString(),
-        clientNonce = randomString(),
-        clientNonceExpiresIn = Random.nextInt(1, Int.MAX_VALUE).seconds,
         authorizationPending = false,
         interval = Random.nextInt(1, Int.MAX_VALUE).seconds,
     )
@@ -70,7 +69,7 @@ class SerializationTest : FunSpec({
 
     fun createCredentialResponse() = CredentialResponseParameters(
         format = CredentialFormatEnum.JWT_VC,
-        credential = randomString(),
+        credentials = setOf(CredentialResponseSingleCredential(JsonPrimitive(randomString()))),
         acceptanceToken = randomString(),
         clientNonce = randomString(),
         clientNonceExpiresIn = Random.nextInt(1, Int.MAX_VALUE).seconds,
@@ -123,8 +122,6 @@ class SerializationTest : FunSpec({
         json shouldContain "\"access_token\":"
         json shouldContain "\"token_type\":"
         json shouldContain "\"expires_in\":"
-        json shouldContain "\"c_nonce\":"
-        json shouldContain "\"c_nonce_expires_in\":"
         val parsed: TokenResponseParameters = vckJsonSerializer.decodeFromString(json)
         parsed shouldBe params
     }

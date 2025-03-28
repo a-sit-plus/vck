@@ -146,9 +146,7 @@ inline fun Project.wireAndroidInstrumentedTests() {
 fun Project.setupAndroid() {
     project.extensions.getByName<LibraryExtension>("android").apply {
         namespace = "$group.${name.replace('-','.')}".also { logger.lifecycle("Setting Android namespace to $it") }
-        compileSdk = 34
         defaultConfig {
-            minSdk = 30
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         }
 

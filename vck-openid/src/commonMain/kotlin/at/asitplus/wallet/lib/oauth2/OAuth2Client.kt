@@ -4,7 +4,12 @@ import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.CODE_CHALLENGE_METHOD_SHA256
 import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.iso.sha256
+import at.asitplus.wallet.lib.jws.DefaultJwsService
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.MapStore
@@ -33,21 +38,39 @@ class OAuth2Client(
      * and then [TokenRequestParameters.codeVerifier], see [RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636).
      */
     private val stateToCodeStore: MapStore<String, String> = DefaultMapStore(),
+    /**
+     * Set this variable to use JAR (JWT-secured authorization requests, RFC 9101)
+     * for PAR (Pushed authorization requests, RFC 9126), as mandated by OpenID4VC HAIP.
+     */
+    val jwsService: JwsService? = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithSelfSignedCert())),
 ) {
 
     /**
-     * Send the result as parameters (either POST or GET) to the server at `/authorize` (or more specific
-     * [OAuth2AuthorizationServerMetadata.authorizationEndpoint]).
+     * Send the result as parameters to the server at [OAuth2AuthorizationServerMetadata.authorizationEndpoint].
+     * Use POST if [OAuth2AuthorizationServerMetadata.pushedAuthorizationRequestEndpoint] is available.
      *
-     * Sample ktor code:
+     * Wraps the actual authorization request in a pushed authorization request (i.e. the `request` property),
+     * if the [jwsService] is available.
+     *
+     * Sample ktor code for GET:
      * ```
      * val authnRequest = client.createAuthRequest(...)
-     * val authnResponse = httpClient.get(issuerMetadata.authorizationEndpointUrl!!) {
+     * httpClient.get(issuerMetadata.authorizationEndpointUrl!!) {
      *     url {
      *         authnRequest.encodeToParameters().forEach { parameters.append(it.key, it.value) }
      *     }
      * }
-     * val authn = AuthenticationResponseParameters.deserialize(authnResponse.bodyAsText()).getOrThrow()
+     * ```
+     *
+     * Sample ktor code for POST:
+     * ```
+     * val authnRequest = client.createAuthRequest(...)
+     * httpClient.submitForm(
+     *     url = issuerMetadata.pushedAuthorizationRequestEndpoint,
+     *     formParameters = parameters {
+     *         authnRequest.encodeToParameters().forEach { append(it.key, it.value) }
+     *     }
+     * )
      * ```
      *
      * @param state to keep internal state in further requests
@@ -56,6 +79,7 @@ class OAuth2Client(
      * @param resource from RFC 8707 Resource Indicators for OAuth 2.0, in OID4VCI flows the value
      * of [IssuerMetadata.credentialIssuer]
      * @param issuerState for OID4VCI flows the value from [CredentialOfferGrantsAuthCode.issuerState]
+     * @param audience for PAR the value of the `issuer` of the Authorization Server
      */
     suspend fun createAuthRequest(
         state: String,
@@ -63,6 +87,7 @@ class OAuth2Client(
         scope: String? = null,
         resource: String? = null,
         issuerState: String? = null,
+        audience: String? = null,
     ) = AuthenticationRequestParameters(
         responseType = GRANT_TYPE_CODE,
         state = state,
@@ -74,6 +99,42 @@ class OAuth2Client(
         redirectUrl = redirectUrl,
         codeChallenge = generateCodeVerifier(state),
         codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256
+    ).wrapIfNecessary(audience)
+
+    private suspend fun AuthenticationRequestParameters.wrapIfNecessary(audience: String?) =
+        if (jwsService != null) wrapInPar(jwsService, audience) else this
+
+    private suspend fun AuthenticationRequestParameters.wrapInPar(
+        jwsService: JwsService,
+        audience: String?,
+    ) = AuthenticationRequestParameters(
+        clientId = clientId,
+        request = jwsService.createSignedJwsAddingParams(
+            header = JwsHeader(
+                algorithm = jwsService.algorithm,
+                type = JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST
+            ),
+            payload = this.copy(
+                audience = audience,
+                issuer = this.clientId,
+            ),
+            serializer = AuthenticationRequestParameters.serializer(),
+            addJsonWebKey = true,
+        ).getOrThrow().serialize()
+    )
+
+    /**
+     * Send the result as parameters to the server at [OAuth2AuthorizationServerMetadata.authorizationEndpoint].
+     * Use this method if the previous authn request was sent as a pushed authorization request (RFC 9126),
+     * and the server has answered with [PushedAuthenticationResponseParameters].
+     *
+     * @param parResponse response from the AS to the PAR request
+     */
+    suspend fun createAuthRequestAfterPar(
+        parResponse: PushedAuthenticationResponseParameters,
+    ) = AuthenticationRequestParameters(
+        clientId = clientId,
+        requestUri = parResponse.requestUri,
     )
 
     @OptIn(ExperimentalStdlibApi::class)
@@ -84,10 +145,11 @@ class OAuth2Client(
     }
 
     sealed class AuthorizationForToken {
-        /**
-         * Authorization code from an actual OAuth2 Authorization Server, or [SimpleAuthorizationService.authorize]
-         */
+        /** Authorization code from an actual OAuth2 Authorization Server, or [SimpleAuthorizationService.authorize]. */
         data class Code(val code: String) : AuthorizationForToken()
+
+        /** Refresh token for obtaining a new access token, see [TokenResponseParameters.refreshToken]. */
+        data class RefreshToken(val refreshToken: String) : AuthorizationForToken()
 
         /**
          * Pre-auth code from [CredentialOfferGrantsPreAuthCode.preAuthorizedCode] in
@@ -96,15 +158,15 @@ class OAuth2Client(
          */
         data class PreAuthCode(
             val preAuthorizedCode: String,
-            val transactionCode: String? = null
+            val transactionCode: String? = null,
         ) : AuthorizationForToken()
     }
 
     /**
      * Request token with an authorization code, e.g. from [createAuthRequest], or pre-auth code.
      *
-     * Send the result as POST parameters (form-encoded) to the server at `/token` (or more specific
-     * [OAuth2AuthorizationServerMetadata.tokenEndpoint]).
+     * Send the result as POST parameters (form-encoded) to the server at
+     * [OAuth2AuthorizationServerMetadata.tokenEndpoint].
      *
      * Sample ktor code for authorization code:
      * ```
@@ -137,7 +199,7 @@ class OAuth2Client(
      * ```
      *
      * Be sure to include a DPoP header if [OAuth2AuthorizationServerMetadata.dpopSigningAlgValuesSupported] is set,
-     * see [JwsService.buildDPoPHeader].
+     * see [buildDPoPHeader].
      *
      * @param state to keep internal state in further requests
      * @param authorization for the token endpoint
@@ -147,33 +209,42 @@ class OAuth2Client(
      * of [IssuerMetadata.credentialIssuer]
      */
     suspend fun createTokenRequestParameters(
-        state: String,
         authorization: AuthorizationForToken,
+        state: String? = null,
         authorizationDetails: Set<AuthorizationDetails>? = null,
         scope: String? = null,
         resource: String? = null,
     ) = when (authorization) {
         is AuthorizationForToken.Code -> TokenRequestParameters(
             grantType = OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE,
+            code = authorization.code,
+            codeVerifier = state?.let { stateToCodeStore.remove(it) },
             redirectUrl = redirectUrl,
             clientId = clientId,
-            codeVerifier = stateToCodeStore.remove(state),
             authorizationDetails = authorizationDetails,
             scope = scope,
             resource = resource,
-            code = authorization.code,
         )
 
         is AuthorizationForToken.PreAuthCode -> TokenRequestParameters(
             grantType = OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE,
+            preAuthorizedCode = authorization.preAuthorizedCode,
+            transactionCode = authorization.transactionCode,
             redirectUrl = redirectUrl,
             clientId = clientId,
-            codeVerifier = stateToCodeStore.remove(state),
             authorizationDetails = authorizationDetails,
             scope = scope,
             resource = resource,
-            transactionCode = authorization.transactionCode,
-            preAuthorizedCode = authorization.preAuthorizedCode,
+        )
+
+        is AuthorizationForToken.RefreshToken -> TokenRequestParameters(
+            grantType = OpenIdConstants.GRANT_TYPE_REFRESH_TOKEN,
+            refreshToken = authorization.refreshToken,
+            redirectUrl = redirectUrl,
+            clientId = clientId,
+            authorizationDetails = authorizationDetails,
+            scope = scope,
+            resource = resource,
         )
     }
 

@@ -32,17 +32,14 @@ value class TokenStatus(val value: UByte) {
         val Valid = TokenStatus(Specification.VALID)
         val Invalid = TokenStatus(Specification.INVALID)
         val Suspended = TokenStatus(Specification.SUSPENDED)
-        val ApplicationSpecific3 = TokenStatus(Specification.APPLICATION_SPECIFIC_3)
-        val ApplicationSpecific14 = TokenStatus(Specification.APPLICATION_SPECIFIC_14)
-        val ApplicationSpecific15 = TokenStatus(Specification.APPLICATION_SPECIFIC_15)
     }
 
+    /**
+     * Note that value `0x03` and the range `0x0B` until `0x0F` are reserved as application specific.
+     */
     object Specification {
         const val VALID = 0x00u
         const val INVALID = 0x01u
         const val SUSPENDED = 0x02u
-        const val APPLICATION_SPECIFIC_3 = 0x03u
-        const val APPLICATION_SPECIFIC_14 = 0x0eu
-        const val APPLICATION_SPECIFIC_15 = 0x0fu
     }
 }

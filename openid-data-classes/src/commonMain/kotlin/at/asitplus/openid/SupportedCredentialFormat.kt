@@ -98,7 +98,7 @@ data class SupportedCredentialFormat private constructor(
      * An array of `claims.display.name` values that lists them in the order they should be displayed by the Wallet.
      */
     @SerialName("order")
-    val order: Set<String>? = null,
+    val order: List<String>? = null,
 
     /**
      * OID4VCI: OPTIONAL. Array of objects, where each object contains the display properties of the supported
@@ -107,6 +107,8 @@ data class SupportedCredentialFormat private constructor(
     @SerialName("display")
     val display: Set<DisplayProperties>? = null,
 ) {
+    @Suppress("DEPRECATION")
+    @Deprecated("Removed in OID4VCI draft 15", ReplaceWith("claimDescription"))
     val isoClaims: Map<String, Map<String, RequestedCredentialClaimSpecification>>?
         get() = claims?.let {
             runCatching {
@@ -114,12 +116,24 @@ data class SupportedCredentialFormat private constructor(
             }.getOrNull()
         }
 
+    @Suppress("DEPRECATION")
+    @Deprecated("Removed in OID4VCI draft 15", ReplaceWith("claimDescription"))
     val sdJwtClaims: Map<String, RequestedCredentialClaimSpecification>?
         get() = claims?.let {
             runCatching {
                 odcJsonSerializer.decodeFromJsonElement<Map<String, RequestedCredentialClaimSpecification>>(it)
             }.getOrNull()
         }
+
+    val claimDescription: Set<ClaimDescription>?
+        get() = claims?.let {
+            runCatching {
+                odcJsonSerializer.decodeFromJsonElement<Set<ClaimDescription>>(it)
+            }.getOrNull()
+        }
+
+    fun withSupportedProofTypes(supportedProofTypes: Map<String, CredentialRequestProofSupported>) =
+        copy(supportedProofTypes = supportedProofTypes)
 
     companion object {
 
@@ -131,8 +145,8 @@ data class SupportedCredentialFormat private constructor(
             supportedProofTypes: Map<String, CredentialRequestProofSupported>? = null,
             credentialDefinition: SupportedCredentialFormatDefinition? = null,
             docType: String,
-            isoClaims: Map<String, Map<String, RequestedCredentialClaimSpecification>>,
-            order: Set<String>? = null,
+            isoClaims: Set<ClaimDescription>,
+            order: List<String>? = null,
             display: Set<DisplayProperties>? = null,
         ) = SupportedCredentialFormat(
             format = format,
@@ -155,8 +169,8 @@ data class SupportedCredentialFormat private constructor(
             supportedProofTypes: Map<String, CredentialRequestProofSupported>? = null,
             credentialDefinition: SupportedCredentialFormatDefinition? = null,
             sdJwtVcType: String,
-            sdJwtClaims: Map<String, RequestedCredentialClaimSpecification>,
-            order: Set<String>? = null,
+            sdJwtClaims: Set<ClaimDescription>,
+            order: List<String>? = null,
             display: Set<DisplayProperties>? = null,
         ) = SupportedCredentialFormat(
             format = format,
@@ -178,7 +192,7 @@ data class SupportedCredentialFormat private constructor(
             supportedSigningAlgorithms: Set<String>? = null,
             supportedProofTypes: Map<String, CredentialRequestProofSupported>? = null,
             credentialDefinition: SupportedCredentialFormatDefinition,
-            order: Set<String>? = null,
+            order: List<String>? = null,
             display: Set<DisplayProperties>? = null,
         ) = SupportedCredentialFormat(
             format = format,

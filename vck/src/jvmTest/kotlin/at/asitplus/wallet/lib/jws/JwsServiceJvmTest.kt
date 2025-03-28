@@ -2,10 +2,10 @@ package at.asitplus.wallet.lib.jws
 
 import at.asitplus.signum.indispensable.ECCurve
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
-import at.asitplus.signum.indispensable.getJcaPublicKey
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.nativeDigest
+import at.asitplus.signum.indispensable.toJcaPublicKey
 import at.asitplus.signum.supreme.HazardousMaterials
 import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
 import at.asitplus.signum.supreme.sign.EphemeralKey
@@ -92,8 +92,8 @@ class JwsServiceJvmTest : FreeSpec({
             }.getOrThrow()
 
             val jvmVerifier =
-                if (algo.isEc) ECDSAVerifier(ephemeralKey.publicKey.getJcaPublicKey().getOrThrow() as ECPublicKey)
-                else RSASSAVerifier(ephemeralKey.publicKey.getJcaPublicKey().getOrThrow() as RSAPublicKey)
+                if (algo.isEc) ECDSAVerifier(ephemeralKey.publicKey.toJcaPublicKey().getOrThrow() as ECPublicKey)
+                else RSASSAVerifier(ephemeralKey.publicKey.toJcaPublicKey().getOrThrow() as RSAPublicKey)
             val jvmSigner =
                 if (algo.isEc) ECDSASigner(ephemeralKey.jcaPrivateKey as ECPrivateKey)
                 else RSASSASigner(ephemeralKey.jcaPrivateKey as RSAPrivateKey)

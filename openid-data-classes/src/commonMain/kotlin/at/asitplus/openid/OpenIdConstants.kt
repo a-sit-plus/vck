@@ -20,11 +20,15 @@ object OpenIdConstants {
 
     const val GRANT_TYPE_PRE_AUTHORIZED_CODE = "urn:ietf:params:oauth:grant-type:pre-authorized_code"
 
+    const val GRANT_TYPE_REFRESH_TOKEN = "refresh_token"
+
     const val TOKEN_PREFIX_BEARER = "Bearer "
+
+    const val TOKEN_PREFIX_DPOP = "DPoP "
 
     const val TOKEN_TYPE_BEARER = "bearer"
 
-    const val TOKEN_TYPE_DPOP = "dpop"
+    const val TOKEN_TYPE_DPOP = "DPoP"
 
     const val URN_TYPE_JWK_THUMBPRINT = "urn:ietf:params:oauth:jwk-thumbprint"
 
@@ -51,7 +55,7 @@ object OpenIdConstants {
 
     const val PROOF_JWT_TYPE = "openid4vci-proof+jwt"
 
-    const val PROOF_CWT_TYPE = "openid4vci-proof+cwt"
+    const val KEY_ATTESTATION_JWT_TYPE = "key-attestation+jwt"
 
     const val AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH = "attest_jwt_client_auth"
 
@@ -76,20 +80,18 @@ object OpenIdConstants {
 
         companion object {
             private const val STRING_JWT = "jwt"
-            private const val STRING_CWT = "cwt"
+            private const val STRING_ATTESTATION = "attestation"
         }
 
         /**
-         * Proof type in [at.asitplus.openid.CredentialRequestProof]
+         * Proof type `jwt` in [at.asitplus.openid.CredentialRequestProof]
          */
         object JWT : ProofType(STRING_JWT)
 
         /**
-         * Proof type in [at.asitplus.openid.CredentialRequestProof]
-         *
-         * Removed in OID4VCI Draft 14, kept here for a bit of backwards-compatibility
+         * Proof type `attestation` in [at.asitplus.openid.CredentialRequestProof]
          */
-        object CWT : ProofType(STRING_CWT)
+        object ATTESTATION : ProofType(STRING_ATTESTATION)
 
         /**
          * Any proof type not natively supported by this library
@@ -102,7 +104,7 @@ object OpenIdConstants {
 
             override fun deserialize(decoder: Decoder): ProofType = when (val str = decoder.decodeString()) {
                 STRING_JWT -> JWT
-                STRING_CWT -> CWT
+                STRING_ATTESTATION -> ATTESTATION
                 else -> Other(str)
             }
 
@@ -331,57 +333,48 @@ object OpenIdConstants {
      * Error codes for OAuth2 responses
      */
     object Errors {
-        /**
-         * Invalid (or already used) authorization code: `invalid_code`
-         */
+        /** Invalid (or already used) authorization code: `invalid_code`.*/
         const val INVALID_CODE = "invalid_code"
 
-        /**
-         * Invalid access token: `invalid_token`
-         */
+        /** Invalid access token: `invalid_token`. */
         const val INVALID_TOKEN = "invalid_token"
 
-        /**
-         * Invalid request in general: `invalid_request`
-         */
+        /** Invalid DPoP proof (RFC 9449): `invalid_dpop_proof`.*/
+        const val INVALID_DPOP_PROOF = "invalid_dpop_proof"
+
+        /** Invalid request in general: `invalid_request`. */
         const val INVALID_REQUEST = "invalid_request"
 
-        /**
-         * Invalid grant: `invalid_grant`
-         */
+        /** Invalid client, e.g. missing client authentication: `invalid_client`. */
+        const val INVALID_CLIENT = "invalid_client"
+
+        /** The requested scope is invalid, unknown, or malformed: `invalid_scope`. */
+        const val INVALID_SCOPE = "invalid_scope"
+
+        /** Invalid grant: `invalid_grant`. */
         const val INVALID_GRANT = "invalid_grant"
 
-        /**
-         * Invalid or missing proofs in OpenId4VCI: `invalid_or_missing_proof`
-         */
-        const val INVALID_PROOF = "invalid_or_missing_proof"
+        /** OpenID4VP: Wallet did not have requested credentials: `access_denied */
+        const val ACCESS_DENIED = "access_denied"
 
-        /**
-         * OIDC SIOPv2: End-User cancelled the Authorization Request from the RP.
-         */
+        /** Invalid proofs in OpenID4VCI: `invalid_proof`. */
+        const val INVALID_PROOF = "invalid_proof"
+
+        /** Unsupported credential type in OpenID4VCI: `unsupported_credential_type`. */
+        const val UNSUPPORTED_CREDENTIAL_TYPE = "unsupported_credential_type"
+
+        /** Credential request denied in OpenID4VCI: `credential_request_denied`. */
+        const val CREDENTIAL_REQUEST_DENIED = "credential_request_denied"
+
+        /** Invalid client nonce in OpenID4VCI: `invalid_nonce`. */
+        const val INVALID_NONCE = "invalid_nonce"
+
+        /** SIOPv2: End-User cancelled the Authorization Request from the RP. */
         const val USER_CANCELLED = "user_cancelled"
 
-        /**
-         * OIDC SIOPv2: Self-Issued OP does not support some Relying Party parameter values received in the request.
-         */
+        /** SIOPv2: Self-Issued OP does not support some Relying Party parameter values received in the request. */
         const val REGISTRATION_VALUE_NOT_SUPPORTED = "registration_value_not_supported"
 
-        /**
-         * OIDC SIOPv2: Self-Issued OP does not support any of the Subject Syntax Types supported by the RP, which were
-         * communicated in the request in the `subject_syntax_types_supported` parameter.
-         */
-        const val SUBJECT_SYNTAX_TYPES_NOT_SUPPORTED = "subject_syntax_types_not_supported"
-
-        /**
-         * OIDC SIOPv2: the `client_metadata_uri` in the Self-Issued OpenID Provider request returns an error or
-         * contains invalid data.
-         */
-        const val INVALID_REGISTRATION_URI = "invalid_registration_uri"
-
-        /**
-         * OIDC SIOPv2: the `client_metadata` parameter contains an invalid RP parameter Object.
-         */
-        const val INVALID_REGISTRATION_OBJECT = "invalid_registration_object"
     }
 
 }

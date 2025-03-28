@@ -1,7 +1,69 @@
 # Changelog
 
-Release 5.4.4:
- - Improve interop of RQES data classes
+Release 5.5.0:
+ - Remove elements deprecated in 5.4.0 when introducing DCQL:
+   - Class `CredentialSubmission`, replaced with `PresentationExchangeCredentialDisclosure`
+   - In `Holder` remove `createPresentation()` taking in `PresentationDefinition`
+   - In `Holder` remove `createPresentation()` taking in `CredentialSubmission`
+   - In `OpenId4VpHolder` remove `finalizeAuthorizationResponse()` taking in `CredentialSubmission`
+   - In `OpenId4VpHolder` remove `finalizeAuthorizationResponseParameters()` taking in `CredentialSubmission`
+   - In `OpenId4VpWallet` remove `finalizeAuthorizationResponseParameters()` taking in `CredentialSubmission`
+ - Update implementation of [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html) to draft 15:
+   - Remove functionality to request issuance of certain claims only, as this has been dropped from OpenID4VCI entirely
+   - Remove format-specific parameters in credential request, replacing with `credential_configuration_id`
+   - In the credential response (`CredentialResponseParameters`), replace single `credential` with array `credentials`, containing the `credential` itself, but issue both variants for now
+   - In the supported credential formats (`SupportedCredentialFormat`) of the issuer, use the new format for claim names
+   - In the authorization details (`OpenIdAuthorizationDetails`), use the new format for claim names
+   - Deprecate `WalletService.RequestOptions.requestedAttributes`
+   - Deprecate methods in `OpenId4VciClient` containing parameter for `requestedAttributes`
+   - In `OpenId4VciClient.startProvisioningWithAuthRequest()` remove parameter `requestedAttributes`
+   - In `OpenId4VciClient.loadCredentialWithOffer()` remove parameter `requestedAttributes`
+   - In `WalletService`, deprecate `CredentialRequestInput`
+   - In `WalletService`, deprecate `createCredentialRequest(CredentialRequestInput)`, provide new method `createCredentialRequest(TokenResponseParameters)` for direct processing of the token response
+   - In `IssuerMetadata`, set `scope` for `SupportedCredentialFormat` to a unique string (the credential configuration id)
+   - Iron out details for filtering scope and authorization details in `SimpleAuthorizationService`
+   - `SimpleAuthorizationService` correctly validates requested credentials in credential request and issued access tokens
+   - `SimpleAuthorizationService` correctly validates requested credentials in authn request and token request
+   - Remove proof type `cwt`, which has been removed from draft 14
+   - The `CredentialIssuer` issues more the same credential to different keys, if more than one proof is contained in the credential request
+   - Add rudimentary implementation of key attestation proofs in `WalletService` and `CredentialIssuer`
+   - Update `OpenId4VciClient` (in `vck-openid-ktor`) to support updated process and all security features with different crypto services
+   - Remove `c_nonce` from token response, migrate to nonce endpoint in `CredentialIssuer`
+   - `WalletService` supports requesting encrypted credentials
+   - `CredentialIssuer` supports encrypting issued credentials
+   - In `CredentialIssuer` deprecate methods for credential offers, moving them to `SimpleAuthorizationService`
+ - Update implementation of authorization service for [OpenID4VC High Assurance Interoperability Profile](https://openid.net/specs/openid4vc-high-assurance-interoperability-profile-1_0.html) draft 03:
+   - `SimpleAuthorizationService` implements [pushed authorization requests](https://www.rfc-editor.org/rfc/rfc9126.html)
+   - `SimpleAuthorizationService` implements attestation-based client authentication as defined in [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-05.html)
+   - `SimpleAuthorizationService` requires constructor parameter to select access token strategy
+   - `TokenService.jwt()` implements sender-constrained access tokens as defined in [OAuth 2.0 Demonstrating Proof of Possession (DPoP)](https://datatracker.ietf.org/doc/html/rfc9449)
+   - `TokenService.bearer()` implements traditional bearer access tokens
+   - In `SimpleAuthorizationService` add constructor parameter to validate the client attestation JWT
+   - In `CredentialIssuer.credential()` callers need to pass the whole `Authorization` header instead of just the access token value
+   - In `OAuth2Client` add constructor parameter `jwsService` te enable sending [JWT-secured authorization requests](https://www.rfc-editor.org/rfc/rfc9101.html)
+   - Enable issuing and usage of (JWT-based, sender-constrained) refresh tokens, e.g. extend `AuthorizationForToken`, add grant type `refresh_token`
+   - Add method to `OpenId4VciClient` to refresh a credential with a refresh token that has been received when loading the credential
+   - Remove methods from internal interface `OAuth2AuthorizationServerAdapter`
+   - In `CredentialAuthorizationServiceStrategy` move constructor parameter `dataProvider` of type `OAuth2DataProvider` to `SimpleAuthorizationService`
+   - Fixed `OpenId4VpWallet` parameter requirements for finalizing an authorization response
+   - Improved error logging and exposing for presentation exchange input evaluation
+   - Release inner disclosures for nested SD-JWT claims too
+   - Temp. allow validation of incorrectly encoded mdoc generated nonces in session transcripts for ISO 18013-7 presentations (see [PR](https://github.com/eu-digital-identity-wallet/eudi-lib-android-wallet-core/pull/153))
+ - Error handling:
+   - Add subclasses of `OAuth2Exception` to write more precise error handling code
+ - Update dependencies:
+   - Update `signum` to 3.15.2, supporting X.509 certificates in v1, v2 too
+   - Delegate key agreement to Signum's implementation -> **key agreement functions are now `suspend`ing**
+   - Update JsonPath4K
+   - Update to Kotlin 2.1.20
+   - Introduce dedicated Android targets, separate from JVM targets, that compile to JDK 8 / API-Level 30
+ - Refactorings in `rqes-data-classes`:
+   - Remove `Csc`-Prefix from nearly all CSC data classes
+   - Rename `CscSignatureRequestParameters` to `QtspSignatureRequest`
+   - Rename `SignatureResponse` to `QtspSignatureResponse`
+   - Rename `SignDocResponse` to `SignDocResponseParameters`
+   - Rename `SignHashResponse` to `SignHashResponseParameters`
+   - Fixed default values for CSC data classes
 
 Release 5.4.3:
  - Fix property names for serialized RQES data classes
@@ -51,7 +113,7 @@ Release 5.3.3:
 
 Release 5.3.2:
  - ISO: Do not tag instants in CBOR with tag 1004
- - ISO: Fix calcluation of value digests for `IssuerSignedItems`
+ - ISO: Fix calculation of value digests for `IssuerSignedItems`
 
 Release 5.3.1:
 - Add optional parameter `issuerUri` to `ClientIdScheme.PreRegistered`

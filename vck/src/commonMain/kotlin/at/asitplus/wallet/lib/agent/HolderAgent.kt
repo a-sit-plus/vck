@@ -2,19 +2,26 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.dif.*
+import at.asitplus.dif.ClaimFormat
+import at.asitplus.dif.FormatHolder
+import at.asitplus.dif.InputDescriptor
+import at.asitplus.dif.PresentationDefinition
+import at.asitplus.dif.PresentationSubmission
+import at.asitplus.dif.PresentationSubmissionDescriptor
 import at.asitplus.jsonpath.core.NormalizedJsonPath
+import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLQueryResult
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
-import at.asitplus.wallet.lib.data.dif.InputEvaluator
+import at.asitplus.wallet.lib.data.dif.PresentationExchangeInputEvaluator
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.data.third_party.at.asitplus.oidc.dcql.toDefaultSubmission
 import at.asitplus.wallet.lib.jws.DefaultJwsService
@@ -37,7 +44,7 @@ class HolderAgent(
     override val keyPair: KeyMaterial,
     private val verifiablePresentationFactory: VerifiablePresentationFactory =
         VerifiablePresentationFactory(jwsService, coseService, keyPair.identifier),
-    private val difInputEvaluator: InputEvaluator = InputEvaluator(),
+    private val difInputEvaluator: PresentationExchangeInputEvaluator = PresentationExchangeInputEvaluator,
 ) : Holder {
 
     constructor(
@@ -109,17 +116,17 @@ class HolderAgent(
         return credentials.map { it.toStoredCredential() }
     }
 
-    private suspend fun SubjectCredentialStore.StoreEntry.toStoredCredential() = when (this) {
-        is SubjectCredentialStore.StoreEntry.Iso -> Holder.StoredCredential.Iso(
+    private suspend fun StoreEntry.toStoredCredential() = when (this) {
+        is StoreEntry.Iso -> Holder.StoredCredential.Iso(
             this,
             validator.checkRevocationStatus(issuerSigned),
         )
 
-        is SubjectCredentialStore.StoreEntry.Vc -> Holder.StoredCredential.Vc(
+        is StoreEntry.Vc -> Holder.StoredCredential.Vc(
             this, validator.checkRevocationStatus(vc)
         )
 
-        is SubjectCredentialStore.StoreEntry.SdJwt -> Holder.StoredCredential.SdJwt(
+        is StoreEntry.SdJwt -> Holder.StoredCredential.SdJwt(
             this, validator.checkRevocationStatus(sdJwt)
         )
     }
@@ -134,9 +141,9 @@ class HolderAgent(
             // prefer iso credentials and sd jwt credentials over plain vc credentials
             // -> they support selective disclosure!
             when (it) {
-                is SubjectCredentialStore.StoreEntry.Vc -> 2
-                is SubjectCredentialStore.StoreEntry.SdJwt -> 1
-                is SubjectCredentialStore.StoreEntry.Iso -> 1
+                is StoreEntry.Vc -> 2
+                is StoreEntry.SdJwt -> 1
+                is StoreEntry.Iso -> 1
             }
         }
 
@@ -146,18 +153,12 @@ class HolderAgent(
     ): KmmResult<PresentationResponseParameters> = when (credentialPresentationRequest) {
         is CredentialPresentationRequest.PresentationExchangeRequest -> createPresentation(
             request = request,
-            credentialPresentation = CredentialPresentation.PresentationExchangePresentation(
-                presentationRequest = credentialPresentationRequest,
-                inputDescriptorSubmissions = null
-            ),
+            credentialPresentation = credentialPresentationRequest.toCredentialPresentation()
         )
 
         is CredentialPresentationRequest.DCQLRequest -> createPresentation(
             request = request,
-            credentialPresentation = CredentialPresentation.DCQLPresentation(
-                presentationRequest = credentialPresentationRequest,
-                credentialQuerySubmissions = null
-            ),
+            credentialPresentation = credentialPresentationRequest.toCredentialPresentation()
         )
     }
 
@@ -176,22 +177,6 @@ class HolderAgent(
         )
     }
 
-    @Deprecated(
-        "Replace with more general implementation due to increasing number of presentation mechanisms",
-        replaceWith = ReplaceWith("createDefaultPresentationExchangePresentation")
-    )
-    override suspend fun createPresentation(
-        request: PresentationRequestParameters,
-        presentationDefinition: PresentationDefinition,
-        fallbackFormatHolder: FormatHolder?,
-        pathAuthorizationValidator: PathAuthorizationValidator?,
-    ): KmmResult<PresentationResponseParameters.PresentationExchangeParameters> =
-        createDefaultPresentationExchangePresentation(
-            request = request,
-            presentationDefinition = presentationDefinition,
-            fallbackFormatHolder = fallbackFormatHolder,
-        )
-
     private suspend fun createDefaultPresentationExchangePresentation(
         request: PresentationRequestParameters,
         presentationDefinition: PresentationDefinition,
@@ -200,15 +185,13 @@ class HolderAgent(
         createPresentationExchangePresentation(
             request = request,
             credentialPresentation = CredentialPresentation.PresentationExchangePresentation(
-                presentationRequest = CredentialPresentationRequest.PresentationExchangeRequest(
+                CredentialPresentationRequest.PresentationExchangeRequest(
                     presentationDefinition,
                     fallbackFormatHolder,
                 ),
-                inputDescriptorSubmissions = null,
             )
         )
 
-    @Suppress("DEPRECATION")
     private suspend fun createPresentationExchangePresentation(
         request: PresentationRequestParameters,
         credentialPresentation: CredentialPresentation.PresentationExchangePresentation,
@@ -221,29 +204,10 @@ class HolderAgent(
                 fallbackFormatHolder = credentialPresentation.presentationRequest.fallbackFormatHolder,
             ).getOrThrow().toDefaultSubmission()
 
-        credentialPresentation.presentationRequest.validateSubmission(presentationCredentialSelection).onFailure {
-            throw PresentationException(it)
-        }
+        credentialPresentation.presentationRequest.validateSubmission(presentationCredentialSelection)
+            .onFailure { throw PresentationException(it) }
 
-        createPresentation(
-            request = request,
-            presentationDefinitionId = presentationDefinition.id,
-            presentationSubmissionSelection = presentationCredentialSelection.mapValues {
-                CredentialSubmission(
-                    credential = it.value.credential,
-                    disclosedAttributes = it.value.disclosedAttributes
-                )
-            },
-        ).getOrThrow()
-    }
-
-    @Suppress("OVERRIDE_DEPRECATION") // TODO: make private after removing from interface and change selection value type
-    override suspend fun createPresentation(
-        request: PresentationRequestParameters,
-        presentationDefinitionId: String?,
-        @Suppress("DEPRECATION") presentationSubmissionSelection: Map<String, CredentialSubmission>,
-    ): KmmResult<PresentationResponseParameters.PresentationExchangeParameters> = catching {
-        val submissionList = presentationSubmissionSelection.mapValues {
+        val submissionList = presentationCredentialSelection.mapValues {
             PresentationExchangeCredentialDisclosure(
                 credential = it.value.credential,
                 disclosedAttributes = it.value.disclosedAttributes
@@ -251,7 +215,7 @@ class HolderAgent(
         }.toList()
 
         val presentationSubmission = PresentationSubmission.fromMatches(
-            presentationId = presentationDefinitionId,
+            presentationId = presentationDefinition.id,
             matches = submissionList,
         )
 
@@ -270,7 +234,6 @@ class HolderAgent(
             presentationResults = verifiablePresentations,
         )
     }
-
 
     private suspend fun createDCQLPresentation(
         request: PresentationRequestParameters,
@@ -334,7 +297,7 @@ class HolderAgent(
 
     private fun findInputDescriptorMatches(
         inputDescriptors: Collection<InputDescriptor>,
-        credentials: Collection<SubjectCredentialStore.StoreEntry>,
+        credentials: Collection<StoreEntry>,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: PathAuthorizationValidator?,
     ) = inputDescriptors.associateWith { inputDescriptor ->
@@ -346,7 +309,9 @@ class HolderAgent(
                 pathAuthorizationValidator = {
                     pathAuthorizationValidator?.invoke(credential, it) ?: true
                 },
-            ).getOrNull()?.let {
+            ).onFailure {
+                Napier.d("findInputDescriptorMatches failed for credential with schemaUri ${credential.schemaUri}", it)
+            }.getOrNull()?.let {
                 credential to it
             }
         }.toMap()
@@ -356,28 +321,27 @@ class HolderAgent(
 
     override fun evaluateInputDescriptorAgainstCredential(
         inputDescriptor: InputDescriptor,
-        credential: SubjectCredentialStore.StoreEntry,
+        credential: StoreEntry,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: (NormalizedJsonPath) -> Boolean,
-    ) = catching {
-        listOf(credential).filter {
-            it.isFormatSupported(inputDescriptor.format ?: fallbackFormatHolder)
-        }.filter {
-            // iso credentials now have their doctype encoded into the id
-            when (it) {
-                is SubjectCredentialStore.StoreEntry.Iso -> it.scheme?.isoDocType == inputDescriptor.id
-                else -> true
-            }
-        }.firstNotNullOf {
-            difInputEvaluator.evaluateConstraintFieldMatches(
-                inputDescriptor = inputDescriptor,
-                credential = CredentialToJsonConverter.toJsonElement(it),
-                pathAuthorizationValidator = pathAuthorizationValidator,
-            ).getOrThrow()
-        }
-    }
+    ) = difInputEvaluator.evaluateInputDescriptorAgainstCredential(
+        inputDescriptor = inputDescriptor,
+        fallbackFormatHolder = fallbackFormatHolder,
+        credentialClaimStructure = CredentialToJsonConverter.toJsonElement(credential),
+        credentialFormat = when (credential) {
+            is StoreEntry.Vc -> CredentialFormatEnum.JWT_VC
+            is StoreEntry.SdJwt -> CredentialFormatEnum.DC_SD_JWT
+            is StoreEntry.Iso -> CredentialFormatEnum.MSO_MDOC
+        },
+        credentialScheme = when (credential) {
+            is StoreEntry.Vc -> credential.scheme?.vcType
+            is StoreEntry.SdJwt -> credential.scheme?.sdJwtType
+            is StoreEntry.Iso -> credential.scheme?.isoDocType
+        },
+        pathAuthorizationValidator = pathAuthorizationValidator,
+    )
 
-    override suspend fun matchDCQLQueryAgainstCredentialStore(dcqlQuery: DCQLQuery): KmmResult<DCQLQueryResult<SubjectCredentialStore.StoreEntry>> {
+    override suspend fun matchDCQLQueryAgainstCredentialStore(dcqlQuery: DCQLQuery): KmmResult<DCQLQueryResult<StoreEntry>> {
         return DCQLQueryAdapter(dcqlQuery).select(
             credentials = getValidCredentialsByPriority()
                 ?: throw PresentationException("Credentials could not be retrieved from the store"),
@@ -386,12 +350,12 @@ class HolderAgent(
 
     /** assume credential format to be supported by the verifier if no format holder is specified */
     @Suppress("DEPRECATION")
-    private fun SubjectCredentialStore.StoreEntry.isFormatSupported(supportedFormats: FormatHolder?): Boolean =
+    private fun StoreEntry.isFormatSupported(supportedFormats: FormatHolder?): Boolean =
         supportedFormats?.let { formatHolder ->
             when (this) {
-                is SubjectCredentialStore.StoreEntry.Vc -> formatHolder.jwtVp != null
-                is SubjectCredentialStore.StoreEntry.SdJwt -> formatHolder.jwtSd != null || formatHolder.sdJwt != null
-                is SubjectCredentialStore.StoreEntry.Iso -> formatHolder.msoMdoc != null
+                is StoreEntry.Vc -> formatHolder.jwtVp != null
+                is StoreEntry.SdJwt -> formatHolder.jwtSd != null || formatHolder.sdJwt != null
+                is StoreEntry.Iso -> formatHolder.msoMdoc != null
             }
         } ?: true
 
@@ -410,19 +374,13 @@ class HolderAgent(
         },
     )
 
-    @Suppress("DEPRECATION")
     private fun PresentationSubmissionDescriptor.Companion.fromMatch(
-        credential: SubjectCredentialStore.StoreEntry,
+        credential: StoreEntry,
         inputDescriptorId: String,
         index: Int?,
     ) = PresentationSubmissionDescriptor(
         id = inputDescriptorId,
-        format = when (credential) {
-            is SubjectCredentialStore.StoreEntry.Vc -> ClaimFormat.JWT_VP
-            // TODO In 5.4.0, use SD_JWT instead of JWT_SD
-            is SubjectCredentialStore.StoreEntry.SdJwt -> ClaimFormat.JWT_SD
-            is SubjectCredentialStore.StoreEntry.Iso -> ClaimFormat.MSO_MDOC
-        },
+        format = credential.toFormat(),
         // from https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#section-6.1-2.4
         // These objects contain a field called path, which, for this specification,
         // MUST have the value $ (top level root path) when only one Verifiable Presentation is contained in the VP Token,
@@ -430,6 +388,14 @@ class HolderAgent(
         // where n is the index to select.
         path = index?.let { "\$[$it]" } ?: "\$",
     )
+
+    @Suppress("DEPRECATION")
+    private fun StoreEntry.toFormat(): ClaimFormat = when (this) {
+        is StoreEntry.Vc -> ClaimFormat.JWT_VP
+        // TODO In 5.4.0, use SD_JWT instead of JWT_SD
+        is StoreEntry.SdJwt -> ClaimFormat.JWT_SD
+        is StoreEntry.Iso -> ClaimFormat.MSO_MDOC
+    }
 
 
     private fun CredentialPresentationRequest.PresentationExchangeRequest.validateSubmission(

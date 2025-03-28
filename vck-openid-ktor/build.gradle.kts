@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree.Companion.test
 
 plugins {
+    id("com.android.library")
     kotlin("multiplatform")
     kotlin("plugin.serialization")
     id("at.asitplus.gradle.vclib-conventions")
@@ -23,9 +24,9 @@ kotlin {
     jvm()
 
     androidTarget {
-        publishLibraryVariants("release")
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         instrumentedTestVariant.sourceSetTree.set(test)
+        publishLibraryVariants("release")
     }
 
     iosArm64()
@@ -59,16 +60,6 @@ kotlin {
             }
         }
 
-        jvmMain {
-            dependencies {
-            }
-        }
-
-        jvmTest {
-            dependencies {
-            }
-        }
-
         iosTest {
             dependencies {
                 implementation(ktor("client-darwin"))
@@ -80,6 +71,7 @@ kotlin {
 exportXCFramework(
     "VckOpenIdKtorKmm",
     transitiveExports = true,
+    static = false,
     project(":vck")
 )
 

@@ -10,8 +10,11 @@ import at.asitplus.openid.third_party.at.asitplus.jsonpath.core.plus
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.wallet.lib.agent.SdJwtCreator.NAME_SD
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.data.KeyBindingJws
+import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import at.asitplus.wallet.lib.data.VerifiablePresentation
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -21,7 +24,10 @@ import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 class VerifiablePresentationFactory(
     private val jwsService: JwsService,
@@ -180,17 +186,24 @@ class VerifiablePresentationFactory(
         validSdJwtCredential: SubjectCredentialStore.StoreEntry.SdJwt,
         requestedClaims: Collection<NormalizedJsonPath>,
     ): CreatePresentationResult.SdJwt {
-        val filteredDisclosures = requestedClaims
-            .flatMap {
-                // TODO: this feels wrong, each path should represent a single attribute to be disclosed
-                it.segments
-            }
+        // TODO: this feels wrong, each path should represent a single attribute to be disclosed
+        val nameSegments = requestedClaims
+            .flatMap { it.segments }
             .filterIsInstance<NormalizedJsonPathSegment.NameSegment>()
+        // All disclosures as requested by claim name
+        val disclosuresByName = nameSegments
             .mapNotNull { claim ->
-                validSdJwtCredential.disclosures.entries.firstOrNull { it.value?.claimName == claim.memberName }?.key
+                validSdJwtCredential.disclosures.entries.firstOrNull { it.value?.claimName == claim.memberName }
             }.toSet()
+        // Inner disclosures when an object has been requested by name (above), but contains more _sd entries
+        val innerDisclosures = validSdJwtCredential.disclosures.entries.filter { claim ->
+            claim.asHashedDisclosure()?.let { hashedDisclosure ->
+                disclosuresByName.any { it.containsHashedDisclosure(hashedDisclosure) }
+            } == true
+        }
+        val allDisclosures = (disclosuresByName.map { it.key } + innerDisclosures.map { it.key }).toSet()
 
-        val issuerJwtPlusDisclosures = SdJwtSigned.sdHashInput(validSdJwtCredential, filteredDisclosures)
+        val issuerJwtPlusDisclosures = SdJwtSigned.sdHashInput(validSdJwtCredential, allDisclosures)
         val keyBinding = createKeyBindingJws(request, issuerJwtPlusDisclosures)
         val issuerSignedJwsSerialized = validSdJwtCredential.vcSerialized.substringBefore("~")
         val issuerSignedJws =
@@ -199,11 +212,23 @@ class VerifiablePresentationFactory(
                     Napier.w("Could not re-create JWS from stored SD-JWT", it)
                     throw PresentationException(it)
                 }
-        val sdJwt = SdJwtSigned.serializePresentation(issuerSignedJws, filteredDisclosures, keyBinding)
+        val sdJwt = SdJwtSigned.serializePresentation(issuerSignedJws, allDisclosures, keyBinding)
         return CreatePresentationResult.SdJwt(sdJwt)
     }
 
-    @Suppress("DEPRECATION")
+    private fun Map.Entry<String, SelectiveDisclosureItem?>.asHashedDisclosure(): String? =
+        value?.toDisclosure()?.hashDisclosure()
+
+    private fun Map.Entry<String, SelectiveDisclosureItem?>.containsHashedDisclosure(hashDisclosure: String): Boolean =
+        asJsonObject()?.sdElements()?.strings()?.any { it == hashDisclosure } == true
+
+    private fun Map.Entry<String, SelectiveDisclosureItem?>.asJsonObject(): JsonObject? =
+        (value?.claimValue as? JsonObject?)
+
+    private fun JsonObject.sdElements(): JsonArray? = (get(NAME_SD) as? JsonArray?)
+
+    private fun JsonArray.strings(): List<String>? = mapNotNull { (it as? JsonPrimitive?)?.content }
+
     private suspend fun createKeyBindingJws(
         request: PresentationRequestParameters,
         issuerJwtPlusDisclosures: String,

@@ -48,6 +48,14 @@ data class IssuerMetadata(
     val credentialEndpointUrl: String,
 
     /**
+     * OID4VCI: OPTIONAL. URL of the Credential Issuer's Nonce Endpoint, as defined in Section 7.
+     * This URL MUST use the https scheme and MAY contain port, path, and query parameter components.
+     * If omitted, the Credential Issuer does not support the Nonce Endpoint.
+     */
+    @SerialName("nonce_endpoint")
+    val nonceEndpointUrl: String? = null,
+
+    /**
      * OID4VCI: OPTIONAL. URL of the Credential Issuer's Deferred Credential Endpoint, as defined in Section 8.
      * This URL MUST use the `https` scheme and MAY contain port, path, and query parameter components.
      * If omitted, the Credential Issuer does not support the Deferred Credential Endpoint.

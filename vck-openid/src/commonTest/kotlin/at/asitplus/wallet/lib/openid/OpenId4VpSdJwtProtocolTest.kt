@@ -64,7 +64,7 @@ class OpenId4VpSdJwtProtocolTest : FreeSpec({
         authnRequest shouldContain requestedClaim
 
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
-        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
         val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
         result.shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
@@ -89,7 +89,7 @@ class OpenId4VpSdJwtProtocolTest : FreeSpec({
         ).getOrThrow().url
 
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
-        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
         val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
         result.shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()

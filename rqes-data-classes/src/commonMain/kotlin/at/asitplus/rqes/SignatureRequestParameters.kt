@@ -139,5 +139,6 @@ data class SignatureRequestParameters(
 
     override val redirectUrl: String? = null
     override val audience: String? = null
+    override val issuer: String? = null
 
 }

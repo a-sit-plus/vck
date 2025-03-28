@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
 import at.asitplus.signum.indispensable.asn1.Asn1Primitive
 import at.asitplus.signum.indispensable.asn1.Asn1String
@@ -357,9 +358,8 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
             remoteResourceRetriever = { if (it.url == requestUrl) jar.invoke(it.requestObjectParameters).getOrThrow() else null }
         )
 
-        val parameters = holderOid4vp.parseAuthenticationRequestParameters(walletUrl).getOrThrow()
-        val preparation = holderOid4vp.startAuthorizationResponsePreparation(parameters).getOrThrow()
-        val response = holderOid4vp.finalizeAuthorizationResponse(parameters, preparation).getOrThrow()
+        val parameters: RequestParametersFrom<AuthenticationRequestParameters> = holderOid4vp.parseAuthenticationRequestParameters(walletUrl).getOrThrow()
+        val response = holderOid4vp.createAuthnResponse(parameters).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
         verifierOid4vp.validateAuthnResponse(response.params)
             .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()

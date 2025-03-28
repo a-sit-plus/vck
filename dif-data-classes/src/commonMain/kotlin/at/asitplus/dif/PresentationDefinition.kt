@@ -1,6 +1,7 @@
 package at.asitplus.dif
 
 import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.catching
 import com.benasher44.uuid.uuid4
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -20,24 +21,25 @@ data class PresentationDefinition(
     val purpose: String? = null,
     @SerialName("input_descriptors")
     val inputDescriptors: Collection<InputDescriptor>,
-    @Deprecated(message = "Removed in DIF Presentation Exchange 2.0.0", ReplaceWith("inputDescriptors.format"))
-    @SerialName("format")
-    val formats: FormatHolder? = null,
     @SerialName("submission_requirements")
     val submissionRequirements: Collection<SubmissionRequirement>? = null,
 ) {
-    @Deprecated(message = "Removed in DIF Presentation Exchange 2.0.0")
-    constructor(
-        inputDescriptors: Collection<InputDescriptor>,
-        formats: FormatHolder
-    ) : this(id = uuid4().toString(), inputDescriptors = inputDescriptors, formats = formats)
+    constructor(inputDescriptors: Collection<InputDescriptor>) : this(
+        id = uuid4().toString(),
+        inputDescriptors = inputDescriptors,
+    )
+
+    constructor(inputDescriptor: InputDescriptor) : this(
+        id = uuid4().toString(),
+        inputDescriptors = listOf(inputDescriptor),
+    )
 
     fun serialize() = ddcJsonSerializer.encodeToString(this)
 
     companion object {
-        fun deserialize(it: String) = kotlin.runCatching {
+        fun deserialize(it: String) = catching {
             ddcJsonSerializer.decodeFromString<PresentationDefinition>(it)
-        }.wrap()
+        }
     }
 }
 

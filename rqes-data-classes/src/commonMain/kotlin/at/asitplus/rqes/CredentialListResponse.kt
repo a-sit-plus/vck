@@ -1,10 +1,14 @@
 package at.asitplus.rqes
 
+import at.asitplus.rqes.collection_entries.DocumentDigest
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+@Deprecated("Renamed", ReplaceWith("CredentialListResponse"))
+typealias CscCredentialListResponse = CredentialListResponse
+
 @Serializable
-data class CscCredentialListResponse(
+data class CredentialListResponse(
     /**
      * One or more credentialID(s) associated with the provided or implicit userID.
      */

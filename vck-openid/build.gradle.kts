@@ -1,12 +1,9 @@
-
-import at.asitplus.gradle.commonImplementationDependencies
-import at.asitplus.gradle.exportIosFramework
-import at.asitplus.gradle.setupAndroid
-import at.asitplus.gradle.setupDokka
+import at.asitplus.gradle.*
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree.Companion.test
 
 plugins {
+    id("com.android.library")
     kotlin("multiplatform")
     kotlin("plugin.serialization")
     id("at.asitplus.gradle.vclib-conventions")
@@ -27,9 +24,9 @@ kotlin {
     jvm()
 
     androidTarget {
-        publishLibraryVariants("release")
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         instrumentedTestVariant.sourceSetTree.set(test)
+        publishLibraryVariants("release")
     }
 
     iosArm64()
@@ -52,12 +49,6 @@ kotlin {
             }
         }
 
-        jvmMain {
-            dependencies {
-                implementation(signum.bcpkix.jdk18on)
-            }
-        }
-
         jvmTest {
             dependencies {
                 implementation(signum.jose)
@@ -67,9 +58,10 @@ kotlin {
     }
 }
 
-exportIosFramework(
+exportXCFramework(
     "VckOpenIdKmm",
     transitiveExports = true,
+    static = false,
     project(":vck")
 )
 
@@ -108,23 +100,6 @@ publishing {
                     connection.set("scm:git:git@github.com:a-sit-plus/vck.git")
                     developerConnection.set("scm:git:git@github.com:a-sit-plus/vck.git")
                     url.set("https://github.com/a-sit-plus/vck")
-                }
-            }
-        }
-        //REMOVE ME AFTER REBRANDED ARTIFACT HAS BEEN PUBLISHED
-        create<MavenPublication>("relocation") {
-            pom {
-                // Old artifact coordinates
-                artifactId = "vclib-openid"
-                version = artifactVersion
-
-                distributionManagement {
-                    relocation {
-                        // New artifact coordinates
-                        artifactId = "vck-openid"
-                        version = artifactVersion
-                        message = " artifactId have been changed"
-                    }
                 }
             }
         }

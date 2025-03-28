@@ -48,8 +48,8 @@ sealed class TransactionData {
          * Identifier of the signature type to be created. A set of such identifiers
          * is defined in (CSC-API) section 11.11.
          * D3.1: UC Specification WP3:
-         * MUST be present when `CredentialID` parameter is not present.
-         * Both `signatureQualifier` and `CredentialID` values MAY be present.
+         * MUST be present when [credentialID] is not present.
+         * Both [signatureQualifier] and [credentialID] values MAY be present.
          */
         @SerialName("signatureQualifier")
         val signatureQualifier: SignatureQualifier? = null,
@@ -58,8 +58,8 @@ sealed class TransactionData {
          * CSC: OPTIONAL.
          * The unique identifier associated with the credential.
          * D3.1: UC Specification WP3:
-         * MUST be present when `signatureQualifier` parameter is not present.
-         * Both `signatureQualifier` and `CredentialID` values MAY be present.
+         * MUST be present when [signatureQualifier] parameter is not present.
+         * Both [signatureQualifier] and [credentialID] values MAY be present.
          */
         @SerialName("credentialID")
         val credentialID: String? = null,
@@ -109,12 +109,7 @@ sealed class TransactionData {
          * Validation according to D3.1: UC Specification WP3
          */
         init {
-            if (credentialID == null) {
-                require(signatureQualifier != null)
-            }
-            if (signatureQualifier == null) {
-                require(credentialID != null)
-            }
+            require(credentialID or signatureQualifier) {"Either credentialID or signatureQualifier must be set"}
         }
 
         companion object {

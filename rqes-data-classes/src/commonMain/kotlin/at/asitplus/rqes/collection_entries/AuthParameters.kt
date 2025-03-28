@@ -3,9 +3,17 @@ package at.asitplus.rqes.collection_entries
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
+import at.asitplus.rqes.CredentialInfo
 
+@Deprecated("Renamed", ReplaceWith("AuthParameter"))
+typealias CscAuthParameter = AuthParameters
+
+/**
+ * CSC-API v2.0.0.2
+ * Part of [CredentialInfo]
+ */
 @Serializable
-data class CscAuthParameter(
+data class AuthParameters(
     /**
      * REQUIRED.
      * Specifies one of the authorization modes.
@@ -19,7 +27,7 @@ data class CscAuthParameter(
      * required to authorize usage of the private key.
      * If empty, an “AND” of all authentication objects is implied.
      * Supported operators are: “AND” | “OR” | “XOR” | “(” | “)” This value
-     * SHALL NOT be returned if auth/mode is not “explicit”.
+     * SHALL NOT be returned if [mode] is not [AuthMode.EXPLICIT].
      */
     @SerialName("expression")
     val expression: String? = null,
@@ -27,7 +35,7 @@ data class CscAuthParameter(
     /**
      * REQUIRED-CONDITIONAL.
      * The authentication object types available for this credential.
-     * authentication This value SHALL only be returned if auth/mode is “explicit”.
+     * authentication This value SHALL only be returned if [mode] is [AuthMode.EXPLICIT].
      */
     @SerialName("objects")
     val objects: Collection<JsonObject>? = null,
@@ -55,6 +63,7 @@ data class CscAuthParameter(
      * Defines logic of [expression] string
      * Example: "PIN AND OTP"
      * with PIN and OTP then being defined in [objects]
+     * TODO: NOT IMPLEMENTED
      */
     enum class AuthExpressionOptions {
         @SerialName("AND")
