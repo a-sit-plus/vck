@@ -3,6 +3,7 @@
 Release 5.5.1:
  - OpenID for Verifiable Credential Issuance:
     - Remove code elements deprecated in 5.5.0
+    - Support AS metadata files at `/.well-known/oauth-authorization-server`
  - OpenID for Verifiable Presentations:
    - In `RequestOptionsCredential` add `id` as an optional parameter
    - Remove mixed-in SIOP parameters in authn requests
