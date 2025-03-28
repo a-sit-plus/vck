@@ -295,8 +295,17 @@ class WalletService(
     private fun String.toCredentialRequest(metadata: IssuerMetadata): Set<CredentialRequestParameters> =
         trim().split(" ").mapNotNull { scope ->
             metadata.supportedCredentialConfigurations
-                ?.entries?.firstOrNull { it.value.scope == scope }?.key
-                ?.let { CredentialRequestParameters(credentialConfigurationId = it) }
+                ?.entries?.firstOrNull { it.value.scope == scope }
+                ?.let {
+                    @Suppress("DEPRECATION")
+                    CredentialRequestParameters(
+                        credentialConfigurationId = it.key,
+                        format = it.value.format,
+                        sdJwtVcType = it.value.sdJwtVcType,
+                        docType = it.value.docType,
+                        credentialDefinition = it.value.credentialDefinition
+                    )
+                }
                 ?: null.also { Napier.w("createCredentialRequest unknown scope $scope") }
         }.toSet()
 
