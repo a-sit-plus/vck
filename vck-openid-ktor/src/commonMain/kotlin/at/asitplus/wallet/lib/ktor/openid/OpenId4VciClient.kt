@@ -473,18 +473,16 @@ class OpenId4VciClient(
         } ?: throw Exception("No offer grants received in ${credentialOffer.grants}")
     }
 
-    @Suppress("DEPRECATION")
     @Throws(Exception::class)
     private fun String.toStoreCredentialInput(
         credentialRepresentation: ConstantIndex.CredentialRepresentation,
         credentialScheme: ConstantIndex.CredentialScheme,
-    ) = when (credentialRepresentation) {
+    ): Holder.StoreCredentialInput = when (credentialRepresentation) {
         ConstantIndex.CredentialRepresentation.PLAIN_JWT -> Vc(this, credentialScheme)
         ConstantIndex.CredentialRepresentation.SD_JWT -> SdJwt(this, credentialScheme)
-        ConstantIndex.CredentialRepresentation.ISO_MDOC -> runCatching { decodeToByteArray(Base64()) }.getOrNull()
-            ?.let { IssuerSigned.deserialize(it) }?.getOrNull()
-            ?.let { Iso(it, credentialScheme) }
-            ?: throw Exception("Invalid credential format: $this")
+        ConstantIndex.CredentialRepresentation.ISO_MDOC ->
+            runCatching { Iso(IssuerSigned.deserialize(decodeToByteArray(Base64())).getOrThrow(), credentialScheme) }
+                .getOrElse { throw Exception("Invalid credential format: $this", it) }
     }
 
     /**
