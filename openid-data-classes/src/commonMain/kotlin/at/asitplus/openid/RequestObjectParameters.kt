@@ -42,7 +42,7 @@ data class RequestObjectParameters(
     override val audience: String? = null
     override val issuer: String? = null
     override val state: String? = null
-    override val transactionData: Set<String>? = null
+    override val transactionData: Set<TransactionData>? = null
 
     fun serialize() = odcJsonSerializer.encodeToString(this)
 

@@ -177,7 +177,7 @@ data class RqesDocumentDigestEntry private constructor(
         /**
          * Incompatible version of [at.asitplus.rqes.Method] due to presumably incomplete changes in draft
          */
-        @Deprecated("Unify with [at.asitplus.rqes.Method] asap")
+        @Deprecated("Unify with [at.asitplus.rqes.Method] as soon as new draft allows")
         enum class DocumentAccessMode {
             @SerialName("public")
             PUBLIC,

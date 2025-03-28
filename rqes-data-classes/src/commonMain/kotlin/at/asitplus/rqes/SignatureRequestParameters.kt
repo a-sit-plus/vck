@@ -3,6 +3,7 @@ package at.asitplus.rqes
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.SignatureQualifier
+import at.asitplus.openid.TransactionData
 import at.asitplus.rqes.collection_entries.DocumentLocation
 import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
 import at.asitplus.signum.indispensable.Digest
@@ -134,7 +135,7 @@ data class SignatureRequestParameters(
      * data not conforming to the respective type definition.
      */
     @SerialName("transaction_data")
-    override val transactionData: Set<String>? = null,
+    override val transactionData: Set<TransactionData>? = null,
 ) : RequestParameters {
 
     override val redirectUrl: String? = null

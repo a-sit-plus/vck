@@ -300,7 +300,8 @@ open class OpenId4VpVerifier(
         } else null,
         presentationDefinition = if (requestOptions.presentationMechanism == PresentationMechanismEnum.PresentationExchange) {
             requestOptions.toPresentationDefinition(containerJwt, containerSdJwt)
-        } else null
+        } else null,
+        transactionData = requestOptions.transactionData
     ).let {
         enrichAuthnRequest(it, requestOptions)
     }

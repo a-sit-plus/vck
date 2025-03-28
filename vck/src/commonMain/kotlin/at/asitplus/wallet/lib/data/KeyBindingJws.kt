@@ -1,11 +1,13 @@
 package at.asitplus.wallet.lib.data
 
 import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.openid.TransactionData
 import at.asitplus.signum.indispensable.contentEqualsIfArray
 import at.asitplus.signum.indispensable.contentHashCodeIfArray
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
 import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
 import kotlinx.datetime.Instant
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -31,10 +33,11 @@ data class KeyBindingJws(
 
     /**
      * Used to link transaction data to Authentication request according to UC5 spec
+     * Base64 Encoded JsonObject
      */
     @Deprecated("Remove as soon as UC5 Specification catches up to OIDVP draft 23")
     @SerialName("transaction_data")
-    val transactionData: Collection<@Serializable(ByteArrayBase64UrlSerializer::class) ByteArray>? = null,
+    val transactionData: Collection<@Contextual TransactionData>? = null,
 
     /**
      * OID4VP: Array of hashes, where each hash is calculated using a hash function over the strings received in the
