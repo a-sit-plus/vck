@@ -43,6 +43,8 @@ object OpenIdConstants {
 
     const val PATH_WELL_KNOWN_OPENID_CONFIGURATION = "/.well-known/openid-configuration"
 
+    const val PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER = "/.well-known/oauth-authorization-server"
+
     const val PATH_WELL_KNOWN_JWT_VC_ISSUER_METADATA = "/.well-known/jwt-vc-issuer"
 
     const val PATH_WELL_KNOWN_JAR_ISSUER = "/.well-known/jar-issuer"

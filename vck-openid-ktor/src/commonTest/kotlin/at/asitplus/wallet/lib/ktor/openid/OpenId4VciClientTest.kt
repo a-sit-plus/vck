@@ -126,7 +126,10 @@ class OpenId4VciClientTest : FunSpec() {
                 val selectedCredential = credentialIdentifierInfos
                     .first { it.supportedCredentialFormat.format == CredentialFormatEnum.MSO_MDOC }
 
-                val offer = authorizationService.credentialOfferWithPreAuthnForUser(dummyUser(), credentialIssuer.metadata.credentialIssuer)
+                val offer = authorizationService.credentialOfferWithPreAuthnForUser(
+                    dummyUser(),
+                    credentialIssuer.metadata.credentialIssuer
+                )
                 client.loadCredentialWithOffer(offer, selectedCredential, null).apply {
                     this.isSuccess shouldBe true
                 }
@@ -148,7 +151,11 @@ class OpenId4VciClientTest : FunSpec() {
         attributes: Map<String, String>,
         storeCredential: (suspend (Holder.StoreCredentialInput) -> Unit) = {},
     ): SetupResult {
-        val (mockEngine, credentialIssuer, authorizationService) = setupIssuingService(scheme, representation, attributes)
+        val (mockEngine, credentialIssuer, authorizationService) = setupIssuingService(
+            scheme,
+            representation,
+            attributes
+        )
         val client = setupClient(mockEngine, storeCredential)
         return SetupResult(client, credentialIssuer, authorizationService)
     }
@@ -273,6 +280,11 @@ class OpenId4VciClientTest : FunSpec() {
                 )
 
                 request.url.fullPath == OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION -> respond(
+                    vckJsonSerializer.encodeToString(authorizationService.metadata),
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+
+                request.url.fullPath == OpenIdConstants.PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER -> respond(
                     vckJsonSerializer.encodeToString(authorizationService.metadata),
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )

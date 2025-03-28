@@ -1,7 +1,8 @@
 # Changelog
 
 Release 5.6.0:
- - tbd
+ - OpenID for Verifiable Credential Issuance:
+   - Support AS metadata files at `/.well-known/oauth-authorization-server`
 
 Release 5.5.0:
  - Remove elements deprecated in 5.4.0 when introducing DCQL:

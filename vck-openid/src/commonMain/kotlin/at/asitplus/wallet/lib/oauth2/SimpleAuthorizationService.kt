@@ -95,7 +95,9 @@ class SimpleAuthorizationService(
 
     /**
      * Serve this result JSON-serialized under `/.well-known/openid-configuration`,
-     * see [OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION]
+     * see [OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION],
+     * and under `/.well-known/oauth-authorization-server`,
+     * see [OpenIdConstants.PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER]
      */
     override val metadata: OAuth2AuthorizationServerMetadata by lazy {
         OAuth2AuthorizationServerMetadata(
