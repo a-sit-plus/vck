@@ -16,7 +16,7 @@ import kotlinx.serialization.encodeToString
  * Contents of an OIDC Authentication Request.
  *
  * Usually, these parameters are appended to the Authorization Endpoint URL of the OpenId Provider (maybe the
- * Wallet App in case of SIOPv2, or the Credential Issuer for OID4VCI).
+ * Wallet App in case of OpenID4VP, or the Credential Issuer for OID4VCI).
  */
 @Serializable
 data class AuthenticationRequestParameters(
