@@ -49,6 +49,7 @@ class RqesOpenId4VpVerifier(
     verifier,
     jwsService,
     verifierJwsService,
+    verifierJwsService.supportedAlgorithms,
     verifierCoseService,
     timeLeewaySeconds,
     clock,
