@@ -2,7 +2,7 @@
 
 Release 5.6.0:
  - OpenID for Verifiable Credential Issuance:
-   - Remove code elements in `WalletService` deprecated in 5.5.0
+   - Remove code elements deprecated in 5.5.0
 
 Release 5.5.0:
  - Remove elements deprecated in 5.4.0 when introducing DCQL:

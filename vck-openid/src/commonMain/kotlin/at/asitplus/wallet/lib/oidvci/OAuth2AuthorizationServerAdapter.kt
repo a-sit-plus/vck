@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
-import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.wallet.lib.oauth2.TokenVerificationService
 
 /**
@@ -20,13 +19,6 @@ interface OAuth2AuthorizationServerAdapter {
 
     /** Provide necessary [OAuth2AuthorizationServerMetadata] JSON for a client to be able to authenticate. */
     val metadata: OAuth2AuthorizationServerMetadata
-
-    /**
-     * Provide a pre-authorized code (for flow defined in OID4VCI), to be used by the Wallet implementation
-     * to load credentials.
-     */
-    @Deprecated("To be removed")
-    suspend fun providePreAuthorizedCode(user: OidcUserInfoExtended): String
 
 }
 

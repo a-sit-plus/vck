@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
 import at.asitplus.openid.OpenIdConstants.PARAMETER_PROMPT
@@ -132,19 +131,6 @@ class OpenId4VciClient(
         (credentialDefinition?.types?.firstNotNullOfOrNull { AttributeIndex.resolveAttributeType(it) }
             ?: sdJwtVcType?.let { AttributeIndex.resolveSdJwtAttributeType(it) }
             ?: docType?.let { AttributeIndex.resolveIsoDoctype(it) })
-
-    @Deprecated(
-        "Removed in OID4VCI draft 15",
-        ReplaceWith("startProvisioningWithAuthRequest(credentialIssuer, credentialIdentifierInfo)")
-    )
-    suspend fun startProvisioningWithAuthRequest(
-        credentialIssuer: String,
-        credentialIdentifierInfo: CredentialIdentifierInfo,
-        @Suppress("unused") requestedAttributes: Set<NormalizedJsonPath>?,
-    ) = startProvisioningWithAuthRequest(
-        credentialIssuerUrl = credentialIssuer,
-        credentialIdentifierInfo = credentialIdentifierInfo
-    )
 
     /**
      * Starts the issuing process at [credentialIssuerUrl].
@@ -409,21 +395,6 @@ class OpenId4VciClient(
                 }
         }
     }
-
-    @Deprecated(
-        "Removed in OID4VCI draft 15",
-        ReplaceWith("loadCredentialWithOffer(credentialOffer, credentialIdentifierInfo, transactionCode)")
-    )
-    suspend fun loadCredentialWithOffer(
-        credentialOffer: CredentialOffer,
-        credentialIdentifierInfo: CredentialIdentifierInfo,
-        transactionCode: String? = null,
-        @Suppress("unused") requestedAttributes: Set<NormalizedJsonPath>?,
-    ) = loadCredentialWithOffer(
-        credentialOffer = credentialOffer,
-        credentialIdentifierInfo = credentialIdentifierInfo,
-        transactionCode = transactionCode
-    )
 
     /**
      * Loads a user-selected credential with pre-authorized code from the OID4VCI credential issuer

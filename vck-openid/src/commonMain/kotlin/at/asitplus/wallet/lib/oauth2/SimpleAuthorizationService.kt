@@ -445,8 +445,7 @@ class SimpleAuthorizationService(
             .also { Napier.w("token: client did not provide valid grant_type: $grantType") }
     }
 
-    @Suppress("OVERRIDE_DEPRECATION")
-    override suspend fun providePreAuthorizedCode(user: OidcUserInfoExtended): String =
+    suspend fun providePreAuthorizedCode(user: OidcUserInfoExtended): String =
         codeService.provideCode().also {
             codeToClientAuthRequest.put(
                 it,

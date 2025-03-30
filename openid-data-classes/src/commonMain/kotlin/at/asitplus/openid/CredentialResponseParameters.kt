@@ -4,27 +4,16 @@ import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Duration
 
 @Serializable
 data class CredentialResponseParameters(
-    /**
-     * OID4VCI:
-     * OPTIONAL. JSON string denoting the format of the issued Credential.
-     */
-    @SerialName("format")
-    @Deprecated("Removed in OID4VCI draft 15")
-    val format: CredentialFormatEnum? = null,
-
-    @SerialName("credential")
-    @Deprecated("Removed in OID4VCI draft 15", ReplaceWith("credentials"))
-    val credential: String? = null,
 
     /**
-     * OID4VCI: Contains an array of one or more issued Credentials. It MUST NOT be used if the transaction_id parameter is present. The elements of the array MUST be objects.
+     * OID4VCI: Contains an array of one or more issued Credentials. It MUST NOT be used if the `transaction_id`
+     * parameter is present. The elements of the array MUST be objects.
      */
     @SerialName("credentials")
     val credentials: Set<CredentialResponseSingleCredential>? = null,
@@ -54,9 +43,8 @@ data class CredentialResponseParameters(
     @Serializable(with = DurationSecondsIntSerializer::class)
     val clientNonceExpiresIn: Duration? = null,
 ) {
-    @Suppress("DEPRECATION")
     fun extractCredentials(): List<String> =
-        credentials?.let { it.mapNotNull { it.credentialString } } ?: listOfNotNull(credential)
+        credentials?.let { it.mapNotNull { it.credentialString } } ?: listOf()
 
     fun serialize() = odcJsonSerializer.encodeToString(this)
 
