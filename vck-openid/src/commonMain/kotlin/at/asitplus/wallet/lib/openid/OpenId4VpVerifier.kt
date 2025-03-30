@@ -45,6 +45,7 @@ open class OpenId4VpVerifier(
     val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
     private val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
     private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
+    private val supportedAlgorithms: List<JwsAlgorithm> = verifierJwsService.supportedAlgorithms,
     private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(DefaultVerifierCryptoService()),
     timeLeewaySeconds: Long = 300L,
     private val clock: Clock = Clock.System,
@@ -53,16 +54,16 @@ open class OpenId4VpVerifier(
     private val stateToAuthnRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
 ) {
 
+    private val supportedAlgorithmStrings = supportedAlgorithms.map { it.identifier }
     private val responseParser = ResponseParser(jwsService, verifierJwsService)
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
-    private val supportedAlgorithms = verifierJwsService.supportedAlgorithms.map { it.identifier }
     private val supportedSignatureVerificationAlgorithm =
-        (verifierJwsService.supportedAlgorithms.firstOrNull { it == JwsAlgorithm.ES256 }?.identifier
-            ?: verifierJwsService.supportedAlgorithms.first().identifier)
-    private val containerJwt = FormatContainerJwt(algorithmStrings = supportedAlgorithms)
+        (supportedAlgorithms.firstOrNull { it == JwsAlgorithm.ES256 }?.identifier
+            ?: supportedAlgorithms.first().identifier)
+    private val containerJwt = FormatContainerJwt(algorithmStrings = supportedAlgorithmStrings)
     private val containerSdJwt = FormatContainerSdJwt(
-        sdJwtAlgorithmStrings = supportedAlgorithms.toSet(),
-        kbJwtAlgorithmStrings = supportedAlgorithms.toSet()
+        sdJwtAlgorithmStrings = supportedAlgorithmStrings.toSet(),
+        kbJwtAlgorithmStrings = supportedAlgorithmStrings.toSet()
     )
 
     /**
