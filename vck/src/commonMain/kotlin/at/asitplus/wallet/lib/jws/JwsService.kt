@@ -4,6 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.asn1.KnownOIDs.publicKey
 import at.asitplus.signum.indispensable.asn1.encoding.encodeTo4Bytes
 import at.asitplus.signum.indispensable.asn1.encoding.encodeTo8Bytes
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -379,6 +380,18 @@ object VerifyJwsSignature {
     }
 }
 
+typealias VerifyJwsSignatureWithKeyFun = suspend (jwsObject: JwsSigned<*>, signer: JsonWebKey) -> Boolean
+
+object VerifyJwsSignatureWithKey {
+    operator fun invoke(
+        verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(),
+    ): VerifyJwsSignatureWithKeyFun = { jwsObject, signer ->
+        signer.toCryptoPublicKey().getOrNull()?.let {
+            verifyJwsSignature(jwsObject, it)
+        } ?: false.also { Napier.w("Could not convert signer to public key: $signer") }
+    }
+}
+
 typealias VerifyJwsObjectFun = suspend (jwsObject: JwsSigned<*>) -> Boolean
 
 object VerifyJwsObject {
@@ -445,6 +458,7 @@ class DefaultVerifierJwsService(
     override val supportedAlgorithms: List<JwsAlgorithm> = listOf(JwsAlgorithm.ES256),
     private val verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(verifySignature),
     private val verifyJwsSignatureObject: VerifyJwsObjectFun = VerifyJwsObject(verifyJwsSignature),
+    private val verifyJwsSignatureWithKey: VerifyJwsSignatureWithKeyFun = VerifyJwsSignatureWithKey(verifyJwsSignature),
     /**
      * Need to implement if JSON web keys in JWS headers are referenced by a `kid`, and need to be retrieved from
      * the `jku`.
@@ -478,12 +492,8 @@ class DefaultVerifierJwsService(
     /**
      * Verifiers the signature of [jwsObject] by using [signer].
      */
-    override suspend fun verifyJws(jwsObject: JwsSigned<*>, signer: JsonWebKey): Boolean {
-        val publicKey = signer.toCryptoPublicKey().getOrNull()
-            ?: return false
-                .also { Napier.w("Could not convert signer to public key: $signer") }
-        return verifyJwsSignature(jwsObject, publicKey)
-    }
+    override suspend fun verifyJws(jwsObject: JwsSigned<*>, signer: JsonWebKey): Boolean =
+        verifyJwsSignatureWithKey(jwsObject, signer)
 
     /**
      * Verifiers the signature of [jwsObject] by using keys from [cnf].
