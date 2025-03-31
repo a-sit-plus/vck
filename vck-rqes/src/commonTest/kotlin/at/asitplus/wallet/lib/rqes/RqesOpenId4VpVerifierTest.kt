@@ -79,8 +79,6 @@ class RqesOpenId4VpVerifierTest : FreeSpec({
         "Authentication request contains transaction data" {
             val authnRequest = rqesVerifier.createAuthnRequest(requestOptions = requestOptions)
             authnRequest.transactionData shouldNotBe null
-//            val decodedTransactionData = authnRequest.transactionData!!.random().decodeToByteArray(Base64UrlStrict).decodeToString()
-//            kotlin.runCatching { vckJsonSerializer.decodeFromString<TransactionData>(decodedTransactionData) }.getOrNull() shouldNotBe null
             authnRequest.presentationDefinition.shouldNotBeNull()
             authnRequest.presentationDefinition!!.inputDescriptors.first()
                 .shouldBeInstanceOf<QesInputDescriptor>()

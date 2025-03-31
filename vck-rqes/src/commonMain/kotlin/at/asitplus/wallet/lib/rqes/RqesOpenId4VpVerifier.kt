@@ -80,19 +80,4 @@ class RqesOpenId4VpVerifier(
             )
         }
     }
-
-    override suspend fun enrichAuthnRequest(
-        params: AuthenticationRequestParameters,
-        requestOptions: RequestOptions,
-    ): AuthenticationRequestParameters = with(requestOptions) {
-        when (this) {
-            is OpenIdRequestOptions -> params
-            is ExtendedRequestOptions -> params.copy(
-                transactionData = transactionData
-            )
-
-            else -> throw NotImplementedError("Unknown RequestOption class: ${this::class}")
-        }
-    }
-
 }

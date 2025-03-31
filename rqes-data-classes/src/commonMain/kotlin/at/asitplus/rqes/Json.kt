@@ -10,10 +10,9 @@ import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TransactionData
 import at.asitplus.rqes.collection_entries.QCertCreationAcceptance
 import at.asitplus.rqes.collection_entries.QesAuthorization
-import at.asitplus.rqes.serializers.Base64URLTransactionDataSerializer
+import at.asitplus.rqes.serializers.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.rqes.serializers.InputDescriptorSerializer
 import at.asitplus.rqes.serializers.RequestParametersSerializer
-import kotlinx.serialization.builtins.SetSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.contextual
@@ -78,7 +77,7 @@ private val extendedOpenIdSerializerModule = SerializersModule {
     include(requestParametersModule)
     include(authorizationDetailsModule)
     include(transactionDataModule)
-    contextual(Base64URLTransactionDataSerializer)
+    contextual(DeprecatedBase64URLTransactionDataSerializer)
 }
 
 

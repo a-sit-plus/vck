@@ -11,6 +11,7 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonElement
 
 /**
  * According to "Transaction Data entries as defined in D3.1: UC Specification WP3" the encoding
@@ -26,6 +27,25 @@ object Base64URLTransactionDataSerializer : KSerializer<TransactionData> {
             PolymorphicSerializer(TransactionData::class),
             decoder.decodeString().decodeToByteArray(Base64UrlStrict).decodeToString()
         )
+
+    override fun serialize(encoder: Encoder, value: TransactionData) {
+        val jsonString = vckJsonSerializer.encodeToString(PolymorphicSerializer(TransactionData::class), value)
+        val base64URLString = jsonString.encodeToByteArray().encodeToString(Base64UrlStrict)
+        encoder.encodeString(base64URLString)
+    }
+}
+
+@Deprecated("Will be removed, only for backwards compatability", replaceWith = ReplaceWith("Base64URLTransactionDataSerializer"))
+object DeprecatedBase64URLTransactionDataSerializer : KSerializer<TransactionData> {
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("Base64URLTransactionDataSerializer", PrimitiveKind.STRING)
+
+    override fun deserialize(decoder: Decoder): TransactionData {
+        val decoded = decoder.decodeString()
+            .let { if (it.contains(",")) it else it.decodeToByteArray(Base64UrlStrict).decodeToString() }
+        val json = vckJsonSerializer.decodeFromString(JsonElement.serializer(), decoded)
+        return vckJsonSerializer.decodeFromJsonElement(PolymorphicSerializer(TransactionData::class), json)
+    }
 
     override fun serialize(encoder: Encoder, value: TransactionData) {
         val jsonString = vckJsonSerializer.encodeToString(PolymorphicSerializer(TransactionData::class), value)
