@@ -6,8 +6,11 @@ import at.asitplus.signum.indispensable.josef.JweDecrypted
 import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.VerifierJwsService
+import at.asitplus.wallet.lib.jws.VerifyJwsObject
+import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import io.github.aakira.napier.Napier
@@ -20,7 +23,9 @@ import kotlin.coroutines.cancellation.CancellationException
  */
 class ResponseParser(
     private val jwsService: JwsService,
-    private val verifierJwsService: VerifierJwsService,
+    @Deprecated("Use verifyJwsSignatureObject instead")
+    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
+    private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
 ) {
     /**
      * Parses [at.asitplus.openid.AuthenticationResponseParameters], where [input] is either:
@@ -58,7 +63,7 @@ class ResponseParser(
     internal suspend fun extractAuthnResponse(input: ResponseParametersFrom): ResponseParametersFrom =
         input.parameters.response?.let { encodedResponse ->
             encodedResponse.fromJws()?.let { jarm ->
-                if (!verifierJwsService.verifyJwsObject(jarm)) {
+                if (!verifyJwsObject(jarm)) {
                     Napier.w("JWS of response not verified: $encodedResponse")
                     throw IllegalArgumentException("JWS not verified")
                 }
@@ -68,11 +73,15 @@ class ResponseParser(
             } ?: encodedResponse.fromJweString()?.let { jarm ->
                 val nested = jarm.payload.fromJws()
                     ?: throw IllegalArgumentException("JWS inside JWE not verified")
-                if (!verifierJwsService.verifyJwsObject(nested)) {
+                if (!verifyJwsObject(nested)) {
                     Napier.w("JWS inside JWE of response not verified: $encodedResponse")
                     throw IllegalArgumentException("JWS inside JWE not verified")
                 }
-                ResponseParametersFrom.JwsSigned(nested, ResponseParametersFrom.JweForJws(jarm, input, nested.payload), nested.payload)
+                ResponseParametersFrom.JwsSigned(
+                    nested,
+                    ResponseParametersFrom.JweForJws(jarm, input, nested.payload),
+                    nested.payload
+                )
             } ?: throw IllegalArgumentException("Got encoded response, but could not deserialize it from $input")
         } ?: input
 

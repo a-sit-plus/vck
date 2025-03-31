@@ -16,6 +16,7 @@ import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
+import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldBeNull
@@ -53,9 +54,7 @@ class OpenId4VpInteropTest : FreeSpec({
         holderAgent = HolderAgent(
             holderKeyMaterial,
             validator = Validator(
-                verifierJwsService = DefaultVerifierJwsService(publicKeyLookup = {
-                    setOf(issuerKeyMaterial.publicKey.toJsonWebKey())
-                })
+                verifyJwsObject = VerifyJwsObject(publicKeyLookup = { setOf(issuerKeyMaterial.publicKey.toJsonWebKey()) })
             )
         )
         holderAgent.storeCredential(
@@ -81,12 +80,13 @@ class OpenId4VpInteropTest : FreeSpec({
             verifier = VerifierAgent(
                 identifier = clientIdScheme.clientId,
                 validator = Validator(
-                    verifierJwsService = DefaultVerifierJwsService(publicKeyLookup = {
-                        setOf(
-                            issuerKeyMaterial.publicKey.toJsonWebKey(),
-                            holderKeyMaterial.publicKey.toJsonWebKey(),
-                        )
-                    })
+                    verifyJwsObject = VerifyJwsObject(
+                        publicKeyLookup = {
+                            setOf(
+                                issuerKeyMaterial.publicKey.toJsonWebKey(),
+                                holderKeyMaterial.publicKey.toJsonWebKey(),
+                            )
+                        })
                 )
             ),
             clientIdScheme = clientIdScheme,

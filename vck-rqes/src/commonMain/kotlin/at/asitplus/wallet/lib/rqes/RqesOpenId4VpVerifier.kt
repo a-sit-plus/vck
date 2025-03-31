@@ -7,6 +7,7 @@ import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.rqes.QesInputDescriptor
 import at.asitplus.rqes.collection_entries.TransactionData
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
@@ -15,6 +16,8 @@ import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.VerifierJwsService
+import at.asitplus.wallet.lib.jws.VerifyJwsObject
+import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.DefaultNonceService
 import at.asitplus.wallet.lib.oidvci.MapStore
@@ -26,7 +29,6 @@ import at.asitplus.wallet.lib.openid.RequestOptions
 import at.asitplus.wallet.lib.rqes.helper.OpenIdRqesParameters
 import com.benasher44.uuid.uuid4
 import kotlinx.datetime.Clock
-import kotlinx.serialization.encodeToString
 
 /**
  * Verifier with access to [TransactionData] class can now generate requests containing [TransactionData]
@@ -37,6 +39,8 @@ class RqesOpenId4VpVerifier(
     verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
     jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
     verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
+    verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
+    supportedAlgorithms: List<JwsAlgorithm> = listOf(JwsAlgorithm.ES256),
     verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(),
     timeLeewaySeconds: Long = 300L,
     clock: Clock = Clock.System,
@@ -44,17 +48,18 @@ class RqesOpenId4VpVerifier(
     /** Used to store issued authn requests, to verify the authn response to it */
     stateToAuthnRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
 ) : OpenId4VpVerifier(
-    clientIdScheme,
-    keyMaterial,
-    verifier,
-    jwsService,
-    verifierJwsService,
-    verifierJwsService.supportedAlgorithms,
-    verifierCoseService,
-    timeLeewaySeconds,
-    clock,
-    nonceService,
-    stateToAuthnRequestStore
+    clientIdScheme = clientIdScheme,
+    keyMaterial = keyMaterial,
+    verifier = verifier,
+    jwsService = jwsService,
+    verifierJwsService = verifierJwsService,
+    verifyJwsObject = verifyJwsObject,
+    supportedAlgorithms = supportedAlgorithms,
+    verifierCoseService = verifierCoseService,
+    timeLeewaySeconds = timeLeewaySeconds,
+    clock = clock,
+    nonceService = nonceService,
+    stateToAuthnRequestStore = stateToAuthnRequestStore
 ) {
     /**
      * ExtendedRequestOptions cannot generate DifInputDescriptors!

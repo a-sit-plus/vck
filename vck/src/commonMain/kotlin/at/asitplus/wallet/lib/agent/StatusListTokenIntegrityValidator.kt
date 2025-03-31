@@ -10,19 +10,23 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.third_party.kotlin.ifFalse
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.VerifierJwsService
+import at.asitplus.wallet.lib.jws.VerifyJwsObject
+import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 
 /**
  * Parses and validates Status List Tokens
  * Does verify the cryptographic authenticity of the data.
  */
 class StatusListTokenIntegrityValidator(
+    @Deprecated("Use verifyJwsSignatureObject instead")
     private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
+    private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
     private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(),
 ) {
     /**
      * Validate the integrity of a status list token
      */
-    fun validateStatusListTokenIntegrity(statusListToken: StatusListToken) =
+    suspend fun validateStatusListTokenIntegrity(statusListToken: StatusListToken) =
         when (val it = statusListToken) {
             is StatusListToken.StatusListJwt -> validateStatusListJwtIntegrity(it)
             is StatusListToken.StatusListCwt -> validateStatusListCwtIntegrity(it)
@@ -31,10 +35,10 @@ class StatusListTokenIntegrityValidator(
     /**
      * Validate the integrity of a status list jwt
      */
-    fun validateStatusListJwtIntegrity(statusListToken: StatusListToken.StatusListJwt): KmmResult<StatusListTokenPayload> =
+    suspend fun validateStatusListJwtIntegrity(statusListToken: StatusListToken.StatusListJwt): KmmResult<StatusListTokenPayload> =
         catching {
             val jwsSigned = statusListToken.value
-            verifierJwsService.verifyJwsObject(jwsSigned).ifFalse {
+            verifyJwsObject(jwsSigned).ifFalse {
                 throw IllegalStateException("Invalid Signature.")
             }
 
@@ -69,13 +73,15 @@ class StatusListTokenIntegrityValidator(
  * Does verify the cryptographic authenticity of the data.
  */
 class StatusListJwtIntegrityValidator(
+    @Deprecated("Use verifyJwsSignatureObject instead")
     private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
+    private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
     private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(),
 ) {
     /**
      * Validate the integrity of a status list token
      */
-    fun validateStatusListTokenIntegrity(statusListToken: StatusListToken) =
+    suspend fun validateStatusListTokenIntegrity(statusListToken: StatusListToken) =
         when (val it = statusListToken) {
             is StatusListToken.StatusListJwt -> validateStatusListJwtIntegrity(it)
             is StatusListToken.StatusListCwt -> validateStatusListCwtIntegrity(it)
@@ -84,10 +90,10 @@ class StatusListJwtIntegrityValidator(
     /**
      * Validate the integrity of a status list jwt
      */
-    fun validateStatusListJwtIntegrity(statusListToken: StatusListToken.StatusListJwt): KmmResult<StatusListTokenPayload> =
+    suspend fun validateStatusListJwtIntegrity(statusListToken: StatusListToken.StatusListJwt): KmmResult<StatusListTokenPayload> =
         catching {
             val jwsSigned = statusListToken.value
-            verifierJwsService.verifyJwsObject(jwsSigned).ifFalse {
+            verifyJwsObject(jwsSigned).ifFalse {
                 throw IllegalStateException("Invalid Signature.")
             }
 
