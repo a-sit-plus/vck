@@ -11,6 +11,8 @@ import at.asitplus.signum.supreme.sign.Verifier
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.VerifierCryptoService
+import at.asitplus.wallet.lib.agent.VerifySignature
+import at.asitplus.wallet.lib.agent.VerifySignatureFun
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -186,7 +188,9 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
 }
 
 class DefaultVerifierCoseService(
+    @Suppress("DEPRECATION") @Deprecated("Use verifySignature")
     private val cryptoService: VerifierCryptoService = DefaultVerifierCryptoService(),
+    private val verifySignature: VerifySignatureFun = VerifySignature(),
     /** Need to implement if valid keys for CoseSigned are transported somehow out-of-band, e.g. provided by a trust store */
     private val publicKeyLookup: PublicCoseKeyLookup = { null },
 ) : VerifierCoseService {
@@ -211,11 +215,11 @@ class DefaultVerifierCoseService(
             throw IllegalArgumentException("Signer not convertible", ex)
                 .also { Napier.w("Could not convert signer to public key: $signer", ex) }
         }
-        cryptoService.verify(
-            input = signatureInput,
-            signature = coseSigned.signature,
-            algorithm = algorithm.toX509SignatureAlgorithm().getOrThrow(),
-            publicKey = publicKey
+        verifySignature(
+            signatureInput,
+            coseSigned.signature,
+            algorithm.algorithm,
+            publicKey
         ).getOrThrow()
     }
 

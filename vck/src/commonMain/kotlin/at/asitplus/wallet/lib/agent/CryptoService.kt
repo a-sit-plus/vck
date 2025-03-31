@@ -10,6 +10,7 @@ import at.asitplus.signum.indispensable.CryptoSignature
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.ECCurve
 import at.asitplus.signum.indispensable.KeyAgreementPrivateValue
+import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
@@ -33,7 +34,7 @@ interface CryptoService {
         iv: ByteArray,
         aad: ByteArray,
         input: ByteArray,
-        algorithm: JweEncryption
+        algorithm: JweEncryption,
     ): KmmResult<AuthenticatedCiphertext>
 
     suspend fun decrypt(
@@ -42,7 +43,7 @@ interface CryptoService {
         aad: ByteArray,
         input: ByteArray,
         authTag: ByteArray,
-        algorithm: JweEncryption
+        algorithm: JweEncryption,
     ): KmmResult<ByteArray>
 
     fun generateEphemeralKeyPair(ecCurve: ECCurve): EphemeralKeyHolder
@@ -50,7 +51,7 @@ interface CryptoService {
     suspend fun performKeyAgreement(
         ephemeralKey: EphemeralKeyHolder,
         recipientKey: JsonWebKey,
-        algorithm: JweAlgorithm
+        algorithm: JweAlgorithm,
     ): KmmResult<ByteArray>
 
     suspend fun performKeyAgreement(ephemeralKey: JsonWebKey, algorithm: JweAlgorithm): KmmResult<ByteArray>
@@ -60,13 +61,29 @@ interface CryptoService {
     fun hmac(
         key: ByteArray,
         algorithm: JweEncryption,
-        input: ByteArray
+        input: ByteArray,
     ): KmmResult<ByteArray>
 
     val keyMaterial: KeyMaterial
 
 }
 
+typealias VerifySignatureFun = (
+    input: ByteArray,
+    signature: CryptoSignature,
+    algorithm: SignatureAlgorithm,
+    publicKey: CryptoPublicKey,
+) -> KmmResult<Verifier.Success>
+
+object VerifySignature {
+    operator fun invoke(): VerifySignatureFun = { input, signature, algorithm, publicKey ->
+        algorithm.verifierFor(publicKey).transform {
+            it.verify(SignatureInput(input), signature)
+        }
+    }
+}
+
+@Deprecated("Use VerifySignatureFun instead")
 interface VerifierCryptoService {
 
     /**
@@ -111,7 +128,7 @@ expect open class PlatformCryptoShim() {
         iv: ByteArray,
         aad: ByteArray,
         input: ByteArray,
-        algorithm: JweEncryption
+        algorithm: JweEncryption,
     ): KmmResult<AuthenticatedCiphertext>
 
     open suspend fun decrypt(
@@ -120,18 +137,18 @@ expect open class PlatformCryptoShim() {
         aad: ByteArray,
         input: ByteArray,
         authTag: ByteArray,
-        algorithm: JweEncryption
+        algorithm: JweEncryption,
     ): KmmResult<ByteArray>
 
     open fun hmac(
         key: ByteArray,
         algorithm: JweEncryption,
-        input: ByteArray
+        input: ByteArray,
     ): KmmResult<ByteArray>
 }
 
 open class DefaultCryptoService(
-    override val keyMaterial: KeyMaterial
+    override val keyMaterial: KeyMaterial,
 ) : CryptoService {
 
     private val platformCryptoShim by lazy { PlatformCryptoShim() }
@@ -144,7 +161,7 @@ open class DefaultCryptoService(
         iv: ByteArray,
         aad: ByteArray,
         input: ByteArray,
-        algorithm: JweEncryption
+        algorithm: JweEncryption,
     ): KmmResult<AuthenticatedCiphertext> =
         platformCryptoShim.encrypt(key, iv, aad, input, algorithm)
 
@@ -154,7 +171,7 @@ open class DefaultCryptoService(
         aad: ByteArray,
         input: ByteArray,
         authTag: ByteArray,
-        algorithm: JweEncryption
+        algorithm: JweEncryption,
     ): KmmResult<ByteArray> =
         platformCryptoShim.decrypt(key, iv, aad, input, authTag, algorithm)
 
@@ -164,7 +181,7 @@ open class DefaultCryptoService(
     override suspend fun performKeyAgreement(
         ephemeralKey: EphemeralKeyHolder,
         recipientKey: JsonWebKey,
-        algorithm: JweAlgorithm
+        algorithm: JweAlgorithm,
     ): KmmResult<ByteArray> = catching {
         //this is temporary until we refactor the JWS service and both key agreement functions get merged
         @OptIn(SecretExposure::class)
@@ -176,7 +193,7 @@ open class DefaultCryptoService(
 
     override suspend fun performKeyAgreement(
         ephemeralKey: JsonWebKey,
-        algorithm: JweAlgorithm
+        algorithm: JweAlgorithm,
     ): KmmResult<ByteArray> = catching {
         val publicKey = ephemeralKey.toCryptoPublicKey().getOrThrow() as CryptoPublicKey.EC
         //this is temporary until we refactor the JWS service and both key agreement functions get merged
@@ -188,10 +205,11 @@ open class DefaultCryptoService(
 
     override fun messageDigest(
         input: ByteArray,
-        digest: Digest
+        digest: Digest,
     ) = digest.digest(sequenceOf(input))
 }
 
+@Deprecated("Use VerifySignatureFun instead")
 open class DefaultVerifierCryptoService : VerifierCryptoService {
     override val supportedAlgorithms: List<X509SignatureAlgorithm> =
         listOf(X509SignatureAlgorithm.ES256)
@@ -200,8 +218,6 @@ open class DefaultVerifierCryptoService : VerifierCryptoService {
         input: ByteArray,
         signature: CryptoSignature,
         algorithm: X509SignatureAlgorithm,
-        publicKey: CryptoPublicKey
-    ): KmmResult<Verifier.Success> = algorithm.algorithm.verifierFor(publicKey).transform {
-        it.verify(SignatureInput(input), signature)
-    }
+        publicKey: CryptoPublicKey,
+    ): KmmResult<Verifier.Success> = VerifySignature()(input, signature, algorithm.algorithm, publicKey)
 }
