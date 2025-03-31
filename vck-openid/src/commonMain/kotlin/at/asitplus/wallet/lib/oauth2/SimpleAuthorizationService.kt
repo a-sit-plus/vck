@@ -75,7 +75,6 @@ class SimpleAuthorizationService(
     /** Handles client authentication in [par] and [token]. */
     private val clientAuthenticationService: ClientAuthenticationService = ClientAuthenticationService(
         enforceClientAuthentication = false,
-        verifierJwsService = DefaultVerifierJwsService(),
         verifyClientAttestationJwt = { true }
     ),
     /** Used to parse requests from clients, e.g. when using JWT-Secured Authorization Requests (RFC 9101) */
