@@ -4,7 +4,6 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.indispensable.asn1.KnownOIDs.publicKey
 import at.asitplus.signum.indispensable.asn1.encoding.encodeTo4Bytes
 import at.asitplus.signum.indispensable.asn1.encoding.encodeTo8Bytes
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -16,6 +15,7 @@ import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.signum.supreme.asKmmResult
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnf.loadPublicKeys
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
 import kotlinx.serialization.DeserializationStrategy
@@ -392,6 +392,45 @@ object VerifyJwsSignatureWithKey {
     }
 }
 
+typealias VerifyJwsSignatureWithCnfFun = suspend (jwsObject: JwsSigned<*>, cnf: ConfirmationClaim) -> Boolean
+
+object VerifyJwsSignatureWithCnf {
+    operator fun invoke(
+        verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(),
+        /**
+         * Need to implement if JSON web keys in JWS headers are referenced by a `kid`, and need to be retrieved from
+         * the `jku`.
+         */
+        jwkSetRetriever: JwkSetRetrieverFunction = { null },
+    ): VerifyJwsSignatureWithCnfFun = { jwsObject, cnf ->
+        cnf.loadPublicKeys(jwkSetRetriever).any { verifyJwsSignature(jwsObject, it) }
+    }
+
+    /**
+     * Loads all referenced [JsonWebKey]s, i.e. from [ConfirmationClaim.jsonWebKey] and [ConfirmationClaim.jsonWebKeySetUrl].
+     */
+    private suspend fun ConfirmationClaim.loadPublicKeys(
+        jwkSetRetriever: JwkSetRetrieverFunction = { null },
+    ): Set<CryptoPublicKey> =
+        setOfNotNull(
+            jsonWebKey?.toCryptoPublicKey()?.getOrNull(),
+            jsonWebKeySetUrl?.let { retrieveJwkFromKeySetUrl(jwkSetRetriever, it, keyId) }
+        )
+
+    /**
+     * Either take the single key from the JSON Web Key Set, or the one matching the keyId
+     */
+    private suspend fun retrieveJwkFromKeySetUrl(
+        jwkSetRetriever: JwkSetRetrieverFunction = { null },
+        jku: String,
+        keyId: String?,
+    ): CryptoPublicKey? =
+        jwkSetRetriever(jku)?.keys?.let { keys ->
+            (keys.firstOrNull { it.keyId == keyId } ?: keys.singleOrNull())
+        }?.toCryptoPublicKey()?.getOrNull()
+
+}
+
 typealias VerifyJwsObjectFun = suspend (jwsObject: JwsSigned<*>) -> Boolean
 
 object VerifyJwsObject {
@@ -430,25 +469,15 @@ object VerifyJwsObject {
     /**
      * Either take the single key from the JSON Web Key Set, or the one matching the keyId
      */
-    private suspend fun retrieveFromKeySetUrl(
-        jwkSetRetriever: JwkSetRetrieverFunction = { null },
-        jku: String,
-        keyId: String?,
-    ): JsonWebKey? =
-        jwkSetRetriever(jku)?.keys?.let { keys ->
-            (keys.firstOrNull { it.keyId == keyId } ?: keys.singleOrNull())
-        }
-
-
-    /**
-     * Either take the single key from the JSON Web Key Set, or the one matching the keyId
-     */
     private suspend fun retrieveJwkFromKeySetUrl(
         jwkSetRetriever: JwkSetRetrieverFunction = { null },
         jku: String,
         keyId: String?,
     ): CryptoPublicKey? =
-        retrieveFromKeySetUrl(jwkSetRetriever, jku, keyId)?.toCryptoPublicKey()?.getOrNull()
+        jwkSetRetriever(jku)?.keys?.let { keys ->
+            (keys.firstOrNull { it.keyId == keyId } ?: keys.singleOrNull())
+        }?.toCryptoPublicKey()?.getOrNull()
+
 }
 
 class DefaultVerifierJwsService(
@@ -459,6 +488,7 @@ class DefaultVerifierJwsService(
     private val verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(verifySignature),
     private val verifyJwsSignatureObject: VerifyJwsObjectFun = VerifyJwsObject(verifyJwsSignature),
     private val verifyJwsSignatureWithKey: VerifyJwsSignatureWithKeyFun = VerifyJwsSignatureWithKey(verifyJwsSignature),
+    private val verifyJwsSignatureWithCnf: VerifyJwsSignatureWithCnfFun = VerifyJwsSignatureWithCnf(verifyJwsSignature),
     /**
      * Need to implement if JSON web keys in JWS headers are referenced by a `kid`, and need to be retrieved from
      * the `jku`.
@@ -499,16 +529,7 @@ class DefaultVerifierJwsService(
      * Verifiers the signature of [jwsObject] by using keys from [cnf].
      */
     override suspend fun verifyJws(jwsObject: JwsSigned<*>, cnf: ConfirmationClaim): Boolean =
-        cnf.loadPublicKeys().any { verifyJwsSignature(jwsObject, it) }
-
-
-    /**
-     * Loads all referenced [JsonWebKey]s, i.e. from [ConfirmationClaim.jsonWebKey] and [ConfirmationClaim.jsonWebKeySetUrl].
-     */
-    suspend fun ConfirmationClaim.loadPublicKeys(): Set<CryptoPublicKey> = setOfNotNull(
-        jsonWebKey?.toCryptoPublicKey()?.getOrNull(),
-        jsonWebKeySetUrl?.let { retrieveJwkFromKeySetUrl(it, keyId) }
-    )
+        verifyJwsSignatureWithCnf(jwsObject, cnf)
 
 }
 

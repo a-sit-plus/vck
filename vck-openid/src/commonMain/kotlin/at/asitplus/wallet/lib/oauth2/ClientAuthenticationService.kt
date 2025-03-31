@@ -18,9 +18,10 @@ class ClientAuthenticationService(
     /** Enforce client authentication as defined in OpenID4VC HAIP, i.e. with wallet attestations */
     private val enforceClientAuthentication: Boolean = false,
     /** Used to verify client attestation JWTs */
-    @Deprecated("Use verifyJwsSignatureObject instead")
+    @Deprecated("Use verifyJwsSignatureObject, verifyJwsSignatureWithCnf instead")
     private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
+    private val verifyJwsSignatureWithCnf: VerifyJwsSignatureWithCnfFun = VerifyJwsSignatureWithCnf(),
     /** Callback to verify the client attestation JWT against a set of trusted roots */
     private val verifyClientAttestationJwt: (suspend (JwsSigned<JsonWebToken>) -> Boolean) = { true },
 ) {
@@ -69,7 +70,7 @@ class ClientAuthenticationService(
                 }
             val cnf = clientAttestationJwt.payload.confirmationClaim
                 ?: throw InvalidClient("client attestation has no cnf")
-            if (!verifierJwsService.verifyJws(clientAttestationPopJwt, cnf)) {
+            if (!verifyJwsSignatureWithCnf(clientAttestationPopJwt, cnf)) {
                 Napier.w("auth: client attestation PoP JWT not verified")
                 throw InvalidClient("client attestation PoP JWT not verified")
             }
