@@ -24,7 +24,6 @@ import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureObject
-import at.asitplus.wallet.lib.jws.VerifyJwsSignatureObject.invoke
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureObjectFun
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.CredentialRequestDenied

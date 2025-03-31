@@ -16,8 +16,9 @@ import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureObject
-import at.asitplus.wallet.lib.jws.VerifyJwsSignatureObject.invoke
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureObjectFun
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKeyFun
 import at.asitplus.wallet.lib.oidvci.NonceService
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidDpopProof
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
@@ -61,6 +62,8 @@ class JwtTokenVerificationService(
     internal val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
     /** Used to verify client attestation JWTs */
     private val verifyJwsSignatureObject: VerifyJwsSignatureObjectFun = VerifyJwsSignatureObject(),
+    /** Used to verify DPoP proofs */
+    private val verifyJwsSignatureWithKey: VerifyJwsSignatureWithKeyFun = VerifyJwsSignatureWithKey(),
     /** Clock used to verify timestamps in access tokens and refresh tokens. */
     private val clock: Clock = System,
     /** Time leeway for verification of timestamps in access tokens and refresh tokens. */
@@ -153,7 +156,7 @@ class JwtTokenVerificationService(
                 Napier.w("validateDpopToken: could not parse DPoP Token", it)
                 throw InvalidToken("could not parse DPoP Token", it)
             }
-        if (!verifierJwsService.verifyJws(jwt, issuerKey)) {
+        if (!verifyJwsSignatureWithKey(jwt, issuerKey)) {
             Napier.w("validateDpopToken: DPoP not verified")
             throw InvalidToken("DPoP Token not verified")
         }
