@@ -2,35 +2,50 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.data.validation.third_party.kotlin.collections.requireIsNotEmpty
 import at.asitplus.dif.ClaimFormat
 import at.asitplus.dif.FormatHolder
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.jsonpath.JsonPath
-import at.asitplus.openid.*
+import at.asitplus.openid.IdToken
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
+import at.asitplus.openid.RelyingPartyMetadata
+import at.asitplus.openid.RequestParameters
+import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.openid.TransactionData
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64Strict
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.CreatePresentationResult
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.PresentationException
+import at.asitplus.wallet.lib.agent.PresentationExchangeCredentialDisclosure
+import at.asitplus.wallet.lib.agent.PresentationRequestParameters
+import at.asitplus.wallet.lib.agent.PresentationResponseParameters
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.data.Base64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.CredentialPresentation
+import at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.iso.*
+import at.asitplus.wallet.lib.iso.ClientIdToHash
+import at.asitplus.wallet.lib.iso.DeviceAuthentication
+import at.asitplus.wallet.lib.iso.DeviceNameSpaces
+import at.asitplus.wallet.lib.iso.OID4VPHandover
+import at.asitplus.wallet.lib.iso.ResponseUriToHash
+import at.asitplus.wallet.lib.iso.SessionTranscript
+import at.asitplus.wallet.lib.iso.sha256
+import at.asitplus.wallet.lib.iso.wrapInCborTag
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.serialization.PolymorphicSerializer
@@ -100,7 +115,14 @@ internal class PresentationFactory(
             JsonPath("$..transaction_data").query(this)
                 .flatMap { it.value.jsonArray }
                 .map { vckJsonSerializer.encodeToString<JsonElement>(it) }
-                .mapNotNull { runCatching { vckJsonSerializer.decodeFromString(Base64URLTransactionDataSerializer, it) }.getOrNull() }
+                .mapNotNull {
+                    runCatching {
+                        vckJsonSerializer.decodeFromString(
+                            DeprecatedBase64URLTransactionDataSerializer,
+                            it
+                        )
+                    }.getOrNull()
+                }
                 .distinct()
                 .ifEmpty { null }
         }

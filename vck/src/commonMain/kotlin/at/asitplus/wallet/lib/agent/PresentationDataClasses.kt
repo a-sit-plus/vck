@@ -10,7 +10,7 @@ import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.wallet.lib.data.Base64URLTransactionDataSerializer
+import at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.sha256
@@ -42,7 +42,10 @@ data class PresentationRequestParameters(
     val calcIsoDeviceSignature: (suspend (docType: String) -> Pair<CoseSigned<ByteArray>, String?>?) = { null },
 ) {
     internal fun getTransactionDataHashes(): Set<ByteArray>? = transactionData?.map {
-        (vckJsonSerializer.encodeToJsonElement(Base64URLTransactionDataSerializer,it) as JsonPrimitive).content.decodeToByteArray(
+        (vckJsonSerializer.encodeToJsonElement(
+            DeprecatedBase64URLTransactionDataSerializer,
+            it
+        ) as JsonPrimitive).content.decodeToByteArray(
             Base64UrlStrict
         ).sha256()
     }?.toSet()

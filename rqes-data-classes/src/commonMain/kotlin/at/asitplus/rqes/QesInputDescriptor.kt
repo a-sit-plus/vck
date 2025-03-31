@@ -4,7 +4,7 @@ import at.asitplus.dif.Constraint
 import at.asitplus.dif.FormatHolder
 import at.asitplus.dif.InputDescriptor
 import at.asitplus.openid.TransactionData
-import at.asitplus.rqes.serializers.Base64URLTransactionDataSerializer
+import at.asitplus.rqes.serializers.DeprecatedBase64URLTransactionDataSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -24,5 +24,5 @@ data class QesInputDescriptor(
     override val constraints: Constraint? = null,
     @Deprecated("Obsoleted by OpenID4VP draft 23. Remove after UC5 piloting")
     @SerialName("transaction_data")
-    val transactionData: List<@Serializable(Base64URLTransactionDataSerializer::class) TransactionData>? = null,
+    val transactionData: List<@Serializable(DeprecatedBase64URLTransactionDataSerializer::class) TransactionData>? = null,
 ) : InputDescriptor

@@ -9,9 +9,11 @@ import at.asitplus.rqes.collection_entries.QesAuthorization
 import at.asitplus.rqes.collection_entries.RqesDocumentDigestEntry
 import at.asitplus.rqes.rdcJsonSerializer
 import at.asitplus.rqes.serializers.Base64URLTransactionDataSerializer
+import at.asitplus.rqes.serializers.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.signum.indispensable.asn1.KnownOIDs.sha_256
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -86,6 +88,14 @@ class TransactionDataInterop : FreeSpec({
         val encoded = rdcJsonSerializer.encodeToString(Base64URLTransactionDataSerializer, transactionDataTest)
         rdcJsonSerializer.decodeFromString(Base64URLTransactionDataSerializer, encoded)
             .shouldBe(transactionDataTest)
+    }
+
+    "Backwards compatible with escaped Json" {
+        val incorrectlyEncoded = """
+            "{\"type\":\"qcert_creation_acceptance\",\"QC_terms_conditions_uri\":\"https://apps.egiz.gv.at/qtsp\",\"QC_hash\":\"47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=\",\"QC_hashAlgorithmOID\":\"2.16.840.1.101.3.4.2.1\"}"
+        """.trimIndent()
+        val decoded = rdcJsonSerializer.decodeFromString(DeprecatedBase64URLTransactionDataSerializer, incorrectlyEncoded)
+        decoded.shouldBeInstanceOf<QCertCreationAcceptance>()
     }
 
     "InputDescriptor serializable" {
