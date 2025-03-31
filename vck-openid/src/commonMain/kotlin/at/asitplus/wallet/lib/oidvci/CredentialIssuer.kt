@@ -10,6 +10,7 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JweHeader
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
@@ -22,6 +23,9 @@ import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.VerifierJwsService
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureObject
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureObject.invoke
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureObjectFun
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.CredentialRequestDenied
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidNonce
@@ -65,7 +69,11 @@ class CredentialIssuer(
     /** Used during issuance, when issuing credentials (using [issuer]) with data from [OidcUserInfoExtended]. */
     private val credentialProvider: CredentialIssuerDataProvider,
     /** Used to verify signature of proof elements in credential requests. */
+    @Deprecated("Use verifyJwsSignatureObject instead")
     private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
+    /** Used to verify signature of proof elements in credential requests. */
+    private val verifyJwsSignatureObject: VerifyJwsSignatureObjectFun = VerifyJwsSignatureObject(),
+    private val supportedAlgorithms: Collection<JwsAlgorithm> = listOf(JwsAlgorithm.ES256),
     /** Clock used to verify timestamps in proof elements in credential requests. */
     private val clock: Clock = System,
     /** Time leeway for verification of timestamps in proof elements in credential requests. */
@@ -88,11 +96,11 @@ class CredentialIssuer(
                 it.value.withSupportedProofTypes(
                     supportedProofTypes = mapOf(
                         ProofType.JWT.stringRepresentation to CredentialRequestProofSupported(
-                            supportedSigningAlgorithms = verifierJwsService.supportedAlgorithms.map { it.identifier },
+                            supportedSigningAlgorithms = supportedAlgorithms.map { it.identifier },
                             keyAttestationRequired = KeyAttestationRequired()
                         ),
                         ProofType.ATTESTATION.stringRepresentation to CredentialRequestProofSupported(
-                            supportedSigningAlgorithms = verifierJwsService.supportedAlgorithms.map { it.identifier },
+                            supportedSigningAlgorithms = supportedAlgorithms.map { it.identifier },
                             keyAttestationRequired = KeyAttestationRequired()
                         )
                     )
@@ -282,7 +290,7 @@ class CredentialIssuer(
             throw InvalidProof("invalid audience: ${payload.audience}")
         }
 
-        if (!verifierJwsService.verifyJwsObject(this)) {
+        if (!verifyJwsSignatureObject(this)) {
             Napier.w("validateJwtProof: invalid signature: $this")
             throw InvalidProof("invalid signature: $this")
         }

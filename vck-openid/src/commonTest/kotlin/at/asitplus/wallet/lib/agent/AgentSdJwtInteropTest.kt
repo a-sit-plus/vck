@@ -6,6 +6,7 @@ import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureObject
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -38,9 +39,7 @@ class AgentSdJwtInteropTest : FreeSpec({
             holderKeyMaterial,
             holderCredentialStore,
             validator = Validator(
-                verifierJwsService = DefaultVerifierJwsService(
-                    publicKeyLookup = { setOf(publicKey.toJsonWebKey()) }
-                ),
+                verifyJwsSignatureObject = VerifyJwsSignatureObject(publicKeyLookup = { setOf(publicKey.toJsonWebKey()) }),
                 parser = Parser(clock = FixedTimeClock(Instant.parse("2025-01-01T07:48:04Z").toEpochMilliseconds()))
             )
         )
