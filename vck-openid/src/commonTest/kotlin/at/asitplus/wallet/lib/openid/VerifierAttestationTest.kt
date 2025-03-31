@@ -6,7 +6,7 @@ import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.jws.DefaultJwsService
-import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import com.benasher44.uuid.uuid4
@@ -133,12 +133,12 @@ private fun attestationJwtVerifier(trustedKey: JsonWebKey) =
                 ).getOrThrow()
             }
                 ?: return false
-            val verifierJwsService = DefaultVerifierJwsService()
-            if (!verifierJwsService.verifyJws(attestationJwt, trustedKey))
+            val verifyJwsSignatureWithKey = VerifyJwsSignatureWithKey()
+            if (!verifyJwsSignatureWithKey(attestationJwt, trustedKey))
                 return false
             val verifierPublicKey = attestationJwt.payload.confirmationClaim?.jsonWebKey
                 ?: return false
-            return verifierJwsService.verifyJws(jws, verifierPublicKey)
+            return verifyJwsSignatureWithKey(jws, verifierPublicKey)
         }
     }
 
