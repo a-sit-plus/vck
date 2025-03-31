@@ -30,7 +30,7 @@ sealed interface StatusListToken {
         statusListTokenResolvedAt = resolvedAt,
         validateStatusListTokenIntegrity = {
             StatusListTokenIntegrityValidator(
-                verifierJwsService = verifierJwsService,
+                verifyJwsSignatureObject = verifierJwsService::verifyJwsObject,
                 verifierCoseService = verifierCoseService
             ).validateStatusListTokenIntegrity(it).getOrThrow()
         },

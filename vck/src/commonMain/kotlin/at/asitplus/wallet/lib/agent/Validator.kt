@@ -21,8 +21,11 @@ import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.VerifierJwsService
+import at.asitplus.wallet.lib.jws.VerifyJwsSignature
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureObject
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureObjectFun
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnf
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnfFun
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.base64.Base64
@@ -41,6 +44,7 @@ class Validator(
     @Deprecated("Use verifyJwsSignatureObject instead")
     private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
     private val verifyJwsSignatureObject: VerifyJwsSignatureObjectFun = VerifyJwsSignatureObject(),
+    private val verifyJwsSignatureWithCnf: VerifyJwsSignatureWithCnfFun = VerifyJwsSignatureWithCnf(),
     private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(),
     private val parser: Parser = Parser(),
     /**
@@ -56,7 +60,7 @@ class Validator(
         parser: Parser = Parser(),
         tokenStatusResolver: (suspend (Status) -> TokenStatus)? = null,
     ) : this(
-        verifierJwsService = DefaultVerifierJwsService(cryptoService = cryptoService),
+        verifyJwsSignatureObject = VerifyJwsSignatureObject(VerifyJwsSignature(cryptoService::verify)),
         verifierCoseService = DefaultVerifierCoseService(cryptoService = cryptoService),
         parser = parser,
         tokenStatusResolver = tokenStatusResolver,
@@ -67,7 +71,7 @@ class Validator(
         parser: Parser = Parser(),
         tokenStatusResolver: (suspend (Status) -> TokenStatus)? = null,
     ) : this(
-        verifierJwsService = DefaultVerifierJwsService(verifySignature = verifySignature),
+        verifyJwsSignatureObject = VerifyJwsSignatureObject(VerifyJwsSignature(verifySignature)),
         verifierCoseService = DefaultVerifierCoseService(verifySignature = verifySignature),
         parser = parser,
         tokenStatusResolver = tokenStatusResolver,
@@ -209,7 +213,7 @@ class Validator(
         }
         val vcSdJwt = sdJwtResult.verifiableCredentialSdJwt
         if (vcSdJwt.confirmationClaim != null) {
-            if (!verifierJwsService.verifyJws(keyBindingSigned, vcSdJwt.confirmationClaim)) {
+            if (!verifyJwsSignatureWithCnf(keyBindingSigned, vcSdJwt.confirmationClaim)) {
                 Napier.w("verifyVpSdJwt: Key binding JWT not verified with keys from cnf")
                 return VerifyPresentationResult.ValidationError("Key binding JWT not verified (from cnf)")
             }

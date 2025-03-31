@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oauth2
 
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
@@ -31,7 +32,7 @@ data class TokenService(
                 nonceService = nonceService,
                 issuerKey = keyMaterial.jsonWebKey,
             ),
-            dpopSigningAlgValuesSupportedStrings = DefaultVerifierJwsService().supportedAlgorithms.map { it.identifier }
+            dpopSigningAlgValuesSupportedStrings = listOf(JwsAlgorithm.ES256).map { it.identifier }
                 .toSet() // per OID4VC HAIP
         )
 
