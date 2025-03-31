@@ -36,12 +36,8 @@ import kotlin.coroutines.cancellation.CancellationException
  * Does verify the revocation status of the data (when a status information is encoded in the credential).
  */
 class Validator(
-    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(
-        DefaultVerifierCryptoService(),
-    ),
-    private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(
-        DefaultVerifierCryptoService(),
-    ),
+    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
+    private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(),
     private val parser: Parser = Parser(),
     /**
      * This function should check the status mechanisms in a given status claim in order to
@@ -50,6 +46,7 @@ class Validator(
      */
     private val tokenStatusResolver: (suspend (Status) -> TokenStatus)? = null,
 ) {
+    @Deprecated("Use constructor with verifySignature")
     constructor(
         cryptoService: VerifierCryptoService,
         parser: Parser = Parser(),
@@ -62,13 +59,20 @@ class Validator(
     )
 
     constructor(
+        verifySignature: VerifySignatureFun,
+        parser: Parser = Parser(),
+        tokenStatusResolver: (suspend (Status) -> TokenStatus)? = null,
+    ) : this(
+        verifierJwsService = DefaultVerifierJwsService(verifySignature = verifySignature),
+        verifierCoseService = DefaultVerifierCoseService(verifySignature = verifySignature),
+        parser = parser,
+        tokenStatusResolver = tokenStatusResolver,
+    )
+
+    constructor(
         resolveStatusListToken: suspend (UniformResourceIdentifier) -> StatusListToken,
-        verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(
-            DefaultVerifierCryptoService(),
-        ),
-        verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(
-            DefaultVerifierCryptoService(),
-        ),
+        verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
+        verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(),
         zlibService: ZlibService = DefaultZlibService(),
         clock: Clock = Clock.System,
         parser: Parser = Parser(clock = clock),
@@ -331,7 +335,8 @@ class Validator(
     private fun ByteStringWrapper<IssuerSignedItem>.verify(mdlItems: ValueDigestList?): Boolean {
         val issuerHash = mdlItems?.entries?.firstOrNull { it.key == value.digestId }
             ?: return false
-        val verifierHash = vckCborSerializer.encodeToByteArray(ByteArraySerializer(), serialized).wrapInCborTag(24).sha256()
+        val verifierHash =
+            vckCborSerializer.encodeToByteArray(ByteArraySerializer(), serialized).wrapInCborTag(24).sha256()
         if (!verifierHash.contentEquals(issuerHash.value)) {
             Napier.w("Could not verify hash of value for ${value.elementIdentifier}")
             return false

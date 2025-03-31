@@ -16,12 +16,8 @@ import at.asitplus.wallet.lib.jws.VerifierJwsService
  * Does verify the cryptographic authenticity of the data.
  */
 class StatusListTokenIntegrityValidator(
-    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(
-        DefaultVerifierCryptoService(),
-    ),
-    private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(
-        DefaultVerifierCryptoService(),
-    ),
+    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
+    private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(),
 ) {
     /**
      * Validate the integrity of a status list token
@@ -73,12 +69,8 @@ class StatusListTokenIntegrityValidator(
  * Does verify the cryptographic authenticity of the data.
  */
 class StatusListJwtIntegrityValidator(
-    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(
-        DefaultVerifierCryptoService(),
-    ),
-    private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(
-        DefaultVerifierCryptoService(),
-    ),
+    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
+    private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(),
 ) {
     /**
      * Validate the integrity of a status list token

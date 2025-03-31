@@ -5,6 +5,8 @@ Release 5.6.0:
    - Remove code elements deprecated in 5.5.0
  - OpenID for Verifiable Presentations:
    - In `OpenId4VpVerifier` add constructor parameter `supportedAlgorithms`
+ - Use function decomposition:
+   - Replace `VerifierCryptoService` with `VerifySignatureFun`
 
 Release 5.5.1:
   - OpenID for Verifiable Credential Issuance:

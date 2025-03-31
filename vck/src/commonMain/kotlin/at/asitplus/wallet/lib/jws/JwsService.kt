@@ -359,7 +359,10 @@ typealias JwkSetRetrieverFunction = (String) -> JsonWebKeySet?
 typealias PublicJsonWebKeyLookup = (JwsSigned<*>) -> Set<JsonWebKey>?
 
 class DefaultVerifierJwsService(
+    @Suppress("DEPRECATION") @Deprecated("Use verifySignature and supportedAlgorithms")
     private val cryptoService: VerifierCryptoService = DefaultVerifierCryptoService(),
+    private val verifySignature: VerifySignatureFun = VerifySignature(),
+    override val supportedAlgorithms: List<JwsAlgorithm> = listOf(JwsAlgorithm.ES256),
     /**
      * Need to implement if JSON web keys in JWS headers are referenced by a `kid`, and need to be retrieved from
      * the `jku`.
@@ -368,9 +371,6 @@ class DefaultVerifierJwsService(
     /** Need to implement if valid keys for JWS are transported somehow out-of-band, e.g. provided by a trust store */
     private val publicKeyLookup: PublicJsonWebKeyLookup = { null },
 ) : VerifierJwsService {
-
-    override val supportedAlgorithms: List<JwsAlgorithm> =
-        cryptoService.supportedAlgorithms.map { it.toJwsAlgorithm().getOrThrow() }
 
     /**
      * Verifies the signature of [jwsObject], by extracting the public key from [JwsHeader.publicKey],
@@ -429,11 +429,11 @@ class DefaultVerifierJwsService(
     )
 
     private fun verify(jwsObject: JwsSigned<*>, publicKey: CryptoPublicKey): Boolean = catching {
-        cryptoService.verify(
-            input = jwsObject.plainSignatureInput,
-            signature = jwsObject.signature,
-            algorithm = jwsObject.header.algorithm.toX509SignatureAlgorithm().getOrThrow(),
-            publicKey = publicKey,
+        verifySignature(
+            jwsObject.plainSignatureInput,
+            jwsObject.signature,
+            jwsObject.header.algorithm.algorithm,
+            publicKey,
         ).getOrThrow()
     }.fold(onSuccess = { true }, onFailure = {
         Napier.w("No verification from native code", it)
