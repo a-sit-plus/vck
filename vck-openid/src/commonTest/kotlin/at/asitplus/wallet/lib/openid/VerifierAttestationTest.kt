@@ -126,7 +126,7 @@ private suspend fun buildAttestationJwt(
 
 private fun attestationJwtVerifier(trustedKey: JsonWebKey) =
     object : RequestObjectJwsVerifier {
-        override fun invoke(jws: JwsSigned<RequestParameters>): Boolean {
+        override suspend fun invoke(jws: JwsSigned<RequestParameters>): Boolean {
             val attestationJwt = jws.header.attestationJwt?.let {
                 JwsSigned.Companion.deserialize<JsonWebToken>(
                     JsonWebToken.Companion.serializer(), it

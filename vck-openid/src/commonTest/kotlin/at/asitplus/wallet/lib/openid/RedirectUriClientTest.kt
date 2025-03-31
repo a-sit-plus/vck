@@ -8,7 +8,7 @@ import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
+import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.oidvci.*
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
@@ -180,7 +180,7 @@ class RedirectUriClientTest : FreeSpec({
         val jwsObject = JwsSigned.Companion.deserialize<AuthenticationResponseParameters>(
             AuthenticationResponseParameters.Companion.serializer(), jarmResponse
         ).getOrThrow()
-        DefaultVerifierJwsService().verifyJwsObject(jwsObject).shouldBeTrue()
+        VerifyJwsObject().invoke(jwsObject).shouldBeTrue()
 
         val result = verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
             .shouldBeInstanceOf<AuthnResponseResult.Success>()

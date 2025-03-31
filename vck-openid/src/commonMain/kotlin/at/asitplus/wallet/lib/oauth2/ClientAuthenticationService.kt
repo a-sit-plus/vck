@@ -18,7 +18,9 @@ class ClientAuthenticationService(
     /** Enforce client authentication as defined in OpenID4VC HAIP, i.e. with wallet attestations */
     private val enforceClientAuthentication: Boolean = false,
     /** Used to verify client attestation JWTs */
+    @Deprecated("Use verifyJwsSignatureObject instead")
     private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
+    private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
     /** Callback to verify the client attestation JWT against a set of trusted roots */
     private val verifyClientAttestationJwt: (suspend (JwsSigned<JsonWebToken>) -> Boolean) = { true },
 ) {
@@ -45,7 +47,7 @@ class ClientAuthenticationService(
                     Napier.w("auth: could not parse client attestation JWT", it)
                     throw InvalidClient("could not parse client attestation", it)
                 }
-            if (!verifierJwsService.verifyJwsObject(clientAttestationJwt)) {
+            if (!verifyJwsObject(clientAttestationJwt)) {
                 Napier.w("auth: client attestation JWT not verified")
                 throw InvalidClient("client attestation JWT not verified")
             }

@@ -42,7 +42,10 @@ class JwtTokenGenerationService(
     /** Used as issuer for issued DPoP tokens. */
     internal val publicContext: String = "https://wallet.a-sit.at/authorization-server",
     /** Used to verify client attestation JWTs. */
+    @Deprecated("Use verifyJwsSignatureObject instead")
     internal val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
+    /** Used to verify client attestation JWTs. */
+    private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
     /** Used to sign DPoP (RFC 9449) access tokens, if supported by the client. */
     internal val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithoutCert())),
     /** Clock used to verify timestamps in access tokens and refresh tokens. */
@@ -114,7 +117,7 @@ class JwtTokenGenerationService(
             )
         }
 
-    private fun validateDpopJwtForToken(
+    private suspend fun validateDpopJwtForToken(
         httpRequest: RequestInfo,
     ): JsonWebKey {
         val jwt = httpRequest.dpop?.parseAndValidate()
@@ -140,13 +143,13 @@ class JwtTokenGenerationService(
         return clientKey
     }
 
-    private fun String.parseAndValidate(): JwsSigned<JsonWebToken> =
+    private suspend fun String.parseAndValidate(): JwsSigned<JsonWebToken> =
         JwsSigned.deserialize(JsonWebToken.serializer(), this, vckJsonSerializer)
             .getOrElse {
                 Napier.w("parse: could not parse DPoP JWT", it)
                 throw InvalidDpopProof("could not parse DPoP JWT", it)
             }.also {
-                if (!this@JwtTokenGenerationService.verifierJwsService.verifyJwsObject(it)) {
+                if (!verifyJwsObject(it)) {
                     Napier.w("parse: DPoP not verified")
                     throw InvalidDpopProof("DPoP JWT not verified")
                 }

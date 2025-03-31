@@ -10,13 +10,16 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenValidator
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.third_party.kotlin.ifFalse
 import at.asitplus.wallet.lib.jws.VerifierJwsService
+import at.asitplus.wallet.lib.jws.VerifyJwsObject
+import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import kotlinx.datetime.Instant
 
 sealed interface StatusListToken {
     val resolvedAt: Instant?
     val payload: StatusListTokenPayload
 
-    fun validate(
+    @Deprecated("Use validate with verifyJwsSignatureObject instead")
+    suspend fun validate(
         verifierJwsService: VerifierJwsService,
         verifierCoseService: VerifierCoseService,
         statusListInfo: StatusListInfo,
@@ -26,7 +29,26 @@ sealed interface StatusListToken {
         statusListTokenResolvedAt = resolvedAt,
         validateStatusListTokenIntegrity = {
             StatusListTokenIntegrityValidator(
-                verifierJwsService = verifierJwsService,
+                verifyJwsObject = verifierJwsService::verifyJwsObject,
+                verifierCoseService = verifierCoseService
+            ).validateStatusListTokenIntegrity(it).getOrThrow()
+        },
+        statusListInfo = statusListInfo,
+        isInstantInThePast = isInstantInThePast,
+    )
+
+
+    suspend fun validate(
+        verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
+        verifierCoseService: VerifierCoseService,
+        statusListInfo: StatusListInfo,
+        isInstantInThePast: (Instant) -> Boolean,
+    ): KmmResult<StatusListTokenPayload> = StatusListTokenValidator.validateStatusListToken(
+        statusListToken = this,
+        statusListTokenResolvedAt = resolvedAt,
+        validateStatusListTokenIntegrity = {
+            StatusListTokenIntegrityValidator(
+                verifyJwsObject = verifyJwsObject,
                 verifierCoseService = verifierCoseService
             ).validateStatusListTokenIntegrity(it).getOrThrow()
         },
@@ -41,7 +63,8 @@ sealed interface StatusListToken {
         override val payload: StatusListTokenPayload
             get() = value.payload
 
-        fun validate(
+        @Deprecated("Use validate with verifyJwsSignatureObject instead")
+        suspend fun validate(
             verifierJwsService: VerifierJwsService,
             statusListInfo: StatusListInfo,
             isInstantInThePast: (Instant) -> Boolean,
@@ -62,6 +85,29 @@ sealed interface StatusListToken {
             statusListInfo = statusListInfo,
             isInstantInThePast = isInstantInThePast,
         )
+
+
+        suspend fun validate(
+            verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
+            statusListInfo: StatusListInfo,
+            isInstantInThePast: (Instant) -> Boolean,
+        ): KmmResult<StatusListTokenPayload> = StatusListTokenValidator.validateStatusListToken(
+            statusListToken = this,
+            statusListTokenResolvedAt = resolvedAt,
+            validateStatusListTokenIntegrity = { statusListToken ->
+                val jwsSigned = statusListToken.value
+                verifyJwsObject(jwsSigned).ifFalse {
+                    throw IllegalStateException("Invalid Signature.")
+                }
+
+                if (jwsSigned.header.type?.lowercase() != MediaTypes.Application.STATUSLIST_JWT.lowercase()) {
+                    throw IllegalArgumentException("Invalid type header")
+                }
+                jwsSigned.payload
+            },
+            statusListInfo = statusListInfo,
+            isInstantInThePast = isInstantInThePast,
+        )
     }
 
     data class StatusListCwt(
@@ -71,7 +117,7 @@ sealed interface StatusListToken {
         override val payload: StatusListTokenPayload
             get() = value.payload ?: throw IllegalStateException("Payload not found.")
 
-        fun validate(
+        suspend fun validate(
             verifierCoseService: VerifierCoseService,
             statusListInfo: StatusListInfo,
             isInstantInThePast: (Instant) -> Boolean,

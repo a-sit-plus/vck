@@ -102,7 +102,7 @@ class JwsServiceJvmTest : FreeSpec({
             val keyPairAdapter = EphemeralKeyWithoutCert(ephemeralKey)
             val cryptoService = DefaultCryptoService(keyPairAdapter)
             val jwsService = DefaultJwsService(cryptoService)
-            val verifierJwsService = DefaultVerifierJwsService()
+            val verifyJwsSignatureObject = VerifyJwsObject()
             val randomPayload = JsonPrimitive(uuid4().toString())
 
             val testIdentifier = "$algo, ${thisConfiguration.second}, ${number + 1}"
@@ -113,7 +113,7 @@ class JwsServiceJvmTest : FreeSpec({
                     val signed = jwsService.createSignedJwt(
                         JwsContentTypeConstants.JWT, randomPayload, JsonPrimitive.serializer()
                     ).getOrThrow()
-                    val selfVerify = verifierJwsService.verifyJwsObject(signed)
+                    val selfVerify = verifyJwsSignatureObject(signed)
                     withClue("$algo: Signature: ${signed.signature.encodeToTlv().toDerHexString()}") {
                         selfVerify shouldBe true
                     }
@@ -146,7 +146,7 @@ class JwsServiceJvmTest : FreeSpec({
                     }
 
                     withClue("$algo: Signature: ${parsedJwsSigned.signature.encodeToTlv().toDerHexString()}") {
-                        val result = verifierJwsService.verifyJwsObject(parsedJwsSigned)
+                        val result = verifyJwsSignatureObject(parsedJwsSigned)
                         result shouldBe true
                     }
                 }
