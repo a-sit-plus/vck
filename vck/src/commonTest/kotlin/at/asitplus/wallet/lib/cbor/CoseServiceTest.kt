@@ -24,7 +24,6 @@ class CoseServiceTest : FreeSpec({
 
     lateinit var cryptoService: CryptoService
     lateinit var coseService: CoseService
-    lateinit var verifierCoseService: VerifierCoseService
     lateinit var randomPayload: ByteArray
     lateinit var coseKey: CoseKey
 
@@ -32,7 +31,6 @@ class CoseServiceTest : FreeSpec({
         val keyMaterial = EphemeralKeyWithoutCert()
         cryptoService = DefaultCryptoService(keyMaterial)
         coseService = DefaultCoseService(cryptoService)
-        verifierCoseService = DefaultVerifierCoseService()
         randomPayload = Random.nextBytes(32)
         coseKey = keyMaterial.publicKey.toCoseKey().getOrThrow()
     }
@@ -58,7 +56,7 @@ class CoseServiceTest : FreeSpec({
         val parsed = CoseSigned.deserialize(parameterSerializer, serialized).getOrThrow()
             .shouldBe(signed)
 
-        verifierCoseService.verifyCose(parsed, coseKey).isSuccess shouldBe true
+        VerifyCoseSignatureWithKey<ByteArray>()(parsed, coseKey, byteArrayOf(), null).isSuccess shouldBe true
     }
 
     "signed object with random bytes can be verified" {
@@ -77,7 +75,7 @@ class CoseServiceTest : FreeSpec({
         val parsed = CoseSigned.deserialize(parameterSerializer, serialized).getOrThrow()
             .shouldBe(signed)
 
-        verifierCoseService.verifyCose(parsed, coseKey).isSuccess shouldBe true
+        VerifyCoseSignatureWithKey<ByteArray>()(parsed, coseKey, byteArrayOf(), null).isSuccess shouldBe true
     }
 
     "signed object with MSO payload can be verified" {
@@ -109,7 +107,7 @@ class CoseServiceTest : FreeSpec({
         val parsed = CoseSigned.deserialize(parameterSerializer, signed.serialize(parameterSerializer)).getOrThrow()
             .shouldBe(signed)
 
-        verifierCoseService.verifyCose(parsed, coseKey).isSuccess shouldBe true
+        VerifyCoseSignatureWithKey<MobileSecurityObject>()(parsed, coseKey, byteArrayOf(), null).isSuccess shouldBe true
     }
 
     "signed object with null payload can be verified" {
@@ -132,7 +130,7 @@ class CoseServiceTest : FreeSpec({
         val parsed = CoseSigned.deserialize(parameterSerializer, serialized).getOrThrow()
             .shouldBe(signed)
 
-        verifierCoseService.verifyCose(parsed, coseKey).isSuccess shouldBe true
+        VerifyCoseSignatureWithKey<Nothing>()(parsed, coseKey, byteArrayOf(), null).isSuccess shouldBe true
     }
 
     "signed object with random bytes, transported detached, can be verified" {
@@ -155,10 +153,10 @@ class CoseServiceTest : FreeSpec({
         val parsed = CoseSigned.deserialize(parameterSerializer, serialized).getOrThrow()
             .shouldBe(signed)
 
-        with(verifierCoseService) {
-            verifyCose(parsed, coseKey, detachedPayload = randomPayload).isSuccess shouldBe true
-            verifyCose(parsed, coseKey, detachedPayload = randomPayload + byteArrayOf(0)).isSuccess shouldBe false
-            verifyCose(parsed, coseKey).isSuccess shouldBe false
+        with(VerifyCoseSignatureWithKey<ByteArray>()) {
+            invoke(parsed, coseKey, byteArrayOf(), randomPayload).isSuccess shouldBe true
+            invoke(parsed, coseKey, byteArrayOf(), randomPayload + byteArrayOf(0)).isSuccess shouldBe false
+            invoke(parsed, coseKey, byteArrayOf(), null).isSuccess shouldBe false
         }
     }
 

@@ -13,6 +13,11 @@ import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignature.invoke
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.*
@@ -48,7 +53,9 @@ open class OpenId4VpVerifier(
     private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
     private val supportedAlgorithms: List<JwsAlgorithm> = listOf(JwsAlgorithm.ES256),
+    @Deprecated("Use verifyCoseSignature instead")
     private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(),
+    private val verifyCoseSignature: VerifyCoseSignatureWithKeyFun<ByteArray> = VerifyCoseSignatureWithKey(),
     timeLeewaySeconds: Long = 300L,
     private val clock: Clock = Clock.System,
     private val nonceService: NonceService = DefaultNonceService(),
@@ -607,17 +614,13 @@ open class OpenId4VpVerifier(
                 .encodeToByteArray(deviceAuthentication.serialize())
                 .wrapInCborTag(24)
                 .also { Napier.d("Device authentication for verification is ${it.encodeToString(Base16())}") }
-            verifierCoseService.verifyCose(
-                deviceSignature,
-                walletKey,
-                detachedPayload = expectedPayload
-            ).onFailure {
+            verifyCoseSignature(deviceSignature, walletKey, byteArrayOf(), expectedPayload).onFailure {
                 val expectedBytes = expectedPayload.encodeToString(Base16)
                 Napier.w("DeviceSignature not verified: $deviceSignature for detached payload $expectedBytes", it)
                 throw IllegalArgumentException("deviceSignature", it)
             }
         } else {
-            verifierCoseService.verifyCose(deviceSignature, walletKey).onFailure {
+            verifyCoseSignature(deviceSignature, walletKey, byteArrayOf(), null).onFailure {
                 Napier.w("DeviceSignature not verified: ${document.deviceSigned.deviceAuth}", it)
                 throw IllegalArgumentException("deviceSignature")
             }

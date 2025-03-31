@@ -75,7 +75,7 @@ class CoseServiceJvmTest : FreeSpec({
             val keyMaterial = EphemeralKeyWithoutCert(ephemeralKey)
             val cryptoService = DefaultCryptoService(keyMaterial)
             val coseService = DefaultCoseService(cryptoService)
-            val verifierCoseService = DefaultVerifierCoseService()
+            val verifierCoseService = VerifyCoseSignatureWithKey<ByteArray>()
             val coseKey = ephemeralKey.publicKey.toCoseKey().getOrThrow()
 
             val randomPayload = uuid4().toString()
@@ -91,8 +91,12 @@ class CoseServiceJvmTest : FreeSpec({
                     ).getOrThrow()
 
                     withClue("$sigAlgo: Signature: ${signed.signature.encodeToTlv().toDerHexString()}") {
-                        verifierCoseService.verifyCose(signed, cryptoService.keyMaterial.publicKey.toCoseKey().getOrThrow(), byteArrayOf())
-                            .isSuccess shouldBe true
+                        verifierCoseService(
+                            signed,
+                            cryptoService.keyMaterial.publicKey.toCoseKey().getOrThrow(),
+                            byteArrayOf(),
+                            null
+                        ).isSuccess shouldBe true
                     }
                 }
 
@@ -111,7 +115,8 @@ class CoseServiceJvmTest : FreeSpec({
                     extLibVerifier.verify(extLibCoseSign1) shouldBe true
 
                     // Parsing to our structure verifying payload
-                    val coseSigned = CoseSigned.deserialize(ByteArraySerializer(), extLibCoseSign1.encode()).getOrThrow()
+                    val coseSigned =
+                        CoseSigned.deserialize(ByteArraySerializer(), extLibCoseSign1.encode()).getOrThrow()
                     coseSigned.payload shouldBe randomPayload.encodeToByteArray()
                     val parsedDefLengthSignature = coseSigned.signature as CryptoSignature.EC.DefiniteLength
                     val parsedSig = parsedDefLengthSignature.rawByteArray.encodeToString(Base16())
@@ -135,7 +140,7 @@ class CoseServiceJvmTest : FreeSpec({
                     signedSerialized.length shouldBe extLibSerialized.length
 
                     withClue("$sigAlgo: Signature: $parsedSig") {
-                        verifierCoseService.verifyCose(coseSigned, coseKey, byteArrayOf()).isSuccess shouldBe true
+                        verifierCoseService(coseSigned, coseKey, byteArrayOf(), null).isSuccess shouldBe true
                     }
                 }
 
@@ -148,8 +153,9 @@ class CoseServiceJvmTest : FreeSpec({
                         addKeyId = false,
                     ).getOrThrow()
 
-                    val parsed = CBORDecoder(byteArrayOf(0xD2.toByte()) + coseSigned.serialize(ByteArraySerializer())).next()
-                        .shouldBeInstanceOf<CBORTaggedItem>()
+                    val parsed =
+                        CBORDecoder(byteArrayOf(0xD2.toByte()) + coseSigned.serialize(ByteArraySerializer())).next()
+                            .shouldBeInstanceOf<CBORTaggedItem>()
                     val parsedCoseSign1 = parsed.tagContent
                         .shouldBeInstanceOf<COSESign1>()
                     val parsedPayload = parsedCoseSign1.payload
@@ -165,7 +171,10 @@ class CoseServiceJvmTest : FreeSpec({
                         SigStructureBuilder().sign1(parsedCoseSign1).build().encode().encodeToString(Base16())
                     val signatureInput = CoseSignatureInput(
                         contextString = "Signature1",
-                        protectedHeader = vckCborSerializer.encodeToByteArray(CoseHeader.serializer(), CoseHeader(algorithm = coseAlgorithm)),
+                        protectedHeader = vckCborSerializer.encodeToByteArray(
+                            CoseHeader.serializer(),
+                            CoseHeader(algorithm = coseAlgorithm)
+                        ),
                         externalAad = byteArrayOf(),
                         payload = randomPayload.encodeToByteArray(),
                     ).serialize().encodeToString(Base16())

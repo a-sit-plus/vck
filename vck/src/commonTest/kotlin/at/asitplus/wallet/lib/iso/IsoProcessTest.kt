@@ -8,7 +8,7 @@ import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
-import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
@@ -162,7 +162,8 @@ class Verifier {
 
     private val cryptoService = DefaultCryptoService(EphemeralKeyWithoutCert())
     private val coseService = DefaultCoseService(cryptoService)
-    private val verifierCoseService = DefaultVerifierCoseService()
+    private val verifyCoseSignatureMso = VerifyCoseSignatureWithKey<MobileSecurityObject>()
+    private val verifyCoseSignatureBytes = VerifyCoseSignatureWithKey<ByteArray>()
 
     suspend fun buildDeviceRequest() = DeviceRequest(
         version = "1.0",
@@ -198,7 +199,7 @@ class Verifier {
         doc.errors.shouldBeNull()
         val issuerSigned = doc.issuerSigned
         val issuerAuth = issuerSigned.issuerAuth
-        verifierCoseService.verifyCose(issuerAuth, issuerKey, byteArrayOf()).isSuccess shouldBe true
+        verifyCoseSignatureMso(issuerAuth, issuerKey, byteArrayOf(), null).isSuccess shouldBe true
         issuerAuth.payload.shouldNotBeNull()
         val mso = issuerAuth.payload.shouldNotBeNull()
 
@@ -207,7 +208,7 @@ class Verifier {
 
         val walletKey = mso.deviceKeyInfo.deviceKey
         val deviceSignature = doc.deviceSigned.deviceAuth.deviceSignature.shouldNotBeNull()
-        verifierCoseService.verifyCose(deviceSignature, walletKey, byteArrayOf()).isSuccess shouldBe true
+        verifyCoseSignatureBytes(deviceSignature, walletKey, byteArrayOf(), null).isSuccess shouldBe true
         val namespaces = issuerSigned.namespaces.shouldNotBeNull()
         val issuerSignedItems = namespaces[ConstantIndex.AtomicAttribute2023.isoNamespace].shouldNotBeNull()
 

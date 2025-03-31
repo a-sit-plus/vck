@@ -1,8 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.CryptoSignature
-import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.toCoseKey
@@ -16,7 +14,12 @@ import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.*
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenValidator
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
@@ -48,7 +51,9 @@ class Validator(
     private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
     private val verifyJwsSignatureWithCnf: VerifyJwsSignatureWithCnfFun = VerifyJwsSignatureWithCnf(),
+    @Deprecated("Use verifyCoseSignature instead")
     private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(),
+    private val verifyCoseSignatureWithKey: VerifyCoseSignatureWithKeyFun<MobileSecurityObject> = VerifyCoseSignatureWithKey(),
     private val parser: Parser = Parser(),
     /**
      * This function should check the status mechanisms in a given status claim in order to
@@ -63,10 +68,12 @@ class Validator(
         parser: Parser = Parser(),
         tokenStatusResolver: (suspend (Status) -> TokenStatus)? = null,
     ) : this(
-        verifyJwsObject = VerifyJwsObject(VerifyJwsSignature({ input, signature, algorithm, publicKey ->
+        verifyJwsObject = VerifyJwsObject(VerifyJwsSignature { input, signature, algorithm, publicKey ->
             cryptoService.verify(input, signature, algorithm.toX509SignatureAlgorithm().getOrThrow(), publicKey)
-        })),
-        verifierCoseService = DefaultVerifierCoseService(cryptoService = cryptoService),
+        }),
+        verifyCoseSignatureWithKey = VerifyCoseSignatureWithKey { input, signature, algorithm, publicKey ->
+            cryptoService.verify(input, signature, algorithm.toX509SignatureAlgorithm().getOrThrow(), publicKey)
+        },
         parser = parser,
         tokenStatusResolver = tokenStatusResolver,
     )
@@ -77,7 +84,7 @@ class Validator(
         tokenStatusResolver: (suspend (Status) -> TokenStatus)? = null,
     ) : this(
         verifyJwsObject = VerifyJwsObject(VerifyJwsSignature(verifySignature)),
-        verifierCoseService = DefaultVerifierCoseService(verifySignature = verifySignature),
+        verifyCoseSignatureWithKey = VerifyCoseSignatureWithKey(verifySignature),
         parser = parser,
         tokenStatusResolver = tokenStatusResolver,
     )
@@ -85,20 +92,21 @@ class Validator(
     constructor(
         resolveStatusListToken: suspend (UniformResourceIdentifier) -> StatusListToken,
         verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
-        verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(),
+        verifyCoseSignatureWithKey: VerifyCoseSignatureWithKeyFun<MobileSecurityObject> = VerifyCoseSignatureWithKey(),
+        verifyCoseSignature: VerifyCoseSignatureFun<StatusListTokenPayload> = VerifyCoseSignature(),
         zlibService: ZlibService = DefaultZlibService(),
         clock: Clock = Clock.System,
         parser: Parser = Parser(clock = clock),
     ) : this(
         verifyJwsObject = verifyJwsObject,
-        verifierCoseService = verifierCoseService,
+        verifyCoseSignatureWithKey = verifyCoseSignatureWithKey,
         parser = parser,
         tokenStatusResolver = { status ->
             val token = resolveStatusListToken(status.statusList.uri)
 
             val payload = token.validate(
                 verifyJwsObject = verifyJwsObject,
-                verifierCoseService = verifierCoseService,
+                verifyCoseSignature = verifyCoseSignature,
                 statusListInfo = status.statusList,
                 isInstantInThePast = {
                     it < clock.now()
@@ -307,7 +315,7 @@ class Validator(
             throw IllegalArgumentException("issuerKey")
         }
 
-        verifierCoseService.verifyCose(issuerAuth, issuerKey).onFailure {
+        verifyCoseSignatureWithKey(issuerAuth, issuerKey, byteArrayOf(), null).onFailure {
             Napier.w("IssuerAuth not verified: $issuerAuth", it)
             throw IllegalArgumentException("issuerAuth")
         }
@@ -473,7 +481,7 @@ class Validator(
             Napier.w("ISO: No issuer key")
             return InvalidStructure(it.serialize().encodeToString(Base16(strict = true)))
         }
-        verifierCoseService.verifyCose(it.issuerAuth, issuerKey).onFailure { ex ->
+        verifyCoseSignatureWithKey(it.issuerAuth, issuerKey, byteArrayOf(), null).onFailure { ex ->
             Napier.w("ISO: Could not verify credential", ex)
             return InvalidStructure(it.serialize().encodeToString(Base16(strict = true)))
         }
