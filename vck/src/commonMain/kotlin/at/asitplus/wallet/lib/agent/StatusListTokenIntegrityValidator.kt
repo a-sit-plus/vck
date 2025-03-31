@@ -54,10 +54,7 @@ class StatusListTokenIntegrityValidator(
     fun validateStatusListCwtIntegrity(statusListToken: StatusListToken.StatusListCwt): KmmResult<StatusListTokenPayload> =
         catching {
             val coseStatus = statusListToken.value
-            verifierCoseService.verifyCose(
-                coseSigned = coseStatus,
-                serializer = StatusListTokenPayload.serializer(),
-            ).isSuccess.ifFalse {
+            verifierCoseService.verifyCose(coseSigned = coseStatus).isSuccess.ifFalse {
                 throw IllegalStateException("Invalid Signature.")
             }
             if (coseStatus.protectedHeader.type?.lowercase() != MediaTypes.Application.STATUSLIST_CWT.lowercase()) {
@@ -109,10 +106,7 @@ class StatusListJwtIntegrityValidator(
     fun validateStatusListCwtIntegrity(statusListToken: StatusListToken.StatusListCwt): KmmResult<StatusListTokenPayload> =
         catching {
             val coseStatus = statusListToken.value
-            verifierCoseService.verifyCose(
-                coseSigned = coseStatus,
-                serializer = StatusListTokenPayload.serializer(),
-            ).isSuccess.ifFalse {
+            verifierCoseService.verifyCose(coseSigned = coseStatus).isSuccess.ifFalse {
                 throw IllegalStateException("Invalid Signature.")
             }
             if (coseStatus.protectedHeader.type?.lowercase() != MediaTypes.Application.STATUSLIST_CWT.lowercase()) {

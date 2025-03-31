@@ -5,7 +5,6 @@ import at.asitplus.catching
 import at.asitplus.signum.indispensable.CryptoSignature
 import at.asitplus.signum.indispensable.cosef.*
 import at.asitplus.signum.indispensable.pki.X509Certificate
-import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.signum.supreme.asKmmResult
 import at.asitplus.signum.supreme.sign.Verifier
 import at.asitplus.wallet.lib.agent.CryptoService
@@ -17,6 +16,7 @@ import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.KSerializer
+import kotlin.byteArrayOf
 
 /**
  * Creates and parses COSE objects.
@@ -86,7 +86,6 @@ interface VerifierCoseService {
      */
     fun <P : Any> verifyCose(
         coseSigned: CoseSigned<P>,
-        serializer: KSerializer<P>,
         externalAad: ByteArray = byteArrayOf(),
         detachedPayload: ByteArray? = null,
     ): KmmResult<Verifier.Success>
@@ -187,12 +186,76 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
 
 }
 
+typealias VerifyCoseSignatureFun<P> = (
+    coseSigned: CoseSigned<P>,
+    externalAad: ByteArray,
+    detachedPayload: ByteArray?,
+) -> KmmResult<Verifier.Success>
+
+object VerifyCoseSignature {
+    operator fun <P : Any> invoke(
+        verifyCoseSignature: VerifyCoseSignatureWithKeyFun<P> = VerifyCoseSignatureWithKey<P>(),
+        /** Need to implement if valid keys for CoseSigned are transported somehow out-of-band, e.g. provided by a trust store */
+        publicKeyLookup: PublicCoseKeyLookup = { null },
+    ): VerifyCoseSignatureFun<P> = { coseSigned, externalAad, detachedPayload ->
+        catching {
+            coseSigned.loadPublicKeys(publicKeyLookup).also {
+                Napier.d("Public keys available: ${it.size}")
+            }.firstNotNullOf { coseKey ->
+                verifyCoseSignature(coseSigned, coseKey, externalAad, detachedPayload).getOrNull()
+            }
+        }
+    }
+
+    fun CoseSigned<*>.loadPublicKeys(
+        publicKeyLookup: PublicCoseKeyLookup = { null },
+    ): Set<CoseKey> = (protectedHeader.publicKey ?: unprotectedHeader?.publicKey)?.let { setOf(it) }
+        ?: publicKeyLookup(this) ?: setOf()
+}
+
+typealias VerifyCoseSignatureWithKeyFun<P> = (
+    coseSigned: CoseSigned<P>,
+    signer: CoseKey,
+    externalAad: ByteArray,
+    detachedPayload: ByteArray?,
+) -> KmmResult<Verifier.Success>
+
+object VerifyCoseSignatureWithKey {
+    operator fun <P : Any> invoke(
+        verifySignature: VerifySignatureFun = VerifySignature(),
+    ): VerifyCoseSignatureWithKeyFun<P> = { coseSigned, signer, externalAad, detachedPayload ->
+        catching {
+            val signatureInput = coseSigned.prepareCoseSignatureInput(externalAad, detachedPayload)
+                .also { Napier.d("verifyCose input is ${it.encodeToString(Base16())}") }
+            val algorithm = coseSigned.protectedHeader.algorithm
+                ?: throw IllegalArgumentException("Algorithm not specified")
+            val publicKey = signer.toCryptoPublicKey().getOrElse { ex ->
+                throw IllegalArgumentException("Signer not convertible", ex)
+                    .also { Napier.w("Could not convert signer to public key: $signer", ex) }
+            }
+            verifySignature(
+                signatureInput,
+                coseSigned.signature,
+                algorithm.algorithm,
+                publicKey
+            ).getOrThrow()
+        }
+    }
+}
+
 class DefaultVerifierCoseService(
     @Suppress("DEPRECATION") @Deprecated("Use verifySignature")
     private val cryptoService: VerifierCryptoService = DefaultVerifierCryptoService(),
-    private val verifySignature: VerifySignatureFun = VerifySignature(),
     /** Need to implement if valid keys for CoseSigned are transported somehow out-of-band, e.g. provided by a trust store */
     private val publicKeyLookup: PublicCoseKeyLookup = { null },
+    private val verifySignature: VerifySignatureFun = VerifySignature(),
+    private val verifyCoseSignatureWithKey: VerifyCoseSignatureWithKeyFun<Any> = VerifyCoseSignatureWithKey<Any>(
+        verifySignature
+    ),
+    private val verifyCoseSignature: VerifyCoseSignatureFun<Any> = VerifyCoseSignature<Any>(
+        verifyCoseSignatureWithKey,
+        publicKeyLookup
+    ),
 ) : VerifierCoseService {
 
     /**
@@ -206,22 +269,7 @@ class DefaultVerifierCoseService(
         signer: CoseKey,
         externalAad: ByteArray,
         detachedPayload: ByteArray?,
-    ) = catching {
-        val signatureInput = coseSigned.prepareCoseSignatureInput(externalAad, detachedPayload)
-            .also { Napier.d("verifyCose input is ${it.encodeToString(Base16())}") }
-        val algorithm = coseSigned.protectedHeader.algorithm
-            ?: throw IllegalArgumentException("Algorithm not specified")
-        val publicKey = signer.toCryptoPublicKey().getOrElse { ex ->
-            throw IllegalArgumentException("Signer not convertible", ex)
-                .also { Napier.w("Could not convert signer to public key: $signer", ex) }
-        }
-        verifySignature(
-            signatureInput,
-            coseSigned.signature,
-            algorithm.algorithm,
-            publicKey
-        ).getOrThrow()
-    }
+    ) = verifyCoseSignatureWithKey(coseSigned as CoseSigned<Any>, signer, externalAad, detachedPayload)
 
     /**
      * Verifiers the signature of [coseSigned] by extracting the public key from it's headers,
@@ -232,20 +280,10 @@ class DefaultVerifierCoseService(
      */
     override fun <P : Any> verifyCose(
         coseSigned: CoseSigned<P>,
-        serializer: KSerializer<P>,
         externalAad: ByteArray,
         detachedPayload: ByteArray?,
-    ): KmmResult<Verifier.Success> = catching {
-        coseSigned.loadPublicKeys().also {
-            Napier.d("Public keys available: ${it.size}")
-        }.firstNotNullOf { coseKey ->
-            verifyCose(coseSigned, coseKey, externalAad, detachedPayload).getOrNull()
-        }
-    }
+    ) = verifyCoseSignature(coseSigned as CoseSigned<Any>, externalAad, detachedPayload)
 
-    fun CoseSigned<*>.loadPublicKeys(): Set<CoseKey> =
-        (protectedHeader.publicKey ?: unprotectedHeader?.publicKey)?.let { setOf(it) }
-            ?: publicKeyLookup(this) ?: setOf()
 }
 
 // TODO should be suspend

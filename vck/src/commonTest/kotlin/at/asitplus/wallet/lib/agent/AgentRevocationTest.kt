@@ -120,10 +120,7 @@ class AgentRevocationTest : FreeSpec({
         }
         issuer.issueStatusListCwt().also {
             it.shouldNotBeNull()
-            DefaultVerifierCoseService().verifyCose(
-                it,
-                StatusListTokenPayload.serializer()
-            ).isSuccess shouldBe true
+            DefaultVerifierCoseService().verifyCose(it).isSuccess shouldBe true
         }
     }
 
