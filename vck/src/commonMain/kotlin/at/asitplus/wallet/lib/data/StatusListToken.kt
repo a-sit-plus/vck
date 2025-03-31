@@ -126,10 +126,7 @@ sealed interface StatusListToken {
             statusListTokenResolvedAt = resolvedAt,
             validateStatusListTokenIntegrity = { statusListToken ->
                 val coseStatus = statusListToken.value
-                verifierCoseService.verifyCose(
-                    coseSigned = coseStatus,
-                    serializer = StatusListTokenPayload.serializer(),
-                ).isSuccess.ifFalse {
+                verifierCoseService.verifyCose(coseSigned = coseStatus).isSuccess.ifFalse {
                     throw IllegalStateException("Invalid Signature.")
                 }
                 if (coseStatus.protectedHeader.type?.lowercase() != MediaTypes.Application.STATUSLIST_CWT.lowercase()) {
