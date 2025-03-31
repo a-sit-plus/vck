@@ -5,6 +5,8 @@ import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.StatusListTokenIntegrityValidator
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenValidator
@@ -30,7 +32,7 @@ sealed interface StatusListToken {
         validateStatusListTokenIntegrity = {
             StatusListTokenIntegrityValidator(
                 verifyJwsObject = verifierJwsService::verifyJwsObject,
-                verifierCoseService = verifierCoseService
+                verifyCoseSignature = verifierCoseService::verifyCose,
             ).validateStatusListTokenIntegrity(it).getOrThrow()
         },
         statusListInfo = statusListInfo,
@@ -40,7 +42,7 @@ sealed interface StatusListToken {
 
     suspend fun validate(
         verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
-        verifierCoseService: VerifierCoseService,
+        verifyCoseSignature: VerifyCoseSignatureFun<StatusListTokenPayload> = VerifyCoseSignature(),
         statusListInfo: StatusListInfo,
         isInstantInThePast: (Instant) -> Boolean,
     ): KmmResult<StatusListTokenPayload> = StatusListTokenValidator.validateStatusListToken(
@@ -49,7 +51,7 @@ sealed interface StatusListToken {
         validateStatusListTokenIntegrity = {
             StatusListTokenIntegrityValidator(
                 verifyJwsObject = verifyJwsObject,
-                verifierCoseService = verifierCoseService
+                verifyCoseSignature = verifyCoseSignature,
             ).validateStatusListTokenIntegrity(it).getOrThrow()
         },
         statusListInfo = statusListInfo,
@@ -118,7 +120,7 @@ sealed interface StatusListToken {
             get() = value.payload ?: throw IllegalStateException("Payload not found.")
 
         suspend fun validate(
-            verifierCoseService: VerifierCoseService,
+            verifyCoseSignature: VerifyCoseSignatureFun<StatusListTokenPayload> = VerifyCoseSignature(),
             statusListInfo: StatusListInfo,
             isInstantInThePast: (Instant) -> Boolean,
         ): KmmResult<StatusListTokenPayload> = StatusListTokenValidator.validateStatusListToken(
@@ -126,7 +128,7 @@ sealed interface StatusListToken {
             statusListTokenResolvedAt = resolvedAt,
             validateStatusListTokenIntegrity = { statusListToken ->
                 val coseStatus = statusListToken.value
-                verifierCoseService.verifyCose(coseSigned = coseStatus).isSuccess.ifFalse {
+                verifyCoseSignature(coseStatus, byteArrayOf(), null).isSuccess.ifFalse {
                     throw IllegalStateException("Invalid Signature.")
                 }
                 if (coseStatus.protectedHeader.type?.lowercase() != MediaTypes.Application.STATUSLIST_CWT.lowercase()) {

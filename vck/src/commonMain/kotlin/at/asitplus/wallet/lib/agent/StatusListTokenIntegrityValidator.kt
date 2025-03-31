@@ -4,6 +4,9 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignature.invoke
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
 import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
@@ -21,7 +24,9 @@ class StatusListTokenIntegrityValidator(
     @Deprecated("Use verifyJwsSignatureObject instead")
     private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
+    @Deprecated("Use verifyCoseSignature instead")
     private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(),
+    private val verifyCoseSignature: VerifyCoseSignatureFun<StatusListTokenPayload> = VerifyCoseSignature(),
 ) {
     /**
      * Validate the integrity of a status list token
@@ -54,7 +59,7 @@ class StatusListTokenIntegrityValidator(
     fun validateStatusListCwtIntegrity(statusListToken: StatusListToken.StatusListCwt): KmmResult<StatusListTokenPayload> =
         catching {
             val coseStatus = statusListToken.value
-            verifierCoseService.verifyCose(coseSigned = coseStatus).isSuccess.ifFalse {
+            verifyCoseSignature(coseStatus, byteArrayOf(), null).isSuccess.ifFalse {
                 throw IllegalStateException("Invalid Signature.")
             }
             if (coseStatus.protectedHeader.type?.lowercase() != MediaTypes.Application.STATUSLIST_CWT.lowercase()) {
@@ -73,7 +78,9 @@ class StatusListJwtIntegrityValidator(
     @Deprecated("Use verifyJwsSignatureObject instead")
     private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
+    @Deprecated("Use verifyCoseSignature instead")
     private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(),
+    private val verifyCoseSignature: VerifyCoseSignatureFun<StatusListTokenPayload> = VerifyCoseSignature(),
 ) {
     /**
      * Validate the integrity of a status list token
@@ -106,7 +113,7 @@ class StatusListJwtIntegrityValidator(
     fun validateStatusListCwtIntegrity(statusListToken: StatusListToken.StatusListCwt): KmmResult<StatusListTokenPayload> =
         catching {
             val coseStatus = statusListToken.value
-            verifierCoseService.verifyCose(coseSigned = coseStatus).isSuccess.ifFalse {
+            verifyCoseSignature(coseStatus, byteArrayOf(), null).isSuccess.ifFalse {
                 throw IllegalStateException("Invalid Signature.")
             }
             if (coseStatus.protectedHeader.type?.lowercase() != MediaTypes.Application.STATUSLIST_CWT.lowercase()) {
