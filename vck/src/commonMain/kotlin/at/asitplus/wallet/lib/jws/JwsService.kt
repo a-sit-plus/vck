@@ -358,11 +358,34 @@ typealias JwkSetRetrieverFunction = (String) -> JsonWebKeySet?
 // TODO suspending
 typealias PublicJsonWebKeyLookup = (JwsSigned<*>) -> Set<JsonWebKey>?
 
+typealias VerifyJwsSignatureFun = (jwsObject: JwsSigned<*>, publicKey: CryptoPublicKey) -> Boolean
+
+object VerifyJwsSignature {
+    operator fun invoke(
+        verifySignature: VerifySignatureFun = VerifySignature(),
+    ): VerifyJwsSignatureFun = { jwsObject, publicKey ->
+        catching {
+            verifySignature(
+                jwsObject.plainSignatureInput,
+                jwsObject.signature,
+                jwsObject.header.algorithm.algorithm,
+                publicKey,
+            ).getOrThrow()
+        }.fold(
+            onSuccess = { true },
+            onFailure = {
+                Napier.w("No verification from native code", it)
+                false
+            })
+    }
+}
+
 class DefaultVerifierJwsService(
     @Suppress("DEPRECATION") @Deprecated("Use verifySignature and supportedAlgorithms")
     private val cryptoService: VerifierCryptoService = DefaultVerifierCryptoService(),
     private val verifySignature: VerifySignatureFun = VerifySignature(),
     override val supportedAlgorithms: List<JwsAlgorithm> = listOf(JwsAlgorithm.ES256),
+    private val verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature.invoke(verifySignature),
     /**
      * Need to implement if JSON web keys in JWS headers are referenced by a `kid`, and need to be retrieved from
      * the `jku`.
@@ -377,7 +400,7 @@ class DefaultVerifierJwsService(
      * or by using [jwkSetRetriever] if [JwsHeader.jsonWebKeySetUrl] is set.
      */
     override fun verifyJwsObject(jwsObject: JwsSigned<*>): Boolean =
-        jwsObject.loadPublicKeys().any { verify(jwsObject, it) }
+        jwsObject.loadPublicKeys().any { verifyJwsSignature(jwsObject, it) }
 
     /**
      * Either take the single key from the JSON Web Key Set, or the one matching the keyId
@@ -400,14 +423,14 @@ class DefaultVerifierJwsService(
         val publicKey = signer.toCryptoPublicKey().getOrNull()
             ?: return false
                 .also { Napier.w("Could not convert signer to public key: $signer") }
-        return verify(jwsObject, publicKey)
+        return verifyJwsSignature(jwsObject, publicKey)
     }
 
     /**
      * Verifiers the signature of [jwsObject] by using keys from [cnf].
      */
     override fun verifyJws(jwsObject: JwsSigned<*>, cnf: ConfirmationClaim): Boolean =
-        cnf.loadPublicKeys().any { verify(jwsObject, it) }
+        cnf.loadPublicKeys().any { verifyJwsSignature(jwsObject, it) }
 
     /**
      * Returns a list of public keys that may have been used to sign this [JwsSigned]
@@ -428,17 +451,6 @@ class DefaultVerifierJwsService(
         jsonWebKeySetUrl?.let { retrieveJwkFromKeySetUrl(it, keyId) }
     )
 
-    private fun verify(jwsObject: JwsSigned<*>, publicKey: CryptoPublicKey): Boolean = catching {
-        verifySignature(
-            jwsObject.plainSignatureInput,
-            jwsObject.signature,
-            jwsObject.header.algorithm.algorithm,
-            publicKey,
-        ).getOrThrow()
-    }.fold(onSuccess = { true }, onFailure = {
-        Napier.w("No verification from native code", it)
-        false
-    })
 }
 
 
