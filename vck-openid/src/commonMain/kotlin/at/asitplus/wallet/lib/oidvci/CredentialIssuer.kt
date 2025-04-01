@@ -16,10 +16,8 @@ import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
-import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
-import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsService
@@ -31,7 +29,6 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidProof
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.UnsupportedCredentialType
-import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Clock.System
@@ -139,52 +136,6 @@ class CredentialIssuer(
     }
 
     /**
-     * Offer all [credentialSchemes] to clients.
-     *
-     * Callers need to encode this in [CredentialOfferUrlParameters], and offer the resulting URL to clients,
-     * i.e. by displaying a QR Code that can be scanned with wallet apps.
-     */
-    @Deprecated(
-        "Moved to authorization server",
-        ReplaceWith("authorizationService.credentialOfferWithAuthorizationCode(publicContext)")
-    )
-    suspend fun credentialOfferWithAuthorizationCode(): CredentialOffer = CredentialOffer(
-        credentialIssuer = publicContext,
-        configurationIds = credentialSchemes.flatMap { it.toCredentialIdentifier() },
-        grants = CredentialOfferGrants(
-            authorizationCode = CredentialOfferGrantsAuthCode(
-                issuerState = uuid4().toString(),
-                authorizationServer = authorizationService.publicContext
-            ),
-        )
-    )
-
-    /**
-     * Offer all [credentialSchemes] to clients.
-     *
-     * Callers need to encode this in [CredentialOfferUrlParameters], and offer the resulting URL to clients,
-     * i.e. by displaying a QR Code that can be scanned with wallet apps.
-     *
-     * @param user used to create the credential when the wallet app requests the credential
-     */
-    @Deprecated(
-        "Moved to authorization server",
-        ReplaceWith("authorizationService.credentialOfferWithPreAuthnForUser(user, publicContext)")
-    )
-    suspend fun credentialOfferWithPreAuthnForUser(
-        user: OidcUserInfoExtended,
-    ): CredentialOffer = CredentialOffer(
-        credentialIssuer = publicContext,
-        configurationIds = credentialSchemes.flatMap { it.toCredentialIdentifier() },
-        grants = CredentialOfferGrants(
-            preAuthorizedCode = CredentialOfferGrantsPreAuthCode(
-                preAuthorizedCode = authorizationService.providePreAuthorizedCode(user),
-                authorizationServer = authorizationService.publicContext
-            )
-        )
-    )
-
-    /**
      * Provides a fresh nonce to the clients, for incorporating them into the credential proofs.
      *
      * Requests from the client are HTTP POST.
@@ -218,8 +169,7 @@ class CredentialIssuer(
         val userInfo =
             getUserInfo(authorizationHeader, params.credentialIdentifier, params.credentialConfigurationId, request)
 
-        val (credentialScheme, representation) = params.format?.let { params.extractCredentialScheme(it) }
-            ?: params.credentialIdentifier?.let { decodeFromCredentialIdentifier(it) }
+        val (credentialScheme, representation) = params.credentialIdentifier?.let { decodeFromCredentialIdentifier(it) }
             ?: params.credentialConfigurationId?.let { extractFromCredentialConfigurationId(it) }
             ?: throw UnsupportedCredentialType("credential scheme not known")
                 .also { Napier.w("credential: client did request unknown credential scheme: $params") }
@@ -386,23 +336,6 @@ class CredentialIssuer(
         supportedCredentialConfigurations[credentialConfigurationId]?.let {
             decodeFromCredentialIdentifier(credentialConfigurationId)
         }
-}
-
-@Suppress("DEPRECATION")
-private fun CredentialRequestParameters.extractCredentialScheme(format: CredentialFormatEnum) = when (format) {
-    CredentialFormatEnum.JWT_VC -> credentialDefinition?.types?.firstOrNull { it != VERIFIABLE_CREDENTIAL }
-        ?.let { AttributeIndex.resolveAttributeType(it) }
-        ?.let { it to CredentialFormatEnum.JWT_VC }
-
-    CredentialFormatEnum.VC_SD_JWT,
-    CredentialFormatEnum.DC_SD_JWT,
-        -> sdJwtVcType?.let { AttributeIndex.resolveSdJwtAttributeType(it) }
-        ?.let { it to CredentialFormatEnum.DC_SD_JWT }
-
-    CredentialFormatEnum.MSO_MDOC -> docType?.let { AttributeIndex.resolveIsoDoctype(it) }
-        ?.let { it to CredentialFormatEnum.MSO_MDOC }
-
-    else -> null
 }
 
 fun interface CredentialIssuerDataProvider {

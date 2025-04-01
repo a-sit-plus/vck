@@ -160,27 +160,18 @@ fun CredentialFormatEnum.toRepresentation() = when (this) {
 /**
  * @param transformer may be used to encrypt the credentials before serializing
  */
-@Suppress("DEPRECATION")
-// TODO In 5.4.0, use DC_SD_JWT instead of VC_SD_JWT
-// TODO After 5.5.0, drop "credential", use only "credentials"
 suspend fun Issuer.IssuedCredential.toCredentialResponseParameters(
     transformer: (suspend (String) -> String) = { it },
 ) = when (this) {
     is Issuer.IssuedCredential.Iso -> CredentialResponseParameters(
-        format = CredentialFormatEnum.MSO_MDOC,
-        credential = transformer(toBase64UrlStrict()),
         credentials = setOf(toCredentialResponseSingleCredential(transformer)),
     )
 
     is Issuer.IssuedCredential.VcJwt -> CredentialResponseParameters(
-        format = CredentialFormatEnum.JWT_VC,
-        credential = transformer(vcJws),
         credentials = setOf(toCredentialResponseSingleCredential(transformer)),
     )
 
     is Issuer.IssuedCredential.VcSdJwt -> CredentialResponseParameters(
-        format = CredentialFormatEnum.VC_SD_JWT,
-        credential = transformer(vcSdJwt),
         credentials = setOf(toCredentialResponseSingleCredential(transformer)),
     )
 }
