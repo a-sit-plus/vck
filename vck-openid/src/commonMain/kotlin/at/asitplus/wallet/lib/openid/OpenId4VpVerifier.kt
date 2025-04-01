@@ -44,8 +44,11 @@ open class OpenId4VpVerifier(
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
     private val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
-    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
-    private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(DefaultVerifierCryptoService()),
+    @Deprecated("Use verifyJwsSignatureObject instead")
+    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
+    private val verifyJwsSignatureObject: VerifyJwsSignatureObjectFun = VerifyJwsSignatureObject(),
+    private val supportedAlgorithms: List<JwsAlgorithm> = listOf(JwsAlgorithm.ES256),
+    private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(),
     timeLeewaySeconds: Long = 300L,
     private val clock: Clock = Clock.System,
     private val nonceService: NonceService = DefaultNonceService(),
@@ -53,16 +56,16 @@ open class OpenId4VpVerifier(
     private val stateToAuthnRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
 ) {
 
-    private val responseParser = ResponseParser(jwsService, verifierJwsService)
+    private val supportedAlgorithmStrings = supportedAlgorithms.map { it.identifier }
+    private val responseParser = ResponseParser(jwsService, verifyJwsSignatureObject = verifyJwsSignatureObject)
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
-    private val supportedAlgorithms = verifierJwsService.supportedAlgorithms.map { it.identifier }
     private val supportedSignatureVerificationAlgorithm =
-        (verifierJwsService.supportedAlgorithms.firstOrNull { it == JwsAlgorithm.ES256 }?.identifier
-            ?: verifierJwsService.supportedAlgorithms.first().identifier)
-    private val containerJwt = FormatContainerJwt(algorithmStrings = supportedAlgorithms)
+        (supportedAlgorithms.firstOrNull { it == JwsAlgorithm.ES256 }?.identifier
+            ?: supportedAlgorithms.first().identifier)
+    private val containerJwt = FormatContainerJwt(algorithmStrings = supportedAlgorithmStrings)
     private val containerSdJwt = FormatContainerSdJwt(
-        sdJwtAlgorithmStrings = supportedAlgorithms.toSet(),
-        kbJwtAlgorithmStrings = supportedAlgorithms.toSet()
+        sdJwtAlgorithmStrings = supportedAlgorithmStrings.toSet(),
+        kbJwtAlgorithmStrings = supportedAlgorithmStrings.toSet()
     )
 
     /**
@@ -402,7 +405,7 @@ open class OpenId4VpVerifier(
         ).getOrNull()
             ?: throw IllegalArgumentException("idToken")
                 .also { Napier.w("Could not parse JWS from idToken: $idTokenJws") }
-        if (!verifierJwsService.verifyJwsObject(jwsSigned))
+        if (!verifyJwsSignatureObject(jwsSigned))
             throw IllegalArgumentException("idToken")
                 .also { Napier.w { "JWS of idToken not verified: $idTokenJws" } }
         val idToken = jwsSigned.payload

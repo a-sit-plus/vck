@@ -10,6 +10,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureObject
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.fail
 import io.kotest.core.spec.style.FreeSpec
@@ -116,7 +117,7 @@ class AgentRevocationTest : FreeSpec({
     "revocation credential should be valid" {
         issuer.issueStatusListJwt().also {
             it.shouldNotBeNull()
-            DefaultVerifierJwsService().verifyJwsObject(it) shouldBe true
+            VerifyJwsSignatureObject().invoke(it) shouldBe true
         }
         issuer.issueStatusListCwt().also {
             it.shouldNotBeNull()

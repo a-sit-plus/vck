@@ -21,6 +21,11 @@ import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.VerifierJwsService
+import at.asitplus.wallet.lib.jws.VerifyJwsSignature
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureObject
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureObjectFun
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnf
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnfFun
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.base64.Base64
@@ -36,12 +41,11 @@ import kotlin.coroutines.cancellation.CancellationException
  * Does verify the revocation status of the data (when a status information is encoded in the credential).
  */
 class Validator(
-    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(
-        DefaultVerifierCryptoService(),
-    ),
-    private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(
-        DefaultVerifierCryptoService(),
-    ),
+    @Deprecated("Use verifyJwsSignatureObject instead")
+    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
+    private val verifyJwsSignatureObject: VerifyJwsSignatureObjectFun = VerifyJwsSignatureObject(),
+    private val verifyJwsSignatureWithCnf: VerifyJwsSignatureWithCnfFun = VerifyJwsSignatureWithCnf(),
+    private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(),
     private val parser: Parser = Parser(),
     /**
      * This function should check the status mechanisms in a given status claim in order to
@@ -50,37 +54,45 @@ class Validator(
      */
     private val tokenStatusResolver: (suspend (Status) -> TokenStatus)? = null,
 ) {
+    @Deprecated("Use constructor with verifySignature")
     constructor(
         cryptoService: VerifierCryptoService,
         parser: Parser = Parser(),
         tokenStatusResolver: (suspend (Status) -> TokenStatus)? = null,
     ) : this(
-        verifierJwsService = DefaultVerifierJwsService(cryptoService = cryptoService),
+        verifyJwsSignatureObject = VerifyJwsSignatureObject(VerifyJwsSignature(cryptoService::verify)),
         verifierCoseService = DefaultVerifierCoseService(cryptoService = cryptoService),
         parser = parser,
         tokenStatusResolver = tokenStatusResolver,
     )
 
     constructor(
+        verifySignature: VerifySignatureFun,
+        parser: Parser = Parser(),
+        tokenStatusResolver: (suspend (Status) -> TokenStatus)? = null,
+    ) : this(
+        verifyJwsSignatureObject = VerifyJwsSignatureObject(VerifyJwsSignature(verifySignature)),
+        verifierCoseService = DefaultVerifierCoseService(verifySignature = verifySignature),
+        parser = parser,
+        tokenStatusResolver = tokenStatusResolver,
+    )
+
+    constructor(
         resolveStatusListToken: suspend (UniformResourceIdentifier) -> StatusListToken,
-        verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(
-            DefaultVerifierCryptoService(),
-        ),
-        verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(
-            DefaultVerifierCryptoService(),
-        ),
+        verifyJwsSignatureObject: VerifyJwsSignatureObjectFun = VerifyJwsSignatureObject(),
+        verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(),
         zlibService: ZlibService = DefaultZlibService(),
         clock: Clock = Clock.System,
         parser: Parser = Parser(clock = clock),
     ) : this(
-        verifierJwsService = verifierJwsService,
+        verifyJwsSignatureObject = verifyJwsSignatureObject,
         verifierCoseService = verifierCoseService,
         parser = parser,
         tokenStatusResolver = { status ->
             val token = resolveStatusListToken(status.statusList.uri)
 
             val payload = token.validate(
-                verifierJwsService = verifierJwsService,
+                verifyJwsSignatureObject = verifyJwsSignatureObject,
                 verifierCoseService = verifierCoseService,
                 statusListInfo = status.statusList,
                 isInstantInThePast = {
@@ -146,7 +158,7 @@ class Validator(
         clientId: String,
     ): VerifyPresentationResult {
         Napier.d("Verifying VP $input with $challenge and $clientId")
-        if (!verifierJwsService.verifyJwsObject(input)) {
+        if (!verifyJwsSignatureObject(input)) {
             Napier.w("VP: Signature invalid")
             throw IllegalArgumentException("signature")
         }
@@ -201,12 +213,12 @@ class Validator(
         }
         val vcSdJwt = sdJwtResult.verifiableCredentialSdJwt
         if (vcSdJwt.confirmationClaim != null) {
-            if (!verifierJwsService.verifyJws(keyBindingSigned, vcSdJwt.confirmationClaim)) {
+            if (!verifyJwsSignatureWithCnf(keyBindingSigned, vcSdJwt.confirmationClaim)) {
                 Napier.w("verifyVpSdJwt: Key binding JWT not verified with keys from cnf")
                 return VerifyPresentationResult.ValidationError("Key binding JWT not verified (from cnf)")
             }
         } else {
-            if (!verifierJwsService.verifyJwsObject(keyBindingSigned)) {
+            if (!verifyJwsSignatureObject(keyBindingSigned)) {
                 Napier.w("verifyVpSdJwt: Key binding JWT not verified")
                 return VerifyPresentationResult.ValidationError("Key binding JWT not verified")
             }
@@ -331,7 +343,8 @@ class Validator(
     private fun ByteStringWrapper<IssuerSignedItem>.verify(mdlItems: ValueDigestList?): Boolean {
         val issuerHash = mdlItems?.entries?.firstOrNull { it.key == value.digestId }
             ?: return false
-        val verifierHash = vckCborSerializer.encodeToByteArray(ByteArraySerializer(), serialized).wrapInCborTag(24).sha256()
+        val verifierHash =
+            vckCborSerializer.encodeToByteArray(ByteArraySerializer(), serialized).wrapInCborTag(24).sha256()
         if (!verifierHash.contentEquals(issuerHash.value)) {
             Napier.w("Could not verify hash of value for ${value.elementIdentifier}")
             return false
@@ -358,7 +371,7 @@ class Validator(
             Napier.w("VC: Could not parse JWS", it)
             return InvalidStructure(input)
         }
-        if (!verifierJwsService.verifyJwsObject(jws)) {
+        if (!verifyJwsSignatureObject(jws)) {
             Napier.w("VC: Signature invalid")
             return InvalidStructure(input)
         }
@@ -403,7 +416,7 @@ class Validator(
         publicKey: CryptoPublicKey?,
     ): VerifyCredentialResult {
         Napier.d("Verifying SD-JWT $sdJwtSigned for $publicKey")
-        if (!verifierJwsService.verifyJwsObject(sdJwtSigned.jws)) {
+        if (!verifyJwsSignatureObject(sdJwtSigned.jws)) {
             Napier.w("verifySdJwt: Signature invalid")
             return ValidationError("Signature not verified")
         }

@@ -7,5 +7,5 @@ import at.asitplus.signum.indispensable.josef.JwsSigned
  * Implementations need to verify the passed [at.asitplus.signum.indispensable.josef.JwsSigned] and return its result
  */
 fun interface RequestObjectJwsVerifier {
-    operator fun invoke(jws: JwsSigned<RequestParameters>): Boolean
+    suspend operator fun invoke(jws: JwsSigned<RequestParameters>): Boolean
 }
