@@ -1,6 +1,7 @@
 # Changelog
 
 Release 5.6.0:
+ - Deprecate `RqesOpenId4VpVerifier`
  - Change `TransactionData` from sealed class to interface
  - Fix erroneous `TransactionData` encoding in `AuthenticationRequest`
  - OpenID for Verifiable Credential Issuance:

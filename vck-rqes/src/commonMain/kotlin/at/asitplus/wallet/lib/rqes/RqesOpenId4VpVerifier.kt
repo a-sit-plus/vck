@@ -28,6 +28,7 @@ import kotlinx.datetime.Clock
 /**
  * Verifier with access to [TransactionData] class can now generate requests containing [TransactionData]
  */
+@Deprecated("OpenId4VpVerifier can now access TransactionData, for RqesRequests use RqesRequestOptions", ReplaceWith("OpenId4VpVerifier"))
 class RqesOpenId4VpVerifier(
     private val clientIdScheme: ClientIdScheme,
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
@@ -56,6 +57,7 @@ class RqesOpenId4VpVerifier(
      * Necessary to use [QesInputDescriptor]
      * ExtendedRequestOptions cannot generate [DifInputDescriptor]!
      */
+    @Deprecated("Replaced", ReplaceWith("RqesRequestOptions"))
     data class ExtendedRequestOptions(
         val baseRequestOptions: OpenIdRequestOptions,
     ) : RequestOptions by baseRequestOptions {

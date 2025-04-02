@@ -1,11 +1,9 @@
 package at.asitplus.dif
 
-import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.catching
 import com.benasher44.uuid.uuid4
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 
 /**
  * Data class for
