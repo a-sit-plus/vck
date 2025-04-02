@@ -80,6 +80,7 @@ class OAuth2Client(
      * of [IssuerMetadata.credentialIssuer]
      * @param issuerState for OID4VCI flows the value from [CredentialOfferGrantsAuthCode.issuerState]
      * @param audience for PAR the value of the `issuer` of the Authorization Server
+     * @param wrapAsPar whether to wrap the request as a PAR (i.e. a signed JWS)
      */
     suspend fun createAuthRequest(
         state: String,
@@ -88,6 +89,7 @@ class OAuth2Client(
         resource: String? = null,
         issuerState: String? = null,
         audience: String? = null,
+        wrapAsPar: Boolean = true,
     ) = AuthenticationRequestParameters(
         responseType = GRANT_TYPE_CODE,
         state = state,
@@ -99,10 +101,10 @@ class OAuth2Client(
         redirectUrl = redirectUrl,
         codeChallenge = generateCodeVerifier(state),
         codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256
-    ).wrapIfNecessary(audience)
+    ).wrapIfNecessary(wrapAsPar, audience)
 
-    private suspend fun AuthenticationRequestParameters.wrapIfNecessary(audience: String?) =
-        if (jwsService != null) wrapInPar(jwsService, audience) else this
+    private suspend fun AuthenticationRequestParameters.wrapIfNecessary(wrapAsPar: Boolean, audience: String?) =
+        if (jwsService != null && wrapAsPar) wrapInPar(jwsService, audience) else this
 
     private suspend fun AuthenticationRequestParameters.wrapInPar(
         jwsService: JwsService,
