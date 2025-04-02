@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
 import at.asitplus.openid.OpenIdConstants.PARAMETER_PROMPT
@@ -133,19 +132,6 @@ class OpenId4VciClient(
             ?: sdJwtVcType?.let { AttributeIndex.resolveSdJwtAttributeType(it) }
             ?: docType?.let { AttributeIndex.resolveIsoDoctype(it) })
 
-    @Deprecated(
-        "Removed in OID4VCI draft 15",
-        ReplaceWith("startProvisioningWithAuthRequest(credentialIssuer, credentialIdentifierInfo)")
-    )
-    suspend fun startProvisioningWithAuthRequest(
-        credentialIssuer: String,
-        credentialIdentifierInfo: CredentialIdentifierInfo,
-        @Suppress("unused") requestedAttributes: Set<NormalizedJsonPath>?,
-    ) = startProvisioningWithAuthRequest(
-        credentialIssuerUrl = credentialIssuer,
-        credentialIdentifierInfo = credentialIdentifierInfo
-    )
-
     /**
      * Starts the issuing process at [credentialIssuerUrl].
      * This will call [openUrlExternally] to perform authentication at the authorization server, typically in an
@@ -245,7 +231,8 @@ class OpenId4VciClient(
             tokenResponse = tokenResponse,
             credentialFormat = context.credential.supportedCredentialFormat,
             credentialIdentifier = context.credential.credentialIdentifier,
-            credentialScheme = credentialScheme
+            credentialScheme = credentialScheme,
+            previouslyRequestedScope = context.credential.supportedCredentialFormat.scope,
         )
     }
 
@@ -292,7 +279,8 @@ class OpenId4VciClient(
                 credentialFormat = credentialFormat,
                 credentialScheme = credentialScheme,
                 oauthMetadata = oauthMetadata,
-                credentialIdentifier = credentialIdentifier
+                credentialIdentifier = credentialIdentifier,
+                previouslyRequestedScope = credentialFormat.scope,
             )
         }
     }
@@ -352,6 +340,7 @@ class OpenId4VciClient(
         credentialScheme: ConstantIndex.CredentialScheme,
         oauthMetadata: OAuth2AuthorizationServerMetadata,
         credentialIdentifier: String,
+        previouslyRequestedScope: String?
     ) {
         val credentialEndpointUrl = issuerMetadata.credentialEndpointUrl
         Napier.i("postCredentialRequestAndStore: $credentialEndpointUrl")
@@ -368,6 +357,7 @@ class OpenId4VciClient(
             metadata = issuerMetadata,
             credentialFormat = credentialFormat,
             clientNonce = clientNonce,
+            previouslyRequestedScope = previouslyRequestedScope
         ).getOrThrow()
 
         val dpopHeader = if (tokenResponse.tokenType.equals(TOKEN_TYPE_DPOP, true))
@@ -405,21 +395,6 @@ class OpenId4VciClient(
                 }
         }
     }
-
-    @Deprecated(
-        "Removed in OID4VCI draft 15",
-        ReplaceWith("loadCredentialWithOffer(credentialOffer, credentialIdentifierInfo, transactionCode)")
-    )
-    suspend fun loadCredentialWithOffer(
-        credentialOffer: CredentialOffer,
-        credentialIdentifierInfo: CredentialIdentifierInfo,
-        transactionCode: String? = null,
-        @Suppress("unused") requestedAttributes: Set<NormalizedJsonPath>?,
-    ) = loadCredentialWithOffer(
-        credentialOffer = credentialOffer,
-        credentialIdentifierInfo = credentialIdentifierInfo,
-        transactionCode = transactionCode
-    )
 
     /**
      * Loads a user-selected credential with pre-authorized code from the OID4VCI credential issuer
@@ -471,6 +446,7 @@ class OpenId4VciClient(
                 credentialScheme = credentialScheme,
                 oauthMetadata = oauthMetadata,
                 credentialIdentifier = credentialIdentifierInfo.credentialIdentifier,
+                previouslyRequestedScope = credentialIdentifierInfo.supportedCredentialFormat.scope,
             )
         } ?: credentialOffer.grants?.authorizationCode?.let {
             ProvisioningContext(
@@ -497,18 +473,16 @@ class OpenId4VciClient(
         } ?: throw Exception("No offer grants received in ${credentialOffer.grants}")
     }
 
-    @Suppress("DEPRECATION")
     @Throws(Exception::class)
     private fun String.toStoreCredentialInput(
         credentialRepresentation: ConstantIndex.CredentialRepresentation,
         credentialScheme: ConstantIndex.CredentialScheme,
-    ) = when (credentialRepresentation) {
+    ): Holder.StoreCredentialInput = when (credentialRepresentation) {
         ConstantIndex.CredentialRepresentation.PLAIN_JWT -> Vc(this, credentialScheme)
         ConstantIndex.CredentialRepresentation.SD_JWT -> SdJwt(this, credentialScheme)
-        ConstantIndex.CredentialRepresentation.ISO_MDOC -> runCatching { decodeToByteArray(Base64()) }.getOrNull()
-            ?.let { IssuerSigned.deserialize(it) }?.getOrNull()
-            ?.let { Iso(it, credentialScheme) }
-            ?: throw Exception("Invalid credential format: $this")
+        ConstantIndex.CredentialRepresentation.ISO_MDOC ->
+            runCatching { Iso(IssuerSigned.deserialize(decodeToByteArray(Base64())).getOrThrow(), credentialScheme) }
+                .getOrElse { throw Exception("Invalid credential format: $this", it) }
     }
 
     /**

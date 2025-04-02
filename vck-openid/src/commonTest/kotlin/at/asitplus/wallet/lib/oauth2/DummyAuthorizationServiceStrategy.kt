@@ -5,16 +5,10 @@ import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.wallet.lib.oidvci.OAuth2DataProvider
-import at.asitplus.wallet.lib.openid.DummyOAuth2DataProvider.user
 
 class DummyAuthorizationServiceStrategy(
     private val scope: String,
 ) : AuthorizationServiceStrategy {
-    @Deprecated("Moved to SimpleAuthorizationService")
-    override suspend fun loadUserInfo(
-        request: AuthenticationRequestParameters,
-        code: String,
-    ): OidcUserInfoExtended? = null
 
     override fun validScopes(): String = scope
 

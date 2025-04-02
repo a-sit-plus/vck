@@ -6,7 +6,8 @@ import at.asitplus.openid.dcql.*
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
-import at.asitplus.wallet.lib.data.CredentialPresentationRequest
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest.PresentationExchangeRequest
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
@@ -48,9 +49,10 @@ class AgentComplexSdJwtTest : FreeSpec({
                         ClaimToBeIssued(CLAIM_ADDRESS_COUNTRY, "AT", selectivelyDisclosable = false)
                     )
                 ),
+                nonsenseClaim()
             ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
 
-            val presentationRequest = CredentialPresentationRequest.PresentationExchangeRequest.forAttributeNames(
+            val presentationRequest = PresentationExchangeRequest.forAttributeNames(
                 "$['$CLAIM_ADDRESS']['$CLAIM_ADDRESS_REGION']",
                 "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
             )
@@ -81,9 +83,10 @@ class AgentComplexSdJwtTest : FreeSpec({
                         ClaimToBeIssued(CLAIM_ADDRESS_COUNTRY, "AT")
                     ), selectivelyDisclosable = false
                 ),
+                nonsenseClaim()
             ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
 
-            val presentationRequest = CredentialPresentationRequest.PresentationExchangeRequest.forAttributeNames(
+            val presentationRequest = PresentationExchangeRequest.forAttributeNames(
                 "$['$CLAIM_ADDRESS']['$CLAIM_ADDRESS_REGION']",
                 "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
             )
@@ -112,15 +115,48 @@ class AgentComplexSdJwtTest : FreeSpec({
                     CLAIM_ADDRESS,
                     listOf(
                         ClaimToBeIssued(CLAIM_ADDRESS_REGION, "Vienna"),
-                        ClaimToBeIssued(CLAIM_ADDRESS_COUNTRY, "AT")
+                        ClaimToBeIssued(CLAIM_ADDRESS_COUNTRY, "AT"),
                     ),
                 ),
+                nonsenseClaim()
             ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
 
-            val presentationRequest = CredentialPresentationRequest.PresentationExchangeRequest.forAttributeNames(
+            val presentationRequest = PresentationExchangeRequest.forAttributeNames(
                 "$['$CLAIM_ADDRESS']['$CLAIM_ADDRESS_REGION']",
                 "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
             )
+
+            val vp = holder.createDefaultPresentation(
+                request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
+                credentialPresentationRequest = presentationRequest
+            ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
+                .presentationResults.firstOrNull()
+                .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
+
+            val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+
+            verified.disclosures.size shouldBe 3 // for address, region, country
+
+            verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
+                ?.jsonPrimitive?.content shouldBe "Vienna"
+            verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
+                ?.jsonPrimitive?.content shouldBe "AT"
+        }
+
+        "with claims in address selectively disclosable, getting all inner disclosures" {
+            listOf(
+                ClaimToBeIssued(
+                    CLAIM_ADDRESS,
+                    listOf(
+                        ClaimToBeIssued(CLAIM_ADDRESS_REGION, "Vienna"),
+                        ClaimToBeIssued(CLAIM_ADDRESS_COUNTRY, "AT")
+                    ),
+                ),
+                nonsenseClaim()
+            ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
+
+            val presentationRequest = PresentationExchangeRequest.forAttributeNames("$.$CLAIM_ADDRESS")
 
             val vp = holder.createDefaultPresentation(
                 request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
@@ -144,9 +180,10 @@ class AgentComplexSdJwtTest : FreeSpec({
             listOf(
                 ClaimToBeIssued("$CLAIM_ADDRESS.$CLAIM_ADDRESS_REGION", "Vienna"),
                 ClaimToBeIssued("$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY", "AT"),
+                nonsenseClaim()
             ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
 
-            val presentationRequest = CredentialPresentationRequest.PresentationExchangeRequest.forAttributeNames(
+            val presentationRequest = PresentationExchangeRequest.forAttributeNames(
                 "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_REGION",
                 "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
             )
@@ -173,10 +210,11 @@ class AgentComplexSdJwtTest : FreeSpec({
             listOf(
                 ClaimToBeIssued(CLAIM_GIVEN_NAME, "Susanne"),
                 ClaimToBeIssued(CLAIM_FAMILY_NAME, "Meier"),
-                ClaimToBeIssued(CLAIM_ALWAYS_VISIBLE, "anything", selectivelyDisclosable = false)
+                ClaimToBeIssued(CLAIM_ALWAYS_VISIBLE, "anything", selectivelyDisclosable = false),
+                nonsenseClaim()
             ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
 
-            val presentationRequest = CredentialPresentationRequest.PresentationExchangeRequest.forAttributeNames(
+            val presentationRequest = PresentationExchangeRequest.forAttributeNames(
                 "$['$CLAIM_GIVEN_NAME']",
                 "$['$CLAIM_FAMILY_NAME']",
                 "$.$CLAIM_ALWAYS_VISIBLE"
@@ -208,14 +246,11 @@ class AgentComplexSdJwtTest : FreeSpec({
             listOf(
                 ClaimToBeIssued(
                     CLAIM_ADDRESS, listOf(
-                        ClaimToBeIssued(
-                            CLAIM_ADDRESS_REGION,
-                            "Vienna",
-                            selectivelyDisclosable = false
-                        ),
+                        ClaimToBeIssued(CLAIM_ADDRESS_REGION, "Vienna", selectivelyDisclosable = false),
                         ClaimToBeIssued(CLAIM_ADDRESS_COUNTRY, "AT", selectivelyDisclosable = false)
                     )
                 ),
+                nonsenseClaim()
             ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
 
             val dcqlQuery = buildDCQLQuery(
@@ -249,6 +284,7 @@ class AgentComplexSdJwtTest : FreeSpec({
                         ClaimToBeIssued(CLAIM_ADDRESS_COUNTRY, "AT")
                     ), selectivelyDisclosable = false
                 ),
+                nonsenseClaim()
             ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
 
             val dcqlQuery = buildDCQLQuery(
@@ -283,6 +319,7 @@ class AgentComplexSdJwtTest : FreeSpec({
                         ClaimToBeIssued(CLAIM_ADDRESS_COUNTRY, "AT")
                     ),
                 ),
+                nonsenseClaim()
             ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
 
             val dcqlQuery = buildDCQLQuery(
@@ -308,10 +345,39 @@ class AgentComplexSdJwtTest : FreeSpec({
                 ?.jsonPrimitive?.content shouldBe "AT"
         }
 
+        "with claims in address recursively selectively disclosable, getting inner disclosures" {
+            listOf(
+                ClaimToBeIssued(
+                    CLAIM_ADDRESS,
+                    listOf(
+                        ClaimToBeIssued(CLAIM_ADDRESS_REGION, "Vienna"),
+                        ClaimToBeIssued(CLAIM_ADDRESS_COUNTRY, "AT")
+                    ),
+                ),
+                nonsenseClaim()
+            ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
+
+            val dcqlQuery = buildDCQLQuery(DCQLJsonClaimsQuery(path = DCQLClaimsPathPointer(CLAIM_ADDRESS)))
+
+            val vp = createPresentation(holder, challenge, dcqlQuery, verifierId)
+                .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
+
+            val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+
+            verified.disclosures.size shouldBe 3 // for address, region, country
+
+            verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
+                ?.jsonPrimitive?.content shouldBe "Vienna"
+            verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
+                ?.jsonPrimitive?.content shouldBe "AT"
+        }
+
         "with claims in address in dot-notation" {
             listOf(
                 ClaimToBeIssued("$CLAIM_ADDRESS.$CLAIM_ADDRESS_REGION", "Vienna"),
                 ClaimToBeIssued("$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY", "AT"),
+                nonsenseClaim()
             ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
 
             val dcqlQuery = buildDCQLQuery(
@@ -341,7 +407,8 @@ class AgentComplexSdJwtTest : FreeSpec({
             listOf(
                 ClaimToBeIssued(CLAIM_GIVEN_NAME, "Susanne"),
                 ClaimToBeIssued(CLAIM_FAMILY_NAME, "Meier"),
-                ClaimToBeIssued(CLAIM_ALWAYS_VISIBLE, "anything", selectivelyDisclosable = false)
+                ClaimToBeIssued(CLAIM_ALWAYS_VISIBLE, "anything", selectivelyDisclosable = false),
+                nonsenseClaim()
             ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
 
             val dcqlQuery = buildDCQLQuery(
@@ -373,6 +440,8 @@ class AgentComplexSdJwtTest : FreeSpec({
         }
     }
 })
+
+private fun nonsenseClaim(): ClaimToBeIssued = ClaimToBeIssued(uuid4().toString(), uuid4().toString())
 
 private suspend fun issueAndStoreCredential(
     holder: Holder,
@@ -409,7 +478,7 @@ private suspend fun createPresentation(
     verifierId: String,
 ) = holder.createDefaultPresentation(
     request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
-    credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(dcqlQuery),
+    credentialPresentationRequest = DCQLRequest(dcqlQuery),
 ).getOrThrow().let {
     it as PresentationResponseParameters.DCQLParameters
 }.verifiablePresentations.values.firstOrNull()

@@ -2,8 +2,6 @@ package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdAuthorizationDetails
-import at.asitplus.openid.OpenIdConstants.Errors.INVALID_DPOP_PROOF
-import at.asitplus.openid.OpenIdConstants.Errors.INVALID_TOKEN
 import at.asitplus.openid.OpenIdConstants.TOKEN_PREFIX_BEARER
 import at.asitplus.openid.OpenIdConstants.TOKEN_PREFIX_DPOP
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_BEARER
@@ -18,8 +16,8 @@ import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.oidvci.NonceService
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.Companion.InvalidToken
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidDpopProof
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
@@ -89,7 +87,7 @@ class JwtTokenVerificationService(
             )
         }
     } else {
-        throw OAuth2Exception(INVALID_TOKEN, "authorization header not valid: $authorizationHeader")
+        throw InvalidToken("authorization header not valid: $authorizationHeader")
     }
 
     private fun validateDpopJwt(
@@ -99,7 +97,7 @@ class JwtTokenVerificationService(
     ) {
         if (request?.dpop.isNullOrEmpty()) {
             Napier.w("validateDpopJwt: No dpop proof in header")
-            throw OAuth2Exception(INVALID_DPOP_PROOF, "no dpop proof")
+            throw InvalidDpopProof("no dpop proof")
         }
         val jwt = parseAndValidate(request.dpop)
         if (dpopTokenJwt.payload.confirmationClaim == null ||
@@ -107,22 +105,22 @@ class JwtTokenVerificationService(
             jwt.header.jsonWebKey!!.jwkThumbprintPlain != dpopTokenJwt.payload.confirmationClaim!!.jsonWebKeyThumbprint
         ) {
             Napier.w("validateDpopJwt: jwk not matching cnf.jkt")
-            throw OAuth2Exception(INVALID_DPOP_PROOF, "DPoP JWT JWK not matching cnf.jkt")
+            throw InvalidDpopProof("DPoP JWT JWK not matching cnf.jkt")
         }
         // Verify nonce, but where to get it?
         if (jwt.payload.httpTargetUrl != request.url) {
             Napier.w("validateDpopJwt: htu ${jwt.payload.httpTargetUrl} not matching requestUrl ${request.url}")
-            throw OAuth2Exception(INVALID_DPOP_PROOF, "DPoP JWT htu incorrect")
+            throw InvalidDpopProof("DPoP JWT htu incorrect")
         }
-        if (jwt.payload.httpMethod != request.method?.value?.uppercase()) {
+        if (jwt.payload.httpMethod != request.method.value.uppercase()) {
             Napier.w("validateDpopJwt: htm ${jwt.payload.httpMethod} not matching requestMethod ${request.method}")
-            throw OAuth2Exception(INVALID_DPOP_PROOF, "DPoP JWT htm incorrect")
+            throw InvalidDpopProof("DPoP JWT htm incorrect")
         }
         dpopToken?.let {
             val ath = dpopToken.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
             if (!jwt.payload.accessTokenHash.equals(ath)) {
                 Napier.w("validateDpopJwt: ath expected $ath, was ${jwt.payload.accessTokenHash}")
-                throw OAuth2Exception(INVALID_DPOP_PROOF, "DPoP JWT ath not correct")
+                throw InvalidDpopProof("DPoP JWT ath not correct")
             }
         }
     }
@@ -131,11 +129,11 @@ class JwtTokenVerificationService(
         JwsSigned.deserialize(JsonWebToken.serializer(), dpopHeader, vckJsonSerializer)
             .getOrElse {
                 Napier.w("parse: could not parse DPoP JWT", it)
-                throw OAuth2Exception(INVALID_DPOP_PROOF, "could not parse DPoP JWT", it)
+                throw InvalidDpopProof("could not parse DPoP JWT", it)
             }.also {
                 if (!verifierJwsService.verifyJwsObject(it)) {
                     Napier.w("parse: DPoP not verified")
-                    throw OAuth2Exception(INVALID_DPOP_PROOF, "DPoP JWT not verified")
+                    throw InvalidDpopProof("DPoP JWT not verified")
                 }
             }
 
@@ -147,31 +145,31 @@ class JwtTokenVerificationService(
             .deserialize<OpenId4VciAccessToken>(OpenId4VciAccessToken.serializer(), dpopToken, vckJsonSerializer)
             .getOrElse {
                 Napier.w("validateDpopToken: could not parse DPoP Token", it)
-                throw OAuth2Exception(INVALID_TOKEN, "could not parse DPoP Token", it)
+                throw InvalidToken("could not parse DPoP Token", it)
             }
         if (!verifierJwsService.verifyJws(jwt, issuerKey)) {
             Napier.w("validateDpopToken: DPoP not verified")
-            throw OAuth2Exception(INVALID_TOKEN, "DPoP Token not verified")
+            throw InvalidToken("DPoP Token not verified")
         }
         if (jwt.header.type != expectedType) {
             Napier.w("validateDpopToken: typ unexpected: ${jwt.header.type}")
-            throw OAuth2Exception(INVALID_TOKEN, "typ not valid: ${jwt.header.type}")
+            throw InvalidToken("typ not valid: ${jwt.header.type}")
         }
         if (jwt.payload.jwtId == null || !nonceService.verifyNonce(jwt.payload.jwtId!!)) {
             Napier.w("validateDpopToken: jti not known: ${jwt.payload.jwtId}")
-            throw OAuth2Exception(INVALID_TOKEN, "jti not valid: ${jwt.payload.jwtId}")
+            throw InvalidToken("jti not valid: ${jwt.payload.jwtId}")
         }
         if (jwt.payload.notBefore == null || jwt.payload.notBefore!! > (clock.now() + timeLeeway)) {
             Napier.w("validateDpopToken: nbf not valid: ${jwt.payload.notBefore}")
-            throw OAuth2Exception(INVALID_TOKEN, "nbf not valid: ${jwt.payload.notBefore}")
+            throw InvalidToken("nbf not valid: ${jwt.payload.notBefore}")
         }
         if (jwt.payload.expiration == null || jwt.payload.expiration!! < (clock.now() - timeLeeway)) {
             Napier.w("validateDpopToken: exp not valid: ${jwt.payload.expiration}")
-            throw OAuth2Exception(INVALID_TOKEN, "exp not valid: ${jwt.payload.expiration}")
+            throw InvalidToken("exp not valid: ${jwt.payload.expiration}")
         }
         if (jwt.payload.confirmationClaim == null) {
             Napier.w("validateDpopToken: no confirmation claim: $jwt")
-            throw OAuth2Exception(INVALID_TOKEN, "no confirmation claim")
+            throw InvalidToken("no confirmation claim")
         }
         return jwt
     }

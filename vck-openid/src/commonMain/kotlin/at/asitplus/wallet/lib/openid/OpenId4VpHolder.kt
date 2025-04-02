@@ -27,6 +27,7 @@ import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.MapStore
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
@@ -269,7 +270,7 @@ class OpenId4VpHolder(
         ?: issuer
         ?: clientJsonWebKeySet?.keys?.firstOrNull()
             ?.let { it.keyId ?: it.didEncoded ?: it.jwkThumbprint }
-        ?: throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST, "could not parse audience")
+        ?: throw InvalidRequest("could not parse audience")
             .also { Napier.w("Could not parse audience") }
 
     private suspend fun RelyingPartyMetadata.loadJsonWebKeySet() =

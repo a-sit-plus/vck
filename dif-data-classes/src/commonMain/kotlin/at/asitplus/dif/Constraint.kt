@@ -11,6 +11,7 @@ import kotlinx.serialization.Serializable
 data class Constraint(
     @SerialName("fields")
     val fields: Collection<ConstraintField>? = null,
+    /** Per ISO 18013-7, this shall be set to [RequirementEnum.REQUIRED] */
     @SerialName("limit_disclosure")
     val limitDisclosure: RequirementEnum? = null,
     @SerialName("statuses")

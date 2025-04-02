@@ -120,6 +120,7 @@ class TransactionDataInterop : FreeSpec({
             transactionData.shouldBeInstanceOf<QesAuthorization>()
             transactionData.documentDigests shouldNotBe emptyList<RqesDocumentDigestEntry>()
             transactionData.documentDigests.first().documentLocationMethod shouldNotBe null
+            @Suppress("DEPRECATION")
             transactionData.documentDigests.first().documentLocationMethod!!.documentAccessMode shouldBe RqesDocumentDigestEntry.DocumentLocationMethod.DocumentAccessMode.OTP
             transactionData.documentDigests.first().documentLocationMethod!!.oneTimePassword shouldNotBe null
         }

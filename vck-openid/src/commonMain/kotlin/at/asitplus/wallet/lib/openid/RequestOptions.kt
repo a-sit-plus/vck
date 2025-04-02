@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.dif.*
 import at.asitplus.jsonpath.core.NormalizedJsonPath
-import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
+import at.asitplus.jsonpath.core.NormalizedJsonPathSegment.NameSegment
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.OpenIdConstants
@@ -22,14 +22,10 @@ import io.ktor.http.quote
 typealias RequestedAttributes = Set<String>
 
 interface RequestOptions {
-    /**
-     * Requested credentials, should be at least one
-     */
+    /** Requested credentials, should be at least one. */
     val credentials: Set<RequestOptionsCredential>
 
-    /**
-     * Presentation mechanism to be used for requesting credentials
-     */
+    /** Presentation mechanism to be used for requesting credentials. */
     val presentationMechanism: PresentationMechanismEnum
 
     /**
@@ -53,9 +49,7 @@ interface RequestOptions {
      */
     val responseType: String
 
-    /**
-     * Opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
-     */
+    /** Opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]. */
     val state: String
 
     /**
@@ -73,6 +67,15 @@ interface RequestOptions {
     val isAnyDirectPost: Boolean
         get() = (responseMode == OpenIdConstants.ResponseMode.DirectPost) ||
                 (responseMode == OpenIdConstants.ResponseMode.DirectPostJwt)
+
+    val isSiop: Boolean
+        get() = responseType.contains(OpenIdConstants.ID_TOKEN)
+
+    val isDcql: Boolean
+        get() = presentationMechanism == PresentationMechanismEnum.DCQL
+
+    val isPresentationExchange
+        get() = presentationMechanism == PresentationMechanismEnum.PresentationExchange
 
     val transactionData: Set<TransactionData>?
 
@@ -131,7 +134,8 @@ data class OpenIdRequestOptions(
                     // TODO: how to properly handle non-required claims?
                     when (credential.representation) {
                         CredentialRepresentation.SD_JWT,
-                        CredentialRepresentation.PLAIN_JWT -> DCQLJsonClaimsQuery(
+                        CredentialRepresentation.PLAIN_JWT,
+                            -> DCQLJsonClaimsQuery(
                             path = DCQLClaimsPathPointer(attribute)
                         )
 
@@ -147,7 +151,7 @@ data class OpenIdRequestOptions(
                 }
 
                 DCQLCredentialQueryInstance(
-                    id = DCQLCredentialQueryIdentifier(uuid4().toString()),
+                    id = DCQLCredentialQueryIdentifier(credential.id),
                     format = format,
                     meta = meta,
                     claims = claims,
@@ -161,7 +165,7 @@ data class OpenIdRequestOptions(
         containerSdJwt: FormatContainerSdJwt,
     ): PresentationDefinition = PresentationDefinition(
         id = uuid4().toString(),
-        inputDescriptors = this.toInputDescriptor(containerJwt, containerSdJwt)
+        inputDescriptors = toInputDescriptor(containerJwt, containerSdJwt)
     )
 
     override fun toInputDescriptor(
@@ -177,13 +181,9 @@ data class OpenIdRequestOptions(
 }
 
 data class RequestOptionsCredential(
-    /**
-     * Credential type to request, or `null` to make no restrictions
-     */
+    /** Credential type to request, or `null` to make no restrictions. */
     val credentialScheme: ConstantIndex.CredentialScheme,
-    /**
-     * Required representation, see [ConstantIndex.CredentialRepresentation]
-     */
+    /** Required representation, see [ConstantIndex.CredentialRepresentation]. */
     val representation: CredentialRepresentation = CredentialRepresentation.PLAIN_JWT,
     /**
      * List of attributes that shall be requested explicitly (selective disclosure),
@@ -196,63 +196,56 @@ data class RequestOptionsCredential(
      * or `null` to make no restrictions
      */
     val requestedOptionalAttributes: RequestedAttributes? = null,
+    /** ID to be used in [DifInputDescriptor] or [QesInputDescriptor], or [DCQLCredentialQueryInstance] */
+    val id: String = uuid4().toString(),
 ) {
-    fun buildId() =
-        if (credentialScheme.isoDocType != null && representation == CredentialRepresentation.ISO_MDOC)
-            credentialScheme.isoDocType!! else uuid4().toString()
+    fun buildId() = if (isMdoc) credentialScheme.isoDocType!! else id
+
+    private val isMdoc: Boolean
+        get() = credentialScheme.isoDocType != null && representation == CredentialRepresentation.ISO_MDOC
 
     fun toConstraint() =
-        Constraint(fields = (requiredAttributes() + optionalAttributes() + toTypeConstraint()).filterNotNull())
+        Constraint(
+            limitDisclosure = if (isMdoc) RequirementEnum.REQUIRED else null,
+            fields = (requiredAttributes() + optionalAttributes() + toTypeConstraint()).filterNotNull().toSet()
+        )
 
-    private fun requiredAttributes() =
-        requestedAttributes?.createConstraints(representation, credentialScheme, false)?.toSet()
-            ?: setOf()
+    private fun requiredAttributes() = requestedAttributes?.createConstraints(credentialScheme, false)
+        ?: listOf()
 
-    private fun optionalAttributes() =
-        requestedOptionalAttributes?.createConstraints(representation, credentialScheme, true)
-            ?: listOf()
+    private fun optionalAttributes() = requestedOptionalAttributes?.createConstraints(credentialScheme, true)
+        ?: listOf()
 
     private fun toTypeConstraint() = when (representation) {
-        CredentialRepresentation.PLAIN_JWT -> this.credentialScheme.toVcConstraint()
-        CredentialRepresentation.SD_JWT -> this.credentialScheme.toSdJwtConstraint()
+        CredentialRepresentation.PLAIN_JWT -> credentialScheme.toVcConstraint()
+        CredentialRepresentation.SD_JWT -> credentialScheme.toSdJwtConstraint()
         CredentialRepresentation.ISO_MDOC -> null
     }
 
     fun toFormatHolder(containerJwt: FormatContainerJwt, containerSdJwt: FormatContainerSdJwt) =
         when (representation) {
             CredentialRepresentation.PLAIN_JWT -> FormatHolder(jwtVp = containerJwt)
-            CredentialRepresentation.SD_JWT -> FormatHolder(
-                jwtSd = containerSdJwt,
-                sdJwt = containerSdJwt
-            )
-
+            CredentialRepresentation.SD_JWT -> FormatHolder(jwtSd = containerSdJwt, sdJwt = containerSdJwt)
             CredentialRepresentation.ISO_MDOC -> FormatHolder(msoMdoc = containerJwt)
         }
 
     private fun RequestedAttributes.createConstraints(
-        representation: CredentialRepresentation,
-        credentialScheme: ConstantIndex.CredentialScheme?,
+        scheme: ConstantIndex.CredentialScheme?,
         optional: Boolean,
     ): Collection<ConstraintField> = map {
-        if (representation == CredentialRepresentation.ISO_MDOC)
-            credentialScheme.toConstraintField(it, optional)
-        else
-            ConstraintField(path = listOf("\$[${it.quote()}]"), optional = optional)
+        if (isMdoc) it.toIsoMdocConstraintField(scheme) else it.toJwtConstraintField(optional)
     }
 
-    private fun ConstantIndex.CredentialScheme?.toConstraintField(
-        attributeType: String,
-        optional: Boolean,
-    ) = ConstraintField(
-        path = listOf(
-            NormalizedJsonPath(
-                NormalizedJsonPathSegment.NameSegment(this?.isoNamespace ?: "mdoc"),
-                NormalizedJsonPathSegment.NameSegment(attributeType),
-            ).toString()
-        ),
-        intentToRetain = false,
-        optional = optional,
-    )
+    private fun String.toIsoMdocConstraintField(scheme: ConstantIndex.CredentialScheme?) =
+        ConstraintField(path = listOf(scheme.prefixWithIsoNamespace(this)), intentToRetain = false)
+
+    private fun String.toJwtConstraintField(optional: Boolean): ConstraintField =
+        ConstraintField(path = listOf("$[${quote()}]"), optional = optional)
+
+    private fun ConstantIndex.CredentialScheme?.prefixWithIsoNamespace(attribute: String): String = NormalizedJsonPath(
+        NameSegment(this?.isoNamespace ?: "mdoc"),
+        NameSegment(attribute),
+    ).toString()
 
     private fun ConstantIndex.CredentialScheme.toVcConstraint() = if (supportsVcJwt)
         ConstraintField(

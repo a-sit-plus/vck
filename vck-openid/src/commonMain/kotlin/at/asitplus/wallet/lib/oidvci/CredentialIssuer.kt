@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.*
-import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.openid.OpenIdConstants.KEY_ATTESTATION_JWT_TYPE
 import at.asitplus.openid.OpenIdConstants.PROOF_JWT_TYPE
 import at.asitplus.openid.OpenIdConstants.ProofType
@@ -17,17 +16,19 @@ import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
-import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
-import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.oauth2.RequestInfo
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.Companion.InvalidToken
-import com.benasher44.uuid.uuid4
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.CredentialRequestDenied
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidNonce
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidProof
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.UnsupportedCredentialType
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Clock.System
@@ -135,53 +136,6 @@ class CredentialIssuer(
     }
 
     /**
-     * Offer all [credentialSchemes] to clients.
-     *
-     * Callers need to encode this in [CredentialOfferUrlParameters], and offer the resulting URL to clients,
-     * i.e. by displaying a QR Code that can be scanned with wallet apps.
-     */
-    @Deprecated(
-        "Moved to authorization server",
-        ReplaceWith("authorizationService.credentialOfferWithAuthorizationCode(publicContext)")
-    )
-    suspend fun credentialOfferWithAuthorizationCode(): CredentialOffer = CredentialOffer(
-        credentialIssuer = publicContext,
-        configurationIds = credentialSchemes.flatMap { it.toCredentialIdentifier() },
-        grants = CredentialOfferGrants(
-            authorizationCode = CredentialOfferGrantsAuthCode(
-                issuerState = uuid4().toString(),
-                authorizationServer = authorizationService.publicContext
-            ),
-        )
-    )
-
-    /**
-     * Offer all [credentialSchemes] to clients.
-     *
-     * Callers need to encode this in [CredentialOfferUrlParameters], and offer the resulting URL to clients,
-     * i.e. by displaying a QR Code that can be scanned with wallet apps.
-     *
-     * @param user used to create the credential when the wallet app requests the credential
-     */
-    @Suppress("DEPRECATION")
-    @Deprecated(
-        "Moved to authorization server",
-        ReplaceWith("authorizationService.credentialOfferWithPreAuthnForUser(user, publicContext)")
-    )
-    suspend fun credentialOfferWithPreAuthnForUser(
-        user: OidcUserInfoExtended,
-    ): CredentialOffer = CredentialOffer(
-        credentialIssuer = publicContext,
-        configurationIds = credentialSchemes.flatMap { it.toCredentialIdentifier() },
-        grants = CredentialOfferGrants(
-            preAuthorizedCode = CredentialOfferGrantsPreAuthCode(
-                preAuthorizedCode = authorizationService.providePreAuthorizedCode(user),
-                authorizationServer = authorizationService.publicContext
-            )
-        )
-    )
-
-    /**
      * Provides a fresh nonce to the clients, for incorporating them into the credential proofs.
      *
      * Requests from the client are HTTP POST.
@@ -215,11 +169,10 @@ class CredentialIssuer(
         val userInfo =
             getUserInfo(authorizationHeader, params.credentialIdentifier, params.credentialConfigurationId, request)
 
-        val (credentialScheme, representation) = params.format?.let { params.extractCredentialScheme(it) }
-            ?: params.credentialIdentifier?.let { decodeFromCredentialIdentifier(it) }
+        val (credentialScheme, representation) = params.credentialIdentifier?.let { decodeFromCredentialIdentifier(it) }
             ?: params.credentialConfigurationId?.let { extractFromCredentialConfigurationId(it) }
-            ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "credential scheme not known")
-                .also { Napier.w("credential: client did not provide correct credential scheme: $params") }
+            ?: throw UnsupportedCredentialType("credential scheme not known")
+                .also { Napier.w("credential: client did request unknown credential scheme: $params") }
 
         val issuedCredentials = validateProofExtractSubjectPublicKeys(params).map { subjectPublicKey ->
             val credentialToBeIssued = credentialProvider.getCredential(
@@ -229,13 +182,13 @@ class CredentialIssuer(
                 representation = representation.toRepresentation(),
                 claimNames = null // OID4VCI: Always issue all claims that are available
             ).getOrElse {
-                throw OAuth2Exception(Errors.INVALID_REQUEST, it)
-                    .also { Napier.w("credential: did not get any credential from provideUserInfo", it) }
+                throw CredentialRequestDenied("No credential from provider", it)
+                    .also { Napier.w("credential: did not get any credential from credentialProvider", it) }
             }
             issuer.issueCredential(
                 credential = credentialToBeIssued
             ).getOrElse {
-                throw OAuth2Exception(Errors.INVALID_REQUEST, it)
+                throw CredentialRequestDenied("No credential from issuer", it)
                     .also { Napier.w("credential: issuer did not issue credential", it) }
             }
         }
@@ -298,7 +251,7 @@ class CredentialIssuer(
     private suspend fun validateProofExtractSubjectPublicKeys(params: CredentialRequestParameters): Collection<CryptoPublicKey> =
         params.proof?.validateProof()
             ?: params.proofs?.validateProof()
-            ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "invalid proof")
+            ?: throw InvalidRequest("invalid proof")
                 .also { Napier.w("credential: client did not provide proof of possession in $params") }
 
     private suspend fun CredentialRequestProof.validateProof() = when (proofType) {
@@ -316,22 +269,22 @@ class CredentialIssuer(
     private suspend fun JwsSigned<JsonWebToken>.validateJwtProof(): Collection<CryptoPublicKey> {
         if (header.type != PROOF_JWT_TYPE) {
             Napier.w("validateJwtProof: invalid typ: $header")
-            throw OAuth2Exception(Errors.INVALID_PROOF, "invalid typ: ${header.type}")
+            throw InvalidProof("invalid typ: ${header.type}")
         }
 
         if (payload.nonce == null || !clientNonceService.verifyNonce(payload.nonce!!)) {
             Napier.w("validateJwtProof: invalid nonce: ${payload.nonce}")
-            throw OAuth2Exception(Errors.INVALID_NONCE, "invalid nonce: ${payload.nonce}")
+            throw InvalidNonce("invalid nonce: ${payload.nonce}")
         }
 
         if (payload.audience == null || payload.audience != publicContext) {
             Napier.w("validateJwtProof: invalid audience: ${payload.audience}")
-            throw OAuth2Exception(Errors.INVALID_PROOF, "invalid audience: ${payload.audience}")
+            throw InvalidProof("invalid audience: ${payload.audience}")
         }
 
         if (!verifierJwsService.verifyJwsObject(this)) {
             Napier.w("validateJwtProof: invalid signature: $this")
-            throw OAuth2Exception(Errors.INVALID_PROOF, "invalid signature: $this")
+            throw InvalidProof("invalid signature: $this")
         }
         // OID4VCI 8.2.1.1: The Credential Issuer SHOULD issue a Credential for each cryptographic public key specified
         // in the attested_keys claim within the key_attestation parameter.
@@ -339,7 +292,7 @@ class CredentialIssuer(
 
         val headerPublicKey = header.publicKey ?: run {
             Napier.w("validateJwtProof: No valid key in header: $header")
-            throw OAuth2Exception(Errors.INVALID_PROOF, "could not extract public key")
+            throw InvalidProof("could not extract public key")
         }
 
         return additionalKeys + headerPublicKey
@@ -352,25 +305,25 @@ class CredentialIssuer(
     private suspend fun JwsSigned<KeyAttestationJwt>.validateAttestationProof(): Collection<CryptoPublicKey> {
         if (header.type != KEY_ATTESTATION_JWT_TYPE) {
             Napier.w("validateAttestationProof: invalid typ: $header")
-            throw OAuth2Exception(Errors.INVALID_PROOF, "invalid typ: ${header.type}")
+            throw InvalidProof("invalid typ: ${header.type}")
         }
         if (payload.nonce == null || !clientNonceService.verifyNonce(payload.nonce!!)) {
             Napier.w("validateAttestationProof: invalid nonce: ${payload.nonce}")
-            throw OAuth2Exception(Errors.INVALID_NONCE, "invalid nonce: ${payload.nonce}")
+            throw InvalidNonce("invalid nonce: ${payload.nonce}")
         }
         if (payload.issuedAt > (clock.now() + timeLeeway)) {
             Napier.w("validateAttestationProof: issuedAt in future: ${payload.issuedAt}")
-            throw OAuth2Exception(Errors.INVALID_PROOF, "issuedAt in future: ${payload.issuedAt}")
+            throw InvalidProof("issuedAt in future: ${payload.issuedAt}")
         }
 
         if (payload.expiration != null && payload.expiration!! < (clock.now() - timeLeeway)) {
             Napier.w("validateAttestationProof: expiration in past: ${payload.expiration}")
-            throw OAuth2Exception(Errors.INVALID_PROOF, "expiration in past: ${payload.expiration}")
+            throw InvalidProof("expiration in past: ${payload.expiration}")
         }
 
         if (!verifyAttestationProof.invoke(this)) {
             Napier.w("validateAttestationProof: Key attestation not verified by callback: $this")
-            throw OAuth2Exception(Errors.INVALID_PROOF, "key attestation not verified: $this")
+            throw InvalidProof("key attestation not verified: $this")
         }
         return payload.attestedKeys.mapNotNull {
             it.toCryptoPublicKey()
@@ -383,23 +336,6 @@ class CredentialIssuer(
         supportedCredentialConfigurations[credentialConfigurationId]?.let {
             decodeFromCredentialIdentifier(credentialConfigurationId)
         }
-}
-
-@Suppress("DEPRECATION")
-private fun CredentialRequestParameters.extractCredentialScheme(format: CredentialFormatEnum) = when (format) {
-    CredentialFormatEnum.JWT_VC -> credentialDefinition?.types?.firstOrNull { it != VERIFIABLE_CREDENTIAL }
-        ?.let { AttributeIndex.resolveAttributeType(it) }
-        ?.let { it to CredentialFormatEnum.JWT_VC }
-
-    CredentialFormatEnum.VC_SD_JWT,
-    CredentialFormatEnum.DC_SD_JWT,
-        -> sdJwtVcType?.let { AttributeIndex.resolveSdJwtAttributeType(it) }
-        ?.let { it to CredentialFormatEnum.DC_SD_JWT }
-
-    CredentialFormatEnum.MSO_MDOC -> docType?.let { AttributeIndex.resolveIsoDoctype(it) }
-        ?.let { it to CredentialFormatEnum.MSO_MDOC }
-
-    else -> null
 }
 
 fun interface CredentialIssuerDataProvider {

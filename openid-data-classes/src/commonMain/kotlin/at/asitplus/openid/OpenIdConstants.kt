@@ -333,77 +333,48 @@ object OpenIdConstants {
      * Error codes for OAuth2 responses
      */
     object Errors {
-        /**
-         * Invalid (or already used) authorization code: `invalid_code`
-         */
+        /** Invalid (or already used) authorization code: `invalid_code`.*/
         const val INVALID_CODE = "invalid_code"
 
-        /**
-         * Invalid access token: `invalid_token`
-         */
+        /** Invalid access token: `invalid_token`. */
         const val INVALID_TOKEN = "invalid_token"
 
-        /**
-         * Invalid DPoP proof (RFC 9449): `invalid_dpop_proof`
-         */
+        /** Invalid DPoP proof (RFC 9449): `invalid_dpop_proof`.*/
         const val INVALID_DPOP_PROOF = "invalid_dpop_proof"
 
-        /**
-         * Invalid request in general: `invalid_request`
-         */
+        /** Invalid request in general: `invalid_request`. */
         const val INVALID_REQUEST = "invalid_request"
 
-        /**
-         * Invalid client, e.g. missing client authentication: `invalid_client`
-         */
+        /** Invalid client, e.g. missing client authentication: `invalid_client`. */
         const val INVALID_CLIENT = "invalid_client"
 
-        /**
-         * The requested scope is invalid, unknown, or malformed: `invalid_scope`
-         */
+        /** The requested scope is invalid, unknown, or malformed: `invalid_scope`. */
         const val INVALID_SCOPE = "invalid_scope"
 
-        /**
-         * Invalid grant: `invalid_grant`
-         */
+        /** Invalid grant: `invalid_grant`. */
         const val INVALID_GRANT = "invalid_grant"
 
-        /**
-         * Invalid or missing proofs in OpenId4VCI: `invalid_or_missing_proof`
-         */
-        const val INVALID_PROOF = "invalid_or_missing_proof"
+        /** OpenID4VP: Wallet did not have requested credentials: `access_denied */
+        const val ACCESS_DENIED = "access_denied"
 
-        /**
-         * Invalid client nonce in OpenId4VCI: `invalid_nonce`
-         */
+        /** Invalid proofs in OpenID4VCI: `invalid_proof`. */
+        const val INVALID_PROOF = "invalid_proof"
+
+        /** Unsupported credential type in OpenID4VCI: `unsupported_credential_type`. */
+        const val UNSUPPORTED_CREDENTIAL_TYPE = "unsupported_credential_type"
+
+        /** Credential request denied in OpenID4VCI: `credential_request_denied`. */
+        const val CREDENTIAL_REQUEST_DENIED = "credential_request_denied"
+
+        /** Invalid client nonce in OpenID4VCI: `invalid_nonce`. */
         const val INVALID_NONCE = "invalid_nonce"
 
-        /**
-         * OIDC SIOPv2: End-User cancelled the Authorization Request from the RP.
-         */
+        /** SIOPv2: End-User cancelled the Authorization Request from the RP. */
         const val USER_CANCELLED = "user_cancelled"
 
-        /**
-         * OIDC SIOPv2: Self-Issued OP does not support some Relying Party parameter values received in the request.
-         */
+        /** SIOPv2: Self-Issued OP does not support some Relying Party parameter values received in the request. */
         const val REGISTRATION_VALUE_NOT_SUPPORTED = "registration_value_not_supported"
 
-        /**
-         * OIDC SIOPv2: Self-Issued OP does not support any of the Subject Syntax Types supported by the RP, which were
-         * communicated in the request in the `subject_syntax_types_supported` parameter.
-         */
-        const val SUBJECT_SYNTAX_TYPES_NOT_SUPPORTED = "subject_syntax_types_not_supported"
-
-        /**
-         * OIDC SIOPv2: the `client_metadata_uri` in the Self-Issued OpenID Provider request returns an error or
-         * contains invalid data.
-         */
-        const val INVALID_REGISTRATION_URI = "invalid_registration_uri"
-
-        /**
-         * OIDC SIOPv2: the `client_metadata` parameter contains an invalid RP parameter Object.
-         */
-        const val INVALID_REGISTRATION_OBJECT = "invalid_registration_object"
     }
 
 }

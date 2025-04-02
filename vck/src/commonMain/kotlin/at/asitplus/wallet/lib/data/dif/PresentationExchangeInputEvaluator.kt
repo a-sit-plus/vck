@@ -10,6 +10,9 @@ import at.asitplus.openid.CredentialFormatEnum
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.json.*
 
+@Deprecated("Renamed", ReplaceWith("PresentationExchangeInputEvaluator"))
+typealias InputEvaluator = PresentationExchangeInputEvaluator
+
 /**
  * Specification: https://identity.foundation/presentation-exchange/spec/v2.0.0/#input-evaluation
  */
@@ -23,6 +26,7 @@ object PresentationExchangeInputEvaluator {
         pathAuthorizationValidator: (NormalizedJsonPath) -> Boolean,
     ): KmmResult<Map<ConstraintField, NodeList>> = runCatching {
         (inputDescriptor.format ?: fallbackFormatHolder)?.let { formatHolder ->
+            @Suppress("DEPRECATION")
             val supportedFormats = listOf(
                 formatHolder.jwtVp to CredentialFormatEnum.JWT_VC,
                 formatHolder.jwtSd to CredentialFormatEnum.DC_SD_JWT,
@@ -35,10 +39,7 @@ object PresentationExchangeInputEvaluator {
             }
             if (credentialFormat !in supportedFormats) {
                 Napier.d("Credential format `$credentialFormat` is not supported by the relying party.")
-                throw InvalidCredentialFormatException(
-                    format = credentialFormat,
-                    expected = supportedFormats,
-                )
+                throw InvalidCredentialFormatException(credentialFormat, supportedFormats)
             }
         }
 
@@ -48,10 +49,7 @@ object PresentationExchangeInputEvaluator {
         }?.let { requiredCredentialScheme ->
             if (requiredCredentialScheme != credentialScheme) {
                 Napier.d("Credential scheme `$credentialScheme` is not supported by the relying party.")
-                throw InvalidCredentialSchemeException(
-                    scheme = credentialScheme,
-                    expected = setOf(requiredCredentialScheme)
-                )
+                throw InvalidCredentialSchemeException(credentialScheme, setOf(requiredCredentialScheme))
             }
         }
 

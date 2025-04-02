@@ -107,23 +107,6 @@ data class SupportedCredentialFormat private constructor(
     @SerialName("display")
     val display: Set<DisplayProperties>? = null,
 ) {
-    @Suppress("DEPRECATION")
-    @Deprecated("Removed in OID4VCI draft 15", ReplaceWith("claimDescription"))
-    val isoClaims: Map<String, Map<String, RequestedCredentialClaimSpecification>>?
-        get() = claims?.let {
-            runCatching {
-                odcJsonSerializer.decodeFromJsonElement<Map<String, Map<String, RequestedCredentialClaimSpecification>>>(it)
-            }.getOrNull()
-        }
-
-    @Suppress("DEPRECATION")
-    @Deprecated("Removed in OID4VCI draft 15", ReplaceWith("claimDescription"))
-    val sdJwtClaims: Map<String, RequestedCredentialClaimSpecification>?
-        get() = claims?.let {
-            runCatching {
-                odcJsonSerializer.decodeFromJsonElement<Map<String, RequestedCredentialClaimSpecification>>(it)
-            }.getOrNull()
-        }
 
     val claimDescription: Set<ClaimDescription>?
         get() = claims?.let {

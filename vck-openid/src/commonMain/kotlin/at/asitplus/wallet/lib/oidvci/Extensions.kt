@@ -3,8 +3,20 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_COSE_KEY
 import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_JWK
+import at.asitplus.openid.OpenIdConstants.Errors.ACCESS_DENIED
+import at.asitplus.openid.OpenIdConstants.Errors.CREDENTIAL_REQUEST_DENIED
+import at.asitplus.openid.OpenIdConstants.Errors.INVALID_CLIENT
+import at.asitplus.openid.OpenIdConstants.Errors.INVALID_CODE
+import at.asitplus.openid.OpenIdConstants.Errors.INVALID_DPOP_PROOF
+import at.asitplus.openid.OpenIdConstants.Errors.INVALID_GRANT
+import at.asitplus.openid.OpenIdConstants.Errors.INVALID_NONCE
+import at.asitplus.openid.OpenIdConstants.Errors.INVALID_PROOF
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_REQUEST
+import at.asitplus.openid.OpenIdConstants.Errors.INVALID_SCOPE
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_TOKEN
+import at.asitplus.openid.OpenIdConstants.Errors.REGISTRATION_VALUE_NOT_SUPPORTED
+import at.asitplus.openid.OpenIdConstants.Errors.UNSUPPORTED_CREDENTIAL_TYPE
+import at.asitplus.openid.OpenIdConstants.Errors.USER_CANCELLED
 import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -90,11 +102,9 @@ fun CredentialScheme.toCredentialIdentifier() = listOfNotNull(
     if (supportsSdJwt) encodeToCredentialIdentifier(sdJwtType!!, CredentialFormatEnum.VC_SD_JWT) else null
 )
 
-@Suppress("DEPRECATION")
-// TODO In 5.4.0, use DC_SD_JWT instead of VC_SD_JWT
-fun CredentialRepresentation.toFormat(): CredentialFormatEnum? = when (this) {
+fun CredentialRepresentation.toFormat(): CredentialFormatEnum = when (this) {
     CredentialRepresentation.PLAIN_JWT -> CredentialFormatEnum.JWT_VC
-    CredentialRepresentation.SD_JWT -> CredentialFormatEnum.VC_SD_JWT
+    CredentialRepresentation.SD_JWT -> CredentialFormatEnum.DC_SD_JWT
     CredentialRepresentation.ISO_MDOC -> CredentialFormatEnum.MSO_MDOC
 }
 
@@ -150,27 +160,18 @@ fun CredentialFormatEnum.toRepresentation() = when (this) {
 /**
  * @param transformer may be used to encrypt the credentials before serializing
  */
-@Suppress("DEPRECATION")
-// TODO In 5.4.0, use DC_SD_JWT instead of VC_SD_JWT
-// TODO After 5.5.0, drop "credential", use only "credentials"
 suspend fun Issuer.IssuedCredential.toCredentialResponseParameters(
     transformer: (suspend (String) -> String) = { it },
 ) = when (this) {
     is Issuer.IssuedCredential.Iso -> CredentialResponseParameters(
-        format = CredentialFormatEnum.MSO_MDOC,
-        credential = transformer(toBase64UrlStrict()),
         credentials = setOf(toCredentialResponseSingleCredential(transformer)),
     )
 
     is Issuer.IssuedCredential.VcJwt -> CredentialResponseParameters(
-        format = CredentialFormatEnum.JWT_VC,
-        credential = transformer(vcJws),
         credentials = setOf(toCredentialResponseSingleCredential(transformer)),
     )
 
     is Issuer.IssuedCredential.VcSdJwt -> CredentialResponseParameters(
-        format = CredentialFormatEnum.VC_SD_JWT,
-        credential = transformer(vcSdJwt),
         credentials = setOf(toCredentialResponseSingleCredential(transformer)),
     )
 }
@@ -207,14 +208,32 @@ suspend fun Issuer.IssuedCredential.toCredentialResponseSingleCredential(
 private fun Issuer.IssuedCredential.Iso.toBase64UrlStrict(): String =
     issuerSigned.serialize().encodeToString(Base64UrlStrict)
 
-class OAuth2Exception : Throwable {
-    constructor(error: String, errorDescription: String, cause: Throwable) : super("$error: $errorDescription", cause)
+sealed class OAuth2Exception : Throwable {
+    constructor(error: String, errorDescription: String, cause: Throwable?) : super("$error: $errorDescription", cause)
     constructor(error: String, errorDescription: String) : super("$error: $errorDescription")
-    constructor(error: String, cause: Throwable) : super(error, cause)
-    companion object {
-        fun InvalidRequest(message: String) = OAuth2Exception(INVALID_REQUEST, message)
-        fun InvalidToken(message: String) = OAuth2Exception(INVALID_TOKEN, message)
-    }
+    constructor(error: String, cause: Throwable?) : super(error, cause)
+
+    class InvalidRequest(message: String, cause: Throwable? = null) : OAuth2Exception(INVALID_REQUEST, message, cause)
+    class InvalidClient(message: String, cause: Throwable? = null) : OAuth2Exception(INVALID_CLIENT, message, cause)
+    class InvalidScope(message: String, cause: Throwable? = null) : OAuth2Exception(INVALID_SCOPE, message, cause)
+    class InvalidGrant(message: String, cause: Throwable? = null) : OAuth2Exception(INVALID_GRANT, message, cause)
+    class InvalidCode(message: String, cause: Throwable? = null) : OAuth2Exception(INVALID_CODE, message, cause)
+    class InvalidToken(message: String, cause: Throwable? = null) : OAuth2Exception(INVALID_TOKEN, message, cause)
+    class InvalidProof(message: String, cause: Throwable? = null) : OAuth2Exception(INVALID_PROOF, message, cause)
+    class UserCancelled(message: String, cause: Throwable? = null) : OAuth2Exception(USER_CANCELLED, message, cause)
+    class InvalidDpopProof(message: String, cause: Throwable? = null) :
+        OAuth2Exception(INVALID_DPOP_PROOF, message, cause)
+
+    class UnsupportedCredentialType(message: String, cause: Throwable? = null) :
+        OAuth2Exception(UNSUPPORTED_CREDENTIAL_TYPE, message, cause)
+
+    class CredentialRequestDenied(message: String, cause: Throwable? = null) :
+        OAuth2Exception(CREDENTIAL_REQUEST_DENIED, message, cause)
+
+    class InvalidNonce(message: String, cause: Throwable? = null) : OAuth2Exception(INVALID_NONCE, message, cause)
+    class AccessDenied(message: String, cause: Throwable? = null) : OAuth2Exception(ACCESS_DENIED, message, cause)
+    class RegistrationValueNotSupported(message: String, cause: Throwable? = null) :
+        OAuth2Exception(REGISTRATION_VALUE_NOT_SUPPORTED, message, cause)
 }
 
 

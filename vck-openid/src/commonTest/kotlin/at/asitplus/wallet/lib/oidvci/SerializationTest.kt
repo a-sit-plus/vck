@@ -57,7 +57,8 @@ class SerializationTest : FunSpec({
     )
 
     fun createCredentialRequest() = CredentialRequestParameters(
-        format = CredentialFormatEnum.JWT_VC,
+        credentialIdentifier = randomString(),
+        credentialConfigurationId = randomString(),
         credentialDefinition = SupportedCredentialFormatDefinition(
             types = setOf(randomString(), randomString()),
         ),
@@ -68,7 +69,6 @@ class SerializationTest : FunSpec({
     )
 
     fun createCredentialResponse() = CredentialResponseParameters(
-        format = CredentialFormatEnum.JWT_VC,
         credentials = setOf(CredentialResponseSingleCredential(JsonPrimitive(randomString()))),
         acceptanceToken = randomString(),
         clientNonce = randomString(),
@@ -143,7 +143,6 @@ class SerializationTest : FunSpec({
 
         val json = vckJsonSerializer.encodeToString(params)
 
-        json shouldContain "\"format\":"
         val parsed = vckJsonSerializer.decodeFromString<CredentialResponseParameters>(json)
         parsed shouldBe params
     }

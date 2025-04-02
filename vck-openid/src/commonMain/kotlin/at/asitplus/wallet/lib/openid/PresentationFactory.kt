@@ -6,46 +6,30 @@ import at.asitplus.dif.ClaimFormat
 import at.asitplus.dif.FormatHolder
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.jsonpath.JsonPath
-import at.asitplus.openid.IdToken
-import at.asitplus.openid.OpenIdConstants
-import at.asitplus.openid.OpenIdConstants.Errors
+import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
-import at.asitplus.openid.RelyingPartyMetadata
-import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.RequestParametersFrom
-import at.asitplus.openid.TransactionData
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64Strict
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.wallet.lib.agent.CreatePresentationResult
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.PresentationException
-import at.asitplus.wallet.lib.agent.PresentationExchangeCredentialDisclosure
-import at.asitplus.wallet.lib.agent.PresentationRequestParameters
-import at.asitplus.wallet.lib.agent.PresentationResponseParameters
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.CoseService
-import at.asitplus.wallet.lib.data.Base64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.iso.ClientIdToHash
-import at.asitplus.wallet.lib.iso.DeviceAuthentication
-import at.asitplus.wallet.lib.iso.DeviceNameSpaces
-import at.asitplus.wallet.lib.iso.OID4VPHandover
-import at.asitplus.wallet.lib.iso.ResponseUriToHash
-import at.asitplus.wallet.lib.iso.SessionTranscript
-import at.asitplus.wallet.lib.iso.sha256
-import at.asitplus.wallet.lib.iso.wrapInCborTag
+import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.serialization.PolymorphicSerializer
@@ -90,7 +74,7 @@ internal class PresentationFactory(
             credentialPresentation = credentialPresentation,
         ).getOrElse {
             Napier.w("Could not create presentation", it)
-            throw OAuth2Exception(Errors.USER_CANCELLED, it)
+            throw AccessDenied("Could not create presentation", it)
         }.also { presentation ->
             clientMetadata?.vpFormats?.let {
                 when (presentation) {
@@ -142,7 +126,7 @@ internal class PresentationFactory(
         val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
         // if it's not encrypted, we have no way of transporting the mdocGeneratedNonce, so we'll use the empty string
         val mdocGeneratedNonce = if (responseWillBeEncrypted)
-            Random.Default.nextBytes(16).encodeToString(Base64Strict) else ""
+            Random.Default.nextBytes(16).encodeToString(Base64UrlStrict) else ""
         val clientIdToHash = ClientIdToHash(
             clientId = clientId,
             mdocGeneratedNonce = mdocGeneratedNonce
@@ -200,7 +184,7 @@ internal class PresentationFactory(
         }
         val nonce = request.parameters.nonce ?: run {
             Napier.w("nonce is null in ${request.parameters}")
-            throw OAuth2Exception(Errors.INVALID_REQUEST, "nonce is null")
+            throw InvalidRequest("nonce is null")
         }
         val now = clock.now()
         // we'll assume jwk-thumbprint
@@ -223,7 +207,7 @@ internal class PresentationFactory(
             addX5c = false
         ).getOrElse {
             Napier.w("Could not sign id_token", it)
-            throw OAuth2Exception(Errors.USER_CANCELLED, it)
+            throw AccessDenied("Could not sign id_token", it)
         }
     }
 
@@ -231,7 +215,7 @@ internal class PresentationFactory(
     private fun RequestParameters.verifyResponseType() {
         if (responseType == null || !responseType!!.contains(VP_TOKEN)) {
             Napier.w("vp_token not requested in response_type='$responseType'")
-            throw OAuth2Exception(Errors.INVALID_REQUEST, "response_type invalid")
+            throw InvalidRequest("response_type invalid")
         }
     }
 
@@ -244,14 +228,14 @@ internal class PresentationFactory(
         val validator = PresentationSubmissionValidator.createInstance(this).getOrThrow()
         if (!validator.isValidSubmission(credentialSubmissions.keys)) {
             Napier.w("submission requirements are not satisfied")
-            throw OAuth2Exception(Errors.USER_CANCELLED, "submission requirements not satisfied")
+            throw UserCancelled("submission requirements not satisfied")
         }
 
         // making sure, that all the submissions actually match the corresponding input descriptor requirements
         credentialSubmissions.forEach { submission ->
             val inputDescriptor = this.inputDescriptors.firstOrNull { it.id == submission.key } ?: run {
                 Napier.w("Invalid input descriptor id: ${submission.key}")
-                throw OAuth2Exception(Errors.USER_CANCELLED, "invalid input_descriptor_id")
+                throw UserCancelled("invalid input_descriptor_id")
             }
 
             val constraintFieldMatches = holder.evaluateInputDescriptorAgainstCredential(
@@ -274,7 +258,7 @@ internal class PresentationFactory(
                 disclosedAttributes.firstOrNull { allowedPaths.contains(it) } ?: run {
                     val keyId = constraintField.key.id?.let { " Missing field: $it" }
                     Napier.w("Input descriptor constraints not satisfied: ${inputDescriptor.id}.$keyId")
-                    throw OAuth2Exception(Errors.USER_CANCELLED, "constraints not satisfied")
+                    throw UserCancelled("constraints not satisfied")
                 }
             }
             // TODO: maybe we also want to validate, whether there are any redundant disclosed attributes?
@@ -289,23 +273,25 @@ internal class PresentationFactory(
         presentationSubmission.descriptorMap?.mapIndexed { _, descriptor ->
             if (supportedFormats.isMissingFormatSupport(descriptor.format)) {
                 Napier.w("Incompatible JWT algorithms for claim format ${descriptor.format}: $supportedFormats")
-                throw OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED, "incompatible algorithms")
+                throw RegistrationValueNotSupported("incompatible algorithms")
             }
         }
 
     @Throws(OAuth2Exception::class)
     private fun PresentationResponseParameters.DCQLParameters.verifyFormatSupport(supportedFormats: FormatHolder) =
         verifiablePresentations.entries.mapIndexed { _, descriptor ->
-            val format = when (verifiablePresentations.entries.first().value) {
-                is CreatePresentationResult.DeviceResponse -> ClaimFormat.MSO_MDOC
-                is CreatePresentationResult.SdJwt -> ClaimFormat.SD_JWT
-                is CreatePresentationResult.Signed -> ClaimFormat.JWT_VP
-            }
+            val format = this.verifiablePresentations.entries.first().value.toFormat()
             if (supportedFormats.isMissingFormatSupport(format)) {
                 Napier.w("Incompatible JWT algorithms for claim format $format: $supportedFormats")
-                throw OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED, "incompatible algorithms")
+                throw RegistrationValueNotSupported("incompatible algorithms")
             }
         }
+
+    private fun CreatePresentationResult.toFormat(): ClaimFormat = when (this) {
+        is CreatePresentationResult.DeviceResponse -> ClaimFormat.MSO_MDOC
+        is CreatePresentationResult.SdJwt -> ClaimFormat.SD_JWT
+        is CreatePresentationResult.Signed -> ClaimFormat.JWT_VP
+    }
 
     @Suppress("DEPRECATION")
     private fun FormatHolder.isMissingFormatSupport(claimFormat: ClaimFormat): Boolean {

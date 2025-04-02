@@ -1,18 +1,20 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.*
-import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.openid.OpenIdConstants.ResponseMode.*
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.JwkType
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.encodeToString
 import kotlin.coroutines.cancellation.CancellationException
@@ -40,7 +42,7 @@ internal class AuthenticationResponseFactory(
     ): AuthenticationResponseResult.Post {
         val url = request.parameters.responseUrl
             ?: request.parameters.redirectUrlExtracted
-            ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "no response_uri or redirect_uri")
+            ?: throw InvalidRequest("no response_uri or redirect_uri")
         val responseSerialized = buildJarm(request, response)
         val jarm = AuthenticationResponseParameters(
             response = responseSerialized,
@@ -55,7 +57,7 @@ internal class AuthenticationResponseFactory(
     ): AuthenticationResponseResult.Post {
         val url = request.parameters.responseUrl
             ?: request.parameters.redirectUrlExtracted
-            ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "no response_uri or redirect_uri")
+            ?: throw InvalidRequest("no response_uri or redirect_uri")
         return AuthenticationResponseResult.Post(url, response.params.encodeToParameters())
     }
 
@@ -70,7 +72,7 @@ internal class AuthenticationResponseFactory(
                     this.parameters.append(it.key, it.value)
                 }
             }.buildString()
-        } ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "no redirect_uri")
+        } ?: throw InvalidRequest("no redirect_uri")
 
         return AuthenticationResponseResult.Redirect(url, response.params)
     }
@@ -87,7 +89,7 @@ internal class AuthenticationResponseFactory(
             URLBuilder(redirectUrl).apply {
                 encodedFragment = response.params.encodeToParameters().formUrlEncode()
             }.buildString()
-        } ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "no redirect_uri")
+        } ?: throw InvalidRequest("no redirect_uri")
         return AuthenticationResponseResult.Redirect(url, response.params)
     }
 
@@ -113,7 +115,9 @@ internal class AuthenticationResponseFactory(
             addX5c = false
         ).map { it.serialize() }.getOrElse {
             Napier.w("buildJarm error", it)
-            throw OAuth2Exception(Errors.INVALID_REQUEST, it)
+            throw InvalidRequest("buildJarm error", it)
+        }.also {
+            Napier.d("buildJarm: signed $payload")
         }
 
     private suspend fun encrypt(
@@ -136,14 +140,16 @@ internal class AuthenticationResponseFactory(
             keyId = recipientKey.keyId,
         )
         val jwe = if (response.requestsSignature()) {
-            jwsService.encryptJweObject(
-                header = header,
-                payload = sign(response.params),
-                serializer = String.serializer(),
-                recipientKey = recipientKey,
-                jweAlgorithm = algorithm,
-                jweEncryption = encryption,
-            )
+            sign(response.params).let { payload ->
+                jwsService.encryptJweObject(
+                    header = header,
+                    payload = payload,
+                    serializer = String.serializer(),
+                    recipientKey = recipientKey,
+                    jweAlgorithm = algorithm,
+                    jweEncryption = encryption,
+                ).also { Napier.d("buildJarm: using $header to encrypt $payload") }
+            }
         } else {
             jwsService.encryptJweObject(
                 header = header,
@@ -152,14 +158,13 @@ internal class AuthenticationResponseFactory(
                 recipientKey = recipientKey,
                 jweAlgorithm = algorithm,
                 jweEncryption = encryption,
-            )
+            ).also { Napier.d("buildJarm: using $header to encrypt ${response.params}") }
         }
         return jwe.map { it.serialize() }.getOrElse {
             Napier.w("buildJarm error", it)
-            throw OAuth2Exception(Errors.INVALID_REQUEST, it)
+            throw InvalidRequest("buildJarm error", it)
         }
     }
-
 
     @Throws(OAuth2Exception::class)
     private fun Collection<JsonWebKey>.getEcdhEsKey(): JsonWebKey =
@@ -167,7 +172,7 @@ internal class AuthenticationResponseFactory(
             ecKeys.firstOrNull { it.publicKeyUse == "enc" }
                 ?: ecKeys.firstOrNull { it.algorithm == JweAlgorithm.ECDH_ES }
                 ?: ecKeys.firstOrNull()
-                ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "no suitable ECDH ES key in $ecKeys")
+                ?: throw InvalidRequest("no suitable ECDH ES key in $ecKeys")
         }
 
 }
