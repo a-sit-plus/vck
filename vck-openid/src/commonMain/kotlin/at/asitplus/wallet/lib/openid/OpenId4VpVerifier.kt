@@ -278,9 +278,6 @@ open class OpenId4VpVerifier(
         requestOptions: RequestOptions,
         requestObjectParameters: RequestObjectParameters? = null,
     ) = requestOptions.toAuthnRequest(requestObjectParameters)
-        .let {
-            enrichAuthnRequest(it, requestOptions)
-        }
 
     private suspend fun RequestOptions.toAuthnRequest(
         requestObjectParameters: RequestObjectParameters?,
@@ -300,14 +297,9 @@ open class OpenId4VpVerifier(
         state = state,
         dcqlQuery = if (isDcql) toDCQLQuery() else null,
         presentationDefinition = if (isPresentationExchange)
-            toPresentationDefinition(containerJwt, containerSdJwt) else null
+            toPresentationDefinition(containerJwt, containerSdJwt) else null,
         transactionData = transactionData
     )
-
-    open suspend fun enrichAuthnRequest(
-        params: AuthenticationRequestParameters,
-        requestOptions: RequestOptions,
-    ): AuthenticationRequestParameters = params
 
     /**
      * Remembers [authenticationRequestParameters] to link responses to requests
