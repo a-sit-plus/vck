@@ -34,7 +34,7 @@ import kotlinx.serialization.json.buildJsonObject
 data class PresentationRequestParameters(
     val nonce: String,
     val audience: String,
-    val transactionData: Pair<Protocol, Collection<TransactionData>>? = null,
+    val transactionData: Pair<Flow, Collection<TransactionData>>? = null,
     /**
      * Handle calculating device signature for ISO mDocs, as this depends on the transport protocol
      * (OpenId4VP with ISO/IEC 18013-7)
@@ -45,7 +45,7 @@ data class PresentationRequestParameters(
      * Used to differentiate between the OID4VP and the UC5 transaction data flows
      * since they are not compatible
      */
-    enum class Protocol {
+    enum class Flow {
         OID4VP,
         UC5
     }

@@ -92,26 +92,38 @@ internal class PresentationFactory(
      * ... for OpenID4VP Draft 23, that's encoded in the AuthnRequest
      * ... but for Potential UC 5, that's encoded in the input descriptor
      *     and we cannot deserialize into data classes defined in [at.asitplus.rqes]
+     *
+     * The two standards are not compatible
+     * For interoperability if both are present we prefer OpenID over UC5
      */
-    private fun parseTransactionData(request: RequestParameters): Pair<PresentationRequestParameters.Protocol, Collection<TransactionData>>? {
+    private fun parseTransactionData(request: RequestParameters): Pair<PresentationRequestParameters.Flow, Collection<TransactionData>>? {
         val jsonRequest =
             vckJsonSerializer.encodeToJsonElement(PolymorphicSerializer(RequestParameters::class), request)
+
         val rawTransactionData = JsonPath("$..transaction_data").query(jsonRequest)
             .flatMap { it.value.jsonArray }
             .map { vckJsonSerializer.encodeToString<JsonElement>(it) }
-        val decoded = rawTransactionData.map { vckJsonSerializer.decodeFromString<String>(it).decodeToByteArray(Base64UrlStrict).decodeToString() }.toString()
-        val protocol =
-            if (decoded.contains("credential_ids")) PresentationRequestParameters.Protocol.OID4VP else PresentationRequestParameters.Protocol.UC5
-        val transactionData = rawTransactionData.mapNotNull {
+            .ifEmpty { return null }
+
+        val decoded = rawTransactionData.associateWith {
+            vckJsonSerializer.decodeFromString<String>(it)
+                .decodeToByteArray(Base64UrlStrict)
+                .decodeToString()
+        }
+
+        val (flow, keysToDecode) = if (decoded.values.any { it.contains("credential_ids") }) {
+            PresentationRequestParameters.Flow.OID4VP to decoded.filterValues { it.contains("credential_ids") }.keys
+        } else {
+            PresentationRequestParameters.Flow.UC5 to decoded.keys
+        }
+
+        val transactionData = keysToDecode.mapNotNull { key ->
             runCatching {
-                vckJsonSerializer.decodeFromString(
-                    DeprecatedBase64URLTransactionDataSerializer,
-                    it
-                )
+                vckJsonSerializer.decodeFromString(DeprecatedBase64URLTransactionDataSerializer, key)
             }.getOrNull()
-        }.distinct().ifEmpty { null }
-        
-        return transactionData?.let { protocol to it }
+        }.distinct()
+
+        return flow to transactionData
     }
 
     /**

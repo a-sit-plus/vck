@@ -21,6 +21,7 @@ import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.CreationOptions.Query
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -36,10 +37,10 @@ class RqesRequestOptionsTest : FreeSpec({
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var holderAgent: Holder
     lateinit var holderOid4vp: OpenId4VpHolder
-    var requestOptions: RqesRequestOptions = buildRqesRequestOptions()
-    var transactionDataReferenceHashes: Set<ByteArray> = getReferenceHashes(requestOptions.transactionData!!)
+    lateinit var requestOptions: RqesRequestOptions
+    lateinit var transactionDataReferenceHashes: Set<ByteArray>
 
-    beforeEach {
+    beforeContainer {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         holderAgent = HolderAgent(holderKeyMaterial)
 
@@ -161,6 +162,7 @@ class RqesRequestOptionsTest : FreeSpec({
                 with(result.sdJwtSigned.keyBindingJws.shouldNotBeNull().payload) {
                     transactionData.shouldBeNull()
                     transactionDataHashes.shouldNotBeNull()
+                    transactionDataHashes!!.shouldHaveSize(1)
                     transactionDataHashes!!.first().contentEquals(transactionDataReferenceHashes.first())
                     transactionDataHashesAlgorithm.shouldNotBeNull()
                 }
@@ -183,8 +185,9 @@ private fun buildRqesRequestOptions(): RqesRequestOptions {
         baseRequestOptions = OpenIdRequestOptions(
             credentials = setOf(
                 RequestOptionsCredential(
-                    EuPidScheme, SD_JWT,
-                    setOf(FAMILY_NAME, GIVEN_NAME),
+                    credentialScheme = EuPidScheme,
+                    representation = SD_JWT,
+                    requestedAttributes = setOf(FAMILY_NAME, GIVEN_NAME),
                     id = id
                 )
             ),

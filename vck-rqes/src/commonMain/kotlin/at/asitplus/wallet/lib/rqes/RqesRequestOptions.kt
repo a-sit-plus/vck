@@ -17,6 +17,12 @@ data class RqesRequestOptions(
     val baseRequestOptions: OpenIdRequestOptions,
 ) : RequestOptions by baseRequestOptions {
 
+    init {
+        val transactionIds = transactionData?.mapNotNull { it.credentialIds?.toList() }?.flatten()?.sorted()
+        val credentialIds = credentials.map { it.id }.sorted()
+        transactionIds?.let { require(it == credentialIds) {"OpenId4VP defines that the credential_ids that must be part of a transaction_data element has to be an ID from InputDescriptor"} }
+    }
+
     override fun toPresentationDefinition(
         containerJwt: FormatContainerJwt,
         containerSdJwt: FormatContainerSdJwt
@@ -33,11 +39,11 @@ data class RqesRequestOptions(
             id = requestOptionCredential.buildId(),
             format = requestOptionCredential.toFormatHolder(containerJwt, containerSdJwt),
             constraints = requestOptionCredential.toConstraint(),
-            transactionData = transactionData?.map { it.makeUC5compliant() }
+            transactionData = transactionData?.mapNotNull { it.makeUC5compliant() }
         )
     }
 
-    private fun TransactionData.makeUC5compliant(): TransactionData =
+    private fun TransactionData.makeUC5compliant(): TransactionData? =
         when (this) {
             is QesAuthorization -> this.copy(
                 credentialIds = null,
@@ -49,6 +55,6 @@ data class RqesRequestOptions(
                 transactionDataHashAlgorithms = null
             )
 
-            else -> throw IllegalArgumentException("Unsupported transaction data type: ${this::class.simpleName}")
+            else -> null
         }
 }
