@@ -17,7 +17,6 @@ import com.benasher44.uuid.uuid4
 data class RqesRequestOptions(
     val baseRequestOptions: OpenIdRequestOptions,
 ) : RequestOptions by baseRequestOptions {
-
     override fun toPresentationDefinition(
         containerJwt: FormatContainerJwt,
         containerSdJwt: FormatContainerSdJwt
