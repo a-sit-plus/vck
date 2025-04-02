@@ -8,8 +8,10 @@ Release 5.6.0:
  - OpenID for Verifiable Credential Issuance:
     - Remove code elements deprecated in 5.5.0
  - OpenID for Verifiable Presentations:
-    - In `RequestOptionsCredential` add `id` as an optional parameter
-    - Remove mixed-in SIOP parameters in authn requests
+   - In `RequestOptionsCredential` add `id` as an optional parameter
+   - Remove mixed-in SIOP parameters in authn requests
+ - OAuth2:
+   - In `OAuth2Client.createAuthRequest()` add parameter `wrapAsPar` to control wrapping the authn request in a JWS for pushed authorization requests
 
 Release 5.5.0:
  - Remove elements deprecated in 5.4.0 when introducing DCQL:
