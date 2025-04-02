@@ -29,7 +29,6 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
-import kotlinx.serialization.PolymorphicSerializer
 
 @Suppress("DEPRECATION")
 class RqesRequestOptionsTest : FreeSpec({
@@ -78,7 +77,7 @@ class RqesRequestOptionsTest : FreeSpec({
                 with(authnRequest.transactionData!!.first()) {
                     shouldNotBeNull()
                     transactionDataHashAlgorithms shouldNotBe null
-                    credentialIds shouldBe inputDescriptor.id
+                    credentialIds!!.first() shouldBe inputDescriptor.id
                 }
             }
 
@@ -89,10 +88,6 @@ class RqesRequestOptionsTest : FreeSpec({
                     credentialIds shouldBe null
                     transactionDataHashAlgorithms shouldBe null
                 }
-
-                authnRequest.transactionData shouldBe null
-                authnRequest.transactionData!!.first().transactionDataHashAlgorithms shouldBe null
-                authnRequest.transactionData!!.first().credentialIds shouldBe null
             }
         }
 
@@ -174,26 +169,32 @@ fun getReferenceHashes(transactionData: Set<TransactionData>): Set<ByteArray> {
     val encoded = transactionData.map {
         vckJsonSerializer.encodeToString(Base64URLTransactionDataSerializer, it)
     }
-    return encoded.map { vckJsonSerializer.decodeFromString<String>(it).decodeToByteArray(Base64UrlStrict).sha256() }.toSet()
+    return encoded.map { vckJsonSerializer.decodeFromString<String>(it).decodeToByteArray(Base64UrlStrict).sha256() }
+        .toSet()
 }
 
-private fun buildRqesRequestOptions(): RqesRequestOptions =
-    RqesRequestOptions(
+private fun buildRqesRequestOptions(): RqesRequestOptions {
+    val id = uuid4().toString()
+    return RqesRequestOptions(
         baseRequestOptions = OpenIdRequestOptions(
             credentials = setOf(
                 RequestOptionsCredential(
-                    EuPidScheme, SD_JWT, setOf(FAMILY_NAME, GIVEN_NAME)
+                    EuPidScheme, SD_JWT,
+                    setOf(FAMILY_NAME, GIVEN_NAME),
+                    id = id
                 )
             ),
-            transactionData = setOf(getTransactionData())
+            transactionData = setOf(getTransactionData(setOf(id)))
         )
     )
+}
 
 //TODO other transactionData
-private fun getTransactionData(): TransactionData = QesAuthorization.create(
+private fun getTransactionData(ids: Set<String>): TransactionData = QesAuthorization.create(
     documentDigest = listOf(getDocumentDigests()),
     signatureQualifier = SignatureQualifier.EU_EIDAS_QES,
     credentialId = uuid4().toString(),
+    credentialIds = ids,
     transactionDataHashAlgorithms = setOf(Digest.SHA256.oid.toString()),
 ).getOrThrow()
 

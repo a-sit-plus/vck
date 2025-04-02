@@ -12,10 +12,9 @@ import kotlinx.serialization.Serializable
  * D3.1: UC Specification WP3:
  * Transaction data entry used to authorize a qualified electronic signature
  */
-@ConsistentCopyVisibility
 @Serializable
 @SerialName("qes_authorization")
-data class QesAuthorization private constructor(
+data class QesAuthorization(
     /**
      * CSC: OPTIONAL.
      * Identifier of the signature type to be created. A set of such identifiers

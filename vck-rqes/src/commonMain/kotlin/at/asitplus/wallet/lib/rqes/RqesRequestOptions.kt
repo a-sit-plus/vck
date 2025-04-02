@@ -8,6 +8,9 @@ import at.asitplus.rqes.QesInputDescriptor
 import at.asitplus.wallet.lib.openid.OpenIdRequestOptions
 import at.asitplus.wallet.lib.openid.RequestOptions
 import at.asitplus.dif.DifInputDescriptor
+import at.asitplus.openid.TransactionData
+import at.asitplus.rqes.collection_entries.QCertCreationAcceptance
+import at.asitplus.rqes.collection_entries.QesAuthorization
 import com.benasher44.uuid.uuid4
 
 /**
@@ -17,6 +20,7 @@ import com.benasher44.uuid.uuid4
 data class RqesRequestOptions(
     val baseRequestOptions: OpenIdRequestOptions,
 ) : RequestOptions by baseRequestOptions {
+
     override fun toPresentationDefinition(
         containerJwt: FormatContainerJwt,
         containerSdJwt: FormatContainerSdJwt
@@ -33,7 +37,29 @@ data class RqesRequestOptions(
             id = requestOptionCredential.buildId(),
             format = requestOptionCredential.toFormatHolder(containerJwt, containerSdJwt),
             constraints = requestOptionCredential.toConstraint(),
-            transactionData = transactionData?.toList()
+            transactionData = transactionData?.map { it.makeUC5compliant() }
         )
     }
+
+    private fun TransactionData.makeUC5compliant(): TransactionData =
+        when(this) {
+            is QesAuthorization -> this.copy(
+                signatureQualifier = this.signatureQualifier,
+                credentialID = this.credentialID,
+                documentDigests = this.documentDigests,
+                processID = this.processID,
+                credentialIds = null,
+                transactionDataHashAlgorithms = null
+            )
+
+            is QCertCreationAcceptance -> this.copy(
+                qcTermsConditionsUri = this.qcTermsConditionsUri,
+                qcHash = this.qcHash,
+                qcHashAlgorithmOid = this.qcHashAlgorithmOid,
+                credentialIds = null,
+                transactionDataHashAlgorithms = null
+            )
+
+            else -> throw IllegalArgumentException("Unsupported transaction data type: ${this::class.simpleName}")
+        }
 }
