@@ -1,6 +1,7 @@
 # Changelog
 
 Release 5.6.0:
+ - Add `transactionData` to `OpenIdRequestOptions`
  - Deprecate `RqesOpenId4VpVerifier`
  - Change `TransactionData` from sealed class to interface
  - Fix erroneous `TransactionData` encoding in `AuthenticationRequest`
