@@ -12,7 +12,6 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
@@ -94,22 +93,26 @@ internal class PresentationFactory(
      * ... but for Potential UC 5, that's encoded in the input descriptor
      *     and we cannot deserialize into data classes defined in [at.asitplus.rqes]
      */
-    private fun parseTransactionData(request: RequestParameters): Collection<TransactionData>? =
-        with(vckJsonSerializer.encodeToJsonElement(PolymorphicSerializer(RequestParameters::class), request)) {
-            JsonPath("$..transaction_data").query(this)
-                .flatMap { it.value.jsonArray }
-                .map { vckJsonSerializer.encodeToString<JsonElement>(it) }
-                .mapNotNull {
-                    runCatching {
-                        vckJsonSerializer.decodeFromString(
-                            DeprecatedBase64URLTransactionDataSerializer,
-                            it
-                        )
-                    }.getOrNull()
-                }
-                .distinct()
-                .ifEmpty { null }
-        }
+    private fun parseTransactionData(request: RequestParameters): Pair<PresentationRequestParameters.Protocol, Collection<TransactionData>>? {
+        val jsonRequest =
+            vckJsonSerializer.encodeToJsonElement(PolymorphicSerializer(RequestParameters::class), request)
+        val rawTransactionData = JsonPath("$..transaction_data").query(jsonRequest)
+            .flatMap { it.value.jsonArray }
+            .map { vckJsonSerializer.encodeToString<JsonElement>(it) }
+        val decoded = rawTransactionData.map { vckJsonSerializer.decodeFromString<String>(it).decodeToByteArray(Base64UrlStrict).decodeToString() }.toString()
+        val protocol =
+            if (decoded.contains("credential_ids")) PresentationRequestParameters.Protocol.OID4VP else PresentationRequestParameters.Protocol.UC5
+        val transactionData = rawTransactionData.mapNotNull {
+            runCatching {
+                vckJsonSerializer.decodeFromString(
+                    DeprecatedBase64URLTransactionDataSerializer,
+                    it
+                )
+            }.getOrNull()
+        }.distinct().ifEmpty { null }
+        
+        return transactionData?.let { protocol to it }
+    }
 
     /**
      * Performs calculation of the [at.asitplus.wallet.lib.iso.SessionTranscript] and [at.asitplus.wallet.lib.iso.DeviceAuthentication],

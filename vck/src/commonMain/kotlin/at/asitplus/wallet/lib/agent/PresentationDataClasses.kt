@@ -34,14 +34,23 @@ import kotlinx.serialization.json.buildJsonObject
 data class PresentationRequestParameters(
     val nonce: String,
     val audience: String,
-    val transactionData: Collection<TransactionData>? = null,
+    val transactionData: Pair<Protocol, Collection<TransactionData>>? = null,
     /**
      * Handle calculating device signature for ISO mDocs, as this depends on the transport protocol
      * (OpenId4VP with ISO/IEC 18013-7)
      */
     val calcIsoDeviceSignature: (suspend (docType: String) -> Pair<CoseSigned<ByteArray>, String?>?) = { null },
 ) {
-    internal fun getTransactionDataHashes(): Set<ByteArray>? = transactionData?.map {
+    /**
+     * Used to differentiate between the OID4VP and the UC5 transaction data flows
+     * since they are not compatible
+     */
+    enum class Protocol {
+        OID4VP,
+        UC5
+    }
+
+    internal fun getTransactionDataHashes(): Set<ByteArray>? = transactionData?.second?.map {
         (vckJsonSerializer.encodeToJsonElement(
             DeprecatedBase64URLTransactionDataSerializer,
             it

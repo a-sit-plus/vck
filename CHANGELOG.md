@@ -1,6 +1,7 @@
 # Changelog
 
 Release 5.6.0:
+ - Allow fully compliant OID4VP and UC5 `transactionData` handling
  - Deprecate `RqesOpenId4VpVerifier`
  - Change `TransactionData` from sealed class to interface
  - Fix erroneous `TransactionData` encoding in `AuthenticationRequest`

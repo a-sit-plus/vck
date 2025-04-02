@@ -137,8 +137,12 @@ class RqesRequestOptionsTest : FreeSpec({
                 val result = rqesVerifier.validateAuthnResponse(authnResponse.url)
                     .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
 
-                result.sdJwtSigned.keyBindingJws.shouldNotBeNull().payload.apply {
-                    transactionData.shouldNotBeNull().first() shouldBe requestOptions.transactionData!!.first()
+                with(result.sdJwtSigned.keyBindingJws.shouldNotBeNull().payload) {
+                    transactionData.shouldNotBeNull()
+                        .first() shouldBe (requestOptions.transactionData!!.first() as QesAuthorization).copy(
+                        transactionDataHashAlgorithms = null,
+                        credentialIds = null
+                    )
                     transactionDataHashes.shouldBeNull()
                     transactionDataHashesAlgorithm.shouldBeNull()
                 }

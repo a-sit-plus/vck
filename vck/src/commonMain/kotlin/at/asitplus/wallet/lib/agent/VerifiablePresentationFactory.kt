@@ -4,34 +4,21 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
-import at.asitplus.openid.TransactionData
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
 import at.asitplus.openid.third_party.at.asitplus.jsonpath.core.plus
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.SdJwtCreator.NAME_SD
 import at.asitplus.wallet.lib.cbor.CoseService
-import at.asitplus.wallet.lib.data.KeyBindingJws
-import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
-import at.asitplus.wallet.lib.data.VerifiablePresentation
-import at.asitplus.wallet.lib.data.VerifiablePresentationJws
-import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.iso.DeviceAuth
-import at.asitplus.wallet.lib.iso.DeviceNameSpaces
-import at.asitplus.wallet.lib.iso.DeviceResponse
-import at.asitplus.wallet.lib.iso.DeviceSigned
-import at.asitplus.wallet.lib.iso.Document
-import at.asitplus.wallet.lib.iso.IssuerSigned
-import at.asitplus.wallet.lib.iso.sha256
+import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.github.aakira.napier.Napier
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -251,9 +238,9 @@ class VerifiablePresentationFactory(
             audience = request.audience,
             challenge = request.nonce,
             sdHash = issuerJwtPlusDisclosures.encodeToByteArray().sha256(),
-            transactionData = request.transactionData,
-            transactionDataHashes = request.getTransactionDataHashes(),
-            transactionDataHashesAlgorithm = request.transactionData?.let { "sha-256" }
+            transactionData = if (request.transactionData?.first == PresentationRequestParameters.Protocol.UC5) request.transactionData.second else null,
+            transactionDataHashes = if (request.transactionData?.first == PresentationRequestParameters.Protocol.OID4VP) request.getTransactionDataHashes() else null,
+            transactionDataHashesAlgorithm = if (request.transactionData?.first == PresentationRequestParameters.Protocol.OID4VP) "sha-256" else null,
         ),
         serializer = KeyBindingJws.serializer(),
         addKeyId = false,
