@@ -2,24 +2,32 @@ package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.dif.InputDescriptor
 import at.asitplus.dif.PresentationDefinition
+import at.asitplus.openid.TransactionData
 import at.asitplus.rqes.QesInputDescriptor
+import at.asitplus.rqes.collection_entries.QCertCreationAcceptance
+import at.asitplus.rqes.collection_entries.QesAuthorization
 import at.asitplus.rqes.collection_entries.RqesDocumentDigestEntry
-import at.asitplus.rqes.collection_entries.TransactionData
 import at.asitplus.rqes.rdcJsonSerializer
 import at.asitplus.rqes.serializers.Base64URLTransactionDataSerializer
+import at.asitplus.rqes.serializers.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.signum.indispensable.asn1.KnownOIDs.sha_256
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.util.*
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.PolymorphicSerializer
-import kotlinx.serialization.Serializer
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * Test vectors taken from "Transaction Data entries as defined in D3.1: UC Specification WP3"
@@ -62,19 +70,35 @@ class TransactionDataInterop : FreeSpec({
         }
     """.trimIndent().replace("\n", "").replace("\r", "").replace(" ", "")
 
-    val transactionDataTest = TransactionData.QCertCreationAcceptance(
+    val transactionDataTest = QCertCreationAcceptance(
         qcTermsConditionsUri = "abc",
         qcHash = "cde".decodeBase64Bytes(),
         qcHashAlgorithmOid = sha_256
     )
 
-    "Serialization is stable" {
-        val encoded = rdcJsonSerializer.encodeToString<TransactionData>(transactionDataTest)
-        rdcJsonSerializer.decodeFromString<TransactionData>(encoded)
+    "Polymorphic Serialization is stable" {
+        val encoded =
+            rdcJsonSerializer.encodeToString(PolymorphicSerializer(TransactionData::class), transactionDataTest)
+        encoded shouldContain "type"
+        rdcJsonSerializer.decodeFromString(PolymorphicSerializer(TransactionData::class), encoded)
             .shouldBe(transactionDataTest)
     }
 
-    "InputDescriptor serialize" {
+    "Base64Url Serialization is stable" {
+        val encoded = rdcJsonSerializer.encodeToString(Base64URLTransactionDataSerializer, transactionDataTest)
+        rdcJsonSerializer.decodeFromString(Base64URLTransactionDataSerializer, encoded)
+            .shouldBe(transactionDataTest)
+    }
+
+    "Backwards compatible with escaped Json" {
+        val incorrectlyEncoded = """
+            "{\"type\":\"qcert_creation_acceptance\",\"QC_terms_conditions_uri\":\"https://apps.egiz.gv.at/qtsp\",\"QC_hash\":\"47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=\",\"QC_hashAlgorithmOID\":\"2.16.840.1.101.3.4.2.1\"}"
+        """.trimIndent()
+        val decoded = rdcJsonSerializer.decodeFromString(DeprecatedBase64URLTransactionDataSerializer, incorrectlyEncoded)
+        decoded.shouldBeInstanceOf<QCertCreationAcceptance>()
+    }
+
+    "InputDescriptor serializable" {
         val input = QesInputDescriptor(
             id = "123",
             transactionData = listOf(transactionDataTest)
@@ -84,15 +108,16 @@ class TransactionDataInterop : FreeSpec({
             .shouldBe(input)
     }
 
-    "TransactionDataEntry.QesAuthorization can be parsed" - {
+    "QesAuthorization can be parsed" - {
         val testVector =
             "ewogICJ0eXBlIjogInFlc19hdXRob3JpemF0aW9uIiwKICAic2lnbmF0dXJlUXVhbGlmaWVyIjogImV1X2VpZGFzX3FlcyIsCiAgImNyZWRlbnRpYWxJRCI6ICJvRW92QzJFSEZpRUZyRHBVeDhtUjBvN3llR0hrMmg3NGIzWHl3a05nQkdvPSIsCiAgImRvY3VtZW50RGlnZXN0cyI6IFsKICAgIHsKICAgICAgImxhYmVsIjogIkV4YW1wbGUgQ29udHJhY3QiLAogICAgICAiaGFzaCI6ICJzVE9nd09tKzQ3NGdGajBxMHgxaVNOc3BLcWJjc2U0SWVpcWxEZy9IV3VJPSIsCiAgICAgICJoYXNoQWxnb3JpdGhtT0lEIjogIjIuMTYuODQwLjEuMTAxLjMuNC4yLjEiLAogICAgICAiZG9jdW1lbnRMb2NhdGlvbl91cmkiOiAiaHR0cHM6Ly9wcm90ZWN0ZWQucnAuZXhhbXBsZS9jb250cmFjdC0wMS5wZGY/dG9rZW49SFM5bmFKS1d3cDkwMWhCY0szNDhJVUhpdUg4Mzc0IiwKICAgICAgImRvY3VtZW50TG9jYXRpb25fbWV0aG9kIjogewogICAgICAgICJkb2N1bWVudF9hY2Nlc3NfbW9kZSI6ICJPVFAiLAogICAgICAgICJvbmVUaW1lUGFzc3dvcmQiOiAibXlGaXJzdFBhc3N3b3JkIgogICAgICB9LAogICAgICAiRFRCUy9SIjogIlZZRGw0b1RlSjVUbUlQQ1hLZFRYMU1TV1JMSTlDS1ljeU1SejZ4bGFHZyIsCiAgICAgICJEVEJTL1JIYXNoQWxnb3JpdGhtT0lEIjogIjIuMTYuODQwLjEuMTAxLjMuNC4yLjEiCiAgICB9CiAgXSwKICAicHJvY2Vzc0lEIjogImVPWjZVd1h5ZUZMSzk4RG81MXgzM2ZtdXY0T3FBejVaYzRsc2hLTnRFZ1E9Igp9"
         val transactionData = rdcJsonSerializer.decodeFromString(
             Base64URLTransactionDataSerializer,
             rdcJsonSerializer.encodeToString(testVector)
         )
+
         "Data classes are deserialized correctly" {
-            transactionData.shouldBeInstanceOf<TransactionData.QesAuthorization>()
+            transactionData.shouldBeInstanceOf<QesAuthorization>()
             transactionData.documentDigests shouldNotBe emptyList<RqesDocumentDigestEntry>()
             transactionData.documentDigests.first().documentLocationMethod shouldNotBe null
             @Suppress("DEPRECATION")
@@ -105,7 +130,9 @@ class TransactionDataInterop : FreeSpec({
             val expected = rdcJsonSerializer.decodeFromString<JsonElement>(
                 testVector.decodeToByteArray(Base64UrlStrict).decodeToString()
             ).canonicalize() as JsonObject
-            val actual = rdcJsonSerializer.encodeToJsonElement(transactionData).canonicalize() as JsonObject
+            val actual =
+                rdcJsonSerializer.encodeToJsonElement(PolymorphicSerializer(TransactionData::class), transactionData)
+                    .canonicalize() as JsonObject
 
             actual["credentialID"] shouldBe expected["credentialID"]
             actual["processID"] shouldBe expected["processID"]
@@ -135,7 +162,7 @@ class TransactionDataInterop : FreeSpec({
         }
     }
 
-    "TransactionDataEntry.QCertCreationAcceptance can be parsed" - {
+    "QCertCreationAcceptance can be parsed" - {
         val testVector =
             "ewogICJ0eXBlIjogInFjZXJ0X2NyZWF0aW9uX2FjY2VwdGFuY2UiLAogICJRQ190ZXJtc19jb25kaXRpb25zX3VyaSI6ICJodHRwczovL2V4YW1wbGUuY29tL3RvcyIsCiAgIlFDX2hhc2giOiAia1hBZ3dEY2RBZTNvYnhwbzhVb0RrQytEK2I3T0NyRG84SU9HWmpTWDgvTT0iLAogICJRQ19oYXNoQWxnb3JpdGhtT0lEIjogIjIuMTYuODQwLjEuMTAxLjMuNC4yLjEiCn0="
 
@@ -144,7 +171,7 @@ class TransactionDataInterop : FreeSpec({
             rdcJsonSerializer.encodeToString(testVector)
         )
         "Data classes are deserialized correctly" {
-            transactionData.shouldBeInstanceOf<TransactionData.QCertCreationAcceptance>()
+            transactionData.shouldBeInstanceOf<QCertCreationAcceptance>()
         }
 
         "Encoding-Decoding is correct" {
@@ -152,7 +179,8 @@ class TransactionDataInterop : FreeSpec({
                 testVector.decodeToByteArray(Base64UrlStrict).decodeToString()
             ).canonicalize()
 
-            rdcJsonSerializer.encodeToJsonElement(transactionData).canonicalize()
+            rdcJsonSerializer.encodeToJsonElement(PolymorphicSerializer(TransactionData::class), transactionData)
+                .canonicalize()
                 .shouldBe(expected)
         }
     }
@@ -162,7 +190,6 @@ class TransactionDataInterop : FreeSpec({
             rdcJsonSerializer.decodeFromString<PresentationDefinition>(presentationDefinitionAsJsonString)
         val first = presentationDefinition.inputDescriptors.first()
             .shouldBeInstanceOf<QesInputDescriptor>()
-        @Suppress("DEPRECATION")
         first.transactionData shouldNotBe null
     }
 })

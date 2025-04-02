@@ -5,13 +5,17 @@ import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.PresentationSubmission
 import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
+import at.asitplus.openid.TransactionData
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.SdJwtSigned
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
@@ -30,13 +34,22 @@ import kotlinx.serialization.json.buildJsonObject
 data class PresentationRequestParameters(
     val nonce: String,
     val audience: String,
-    val transactionData: Collection<ByteArray>? = null,
+    val transactionData: Collection<TransactionData>? = null,
     /**
      * Handle calculating device signature for ISO mDocs, as this depends on the transport protocol
      * (OpenId4VP with ISO/IEC 18013-7)
      */
     val calcIsoDeviceSignature: (suspend (docType: String) -> Pair<CoseSigned<ByteArray>, String?>?) = { null },
-)
+) {
+    internal fun getTransactionDataHashes(): Set<ByteArray>? = transactionData?.map {
+        (vckJsonSerializer.encodeToJsonElement(
+            DeprecatedBase64URLTransactionDataSerializer,
+            it
+        ) as JsonPrimitive).content.decodeToByteArray(
+            Base64UrlStrict
+        ).sha256()
+    }?.toSet()
+}
 
 sealed interface PresentationResponseParameters {
     val vpToken: JsonElement?

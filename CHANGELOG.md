@@ -1,8 +1,12 @@
 # Changelog
 
 Release 5.6.0:
+ - Add `transactionData` to `OpenIdRequestOptions`
+ - Deprecate `RqesOpenId4VpVerifier`
+ - Change `TransactionData` from sealed class to interface
+ - Fix erroneous `TransactionData` encoding in `AuthenticationRequest`
  - OpenID for Verifiable Credential Issuance:
-   - Remove code elements deprecated in 5.5.0
+    - Remove code elements deprecated in 5.5.0
  - OpenID for Verifiable Presentations:
    - In `RequestOptionsCredential` add `id` as an optional parameter
    - Remove mixed-in SIOP parameters in authn requests

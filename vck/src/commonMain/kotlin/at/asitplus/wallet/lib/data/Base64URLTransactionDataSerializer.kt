@@ -1,7 +1,6 @@
-package at.asitplus.rqes.serializers
+package at.asitplus.wallet.lib.data
 
 import at.asitplus.openid.TransactionData
-import at.asitplus.rqes.rdcJsonSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -24,13 +23,13 @@ object Base64URLTransactionDataSerializer : KSerializer<TransactionData> {
         PrimitiveSerialDescriptor("Base64URLTransactionDataSerializer", PrimitiveKind.STRING)
 
     override fun deserialize(decoder: Decoder): TransactionData =
-        rdcJsonSerializer.decodeFromString(
+        vckJsonSerializer.decodeFromString(
             PolymorphicSerializer(TransactionData::class),
             decoder.decodeString().decodeToByteArray(Base64UrlStrict).decodeToString()
         )
 
     override fun serialize(encoder: Encoder, value: TransactionData) {
-        val jsonString = rdcJsonSerializer.encodeToString(PolymorphicSerializer(TransactionData::class), value)
+        val jsonString = vckJsonSerializer.encodeToString(PolymorphicSerializer(TransactionData::class), value)
         val base64URLString = jsonString.encodeToByteArray().encodeToString(Base64UrlStrict)
         encoder.encodeString(base64URLString)
     }
@@ -42,13 +41,14 @@ object DeprecatedBase64URLTransactionDataSerializer : KSerializer<TransactionDat
         PrimitiveSerialDescriptor("Base64URLTransactionDataSerializer", PrimitiveKind.STRING)
 
     override fun deserialize(decoder: Decoder): TransactionData {
-        val decoded = decoder.decodeString().let { if (it.contains(",")) it else it.decodeToByteArray(Base64UrlStrict).decodeToString() }
-        val json = rdcJsonSerializer.decodeFromString(JsonElement.serializer(), decoded)
-        return rdcJsonSerializer.decodeFromJsonElement(PolymorphicSerializer(TransactionData::class), json)
+        val decoded = decoder.decodeString()
+            .let { if (it.contains(",")) it else it.decodeToByteArray(Base64UrlStrict).decodeToString() }
+        val json = vckJsonSerializer.decodeFromString(JsonElement.serializer(), decoded)
+        return vckJsonSerializer.decodeFromJsonElement(PolymorphicSerializer(TransactionData::class), json)
     }
 
     override fun serialize(encoder: Encoder, value: TransactionData) {
-        val jsonString = rdcJsonSerializer.encodeToString(PolymorphicSerializer(TransactionData::class), value)
+        val jsonString = vckJsonSerializer.encodeToString(PolymorphicSerializer(TransactionData::class), value)
         val base64URLString = jsonString.encodeToByteArray().encodeToString(Base64UrlStrict)
         encoder.encodeString(base64URLString)
     }
