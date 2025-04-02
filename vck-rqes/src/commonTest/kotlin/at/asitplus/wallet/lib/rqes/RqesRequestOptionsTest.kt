@@ -120,6 +120,7 @@ class RqesRequestOptionsTest : FreeSpec({
                     .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
 
                 with(result.sdJwtSigned.keyBindingJws.shouldNotBeNull().payload) {
+                    transactionData.shouldBeNull()
                     transactionDataHashes.shouldNotBeNull()
                     transactionDataHashes!!.first().contentEquals(transactionDataReferenceHashes.first())
                     transactionDataHashesAlgorithm.shouldNotBeNull()
@@ -149,9 +150,21 @@ class RqesRequestOptionsTest : FreeSpec({
             }
 
             "Generic" {
-                //[AuthenticationRequestParameter] contain both versions
-                val authnRequestUrl = rqesVerifier.createAuthnRequest(requestOptions, Query(walletUrl))
-                TODO()
+                //[AuthenticationRequestParameter] contain both versions - in this case prefer OID4VP
+                val authnRequestUrl = rqesVerifier.createAuthnRequest(requestOptions, Query(walletUrl)).getOrThrow().url
+
+                val authnResponse = holderOid4vp.createAuthnResponse(authnRequestUrl).getOrThrow()
+                    .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+
+                val result = rqesVerifier.validateAuthnResponse(authnResponse.url)
+                    .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
+
+                with(result.sdJwtSigned.keyBindingJws.shouldNotBeNull().payload) {
+                    transactionData.shouldBeNull()
+                    transactionDataHashes.shouldNotBeNull()
+                    transactionDataHashes!!.first().contentEquals(transactionDataReferenceHashes.first())
+                    transactionDataHashesAlgorithm.shouldNotBeNull()
+                }
             }
         }
     }
