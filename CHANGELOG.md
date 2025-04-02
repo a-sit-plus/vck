@@ -9,6 +9,7 @@ Release 5.5.1:
  - OAuth2:
    - In `OAuth2Client.createAuthRequest()` add parameter `wrapAsPar` to control wrapping the authn request in a JWS for pushed authorization requests
  - RQES:
+   - Add `transactionData` to `OpenIdRequestOptions`
    - Deprecate `RqesOpenId4VpVerifier`
    - Change `TransactionData` from sealed class to interface
    - Fix erroneous `TransactionData` encoding in `AuthenticationRequest`
