@@ -1,16 +1,12 @@
 package at.asitplus.wallet.lib.rqes
 
-import at.asitplus.dif.FormatContainerJwt
-import at.asitplus.dif.FormatContainerSdJwt
-import at.asitplus.dif.InputDescriptor
-import at.asitplus.dif.PresentationDefinition
-import at.asitplus.rqes.QesInputDescriptor
-import at.asitplus.wallet.lib.openid.OpenIdRequestOptions
-import at.asitplus.wallet.lib.openid.RequestOptions
-import at.asitplus.dif.DifInputDescriptor
+import at.asitplus.dif.*
 import at.asitplus.openid.TransactionData
+import at.asitplus.rqes.QesInputDescriptor
 import at.asitplus.rqes.collection_entries.QCertCreationAcceptance
 import at.asitplus.rqes.collection_entries.QesAuthorization
+import at.asitplus.wallet.lib.openid.OpenIdRequestOptions
+import at.asitplus.wallet.lib.openid.RequestOptions
 import com.benasher44.uuid.uuid4
 
 /**
@@ -42,20 +38,13 @@ data class RqesRequestOptions(
     }
 
     private fun TransactionData.makeUC5compliant(): TransactionData =
-        when(this) {
+        when (this) {
             is QesAuthorization -> this.copy(
-                signatureQualifier = this.signatureQualifier,
-                credentialID = this.credentialID,
-                documentDigests = this.documentDigests,
-                processID = this.processID,
                 credentialIds = null,
                 transactionDataHashAlgorithms = null
             )
 
             is QCertCreationAcceptance -> this.copy(
-                qcTermsConditionsUri = this.qcTermsConditionsUri,
-                qcHash = this.qcHash,
-                qcHashAlgorithmOid = this.qcHashAlgorithmOid,
                 credentialIds = null,
                 transactionDataHashAlgorithms = null
             )
