@@ -78,11 +78,33 @@ class OAuth2ClientTest : FunSpec({
         token.authorizationDetails.shouldBeNull()
     }
 
-    test("process with authorization code flow") {
+    test("process with authorization code flow, and PAR") {
         val state = uuid4().toString()
         val authnRequest = client.createAuthRequest(
             state = state,
             scope = scope,
+            wrapAsPar = true
+        )
+        val authnResponse = server.authorize(authnRequest).getOrThrow()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+        val code = authnResponse.params.code
+            .shouldNotBeNull()
+
+        val tokenRequest = client.createTokenRequestParameters(
+            state = state,
+            authorization = OAuth2Client.AuthorizationForToken.Code(code),
+            scope = scope
+        )
+        val token = server.token(tokenRequest).getOrThrow()
+        token.authorizationDetails.shouldBeNull()
+    }
+
+    test("process with authorization code flow, front channel") {
+        val state = uuid4().toString()
+        val authnRequest = client.createAuthRequest(
+            state = state,
+            scope = scope,
+            wrapAsPar = false
         )
         val authnResponse = server.authorize(authnRequest).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
