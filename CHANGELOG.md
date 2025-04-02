@@ -6,6 +6,7 @@ Release 5.5.1:
  - OpenID for Verifiable Presentations:
    - In `RequestOptionsCredential` add `id` as an optional parameter
    - Remove mixed-in SIOP parameters in authn requests
+   - In `ClientIdScheme` add parameter `useDeprecatedClientIdScheme` to support `client_id_scheme` for OpenID4VP previous to Draft 22
  - OAuth2:
    - In `OAuth2Client.createAuthRequest()` add parameter `wrapAsPar` to control wrapping the authn request in a JWS for pushed authorization requests
  - RQES:

@@ -42,6 +42,14 @@ data class AuthenticationRequestParameters(
     override val clientId: String? = null,
 
     /**
+     * OID4VP: OPTIONAL. A string identifying the scheme of the value in the `client_id` Authorization Request parameter
+     * (Client Identifier scheme). Kept here only for compatibility with POTENTIAL.
+     */
+    @Deprecated("Removed from OpenID4VP Draft 22")
+    @SerialName("client_id_scheme")
+    val clientIdScheme: OpenIdConstants.ClientIdScheme? = null,
+
+    /**
      * OIDC: REQUIRED. Redirection URI to which the response will be sent. This URI MUST exactly match one of the
      * Redirection URI values for the Client pre-registered at the OpenID Provider, with the matching performed as
      * described in Section 6.2.1 of RFC3986 (Simple String Comparison).
@@ -373,6 +381,16 @@ data class AuthenticationRequestParameters(
     @SerialName("transaction_data")
     override val transactionData: Set<@Contextual TransactionData>? = null,
 ) : RequestParameters {
+
+    /**
+     * Reads the [OpenIdConstants.ClientIdScheme] of this request either directly from [clientIdScheme],
+     * or by extracting the prefix from [clientId] (as specified in OpenID4VP draft 22 onwards).
+     */
+    @Suppress("DEPRECATION")
+    override val clientIdSchemeExtracted: OpenIdConstants.ClientIdScheme?
+        get() = clientIdScheme
+            ?: clientId?.let { OpenIdConstants.ClientIdScheme.decodeFromClientId(it) }
+
     fun serialize() = odcJsonSerializer.encodeToString(this)
 
     override fun equals(other: Any?): Boolean {

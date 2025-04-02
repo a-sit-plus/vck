@@ -284,6 +284,7 @@ open class OpenId4VpVerifier(
     ): AuthenticationRequestParameters = AuthenticationRequestParameters(
         responseType = responseType,
         clientId = clientIdScheme.clientId,
+        clientIdScheme = clientIdScheme.clientIdScheme,
         redirectUrl = if (!isAnyDirectPost) clientIdScheme.redirectUri else null,
         responseUrl = responseUrl,
         // Using scope as an alias for a well-defined Presentation Exchange or DCQL is not supported
