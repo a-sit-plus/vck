@@ -169,9 +169,10 @@ internal class AuthenticationResponseFactory(
     @Throws(OAuth2Exception::class)
     private fun Collection<JsonWebKey>.getEcdhEsKey(): JsonWebKey =
         filter { it.type == JwkType.EC }.let { ecKeys ->
-            ecKeys.firstOrNull { it.publicKeyUse == "enc" }
-                ?: ecKeys.firstOrNull { it.algorithm == JweAlgorithm.ECDH_ES }
-                ?: ecKeys.firstOrNull()
+            ecKeys.firstOrNull { it.curve != null && it.algorithm == JweAlgorithm.ECDH_ES && it.publicKeyUse == "enc" }
+                ?: ecKeys.firstOrNull { it.curve != null && it.publicKeyUse == "enc" }
+                ?: ecKeys.firstOrNull { it.curve != null && it.algorithm == JweAlgorithm.ECDH_ES }
+                ?: ecKeys.firstOrNull { it.curve != null }
                 ?: throw InvalidRequest("no suitable ECDH ES key in $ecKeys")
         }
 
