@@ -4,12 +4,10 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
-import at.asitplus.openid.TransactionData
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
 import at.asitplus.openid.third_party.at.asitplus.jsonpath.core.plus
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.SdJwtCreator.NAME_SD
@@ -24,6 +22,8 @@ import at.asitplus.wallet.lib.iso.DeviceAuth
 import at.asitplus.wallet.lib.iso.DeviceNameSpaces
 import at.asitplus.wallet.lib.iso.DeviceResponse
 import at.asitplus.wallet.lib.iso.DeviceSigned
+import at.asitplus.wallet.lib.iso.DeviceSignedItem
+import at.asitplus.wallet.lib.iso.DeviceSignedItemList
 import at.asitplus.wallet.lib.iso.Document
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.iso.sha256
@@ -31,7 +31,6 @@ import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.github.aakira.napier.Napier
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -162,9 +161,20 @@ class VerifiablePresentationFactory(
                     ?: throw PresentationException("Attribute not available in credential: $['$namespace']['$attributeName']")
             }
         }
+
+        val deviceSignedItemList = disclosedItems.mapValues { namespaceToAttributeNamesEntry ->
+            val issuerSignedItems = namespaceToAttributeNamesEntry.value
+            DeviceSignedItemList(issuerSignedItems.map { issuerSignedItem ->
+                DeviceSignedItem(
+                    issuerSignedItem.elementIdentifier,
+                    issuerSignedItem.elementValue
+                )
+            })
+        }
+
         val docType = credential.scheme?.isoDocType!!
-        val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
-        val (deviceSignature, mDocGeneratedNonce) = request.calcIsoDeviceSignature.invoke(docType)
+        val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(deviceSignedItemList))
+        val (deviceSignature, mDocGeneratedNonce) = request.calcIsoDeviceSignature.invoke(docType, deviceNameSpaceBytes)
             ?: throw PresentationException("CalculateChallengeResponse not implemented")
         return CreatePresentationResult.DeviceResponse(
             deviceResponse = DeviceResponse(

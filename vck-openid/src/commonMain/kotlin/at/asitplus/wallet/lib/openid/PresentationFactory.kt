@@ -64,7 +64,7 @@ internal class PresentationFactory(
             nonce = nonce,
             audience = audience,
             transactionData = transactionData,
-            calcIsoDeviceSignature = { docType ->
+            calcIsoDeviceSignature = { docType, _ ->
                 calcDeviceSignature(responseWillBeEncrypted, clientId, responseUrl, nonce, docType)
             }
         )
