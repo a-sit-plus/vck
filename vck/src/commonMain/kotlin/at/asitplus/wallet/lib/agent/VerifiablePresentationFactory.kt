@@ -8,6 +8,7 @@ import at.asitplus.openid.dcql.DCQLClaimsQueryResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
 import at.asitplus.openid.third_party.at.asitplus.jsonpath.core.plus
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.SdJwtCreator.NAME_SD
 import at.asitplus.wallet.lib.data.*
@@ -160,10 +161,21 @@ class VerifiablePresentationFactory(
                         ?: throw PresentationException("Attribute not available in credential: $['$namespace']['$attributeName']")
                 }
             }
-            val docType = credential.scheme?.isoDocType!!
-            val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
 
-            val (deviceSignature, _) = request.calcIsoDeviceSignature(docType)
+            val deviceSignedItemList = disclosedItems.mapValues { namespaceToAttributeNamesEntry ->
+                val issuerSignedItems = namespaceToAttributeNamesEntry.value
+                DeviceSignedItemList(issuerSignedItems.map { issuerSignedItem ->
+                    DeviceSignedItem(
+                        issuerSignedItem.elementIdentifier,
+                        issuerSignedItem.elementValue
+                    )
+                })
+            }
+
+            val docType = credential.scheme?.isoDocType!!
+            val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(deviceSignedItemList))
+
+            val (deviceSignature, _) = request.calcIsoDeviceSignature(docType, deviceNameSpaceBytes)
                 ?: throw PresentationException("calcIsoDeviceSignature not implemented")
 
             Document(
