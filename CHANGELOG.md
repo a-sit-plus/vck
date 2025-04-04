@@ -1,12 +1,11 @@
 # Changelog
 
 Release 5.6.0:
- - Add `transactionData` to `OpenIdRequestOptions`
- - Deprecate `RqesOpenId4VpVerifier`
- - Change `TransactionData` from sealed class to interface
- - Fix erroneous `TransactionData` encoding in `AuthenticationRequest`
  - OpenID for Verifiable Credential Issuance:
     - Remove code elements deprecated in 5.5.0
+
+Release 5.5.1:
+  - OpenID for Verifiable Credential Issuance:
     - Support AS metadata files at `/.well-known/oauth-authorization-server`
  - OpenID for Verifiable Presentations:
    - In `RequestOptionsCredential` add `id` as an optional parameter
@@ -14,6 +13,11 @@ Release 5.6.0:
    - In `ClientIdScheme` add parameter `useDeprecatedClientIdScheme` to support `client_id_scheme` for OpenID4VP previous to Draft 22
  - OAuth2:
    - In `OAuth2Client.createAuthRequest()` add parameter `wrapAsPar` to control wrapping the authn request in a JWS for pushed authorization requests
+ - RQES:
+   - Add `transactionData` to `OpenIdRequestOptions`
+   - Deprecate `RqesOpenId4VpVerifier`
+   - Change `TransactionData` from sealed class to interface
+   - Fix erroneous `TransactionData` encoding in `AuthenticationRequest`
 
 Release 5.5.0:
  - Remove elements deprecated in 5.4.0 when introducing DCQL:
