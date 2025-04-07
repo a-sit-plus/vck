@@ -5,7 +5,6 @@ import at.asitplus.catching
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
-import at.asitplus.wallet.lib.cbor.VerifyCoseSignature.invoke
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
 import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.data.StatusListToken

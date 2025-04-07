@@ -1,9 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.SuccessJwt
-import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
-import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.StatusListToken

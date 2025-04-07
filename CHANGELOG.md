@@ -7,6 +7,8 @@ Release 5.6.0:
    - In `OpenId4VpVerifier` add constructor parameter `supportedAlgorithms`
  - Use function decomposition:
    - Replace `VerifierCryptoService` with `VerifySignatureFun`
+   - Replace `VerifierJwsService` with `VerifyJwsObjectFun`, `VerifyJwsSignatureWithCnfFun` and `VerifyJwsSignatureWithKeyFun`
+   - Replace `VerifierCoseService` with `VerifyCoseSignatureFun`
 
 Release 5.5.1:
   - OpenID for Verifiable Credential Issuance:

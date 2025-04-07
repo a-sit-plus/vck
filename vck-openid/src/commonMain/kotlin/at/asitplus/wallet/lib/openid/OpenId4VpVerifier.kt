@@ -13,9 +13,6 @@ import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
-import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
-import at.asitplus.wallet.lib.cbor.VerifyCoseSignature.invoke
-import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
@@ -24,7 +21,7 @@ import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.*
 import at.asitplus.wallet.lib.oidvci.*
 import io.github.aakira.napier.Napier
-import io.ktor.http.URLBuilder
+import io.ktor.http.*
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
