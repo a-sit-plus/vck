@@ -18,6 +18,7 @@ sealed class PresentationSubmissionValidator {
                 SubmissionRequirementsValidator(
                     submissionRequirements = submissionRequirements,
                     inputDescriptorGroups = inputDescriptors.associate {
+                        @Suppress("DEPRECATION")
                         it.id to (it.group ?: throw MissingInputDescriptorGroupException(it))
                     },
                 )
