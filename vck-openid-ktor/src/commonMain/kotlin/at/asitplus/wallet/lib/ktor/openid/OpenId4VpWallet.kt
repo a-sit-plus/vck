@@ -22,14 +22,21 @@ import io.ktor.client.call.body
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.plugins.DefaultRequest
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.forms.FormDataContent
 import io.ktor.client.request.forms.submitForm
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.request
+import io.ktor.client.request.setBody
+import io.ktor.client.request.url
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.readRawBytes
 import io.ktor.http.*
+import io.ktor.http.content.OutgoingContent
 import io.ktor.serialization.kotlinx.json.json
+import io.ktor.utils.io.charsets.Charsets
+import io.ktor.utils.io.core.toByteArray
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
@@ -153,15 +160,30 @@ class OpenId4VpWallet(
     private suspend fun postResponse(it: AuthenticationResponseResult.Post, isCrossDeviceFlow: Boolean) {
         Napier.i("postResponse: $it")
         handlePostResponse(
-            client.submitForm(
-                url = it.url,
-                formParameters = parameters {
+            client.request {
+                url(it.url)
+                method = HttpMethod.Post
+                setBody(FormDataContentPlain(parameters {
                     it.params.forEach { append(it.key, it.value) }
-                }
-            ),
+                }))
+            },
             isCrossDeviceFlow
         )
     }
+
+    /**
+     * Our implementation of ktor's [FormDataContent], but with [contentType] without charset appended,
+     * so that some strict mDoc verifiers accept our authn response
+     */
+    class FormDataContentPlain(
+        formData: Parameters
+    ) : OutgoingContent.ByteArrayContent() {
+        private val content = formData.formUrlEncode().toByteArray()
+        override val contentLength: Long = content.size.toLong()
+        override val contentType: ContentType = ContentType.Application.FormUrlEncoded
+        override fun bytes(): ByteArray = content
+    }
+
 
     @Throws(Exception::class)
     private suspend fun handlePostResponse(response: HttpResponse, isCrossDeviceFlow: Boolean) {
