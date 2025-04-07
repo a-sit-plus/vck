@@ -253,6 +253,7 @@ open class OpenId4VpVerifier(
             ),
             serializer = AuthenticationRequestParameters.Companion.serializer(),
             addJsonWebKey = certificateChain == null,
+            addX5c = certificateChain != null,
         ).getOrThrow()
     }
 

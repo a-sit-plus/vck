@@ -4,6 +4,8 @@ Release 5.5.2:
  - OpenID for Verifiable Presentations:
    - Fix parsing `group` in presentation exchange input descriptors
    - Set content type for authentication responses to `application/x-www-form-urlencoded`, without the charset appended
+ - When creating JWS, and `x5c` header is set, do not set `jwk` and `kid`
+ - When creating JWS, and `jwk` header is set, do not set `kid`
 
 Release 5.5.1:
  - OpenID for Verifiable Credential Issuance:

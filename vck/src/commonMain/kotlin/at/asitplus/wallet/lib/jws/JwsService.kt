@@ -61,10 +61,18 @@ interface JwsService {
     ): KmmResult<JwsSigned<T>>
 
     /**
-     * Appends correct values for  [JwsHeader.algorithm],
-     * [JweHeader.keyId] (if `addKeyId` is `true`),
-     * and [JwsHeader.jsonWebKey] (if `addJsonWebKey` is `true`).
+     * Appends (or sets) correct value for  [JwsHeader.algorithm].
+     *
+     * Precedence of flags:
+     * 1. [addX5c] setting certificate chain
+     * 2. [addJsonWebKey] setting JWK
+     * 3. [addKeyId] setting keyId
+     *
+     * @param addX5c sets [JwsHeader.certificateChain] from [KeyMaterial.getCertificate]
+     * @param addJsonWebKey sets [JwsHeader.jsonWebKey] from [KeyMaterial.jsonWebKey]
+     * @param addKeyId sets [JwsHeader.keyId] from [KeyMaterial.identifier]
      */
+    // TODO Refactor in next major release (with functions) the flags into an enum
     suspend fun <T : Any> createSignedJwsAddingParams(
         header: JwsHeader? = null,
         payload: T,
@@ -171,13 +179,13 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         ) ?: JwsHeader(
             algorithm = cryptoService.keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow()
         )
-        if (addKeyId)
-            copy = copy.copy(keyId = cryptoService.keyMaterial.jsonWebKey.keyId)
-        if (addJsonWebKey)
-            copy = copy.copy(jsonWebKey = cryptoService.keyMaterial.jsonWebKey)
-        // Null pointer is a controlled error case inside the catching block
-        if (addX5c)
+        if (addX5c && cryptoService.keyMaterial.getCertificate() != null)
             copy = copy.copy(certificateChain = listOf(cryptoService.keyMaterial.getCertificate()!!))
+        else if (addJsonWebKey)
+            copy = copy.copy(jsonWebKey = cryptoService.keyMaterial.jsonWebKey)
+        else if (addKeyId)
+            copy = copy.copy(keyId = cryptoService.keyMaterial.jsonWebKey.keyId)
+
         createSignedJws(copy, payload, serializer).getOrThrow()
     }
 

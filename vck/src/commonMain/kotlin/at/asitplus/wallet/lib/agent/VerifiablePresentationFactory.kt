@@ -257,7 +257,7 @@ class VerifiablePresentationFactory(
         ),
         serializer = KeyBindingJws.serializer(),
         addKeyId = false,
-        addJsonWebKey = true,
+        addJsonWebKey = false,
         addX5c = false,
     ).getOrElse {
         Napier.w("Could not create JWS for presentation", it)

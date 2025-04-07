@@ -121,7 +121,9 @@ class OAuth2Client(
                 issuer = this.clientId,
             ),
             serializer = AuthenticationRequestParameters.serializer(),
+            addX5c = true,
             addJsonWebKey = true,
+            addKeyId = false,
         ).getOrThrow().serialize()
     )
 
