@@ -12,6 +12,7 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
@@ -62,8 +63,8 @@ internal class PresentationFactory(
             nonce = nonce,
             audience = audience,
             transactionData = transactionData,
-            calcIsoDeviceSignature = { docType ->
-                calcDeviceSignature(responseWillBeEncrypted, clientId, responseUrl, nonce, docType)
+            calcIsoDeviceSignature = { docType, mdocGenNonce ->
+                reuseMdocGeneratedNonce(mdocGenNonce, clientId, responseUrl, nonce, docType, responseWillBeEncrypted)
             }
         )
 
@@ -85,6 +86,17 @@ internal class PresentationFactory(
             }
         }
     }
+
+    private suspend fun PresentationFactory.reuseMdocGeneratedNonce(
+        mdocGeneratedNonce: String?,
+        clientId: String?,
+        responseUrl: String?,
+        nonce: String,
+        docType: String,
+        responseWillBeEncrypted: Boolean
+    ) = mdocGeneratedNonce?.let {
+        calcDeviceSignatureWithNonce(mdocGeneratedNonce, clientId!!, responseUrl!!, nonce, docType)
+    } ?: calcDeviceSignature(responseWillBeEncrypted, clientId, responseUrl, nonce, docType)
 
     /**
      * Parses all `transaction_data` fields from the request, with a JsonPath, because
@@ -118,10 +130,35 @@ internal class PresentationFactory(
         nonce: String,
         docType: String,
     ): Pair<CoseSigned<ByteArray>, String?> = if (clientId != null && responseUrl != null) {
-        val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
         // if it's not encrypted, we have no way of transporting the mdocGeneratedNonce, so we'll use the empty string
         val mdocGeneratedNonce = if (responseWillBeEncrypted)
             Random.Default.nextBytes(16).encodeToString(Base64UrlStrict) else ""
+        calcDeviceSignatureWithNonce(mdocGeneratedNonce, clientId, responseUrl, nonce, docType)
+    } else {
+        coseService.createSignedCose(
+            payload = nonce.encodeToByteArray(),
+            serializer = ByteArraySerializer(),
+            addKeyId = false
+        ).getOrElse {
+            Napier.w("Could not create DeviceAuth for presentation", it)
+            throw PresentationException(it)
+        } to null
+    }
+
+
+    /**
+     * Performs calculation of the [at.asitplus.wallet.lib.iso.SessionTranscript] and [at.asitplus.wallet.lib.iso.DeviceAuthentication],
+     * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024, with the [mdocGeneratedNonce] provided.
+     */
+    @Throws(PresentationException::class, CancellationException::class)
+    private suspend fun calcDeviceSignatureWithNonce(
+        mdocGeneratedNonce: String,
+        clientId: String,
+        responseUrl: String,
+        nonce: String,
+        docType: String,
+    ): Pair<CoseSigned<ByteArray>, String?> = run {
+        val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
         val clientIdToHash = ClientIdToHash(
             clientId = clientId,
             mdocGeneratedNonce = mdocGeneratedNonce
@@ -158,15 +195,6 @@ internal class PresentationFactory(
             Napier.w("Could not create DeviceAuth for presentation", it)
             throw PresentationException(it)
         } to mdocGeneratedNonce
-    } else {
-        coseService.createSignedCose(
-            payload = nonce.encodeToByteArray(),
-            serializer = ByteArraySerializer(),
-            addKeyId = false
-        ).getOrElse {
-            Napier.w("Could not create DeviceAuth for presentation", it)
-            throw PresentationException(it)
-        } to null
     }
 
     suspend fun <T : RequestParameters> createSignedIdToken(
