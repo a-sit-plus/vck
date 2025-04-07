@@ -27,6 +27,7 @@ data class QesInputDescriptor(
     val transactionData: List<@Serializable(DeprecatedBase64URLTransactionDataSerializer::class) TransactionData>? = null,
 ) : InputDescriptor {
 
+    @Deprecated("To be replaced with groups, see #267")
     override val group: String?
         get() = groups?.firstOrNull()
 

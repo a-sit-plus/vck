@@ -34,6 +34,7 @@ data class DifInputDescriptor(
         constraints = constraints,
     )
 
+    @Deprecated("To be replaced with groups, see #267")
     override val group: String?
         get() = groups?.firstOrNull()
 }
