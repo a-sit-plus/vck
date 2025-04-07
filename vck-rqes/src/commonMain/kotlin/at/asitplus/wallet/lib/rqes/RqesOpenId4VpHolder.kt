@@ -6,11 +6,7 @@ import at.asitplus.openid.*
 import at.asitplus.rqes.CredentialInfo
 import at.asitplus.rqes.QtspSignatureRequest
 import at.asitplus.rqes.SignHashRequestParameters
-import at.asitplus.rqes.collection_entries.CertificateParameters
-import at.asitplus.rqes.collection_entries.DocumentDigest
-import at.asitplus.rqes.collection_entries.KeyParameters
-import at.asitplus.rqes.collection_entries.DocumentLocation
-import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
+import at.asitplus.rqes.collection_entries.*
 import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.rqes.enums.SignedEnvelopeProperty
@@ -19,8 +15,6 @@ import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm.entries
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
-import at.asitplus.wallet.lib.oidvci.DefaultMapStore
-import at.asitplus.wallet.lib.oidvci.MapStore
 import at.asitplus.wallet.lib.rqes.helper.OAuth2RqesParameters
 import com.benasher44.uuid.uuid4
 
@@ -55,7 +49,6 @@ class RqesOpenId4VpHolder(
     var signatureProperties = SignatureProperties()
         private set
 
-    //TODO check if [CryptoProperties] align with signingCredential otw change it
     var signingCredential: SigningCredential? = null
         private set
 
@@ -64,25 +57,22 @@ class RqesOpenId4VpHolder(
         CREDENTIAL("credential"),
     }
 
-    /**
-     * TODO probably match [SignatureProperties] and [CryptoProperties] with [credentialInfo] if they are set
-     */
     suspend fun setSigningCredential(credentialInfo: CredentialInfo) {
-        require(credentialInfo.credentialID != null)
-        require(credentialInfo.certParameters != null)
-        with(credentialInfo.certParameters!!) {
-            require(!this.certificates.isNullOrEmpty())
-            require(this.status == CertificateParameters.CertStatus.VALID)
-        }
+        require(credentialInfo.credentialID != null) { "credentialID must not be null (Required by SignHashRequestParameters)" }
+
+        credentialInfo.certParameters?.let {
+            require(!it.certificates.isNullOrEmpty()) { "Signing Certificate chain must not be null or empty" }
+            it.status?.let { status -> require(status == CertificateParameters.CertStatus.VALID) { "Signing Certificate status must be valid" } }
+        } ?: throw IllegalArgumentException("Certificate parameters must not be null")
 
         with(credentialInfo.keyParameters) {
-            require(status == KeyParameters.KeyStatusOptions.ENABLED)
+            require(status == KeyParameters.KeyStatusOptions.ENABLED) { "Signing key parameters must be enabled" }
         }
 
         val signingAlgos =
             credentialInfo.keyParameters.algo.mapNotNull { oid -> catching { entries.first { it.oid == oid } }.getOrNull() }
 
-        require(signingAlgos.isNotEmpty())
+        require(signingAlgos.isNotEmpty()) { "Supported signing algorithms must not be null or empty" }
 
         signingCredential = SigningCredential(
             credentialId = credentialInfo.credentialID!!,
