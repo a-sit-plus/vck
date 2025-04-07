@@ -15,6 +15,7 @@ import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.encodeToString
 import kotlin.coroutines.cancellation.CancellationException
