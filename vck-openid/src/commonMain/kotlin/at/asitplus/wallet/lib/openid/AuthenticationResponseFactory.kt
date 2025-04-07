@@ -112,7 +112,9 @@ internal class AuthenticationResponseFactory(
         jwsService.createSignedJwsAddingParams(
             payload = payload,
             serializer = AuthenticationResponseParameters.serializer(),
-            addX5c = false
+            addX5c = false,
+            addJsonWebKey = true,
+            addKeyId = false,
         ).map { it.serialize() }.getOrElse {
             Napier.w("buildJarm error", it)
             throw InvalidRequest("buildJarm error", it)

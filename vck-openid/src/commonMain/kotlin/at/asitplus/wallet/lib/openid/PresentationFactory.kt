@@ -204,7 +204,9 @@ internal class PresentationFactory(
         jwsService.createSignedJwsAddingParams(
             payload = idToken,
             serializer = IdToken.serializer(),
-            addX5c = false
+            addKeyId = false,
+            addX5c = false,
+            addJsonWebKey = true,
         ).getOrElse {
             Napier.w("Could not sign id_token", it)
             throw AccessDenied("Could not sign id_token", it)

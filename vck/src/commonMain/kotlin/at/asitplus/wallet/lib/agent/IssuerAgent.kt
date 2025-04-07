@@ -3,12 +3,15 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.SignatureAlgorithm
+import at.asitplus.signum.indispensable.asn1.KnownOIDs.contentType
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
+import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
@@ -233,10 +236,18 @@ class IssuerAgent(
                 put(it.key, it.value)
             }
         }
-        val jws = jwsService.createSignedJwt(
-            JwsContentTypeConstants.SD_JWT,
-            entireObject,
-            JsonObject.serializer()
+        // inclusion of x5c/jwk may change when all clients can look up the issuer-signed key web-based,
+        // i.e. this issuer provides `.well-known/jwt-vc-issuer` file
+        val jws = jwsService.createSignedJwsAddingParams(
+            header = JwsHeader(
+                algorithm = jwsService.algorithm,
+                type = JwsContentTypeConstants.SD_JWT,
+            ),
+            payload = entireObject,
+            serializer = JsonObject.serializer(),
+            addKeyId = false,
+            addJsonWebKey = true,
+            addX5c = true,
         ).getOrElse {
             Napier.w("Could not wrap credential in SD-JWT", it)
             throw RuntimeException("Signing failed", it)

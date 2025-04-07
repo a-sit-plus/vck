@@ -294,7 +294,8 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
                 clientId = "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02",
             ),
             serializer = AuthenticationRequestParameters.Companion.serializer(),
-            addX5c = false
+            addX5c = false,
+            addJsonWebKey = true,
         ).getOrThrow().serialize()
 
         val wallet = OpenId4VpHolder(

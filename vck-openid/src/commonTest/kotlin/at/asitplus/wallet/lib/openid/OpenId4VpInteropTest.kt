@@ -145,10 +145,13 @@ class OpenId4VpInteropTest : FreeSpec({
         jar.payload.responseUrl.shouldNotBeNull()
 
         verifierJarMetadata.issuer shouldBe verifierIssuerUrl
-        val verifierJwks = verifierJarMetadata.jsonWebKeySet.shouldNotBeNull()
-        val verifierRequestSigningKey = verifierJwks.keys.first { it.keyId == jar.header.keyId }
-
-        VerifyJwsSignatureWithKey().invoke(jar, verifierRequestSigningKey) shouldBe true
+        if (jar.header.keyId != null) { // web-based key lookup is optional in profile 2.0
+            val verifierJwks = verifierJarMetadata.jsonWebKeySet.shouldNotBeNull()
+            val verifierRequestSigningKey = verifierJwks.keys.first { it.keyId == jar.header.keyId }
+            VerifyJwsSignatureWithKey()(jar, verifierRequestSigningKey) shouldBe true
+        } else {
+            VerifyJwsObject()(jar) shouldBe true
+        }
 
         val response = holderOid4vp.createAuthnResponse(parameters).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
@@ -168,7 +171,10 @@ class OpenId4VpInteropTest : FreeSpec({
                 }
             }
             sdJwt.jws.header.also {
-                it.keyId shouldBe issuerKeyId
+                if (it.keyId != null)
+                    it.keyId shouldBe issuerKeyId
+                else
+                    it.jsonWebKey.shouldNotBeNull()
                 it.algorithm shouldBe JwsAlgorithm.ES256
                 it.type shouldBe "vc+sd-jwt"
             }
