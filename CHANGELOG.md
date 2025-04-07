@@ -3,6 +3,7 @@
 Release 5.5.2:
  - OpenID for Verifiable Presentations:
    - Fix parsing `group` in presentation exchange input descriptors
+   - Set content type for authentication responses to `application/x-www-form-urlencoded`, without the charset appended
 
 Release 5.5.1:
  - OpenID for Verifiable Credential Issuance:
