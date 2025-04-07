@@ -64,7 +64,7 @@ class RqesOpenId4VpHolder(
     }
 
     suspend fun setSigningCredential(credentialInfo: CredentialInfo) {
-        require(credentialInfo.credentialID != null) { "credentialID must not be null" }
+        require(credentialInfo.credentialID != null) { "credentialID must not be null (Required by SignHashRequestParameters)" }
 
         credentialInfo.certParameters?.let {
             require(!it.certificates.isNullOrEmpty()) {"Signing Certificate chain must not be null or empty"}
