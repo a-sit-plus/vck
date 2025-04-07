@@ -1,5 +1,9 @@
 # Changelog
 
+Release 5.5.2:
+ - OpenID for Verifiable Presentations:
+   - Fix parsing `group` in presentation exchange input descriptors
+
 Release 5.5.1:
  - OpenID for Verifiable Credential Issuance:
     - Support AS metadata files at `/.well-known/oauth-authorization-server`

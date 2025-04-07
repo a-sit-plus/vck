@@ -13,7 +13,7 @@ data class QesInputDescriptor(
     @SerialName("id")
     override val id: String,
     @SerialName("group")
-    override val group: String? = null,
+    val groups: Collection<String>? = null,
     @SerialName("name")
     override val name: String? = null,
     @SerialName("purpose")
@@ -25,4 +25,9 @@ data class QesInputDescriptor(
     @Deprecated("Obsoleted by OpenID4VP draft 23. Remove after UC5 piloting")
     @SerialName("transaction_data")
     val transactionData: List<@Serializable(DeprecatedBase64URLTransactionDataSerializer::class) TransactionData>? = null,
-) : InputDescriptor
+) : InputDescriptor {
+
+    override val group: String?
+        get() = groups?.firstOrNull()
+
+}
