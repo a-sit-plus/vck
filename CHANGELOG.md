@@ -1,6 +1,10 @@
 # Changelog
 
-Release 5.6.0:
+Release 5.5.2:
+ - OpenID for Verifiable Presentations:
+   - Fix parsing `group` in presentation exchange input descriptors
+
+Release 5.5.1:
  - OpenID for Verifiable Credential Issuance:
    - Remove code elements deprecated in 5.5.0
  - OpenID for Verifiable Presentations:

@@ -13,7 +13,7 @@ data class DifInputDescriptor(
     @SerialName("id")
     override val id: String,
     @SerialName("group")
-    override val group: String? = null,
+    val groups: Collection<String>? = null,
     @SerialName("name")
     override val name: String? = null,
     @SerialName("purpose")
@@ -33,4 +33,8 @@ data class DifInputDescriptor(
         id = uuid4().toString(),
         constraints = constraints,
     )
+
+    @Deprecated("To be replaced with groups, see #267")
+    override val group: String?
+        get() = groups?.firstOrNull()
 }
