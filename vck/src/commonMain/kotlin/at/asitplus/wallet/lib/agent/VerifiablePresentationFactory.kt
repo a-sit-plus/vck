@@ -22,8 +22,6 @@ import at.asitplus.wallet.lib.iso.DeviceAuth
 import at.asitplus.wallet.lib.iso.DeviceNameSpaces
 import at.asitplus.wallet.lib.iso.DeviceResponse
 import at.asitplus.wallet.lib.iso.DeviceSigned
-import at.asitplus.wallet.lib.iso.DeviceSignedItem
-import at.asitplus.wallet.lib.iso.DeviceSignedItemList
 import at.asitplus.wallet.lib.iso.Document
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.iso.sha256
@@ -162,18 +160,8 @@ class VerifiablePresentationFactory(
             }
         }
 
-        val deviceSignedItemList = disclosedItems.mapValues { namespaceToAttributeNamesEntry ->
-            val issuerSignedItems = namespaceToAttributeNamesEntry.value
-            DeviceSignedItemList(issuerSignedItems.map { issuerSignedItem ->
-                DeviceSignedItem(
-                    issuerSignedItem.elementIdentifier,
-                    issuerSignedItem.elementValue
-                )
-            })
-        }
-
         val docType = credential.scheme?.isoDocType!!
-        val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(deviceSignedItemList))
+        val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
         val (deviceSignature, mDocGeneratedNonce) = request.calcIsoDeviceSignature.invoke(docType, deviceNameSpaceBytes)
             ?: throw PresentationException("CalculateChallengeResponse not implemented")
         return CreatePresentationResult.DeviceResponse(
