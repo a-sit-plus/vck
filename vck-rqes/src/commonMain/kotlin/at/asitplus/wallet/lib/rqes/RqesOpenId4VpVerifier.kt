@@ -11,6 +11,8 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsService
@@ -41,6 +43,7 @@ class RqesOpenId4VpVerifier(
     verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
     supportedAlgorithms: List<JwsAlgorithm> = listOf(JwsAlgorithm.ES256),
     verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(),
+    verifyCoseSignature: VerifyCoseSignatureWithKeyFun<ByteArray> = VerifyCoseSignatureWithKey(),
     timeLeewaySeconds: Long = 300L,
     clock: Clock = Clock.System,
     nonceService: NonceService = DefaultNonceService(),
@@ -55,6 +58,7 @@ class RqesOpenId4VpVerifier(
     verifyJwsObject = verifyJwsObject,
     supportedAlgorithms = supportedAlgorithms,
     verifierCoseService = verifierCoseService,
+    verifyCoseSignature = verifyCoseSignature,
     timeLeewaySeconds = timeLeewaySeconds,
     clock = clock,
     nonceService = nonceService,
