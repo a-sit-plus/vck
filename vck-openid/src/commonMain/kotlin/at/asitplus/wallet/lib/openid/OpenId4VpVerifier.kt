@@ -648,7 +648,7 @@ open class OpenId4VpVerifier(
         val sessionTranscript = SessionTranscript(
             deviceEngagementBytes = null,
             eReaderKeyBytes = null,
-            handover = OID4VPHandover(
+            oid4VPHandover = OID4VPHandover(
                 clientIdHash = clientIdToHash.serialize().sha256(),
                 responseUriHash = responseUriToHash.serialize().sha256(),
                 nonce = challenge

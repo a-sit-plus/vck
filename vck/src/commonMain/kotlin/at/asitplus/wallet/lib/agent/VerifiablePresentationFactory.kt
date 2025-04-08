@@ -162,19 +162,8 @@ class VerifiablePresentationFactory(
                 }
             }
 
-            val deviceSignedItemList = disclosedItems.mapValues { namespaceToAttributeNamesEntry ->
-                val issuerSignedItems = namespaceToAttributeNamesEntry.value
-                DeviceSignedItemList(issuerSignedItems.map { issuerSignedItem ->
-                    DeviceSignedItem(
-                        issuerSignedItem.elementIdentifier,
-                        issuerSignedItem.elementValue
-                    )
-                })
-            }
-
             val docType = credential.scheme?.isoDocType!!
-            val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(deviceSignedItemList))
-
+            val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
             val (deviceSignature, _) = request.calcIsoDeviceSignature(docType, deviceNameSpaceBytes)
                 ?: throw PresentationException("calcIsoDeviceSignature not implemented")
 
