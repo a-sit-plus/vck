@@ -3,11 +3,7 @@ package at.asitplus.rqes
 import CscAuthorizationDetails
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.InputDescriptor
-import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.AuthorizationDetails
-import at.asitplus.openid.OpenIdAuthorizationDetails
-import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.TransactionData
+import at.asitplus.openid.*
 import at.asitplus.rqes.collection_entries.QCertCreationAcceptance
 import at.asitplus.rqes.collection_entries.QesAuthorization
 import at.asitplus.rqes.serializers.DeprecatedBase64URLTransactionDataSerializer
@@ -16,6 +12,7 @@ import at.asitplus.rqes.serializers.RequestParametersSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.contextual
+import kotlinx.serialization.modules.overwriteWith
 import kotlinx.serialization.modules.polymorphic
 
 private val inputDescriptorModule = SerializersModule {
@@ -31,6 +28,7 @@ private val inputDescriptorModule = SerializersModule {
         InputDescriptor::class,
         defaultDeserializerProvider = { InputDescriptorSerializer }
     )
+    contextual(InputDescriptorSerializer)
 }
 
 private val requestParametersModule = SerializersModule {
@@ -66,6 +64,7 @@ private val transactionDataModule = SerializersModule {
         subclass(QesAuthorization::class, QesAuthorization.serializer())
         subclass(QCertCreationAcceptance::class, QCertCreationAcceptance.serializer())
     }
+    contextual(DeprecatedBase64URLTransactionDataSerializer)
 }
 
 /**
@@ -77,7 +76,6 @@ private val extendedOpenIdSerializerModule = SerializersModule {
     include(requestParametersModule)
     include(authorizationDetailsModule)
     include(transactionDataModule)
-    contextual(DeprecatedBase64URLTransactionDataSerializer)
 }
 
 
@@ -87,6 +85,6 @@ val rdcJsonSerializer by lazy {
         encodeDefaults = false
         classDiscriminator = "type"
         ignoreUnknownKeys = true
-        serializersModule = extendedOpenIdSerializerModule
+        serializersModule = odcJsonSerializer.serializersModule.overwriteWith(extendedOpenIdSerializerModule)
     }
 }
