@@ -58,13 +58,18 @@ internal class PresentationFactory(
         val clientId = request.clientId
         val responseUrl = request.responseUrl
         val transactionData = parseTransactionData(request)
+        val mdocGeneratedNonce = if (clientId != null && responseUrl != null) {
+            if (responseWillBeEncrypted) Random.nextBytes(16).encodeToString(Base64UrlStrict) else ""
+        } else null
         val vpRequestParams = PresentationRequestParameters(
             nonce = nonce,
             audience = audience,
             transactionData = transactionData,
             calcIsoDeviceSignature = { docType ->
-                calcDeviceSignature(responseWillBeEncrypted, clientId, responseUrl, nonce, docType)
-            }
+                // kept pair result type for backwards compatibility
+                calcDeviceSignature(mdocGeneratedNonce, clientId, responseUrl, nonce, docType) to null
+            },
+            mdocGeneratedNonce = mdocGeneratedNonce
         )
 
         holder.createPresentation(
@@ -77,10 +82,8 @@ internal class PresentationFactory(
             clientMetadata?.vpFormats?.let {
                 when (presentation) {
                     is PresentationResponseParameters.DCQLParameters -> presentation.verifyFormatSupport(it)
-
-                    is PresentationResponseParameters.PresentationExchangeParameters -> {
+                    is PresentationResponseParameters.PresentationExchangeParameters ->
                         presentation.verifyFormatSupport(it)
-                    }
                 }
             }
         }
@@ -108,20 +111,56 @@ internal class PresentationFactory(
 
     /**
      * Performs calculation of the [at.asitplus.wallet.lib.iso.SessionTranscript] and [at.asitplus.wallet.lib.iso.DeviceAuthentication],
-     * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024, if required in [responseWillBeEncrypted] (i.e. it will be encrypted)
+     * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024, with the [mdocGeneratedNonce] provided if set,
+     * or a fallback mechanism used otherwise
      */
     @Throws(PresentationException::class, CancellationException::class)
     private suspend fun calcDeviceSignature(
-        responseWillBeEncrypted: Boolean,
+        mdocGeneratedNonce: String?,
         clientId: String?,
         responseUrl: String?,
         nonce: String,
         docType: String,
-    ): Pair<CoseSigned<ByteArray>, String?> = if (clientId != null && responseUrl != null) {
-        val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
-        // if it's not encrypted, we have no way of transporting the mdocGeneratedNonce, so we'll use the empty string
-        val mdocGeneratedNonce = if (responseWillBeEncrypted)
-            Random.Default.nextBytes(16).encodeToString(Base64UrlStrict) else ""
+    ): CoseSigned<ByteArray> = if (mdocGeneratedNonce != null && clientId != null && responseUrl != null) {
+        run {
+            val deviceAuthentication = DeviceAuthentication(
+                type = "DeviceAuthentication",
+                sessionTranscript = calcSessionTranscript(mdocGeneratedNonce, clientId, responseUrl, nonce),
+                docType = docType,
+                namespaces = ByteStringWrapper(DeviceNameSpaces(mapOf()))
+            )
+            val deviceAuthenticationBytes = coseCompliantSerializer
+                .encodeToByteArray(ByteStringWrapper(deviceAuthentication))
+                .wrapInCborTag(24)
+                .also { Napier.d("Device authentication signature input is ${it.encodeToString(Base16())}") }
+
+            coseService.createSignedCoseWithDetachedPayload(
+                payload = deviceAuthenticationBytes,
+                serializer = ByteArraySerializer(),
+                addKeyId = false
+            ).getOrElse {
+                Napier.w("Could not create DeviceAuth for presentation", it)
+                throw PresentationException(it)
+            }
+        }
+    } else {
+        coseService.createSignedCose(
+            payload = nonce.encodeToByteArray(),
+            serializer = ByteArraySerializer(),
+            addKeyId = false
+        ).getOrElse {
+            Napier.w("Could not create DeviceAuth for presentation", it)
+            throw PresentationException(it)
+        }
+    }
+
+
+    private fun calcSessionTranscript(
+        mdocGeneratedNonce: String,
+        clientId: String,
+        responseUrl: String,
+        nonce: String,
+    ): SessionTranscript {
         val clientIdToHash = ClientIdToHash(
             clientId = clientId,
             mdocGeneratedNonce = mdocGeneratedNonce
@@ -139,34 +178,7 @@ internal class PresentationFactory(
                 nonce = nonce
             ),
         )
-        val deviceAuthentication = DeviceAuthentication(
-            type = "DeviceAuthentication",
-            sessionTranscript = sessionTranscript,
-            docType = docType,
-            namespaces = deviceNameSpaceBytes
-        )
-        val deviceAuthenticationBytes = coseCompliantSerializer
-            .encodeToByteArray(ByteStringWrapper(deviceAuthentication))
-            .wrapInCborTag(24)
-            .also { Napier.d("Device authentication signature input is ${it.encodeToString(Base16())}") }
-
-        coseService.createSignedCoseWithDetachedPayload(
-            payload = deviceAuthenticationBytes,
-            serializer = ByteArraySerializer(),
-            addKeyId = false
-        ).getOrElse {
-            Napier.w("Could not create DeviceAuth for presentation", it)
-            throw PresentationException(it)
-        } to mdocGeneratedNonce
-    } else {
-        coseService.createSignedCose(
-            payload = nonce.encodeToByteArray(),
-            serializer = ByteArraySerializer(),
-            addKeyId = false
-        ).getOrElse {
-            Napier.w("Could not create DeviceAuth for presentation", it)
-            throw PresentationException(it)
-        } to null
+        return sessionTranscript
     }
 
     suspend fun <T : RequestParameters> createSignedIdToken(

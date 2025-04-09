@@ -214,19 +214,30 @@ class HolderAgent(
             )
         }.toList()
 
+        // Presentation will be one single ISO mDoc DeviceResponse, containing multiple documents
+        val isSingleIsoMdocPresentation = submissionList.all { it.second.credential is StoreEntry.Iso }
         val presentationSubmission = PresentationSubmission.fromMatches(
             presentationId = presentationDefinition.id,
             matches = submissionList,
+            isSingleIsoMdocPresentation = isSingleIsoMdocPresentation
         )
 
-        val verifiablePresentations = submissionList.map { match ->
-            val credential = match.second.credential
-            val disclosedAttributes = match.second.disclosedAttributes
-            verifiablePresentationFactory.createVerifiablePresentation(
-                request = request,
-                credential = credential,
-                disclosedAttributes = disclosedAttributes,
-            ).getOrThrow()
+        val verifiablePresentations = if (isSingleIsoMdocPresentation) {
+            listOf(
+                verifiablePresentationFactory.createVerifiablePresentationForIsoCredentials(
+                    request = request,
+                    credentialAndDisclosedAttributes = submissionList
+                        .associate { it.second.credential as StoreEntry.Iso to it.second.disclosedAttributes },
+                ).getOrThrow()
+            )
+        } else {
+            submissionList.map { match ->
+                verifiablePresentationFactory.createVerifiablePresentation(
+                    request = request,
+                    credential = match.second.credential,
+                    disclosedAttributes = match.second.disclosedAttributes,
+                ).getOrThrow()
+            }
         }
 
         PresentationResponseParameters.PresentationExchangeParameters(
@@ -362,6 +373,7 @@ class HolderAgent(
     private fun PresentationSubmission.Companion.fromMatches(
         presentationId: String?,
         matches: List<Pair<String, PresentationExchangeCredentialDisclosure>>,
+        isSingleIsoMdocPresentation: Boolean,
     ) = PresentationSubmission(
         id = uuid4().toString(),
         definitionId = presentationId,
@@ -369,7 +381,7 @@ class HolderAgent(
             PresentationSubmissionDescriptor.fromMatch(
                 inputDescriptorId = match.first,
                 credential = match.second.credential,
-                index = if (matches.size == 1) null else index,
+                index = if (matches.size == 1 || isSingleIsoMdocPresentation) null else index,
             )
         },
     )
