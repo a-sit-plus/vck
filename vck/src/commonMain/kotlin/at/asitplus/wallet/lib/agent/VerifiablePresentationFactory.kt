@@ -4,12 +4,10 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
-import at.asitplus.openid.TransactionData
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
 import at.asitplus.openid.third_party.at.asitplus.jsonpath.core.plus
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.SdJwtCreator.NAME_SD
@@ -31,7 +29,6 @@ import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.github.aakira.napier.Napier
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -162,9 +159,10 @@ class VerifiablePresentationFactory(
                     ?: throw PresentationException("Attribute not available in credential: $['$namespace']['$attributeName']")
             }
         }
+
         val docType = credential.scheme?.isoDocType!!
         val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
-        val (deviceSignature, mDocGeneratedNonce) = request.calcIsoDeviceSignature.invoke(docType)
+        val (deviceSignature, mDocGeneratedNonce) = request.calcIsoDeviceSignature.invoke(docType, deviceNameSpaceBytes)
             ?: throw PresentationException("CalculateChallengeResponse not implemented")
         return CreatePresentationResult.DeviceResponse(
             deviceResponse = DeviceResponse(

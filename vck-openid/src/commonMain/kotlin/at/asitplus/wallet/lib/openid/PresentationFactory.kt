@@ -12,7 +12,6 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
@@ -29,7 +28,6 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.serialization.PolymorphicSerializer
@@ -64,7 +62,7 @@ internal class PresentationFactory(
             nonce = nonce,
             audience = audience,
             transactionData = transactionData,
-            calcIsoDeviceSignature = { docType ->
+            calcIsoDeviceSignature = { docType, _ ->
                 calcDeviceSignature(responseWillBeEncrypted, clientId, responseUrl, nonce, docType)
             }
         )
@@ -138,7 +136,7 @@ internal class PresentationFactory(
         val sessionTranscript = SessionTranscript(
             deviceEngagementBytes = null,
             eReaderKeyBytes = null,
-            handover = OID4VPHandover(
+            oid4VPHandover = OID4VPHandover(
                 clientIdHash = clientIdToHash.serialize().sha256(),
                 responseUriHash = responseUriToHash.serialize().sha256(),
                 nonce = nonce
