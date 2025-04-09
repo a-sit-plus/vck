@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.SignatureAlgorithm
-import at.asitplus.signum.indispensable.asn1.KnownOIDs.contentType
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.toCoseKey
@@ -11,7 +10,6 @@ import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
@@ -384,7 +382,7 @@ class IssuerAgent(
 
     private suspend fun wrapStatusListTokenInJws(statusListTokenPayload: StatusListTokenPayload): JwsSigned<StatusListTokenPayload>? =
         jwsService.createSignedJwt(
-            MediaTypes.Application.STATUSLIST_JWT,
+            MediaTypes.STATUSLIST_JWT,
             statusListTokenPayload,
             StatusListTokenPayload.serializer(),
         ).getOrElse {
