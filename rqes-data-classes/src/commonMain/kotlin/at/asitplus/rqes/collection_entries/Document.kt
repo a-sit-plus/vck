@@ -8,6 +8,7 @@ import at.asitplus.rqes.serializers.Asn1EncodableBase64Serializer
 import at.asitplus.rqes.SignDocRequestParameters
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
+import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import kotlinx.serialization.SerialName
@@ -44,6 +45,7 @@ data class Document(
      * The OID of the algorithm to use for signing
      */
     @SerialName("signAlgo")
+    @Serializable(with = ObjectIdentifierStringSerializer::class)
     val signAlgoOid: ObjectIdentifier,
 
     /**

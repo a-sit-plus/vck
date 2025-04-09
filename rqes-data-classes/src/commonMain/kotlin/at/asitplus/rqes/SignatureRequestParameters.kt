@@ -4,6 +4,7 @@ import at.asitplus.openid.*
 import at.asitplus.rqes.collection_entries.DocumentLocation
 import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
 import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -114,6 +115,7 @@ data class SignatureRequestParameters(
      * in [documentDigests]
      */
     @SerialName("hashAlgorithmOID")
+    @Serializable(with = ObjectIdentifierStringSerializer::class)
     val hashAlgorithmOid: ObjectIdentifier = Digest.SHA256.oid,
 
     /**

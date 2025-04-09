@@ -2,7 +2,7 @@ package at.asitplus.rqes.collection_entries
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.signum.indispensable.asn1.ObjectIdSerializer
+import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import kotlinx.serialization.SerialName
@@ -45,7 +45,7 @@ data class RqesDocumentDigestEntry private constructor(
      * NOT be present.
      */
     @SerialName("hashAlgorithmOID")
-    @Serializable(ObjectIdSerializer::class)
+    @Serializable(with = ObjectIdentifierStringSerializer::class)
     val hashAlgorithmOid: ObjectIdentifier? = null,
 
     /**
@@ -99,7 +99,7 @@ data class RqesDocumentDigestEntry private constructor(
      * opaque for the Wallet.
      */
     @SerialName("DTBS/RHashAlgorithmOID")
-    @Serializable(ObjectIdSerializer::class)
+    @Serializable(with = ObjectIdentifierStringSerializer::class)
     val dtbsrHashAlgorithmOid: ObjectIdentifier? = null,
 ) {
     /**
