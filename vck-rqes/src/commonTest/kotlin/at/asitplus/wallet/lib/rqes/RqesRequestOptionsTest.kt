@@ -27,6 +27,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
@@ -70,8 +71,11 @@ class RqesRequestOptionsTest : FreeSpec({
         "Authentication request contains transactionData" - {
             val authnRequest = rqesVerifier.createAuthnRequest(requestOptions = requestOptions)
             val inputDescriptor = authnRequest.presentationDefinition!!.inputDescriptors.first()
+            val serialized = vckJsonSerializer.encodeToString(inputDescriptor)
             authnRequest.presentationDefinition.shouldNotBeNull()
             inputDescriptor.shouldBeInstanceOf<QesInputDescriptor>()
+            serialized.shouldNotContain(QesInputDescriptor::class.simpleName!!)
+
 
             "OID4VP" {
                 authnRequest.transactionData shouldNotBe null
