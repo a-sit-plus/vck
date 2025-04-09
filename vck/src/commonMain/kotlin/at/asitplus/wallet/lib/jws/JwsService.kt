@@ -31,7 +31,7 @@ interface JwsService {
     /**
      * Algorithm which will be used to sign JWS in [createSignedJws], [createSignedJwt], [createSignedJwsAddingParams].
      */
-    val algorithm: JwsAlgorithm<*>
+    val algorithm: JwsAlgorithm
 
     /**
      * Algorithm which can be used to encrypt JWE, that can be decrypted with [decryptJweObject].
@@ -112,7 +112,7 @@ interface JwsService {
 
 interface VerifierJwsService {
 
-    val supportedAlgorithms: List<JwsAlgorithm<*>>
+    val supportedAlgorithms: List<JwsAlgorithm>
 
     suspend fun verifyJwsObject(jwsObject: JwsSigned<*>): Boolean
 
@@ -124,7 +124,7 @@ interface VerifierJwsService {
 
 class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
 
-    override val algorithm: JwsAlgorithm<*> =
+    override val algorithm: JwsAlgorithm =
         cryptoService.keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow()
 
     override val keyMaterial: KeyMaterial = cryptoService.keyMaterial
