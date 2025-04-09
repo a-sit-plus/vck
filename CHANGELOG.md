@@ -11,6 +11,7 @@ Release 5.6.0:
    - Remove code elements deprecated in 5.5.0
  - OpenID for Verifiable Presentations:
    - In `OpenId4VpVerifier` add constructor parameter `supportedAlgorithms`
+   - In `OpenId4VpWallet` remove `openUrlExternally`, and instead return the redirected URL from the verifier
  - Use function decomposition:
    - Replace `VerifierCryptoService` with `VerifySignatureFun`
    - Replace `VerifierJwsService` with `VerifyJwsObjectFun`, `VerifyJwsSignatureWithCnfFun` and `VerifyJwsSignatureWithKeyFun`
