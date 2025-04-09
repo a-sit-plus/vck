@@ -73,21 +73,15 @@ sealed interface StatusListToken {
         ): KmmResult<StatusListTokenPayload> = StatusListTokenValidator.validateStatusListToken(
             statusListToken = this,
             statusListTokenResolvedAt = resolvedAt,
-            validateStatusListTokenIntegrity = { statusListToken ->
-                val jwsSigned = statusListToken.value
-                verifierJwsService.verifyJwsObject(jwsSigned).ifFalse {
-                    throw IllegalStateException("Invalid Signature.")
-                }
-
-                if (jwsSigned.header.type?.lowercase() != MediaTypes.Application.STATUSLIST_JWT.lowercase()) {
-                    throw IllegalArgumentException("Invalid type header")
-                }
-                jwsSigned.payload
+            validateStatusListTokenIntegrity = {
+                StatusListTokenIntegrityValidator(
+                    verifyJwsObject = verifierJwsService::verifyJwsObject,
+                    verifyCoseSignature = { _, _, _ -> KmmResult.failure(IllegalArgumentException("CWT not expected")) }
+                ).validateStatusListTokenIntegrity(it).getOrThrow()
             },
             statusListInfo = statusListInfo,
             isInstantInThePast = isInstantInThePast,
         )
-
 
         suspend fun validate(
             verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
@@ -96,16 +90,11 @@ sealed interface StatusListToken {
         ): KmmResult<StatusListTokenPayload> = StatusListTokenValidator.validateStatusListToken(
             statusListToken = this,
             statusListTokenResolvedAt = resolvedAt,
-            validateStatusListTokenIntegrity = { statusListToken ->
-                val jwsSigned = statusListToken.value
-                verifyJwsObject(jwsSigned).ifFalse {
-                    throw IllegalStateException("Invalid Signature.")
-                }
-
-                if (jwsSigned.header.type?.lowercase() != MediaTypes.Application.STATUSLIST_JWT.lowercase()) {
-                    throw IllegalArgumentException("Invalid type header")
-                }
-                jwsSigned.payload
+            validateStatusListTokenIntegrity = {
+                StatusListTokenIntegrityValidator(
+                    verifyJwsObject = verifyJwsObject,
+                    verifyCoseSignature = { _, _, _ -> KmmResult.failure(IllegalArgumentException("CWT not expected")) },
+                ).validateStatusListTokenIntegrity(it).getOrThrow()
             },
             statusListInfo = statusListInfo,
             isInstantInThePast = isInstantInThePast,
@@ -126,16 +115,11 @@ sealed interface StatusListToken {
         ): KmmResult<StatusListTokenPayload> = StatusListTokenValidator.validateStatusListToken(
             statusListToken = this,
             statusListTokenResolvedAt = resolvedAt,
-            validateStatusListTokenIntegrity = { statusListToken ->
-                val coseStatus = statusListToken.value
-                verifyCoseSignature(coseStatus, byteArrayOf(), null).isSuccess.ifFalse {
-                    throw IllegalStateException("Invalid Signature.")
-                }
-                if (coseStatus.protectedHeader.type?.lowercase() != MediaTypes.Application.STATUSLIST_CWT.lowercase()) {
-                    throw IllegalArgumentException("Invalid type header")
-                }
-                coseStatus.payload
-                    ?: throw IllegalStateException("Status list token payload not found.")
+            validateStatusListTokenIntegrity = {
+                StatusListTokenIntegrityValidator(
+                    verifyJwsObject = { false },
+                    verifyCoseSignature = verifyCoseSignature,
+                ).validateStatusListTokenIntegrity(it).getOrThrow()
             },
             statusListInfo = statusListInfo,
             isInstantInThePast = isInstantInThePast,
