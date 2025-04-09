@@ -23,8 +23,6 @@ import at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.*
-import at.asitplus.wallet.lib.iso.DeviceSignedItemList
-import at.asitplus.wallet.lib.iso.wrapInCborTag
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
@@ -32,7 +30,6 @@ import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
-import kotlinx.serialization.Contextual
 import kotlinx.serialization.PolymorphicSerializer
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.encodeToByteArray
@@ -130,7 +127,7 @@ internal class PresentationFactory(
                 type = "DeviceAuthentication",
                 sessionTranscript = calcSessionTranscript(mdocGeneratedNonce, clientId, responseUrl, nonce),
                 docType = docType,
-                namespaces = ByteStringWrapper(DeviceNameSpaces(mapOf<String, @Contextual DeviceSignedItemList>()))
+                namespaces = ByteStringWrapper(DeviceNameSpaces(mapOf()))
             )
             val deviceAuthenticationBytes = coseCompliantSerializer
                 .encodeToByteArray(ByteStringWrapper(deviceAuthentication))
