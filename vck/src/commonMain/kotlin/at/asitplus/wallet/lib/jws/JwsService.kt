@@ -10,15 +10,11 @@ import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.signum.indispensable.josef.JwsExtensions.prependWith4BytesSize
 import at.asitplus.signum.indispensable.josef.JwsSigned.Companion.prepareJwsSignatureInput
-import at.asitplus.signum.indispensable.misc.BitLength
 import at.asitplus.signum.indispensable.symmetric.*
-import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.signum.supreme.agree.Ephemeral
 import at.asitplus.signum.supreme.agree.keyAgreement
 import at.asitplus.signum.supreme.asKmmResult
 import at.asitplus.signum.supreme.hash.digest
-import at.asitplus.signum.supreme.symmetric.encrypt
-import at.asitplus.signum.supreme.symmetric.keyFrom
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.github.aakira.napier.Napier
@@ -35,7 +31,7 @@ interface JwsService {
     /**
      * Algorithm which will be used to sign JWS in [createSignedJws], [createSignedJwt], [createSignedJwsAddingParams].
      */
-    val algorithm: JwsAlgorithm
+    val algorithm: JwsAlgorithm<*>
 
     /**
      * Algorithm which can be used to encrypt JWE, that can be decrypted with [decryptJweObject].
@@ -116,7 +112,7 @@ interface JwsService {
 
 interface VerifierJwsService {
 
-    val supportedAlgorithms: List<JwsAlgorithm>
+    val supportedAlgorithms: List<JwsAlgorithm<*>>
 
     suspend fun verifyJwsObject(jwsObject: JwsSigned<*>): Boolean
 
@@ -128,7 +124,7 @@ interface VerifierJwsService {
 
 class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
 
-    override val algorithm: JwsAlgorithm =
+    override val algorithm: JwsAlgorithm<*> =
         cryptoService.keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow()
 
     override val keyMaterial: KeyMaterial = cryptoService.keyMaterial
@@ -368,10 +364,13 @@ object VerifyJwsSignature {
         verifySignature: VerifySignatureFun = VerifySignature(),
     ): VerifyJwsSignatureFun = { jwsObject, publicKey ->
         catching {
+
+            val jwsAlgorithm = jwsObject.header.algorithm
+            require(jwsAlgorithm is JwsAlgorithm.Signature) { "Algorithm not supported: $jwsAlgorithm" }
             verifySignature(
                 jwsObject.plainSignatureInput,
                 jwsObject.signature,
-                jwsObject.header.algorithm.algorithm,
+                jwsAlgorithm.algorithm,
                 publicKey,
             ).getOrThrow()
         }.fold(
@@ -487,7 +486,7 @@ class DefaultVerifierJwsService(
     @Suppress("DEPRECATION") @Deprecated("Use verifySignature and supportedAlgorithms")
     private val cryptoService: VerifierCryptoService = DefaultVerifierCryptoService(),
     private val verifySignature: VerifySignatureFun = VerifySignature(),
-    override val supportedAlgorithms: List<JwsAlgorithm> = listOf(JwsAlgorithm.ES256),
+    override val supportedAlgorithms: List<JwsAlgorithm.Signature> = listOf(JwsAlgorithm.Signature.ES256),
     private val verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(verifySignature),
     private val verifyJwsSignatureObject: VerifyJwsObjectFun = VerifyJwsObject(verifyJwsSignature),
     private val verifyJwsSignatureWithKey: VerifyJwsSignatureWithKeyFun = VerifyJwsSignatureWithKey(verifyJwsSignature),

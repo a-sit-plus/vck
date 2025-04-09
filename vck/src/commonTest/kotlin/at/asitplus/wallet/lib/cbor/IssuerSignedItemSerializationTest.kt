@@ -99,7 +99,7 @@ class IssuerSignedItemSerializationTest : FreeSpec({
             elementIdentifier = elementId,
             elementValue = Random.nextBytes(32),
         )
-        val protectedHeader = CoseHeader(algorithm = CoseAlgorithm.RS256)
+        val protectedHeader = CoseHeader(algorithm = CoseAlgorithm.Signature.RS256)
         val mso = MobileSecurityObject(
             version = "1.0",
             digestAlgorithm = "SHA-256",

@@ -41,7 +41,7 @@ class RqesOpenId4VpVerifier(
     jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
     verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
     verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
-    supportedAlgorithms: List<JwsAlgorithm> = listOf(JwsAlgorithm.ES256),
+    supportedAlgorithms: List<JwsAlgorithm.Signature> = listOf(JwsAlgorithm.Signature.ES256),
     verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(),
     verifyCoseSignature: VerifyCoseSignatureWithKeyFun<ByteArray> = VerifyCoseSignatureWithKey(),
     timeLeewaySeconds: Long = 300L,

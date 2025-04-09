@@ -48,7 +48,7 @@ class DeviceSignedItemSerializationTest : FreeSpec({
             key = elementId,
             value = Random.nextBytes(32),
         )
-        val protectedHeader = CoseHeader(algorithm = CoseAlgorithm.RS256)
+        val protectedHeader = CoseHeader(algorithm = CoseAlgorithm.Signature.RS256)
         val issuerAuth = CoseSigned.create(
             protectedHeader,
             null,

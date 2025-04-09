@@ -73,7 +73,7 @@ class JwsServiceTest : FreeSpec({
     }
 
     "signed object with jsonWebKey can be verified" {
-        val header = JwsHeader(algorithm = JwsAlgorithm.ES256, jsonWebKey = cryptoService.keyMaterial.jsonWebKey)
+        val header = JwsHeader(algorithm = JwsAlgorithm.Signature.ES256, jsonWebKey = cryptoService.keyMaterial.jsonWebKey)
         val signed = jwsService.createSignedJws(header, randomPayload, String.serializer()).getOrThrow()
 
         val result = verifierJwsService(signed)
@@ -83,7 +83,7 @@ class JwsServiceTest : FreeSpec({
     "signed object with kid from jku can be verified" {
         val kid = Random.nextBytes(16).encodeToString(Base64())
         val jku = "https://example.com/" + Random.nextBytes(16).encodeToString(Base64UrlStrict)
-        val header = JwsHeader(algorithm = JwsAlgorithm.ES256, keyId = kid, jsonWebKeySetUrl = jku)
+        val header = JwsHeader(algorithm = JwsAlgorithm.Signature.ES256, keyId = kid, jsonWebKeySetUrl = jku)
         val signed = jwsService.createSignedJws(header, randomPayload, String.serializer()).getOrThrow()
         val validKey = cryptoService.keyMaterial.jsonWebKey.copy(keyId = kid)
         val jwkSetRetriever: JwkSetRetrieverFunction = { JsonWebKeySet(keys = listOf(validKey)) }
@@ -94,7 +94,7 @@ class JwsServiceTest : FreeSpec({
     "signed object with kid from jku, returning invalid key, can not be verified" {
         val kid = Random.nextBytes(16).encodeToString(Base64())
         val jku = "https://example.com/" + Random.nextBytes(16).encodeToString(Base64UrlStrict)
-        val header = JwsHeader(algorithm = JwsAlgorithm.ES256, keyId = kid, jsonWebKeySetUrl = jku)
+        val header = JwsHeader(algorithm = JwsAlgorithm.Signature.ES256, keyId = kid, jsonWebKeySetUrl = jku)
         val signed = jwsService.createSignedJws(header, randomPayload, String.serializer()).getOrThrow()
         val invalidKey = EphemeralKeyWithoutCert().jsonWebKey
         val jwkSetRetriever: JwkSetRetrieverFunction = { JsonWebKeySet(keys = listOf(invalidKey)) }
@@ -103,7 +103,7 @@ class JwsServiceTest : FreeSpec({
     }
 
     "signed object without public key in header can not be verified" {
-        val header = JwsHeader(algorithm = JwsAlgorithm.ES256)
+        val header = JwsHeader(algorithm = JwsAlgorithm.Signature.ES256)
         val signed = jwsService.createSignedJws(header, randomPayload, String.serializer()).getOrThrow()
 
         verifierJwsService = VerifyJwsObject()
@@ -111,7 +111,7 @@ class JwsServiceTest : FreeSpec({
     }
 
     "signed object without public key in header, but retrieved out-of-band can be verified" {
-        val header = JwsHeader(algorithm = JwsAlgorithm.ES256)
+        val header = JwsHeader(algorithm = JwsAlgorithm.Signature.ES256)
         val signed = jwsService.createSignedJws(header, randomPayload, String.serializer()).getOrThrow()
         val validKey = cryptoService.keyMaterial.jsonWebKey
 

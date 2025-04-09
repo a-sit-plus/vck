@@ -42,7 +42,7 @@ class CoseServiceTest : FreeSpec({
         val parameterSerializer = ByteArraySerializer()
         val payloadToUse = "This is the content: ".encodeToByteArray() + randomPayload
         val signed = coseService.createSignedCose(
-            unprotectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
+            unprotectedHeader = CoseHeader(algorithm = CoseAlgorithm.Signature.ES256),
             payload = payloadToUse,
             serializer = parameterSerializer,
         ).getOrThrow()
@@ -62,7 +62,7 @@ class CoseServiceTest : FreeSpec({
     "signed object with random bytes can be verified" {
         val parameterSerializer = ByteArraySerializer()
         val signed = coseService.createSignedCose(
-            unprotectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
+            unprotectedHeader = CoseHeader(algorithm = CoseAlgorithm.Signature.ES256),
             payload = randomPayload,
             serializer = parameterSerializer,
         ).getOrThrow()
@@ -96,7 +96,7 @@ class CoseServiceTest : FreeSpec({
             validityInfo = ValidityInfo(Clock.System.now(), Clock.System.now(), Clock.System.now())
         )
         val signed = coseService.createSignedCose(
-            protectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
+            protectedHeader = CoseHeader(algorithm = CoseAlgorithm.Signature.ES256),
             payload = mso,
             serializer = parameterSerializer
         ).getOrThrow()
