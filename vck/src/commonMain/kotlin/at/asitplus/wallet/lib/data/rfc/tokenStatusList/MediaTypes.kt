@@ -1,6 +1,8 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
 data object MediaTypes {
+    /** `statuslist+jwt` */
+    const val STATUSLIST_JWT = "statuslist+jwt"
     data object Application {
         /** `application/statuslist+json` */
         const val STATUSLIST_JSON = "application/statuslist+json"
