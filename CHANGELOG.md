@@ -1,5 +1,7 @@
 # Changelog
 Release 5.6.0:
+- Fix erroneous `InputDescriptor` encoding in `PresentationDefinition` when more specific type 
+was known (i.e. `DidInputDescriptor`/`QesInputDescriptor`) via contexutal serialziation
 - Allow fully compliant OID4VP and UC5 `transactionData` handling
 - Deprecate `RqesOpenId4VpVerifier`
 - Change `TransactionData` from sealed class to interface

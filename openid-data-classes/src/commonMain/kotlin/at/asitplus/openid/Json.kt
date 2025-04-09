@@ -1,11 +1,10 @@
 package at.asitplus.openid
 
-
-import at.asitplus.dif.DifInputDescriptor
-import at.asitplus.dif.InputDescriptor
+import at.asitplus.dif.ddcJsonSerializer
 import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.overwriteWith
 import kotlinx.serialization.modules.polymorphic
 
 @Suppress("UNCHECKED_CAST")
@@ -48,33 +47,12 @@ private val authorizationDetailsModule = SerializersModule {
     )
 }
 
-@Suppress("UNCHECKED_CAST")
-private val inputDescriptorModule = SerializersModule {
-    polymorphic(InputDescriptor::class) {
-        subclass(DifInputDescriptor::class, DifInputDescriptor.serializer())
-    }
-    polymorphicDefaultSerializer(
-        InputDescriptor::class,
-        defaultSerializerProvider = {
-            when (it) {
-                is DifInputDescriptor -> DifInputDescriptor.serializer() as SerializationStrategy<InputDescriptor>
-                else -> throw Exception("Serializer for ${it::class} unknown")
-            }
-        },
-    )
-    polymorphicDefaultDeserializer(
-        InputDescriptor::class,
-        defaultDeserializerProvider = { DifInputDescriptor.serializer() },
-    )
-}
-
 /**
  * This serialization module allows de-/serialization of open interfaces defined in this module
  */
 private val baseOpenIdSerializerModule = SerializersModule {
     include(requestParametersModule)
     include(authorizationDetailsModule)
-    include(inputDescriptorModule)
 }
 
 val odcJsonSerializer by lazy {
@@ -83,6 +61,6 @@ val odcJsonSerializer by lazy {
         encodeDefaults = false
         classDiscriminator = "type"
         ignoreUnknownKeys = true
-        serializersModule = baseOpenIdSerializerModule
+        serializersModule = ddcJsonSerializer.serializersModule.overwriteWith(baseOpenIdSerializerModule)
     }
 }
