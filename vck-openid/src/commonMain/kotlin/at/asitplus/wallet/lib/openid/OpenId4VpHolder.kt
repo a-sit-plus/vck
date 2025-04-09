@@ -2,7 +2,9 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
 import at.asitplus.dif.PresentationDefinition
+import at.asitplus.dif.ddcJsonSerializer
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_JWK
 import at.asitplus.openid.OpenIdConstants.ClientIdScheme
@@ -21,6 +23,7 @@ import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
@@ -285,7 +288,12 @@ class OpenId4VpHolder(
             run {
                 presentationDefinition ?: presentationDefinitionUrl
                     ?.let { remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(it)) }
-                    ?.let { PresentationDefinition.deserialize(it).getOrNull() }
+                    ?.let {
+                        catchingUnwrapped { vckJsonSerializer.decodeFromString<PresentationDefinition>(it) }
+                            .onFailure { ex ->
+                                Napier.w("Can't parse presentation definition from $presentationDefinitionUrl", ex)
+                            }.getOrNull()
+                    }
             }?.let {
                 CredentialPresentationRequest.PresentationExchangeRequest(it)
             } ?: dcqlQuery?.let { CredentialPresentationRequest.DCQLRequest(it) }
