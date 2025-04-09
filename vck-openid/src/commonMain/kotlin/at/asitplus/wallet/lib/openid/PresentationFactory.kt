@@ -61,18 +61,17 @@ internal class PresentationFactory(
         val clientId = request.clientId
         val responseUrl = request.responseUrl
         val transactionData = parseTransactionData(request)
+        val mdocGeneratedNonce = if (clientId != null && responseUrl != null) {
+            if (responseWillBeEncrypted) Random.nextBytes(16).encodeToString(Base64UrlStrict) else ""
+        } else null
         val vpRequestParams = PresentationRequestParameters(
             nonce = nonce,
             audience = audience,
             transactionData = transactionData,
-            calcIsoDeviceSignature = { docType, mdocGenNonce ->
-                calcDeviceSignature(mdocGenNonce, clientId, responseUrl, nonce, docType)
+            calcIsoDeviceSignature = { docType ->
+                calcDeviceSignature(mdocGeneratedNonce, clientId, responseUrl, nonce, docType)
             },
-            provideMdocGeneratedNonce = {
-                if (clientId != null && responseUrl != null) {
-                    if (responseWillBeEncrypted) Random.nextBytes(16).encodeToString(Base64UrlStrict) else ""
-                } else null
-            }
+            mdocGeneratedNonce = mdocGeneratedNonce
         )
 
         holder.createPresentation(
