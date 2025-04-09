@@ -2,12 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.dif.ClaimFormat
-import at.asitplus.dif.FormatHolder
-import at.asitplus.dif.InputDescriptor
-import at.asitplus.dif.PresentationDefinition
-import at.asitplus.dif.PresentationSubmission
-import at.asitplus.dif.PresentationSubmissionDescriptor
+import at.asitplus.dif.*
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.dcql.DCQLQuery
@@ -128,15 +123,20 @@ class HolderAgent(
     private suspend fun StoreEntry.toStoredCredential() = when (this) {
         is StoreEntry.Iso -> Holder.StoredCredential.Iso(
             this,
-            validator.checkRevocationStatus(issuerSigned),
+            // TODO: this stauts does not distinguish between "no status mechanism has been provided" and "resolving status mechanism failed"
+            validator.checkRevocationStatus(issuerSigned)?.getOrNull(),
         )
 
         is StoreEntry.Vc -> Holder.StoredCredential.Vc(
-            this, validator.checkRevocationStatus(vc)
+            this,
+            // TODO: this stauts does not distinguish between "no status mechanism has been provided" and "resolving status mechanism failed"
+            validator.checkRevocationStatus(vc)?.getOrNull(),
         )
 
         is StoreEntry.SdJwt -> Holder.StoredCredential.SdJwt(
-            this, validator.checkRevocationStatus(sdJwt)
+            this,
+            // TODO: this stauts does not distinguish between "no status mechanism has been provided" and "resolving status mechanism failed"
+            validator.checkRevocationStatus(sdJwt)?.getOrNull(),
         )
     }
 
