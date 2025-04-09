@@ -39,10 +39,9 @@ data class PresentationRequestParameters(
      * Handle calculating device signature for ISO mDocs, as this depends on the transport protocol
      * (OpenID4VP with ISO/IEC 18013-7)
      */
-    val calcIsoDeviceSignature: (suspend (docType: String, mdocGeneratedNonce: String?) -> CoseSigned<ByteArray>?) = { _, _ -> null },
-    /**
-     * Will be called once for the presentation, to create a fresh mdocGeneratedNonce (OpenID4VP with ISO/IEC 18013-7)
-     */
+    val calcIsoDeviceSignature: (suspend (docType: String) -> CoseSigned<ByteArray>?) = { null },
+    /** mdocGeneratedNonce to be used for the presentation and [calcIsoDeviceSignature] (OpenID4VP with ISO/IEC 18013-7) */
+    val mdocGeneratedNonce: String? = null,
     val provideMdocGeneratedNonce: (suspend () -> String?) = { null },
 ) {
     internal fun getTransactionDataHashes(): Set<ByteArray>? = transactionData?.map {

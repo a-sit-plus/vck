@@ -135,7 +135,6 @@ class VerifiablePresentationFactory(
     ): CreatePresentationResult.DeviceResponse {
         Napier.d("createIsoPresentation with $request and $credentialAndRequestedClaims")
 
-        val mDocGeneratedNonce = request.provideMdocGeneratedNonce()
         val documents = credentialAndRequestedClaims.map { (credential, requestedClaims) ->
             // allows disclosure of attributes from different namespaces
             val namespaceToAttributesMap = requestedClaims.mapNotNull { normalizedJsonPath ->
@@ -176,7 +175,7 @@ class VerifiablePresentationFactory(
             val docType = credential.scheme?.isoDocType!!
             val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
 
-            val deviceSignature = request.calcIsoDeviceSignature(docType, mDocGeneratedNonce)
+            val deviceSignature = request.calcIsoDeviceSignature(docType)
                 ?: throw PresentationException("calcIsoDeviceSignature not implemented")
 
             Document(
@@ -199,7 +198,7 @@ class VerifiablePresentationFactory(
                 documents = documents.toTypedArray(),
                 status = 0U,
             ),
-            mdocGeneratedNonce = mDocGeneratedNonce
+            mdocGeneratedNonce = request.mdocGeneratedNonce
         )
     }
 
