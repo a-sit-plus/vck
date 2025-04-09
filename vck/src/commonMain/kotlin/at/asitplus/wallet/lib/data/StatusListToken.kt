@@ -54,7 +54,7 @@ sealed interface StatusListToken {
                     throw IllegalStateException("Invalid Signature.")
                 }
 
-                if (jwsSigned.header.type?.lowercase() != MediaTypes.Application.STATUSLIST_JWT.lowercase()) {
+                if (jwsSigned.header.type?.lowercase() != MediaTypes.STATUSLIST_JWT.lowercase()) {
                     throw IllegalArgumentException("Invalid type header")
                 }
                 jwsSigned.payload
