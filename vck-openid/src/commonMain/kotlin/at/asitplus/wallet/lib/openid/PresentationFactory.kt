@@ -69,7 +69,8 @@ internal class PresentationFactory(
             audience = audience,
             transactionData = transactionData,
             calcIsoDeviceSignature = { docType ->
-                calcDeviceSignature(mdocGeneratedNonce, clientId, responseUrl, nonce, docType)
+                // kept pair result type for backwards compatibility
+                calcDeviceSignature(mdocGeneratedNonce, clientId, responseUrl, nonce, docType) to null
             },
             mdocGeneratedNonce = mdocGeneratedNonce
         )

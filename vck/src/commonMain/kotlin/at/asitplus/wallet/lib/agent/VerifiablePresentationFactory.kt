@@ -175,7 +175,7 @@ class VerifiablePresentationFactory(
             val docType = credential.scheme?.isoDocType!!
             val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
 
-            val deviceSignature = request.calcIsoDeviceSignature(docType)
+            val (deviceSignature, _) = request.calcIsoDeviceSignature(docType)
                 ?: throw PresentationException("calcIsoDeviceSignature not implemented")
 
             Document(
