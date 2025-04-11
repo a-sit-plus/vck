@@ -20,7 +20,7 @@ data class TokenService(
             nonceService: NonceService = DefaultNonceService(),
             keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
             issueRefreshTokens: Boolean = false,
-            verificationAlgorithms: Collection<JwsAlgorithm> = setOf(JwsAlgorithm.ES256), // per OID4VC HAIP
+            verificationAlgorithms: Collection<JwsAlgorithm.Signature> = setOf(JwsAlgorithm.Signature.ES256), // per OID4VC HAIP
         ) = TokenService(
             generation = JwtTokenGenerationService(
                 nonceService = nonceService,

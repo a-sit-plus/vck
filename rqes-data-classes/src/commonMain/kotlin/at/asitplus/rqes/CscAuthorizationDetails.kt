@@ -2,7 +2,7 @@ import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.rqes.collection_entries.DocumentLocation
 import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
 import at.asitplus.openid.SignatureQualifier
-import at.asitplus.signum.indispensable.asn1.ObjectIdSerializer
+import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -40,7 +40,7 @@ data class CscAuthorizationDetails(
      * listed in documentDigests.
      */
     @SerialName("hashAlgorithmOID")
-    @Serializable(ObjectIdSerializer::class)
+    @Serializable(ObjectIdentifierStringSerializer::class)
     val hashAlgorithmOid: ObjectIdentifier,
 
     /**

@@ -69,10 +69,10 @@ class Validator(
         tokenStatusResolver: (suspend (Status) -> TokenStatus)? = null,
     ) : this(
         verifyJwsObject = VerifyJwsObject(VerifyJwsSignature { input, signature, algorithm, publicKey ->
-            cryptoService.verify(input, signature, algorithm.toX509SignatureAlgorithm().getOrThrow(), publicKey)
+            cryptoService.verify(input, signature, algorithm, publicKey)
         }),
         verifyCoseSignatureWithKey = VerifyCoseSignatureWithKey { input, signature, algorithm, publicKey ->
-            cryptoService.verify(input, signature, algorithm.toX509SignatureAlgorithm().getOrThrow(), publicKey)
+            cryptoService.verify(input, signature, algorithm, publicKey)
         },
         parser = parser,
         tokenStatusResolver = tokenStatusResolver,
@@ -299,13 +299,17 @@ class Validator(
         val issuerSigned = doc.issuerSigned
         val issuerAuth = issuerSigned.issuerAuth
 
-        val certificateChain = issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull() ?: run {
+        val certificateChain = issuerAuth.unprotectedHeader?.certificateChain?: run {
+            Napier.w("Got no issuer certificate chain in $issuerAuth")
+            throw IllegalArgumentException("issuerKey")
+        }
+        val certificate = certificateChain.firstOrNull() ?: run {
             Napier.w("Got no issuer certificate in $issuerAuth")
             throw IllegalArgumentException("issuerKey")
         }
-        val x509Certificate = X509Certificate.decodeFromDerSafe(certificateChain).getOrElse {
+        val x509Certificate = X509Certificate.decodeFromDerSafe(certificate).getOrElse {
             Napier.w(
-                "Could not parse issuer certificate in ${certificateChain.encodeToString(Base64())}",
+                "Could not parse issuer certificate in ${certificateChain.joinToString{it.encodeToString(Base64())}}",
                 it
             )
             throw IllegalArgumentException("issuerKey")

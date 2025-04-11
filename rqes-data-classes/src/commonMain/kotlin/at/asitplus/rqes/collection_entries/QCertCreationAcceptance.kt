@@ -1,7 +1,7 @@
 package at.asitplus.rqes.collection_entries
 
 import at.asitplus.openid.TransactionData
-import at.asitplus.signum.indispensable.asn1.ObjectIdSerializer
+import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import kotlinx.serialization.SerialName
@@ -51,7 +51,7 @@ data class QCertCreationAcceptance(
      * [qcHash]
      */
     @SerialName("QC_hashAlgorithmOID")
-    @Serializable(ObjectIdSerializer::class)
+    @Serializable(with = ObjectIdentifierStringSerializer::class)
     val qcHashAlgorithmOid: ObjectIdentifier,
 
     /**
