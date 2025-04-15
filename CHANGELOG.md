@@ -7,7 +7,6 @@ was known (i.e. `DidInputDescriptor`/`QesInputDescriptor`) via contexutal serial
 - Change `TransactionData` from sealed class to interface
 - Fix erroneous `TransactionData` encoding in `AuthenticationRequest`
 - Add considerations for separating the semantics "no token status mechanism is defined" from "evaluating token status failed"
-- Add considerations for separating the semantics "no token status mechanism is defined" from "evaluating token status failed"
 - Provide revocation status to verifier
 
 Release 5.5.2:

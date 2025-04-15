@@ -341,7 +341,7 @@ class Validator(
             validItems = validItems,
             invalidItems = invalidItems,
             isRevoked = checkRevocationStatus(issuerSigned)?.let {
-                it == TokenStatus.Invalid
+                it.getOrThrow() == TokenStatus.Invalid
             },
         )
     }
