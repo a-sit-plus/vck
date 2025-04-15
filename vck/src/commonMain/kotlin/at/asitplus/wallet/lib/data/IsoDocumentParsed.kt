@@ -11,4 +11,5 @@ data class IsoDocumentParsed(
     val mso: MobileSecurityObject,
     val validItems: List<IssuerSignedItem> = listOf(),
     val invalidItems: List<IssuerSignedItem> = listOf(),
+    val isRevoked: Boolean?,
 )
