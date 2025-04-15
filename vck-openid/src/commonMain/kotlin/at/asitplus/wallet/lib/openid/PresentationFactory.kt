@@ -19,7 +19,9 @@ import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.SignCoseFun
+import at.asitplus.wallet.lib.agent.PresentationRequestParameters.Flow
 import at.asitplus.wallet.lib.data.CredentialPresentation
+import at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.*
@@ -28,13 +30,11 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.serialization.PolymorphicSerializer
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.encodeToByteArray
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlin.coroutines.cancellation.CancellationException
@@ -102,27 +102,21 @@ internal class PresentationFactory(
      * The two standards are not compatible
      * For interoperability if both are present we prefer OpenID over UC5
      */
-    private fun parseTransactionData(request: RequestParameters): Pair<PresentationRequestParameters.Flow, Collection<TransactionDataBase64Url>>? {
+    private fun parseTransactionData(request: RequestParameters): Pair<Flow, Collection<TransactionDataBase64Url>>? {
         val jsonRequest =
             vckJsonSerializer.encodeToJsonElement(PolymorphicSerializer(RequestParameters::class), request)
 
         val rawTransactionData = JsonPath("$..transaction_data").query(jsonRequest)
             .flatMap { it.value.jsonArray }
-            .map { vckJsonSerializer.encodeToString<JsonElement>(it) }
+            .map { it as JsonPrimitive }
             .ifEmpty { return null }
 
-        val decoded = rawTransactionData.associateWith {
-            vckJsonSerializer.decodeFromString<String>(it)
-                .decodeToByteArray(Base64UrlStrict)
-                .decodeToString()
-        }
+        val oid4vpTransactionData = rawTransactionData.associateWith {
+            vckJsonSerializer.decodeFromJsonElement(DeprecatedBase64URLTransactionDataSerializer, it)
+        }.filter { it.value.credentialIds != null }
 
-        return if (decoded.values.any { it.contains("credential_ids") }) {
-            PresentationRequestParameters.Flow.OID4VP to decoded.filterValues { it.contains("credential_ids") }
-                .keys.map { vckJsonSerializer.parseToJsonElement(it) as JsonPrimitive }
-        } else {
-            PresentationRequestParameters.Flow.UC5 to decoded.keys.map { vckJsonSerializer.parseToJsonElement(it) as JsonPrimitive }
-        }
+        return if (oid4vpTransactionData.isNotEmpty()) Flow.OID4VP to oid4vpTransactionData.keys
+            else Flow.UC5 to rawTransactionData
     }
 
     /**
