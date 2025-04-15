@@ -100,7 +100,7 @@ class ValidatorMdocTest : FreeSpec() {
                 status = TokenStatus.Invalid,
                 FixedTimePeriodProvider.timePeriod,
             ) shouldBe true
-            validator.checkRevocationStatus(value.issuerSigned) shouldBe TokenStatus.Invalid
+            validator.checkRevocationStatus(value.issuerSigned)?.getOrNull() shouldBe TokenStatus.Invalid
         }
     }
 }

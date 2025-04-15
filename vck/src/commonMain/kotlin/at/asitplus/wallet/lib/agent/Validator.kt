@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.KmmResult
+import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
@@ -12,26 +14,14 @@ import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.*
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
-import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
-import at.asitplus.wallet.lib.cbor.VerifierCoseService
-import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
-import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
-import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
-import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
+import at.asitplus.wallet.lib.cbor.*
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenValidator
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.iso.*
-import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
-import at.asitplus.wallet.lib.jws.SdJwtSigned
-import at.asitplus.wallet.lib.jws.VerifierJwsService
-import at.asitplus.wallet.lib.jws.VerifyJwsSignature
-import at.asitplus.wallet.lib.jws.VerifyJwsObject
-import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
-import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnf
-import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnfFun
+import at.asitplus.wallet.lib.jws.*
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.base64.Base64
@@ -124,7 +114,7 @@ class Validator(
     /**
      * Checks the revocation state of the passed MDOC Credential.
      */
-    suspend fun checkRevocationStatus(issuerSigned: IssuerSigned): TokenStatus? =
+    suspend fun checkRevocationStatus(issuerSigned: IssuerSigned): KmmResult<TokenStatus>? =
         issuerSigned.issuerAuth.payload?.status?.let {
             checkRevocationStatus(it)
         }
@@ -132,7 +122,7 @@ class Validator(
     /**
      * Checks the revocation state of the passed Verifiable Credential.
      */
-    suspend fun checkRevocationStatus(vcJws: VerifiableCredentialJws): TokenStatus? =
+    suspend fun checkRevocationStatus(vcJws: VerifiableCredentialJws): KmmResult<TokenStatus>? =
         vcJws.vc.credentialStatus?.let {
             checkRevocationStatus(it)
         }
@@ -140,7 +130,7 @@ class Validator(
     /**
      * Checks the revocation state of the passed Verifiable Credential.
      */
-    suspend fun checkRevocationStatus(sdJwt: VerifiableCredentialSdJwt): TokenStatus? =
+    suspend fun checkRevocationStatus(sdJwt: VerifiableCredentialSdJwt): KmmResult<TokenStatus>? =
         sdJwt.credentialStatus?.let {
             checkRevocationStatus(it)
         }
@@ -148,15 +138,15 @@ class Validator(
     /**
      * Checks the revocation state using the provided status mechanisms
      */
-    private suspend fun checkRevocationStatus(status: Status): TokenStatus = runCatching {
+    private suspend fun checkRevocationStatus(status: Status): KmmResult<TokenStatus> = runCatching {
         val resolver = tokenStatusResolver ?: {
             TokenStatus.Valid
         }
         resolver.invoke(status)
-    }.getOrElse {
-        // A status mechanism is specified, but no status can be retrieved, consider this to be invalid
-        TokenStatus.Invalid
-    }
+    }.onFailure {
+        // A status mechanism is specified, but token status cannot be evaluated
+        throw TokenStatusEvaluationException(it)
+    }.wrap()
 
     /**
      * Validates the content of a JWS, expected to contain a Verifiable Presentation.
@@ -264,8 +254,8 @@ class Validator(
     /**
      * Validates an ISO device response, equivalent of a Verifiable Presentation
      */
-    @Throws(IllegalArgumentException::class)
-    fun verifyDeviceResponse(
+    @Throws(IllegalArgumentException::class, CancellationException::class)
+    suspend fun verifyDeviceResponse(
         deviceResponse: DeviceResponse,
         verifyDocumentCallback: (MobileSecurityObject, Document) -> Boolean,
     ): VerifyPresentationResult {
@@ -287,8 +277,8 @@ class Validator(
     /**
      * Validates an ISO document, equivalent of a Verifiable Presentation
      */
-    @Throws(IllegalArgumentException::class)
-    fun verifyDocument(
+    @Throws(IllegalArgumentException::class, CancellationException::class)
+    suspend fun verifyDocument(
         doc: Document,
         verifyDocumentCallback: (MobileSecurityObject, Document) -> Boolean,
     ): IsoDocumentParsed {
@@ -331,8 +321,9 @@ class Validator(
             throw IllegalArgumentException("mso.docType")
         }
 
-        if (!verifyDocumentCallback.invoke(mso, doc))
+        if (!verifyDocumentCallback.invoke(mso, doc)) {
             throw IllegalArgumentException("document callback failed: $doc")
+        }
 
         val validItems = mutableListOf<IssuerSignedItem>()
         val invalidItems = mutableListOf<IssuerSignedItem>()
@@ -345,7 +336,14 @@ class Validator(
                 }
             }
         }
-        return IsoDocumentParsed(mso = mso, validItems = validItems, invalidItems = invalidItems)
+        return IsoDocumentParsed(
+            mso = mso,
+            validItems = validItems,
+            invalidItems = invalidItems,
+            isRevoked = checkRevocationStatus(issuerSigned)?.let {
+                it.getOrThrow() == TokenStatus.Invalid
+            },
+        )
     }
 
     /**
@@ -397,7 +395,8 @@ class Validator(
         }
         vcJws.vc.credentialStatus?.let {
             Napier.d("VC: status found")
-            if (checkRevocationStatus(it) == TokenStatus.Invalid) {
+            if (checkRevocationStatus(it).getOrNull() == TokenStatus.Invalid) {
+                // TODO: how to handle case where resolving token status fails?
                 Napier.d("VC: revoked")
                 return Revoked(input, vcJws)
             }
@@ -443,8 +442,14 @@ class Validator(
                 return ValidationError("subject invalid")
             }
         }
-        val isRevoked = checkRevocationStatus(sdJwt) == TokenStatus.Invalid
-        if (isRevoked) {
+        // considering a failing attemt at retrieving the token status as "WE DO NOT KNOW"
+        val isRevoked = checkRevocationStatus(sdJwt)?.let { result ->
+            result.getOrNull()?.let {
+                it == TokenStatus.Invalid // TODO: is this the only status we consider "revoked"?
+            } ?: false // TODO: how to handle the case where resolving token status fails? Currently considered "not revoked"
+        } ?: false
+
+        if (isRevoked) { // How to handle "WE DO NOT KNOW"?
             Napier.d("verifySdJwt: revoked")
         }
         sdJwtSigned.getPayloadAsJsonObject().getOrElse { ex ->
@@ -488,3 +493,7 @@ class Validator(
         return SuccessIso(it)
     }
 }
+
+class TokenStatusEvaluationException(
+    val delegate: Throwable
+) : Exception(delegate)
