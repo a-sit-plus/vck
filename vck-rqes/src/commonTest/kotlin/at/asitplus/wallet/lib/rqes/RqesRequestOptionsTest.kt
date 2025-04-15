@@ -13,6 +13,7 @@ import at.asitplus.wallet.eupid.EuPidScheme.SdJwtAttributes.GIVEN_NAME
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.Base64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.toDataclass
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
@@ -39,7 +40,7 @@ class RqesRequestOptionsTest : FreeSpec({
     lateinit var holderAgent: Holder
     lateinit var holderOid4vp: OpenId4VpHolder
     lateinit var requestOptions: RqesRequestOptions
-    lateinit var transactionDataReferenceHashes: Set<ByteArray>
+    lateinit var transactionDataReferenceHashes: List<ByteArray>
 
     beforeContainer {
         holderKeyMaterial = EphemeralKeyWithoutCert()
@@ -79,7 +80,7 @@ class RqesRequestOptionsTest : FreeSpec({
 
             "OID4VP" {
                 authnRequest.transactionData shouldNotBe null
-                with(authnRequest.transactionData!!.first()) {
+                with(authnRequest.transactionData!!.first().toDataclass()) {
                     shouldNotBeNull()
                     transactionDataHashAlgorithms shouldNotBe null
                     credentialIds!!.first() shouldBe inputDescriptor.id
@@ -88,7 +89,7 @@ class RqesRequestOptionsTest : FreeSpec({
 
             "UC5" {
                 inputDescriptor.transactionData shouldNotBe null
-                with(inputDescriptor.transactionData!!.first()) {
+                with(inputDescriptor.transactionData!!.first().toDataclass()) {
                     shouldNotBeNull()
                     credentialIds shouldBe null
                     transactionDataHashAlgorithms shouldBe null
@@ -142,12 +143,13 @@ class RqesRequestOptionsTest : FreeSpec({
                 val result = rqesVerifier.validateAuthnResponse(authnResponse.url)
                     .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
 
+                val originalTransactionData = (requestOptions.transactionData!!.first() as QesAuthorization).copy(
+                    transactionDataHashAlgorithms = null,
+                    credentialIds = null
+                )
                 with(result.sdJwtSigned.keyBindingJws.shouldNotBeNull().payload) {
                     transactionData.shouldNotBeNull()
-                        .first() shouldBe (requestOptions.transactionData!!.first() as QesAuthorization).copy(
-                        transactionDataHashAlgorithms = null,
-                        credentialIds = null
-                    )
+                    transactionData!!.first().toDataclass() shouldBe originalTransactionData
                     transactionDataHashes.shouldBeNull()
                     transactionDataHashesAlgorithm.shouldBeNull()
                 }
@@ -175,12 +177,11 @@ class RqesRequestOptionsTest : FreeSpec({
     }
 })
 
-fun getReferenceHashes(transactionData: Set<TransactionData>): Set<ByteArray> {
+fun getReferenceHashes(transactionData: List<TransactionData>): List<ByteArray> {
     val encoded = transactionData.map {
         vckJsonSerializer.encodeToString(Base64URLTransactionDataSerializer, it)
     }
     return encoded.map { vckJsonSerializer.decodeFromString<String>(it).decodeToByteArray(Base64UrlStrict).sha256() }
-        .toSet()
 }
 
 private fun buildRqesRequestOptions(): RqesRequestOptions {
@@ -195,7 +196,7 @@ private fun buildRqesRequestOptions(): RqesRequestOptions {
                     id = id
                 )
             ),
-            transactionData = setOf(getTransactionData(setOf(id)))
+            transactionData = listOf(getTransactionData(setOf(id)))
         )
     )
 }

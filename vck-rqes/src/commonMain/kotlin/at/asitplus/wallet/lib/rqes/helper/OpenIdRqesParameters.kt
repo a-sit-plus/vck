@@ -7,6 +7,6 @@ import at.asitplus.openid.TransactionData
  */
 @Deprecated("Subsumed", ReplaceWith("RqesRequestOptions"))
 data class OpenIdRqesParameters(
-    val transactionData: Set<TransactionData>,
+    val transactionData: List<TransactionData>,
 )
 

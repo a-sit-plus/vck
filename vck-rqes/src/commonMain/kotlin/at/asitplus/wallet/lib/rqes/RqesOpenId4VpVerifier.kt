@@ -13,12 +13,7 @@ import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
-import at.asitplus.wallet.lib.jws.DefaultJwsService
-import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
-import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.jws.VerifierJwsService
-import at.asitplus.wallet.lib.jws.VerifyJwsObject
-import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
+import at.asitplus.wallet.lib.jws.*
 import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.DefaultNonceService
 import at.asitplus.wallet.lib.oidvci.MapStore
@@ -33,7 +28,10 @@ import kotlinx.datetime.Clock
 /**
  * Verifier with access to [TransactionData] class can now generate requests containing [TransactionData]
  */
-@Deprecated("OpenId4VpVerifier can now access TransactionData, for RqesRequests use RqesRequestOptions", ReplaceWith("OpenId4VpVerifier"))
+@Deprecated(
+    "OpenId4VpVerifier can now access TransactionData, for RqesRequests use RqesRequestOptions",
+    ReplaceWith("OpenId4VpVerifier")
+)
 class RqesOpenId4VpVerifier(
     private val clientIdScheme: ClientIdScheme,
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
@@ -89,7 +87,7 @@ class RqesOpenId4VpVerifier(
                 id = requestOptionCredential.buildId(),
                 format = requestOptionCredential.toFormatHolder(containerJwt, containerSdJwt),
                 constraints = requestOptionCredential.toConstraint(),
-                transactionData = transactionData?.toList()
+                transactionData = transactionData?.map { it.toBase64UrlString() }
             )
         }
     }

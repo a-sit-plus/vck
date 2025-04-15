@@ -20,7 +20,7 @@ data class RqesRequestOptions(
     init {
         val transactionIds = transactionData?.mapNotNull { it.credentialIds?.toList() }?.flatten()?.sorted()
         val credentialIds = credentials.map { it.id }.sorted()
-        transactionIds?.let { require(it == credentialIds) {"OpenId4VP defines that the credential_ids that must be part of a transaction_data element has to be an ID from InputDescriptor"} }
+        transactionIds?.let { require(it == credentialIds) { "OpenId4VP defines that the credential_ids that must be part of a transaction_data element has to be an ID from InputDescriptor" } }
     }
 
     override fun toPresentationDefinition(
@@ -39,7 +39,9 @@ data class RqesRequestOptions(
             id = requestOptionCredential.buildId(),
             format = requestOptionCredential.toFormatHolder(containerJwt, containerSdJwt),
             constraints = requestOptionCredential.toConstraint(),
-            transactionData = transactionData?.mapNotNull { it.makeUC5compliant() }
+            transactionData = transactionData?.mapNotNull { entry ->
+                entry.makeUC5compliant()?.toBase64UrlString()
+            }
         )
     }
 
