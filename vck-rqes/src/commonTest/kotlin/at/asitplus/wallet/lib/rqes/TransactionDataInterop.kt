@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.rqes
 
+import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.InputDescriptor
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.TransactionData
@@ -13,21 +14,16 @@ import at.asitplus.rqes.serializers.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.signum.indispensable.asn1.KnownOIDs.sha_256
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.util.*
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.PolymorphicSerializer
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.*
 
 /**
  * Test vectors taken from "Transaction Data entries as defined in D3.1: UC Specification WP3"
@@ -98,12 +94,23 @@ class TransactionDataInterop : FreeSpec({
         decoded.shouldBeInstanceOf<QCertCreationAcceptance>()
     }
 
-    "InputDescriptor serializable" {
+    "QesInputDescriptor serializable" {
         val input = QesInputDescriptor(
             id = "123",
             transactionData = listOf(transactionDataTest)
         )
         val serialized = rdcJsonSerializer.encodeToString(input)
+        serialized.shouldNotContain("type")
+        rdcJsonSerializer.decodeFromString(PolymorphicSerializer(InputDescriptor::class), serialized)
+            .shouldBe(input)
+    }
+
+    "DifInputDescriptor Sanity Check" {
+        val input = DifInputDescriptor(
+            id = "123"
+        )
+        val serialized = rdcJsonSerializer.encodeToString(input)
+        serialized.shouldNotContain("type")
         rdcJsonSerializer.decodeFromString(PolymorphicSerializer(InputDescriptor::class), serialized)
             .shouldBe(input)
     }

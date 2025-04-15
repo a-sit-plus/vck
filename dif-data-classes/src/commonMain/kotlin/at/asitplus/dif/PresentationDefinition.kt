@@ -2,8 +2,10 @@ package at.asitplus.dif
 
 import at.asitplus.catching
 import com.benasher44.uuid.uuid4
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
 /**
  * Data class for
@@ -18,7 +20,7 @@ data class PresentationDefinition(
     @SerialName("purpose")
     val purpose: String? = null,
     @SerialName("input_descriptors")
-    val inputDescriptors: Collection<InputDescriptor>,
+    val inputDescriptors: Collection<@Contextual InputDescriptor>,
     @SerialName("submission_requirements")
     val submissionRequirements: Collection<SubmissionRequirement>? = null,
 ) {
