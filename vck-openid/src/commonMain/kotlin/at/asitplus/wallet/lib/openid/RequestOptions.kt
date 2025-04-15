@@ -4,20 +4,17 @@ import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.dif.*
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment.NameSegment
-import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.CredentialFormatEnum
-import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.openid.OpenIdConstants.SCOPE_PROFILE
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
-import at.asitplus.openid.TransactionData
 import at.asitplus.openid.dcql.*
-import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import com.benasher44.uuid.uuid4
-import io.ktor.http.quote
+import io.ktor.http.*
 
 typealias RequestedAttributes = Set<String>
 
@@ -77,7 +74,7 @@ interface RequestOptions {
     val isPresentationExchange
         get() = presentationMechanism == PresentationMechanismEnum.PresentationExchange
 
-    val transactionData: Set<TransactionData>?
+    val transactionData: List<TransactionData>?
 
     fun buildScope(): String = listOf(SCOPE_OPENID, SCOPE_PROFILE).joinToString(" ")
 
@@ -103,7 +100,7 @@ data class OpenIdRequestOptions(
     override val clientMetadataUrl: String? = null,
     override val encryption: Boolean = false,
     override val presentationMechanism: PresentationMechanismEnum = PresentationMechanismEnum.PresentationExchange,
-    override val transactionData: Set<TransactionData>? = null,
+    override val transactionData: List<TransactionData>? = null,
 ) : RequestOptions {
 
     override fun toDCQLQuery(): DCQLQuery? = if (credentials.isEmpty()) null else DCQLQuery(

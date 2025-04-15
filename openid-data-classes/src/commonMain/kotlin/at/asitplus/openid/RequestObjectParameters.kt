@@ -3,7 +3,6 @@ package at.asitplus.openid
 import at.asitplus.KmmResult.Companion.wrap
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 
 /**
  * OpenID4VP: This request is (optionally) sent from the wallet when requesting the Request Object from the Verifier.
@@ -42,7 +41,7 @@ data class RequestObjectParameters(
     override val audience: String? = null
     override val issuer: String? = null
     override val state: String? = null
-    override val transactionData: Set<TransactionData>? = null
+    override val transactionData: List<TransactionDataBase64Url>? = null
 
     fun serialize() = odcJsonSerializer.encodeToString(this)
 

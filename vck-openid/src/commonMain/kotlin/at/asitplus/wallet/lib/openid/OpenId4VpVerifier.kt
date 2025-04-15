@@ -306,7 +306,7 @@ open class OpenId4VpVerifier(
         dcqlQuery = if (isDcql) toDCQLQuery() else null,
         presentationDefinition = if (isPresentationExchange)
             toPresentationDefinition(containerJwt, containerSdJwt) else null,
-        transactionData = transactionData
+        transactionData = transactionData?.map { it.toBase64UrlString() }
     )
 
     /**

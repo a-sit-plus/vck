@@ -20,7 +20,6 @@ import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.SignCoseFun
 import at.asitplus.wallet.lib.data.CredentialPresentation
-import at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.*
@@ -36,6 +35,7 @@ import kotlinx.serialization.PolymorphicSerializer
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.random.Random
@@ -102,7 +102,7 @@ internal class PresentationFactory(
      * The two standards are not compatible
      * For interoperability if both are present we prefer OpenID over UC5
      */
-    private fun parseTransactionData(request: RequestParameters): Pair<PresentationRequestParameters.Flow, Collection<TransactionData>>? {
+    private fun parseTransactionData(request: RequestParameters): Pair<PresentationRequestParameters.Flow, Collection<TransactionDataBase64Url>>? {
         val jsonRequest =
             vckJsonSerializer.encodeToJsonElement(PolymorphicSerializer(RequestParameters::class), request)
 
@@ -117,19 +117,12 @@ internal class PresentationFactory(
                 .decodeToString()
         }
 
-        val (flow, keysToDecode) = if (decoded.values.any { it.contains("credential_ids") }) {
-            PresentationRequestParameters.Flow.OID4VP to decoded.filterValues { it.contains("credential_ids") }.keys
+        return if (decoded.values.any { it.contains("credential_ids") }) {
+            PresentationRequestParameters.Flow.OID4VP to decoded.filterValues { it.contains("credential_ids") }
+                .keys.map { vckJsonSerializer.parseToJsonElement(it) as JsonPrimitive }
         } else {
-            PresentationRequestParameters.Flow.UC5 to decoded.keys
+            PresentationRequestParameters.Flow.UC5 to decoded.keys.map { vckJsonSerializer.parseToJsonElement(it) as JsonPrimitive }
         }
-
-        val transactionData = keysToDecode.mapNotNull { key ->
-            runCatching {
-                vckJsonSerializer.decodeFromString(DeprecatedBase64URLTransactionDataSerializer, key)
-            }.getOrNull()
-        }.distinct()
-
-        return flow to transactionData
     }
 
     /**

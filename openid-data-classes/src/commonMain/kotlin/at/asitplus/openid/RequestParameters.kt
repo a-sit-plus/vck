@@ -9,7 +9,7 @@ interface RequestParameters {
     val issuer: String?
     val audience: String?
     val state: String?
-    val transactionData: Set<TransactionData>?
+    val transactionData: List<TransactionDataBase64Url>?
 
     /**
      * Reads the [OpenIdConstants.ClientIdScheme] of this request either directly from [clientIdScheme],
