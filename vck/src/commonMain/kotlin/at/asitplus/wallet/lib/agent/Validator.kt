@@ -12,26 +12,14 @@ import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.*
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
-import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
-import at.asitplus.wallet.lib.cbor.VerifierCoseService
-import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
-import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
-import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
-import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
+import at.asitplus.wallet.lib.cbor.*
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenValidator
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.iso.*
-import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
-import at.asitplus.wallet.lib.jws.SdJwtSigned
-import at.asitplus.wallet.lib.jws.VerifierJwsService
-import at.asitplus.wallet.lib.jws.VerifyJwsSignature
-import at.asitplus.wallet.lib.jws.VerifyJwsObject
-import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
-import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnf
-import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnfFun
+import at.asitplus.wallet.lib.jws.*
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.base64.Base64
@@ -351,7 +339,7 @@ class Validator(
             validItems = validItems,
             invalidItems = invalidItems,
             isRevoked = checkRevocationStatus(issuerSigned)?.let {
-                it.getOrThrow() == TokenStatus.Invalid
+                it == TokenStatus.Invalid
             },
         )
     }
