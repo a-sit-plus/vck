@@ -378,7 +378,7 @@ data class AuthenticationRequestParameters(
      * For the contextual serializer see [at.asitplus.rqes.serializers.Base64URLTransactionDataSerializer]
      */
     @SerialName("transaction_data")
-    override val transactionData: Set<@Contextual TransactionData>? = null,
+    override val transactionData: List<TransactionDataBase64Url>? = null,
 ) : RequestParameters {
 
     /**
