@@ -35,10 +35,7 @@ kotlin {
                 api(project(":dif-data-classes"))
                 api(ktor("http"))
                 implementation(napier())
-                api("at.asitplus.signum:indispensable:${VcLibVersions.signum}")
-                api("at.asitplus.signum:indispensable-cosef:${VcLibVersions.signum}")
-                api("at.asitplus.signum:indispensable-josef:${VcLibVersions.signum}")
-                api("at.asitplus:jsonpath4k:${VcLibVersions.jsonpath}")
+                commonImplementationAndApiDependencies()
             }
         }
     }

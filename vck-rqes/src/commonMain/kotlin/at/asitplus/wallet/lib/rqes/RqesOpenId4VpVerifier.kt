@@ -73,15 +73,17 @@ class RqesOpenId4VpVerifier(
 
         override fun toPresentationDefinition(
             containerJwt: FormatContainerJwt,
-            containerSdJwt: FormatContainerSdJwt
+            containerSdJwt: FormatContainerSdJwt,
+            flow: PresentationRequestParameters.Flow?
         ): PresentationDefinition = PresentationDefinition(
             id = uuid4().toString(),
-            inputDescriptors = this.toInputDescriptor(containerJwt, containerSdJwt)
+            inputDescriptors = this.toInputDescriptor(containerJwt, containerSdJwt, flow)
         )
 
         override fun toInputDescriptor(
             containerJwt: FormatContainerJwt,
             containerSdJwt: FormatContainerSdJwt,
+            flow: PresentationRequestParameters.Flow?
         ): List<InputDescriptor> = credentials.map { requestOptionCredential ->
             QesInputDescriptor(
                 id = requestOptionCredential.buildId(),

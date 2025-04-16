@@ -362,7 +362,7 @@ data class AuthenticationRequestParameters(
     /**
      * CSC: OPTIONAL
      * Arbitrary data from the signature application. It can be used to handle a
-     * transaction identifier or other application-spe cific data that may be useful for
+     * transaction identifier or other application-specific data that may be useful for
      * debugging purposes
      */
     @SerialName("clientData")
