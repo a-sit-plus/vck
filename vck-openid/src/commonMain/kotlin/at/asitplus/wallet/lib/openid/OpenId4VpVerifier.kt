@@ -462,7 +462,8 @@ open class OpenId4VpVerifier(
                         expectedNonce,
                         responseParameters,
                         authnRequest.clientId,
-                        authnRequest.responseUrl
+                        authnRequest.responseUrl,
+                        authnRequest.parseTransactionData()?.second
                     )
                 }.getOrElse {
                     Napier.w("Invalid presentation format: $relatedPresentation", it)
@@ -490,7 +491,8 @@ open class OpenId4VpVerifier(
                     expectedNonce,
                     responseParameters,
                     authnRequest.clientId,
-                    authnRequest.responseUrl
+                    authnRequest.responseUrl,
+                    authnRequest.parseTransactionData()?.second
                 ).mapToAuthnResponseResult(state)
             }
             return AuthnResponseResult.VerifiableDCQLPresentationValidationResults(presentation)
@@ -534,11 +536,13 @@ open class OpenId4VpVerifier(
         input: ResponseParametersFrom,
         clientId: String?,
         responseUrl: String?,
+        transactionData: List<TransactionDataBase64Url>?,
     ) = when (claimFormat) {
         ClaimFormat.JWT_SD, ClaimFormat.SD_JWT -> verifier.verifyPresentationSdJwt(
             input = SdJwtSigned.Companion.parse(relatedPresentation.jsonPrimitive.content)
                 ?: throw IllegalArgumentException("relatedPresentation"),
-            challenge = expectedNonce
+            challenge = expectedNonce,
+            transactionData = transactionData
         )
 
         ClaimFormat.JWT_VP -> verifier.verifyPresentationVcJwt(

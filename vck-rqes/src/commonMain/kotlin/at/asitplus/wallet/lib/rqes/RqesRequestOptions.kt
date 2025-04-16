@@ -18,9 +18,9 @@ data class RqesRequestOptions(
 ) : RequestOptions by baseRequestOptions {
 
     init {
-        val transactionIds = transactionData?.mapNotNull { it.credentialIds?.toList() }?.flatten()?.sorted()
-        val credentialIds = credentials.map { it.id }.sorted()
-        transactionIds?.let { require(it == credentialIds) { "OpenId4VP defines that the credential_ids that must be part of a transaction_data element has to be an ID from InputDescriptor" } }
+        val transactionIds = transactionData?.mapNotNull { it.credentialIds?.toList() }?.flatten()?.sorted()?.distinct()
+        val credentialIds = credentials.map { it.id }.sorted().distinct()
+        transactionIds?.let { require(it == credentialIds) { "OpenId4VP defines that the credential_ids that must be part of a transaction_data element have to be an ID from InputDescriptor" } }
     }
 
     override fun toPresentationDefinition(
