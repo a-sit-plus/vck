@@ -25,7 +25,7 @@ class VerifierAgent(
     override suspend fun verifyPresentationSdJwt(
         input: SdJwtSigned,
         challenge: String,
-        transactionData: List<TransactionDataBase64Url>?,
+        transactionData: Pair<PresentationRequestParameters.Flow, List<TransactionDataBase64Url>>?,
     ): VerifyPresentationResult = runCatching {
         validator.verifyVpSdJwt(input, challenge, identifier, transactionData)
     }.getOrElse {

@@ -38,7 +38,7 @@ data class KeyBindingJws(
      */
     @Deprecated("Remove as soon as UC5 Specification catches up to OIDVP draft 23")
     @SerialName("transaction_data")
-    val transactionData: Collection<TransactionDataBase64Url>? = null,
+    val transactionData: List<TransactionDataBase64Url>? = null,
 
     /**
      * OID4VP: Array of hashes, where each hash is calculated using a hash function over the strings received in the

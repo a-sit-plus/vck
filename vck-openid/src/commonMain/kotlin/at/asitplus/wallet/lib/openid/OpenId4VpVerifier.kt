@@ -463,7 +463,7 @@ open class OpenId4VpVerifier(
                         responseParameters,
                         authnRequest.clientId,
                         authnRequest.responseUrl,
-                        authnRequest.parseTransactionData()?.second
+                        authnRequest.parseTransactionData()
                     )
                 }.getOrElse {
                     Napier.w("Invalid presentation format: $relatedPresentation", it)
@@ -536,7 +536,7 @@ open class OpenId4VpVerifier(
         input: ResponseParametersFrom,
         clientId: String?,
         responseUrl: String?,
-        transactionData: List<TransactionDataBase64Url>?,
+        transactionData: Pair<PresentationRequestParameters.Flow, List<TransactionDataBase64Url>>?,
     ) = when (claimFormat) {
         ClaimFormat.JWT_SD, ClaimFormat.SD_JWT -> verifier.verifyPresentationSdJwt(
             input = SdJwtSigned.Companion.parse(relatedPresentation.jsonPrimitive.content)
