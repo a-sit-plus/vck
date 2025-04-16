@@ -7,6 +7,10 @@ was known (i.e. `DidInputDescriptor`/`QesInputDescriptor`) via contexutal serial
 - Change `TransactionData` from sealed class to interface
 - Fix erroneous `TransactionData` encoding in `AuthenticationRequest`
 
+Release 5.6.0:
+ - OpenID for Verifiable Presentations:
+   - In `OpenId4VpWallet` remove `openUrlExternally`, and instead return the redirected URL from the verifier
+
 Release 5.5.2:
  - OpenID for Verifiable Presentations:
    - Fix parsing `group` in presentation exchange input descriptors
