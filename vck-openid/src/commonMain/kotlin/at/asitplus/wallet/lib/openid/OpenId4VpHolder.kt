@@ -10,6 +10,7 @@ import at.asitplus.openid.OpenIdConstants.PREFIX_DID_KEY
 import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
@@ -92,6 +93,10 @@ class OpenId4VpHolder(
         walletNonceMapStore = walletNonceMapStore
     )
 
+    init {
+        require(coseService.algorithm is CoseAlgorithm.Signature) {"`coseService.algorithm` must be a signature algorithm, but is ${coseService.algorithm}"}
+    }
+
     private val supportedAlgorithmsStrings = setOf(jwsService.algorithm.identifier)
     private val authorizationRequestValidator = AuthorizationRequestValidator(walletNonceMapStore)
     private val authenticationResponseFactory = AuthenticationResponseFactory(jwsService)
@@ -121,7 +126,7 @@ class OpenId4VpHolder(
                 dcSdJwt = SupportedAlgorithmsContainer(supportedAlgorithmsStrings = supportedAlgorithmsStrings),
                 msoMdoc = SupportedAlgorithmsContainer(
                     supportedAlgorithmsStrings = setOfNotNull(
-                        coseService.algorithm.toJwsAlgorithm().getOrNull()?.identifier
+                        (coseService.algorithm as CoseAlgorithm.Signature).toJwsAlgorithm().getOrNull()?.identifier
                     )
                 ),
             )

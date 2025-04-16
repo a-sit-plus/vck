@@ -3,6 +3,7 @@ package at.asitplus.openid
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebToken
@@ -11,7 +12,6 @@ import kotlinx.datetime.Instant
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 
 /**
  * Contents of an OIDC Authentication Request.
@@ -339,6 +339,7 @@ data class AuthenticationRequestParameters(
      * String containing the OID of the hash algorithm used to generate the hashes
      */
     @SerialName("hashAlgorithmOID")
+    @Serializable(with = ObjectIdentifierStringSerializer::class)
     val hashAlgorithmOid: ObjectIdentifier? = null,
 
     /**

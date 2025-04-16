@@ -72,7 +72,7 @@ class CredentialIssuer(
     private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
     /** Used to verify signature of proof elements in credential requests. */
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
-    private val supportedAlgorithms: Collection<JwsAlgorithm> = listOf(JwsAlgorithm.ES256),
+    private val supportedAlgorithms: Collection<JwsAlgorithm.Signature> = listOf(JwsAlgorithm.Signature.ES256),
     /** Clock used to verify timestamps in proof elements in credential requests. */
     private val clock: Clock = System,
     /** Time leeway for verification of timestamps in proof elements in credential requests. */

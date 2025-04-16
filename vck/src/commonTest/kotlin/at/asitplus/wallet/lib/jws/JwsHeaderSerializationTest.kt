@@ -14,6 +14,7 @@ import at.asitplus.signum.indispensable.pki.RelativeDistinguishedName
 import at.asitplus.signum.indispensable.pki.TbsCertificate
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.ecmath.times
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import com.benasher44.uuid.uuid4
 import com.ionspin.kotlin.bignum.integer.BigInteger
 import com.ionspin.kotlin.bignum.integer.Sign
@@ -32,7 +33,7 @@ class JwsHeaderSerializationTest : FreeSpec({
     "Serialization contains x5c as strings" {
         val first = randomCertificate()
         val second = randomCertificate()
-        val algorithm = JwsAlgorithm.ES256
+        val algorithm = JwsAlgorithm.Signature.ES256
         val kid = uuid4().toString()
         val type = JwsContentTypeConstants.JWT
         val header = JwsHeader(
@@ -44,15 +45,15 @@ class JwsHeaderSerializationTest : FreeSpec({
 
         val serialized = header.serialize()
 
-        serialized shouldContain """"${first.encodeToDer().encodeToString(Base64Strict)}""""
-        serialized shouldContain """"${second.encodeToDer().encodeToString(Base64Strict)}""""
+        serialized shouldContain """"${first.encodeToDer().encodeToString(Base64UrlStrict)}""""
+        serialized shouldContain """"${second.encodeToDer().encodeToString(Base64UrlStrict)}""""
         serialized shouldContain """"$kid""""
     }
 
     "Deserialization is correct" {
         val first = randomCertificate()
         val second = randomCertificate()
-        val algorithm = JwsAlgorithm.ES256
+        val algorithm = JwsAlgorithm.Signature.ES256
         val kid = uuid4().toString()
         val type = JwsContentTypeConstants.JWT
 
