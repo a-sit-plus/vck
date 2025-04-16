@@ -35,7 +35,7 @@ import kotlinx.serialization.json.buildJsonObject
 data class PresentationRequestParameters(
     val nonce: String,
     val audience: String,
-    val transactionData: Pair<Flow, Collection<TransactionDataBase64Url>>? = null,
+    val transactionData: Pair<Flow, List<TransactionDataBase64Url>>? = null,
     /**
      * Handle calculating device signature for ISO mDocs, as this depends on the transport protocol
      * (OpenID4VP with ISO/IEC 18013-7)
@@ -53,10 +53,6 @@ data class PresentationRequestParameters(
     enum class Flow {
         OID4VP,
         UC5
-    }
-
-    internal fun getTransactionDataHashes(): List<ByteArray>? = transactionData?.second?.map {
-        it.content.decodeToByteArray(Base64UrlStrict).sha256()
     }
 }
 

@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
@@ -24,8 +25,9 @@ class VerifierAgent(
     override suspend fun verifyPresentationSdJwt(
         input: SdJwtSigned,
         challenge: String,
+        transactionData: Pair<PresentationRequestParameters.Flow, List<TransactionDataBase64Url>>?,
     ): VerifyPresentationResult = runCatching {
-        validator.verifyVpSdJwt(input, challenge, identifier)
+        validator.verifyVpSdJwt(input, challenge, identifier, transactionData)
     }.getOrElse {
         VerifyPresentationResult.ValidationError(it)
     }

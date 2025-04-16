@@ -1,8 +1,12 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.openid.TransactionDataBase64Url
+import at.asitplus.openid.contentEquals
+import at.asitplus.openid.sha256
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.contentEqualsIfArray
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.toCoseKey
@@ -28,6 +32,7 @@ import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.serialization.builtins.ByteArraySerializer
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -203,8 +208,9 @@ class Validator(
         input: SdJwtSigned,
         challenge: String,
         clientId: String,
+        transactionData: Pair<PresentationRequestParameters.Flow, List<TransactionDataBase64Url>>?,
     ): VerifyPresentationResult {
-        Napier.d("verifyVpSdJwt: '$input', '$challenge', '$clientId'")
+        Napier.d("verifyVpSdJwt: '$input', '$challenge', '$clientId', '$transactionData'")
         val sdJwtResult = verifySdJwt(input, null)
         if (sdJwtResult !is SuccessSdJwt) {
             Napier.w("verifyVpSdJwt: Could not verify SD-JWT: $sdJwtResult")
@@ -240,6 +246,23 @@ class Validator(
             Napier.w("verifyVpSdJwt: Key Binding does not contain correct sd_hash")
             return VerifyPresentationResult.ValidationError("Key Binding does not contain correct sd_hash")
         }
+        transactionData?.let {
+            if (transactionData.first == PresentationRequestParameters.Flow.OID4VP) {
+                //TODO support more hash algorithms
+                if (keyBinding.transactionDataHashesAlgorithm != "sha-256") {
+                    Napier.w("verifyVpSdJwt: Key Binding uses unsupported hashing algorithm. Please use sha256")
+                    return VerifyPresentationResult.ValidationError("verifyVpSdJwt: Key Binding uses unsupported hashing algorithm. Please use sha256")
+                }
+                if (keyBinding.transactionDataHashes?.contentEquals(it.second.map { it.sha256() }) == false) {
+                    Napier.w("verifyVpSdJwt: Key Binding does not contain correct transaction data hashes")
+                    return VerifyPresentationResult.ValidationError("Key Binding does not contain correct transaction data hashes")
+                }
+            } else if (keyBinding.transactionData?.contentEqualsIfArray(it.second) == false) {
+                Napier.w("verifyVpSdJwt: Key Binding does not contain correct transaction data hashes")
+                return VerifyPresentationResult.ValidationError("Key Binding does not contain correct transaction data")
+            }
+        }
+
 
         Napier.d("verifyVpSdJwt: Valid")
         return VerifyPresentationResult.SuccessSdJwt(
