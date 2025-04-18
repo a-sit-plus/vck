@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.data
 
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.openid.TransactionData
+import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.signum.indispensable.contentEqualsIfArray
 import at.asitplus.signum.indispensable.contentHashCodeIfArray
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
@@ -37,7 +38,7 @@ data class KeyBindingJws(
      */
     @Deprecated("Remove as soon as UC5 Specification catches up to OIDVP draft 23")
     @SerialName("transaction_data")
-    val transactionData: Collection<@Contextual TransactionData>? = null,
+    val transactionData: List<TransactionDataBase64Url>? = null,
 
     /**
      * OID4VP: Array of hashes, where each hash is calculated using a hash function over the strings received in the
@@ -45,7 +46,7 @@ data class KeyBindingJws(
      * of, and maps to, the respective transaction data object.
      */
     @SerialName("transaction_data_hashes")
-    val transactionDataHashes: Set<@Serializable(ByteArrayBase64UrlSerializer::class) ByteArray>? = null,
+    val transactionDataHashes: List<@Serializable(ByteArrayBase64UrlSerializer::class) ByteArray>? = null,
 
     /**
      * OID4VP: REQUIRED when this parameter was present in the `transaction_data` request parameter. String representing

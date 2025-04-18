@@ -17,6 +17,7 @@ import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.PresentationRequestParameters.Flow
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer
@@ -28,13 +29,12 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.serialization.PolymorphicSerializer
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.encodeToByteArray
-import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.random.Random
@@ -58,7 +58,7 @@ internal class PresentationFactory(
         val responseWillBeEncrypted = jsonWebKeys != null && clientMetadata?.requestsEncryption() == true
         val clientId = request.clientId
         val responseUrl = request.responseUrl
-        val transactionData = parseTransactionData(request)
+        val transactionData = request.parseTransactionData()
         val vpRequestParams = PresentationRequestParameters(
             nonce = nonce,
             audience = audience,
@@ -85,45 +85,6 @@ internal class PresentationFactory(
                 }
             }
         }
-    }
-
-    /**
-     * Parses all `transaction_data` fields from the request, with a JsonPath, because
-     * ... for OpenID4VP Draft 23, that's encoded in the AuthnRequest
-     * ... but for Potential UC 5, that's encoded in the input descriptor
-     *     and we cannot deserialize into data classes defined in [at.asitplus.rqes]
-     *
-     * The two standards are not compatible
-     * For interoperability if both are present we prefer OpenID over UC5
-     */
-    private fun parseTransactionData(request: RequestParameters): Pair<PresentationRequestParameters.Flow, Collection<TransactionData>>? {
-        val jsonRequest =
-            vckJsonSerializer.encodeToJsonElement(PolymorphicSerializer(RequestParameters::class), request)
-
-        val rawTransactionData = JsonPath("$..transaction_data").query(jsonRequest)
-            .flatMap { it.value.jsonArray }
-            .map { vckJsonSerializer.encodeToString<JsonElement>(it) }
-            .ifEmpty { return null }
-
-        val decoded = rawTransactionData.associateWith {
-            vckJsonSerializer.decodeFromString<String>(it)
-                .decodeToByteArray(Base64UrlStrict)
-                .decodeToString()
-        }
-
-        val (flow, keysToDecode) = if (decoded.values.any { it.contains("credential_ids") }) {
-            PresentationRequestParameters.Flow.OID4VP to decoded.filterValues { it.contains("credential_ids") }.keys
-        } else {
-            PresentationRequestParameters.Flow.UC5 to decoded.keys
-        }
-
-        val transactionData = keysToDecode.mapNotNull { key ->
-            runCatching {
-                vckJsonSerializer.decodeFromString(DeprecatedBase64URLTransactionDataSerializer, key)
-            }.getOrNull()
-        }.distinct()
-
-        return flow to transactionData
     }
 
     /**
@@ -326,4 +287,31 @@ internal class PresentationFactory(
             else -> false
         }
     }
+}
+
+/**
+ * Parses all `transaction_data` fields from the request, with a JsonPath, because
+ * ... for OpenID4VP Draft 23, that's encoded in the AuthnRequest
+ * ... but for Potential UC 5, that's encoded in the input descriptor
+ *     and we cannot deserialize into data classes defined in [at.asitplus.rqes]
+ *
+ * The two standards are not compatible
+ * For interoperability if both are present we prefer OpenID over UC5
+ */
+internal fun RequestParameters.parseTransactionData(): Pair<Flow, List<TransactionDataBase64Url>>? {
+    val jsonRequest =
+        vckJsonSerializer.encodeToJsonElement(PolymorphicSerializer(RequestParameters::class), this)
+
+    val rawTransactionData = JsonPath("$..transaction_data").query(jsonRequest)
+        .flatMap { it.value.jsonArray }
+        .map { it as JsonPrimitive }
+        .ifEmpty { return null }
+
+    //Do not change to map because keys are unordered!
+    val oid4vpTransactionData: List<Pair<JsonPrimitive,TransactionData>> = rawTransactionData.map {
+        it to vckJsonSerializer.decodeFromJsonElement(DeprecatedBase64URLTransactionDataSerializer, it)
+    }.filter { it.second.credentialIds != null }
+
+    return if (oid4vpTransactionData.isNotEmpty()) Flow.OID4VP to oid4vpTransactionData.map { it.first }
+    else Flow.UC5 to rawTransactionData
 }

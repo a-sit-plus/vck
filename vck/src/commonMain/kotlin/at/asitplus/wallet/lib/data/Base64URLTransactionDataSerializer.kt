@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.data
 
 import at.asitplus.openid.TransactionData
+import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -12,6 +13,10 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonElement
+
+@Suppress("Unused")
+fun TransactionDataBase64Url.toDataclass() =
+    vckJsonSerializer.decodeFromJsonElement(DeprecatedBase64URLTransactionDataSerializer, this)
 
 /**
  * According to "Transaction Data entries as defined in D3.1: UC Specification WP3" the encoding
@@ -35,7 +40,10 @@ object Base64URLTransactionDataSerializer : KSerializer<TransactionData> {
     }
 }
 
-@Deprecated("Will be removed, only for backwards compatability", replaceWith = ReplaceWith("Base64URLTransactionDataSerializer"))
+@Deprecated(
+    "Will be removed, only for backwards compatability",
+    replaceWith = ReplaceWith("Base64URLTransactionDataSerializer")
+)
 object DeprecatedBase64URLTransactionDataSerializer : KSerializer<TransactionData> {
     override val descriptor: SerialDescriptor =
         PrimitiveSerialDescriptor("Base64URLTransactionDataSerializer", PrimitiveKind.STRING)

@@ -4,9 +4,11 @@ import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.openid.SignatureQualifier
 import at.asitplus.openid.TransactionData
-import at.asitplus.rqes.collection_entries.TransactionData.QesAuthorization
+import at.asitplus.rqes.rdcJsonSerializer
+import at.asitplus.rqes.serializers.DeprecatedBase64URLTransactionDataSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * D3.1: UC Specification WP3:
@@ -77,6 +79,14 @@ data class QesAuthorization(
     override val transactionDataHashAlgorithms: Set<String>? = null
 
 ) : TransactionData {
+
+    override fun toBase64UrlString(): JsonPrimitive =
+        rdcJsonSerializer.parseToJsonElement(
+            rdcJsonSerializer.encodeToString(
+                DeprecatedBase64URLTransactionDataSerializer, this
+            )
+        ) as JsonPrimitive
+
     /**
      * Validation according to D3.1: UC Specification WP3
      */
@@ -96,7 +106,7 @@ data class QesAuthorization(
             credentialIds: Set<String>? = null,
             transactionDataHashAlgorithms: Set<String>? = null,
         ): KmmResult<TransactionData> = runCatching {
-           QesAuthorization(
+            QesAuthorization(
                 signatureQualifier = signatureQualifier,
                 credentialID = credentialId,
                 credentialIds = credentialIds,

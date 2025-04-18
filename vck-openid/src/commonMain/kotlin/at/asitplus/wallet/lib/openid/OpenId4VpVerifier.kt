@@ -306,8 +306,8 @@ open class OpenId4VpVerifier(
         state = state,
         dcqlQuery = if (isDcql) toDCQLQuery() else null,
         presentationDefinition = if (isPresentationExchange)
-            toPresentationDefinition(containerJwt, containerSdJwt) else null,
-        transactionData = transactionData
+            toPresentationDefinition(containerJwt, containerSdJwt, rqesFlow) else null,
+        transactionData = if (rqesFlow != PresentationRequestParameters.Flow.UC5) transactionData?.map { it.toBase64UrlString() } else null
     )
 
     /**
@@ -462,7 +462,8 @@ open class OpenId4VpVerifier(
                         expectedNonce,
                         responseParameters,
                         authnRequest.clientId,
-                        authnRequest.responseUrl
+                        authnRequest.responseUrl,
+                        authnRequest.parseTransactionData()
                     )
                 }.getOrElse {
                     Napier.w("Invalid presentation format: $relatedPresentation", it)
@@ -490,7 +491,8 @@ open class OpenId4VpVerifier(
                     expectedNonce,
                     responseParameters,
                     authnRequest.clientId,
-                    authnRequest.responseUrl
+                    authnRequest.responseUrl,
+                    authnRequest.parseTransactionData()
                 ).mapToAuthnResponseResult(state)
             }
             return AuthnResponseResult.VerifiableDCQLPresentationValidationResults(presentation)
@@ -534,11 +536,13 @@ open class OpenId4VpVerifier(
         input: ResponseParametersFrom,
         clientId: String?,
         responseUrl: String?,
+        transactionData: Pair<PresentationRequestParameters.Flow, List<TransactionDataBase64Url>>?,
     ) = when (claimFormat) {
         ClaimFormat.JWT_SD, ClaimFormat.SD_JWT -> verifier.verifyPresentationSdJwt(
             input = SdJwtSigned.Companion.parse(relatedPresentation.jsonPrimitive.content)
                 ?: throw IllegalArgumentException("relatedPresentation"),
-            challenge = expectedNonce
+            challenge = expectedNonce,
+            transactionData = transactionData
         )
 
         ClaimFormat.JWT_VP -> verifier.verifyPresentationVcJwt(

@@ -6,6 +6,7 @@ import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
+import at.asitplus.openid.sha256
 import at.asitplus.openid.third_party.at.asitplus.jsonpath.core.plus
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.josef.JwsHeader
@@ -239,7 +240,7 @@ class VerifiablePresentationFactory(
             challenge = request.nonce,
             sdHash = issuerJwtPlusDisclosures.encodeToByteArray().sha256(),
             transactionData = if (request.transactionData?.first == PresentationRequestParameters.Flow.UC5) request.transactionData.second else null,
-            transactionDataHashes = if (request.transactionData?.first == PresentationRequestParameters.Flow.OID4VP) request.getTransactionDataHashes() else null,
+            transactionDataHashes = if (request.transactionData?.first == PresentationRequestParameters.Flow.OID4VP) request.transactionData.second.map { it.sha256() } else null,
             transactionDataHashesAlgorithm = if (request.transactionData?.first == PresentationRequestParameters.Flow.OID4VP) "sha-256" else null,
         ),
         serializer = KeyBindingJws.serializer(),

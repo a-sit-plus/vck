@@ -6,6 +6,10 @@ was known (i.e. `DidInputDescriptor`/`QesInputDescriptor`) via contexutal serial
 - Deprecate `RqesOpenId4VpVerifier`
 - Change `TransactionData` from sealed class to interface
 - Fix erroneous `TransactionData` encoding in `AuthenticationRequest`
+- Change transaction data and related data elements from set to list
+- Change transaction data elements from their class to JsonPrimitive
+- Add `TransactionDataBase64Uri` typealias for JsonPrimitive
+- Add transaction data verification to `OpenID4VpVerifier.validateAuthnResponse`
 
 Release 5.5.2:
  - OpenID for Verifiable Presentations:
