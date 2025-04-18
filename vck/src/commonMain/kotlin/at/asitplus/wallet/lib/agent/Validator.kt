@@ -32,7 +32,6 @@ import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.serialization.builtins.ByteArraySerializer
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -56,6 +55,11 @@ class Validator(
      * If [tokenStatusResolver] is null, all tokens are considered to be valid.
      */
     private val tokenStatusResolver: (suspend (Status) -> TokenStatus)? = null,
+
+    /**
+     * Toggles whether transaction data should be verified if present
+     */
+    private val verifyTransactionData: Boolean = true,
 ) {
     @Deprecated("Use constructor with verifySignature")
     constructor(
@@ -246,20 +250,22 @@ class Validator(
             Napier.w("verifyVpSdJwt: Key Binding does not contain correct sd_hash")
             return VerifyPresentationResult.ValidationError("Key Binding does not contain correct sd_hash")
         }
-        transactionData?.let {
-            if (transactionData.first == PresentationRequestParameters.Flow.OID4VP) {
-                //TODO support more hash algorithms
-                if (keyBinding.transactionDataHashesAlgorithm != "sha-256") {
-                    Napier.w("verifyVpSdJwt: Key Binding uses unsupported hashing algorithm. Please use sha256")
-                    return VerifyPresentationResult.ValidationError("verifyVpSdJwt: Key Binding uses unsupported hashing algorithm. Please use sha256")
-                }
-                if (keyBinding.transactionDataHashes?.contentEquals(it.second.map { it.sha256() }) == false) {
+        if (verifyTransactionData) {
+            transactionData?.let { (flow, data) ->
+                if (flow == PresentationRequestParameters.Flow.OID4VP) {
+                    //TODO support more hash algorithms
+                    if (keyBinding.transactionDataHashesAlgorithm != "sha-256") {
+                        Napier.w("verifyVpSdJwt: Key Binding uses unsupported hashing algorithm. Please use sha256")
+                        return VerifyPresentationResult.ValidationError("verifyVpSdJwt: Key Binding uses unsupported hashing algorithm. Please use sha256")
+                    }
+                    if (keyBinding.transactionDataHashes?.contentEquals(data.map { it.sha256() }) == false) {
+                        Napier.w("verifyVpSdJwt: Key Binding does not contain correct transaction data hashes")
+                        return VerifyPresentationResult.ValidationError("Key Binding does not contain correct transaction data hashes")
+                    }
+                } else if (keyBinding.transactionData?.contentEqualsIfArray(data) == false) {
                     Napier.w("verifyVpSdJwt: Key Binding does not contain correct transaction data hashes")
-                    return VerifyPresentationResult.ValidationError("Key Binding does not contain correct transaction data hashes")
+                    return VerifyPresentationResult.ValidationError("Key Binding does not contain correct transaction data")
                 }
-            } else if (keyBinding.transactionData?.contentEqualsIfArray(it.second) == false) {
-                Napier.w("verifyVpSdJwt: Key Binding does not contain correct transaction data hashes")
-                return VerifyPresentationResult.ValidationError("Key Binding does not contain correct transaction data")
             }
         }
 

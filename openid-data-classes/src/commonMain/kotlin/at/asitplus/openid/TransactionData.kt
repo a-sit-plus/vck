@@ -54,7 +54,7 @@ interface TransactionData {
      */
     val transactionDataHashAlgorithms: Set<String>?
 
-    fun toBase64UrlString(): TransactionDataBase64Url
+    fun toBase64UrlJsonString(): TransactionDataBase64Url
 
-    fun sha256(): ByteArray = toBase64UrlString().sha256()
+    fun sha256(): ByteArray = toBase64UrlJsonString().sha256()
 }

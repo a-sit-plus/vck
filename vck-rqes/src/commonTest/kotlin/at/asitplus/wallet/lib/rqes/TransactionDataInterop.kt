@@ -96,7 +96,7 @@ class TransactionDataInterop : FreeSpec({
         val input = QesInputDescriptor(
             id = "123",
             transactionData = listOf(
-                transactionDataTest.toBase64UrlString()
+                transactionDataTest.toBase64UrlJsonString()
             )
         )
         val serialized = vckJsonSerializer.encodeToString(input)

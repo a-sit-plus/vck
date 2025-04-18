@@ -89,7 +89,7 @@ class RqesOpenId4VpVerifier(
                 id = requestOptionCredential.buildId(),
                 format = requestOptionCredential.toFormatHolder(containerJwt, containerSdJwt),
                 constraints = requestOptionCredential.toConstraint(),
-                transactionData = transactionData?.map { it.toBase64UrlString() }
+                transactionData = transactionData?.map { it.toBase64UrlJsonString() }
             )
         }
     }

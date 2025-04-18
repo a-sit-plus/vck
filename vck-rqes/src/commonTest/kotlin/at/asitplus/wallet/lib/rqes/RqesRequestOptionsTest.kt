@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.rqes
 
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.SignatureQualifier
 import at.asitplus.openid.TransactionData
 import at.asitplus.rqes.QesInputDescriptor
@@ -12,7 +13,7 @@ import at.asitplus.wallet.eupid.EuPidScheme.SdJwtAttributes.FAMILY_NAME
 import at.asitplus.wallet.eupid.EuPidScheme.SdJwtAttributes.GIVEN_NAME
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
-import at.asitplus.wallet.lib.data.toDataclass
+import at.asitplus.wallet.lib.data.toTransactionData
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.openid.*
@@ -62,7 +63,7 @@ class RqesRequestOptionsTest : FreeSpec({
 
             "OID4VP" {
                 authnRequest.transactionData shouldNotBe null
-                with(authnRequest.transactionData!!.first().toDataclass()) {
+                with(authnRequest.transactionData!!.first().toTransactionData()) {
                     shouldNotBeNull()
                     transactionDataHashAlgorithms shouldNotBe null
                     credentialIds!!.first() shouldBe inputDescriptor.id
@@ -71,7 +72,7 @@ class RqesRequestOptionsTest : FreeSpec({
 
             "UC5" {
                 inputDescriptor.transactionData shouldNotBe null
-                with(inputDescriptor.transactionData!!.first().toDataclass()) {
+                with(inputDescriptor.transactionData!!.first().toTransactionData()) {
                     shouldNotBeNull()
                     credentialIds shouldBe null
                     transactionDataHashAlgorithms shouldBe null
@@ -83,12 +84,14 @@ class RqesRequestOptionsTest : FreeSpec({
 })
 
 internal fun List<TransactionData>.getReferenceHashes(): List<ByteArray> =
-    this.map { it.toBase64UrlString().content.decodeToByteArray(Base64UrlStrict).sha256() }
+    this.map { it.toBase64UrlJsonString().content.decodeToByteArray(Base64UrlStrict).sha256() }
 
-internal fun buildRqesRequestOptions(flow: PresentationRequestParameters.Flow?): RqesRequestOptions {
+internal fun buildRqesRequestOptions(flow: PresentationRequestParameters.Flow?, responseMode: OpenIdConstants.ResponseMode = OpenIdConstants.ResponseMode.Fragment): RqesRequestOptions {
     val id = uuid4().toString()
     return RqesRequestOptions(
         baseRequestOptions = OpenIdRequestOptions(
+            responseMode = responseMode,
+            responseUrl = if (responseMode == OpenIdConstants.ResponseMode.DirectPost) "https://example.com/rp/${uuid4()}" else null,
             credentials = setOf(
                 RequestOptionsCredential(
                     credentialScheme = EuPidScheme,

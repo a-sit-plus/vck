@@ -7,7 +7,11 @@ Release 5.6.0:
    - Deprecate `RqesOpenId4VpVerifier`
    - Change `TransactionData` from sealed class to interface
    - Fix erroneous `TransactionData` encoding in `AuthenticationRequest`
- - OpenID for Verifiable Credential Issuance:
+   - Change transaction data and related data elements from set to list
+   - Change transaction data elements from their class to JsonPrimitive
+   - Add `TransactionDataBase64Uri` typealias for JsonPrimitive
+   - Add transaction data verification to `OpenID4VpVerifier.validateAuthnResponse`
+  - OpenID for Verifiable Credential Issuance:
    - Remove code elements deprecated in 5.5.0
  - OpenID for Verifiable Presentations:
    - In `OpenId4VpVerifier` add constructor parameter `supportedAlgorithms`

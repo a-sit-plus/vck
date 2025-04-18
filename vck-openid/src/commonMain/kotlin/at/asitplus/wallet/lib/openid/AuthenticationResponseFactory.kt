@@ -2,8 +2,6 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.ResponseMode.*
-import at.asitplus.openid.RelyingPartyMetadata
-import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweHeader
@@ -11,15 +9,12 @@ import at.asitplus.signum.indispensable.josef.JwkType
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.EncryptJweFun
 import at.asitplus.wallet.lib.jws.SignJwtFun
-import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
-import kotlinx.serialization.builtins.serializer
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.random.Random
 
