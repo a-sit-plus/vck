@@ -105,7 +105,7 @@ internal class AuthenticationResponseFactory(
     } else if (response.requestsSignature()) {
         sign(response.params)
     } else {
-        odcJsonSerializer.encodeToString(response)
+        throw Exception("Response must be either signed or encrypted. Use DirectPost instead.")
     }
 
     private suspend fun sign(payload: AuthenticationResponseParameters): String =
