@@ -43,7 +43,7 @@ data class RqesRequestOptions(
             format = requestOptionCredential.toFormatHolder(containerJwt, containerSdJwt),
             constraints = requestOptionCredential.toConstraint(),
             transactionData = if (flow != PresentationRequestParameters.Flow.OID4VP) transactionData?.mapNotNull { entry ->
-                entry.makeUC5compliant()?.toBase64UrlString()
+                entry.makeUC5compliant()?.toBase64UrlJsonString()
             } else null
         )
     }

@@ -7,6 +7,7 @@ import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
+import at.asitplus.openid.sha256
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -46,6 +47,9 @@ data class PresentationRequestParameters(
     /** mdocGeneratedNonce to be used for the presentation and [calcIsoDeviceSignature] (OpenID4VP with ISO/IEC 18013-7) */
     val mdocGeneratedNonce: String? = null,
 ) {
+
+    fun getTransactionDataHashes() =
+        transactionData?.second?.map { it.sha256() }
     /**
      * Used to differentiate between the OID4VP and the UC5 transaction data flows
      * since they are not compatible
