@@ -9,6 +9,7 @@ import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.openid.OpenIdConstants.SCOPE_PROFILE
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.dcql.*
+import at.asitplus.wallet.lib.agent.PresentationRequestParameters.Flow
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
@@ -76,6 +77,14 @@ interface RequestOptions {
 
     val transactionData: List<TransactionData>?
 
+    /**
+     * [rqesFlow] is used to decide where transaction data is encoded:
+     * [Flow.UC5] for UC5 compliant,
+     * [Flow.OID4VP] for OID compliant
+     * and null for both
+     */
+    val rqesFlow: Flow?
+
     fun buildScope(): String = listOf(SCOPE_OPENID, SCOPE_PROFILE).joinToString(" ")
 
     fun toDCQLQuery(): DCQLQuery?
@@ -83,11 +92,13 @@ interface RequestOptions {
     fun toPresentationDefinition(
         containerJwt: FormatContainerJwt,
         containerSdJwt: FormatContainerSdJwt,
+        flow: Flow? = null,
     ): PresentationDefinition?
 
     fun toInputDescriptor(
         containerJwt: FormatContainerJwt,
         containerSdJwt: FormatContainerSdJwt,
+        flow: Flow? = null
     ): List<InputDescriptor>
 }
 
@@ -101,6 +112,7 @@ data class OpenIdRequestOptions(
     override val encryption: Boolean = false,
     override val presentationMechanism: PresentationMechanismEnum = PresentationMechanismEnum.PresentationExchange,
     override val transactionData: List<TransactionData>? = null,
+    override val rqesFlow: Flow? = null,
 ) : RequestOptions {
 
     override fun toDCQLQuery(): DCQLQuery? = if (credentials.isEmpty()) null else DCQLQuery(
@@ -160,14 +172,16 @@ data class OpenIdRequestOptions(
     override fun toPresentationDefinition(
         containerJwt: FormatContainerJwt,
         containerSdJwt: FormatContainerSdJwt,
+        flow: Flow?,
     ): PresentationDefinition = PresentationDefinition(
         id = uuid4().toString(),
-        inputDescriptors = toInputDescriptor(containerJwt, containerSdJwt)
+        inputDescriptors = toInputDescriptor(containerJwt, containerSdJwt, flow)
     )
 
     override fun toInputDescriptor(
         containerJwt: FormatContainerJwt,
         containerSdJwt: FormatContainerSdJwt,
+        flow: Flow?
     ): List<InputDescriptor> = credentials.map {
         DifInputDescriptor(
             id = it.buildId(),

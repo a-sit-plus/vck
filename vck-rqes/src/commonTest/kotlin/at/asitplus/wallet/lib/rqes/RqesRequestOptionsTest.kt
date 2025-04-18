@@ -31,7 +31,6 @@ class RqesRequestOptionsTest : FreeSpec({
 
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var holderAgent: Holder
-    lateinit var requestOptions: RqesRequestOptions
 
     beforeContainer {
         holderKeyMaterial = EphemeralKeyWithoutCert()
@@ -43,8 +42,6 @@ class RqesRequestOptionsTest : FreeSpec({
                     .getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         )
-
-        requestOptions = buildRqesRequestOptions()
     }
 
     "Rqes Request with EU PID credential" - {
@@ -55,7 +52,7 @@ class RqesRequestOptionsTest : FreeSpec({
         )
 
         "Authentication request contains transactionData" - {
-            val authnRequest = rqesVerifier.createAuthnRequest(requestOptions = requestOptions)
+            val authnRequest = rqesVerifier.createAuthnRequest(requestOptions = buildRqesRequestOptions(null))
             val inputDescriptor = authnRequest.presentationDefinition!!.inputDescriptors.first()
             val serialized = vckJsonSerializer.encodeToString(inputDescriptor)
             authnRequest.presentationDefinition.shouldNotBeNull()
@@ -88,7 +85,7 @@ class RqesRequestOptionsTest : FreeSpec({
 internal fun List<TransactionData>.getReferenceHashes(): List<ByteArray> =
     this.map { it.toBase64UrlString().content.decodeToByteArray(Base64UrlStrict).sha256() }
 
-internal fun buildRqesRequestOptions(): RqesRequestOptions {
+internal fun buildRqesRequestOptions(flow: PresentationRequestParameters.Flow?): RqesRequestOptions {
     val id = uuid4().toString()
     return RqesRequestOptions(
         baseRequestOptions = OpenIdRequestOptions(
@@ -101,6 +98,7 @@ internal fun buildRqesRequestOptions(): RqesRequestOptions {
                 )
             ),
             transactionData = listOf(getTransactionData(setOf(id)), getTransactionData(setOf(id))),
+            rqesFlow = flow
         )
     )
 }

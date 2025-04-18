@@ -306,8 +306,8 @@ open class OpenId4VpVerifier(
         state = state,
         dcqlQuery = if (isDcql) toDCQLQuery() else null,
         presentationDefinition = if (isPresentationExchange)
-            toPresentationDefinition(containerJwt, containerSdJwt) else null,
-        transactionData = transactionData?.map { it.toBase64UrlString() }
+            toPresentationDefinition(containerJwt, containerSdJwt, rqesFlow) else null,
+        transactionData = if (rqesFlow != PresentationRequestParameters.Flow.UC5) transactionData?.map { it.toBase64UrlString() } else null
     )
 
     /**
@@ -492,7 +492,7 @@ open class OpenId4VpVerifier(
                     responseParameters,
                     authnRequest.clientId,
                     authnRequest.responseUrl,
-                    authnRequest.parseTransactionData()?.second
+                    authnRequest.parseTransactionData()
                 ).mapToAuthnResponseResult(state)
             }
             return AuthnResponseResult.VerifiableDCQLPresentationValidationResults(presentation)
