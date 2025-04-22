@@ -14,6 +14,7 @@ import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.*
@@ -23,7 +24,6 @@ import at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.*
-import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
@@ -42,7 +42,7 @@ import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
 internal class PresentationFactory(
-    private val jwsService: JwsService,
+    private val supportedAlgorithms: Set<JwsAlgorithm>,
     private val coseService: CoseService,
     private val signIdToken: SignJwtFun<IdToken>,
 ) {
@@ -294,19 +294,18 @@ internal class PresentationFactory(
     @Throws(OAuth2Exception::class)
     private fun PresentationResponseParameters.PresentationExchangeParameters.verifyFormatSupport(
         supportedFormats: FormatHolder,
-    ) =
-        presentationSubmission.descriptorMap?.mapIndexed { _, descriptor ->
-            if (supportedFormats.isMissingFormatSupport(descriptor.format)) {
-                Napier.w("Incompatible JWT algorithms for claim format ${descriptor.format}: $supportedFormats")
-                throw RegistrationValueNotSupported("incompatible algorithms")
-            }
+    ) = presentationSubmission.descriptorMap?.mapIndexed { _, descriptor ->
+        if (!supportedFormats.supportsAlgorithm(descriptor.format)) {
+            Napier.w("Incompatible JWT algorithms for claim format ${descriptor.format}: $supportedFormats")
+            throw RegistrationValueNotSupported("incompatible algorithms")
         }
+    }
 
     @Throws(OAuth2Exception::class)
     private fun PresentationResponseParameters.DCQLParameters.verifyFormatSupport(supportedFormats: FormatHolder) =
         verifiablePresentations.entries.mapIndexed { _, descriptor ->
             val format = this.verifiablePresentations.entries.first().value.toFormat()
-            if (supportedFormats.isMissingFormatSupport(format)) {
+            if (!supportedFormats.supportsAlgorithm(format)) {
                 Napier.w("Incompatible JWT algorithms for claim format $format: $supportedFormats")
                 throw RegistrationValueNotSupported("incompatible algorithms")
             }
@@ -319,19 +318,17 @@ internal class PresentationFactory(
     }
 
     @Suppress("DEPRECATION")
-    private fun FormatHolder.isMissingFormatSupport(claimFormat: ClaimFormat): Boolean {
-        return when (claimFormat) {
-            ClaimFormat.JWT_VP -> jwtVp?.algorithms?.let { !it.contains(jwsService.algorithm) } ?: false
-            ClaimFormat.JWT_SD, ClaimFormat.SD_JWT -> {
-                if (jwtSd?.sdJwtAlgorithms?.contains(jwsService.algorithm) == false) return true
-                if (jwtSd?.kbJwtAlgorithms?.contains(jwsService.algorithm) == false) return true
-                if (sdJwt?.sdJwtAlgorithms?.contains(jwsService.algorithm) == false) return true
-                if (sdJwt?.kbJwtAlgorithms?.contains(jwsService.algorithm) == false) return true
-                return false
-            }
+    private fun FormatHolder.supportsAlgorithm(claimFormat: ClaimFormat): Boolean = when (claimFormat) {
+        ClaimFormat.JWT_VP -> jwtVp?.algorithms?.any { supportedAlgorithms.contains(it) } == true
+        ClaimFormat.JWT_SD, ClaimFormat.SD_JWT ->
+            if (jwtSd?.sdJwtAlgorithms?.any { supportedAlgorithms.contains(it) } == true) true
+            else if (jwtSd?.kbJwtAlgorithms?.any { supportedAlgorithms.contains(it) } == true) true
+            else if (sdJwt?.sdJwtAlgorithms?.any { supportedAlgorithms.contains(it) } == true) true
+            else if (sdJwt?.kbJwtAlgorithms?.any { supportedAlgorithms.contains(it) } == true) true
+            else false
 
-            ClaimFormat.MSO_MDOC -> msoMdoc?.algorithms?.let { !it.contains(jwsService.algorithm) } ?: false
-            else -> false
-        }
+        ClaimFormat.MSO_MDOC -> msoMdoc?.algorithms?.any { supportedAlgorithms.contains(it) } == true
+        else -> false
     }
+
 }

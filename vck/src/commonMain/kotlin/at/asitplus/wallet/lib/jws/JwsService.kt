@@ -379,10 +379,8 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
 
     override val keyMaterial: KeyMaterial = cryptoService.keyMaterial
 
-    // TODO: Get from crypto service
     override val encryptionAlgorithm: JweAlgorithm = JweAlgorithm.ECDH_ES
 
-    // TODO: Get from crypto service
     override val encryptionEncoding: JweEncryption = JweEncryption.A256GCM
 
     @Deprecated("Use SignJwtFun instead")
@@ -560,52 +558,6 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         return JweEncrypted(jweHeader, aad, null, iv, ciphertext.ciphertext, authTag)
     }
 
-    /**
-     * Derives the key, for use in content encryption in JWE,
-     * per [RFC 7518](https://datatracker.ietf.org/doc/html/rfc7518#section-5.2.2.1)
-     */
-    private fun compositeKey(jweEncryption: JweEncryption, key: ByteArray) =
-        if (jweEncryption.macLength != null) {
-            CompositeKey(key.drop(key.size / 2).toByteArray(), key.take(key.size / 2).toByteArray())
-        } else {
-            CompositeKey(key)
-        }
-
-    /**
-     * Input for HMAC calculation in JWE, when not using authenticated encryption,
-     * per [RFC 7518](https://datatracker.ietf.org/doc/html/rfc7518#section-5.2.2.1)
-     */
-    private fun hmacInput(
-        aadForCipher: ByteArray,
-        iv: ByteArray,
-        ciphertext: ByteArray,
-    ) = aadForCipher + iv + ciphertext + (aadForCipher.size * 8L).encodeTo8Bytes()
-
-    /**
-     * Concat KDF for use in ECDH-ES in JWE,
-     * per [RFC 7518](https://datatracker.ietf.org/doc/html/rfc7518#section-4.6),
-     * and [NIST.800-56A](http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf)
-     */
-    private fun concatKdf(
-        z: ByteArray,
-        jweEncryption: JweEncryption,
-        apu: ByteArray?,
-        apv: ByteArray?,
-        encryptionKeyLengthBits: Int,
-    ): ByteArray {
-        val digest = Digest.SHA256
-        val repetitions =
-            (encryptionKeyLengthBits.toUInt() + digest.outputLength.bits - 1U) / digest.outputLength.bits
-        val algId = jweEncryption.text.encodeToByteArray().prependWith4BytesSize()
-        val apuEncoded = apu?.prependWith4BytesSize() ?: 0.encodeTo4Bytes()
-        val apvEncoded = apv?.prependWith4BytesSize() ?: 0.encodeTo4Bytes()
-        val keyLength = jweEncryption.encryptionKeyLength.encodeTo4Bytes()
-        val otherInfo = algId + apuEncoded + apvEncoded + keyLength + byteArrayOf()
-        val output = (1..repetitions.toInt()).fold(byteArrayOf()) { acc, step ->
-            acc + cryptoService.messageDigest(step.encodeTo4Bytes() + z + otherInfo, digest)
-        }
-        return output.take(encryptionKeyLengthBits / 8).toByteArray()
-    }
 
 }
 /**

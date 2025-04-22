@@ -5,6 +5,7 @@ import at.asitplus.catching
 import at.asitplus.openid.*
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
@@ -197,6 +198,7 @@ class OpenId4VciClientTest : FunSpec() {
             },
             signClientAttestationPop = SignJwt(clientAuthKeyMaterial, JwsHeaderNone()),
             signDpop = SignJwt(dpopKeyMaterial, JwsHeaderJwk()),
+            dpopAlgorithm = dpopKeyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
             oid4vciService = WalletService(
                 clientId = clientId,
                 keyMaterial = credentialKeyMaterial,

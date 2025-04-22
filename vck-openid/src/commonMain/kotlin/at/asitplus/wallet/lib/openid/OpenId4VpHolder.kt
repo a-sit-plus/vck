@@ -13,6 +13,7 @@ import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
@@ -49,11 +50,12 @@ import kotlinx.datetime.Clock
 class OpenId4VpHolder(
     private val holder: Holder,
     private val agentPublicKey: KeyMaterial,
-    @Deprecated("Use signIdToken, signJarm, encryptJarm instead")
+    @Deprecated("Use signIdToken, signJarm, encryptJarm, supportedAlgorithms instead")
     private val jwsService: JwsService,
     private val signIdToken: SignJwtFun<IdToken> = SignJwt(agentPublicKey, JwsHeaderJwk()),
     private val signJarm: SignJwtFun<AuthenticationResponseParameters> = SignJwt(agentPublicKey, JwsHeaderJwk()),
     private val encryptJarm: EncryptJweFun = EncryptJwe(agentPublicKey),
+    private val supportedAlgorithms: Set<JwsAlgorithm> = setOfNotNull(JwsAlgorithm.ES256),
     private val coseService: CoseService,
     private val clock: Clock = Clock.System,
     private val clientId: String = "https://wallet.a-sit.at/",
@@ -103,7 +105,7 @@ class OpenId4VpHolder(
         walletNonceMapStore = walletNonceMapStore
     )
 
-    private val supportedAlgorithmsStrings = setOf(jwsService.algorithm.identifier)
+    private val supportedAlgorithmsStrings = supportedAlgorithms.map { it.identifier }.toSet()
     private val authorizationRequestValidator = AuthorizationRequestValidator(walletNonceMapStore)
     private val authenticationResponseFactory = AuthenticationResponseFactory(signJarm, encryptJarm)
 
@@ -244,7 +246,7 @@ class OpenId4VpHolder(
                 ?.jwsSigned?.header?.certificateChain?.firstOrNull()?.publicKey?.toJsonWebKey()
         val clientJsonWebKeySet = clientMetadata?.loadJsonWebKeySet()
         val audience = request.parameters.extractAudience(clientJsonWebKeySet)
-        val presentationFactory = PresentationFactory(jwsService, coseService, signIdToken)
+        val presentationFactory = PresentationFactory(supportedAlgorithms, coseService, signIdToken)
         val jsonWebKeys = clientJsonWebKeySet?.keys?.combine(certKey)
         val idToken = presentationFactory.createSignedIdToken(clock, agentPublicKey.publicKey, request).getOrNull()?.serialize()
 

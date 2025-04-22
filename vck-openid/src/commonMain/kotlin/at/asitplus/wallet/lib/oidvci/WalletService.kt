@@ -241,8 +241,8 @@ class WalletService(
         if (requestEncryption && decryptionKeyMaterial != null && jweDecryptionService != null && credentialResponseEncryption != null) {
             CredentialResponseEncryption(
                 jsonWebKey = decryptionKeyMaterial.jsonWebKey,
-                jweAlgorithm = jwsService.encryptionAlgorithm,
-                jweEncryptionString = jwsService.encryptionEncoding.text
+                jweAlgorithm = JweAlgorithm.ECDH_ES,
+                jweEncryptionString = JweEncryption.A256GCM.text
             )
         } else null
 

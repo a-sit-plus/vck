@@ -113,8 +113,8 @@ open class OpenId4VpVerifier(
     val metadataWithEncryption by lazy {
         metadata.copy(
             authorizationSignedResponseAlgString = null,
-            authorizationEncryptedResponseAlgString = jwsService.encryptionAlgorithm.identifier,
-            authorizationEncryptedResponseEncodingString = jwsService.encryptionEncoding.text,
+            authorizationEncryptedResponseAlgString = JweAlgorithm.ECDH_ES.identifier,
+            authorizationEncryptedResponseEncodingString = JweEncryption.A256GCM.text,
             jsonWebKeySet = metadata.jsonWebKeySet?.let {
                 JsonWebKeySet(it.keys.map { it.copy(publicKeyUse = "enc") })
             }

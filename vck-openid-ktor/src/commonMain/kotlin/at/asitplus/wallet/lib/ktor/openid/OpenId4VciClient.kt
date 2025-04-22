@@ -9,7 +9,10 @@ import at.asitplus.openid.OpenIdConstants.PARAMETER_PROMPT_LOGIN
 import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER
 import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
+import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
+import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
@@ -88,6 +91,7 @@ class OpenId4VciClient(
     private val dpopJwsService: JwsService = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithoutCert())),
     /** Used to calculate DPoP, i.e. the key the access token and refresh token gets bound to. */
     private val signDpop: SignJwtFun<JsonWebToken> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderJwk()),
+    private val dpopAlgorithm: JwsAlgorithm = JwsAlgorithm.ES256,
     /**
      * Implements OID4VCI protocol, `redirectUrl` needs to be registered by the OS for this application, so redirection
      * back from browser works, `cryptoService` provides proof of possession for credential key material.
@@ -342,7 +346,7 @@ class OpenId4VciClient(
         tokenEndPointAuthMethodsSupported?.contains(AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH) == true
 
     private fun OAuth2AuthorizationServerMetadata.hasMatchingDpopAlgorithm(): Boolean =
-        dpopSigningAlgValuesSupported?.contains(dpopJwsService.algorithm) == true
+        dpopSigningAlgValuesSupported?.contains(dpopAlgorithm) == true
 
     /**
      * Will use the [tokenResponse] to request a credential and store it with [storeCredential].
