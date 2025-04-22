@@ -11,7 +11,6 @@ import at.asitplus.openid.OpenIdConstants.ClientIdScheme
 import at.asitplus.openid.OpenIdConstants.PREFIX_DID_KEY
 import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
-import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
@@ -25,6 +24,8 @@ import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DefaultJwsService
+import at.asitplus.wallet.lib.jws.EncryptJwe
+import at.asitplus.wallet.lib.jws.EncryptJweFun
 import at.asitplus.wallet.lib.jws.JwsHeaderJwk
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -48,10 +49,11 @@ import kotlinx.datetime.Clock
 class OpenId4VpHolder(
     private val holder: Holder,
     private val agentPublicKey: KeyMaterial,
-    @Deprecated("Use signIdToken, signJarm instead")
+    @Deprecated("Use signIdToken, signJarm, encryptJarm instead")
     private val jwsService: JwsService,
     private val signIdToken: SignJwtFun<IdToken> = SignJwt(agentPublicKey, JwsHeaderJwk()),
     private val signJarm: SignJwtFun<AuthenticationResponseParameters> = SignJwt(agentPublicKey, JwsHeaderJwk()),
+    private val encryptJarm: EncryptJweFun = EncryptJwe(agentPublicKey),
     private val coseService: CoseService,
     private val clock: Clock = Clock.System,
     private val clientId: String = "https://wallet.a-sit.at/",
@@ -103,7 +105,7 @@ class OpenId4VpHolder(
 
     private val supportedAlgorithmsStrings = setOf(jwsService.algorithm.identifier)
     private val authorizationRequestValidator = AuthorizationRequestValidator(walletNonceMapStore)
-    private val authenticationResponseFactory = AuthenticationResponseFactory(jwsService, signJarm)
+    private val authenticationResponseFactory = AuthenticationResponseFactory(signJarm, encryptJarm)
 
     val metadata: OAuth2AuthorizationServerMetadata by lazy {
         OAuth2AuthorizationServerMetadata(

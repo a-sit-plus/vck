@@ -9,6 +9,8 @@ import at.asitplus.openid.OpenIdConstants.ProofType
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JweAlgorithm
+import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsSigned
@@ -21,6 +23,8 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
+import at.asitplus.wallet.lib.jws.EncryptJwe
+import at.asitplus.wallet.lib.jws.EncryptJweFun
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
@@ -35,7 +39,6 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception.UnsupportedCredentialType
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Clock.System
-import kotlinx.serialization.builtins.serializer
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
@@ -83,8 +86,10 @@ class CredentialIssuer(
     private val requireKeyAttestation: Boolean = false,
     /** Used to provide challenge to clients to include in proof of possession of key material. */
     private val clientNonceService: NonceService = DefaultNonceService(),
-    /** Used to optionally encrypt the credential response, if requested by the client. */
+    @Deprecated("Use encryptCredentialRequest instead")
     private val jwsEncryptionService: JwsService = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithoutCert())),
+    /** Used to optionally encrypt the credential response, if requested by the client. */
+    private val encryptCredentialRequest: EncryptJweFun = EncryptJwe(EphemeralKeyWithoutCert()),
     /** Whether to indicate in [metadata] if credential response encryption is required. */
     private val requireEncryption: Boolean = false,
 ) {
@@ -123,8 +128,8 @@ class CredentialIssuer(
             supportedCredentialConfigurations = supportedCredentialConfigurations,
             batchCredentialIssuance = BatchCredentialIssuanceMetadata(1),
             credentialResponseEncryption = SupportedAlgorithmsContainer(
-                supportedAlgorithmsStrings = setOf(jwsEncryptionService.encryptionAlgorithm.identifier),
-                supportedEncryptionAlgorithmsStrings = setOf(jwsEncryptionService.encryptionEncoding.text),
+                supportedAlgorithmsStrings = setOf(JweAlgorithm.ECDH_ES.identifier),
+                supportedEncryptionAlgorithmsStrings = setOf(JweEncryption.A256GCM.text),
                 encryptionRequired = requireEncryption,
             )
         )
@@ -237,17 +242,14 @@ class CredentialIssuer(
     private fun CredentialRequestParameters.encrypter(): (suspend (String) -> String) = { it: String ->
         if (credentialResponseEncryption?.jweEncryption != null) {
             with(credentialResponseEncryption!!) {
-                jwsEncryptionService.encryptJweObject(
-                    header = JweHeader(
+                encryptCredentialRequest(
+                    JweHeader(
                         algorithm = jweAlgorithm,
                         encryption = jweEncryption,
                         keyId = jsonWebKey.keyId,
                     ),
-                    payload = it,
-                    serializer = String.serializer(),
-                    recipientKey = jsonWebKey,
-                    jweAlgorithm = jweAlgorithm,
-                    jweEncryption = jweEncryption!!,
+                    it,
+                    jsonWebKey,
                 ).getOrNull()?.serialize() ?: it
             }
         } else {
