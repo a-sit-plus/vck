@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.jws
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.openid.JwsSignedSerializer
 import at.asitplus.signum.indispensable.CryptoPrivateKey
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.Digest
@@ -17,13 +16,16 @@ import at.asitplus.signum.supreme.SecretExposure
 import at.asitplus.signum.supreme.agree.keyAgreement
 import at.asitplus.signum.supreme.asKmmResult
 import at.asitplus.signum.supreme.hash.digest
+import at.asitplus.signum.supreme.sign.Signer
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.jws.JweUtils.compositeKey
+import at.asitplus.wallet.lib.jws.JweUtils.concatKdf
+import at.asitplus.wallet.lib.jws.JweUtils.hmacInput
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.SerializationStrategy
-import kotlinx.serialization.builtins.serializer
 import kotlin.random.Random
 
 
@@ -182,6 +184,7 @@ object SignJwt {
     }
 }
 
+
 /** Create a [JweEncrypted], setting values for [JweHeader]. */
 typealias EncryptJweFun = suspend (
     header: JweHeader,
@@ -249,11 +252,16 @@ object EncryptJwe {
         ).getOrThrow()
     }
 
+}
+
+
+object JweUtils {
+
     /**
      * Derives the key, for use in content encryption in JWE,
      * per [RFC 7518](https://datatracker.ietf.org/doc/html/rfc7518#section-5.2.2.1)
      */
-    private fun compositeKey(jweEncryption: JweEncryption, key: ByteArray) =
+    fun compositeKey(jweEncryption: JweEncryption, key: ByteArray) =
         if (jweEncryption.macLength != null) {
             CompositeKey(key.drop(key.size / 2).toByteArray(), key.take(key.size / 2).toByteArray())
         } else {
@@ -264,7 +272,7 @@ object EncryptJwe {
      * Input for HMAC calculation in JWE, when not using authenticated encryption,
      * per [RFC 7518](https://datatracker.ietf.org/doc/html/rfc7518#section-5.2.2.1)
      */
-    private fun hmacInput(
+    fun hmacInput(
         aadForCipher: ByteArray,
         iv: ByteArray,
         ciphertext: ByteArray,
@@ -275,7 +283,7 @@ object EncryptJwe {
      * per [RFC 7518](https://datatracker.ietf.org/doc/html/rfc7518#section-4.6),
      * and [NIST.800-56A](http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf)
      */
-    private fun concatKdf(
+    fun concatKdf(
         z: ByteArray,
         jweEncryption: JweEncryption,
         apu: ByteArray?,
@@ -296,6 +304,61 @@ object EncryptJwe {
     }
 }
 
+/** Decrypt a [JweEncrypted] object*/
+typealias DecryptJweFun = suspend (
+    jweObject: JweEncrypted,
+) -> KmmResult<JweDecrypted<String>>
+
+object DecryptJwe {
+    operator fun invoke(
+        keyMaterial: KeyMaterial,
+        platformCryptoShim: PlatformCryptoShim = PlatformCryptoShim(),
+    ): DecryptJweFun = { jweObject ->
+        catching {
+            val header = jweObject.header
+            val alg = header.algorithm
+                ?: throw IllegalArgumentException("No algorithm in JWE header")
+            val enc = header.encryption
+                ?: throw IllegalArgumentException("No encryption in JWE header")
+            val epk = header.ephemeralKeyPair
+                ?: throw IllegalArgumentException("No epk in JWE header")
+            val z = performKeyAgreement(keyMaterial, epk).getOrThrow()
+            val intermediateKey = concatKdf(
+                z,
+                enc,
+                header.agreementPartyUInfo,
+                header.agreementPartyVInfo,
+                enc.encryptionKeyLength
+            )
+            val key = compositeKey(enc, intermediateKey)
+            val iv = jweObject.iv
+            val aad = jweObject.headerAsParsed.encodeToByteArray(Base64UrlStrict)
+            val ciphertext = jweObject.ciphertext
+            val authTag = jweObject.authTag
+            val plaintext = platformCryptoShim.decrypt(key.aesKey, iv, aad, ciphertext, authTag, enc).getOrThrow()
+            val plainObject = plaintext.decodeToString()
+            key.hmacKey?.let { hmacKey ->
+                val expectedAuthTag = platformCryptoShim.hmac(hmacKey, enc, hmacInput(aad, iv, ciphertext))
+                    .getOrThrow()
+                    .take(enc.macLength!!).toByteArray()
+                if (!expectedAuthTag.contentEquals(authTag)) {
+                    throw IllegalArgumentException("Authtag mismatch")
+                }
+            }
+            JweDecrypted(header, plainObject)
+        }
+    }
+
+    private suspend fun performKeyAgreement(
+        keyMaterial: KeyMaterial,
+        ephemeralKey: JsonWebKey,
+    ): KmmResult<ByteArray> = catching {
+        val publicKey = ephemeralKey.toCryptoPublicKey().getOrThrow() as CryptoPublicKey.EC
+        //this is temporary until we refactor the JWS service and both key agreement functions get merged
+        (keyMaterial.getUnderLyingSigner() as Signer.ECDSA).keyAgreement(publicKey).getOrThrow()
+    }
+
+}
 
 interface VerifierJwsService {
 
@@ -531,7 +594,8 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         encryptionKeyLengthBits: Int,
     ): ByteArray {
         val digest = Digest.SHA256
-        val repetitions = (encryptionKeyLengthBits.toUInt() + digest.outputLength.bits - 1U) / digest.outputLength.bits
+        val repetitions =
+            (encryptionKeyLengthBits.toUInt() + digest.outputLength.bits - 1U) / digest.outputLength.bits
         val algId = jweEncryption.text.encodeToByteArray().prependWith4BytesSize()
         val apuEncoded = apu?.prependWith4BytesSize() ?: 0.encodeTo4Bytes()
         val apvEncoded = apv?.prependWith4BytesSize() ?: 0.encodeTo4Bytes()
@@ -660,7 +724,8 @@ object VerifyJwsObject {
         header.publicKey?.let { setOf(it) }
             ?: header.jsonWebKeySetUrl?.let {
                 retrieveJwkFromKeySetUrl(jwkSetRetriever, it, header.keyId)?.let { setOf(it) }
-            } ?: publicKeyLookup(this)?.mapNotNull { jwk -> jwk.toCryptoPublicKey().getOrNull() }?.toSet() ?: setOf()
+            } ?: publicKeyLookup(this)?.mapNotNull { jwk -> jwk.toCryptoPublicKey().getOrNull() }?.toSet()
+            ?: setOf()
 
     /**
      * Either take the single key from the JSON Web Key Set, or the one matching the keyId
@@ -683,8 +748,12 @@ class DefaultVerifierJwsService(
     override val supportedAlgorithms: List<JwsAlgorithm> = listOf(JwsAlgorithm.ES256),
     private val verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(verifySignature),
     private val verifyJwsSignatureObject: VerifyJwsObjectFun = VerifyJwsObject(verifyJwsSignature),
-    private val verifyJwsSignatureWithKey: VerifyJwsSignatureWithKeyFun = VerifyJwsSignatureWithKey(verifyJwsSignature),
-    private val verifyJwsSignatureWithCnf: VerifyJwsSignatureWithCnfFun = VerifyJwsSignatureWithCnf(verifyJwsSignature),
+    private val verifyJwsSignatureWithKey: VerifyJwsSignatureWithKeyFun = VerifyJwsSignatureWithKey(
+        verifyJwsSignature
+    ),
+    private val verifyJwsSignatureWithCnf: VerifyJwsSignatureWithCnfFun = VerifyJwsSignatureWithCnf(
+        verifyJwsSignature
+    ),
     /**
      * Need to implement if JSON web keys in JWS headers are referenced by a `kid`, and need to be retrieved from
      * the `jku`.
@@ -730,7 +799,7 @@ class DefaultVerifierJwsService(
 }
 
 
-private data class CompositeKey(
+data class CompositeKey(
     val aesKey: ByteArray,
     val hmacKey: ByteArray? = null,
 ) {

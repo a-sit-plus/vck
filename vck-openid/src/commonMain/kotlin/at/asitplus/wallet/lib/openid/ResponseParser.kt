@@ -5,26 +5,23 @@ import at.asitplus.openid.ResponseParametersFrom
 import at.asitplus.signum.indispensable.josef.JweDecrypted
 import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
-import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.jws.VerifierJwsService
+import at.asitplus.wallet.lib.jws.DecryptJwe
+import at.asitplus.wallet.lib.jws.DecryptJweFun
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
-import kotlinx.serialization.builtins.serializer
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Parses authentication responses for [OpenId4VpVerifier]
  */
 class ResponseParser(
-    private val jwsService: JwsService,
-    @Deprecated("Use verifyJwsSignatureObject instead")
-    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
+    private val decryptJwe: DecryptJweFun = DecryptJwe(EphemeralKeyWithoutCert()),
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
 ) {
     /**
@@ -86,13 +83,18 @@ class ResponseParser(
         } ?: input
 
     private suspend fun String.fromJwe(): JweDecrypted<AuthenticationResponseParameters>? =
-        JweEncrypted.Companion.deserialize(this).getOrNull()?.let {
-            jwsService.decryptJweObject(it, this, AuthenticationResponseParameters.Companion.serializer()).getOrNull()
+        JweEncrypted.deserialize(this).getOrNull()?.let {
+            decryptJwe(it).getOrNull()?.let {
+                JweDecrypted(
+                    it.header,
+                    vckJsonSerializer.decodeFromString<AuthenticationResponseParameters>(it.payload)
+                )
+            }
         }
 
     private suspend fun String.fromJweString(): JweDecrypted<String>? =
-        JweEncrypted.Companion.deserialize(this).getOrNull()?.let {
-            jwsService.decryptJweObject(it, this, String.serializer()).getOrNull()
+        JweEncrypted.deserialize(this).getOrNull()?.let {
+            decryptJwe(it).getOrNull()
         }
 
     private fun String.fromJws(): JwsSigned<AuthenticationResponseParameters>? =

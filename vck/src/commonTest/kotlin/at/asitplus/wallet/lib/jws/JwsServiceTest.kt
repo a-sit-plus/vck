@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.jws
 
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.*
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import com.benasher44.uuid.uuid4
@@ -105,20 +104,26 @@ class JwsServiceTest : FreeSpec({
     }
 
     "encrypted object can be decrypted" {
-        val jwsService = DefaultJwsService(DefaultCryptoService(keyMaterial))
-        val encrypted = jwsService.encryptJweObject(
-            JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON,
+        val encrypterKey = EphemeralKeyWithoutCert()
+        val encrypter = EncryptJwe(encrypterKey)
+        val decrypterKey = EphemeralKeyWithoutCert()
+        val decrypter = DecryptJwe(decrypterKey)
+
+        val encrypted = encrypter(
+            JweHeader(
+                algorithm = JweAlgorithm.ECDH_ES,
+                encryption = JweEncryption.A256GCM,
+                jsonWebKey = encrypterKey.jsonWebKey,
+                type = "anything",
+            ),
             randomPayload,
-            String.serializer(),
-            keyMaterial.jsonWebKey,
-            JwsContentTypeConstants.DIDCOMM_PLAIN_JSON,
-            JweAlgorithm.ECDH_ES,
-            JweEncryption.A256GCM,
-        ).getOrThrow().serialize()
-        encrypted.shouldNotBeNull()
+            decrypterKey.jsonWebKey,
+        ).getOrThrow().serialize().shouldNotBeNull()
+
         val parsed = JweEncrypted.deserialize(encrypted).getOrThrow()
 
-        val result = jwsService.decryptJweObject(parsed, encrypted, String.serializer()).getOrThrow()
-        result.payload shouldBe randomPayload
+        decrypter(parsed).getOrThrow()
+            .shouldNotBeNull()
+            .payload shouldBe randomPayload
     }
 })

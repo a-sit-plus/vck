@@ -6,12 +6,12 @@ import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JweEncryption.*
+import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.nativeDigest
 import at.asitplus.signum.indispensable.toJcaPublicKey
 import at.asitplus.signum.supreme.HazardousMaterials
 import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
 import at.asitplus.signum.supreme.sign.EphemeralKey
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import com.benasher44.uuid.uuid4
 import com.nimbusds.jose.*
@@ -48,44 +48,42 @@ class JweServiceJvmTest : FreeSpec({
         val jvmEncrypter = ECDHEncrypter(ephemeralKey.publicKey.toJcaPublicKey().getOrThrow() as ECPublicKey)
         val jvmDecrypter = ECDHDecrypter(ephemeralKey.jcaPrivateKey as ECPrivateKey)
 
-        val keyPairAdapter = EphemeralKeyWithoutCert(ephemeralKey)
-        val cryptoService = DefaultCryptoService(keyPairAdapter)
-        val jwsService = DefaultJwsService(cryptoService)
-        val randomPayload = JsonPrimitive(uuid4().toString())
+        val keyMaterial = EphemeralKeyWithoutCert(ephemeralKey)
+        val encrypter = EncryptJwe(keyMaterial)
+        val decrypter = DecryptJwe(keyMaterial)
+        val randomPayload = uuid4().toString()
 
         config.encryption.forEach { encryptionMethod ->
             "${config.curve}, ${encryptionMethod}:" - {
                 "Encrypted object from ext. library can be decrypted with int. library" {
                     val libJweHeader =
                         JWEHeader.Builder(JWEAlgorithm(jweAlgorithm.identifier), encryptionMethod.joseAlgorithm)
-                            .type(JOSEObjectType(JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON))
-                            .jwk(JWK.parse(cryptoService.keyMaterial.jsonWebKey.serialize()))
-                            .contentType(JwsContentTypeConstants.DIDCOMM_PLAIN_JSON)
+                            .type(JOSEObjectType("something"))
+                            .jwk(JWK.parse(keyMaterial.jsonWebKey.serialize()))
                             .build()
-                    val libJweObject = JWEObject(libJweHeader, Payload(randomPayload.content))
+                    val libJweObject = JWEObject(libJweHeader, Payload(randomPayload))
                         .apply { encrypt(jvmEncrypter) }
                     val encryptedJwe = libJweObject.serialize()
 
                     val parsedJwe = JweEncrypted.deserialize(encryptedJwe).getOrThrow()
-                    val result = jwsService.decryptJweObject(parsedJwe, encryptedJwe, JsonPrimitive.serializer()).getOrThrow()
-                    result.payload.content shouldBe randomPayload.content
+                    val result = decrypter(parsedJwe).getOrThrow()
+                    result.payload shouldBe randomPayload
                 }
 
                 "Encrypted object from int. library can be decrypted with ext. library" {
-                    val encrypted = jwsService.encryptJweObject(
-                        JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON,
+                    val encrypted = encrypter(
+                        JweHeader(
+                            algorithm = jweAlgorithm,
+                            encryption = encryptionMethod,
+                        ),
                         randomPayload,
-                        JsonElement.serializer(),
-                        cryptoService.keyMaterial.jsonWebKey,
-                        JwsContentTypeConstants.DIDCOMM_PLAIN_JSON,
-                        jweAlgorithm,
-                        encryptionMethod,
+                        keyMaterial.jsonWebKey,
                     ).getOrThrow().serialize()
 
                     val parsed = JWEObject.parse(encrypted).shouldNotBeNull()
 
                     parsed.decrypt(jvmDecrypter)
-                    parsed.payload.toBytes().decodeToString() shouldBe "\"${randomPayload.content}\""
+                    parsed.payload.toBytes().decodeToString() shouldBe randomPayload
                 }
             }
         }

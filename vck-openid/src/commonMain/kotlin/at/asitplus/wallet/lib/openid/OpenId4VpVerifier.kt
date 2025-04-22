@@ -45,8 +45,9 @@ open class OpenId4VpVerifier(
     private val clientIdScheme: ClientIdScheme,
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
-    @Deprecated("Use signAuthnRequest instead")
+    @Deprecated("Use signAuthnRequest, decryptJwe instead")
     private val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
+    private val decryptJwe: DecryptJweFun = DecryptJwe(keyMaterial),
     private val signAuthnRequest: SignJwtFun<AuthenticationRequestParameters> =
         SignJwt(keyMaterial, JwsHeaderClientIdScheme(clientIdScheme)()),
     @Deprecated("Use verifyJwsSignatureObject instead")
@@ -64,7 +65,7 @@ open class OpenId4VpVerifier(
 ) {
 
     private val supportedAlgorithmStrings = supportedAlgorithms.map { it.identifier }
-    private val responseParser = ResponseParser(jwsService, verifyJwsObject = verifyJwsObject)
+    private val responseParser = ResponseParser(decryptJwe, verifyJwsObject)
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
     private val supportedSignatureVerificationAlgorithm =
         (supportedAlgorithms.firstOrNull { it == JwsAlgorithm.ES256 }?.identifier
