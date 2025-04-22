@@ -8,9 +8,9 @@ import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
-import at.asitplus.wallet.lib.jws.DefaultJwsService
+import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
-import at.asitplus.wallet.lib.jws.JwsService
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -37,7 +37,7 @@ class ValidatorVpTest : FreeSpec({
     lateinit var issuerCredentialStore: IssuerCredentialStore
     lateinit var holder: HolderAgent
     lateinit var holderCredentialStore: SubjectCredentialStore
-    lateinit var holderJwsService: JwsService
+    lateinit var holderSignVp: SignJwtFun<VerifiablePresentationJws>
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var verifierId: String
     lateinit var verifier: Verifier
@@ -70,7 +70,7 @@ class ValidatorVpTest : FreeSpec({
             holderCredentialStore,
             validator = validator,
         )
-        holderJwsService = DefaultJwsService(DefaultCryptoService(holderKeyMaterial))
+        holderSignVp = SignJwt(holderKeyMaterial)
         verifierId = "urn:${uuid4()}"
         verifier = VerifierAgent(
             identifier = verifierId,
@@ -187,7 +187,7 @@ class ValidatorVpTest : FreeSpec({
             issuerId = holder.keyPair.identifier,
             audienceId = verifierId,
         )
-        val vpJws = holderJwsService.createSignedJwt(
+        val vpJws = holderSignVp(
             JwsContentTypeConstants.JWT,
             vpSerialized,
             VerifiablePresentationJws.serializer()
@@ -209,7 +209,7 @@ class ValidatorVpTest : FreeSpec({
             audience = verifierId,
             jwtId = "wrong_jwtId",
         )
-        val vpJws = holderJwsService.createSignedJwt(
+        val vpJws = holderSignVp(
             JwsContentTypeConstants.JWT,
             vpSerialized,
             VerifiablePresentationJws.serializer()
@@ -234,7 +234,7 @@ class ValidatorVpTest : FreeSpec({
             issuerId = holder.keyPair.identifier,
             audienceId = verifierId,
         )
-        val vpJws = holderJwsService.createSignedJwt(
+        val vpJws = holderSignVp(
             JwsContentTypeConstants.JWT,
             vpSerialized,
             VerifiablePresentationJws.serializer()

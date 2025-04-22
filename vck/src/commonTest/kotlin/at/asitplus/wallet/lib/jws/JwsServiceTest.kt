@@ -5,6 +5,7 @@ import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -19,6 +20,7 @@ class JwsServiceTest : FreeSpec({
 
     lateinit var cryptoService: CryptoService
     lateinit var jwsService: JwsService
+    lateinit var signJwt: SignJwtFun<ByteArray>
     lateinit var verifierJwsService: VerifyJwsObjectFun
     lateinit var randomPayload: String
 
@@ -26,14 +28,14 @@ class JwsServiceTest : FreeSpec({
         val keyPairAdapter = EphemeralKeyWithoutCert()
         cryptoService = DefaultCryptoService(keyPairAdapter)
         jwsService = DefaultJwsService(cryptoService)
+        signJwt = SignJwt(keyPairAdapter)
         verifierJwsService = VerifyJwsObject()
         randomPayload = uuid4().toString()
     }
 
     "signed object with bytes can be verified" {
         val payload = randomPayload.encodeToByteArray()
-        val signed =
-            jwsService.createSignedJwt(JwsContentTypeConstants.JWT, payload, ByteArraySerializer()).getOrThrow()
+        val signed = signJwt(JwsContentTypeConstants.JWT, payload, ByteArraySerializer()).getOrThrow()
 
         val result = verifierJwsService(signed)
         result shouldBe true
@@ -41,9 +43,7 @@ class JwsServiceTest : FreeSpec({
 
     "Object can be reconstructed" {
         val payload = randomPayload.encodeToByteArray()
-        val signed =
-            jwsService.createSignedJwt(JwsContentTypeConstants.JWT, payload, ByteArraySerializer()).getOrThrow()
-                .serialize()
+        val signed = signJwt(JwsContentTypeConstants.JWT, payload, ByteArraySerializer()).getOrThrow().serialize()
 
         val parsed = JwsSigned.deserialize<ByteArray>(ByteArraySerializer(), signed).getOrThrow()
         parsed.serialize() shouldBe signed
@@ -54,8 +54,8 @@ class JwsServiceTest : FreeSpec({
     }
 
     "signed object can be verified" {
-        val signed =
-            jwsService.createSignedJwt(JwsContentTypeConstants.JWT, randomPayload, String.serializer()).getOrThrow()
+        val payload = randomPayload.encodeToByteArray()
+        val signed = signJwt(JwsContentTypeConstants.JWT, payload, ByteArraySerializer()).getOrThrow()
 
         val result = verifierJwsService(signed)
         result shouldBe true

@@ -11,11 +11,9 @@ import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.signum.indispensable.josef.JweEncryption.*
 import at.asitplus.signum.indispensable.josef.JwsExtensions.prependWith4BytesSize
 import at.asitplus.signum.indispensable.josef.JwsSigned.Companion.prepareJwsSignatureInput
-import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.signum.supreme.asKmmResult
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnf.loadPublicKeys
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
 import kotlinx.serialization.DeserializationStrategy
@@ -48,6 +46,7 @@ interface JwsService {
      */
     val keyMaterial: KeyMaterial
 
+    @Deprecated("Use SignJwtFun instead")
     suspend fun <T : Any> createSignedJwt(
         type: String,
         payload: T,
@@ -110,6 +109,32 @@ interface JwsService {
 
 }
 
+/** Create a [JwsSigned], setting [JwsHeader.type] to the specified value */
+typealias SignJwtFun<P> = suspend (
+    type: String,
+    payload: P,
+    serializer: SerializationStrategy<P>,
+) -> KmmResult<JwsSigned<P>>
+
+/** Create a [JwsSigned], setting [JwsHeader.type] to the specified value */
+object SignJwt {
+    operator fun <P : Any> invoke(
+        keyMaterial: KeyMaterial,
+    ): SignJwtFun<P> = { type, payload, serializer ->
+        catching {
+            val header = JwsHeader(
+                algorithm = keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
+                // TODO option to set jwk or x5c instead
+                keyId = keyMaterial.identifier,
+                type = type,
+            )
+            val plainSignatureInput = prepareJwsSignatureInput(header, payload, serializer, vckJsonSerializer)
+            val signature = keyMaterial.sign(plainSignatureInput).asKmmResult().getOrThrow()
+            JwsSigned(header, payload, signature, plainSignatureInput)
+        }
+    }
+}
+
 interface VerifierJwsService {
 
     val supportedAlgorithms: List<JwsAlgorithm>
@@ -135,6 +160,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
     // TODO: Get from crypto service
     override val encryptionEncoding: JweEncryption = JweEncryption.A256GCM
 
+    @Deprecated("Use SignJwtFun instead")
     override suspend fun <T : Any> createSignedJwt(
         type: String,
         payload: T,

@@ -4,12 +4,12 @@ import at.asitplus.signum.indispensable.ECCurve
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.nativeDigest
 import at.asitplus.signum.indispensable.toJcaPublicKey
 import at.asitplus.signum.supreme.HazardousMaterials
 import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
 import at.asitplus.signum.supreme.sign.EphemeralKey
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import com.benasher44.uuid.uuid4
 import com.nimbusds.jose.*
@@ -99,9 +99,7 @@ class JwsServiceJvmTest : FreeSpec({
                 else RSASSASigner(ephemeralKey.jcaPrivateKey as RSAPrivateKey)
 
 
-            val keyPairAdapter = EphemeralKeyWithoutCert(ephemeralKey)
-            val cryptoService = DefaultCryptoService(keyPairAdapter)
-            val jwsService = DefaultJwsService(cryptoService)
+            val jwsSigner = SignJwt<JsonPrimitive>(EphemeralKeyWithoutCert(ephemeralKey))
             val verifyJwsSignatureObject = VerifyJwsObject()
             val randomPayload = JsonPrimitive(uuid4().toString())
 
@@ -110,7 +108,7 @@ class JwsServiceJvmTest : FreeSpec({
             "$testIdentifier:" - {
 
                 "Signed object from int. library can be verified with int. library" {
-                    val signed = jwsService.createSignedJwt(
+                    val signed = jwsSigner(
                         JwsContentTypeConstants.JWT, randomPayload, JsonPrimitive.serializer()
                     ).getOrThrow()
                     val selfVerify = verifyJwsSignatureObject(signed)
@@ -122,7 +120,7 @@ class JwsServiceJvmTest : FreeSpec({
                 "Signed object from ext. library can be verified with int. library" {
                     val libHeader = JWSHeader.Builder(JWSAlgorithm(algo.name))
                         .type(JOSEObjectType("JWT"))
-                        .jwk(JWK.parse(cryptoService.keyMaterial.jsonWebKey.serialize()))
+                        .jwk(JWK.parse(ephemeralKey.publicKey.toJsonWebKey().serialize()))
                         .build()
                     val libObject = JWSObject(libHeader, Payload(randomPayload.content)).also {
                         it.sign(jvmSigner)
@@ -152,7 +150,7 @@ class JwsServiceJvmTest : FreeSpec({
                 }
 
                 "Signed object from int. library can be verified with ext. library" {
-                    val signed = jwsService.createSignedJwt(
+                    val signed = jwsSigner(
                         JwsContentTypeConstants.JWT, randomPayload, JsonPrimitive.serializer()
                     ).getOrThrow()
                     val parsed = JWSObject.parse(signed.serialize())

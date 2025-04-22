@@ -8,7 +8,6 @@ import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
@@ -16,13 +15,17 @@ import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.*
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.MediaTypes
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.PositiveDuration
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.iso.*
+import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
@@ -48,6 +51,7 @@ class IssuerAgent(
     private val statusListAggregationUrl: String? = null,
     private val zlibService: ZlibService = DefaultZlibService(),
     private val revocationListLifetime: Duration = 48.hours,
+    @Deprecated("Use createJwtSignatureFun instead")
     private val jwsService: JwsService,
     private val coseService: CoseService,
     private val clock: Clock = Clock.System,
@@ -58,6 +62,8 @@ class IssuerAgent(
      * The identifier used in `issuer` properties of issued credentials.
      * Note that for SD-JWT VC this must be a URI. */
     private val identifier: String = keyMaterial.identifier,
+    private val signIssuedVc: SignJwtFun<VerifiableCredentialJws> = SignJwt(keyMaterial),
+    private val signStatusListJwt: SignJwtFun<StatusListTokenPayload> = SignJwt(keyMaterial),
 ) : Issuer {
 
     constructor(
@@ -179,8 +185,15 @@ class IssuerAgent(
             credentialType = credential.scheme.vcType!!,
         )
 
-        val vcInJws = wrapVcInJws(vc)
-            ?: throw RuntimeException("Signing failed")
+        val vcInJws = signIssuedVc(
+            JwsContentTypeConstants.JWT,
+            vc.toJws(),
+            VerifiableCredentialJws.serializer(),
+        ).getOrElse {
+            Napier.w("issueVc error", it)
+            throw RuntimeException("Signing failed", it)
+        }.serialize()
+
         return Issuer.IssuedCredential.VcJwt(vcInJws, credential.scheme)
     }
 
@@ -260,11 +273,14 @@ class IssuerAgent(
      * returns a JWS representation of that.
      */
     override suspend fun issueStatusListJwt(time: Instant?) =
-        issueStatusListJwt(time.toTimePeriod())
-            ?: throw IllegalStateException("Status token could not be created.")
-
-    suspend fun issueStatusListJwt(timePeriod: Int?): JwsSigned<StatusListTokenPayload>? =
-        wrapStatusListTokenInJws(buildStatusListTokenPayload(timePeriod))
+        signStatusListJwt(
+            MediaTypes.STATUSLIST_JWT,
+            buildStatusListTokenPayload(time.toTimePeriod()),
+            StatusListTokenPayload.serializer(),
+        ).getOrElse {
+            Napier.w("issueStatusListJwt error", it)
+            throw IllegalStateException("Status token could not be created.", it)
+        }
 
     /**
      * Wraps the revocation information from [issuerCredentialStore] into a Status List Token,
@@ -370,25 +386,6 @@ class IssuerAgent(
         }
         return list
     }
-
-    private suspend fun wrapVcInJws(vc: VerifiableCredential): String? = jwsService.createSignedJwt(
-        JwsContentTypeConstants.JWT,
-        vc.toJws(),
-        VerifiableCredentialJws.serializer(),
-    ).getOrElse {
-        Napier.w("Could not wrapVcInJws", it)
-        return null
-    }.serialize()
-
-    private suspend fun wrapStatusListTokenInJws(statusListTokenPayload: StatusListTokenPayload): JwsSigned<StatusListTokenPayload>? =
-        jwsService.createSignedJwt(
-            MediaTypes.STATUSLIST_JWT,
-            statusListTokenPayload,
-            StatusListTokenPayload.serializer(),
-        ).getOrElse {
-            Napier.w("Could not wrapStatusListInJws", it)
-            return null
-        }
 
     private suspend fun wrapStatusListTokenInCoseSigned(statusListTokenPayload: StatusListTokenPayload): CoseSigned<StatusListTokenPayload>? =
         coseService.createSignedCose(

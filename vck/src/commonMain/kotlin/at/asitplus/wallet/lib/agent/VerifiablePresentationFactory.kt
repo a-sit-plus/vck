@@ -11,10 +11,10 @@ import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.SdJwtCreator.NAME_SD
-import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import at.asitplus.wallet.lib.iso.*
+import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
@@ -26,9 +26,10 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 class VerifiablePresentationFactory(
+    @Deprecated("Use signVerifiablePresentation instead")
     private val jwsService: JwsService,
-    private val coseService: CoseService,
     private val identifier: String,
+    private val signVerifiablePresentation: SignJwtFun<VerifiablePresentationJws>,
 ) {
 
     suspend fun createVerifiablePresentationForIsoCredentials(
@@ -275,11 +276,10 @@ class VerifiablePresentationFactory(
         validCredentials: List<String>,
         request: PresentationRequestParameters,
     ) = CreatePresentationResult.Signed(
-        jwsService.createSignedJwt(
-            type = JwsContentTypeConstants.JWT,
-            payload = VerifiablePresentation(validCredentials)
-                .toJws(request.nonce, identifier, request.audience),
-            serializer = VerifiablePresentationJws.serializer(),
+        signVerifiablePresentation(
+            JwsContentTypeConstants.JWT,
+            VerifiablePresentation(validCredentials).toJws(request.nonce, identifier, request.audience),
+            VerifiablePresentationJws.serializer(),
         ).getOrElse {
             Napier.w("Could not create JWS for presentation", it)
             throw PresentationException(it)

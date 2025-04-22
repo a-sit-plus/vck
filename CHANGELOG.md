@@ -1,21 +1,12 @@
 # Changelog
+
 Release 5.6.0:
-- Fix erroneous `InputDescriptor` encoding in `PresentationDefinition` when more specific type 
-was known (i.e. `DidInputDescriptor`/`QesInputDescriptor`) via contexutal serialziation
-- Allow fully compliant OID4VP and UC5 `transactionData` handling
-- Deprecate `RqesOpenId4VpVerifier`
-- Change `TransactionData` from sealed class to interface
-- Fix erroneous `TransactionData` encoding in `AuthenticationRequest`
-
-Release 5.5.2:
- - OpenID for Verifiable Presentations:
-   - Fix parsing `group` in presentation exchange input descriptors
-   - Set content type for authentication responses to `application/x-www-form-urlencoded`, without the charset appended
-   - Fix ISO mDoc presentations containing multiple documents in one device response
- - When creating JWS, and `x5c` header is set, do not set `jwk` and `kid`
- - When creating JWS, and `jwk` header is set, do not set `kid`
-
-Release 5.5.1:
+ - Remote Qualified Electronic Signatures:
+   - Fix erroneous `InputDescriptor` encoding in `PresentationDefinition` when more specific type  was known (i.e. `DidInputDescriptor`/`QesInputDescriptor`) via contexutal serialziation
+   - Allow fully compliant OID4VP and UC5 `transactionData` handling
+   - Deprecate `RqesOpenId4VpVerifier`
+   - Change `TransactionData` from sealed class to interface
+   - Fix erroneous `TransactionData` encoding in `AuthenticationRequest`
  - OpenID for Verifiable Credential Issuance:
    - Remove code elements deprecated in 5.5.0
  - OpenID for Verifiable Presentations:
@@ -24,6 +15,15 @@ Release 5.5.1:
    - Replace `VerifierCryptoService` with `VerifySignatureFun`
    - Replace `VerifierJwsService` with `VerifyJwsObjectFun`, `VerifyJwsSignatureWithCnfFun` and `VerifyJwsSignatureWithKeyFun`
    - Replace `VerifierCoseService` with `VerifyCoseSignatureFun`
+   - Replace `JwsService.createSignedJwt()` with `SignJwtFun`
+
+Release 5.5.2:
+ - OpenID for Verifiable Presentations:
+   - Fix parsing `group` in presentation exchange input descriptors
+   - Set content type for authentication responses to `application/x-www-form-urlencoded`, without the charset appended
+   - Fix ISO mDoc presentations containing multiple documents in one device response
+ - When creating JWS, and `x5c` header is set, do not set `jwk` and `kid`
+ - When creating JWS, and `jwk` header is set, do not set `kid`
 
 Release 5.5.1:
   - OpenID for Verifiable Credential Issuance:

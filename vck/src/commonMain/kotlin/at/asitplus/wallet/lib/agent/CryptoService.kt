@@ -155,7 +155,6 @@ open class DefaultCryptoService(
 
     override suspend fun sign(input: ByteArray) = keyMaterial.sign(input)
 
-
     override fun encrypt(
         key: ByteArray,
         iv: ByteArray,
