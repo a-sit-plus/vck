@@ -11,6 +11,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.jws.JwsHeaderKeyId
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -70,7 +71,7 @@ class ValidatorVpTest : FreeSpec({
             holderCredentialStore,
             validator = validator,
         )
-        holderSignVp = SignJwt(holderKeyMaterial)
+        holderSignVp = SignJwt(holderKeyMaterial, JwsHeaderKeyId())
         verifierId = "urn:${uuid4()}"
         verifier = VerifierAgent(
             identifier = verifierId,

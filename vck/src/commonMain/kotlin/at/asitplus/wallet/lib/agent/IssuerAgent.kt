@@ -28,6 +28,8 @@ import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
+import at.asitplus.wallet.lib.jws.JwsHeaderKeyId
 import at.asitplus.wallet.lib.jws.JwsService
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
@@ -62,8 +64,8 @@ class IssuerAgent(
      * The identifier used in `issuer` properties of issued credentials.
      * Note that for SD-JWT VC this must be a URI. */
     private val identifier: String = keyMaterial.identifier,
-    private val signIssuedVc: SignJwtFun<VerifiableCredentialJws> = SignJwt(keyMaterial),
-    private val signStatusListJwt: SignJwtFun<StatusListTokenPayload> = SignJwt(keyMaterial),
+    private val signIssuedVc: SignJwtFun<VerifiableCredentialJws> = SignJwt(keyMaterial, JwsHeaderKeyId()),
+    private val signStatusListJwt: SignJwtFun<StatusListTokenPayload> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
 ) : Issuer {
 
     constructor(

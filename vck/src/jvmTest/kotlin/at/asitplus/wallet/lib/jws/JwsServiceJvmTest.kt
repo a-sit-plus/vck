@@ -99,7 +99,7 @@ class JwsServiceJvmTest : FreeSpec({
                 else RSASSASigner(ephemeralKey.jcaPrivateKey as RSAPrivateKey)
 
 
-            val jwsSigner = SignJwt<JsonPrimitive>(EphemeralKeyWithoutCert(ephemeralKey))
+            val jwsSigner = SignJwt<JsonPrimitive>(EphemeralKeyWithoutCert(ephemeralKey), JwsHeaderCertOrJwk())
             val verifyJwsSignatureObject = VerifyJwsObject()
             val randomPayload = JsonPrimitive(uuid4().toString())
 

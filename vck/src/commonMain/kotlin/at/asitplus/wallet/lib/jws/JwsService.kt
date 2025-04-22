@@ -109,6 +109,27 @@ interface JwsService {
 
 }
 
+/** How to identify the key material in a [JwsHeader] */
+typealias JwsHeaderIdentifierFun = suspend (JwsHeader, KeyMaterial) -> JwsHeader
+
+/** Identify [KeyMaterial] with it's [KeyMaterial.identifier] in [JwsHeader.keyId]. */
+object JwsHeaderKeyId {
+    operator fun invoke(): JwsHeaderIdentifierFun = { it, keyMaterial ->
+        it.copy(keyId = keyMaterial.identifier)
+    }
+}
+
+/**
+ * Identify [KeyMaterial] with it's [KeyMaterial.getCertificate] in [JwsHeader.certificateChain] if it exists,
+ * or [KeyMaterial.jsonWebKey] in [JwsHeader.jsonWebKey]. */
+object JwsHeaderCertOrJwk {
+    operator fun invoke(): JwsHeaderIdentifierFun = { it, keyMaterial ->
+        keyMaterial.getCertificate()?.let { x5c ->
+            it.copy(certificateChain = listOf(x5c))
+        } ?: it.copy(jsonWebKey = keyMaterial.jsonWebKey)
+    }
+}
+
 /** Create a [JwsSigned], setting [JwsHeader.type] to the specified value */
 typealias SignJwtFun<P> = suspend (
     type: String,
@@ -116,18 +137,17 @@ typealias SignJwtFun<P> = suspend (
     serializer: SerializationStrategy<P>,
 ) -> KmmResult<JwsSigned<P>>
 
-/** Create a [JwsSigned], setting [JwsHeader.type] to the specified value */
+/** Create a [JwsSigned], setting [JwsHeader.type] to the specified value and applying [JwsHeaderIdentifierFun]. */
 object SignJwt {
     operator fun <P : Any> invoke(
         keyMaterial: KeyMaterial,
+        headerModifier: JwsHeaderIdentifierFun,
     ): SignJwtFun<P> = { type, payload, serializer ->
         catching {
             val header = JwsHeader(
                 algorithm = keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
-                // TODO option to set jwk or x5c instead
-                keyId = keyMaterial.identifier,
                 type = type,
-            )
+            ).let { headerModifier(it, keyMaterial) }
             val plainSignatureInput = prepareJwsSignatureInput(header, payload, serializer, vckJsonSerializer)
             val signature = keyMaterial.sign(plainSignatureInput).asKmmResult().getOrThrow()
             JwsSigned(header, payload, signature, plainSignatureInput)

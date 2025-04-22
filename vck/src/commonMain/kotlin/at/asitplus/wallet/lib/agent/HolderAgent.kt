@@ -28,6 +28,7 @@ import at.asitplus.wallet.lib.data.third_party.at.asitplus.oidc.dcql.toDefaultSu
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.jws.DefaultJwsService
+import at.asitplus.wallet.lib.jws.JwsHeaderKeyId
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.procedures.dcql.DCQLQueryAdapter
@@ -36,7 +37,7 @@ import io.github.aakira.napier.Napier
 
 
 /**
- * An agent that only implements [Holder], i.e. it can receive credentials form other agents
+ * An agent that only implements [Holder], i.e. it can receive credentials from other agents
  * and present credentials to other agents.
  */
 class HolderAgent(
@@ -45,7 +46,7 @@ class HolderAgent(
     private val jwsService: JwsService,
     private val coseService: CoseService,
     override val keyPair: KeyMaterial,
-    private val signVerifiablePresentation: SignJwtFun<VerifiablePresentationJws> = SignJwt(keyPair),
+    private val signVerifiablePresentation: SignJwtFun<VerifiablePresentationJws> = SignJwt(keyPair, JwsHeaderKeyId()),
     private val verifiablePresentationFactory: VerifiablePresentationFactory =
         VerifiablePresentationFactory(jwsService, keyPair.identifier, signVerifiablePresentation),
     private val difInputEvaluator: PresentationExchangeInputEvaluator = PresentationExchangeInputEvaluator,
