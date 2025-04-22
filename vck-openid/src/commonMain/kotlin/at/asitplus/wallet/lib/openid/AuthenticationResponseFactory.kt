@@ -7,7 +7,9 @@ import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.JwkType
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
+import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
@@ -22,6 +24,7 @@ import kotlin.random.Random
 
 internal class AuthenticationResponseFactory(
     val jwsService: JwsService,
+    val signJarm: SignJwtFun<AuthenticationResponseParameters>,
 ) {
     @Throws(OAuth2Exception::class, CancellationException::class)
     internal suspend fun createAuthenticationResponse(
@@ -109,18 +112,14 @@ internal class AuthenticationResponseFactory(
     }
 
     private suspend fun sign(payload: AuthenticationResponseParameters): String =
-        jwsService.createSignedJwsAddingParams(
-            payload = payload,
-            serializer = AuthenticationResponseParameters.serializer(),
-            addX5c = false,
-            addJsonWebKey = true,
-            addKeyId = false,
-        ).map { it.serialize() }.getOrElse {
-            Napier.w("buildJarm error", it)
-            throw InvalidRequest("buildJarm error", it)
-        }.also {
-            Napier.d("buildJarm: signed $payload")
-        }
+        signJarm(null, payload, AuthenticationResponseParameters.serializer())
+            .map { it.serialize() }
+            .getOrElse {
+                Napier.w("buildJarm error", it)
+                throw InvalidRequest("buildJarm error", it)
+            }.also {
+                Napier.d("buildJarm: signed $payload")
+            }
 
     private suspend fun encrypt(
         request: RequestParametersFrom<AuthenticationRequestParameters>,

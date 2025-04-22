@@ -3,11 +3,8 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.TokenResponseParameters
-import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
-import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
@@ -15,7 +12,8 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.jws.DefaultJwsService
+import at.asitplus.wallet.lib.jws.JwsHeaderJwk
+import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
@@ -145,25 +143,19 @@ class OidvciAttestationTest : FunSpec({
 })
 
 private fun buildClientWithKeyAttestation(): WalletService {
-    val cryptoService = DefaultCryptoService(EphemeralKeyWithoutCert())
-    val jwsService = DefaultJwsService(cryptoService)
+    val keyMaterial = EphemeralKeyWithoutCert()
+    val signKeyAttestation = SignJwt<KeyAttestationJwt>(keyMaterial, JwsHeaderJwk())
     return WalletService(
         loadKeyAttestation = {
             runCatching {
-                jwsService.createSignedJwsAddingParams(
-                    header = JwsHeader(
-                        algorithm = cryptoService.keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
-                        type = OpenIdConstants.KEY_ATTESTATION_JWT_TYPE
-                    ),
-                    payload = KeyAttestationJwt(
+                signKeyAttestation(
+                    OpenIdConstants.KEY_ATTESTATION_JWT_TYPE,
+                    KeyAttestationJwt(
                         issuedAt = System.now(),
                         nonce = it.clientNonce,
-                        attestedKeys = setOf(cryptoService.keyMaterial.jsonWebKey)
+                        attestedKeys = setOf(keyMaterial.jsonWebKey)
                     ),
-                    serializer = KeyAttestationJwt.serializer(),
-                    addKeyId = false,
-                    addJsonWebKey = true,
-                    addX5c = false,
+                    KeyAttestationJwt.serializer(),
                 ).getOrThrow()
             }.wrap()
         }

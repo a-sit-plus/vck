@@ -25,7 +25,10 @@ import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DefaultJwsService
+import at.asitplus.wallet.lib.jws.JwsHeaderJwk
 import at.asitplus.wallet.lib.jws.JwsService
+import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.MapStore
@@ -44,8 +47,11 @@ import kotlinx.datetime.Clock
  */
 class OpenId4VpHolder(
     private val holder: Holder,
-    private val agentPublicKey: CryptoPublicKey,
+    private val agentPublicKey: KeyMaterial,
+    @Deprecated("Use signIdToken, signJarm instead")
     private val jwsService: JwsService,
+    private val signIdToken: SignJwtFun<IdToken> = SignJwt(agentPublicKey, JwsHeaderJwk()),
+    private val signJarm: SignJwtFun<AuthenticationResponseParameters> = SignJwt(agentPublicKey, JwsHeaderJwk()),
     private val coseService: CoseService,
     private val clock: Clock = Clock.System,
     private val clientId: String = "https://wallet.a-sit.at/",
@@ -85,7 +91,7 @@ class OpenId4VpHolder(
         walletNonceMapStore: MapStore<String, String> = DefaultMapStore(),
     ) : this(
         holder = holder,
-        agentPublicKey = keyMaterial.publicKey,
+        agentPublicKey = keyMaterial,
         jwsService = jwsService,
         coseService = coseService,
         clock = clock,
@@ -97,7 +103,7 @@ class OpenId4VpHolder(
 
     private val supportedAlgorithmsStrings = setOf(jwsService.algorithm.identifier)
     private val authorizationRequestValidator = AuthorizationRequestValidator(walletNonceMapStore)
-    private val authenticationResponseFactory = AuthenticationResponseFactory(jwsService)
+    private val authenticationResponseFactory = AuthenticationResponseFactory(jwsService, signJarm)
 
     val metadata: OAuth2AuthorizationServerMetadata by lazy {
         OAuth2AuthorizationServerMetadata(
@@ -236,9 +242,9 @@ class OpenId4VpHolder(
                 ?.jwsSigned?.header?.certificateChain?.firstOrNull()?.publicKey?.toJsonWebKey()
         val clientJsonWebKeySet = clientMetadata?.loadJsonWebKeySet()
         val audience = request.parameters.extractAudience(clientJsonWebKeySet)
-        val presentationFactory = PresentationFactory(jwsService, coseService)
+        val presentationFactory = PresentationFactory(jwsService, coseService, signIdToken)
         val jsonWebKeys = clientJsonWebKeySet?.keys?.combine(certKey)
-        val idToken = presentationFactory.createSignedIdToken(clock, agentPublicKey, request).getOrNull()?.serialize()
+        val idToken = presentationFactory.createSignedIdToken(clock, agentPublicKey.publicKey, request).getOrNull()?.serialize()
 
         val resultContainer = credentialPresentation?.let {
             presentationFactory.createPresentation(

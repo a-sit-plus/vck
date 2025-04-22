@@ -24,6 +24,7 @@ import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.JwsService
+import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import io.github.aakira.napier.Napier
@@ -43,6 +44,7 @@ import kotlin.time.Duration.Companion.seconds
 internal class PresentationFactory(
     private val jwsService: JwsService,
     private val coseService: CoseService,
+    private val signIdToken: SignJwtFun<IdToken>,
 ) {
     suspend fun createPresentation(
         holder: Holder,
@@ -228,13 +230,7 @@ internal class PresentationFactory(
             expiration = now + 60.seconds,
             nonce = nonce,
         )
-        jwsService.createSignedJwsAddingParams(
-            payload = idToken,
-            serializer = IdToken.serializer(),
-            addKeyId = false,
-            addX5c = false,
-            addJsonWebKey = true,
-        ).getOrElse {
+        signIdToken(null, idToken, IdToken.serializer()).getOrElse {
             Napier.w("Could not sign id_token", it)
             throw AccessDenied("Could not sign id_token", it)
         }

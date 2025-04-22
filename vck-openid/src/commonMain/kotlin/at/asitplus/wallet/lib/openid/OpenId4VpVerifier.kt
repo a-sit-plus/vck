@@ -45,7 +45,10 @@ open class OpenId4VpVerifier(
     private val clientIdScheme: ClientIdScheme,
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
+    @Deprecated("Use signAuthnRequest instead")
     private val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
+    private val signAuthnRequest: SignJwtFun<AuthenticationRequestParameters> =
+        SignJwt(keyMaterial, JwsHeaderClientIdScheme(clientIdScheme)()),
     @Deprecated("Use verifyJwsSignatureObject instead")
     private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
@@ -240,27 +243,18 @@ open class OpenId4VpVerifier(
         requestObjectParameters: RequestObjectParameters? = null,
     ): KmmResult<JwsSigned<AuthenticationRequestParameters>> = catching {
         val requestObject = createAuthnRequest(requestOptions, requestObjectParameters)
-        val attestationJwt = (clientIdScheme as? ClientIdScheme.VerifierAttestation)?.attestationJwt?.serialize()
-        val certificateChain = (clientIdScheme as? ClientIdScheme.CertificateSanDns)?.chain
         val siopClientId = "https://self-issued.me/v2"
         val issuer = when (clientIdScheme) {
             is ClientIdScheme.PreRegistered -> clientIdScheme.issuerUri ?: clientIdScheme.clientId
             else -> siopClientId
         }
-        jwsService.createSignedJwsAddingParams(
-            header = JwsHeader(
-                algorithm = jwsService.algorithm,
-                attestationJwt = attestationJwt,
-                certificateChain = certificateChain,
-                type = JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST
-            ),
-            payload = requestObject.copy(
+        signAuthnRequest(
+            JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST,
+            requestObject.copy(
                 audience = siopClientId,
                 issuer = issuer,
             ),
-            serializer = AuthenticationRequestParameters.Companion.serializer(),
-            addJsonWebKey = certificateChain == null,
-            addX5c = certificateChain != null,
+            AuthenticationRequestParameters.serializer(),
         ).getOrThrow()
     }
 
@@ -697,3 +691,13 @@ private val PresentationSubmissionDescriptor.cumulativeJsonPath: String
         }
         return cummulativeJsonPath
     }
+
+
+class JwsHeaderClientIdScheme(val clientIdScheme: ClientIdScheme) {
+    operator fun invoke(): JwsHeaderIdentifierFun = { it, keyMaterial ->
+        val attestationJwt = (clientIdScheme as? ClientIdScheme.VerifierAttestation)?.attestationJwt?.serialize()
+        (clientIdScheme as? ClientIdScheme.CertificateSanDns)?.chain?.let { x5c ->
+            it.copy(certificateChain = x5c, attestationJwt = attestationJwt)
+        } ?: it.copy(jsonWebKey = keyMaterial.jsonWebKey, attestationJwt = attestationJwt)
+    }
+}

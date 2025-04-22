@@ -9,6 +9,7 @@ import at.asitplus.openid.OpenIdConstants.PARAMETER_PROMPT_LOGIN
 import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER
 import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
+import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
@@ -18,7 +19,11 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.jws.DefaultJwsService
+import at.asitplus.wallet.lib.jws.JwsHeaderJwk
+import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.JwsService
+import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oauth2.OAuth2Client.AuthorizationForToken
 import at.asitplus.wallet.lib.oidvci.*
 import com.benasher44.uuid.uuid4
@@ -71,15 +76,18 @@ class OpenId4VciClient(
     /**
      * Callback to load the client attestation JWT, which may be needed as authentication at the AS, where the
      * `clientId` must match [WalletService.clientId] in [oid4vciService] and the key attested in `cnf` must match
-     * the key behind [clientAttestationJwsService], see
+     * the key behind [signClientAttestationPop], see
      * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-04.html)
-     * .
      */
     private val loadClientAttestationJwt: suspend () -> String,
-    /** Used for authenticating the client at the authorization server with client attestation. */
+    @Deprecated("Use signClientAttestationPop instead")
     private val clientAttestationJwsService: JwsService = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithoutCert())),
-    /** Used to calculate DPoP, i.e. the key the access token and refresh token gets bound to. */
+    /** Used for authenticating the client at the authorization server with client attestation. */
+    private val signClientAttestationPop: SignJwtFun<JsonWebToken> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderNone()),
+    @Deprecated("Use signDpop instead")
     private val dpopJwsService: JwsService = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithoutCert())),
+    /** Used to calculate DPoP, i.e. the key the access token and refresh token gets bound to. */
+    private val signDpop: SignJwtFun<JsonWebToken> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderJwk()),
     /**
      * Implements OID4VCI protocol, `redirectUrl` needs to be registered by the OS for this application, so redirection
      * back from browser works, `cryptoService` provides proof of possession for credential key material.
@@ -305,14 +313,15 @@ class OpenId4VciClient(
             loadClientAttestationJwt.invoke()
         } else null
         val clientAttestationPoPJwt = if (oauthMetadata.useClientAuth()) {
-            clientAttestationJwsService.buildClientAttestationPoPJwt(
+            BuildClientAttestationPoPJwt(
+                signClientAttestationPop,
                 clientId = oid4vciService.clientId,
                 audience = issuerMetadata.credentialIssuer,
                 lifetime = 10.minutes,
             ).serialize()
         } else null
         val dpopHeader = if (oauthMetadata.hasMatchingDpopAlgorithm()) {
-            dpopJwsService.buildDPoPHeader(url = tokenEndpointUrl)
+            BuildDPoPHeader(signDpop, url = tokenEndpointUrl)
         } else null
 
         return client.submitForm(
@@ -367,7 +376,7 @@ class OpenId4VciClient(
         ).getOrThrow()
 
         val dpopHeader = if (tokenResponse.tokenType.equals(TOKEN_TYPE_DPOP, true))
-            dpopJwsService.buildDPoPHeader(url = credentialEndpointUrl, accessToken = tokenResponse.accessToken)
+            BuildDPoPHeader(signDpop, url = credentialEndpointUrl, accessToken = tokenResponse.accessToken)
         else null
 
         if (tokenResponse.refreshToken != null) {
@@ -567,7 +576,8 @@ class OpenId4VciClient(
             loadClientAttestationJwt.invoke()
         } else null
         val clientAttestationPoPJwt = if (shouldIncludeClientAttestation) {
-            clientAttestationJwsService.buildClientAttestationPoPJwt(
+            BuildClientAttestationPoPJwt(
+                signClientAttestationPop,
                 clientId = oid4vciService.clientId,
                 audience = credentialIssuer,
                 lifetime = 10.minutes,

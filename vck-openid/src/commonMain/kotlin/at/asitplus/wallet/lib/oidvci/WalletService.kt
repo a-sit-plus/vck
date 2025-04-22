@@ -3,11 +3,12 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.*
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ProofType
 import at.asitplus.signum.indispensable.josef.*
+import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
-import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
@@ -15,7 +16,11 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.jws.DefaultJwsService
+import at.asitplus.wallet.lib.jws.JwsHeaderIdentifierFun
+import at.asitplus.wallet.lib.jws.JwsHeaderJwk
 import at.asitplus.wallet.lib.jws.JwsService
+import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import com.benasher44.uuid.uuid4
@@ -37,9 +42,8 @@ class WalletService(
     /** Used to create [AuthenticationRequestParameters] and [TokenRequestParameters]. */
     private val redirectUrl: String = "$clientId/callback",
     /** Used to prove possession of the key material to create [CredentialRequestProof], i.e. the holder key. */
-    private val cryptoService: CryptoService = DefaultCryptoService(EphemeralKeyWithoutCert()),
-    /** Used to prove possession of the key material to create [CredentialRequestProof]. */
-    private val jwsService: JwsService = DefaultJwsService(cryptoService),
+    private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+    private val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
     /**
      * Need to implement if resources are defined by reference, i.e. the URL for a [JsonWebKeySet],
      * or the authentication request itself as `request_uri`, or `presentation_definition_uri`.
@@ -65,18 +69,6 @@ class WalletService(
         decryptionKeyMaterial?.let { DefaultJwsService(DefaultCryptoService(decryptionKeyMaterial)) }
 
     val oauth2Client: OAuth2Client = OAuth2Client(clientId, redirectUrl)
-
-    constructor(
-        clientId: String = "https://wallet.a-sit.at/app",
-        redirectUrl: String = "$clientId/callback",
-        keyMaterial: KeyMaterial,
-        remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
-    ) : this(
-        clientId = clientId,
-        redirectUrl = redirectUrl,
-        cryptoService = DefaultCryptoService(keyMaterial),
-        remoteResourceRetriever = remoteResourceRetriever,
-    )
 
     data class RequestOptions(
         /**
@@ -168,7 +160,7 @@ class WalletService(
      * see [TokenResponseParameters.toHttpHeaderValue].
      *
      * Be sure to include a DPoP header if [TokenResponseParameters.tokenType] is `DPoP`,
-     * see [buildDPoPHeader].
+     * see [at.asitplus.wallet.lib.oidvci.BuildDPoPHeader].
      *
      * See [OAuth2Client.createTokenRequestParameters].
      *
@@ -286,34 +278,32 @@ class WalletService(
         addKeyAttestation: Boolean = false,
     ): CredentialRequestProof = CredentialRequestProof(
         proofType = ProofType.JWT,
-        jwt = buildJwtProof(addKeyAttestation, clientNonce, credentialIssuer, clock)
+        jwt = SignJwt<JsonWebToken>(
+            keyMaterial,
+            // TODO To be refactored once signJwt is not passed in the constructor but to this function
+            addKeyAttestationToJwsHeader(clientNonce, addKeyAttestation)
+        ).invoke(
+            OpenIdConstants.PROOF_JWT_TYPE,
+            JsonWebToken(
+                issuer = clientId, // omit when token was pre-authn?
+                audience = credentialIssuer,
+                issuedAt = clock.now(),
+                nonce = clientNonce,
+            ),
+            JsonWebToken.serializer(),
+        ).getOrThrow().serialize()
     )
 
-    private suspend fun buildJwtProof(
-        addKeyAttestation: Boolean,
+    private fun addKeyAttestationToJwsHeader(
         clientNonce: String?,
-        credentialIssuer: String?,
-        clock: Clock,
-    ): String = jwsService.createSignedJwsAddingParams(
-        header = JwsHeader(
-            algorithm = cryptoService.keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
-            type = OpenIdConstants.PROOF_JWT_TYPE,
-            keyAttestation = if (addKeyAttestation)
+        addKeyAttestation: Boolean = false,
+    ): suspend (JwsHeader, KeyMaterial) -> JwsHeader =
+        { it: JwsHeader, key: KeyMaterial ->
+            val keyAttestation = if (addKeyAttestation) {
                 this.loadKeyAttestation?.invoke(KeyAttestationInput(clientNonce, null))?.getOrThrow()?.serialize()
                     ?: throw IllegalArgumentException("Key attestation required, none provided")
-            else null
-        ),
-        payload = JsonWebToken(
-            issuer = clientId, // omit when token was pre-authn?
-            audience = credentialIssuer,
-            issuedAt = clock.now(),
-            nonce = clientNonce,
-        ),
-        serializer = JsonWebToken.serializer(),
-        addKeyId = false,
-        addJsonWebKey = true,
-        addX5c = false,
-    ).getOrThrow().serialize()
-
+            } else null
+            it.copy(jsonWebKey = key.jsonWebKey, keyAttestation = keyAttestation)
+        }
 
 }

@@ -5,17 +5,16 @@ import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.dcql.*
-import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
 import at.asitplus.wallet.lib.iso.sha256
-import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
-import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
+import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.SignJwtFun
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
@@ -86,7 +85,9 @@ class AgentSdJwtTest : FreeSpec({
         val credential = holderCredentialStore.getCredentials().getOrThrow()
             .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>().first()
         val sdJwt = createSdJwtPresentation(
-            jwsService = DefaultJwsService(DefaultCryptoService(holderKeyMaterial)),
+            signKeyBindingJws = SignJwt(holderKeyMaterial, { it, keyMaterial ->
+                it.copy(keyId = "definitely not matching")
+            }),
             audienceId = verifierId,
             challenge = challenge,
             validSdJwtCredential = credential,
@@ -308,7 +309,7 @@ suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): S
 }
 
 private suspend fun createSdJwtPresentation(
-    jwsService: JwsService,
+    signKeyBindingJws: SignJwtFun<KeyBindingJws>,
     audienceId: String,
     challenge: String,
     validSdJwtCredential: SubjectCredentialStore.StoreEntry.SdJwt,
@@ -316,10 +317,8 @@ private suspend fun createSdJwtPresentation(
 ): CreatePresentationResult.SdJwt {
     val filteredDisclosures = validSdJwtCredential.disclosures
         .filter { it.value!!.claimName == claimName }.keys
-    val issuerJwtPlusDisclosures =
-        SdJwtSigned.sdHashInput(validSdJwtCredential, filteredDisclosures)
-    val keyBinding =
-        createKeyBindingJws(jwsService, audienceId, challenge, issuerJwtPlusDisclosures)
+    val issuerJwtPlusDisclosures = SdJwtSigned.sdHashInput(validSdJwtCredential, filteredDisclosures)
+    val keyBinding = createKeyBindingJws(signKeyBindingJws, audienceId, challenge, issuerJwtPlusDisclosures)
     val sdJwtSerialized = validSdJwtCredential.vcSerialized.substringBefore("~")
     val jwsFromIssuer = JwsSigned.deserialize<VerifiableCredentialSdJwt>(
         VerifiableCredentialSdJwt.serializer(),
@@ -333,26 +332,19 @@ private suspend fun createSdJwtPresentation(
 }
 
 private suspend fun createKeyBindingJws(
-    jwsService: JwsService,
+    signKeyBindingJws: SignJwtFun<KeyBindingJws>,
     audienceId: String,
     challenge: String,
     issuerJwtPlusDisclosures: String,
-): JwsSigned<KeyBindingJws> = jwsService.createSignedJwsAddingParams(
-    header = JwsHeader(
-        type = JwsContentTypeConstants.KB_JWT,
-        algorithm = jwsService.algorithm,
-        keyId = "definitely not matching"
-    ),
-    payload = KeyBindingJws(
+): JwsSigned<KeyBindingJws> = signKeyBindingJws(
+    JwsContentTypeConstants.KB_JWT,
+    KeyBindingJws(
         issuedAt = Clock.System.now(),
         audience = audienceId,
         challenge = challenge,
         sdHash = issuerJwtPlusDisclosures.encodeToByteArray().sha256(),
     ),
-    serializer = KeyBindingJws.serializer(),
-    addKeyId = false,
-    addJsonWebKey = true,
-    addX5c = true,
+    KeyBindingJws.serializer(),
 ).getOrElse {
     Napier.w("Could not create JWS for presentation", it)
     throw PresentationException(it)

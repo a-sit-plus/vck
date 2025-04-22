@@ -72,7 +72,6 @@ interface JwsService {
      * @param addJsonWebKey sets [JwsHeader.jsonWebKey] from [KeyMaterial.jsonWebKey]
      * @param addKeyId sets [JwsHeader.keyId] from [KeyMaterial.identifier]
      */
-    // TODO Refactor in next major release (with functions) the flags into an enum
     suspend fun <T : Any> createSignedJwsAddingParams(
         header: JwsHeader? = null,
         payload: T,
@@ -130,9 +129,31 @@ object JwsHeaderCertOrJwk {
     }
 }
 
+/** Identify [KeyMaterial] with it's [KeyMaterial.jsonWebKey] in [JwsHeader.jsonWebKey]. */
+object JwsHeaderJwk {
+    operator fun invoke(): JwsHeaderIdentifierFun = { it, keyMaterial ->
+        it.copy(jsonWebKey = keyMaterial.jsonWebKey)
+    }
+}
+
+/**
+ * Identify [KeyMaterial] with it's [KeyMaterial.identifier] set in [JwsHeader.keyId],
+ * and URL set in[JwsHeader.jsonWebKeySetUrl].
+ */
+object JwsHeaderJwksUrl {
+    operator fun invoke(jsonWebKeySetUrl: String): JwsHeaderIdentifierFun = { it, keyMaterial ->
+        it.copy(keyId = keyMaterial.identifier, jsonWebKeySetUrl = jsonWebKeySetUrl)
+    }
+}
+
+/** Don't identify [KeyMaterial] at all in a [JwsHeader], used for SD-JWT KB-JWS. */
+object JwsHeaderNone {
+    operator fun invoke(): JwsHeaderIdentifierFun = { it, keyMaterial -> it }
+}
+
 /** Create a [JwsSigned], setting [JwsHeader.type] to the specified value */
 typealias SignJwtFun<P> = suspend (
-    type: String,
+    type: String?,
     payload: P,
     serializer: SerializationStrategy<P>,
 ) -> KmmResult<JwsSigned<P>>

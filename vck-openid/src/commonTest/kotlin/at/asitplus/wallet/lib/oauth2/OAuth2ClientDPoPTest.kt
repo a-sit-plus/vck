@@ -2,14 +2,14 @@ package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
+import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.jws.DefaultJwsService
-import at.asitplus.wallet.lib.jws.JwsService
+import at.asitplus.wallet.lib.jws.JwsHeaderJwk
+import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.SignJwtFun
+import at.asitplus.wallet.lib.oidvci.BuildDPoPHeader
 import at.asitplus.wallet.lib.oidvci.DefaultNonceService
-import at.asitplus.wallet.lib.oidvci.buildDPoPHeader
 import at.asitplus.wallet.lib.oidvci.randomString
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import com.benasher44.uuid.uuid4
@@ -29,7 +29,7 @@ class OAuth2ClientDPoPTest : FunSpec({
     lateinit var user: OidcUserInfoExtended
     lateinit var server: SimpleAuthorizationService
     lateinit var clientKey: KeyMaterial
-    lateinit var jwsService: JwsService
+    lateinit var signDpop: SignJwtFun<JsonWebToken>
     val tokenUrl = "https://example.com/token"
     val resourceUrl = "https://example.com/resource"
 
@@ -46,8 +46,8 @@ class OAuth2ClientDPoPTest : FunSpec({
                 issueRefreshTokens = true
             ),
         )
-        clientKey = EphemeralKeyWithSelfSignedCert()
-        jwsService = DefaultJwsService(DefaultCryptoService(clientKey))
+        clientKey = EphemeralKeyWithoutCert()
+        signDpop = SignJwt(clientKey, JwsHeaderJwk())
     }
 
     suspend fun getCode(state: String): String {
@@ -72,13 +72,14 @@ class OAuth2ClientDPoPTest : FunSpec({
                 authorization = OAuth2Client.AuthorizationForToken.Code(code),
                 scope = scope
             ),
-            RequestInfo(tokenUrl, HttpMethod.Post, dpop = jwsService.buildDPoPHeader(tokenUrl))
+            RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, tokenUrl))
         ).getOrThrow().also {
             it.tokenType shouldBe TOKEN_TYPE_DPOP
         }
 
-        val dpopForResource = jwsService.buildDPoPHeader(
-            resourceUrl,
+        val dpopForResource = BuildDPoPHeader(
+            signDpop,
+            url = resourceUrl,
             accessToken = token.accessToken
         )
 
@@ -103,7 +104,7 @@ class OAuth2ClientDPoPTest : FunSpec({
                 authorization = OAuth2Client.AuthorizationForToken.Code(code),
                 scope = scope
             ),
-            RequestInfo(tokenUrl, HttpMethod.Post, dpop = jwsService.buildDPoPHeader(tokenUrl))
+            RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, tokenUrl))
         ).getOrThrow().also {
             it.tokenType shouldBe TOKEN_TYPE_DPOP
             it.refreshToken.shouldNotBeNull()
@@ -115,12 +116,13 @@ class OAuth2ClientDPoPTest : FunSpec({
                 authorization = OAuth2Client.AuthorizationForToken.RefreshToken(token.refreshToken!!),
                 scope = scope
             ),
-            RequestInfo(tokenUrl, HttpMethod.Post, dpop = jwsService.buildDPoPHeader(tokenUrl))
+            RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, tokenUrl))
         ).getOrThrow()
         refreshedAccessToken.accessToken shouldNotBe token.accessToken
 
-        val dpopForResource = jwsService.buildDPoPHeader(
-            resourceUrl,
+        val dpopForResource = BuildDPoPHeader(
+            signDpop,
+            url = resourceUrl,
             accessToken = refreshedAccessToken.accessToken
         )
 
@@ -146,7 +148,7 @@ class OAuth2ClientDPoPTest : FunSpec({
                     authorization = OAuth2Client.AuthorizationForToken.Code(code),
                     scope = scope
                 ),
-                RequestInfo(tokenUrl, HttpMethod.Post, dpop = jwsService.buildDPoPHeader("https://somethingelse.com/"))
+                RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, "https://somethingelse.com/"))
             ).getOrThrow()
         }
     }
@@ -176,7 +178,7 @@ class OAuth2ClientDPoPTest : FunSpec({
                 authorization = OAuth2Client.AuthorizationForToken.Code(code),
                 scope = scope
             ),
-            RequestInfo(tokenUrl, HttpMethod.Post, dpop = jwsService.buildDPoPHeader(tokenUrl))
+            RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, tokenUrl))
         ).getOrThrow().also {
             it.tokenType shouldBe TOKEN_TYPE_DPOP
         }
@@ -200,11 +202,11 @@ class OAuth2ClientDPoPTest : FunSpec({
                 authorization = OAuth2Client.AuthorizationForToken.Code(code),
                 scope = scope
             ),
-            RequestInfo(tokenUrl, HttpMethod.Post, dpop = jwsService.buildDPoPHeader(tokenUrl))
+            RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, tokenUrl))
         ).getOrThrow()
-
-        val wrongJwsService = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithoutCert()))
-        val dpopForResource = wrongJwsService.buildDPoPHeader(
+        val wrongSignDpop = SignJwt<JsonWebToken>(EphemeralKeyWithoutCert(), JwsHeaderJwk())
+        val dpopForResource = BuildDPoPHeader(
+            wrongSignDpop,
             resourceUrl,
             accessToken = token.accessToken
         )

@@ -53,7 +53,7 @@ class IssuerAgent(
     private val statusListAggregationUrl: String? = null,
     private val zlibService: ZlibService = DefaultZlibService(),
     private val revocationListLifetime: Duration = 48.hours,
-    @Deprecated("Use createJwtSignatureFun instead")
+    @Deprecated("Use signIssuedSdJwt, signIssuedVc, signStatusListJwt instead")
     private val jwsService: JwsService,
     private val coseService: CoseService,
     private val clock: Clock = Clock.System,
@@ -64,6 +64,7 @@ class IssuerAgent(
      * The identifier used in `issuer` properties of issued credentials.
      * Note that for SD-JWT VC this must be a URI. */
     private val identifier: String = keyMaterial.identifier,
+    private val signIssuedSdJwt: SignJwtFun<JsonObject> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     private val signIssuedVc: SignJwtFun<VerifiableCredentialJws> = SignJwt(keyMaterial, JwsHeaderKeyId()),
     private val signStatusListJwt: SignJwtFun<StatusListTokenPayload> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
 ) : Issuer {
@@ -251,16 +252,10 @@ class IssuerAgent(
         }
         // inclusion of x5c/jwk may change when all clients can look up the issuer-signed key web-based,
         // i.e. this issuer provides `.well-known/jwt-vc-issuer` file
-        val jws = jwsService.createSignedJwsAddingParams(
-            header = JwsHeader(
-                algorithm = jwsService.algorithm,
-                type = JwsContentTypeConstants.SD_JWT,
-            ),
-            payload = entireObject,
-            serializer = JsonObject.serializer(),
-            addKeyId = false,
-            addJsonWebKey = true,
-            addX5c = true,
+        val jws = signIssuedSdJwt(
+            JwsContentTypeConstants.SD_JWT,
+            entireObject,
+            JsonObject.serializer(),
         ).getOrElse {
             Napier.w("Could not wrap credential in SD-JWT", it)
             throw RuntimeException("Signing failed", it)

@@ -6,13 +6,15 @@ import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.jws.DefaultJwsService
+import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
+import at.asitplus.wallet.lib.jws.JwsHeaderNone
+import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.SignJwtFun
+import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
+import at.asitplus.wallet.lib.oidvci.BuildClientAttestationPoPJwt
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
-import at.asitplus.wallet.lib.oidvci.buildClientAttestationJwt
-import at.asitplus.wallet.lib.oidvci.buildClientAttestationPoPJwt
 import at.asitplus.wallet.lib.oidvci.randomString
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import com.benasher44.uuid.uuid4
@@ -44,12 +46,17 @@ class OAuth2ClientAuthenticationTest : FunSpec({
                 enforceClientAuthentication = true,
             )
         )
-        val attesterBackend = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithSelfSignedCert()))
+        val attesterBackend = SignJwt<JsonWebToken>(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk())
         clientKey = EphemeralKeyWithSelfSignedCert()
-        clientAttestation = attesterBackend
-            .buildClientAttestationJwt(client.clientId, "someissuer", clientKey.jsonWebKey)
-        val jwsService = DefaultJwsService(DefaultCryptoService(clientKey))
-        clientAttestationPop = jwsService.buildClientAttestationPoPJwt(client.clientId, "some server")
+        clientAttestation = BuildClientAttestationJwt(
+            attesterBackend,
+            clientId = client.clientId,
+            issuer = "someissuer",
+            clientKey = clientKey.jsonWebKey
+        )
+
+        val signClientAttestationPop: SignJwtFun<JsonWebToken> = SignJwt(clientKey, JwsHeaderNone())
+        clientAttestationPop = BuildClientAttestationPoPJwt(signClientAttestationPop, client.clientId, "some server")
     }
 
     suspend fun getToken(state: String, code: String): TokenResponseParameters = server.token(
@@ -94,8 +101,13 @@ class OAuth2ClientAuthenticationTest : FunSpec({
             state = state,
             scope = scope,
         )
-        clientAttestation = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithSelfSignedCert()))
-            .buildClientAttestationJwt("wrong client id", "someissuer", clientKey.jsonWebKey)
+
+        clientAttestation = BuildClientAttestationJwt(
+            SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
+            clientId = "wrong client id",
+            issuer = "someissuer",
+            clientKey = clientKey.jsonWebKey
+        )
 
         shouldThrow<OAuth2Exception> {
             server.par(

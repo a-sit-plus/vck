@@ -16,6 +16,7 @@ Release 5.6.0:
    - Replace `VerifierJwsService` with `VerifyJwsObjectFun`, `VerifyJwsSignatureWithCnfFun` and `VerifyJwsSignatureWithKeyFun`
    - Replace `VerifierCoseService` with `VerifyCoseSignatureFun`
    - Replace `JwsService.createSignedJwt()` with `SignJwtFun`
+   - Replace `JwsService.createSignedJwsAddingParams()` with `SignJwtFun` and `JwsHeaderIdentifierFun`
 
 Release 5.5.2:
  - OpenID for Verifiable Presentations:

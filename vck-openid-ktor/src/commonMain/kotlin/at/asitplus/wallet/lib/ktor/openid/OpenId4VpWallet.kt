@@ -77,7 +77,7 @@ class OpenId4VpWallet(
     }
     val openId4VpHolder = OpenId4VpHolder(
         holder = holderAgent,
-        agentPublicKey = cryptoService.keyMaterial.publicKey,
+        agentPublicKey = cryptoService.keyMaterial,
         jwsService = DefaultJwsService(cryptoService),
         coseService = DefaultCoseService(cryptoService),
         remoteResourceRetriever = { data ->

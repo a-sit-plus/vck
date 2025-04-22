@@ -2,10 +2,9 @@ package at.asitplus.wallet.lib.jws
 
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.*
-import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -18,17 +17,16 @@ import kotlin.random.Random
 
 class JwsServiceTest : FreeSpec({
 
-    lateinit var cryptoService: CryptoService
-    lateinit var jwsService: JwsService
+    lateinit var keyId: String
+    lateinit var keyMaterial: KeyMaterial
     lateinit var signJwt: SignJwtFun<ByteArray>
     lateinit var verifierJwsService: VerifyJwsObjectFun
     lateinit var randomPayload: String
 
     beforeEach {
-        val keyPairAdapter = EphemeralKeyWithoutCert()
-        cryptoService = DefaultCryptoService(keyPairAdapter)
-        jwsService = DefaultJwsService(cryptoService)
-        signJwt = SignJwt(keyPairAdapter, JwsHeaderCertOrJwk())
+        keyId = Random.nextBytes(16).encodeToString(Base64())
+        keyMaterial = EphemeralKeyWithoutCert(customKeyId = keyId)
+        signJwt = SignJwt(keyMaterial, JwsHeaderCertOrJwk())
         verifierJwsService = VerifyJwsObject()
         randomPayload = uuid4().toString()
     }
@@ -61,41 +59,28 @@ class JwsServiceTest : FreeSpec({
         result shouldBe true
     }
 
-    "signed object with automatically added params can be verified" {
-        val signed = jwsService.createSignedJwsAddingParams(
-            payload = randomPayload,
-            serializer = String.serializer(),
-            addX5c = false
-        ).getOrThrow()
-
-        val result = verifierJwsService(signed)
-        result shouldBe true
-    }
-
     "signed object with jsonWebKey can be verified" {
-        val header = JwsHeader(algorithm = JwsAlgorithm.ES256, jsonWebKey = cryptoService.keyMaterial.jsonWebKey)
-        val signed = jwsService.createSignedJws(header, randomPayload, String.serializer()).getOrThrow()
+        val signer = SignJwt<String>(keyMaterial, JwsHeaderJwk())
+        val signed = signer(null, randomPayload, String.serializer()).getOrThrow()
 
         val result = verifierJwsService(signed)
         result shouldBe true
     }
 
     "signed object with kid from jku can be verified" {
-        val kid = Random.nextBytes(16).encodeToString(Base64())
         val jku = "https://example.com/" + Random.nextBytes(16).encodeToString(Base64UrlStrict)
-        val header = JwsHeader(algorithm = JwsAlgorithm.ES256, keyId = kid, jsonWebKeySetUrl = jku)
-        val signed = jwsService.createSignedJws(header, randomPayload, String.serializer()).getOrThrow()
-        val validKey = cryptoService.keyMaterial.jsonWebKey.copy(keyId = kid)
+        val signer = SignJwt<String>(keyMaterial, JwsHeaderJwksUrl(jku))
+        val signed = signer(null, randomPayload, String.serializer()).getOrThrow()
+        val validKey = keyMaterial.jsonWebKey
         val jwkSetRetriever: JwkSetRetrieverFunction = { JsonWebKeySet(keys = listOf(validKey)) }
         verifierJwsService = VerifyJwsObject(jwkSetRetriever = jwkSetRetriever)
         verifierJwsService(signed) shouldBe true
     }
 
     "signed object with kid from jku, returning invalid key, can not be verified" {
-        val kid = Random.nextBytes(16).encodeToString(Base64())
         val jku = "https://example.com/" + Random.nextBytes(16).encodeToString(Base64UrlStrict)
-        val header = JwsHeader(algorithm = JwsAlgorithm.ES256, keyId = kid, jsonWebKeySetUrl = jku)
-        val signed = jwsService.createSignedJws(header, randomPayload, String.serializer()).getOrThrow()
+        val signer = SignJwt<String>(keyMaterial, JwsHeaderJwksUrl(jku))
+        val signed = signer(null, randomPayload, String.serializer()).getOrThrow()
         val invalidKey = EphemeralKeyWithoutCert().jsonWebKey
         val jwkSetRetriever: JwkSetRetrieverFunction = { JsonWebKeySet(keys = listOf(invalidKey)) }
         verifierJwsService = VerifyJwsObject(jwkSetRetriever = jwkSetRetriever)
@@ -103,29 +88,29 @@ class JwsServiceTest : FreeSpec({
     }
 
     "signed object without public key in header can not be verified" {
-        val header = JwsHeader(algorithm = JwsAlgorithm.ES256)
-        val signed = jwsService.createSignedJws(header, randomPayload, String.serializer()).getOrThrow()
+        val signer = SignJwt<String>(keyMaterial, JwsHeaderNone())
+        val signed = signer(null, randomPayload, String.serializer()).getOrThrow()
 
         verifierJwsService = VerifyJwsObject()
         verifierJwsService(signed) shouldBe false
     }
 
     "signed object without public key in header, but retrieved out-of-band can be verified" {
-        val header = JwsHeader(algorithm = JwsAlgorithm.ES256)
-        val signed = jwsService.createSignedJws(header, randomPayload, String.serializer()).getOrThrow()
-        val validKey = cryptoService.keyMaterial.jsonWebKey
+        val signer = SignJwt<String>(keyMaterial, JwsHeaderNone())
+        val signed = signer(null, randomPayload, String.serializer()).getOrThrow()
 
-        val publicKeyLookup: PublicJsonWebKeyLookup = { setOf(validKey) }
+        val publicKeyLookup: PublicJsonWebKeyLookup = { setOf(keyMaterial.jsonWebKey) }
         verifierJwsService = VerifyJwsObject(publicKeyLookup = publicKeyLookup)
         verifierJwsService(signed) shouldBe true
     }
 
     "encrypted object can be decrypted" {
+        val jwsService = DefaultJwsService(DefaultCryptoService(keyMaterial))
         val encrypted = jwsService.encryptJweObject(
             JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON,
             randomPayload,
             String.serializer(),
-            cryptoService.keyMaterial.jsonWebKey,
+            keyMaterial.jsonWebKey,
             JwsContentTypeConstants.DIDCOMM_PLAIN_JSON,
             JweAlgorithm.ECDH_ES,
             JweEncryption.A256GCM,
