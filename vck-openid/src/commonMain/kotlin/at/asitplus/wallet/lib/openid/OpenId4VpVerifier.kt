@@ -62,6 +62,10 @@ open class OpenId4VpVerifier(
     private val nonceService: NonceService = DefaultNonceService(),
     /** Used to store issued authn requests, to verify the authn response to it */
     private val stateToAuthnRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
+    /** Algorithm supported to decrypt responses from wallets, for [metadataWithEncryption]. */
+    private val supportedJweAlgorithm: JweAlgorithm = JweAlgorithm.ECDH_ES,
+    /** Algorithm supported to decrypt responses from wallets, for [metadataWithEncryption]. */
+    private val supportedJweEncryptionAlgorithm: JweEncryption = JweEncryption.A256GCM,
 ) {
 
     private val supportedAlgorithmStrings = supportedAlgorithms.map { it.identifier }
@@ -113,8 +117,8 @@ open class OpenId4VpVerifier(
     val metadataWithEncryption by lazy {
         metadata.copy(
             authorizationSignedResponseAlgString = null,
-            authorizationEncryptedResponseAlgString = JweAlgorithm.ECDH_ES.identifier,
-            authorizationEncryptedResponseEncodingString = JweEncryption.A256GCM.text,
+            authorizationEncryptedResponseAlgString = supportedJweAlgorithm.identifier,
+            authorizationEncryptedResponseEncodingString = supportedJweEncryptionAlgorithm.text,
             jsonWebKeySet = metadata.jsonWebKeySet?.let {
                 JsonWebKeySet(it.keys.map { it.copy(publicKeyUse = "enc") })
             }

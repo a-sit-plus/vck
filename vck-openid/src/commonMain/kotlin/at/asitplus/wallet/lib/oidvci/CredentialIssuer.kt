@@ -92,6 +92,10 @@ class CredentialIssuer(
     private val encryptCredentialRequest: EncryptJweFun = EncryptJwe(EphemeralKeyWithoutCert()),
     /** Whether to indicate in [metadata] if credential response encryption is required. */
     private val requireEncryption: Boolean = false,
+    /** Algorithms to indicate support for credential response encryption. */
+    private val supportedJweAlgorithms: Set<JweAlgorithm> = setOf(JweAlgorithm.ECDH_ES),
+    /** Algorithms to indicate support for credential response encryption. */
+    private val supportedJweEncryptionAlgorithms: Set<JweEncryption> = setOf(JweEncryption.A256GCM),
 ) {
     private val supportedCredentialConfigurations = credentialSchemes
         .flatMap { it.toSupportedCredentialFormat(issuer.cryptoAlgorithms).entries }
@@ -128,8 +132,8 @@ class CredentialIssuer(
             supportedCredentialConfigurations = supportedCredentialConfigurations,
             batchCredentialIssuance = BatchCredentialIssuanceMetadata(1),
             credentialResponseEncryption = SupportedAlgorithmsContainer(
-                supportedAlgorithmsStrings = setOf(JweAlgorithm.ECDH_ES.identifier),
-                supportedEncryptionAlgorithmsStrings = setOf(JweEncryption.A256GCM.text),
+                supportedAlgorithmsStrings = supportedJweAlgorithms.map { it.identifier }.toSet(),
+                supportedEncryptionAlgorithmsStrings = supportedJweEncryptionAlgorithms.map { it.text }.toSet(),
                 encryptionRequired = requireEncryption,
             )
         )

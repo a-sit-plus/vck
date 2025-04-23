@@ -400,6 +400,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         serializer,
     )
 
+    @Deprecated("Use SignJwtFun instead")
     override suspend fun <T : Any> createSignedJws(
         header: JwsHeader,
         payload: T,
@@ -416,6 +417,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         JwsSigned(header, payload, signature, plainSignatureInput)
     }
 
+    @Deprecated("Use SignJwtFun instead")
     override suspend fun <T : Any> createSignedJwsAddingParams(
         header: JwsHeader?,
         payload: T,
@@ -439,6 +441,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         createSignedJws(copy, payload, serializer).getOrThrow()
     }
 
+    @Deprecated("Use DecryptJweFun instead")
     override suspend fun <T : Any> decryptJweObject(
         jweObject: JweEncrypted,
         serialized: String,
@@ -477,6 +480,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         JweDecrypted(header, plainObject)
     }
 
+    @Deprecated("Use EncryptJweFun instead")
     override suspend fun <T : Any> encryptJweObject(
         header: JweHeader?,
         payload: T,
@@ -497,6 +501,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         encryptJwe(ephemeralKeyPair, recipientKey, jweAlgorithm, jweEncryption, jweHeader, payload, serializer)
     }
 
+    @Deprecated("Use EncryptJweFun instead")
     override suspend fun <T : Any> encryptJweObject(
         type: String,
         payload: T,

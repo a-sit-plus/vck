@@ -61,6 +61,10 @@ class WalletService(
     private val requestEncryption: Boolean = false,
     /** Optional key material to advertise for credential response encryption, see [requestEncryption]. */
     private val decryptionKeyMaterial: KeyMaterial? = null,
+    /** Algorithm to decrypt credential response encryption, see [requestEncryption]. */
+    private val supportedJweAlgorithm: JweAlgorithm = JweAlgorithm.ECDH_ES,
+    /** Algorithm to decrypt credential response encryption, see [requestEncryption]. */
+    private val supportedJweEncryptionAlgorithm: JweEncryption = JweEncryption.A256GCM,
 ) {
 
     data class KeyAttestationInput(val clientNonce: String?, val supportedAlgorithms: Collection<String>?)
@@ -241,8 +245,8 @@ class WalletService(
         if (requestEncryption && decryptionKeyMaterial != null && jweDecryptionService != null && credentialResponseEncryption != null) {
             CredentialResponseEncryption(
                 jsonWebKey = decryptionKeyMaterial.jsonWebKey,
-                jweAlgorithm = JweAlgorithm.ECDH_ES,
-                jweEncryptionString = JweEncryption.A256GCM.text
+                jweAlgorithm = supportedJweAlgorithm,
+                jweEncryptionString = supportedJweEncryptionAlgorithm.text,
             )
         } else null
 

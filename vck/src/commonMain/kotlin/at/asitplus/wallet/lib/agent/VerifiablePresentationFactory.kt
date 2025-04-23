@@ -248,15 +248,21 @@ class VerifiablePresentationFactory(
             audience = request.audience,
             challenge = request.nonce,
             sdHash = issuerJwtPlusDisclosures.encodeToByteArray().sha256(),
-            transactionData = if (request.transactionData?.first == PresentationRequestParameters.Flow.UC5) request.transactionData.second else null,
-            transactionDataHashes = if (request.transactionData?.first == PresentationRequestParameters.Flow.OID4VP) request.getTransactionDataHashes() else null,
-            transactionDataHashesAlgorithm = if (request.transactionData?.first == PresentationRequestParameters.Flow.OID4VP) "sha-256" else null,
+            transactionData = if (request.isUc5()) request.transactionData?.second else null,
+            transactionDataHashes = if (request.isOid4Vp()) request.getTransactionDataHashes() else null,
+            transactionDataHashesAlgorithm = if (request.isOid4Vp()) SdJwtConstants.SHA_256 else null,
         ),
         KeyBindingJws.serializer(),
     ).getOrElse {
         Napier.w("Could not create JWS for presentation", it)
         throw PresentationException(it)
     }
+
+    private fun PresentationRequestParameters.isUc5(): Boolean =
+        transactionData?.first == PresentationRequestParameters.Flow.UC5
+
+    private fun PresentationRequestParameters.isOid4Vp(): Boolean =
+        transactionData?.first == PresentationRequestParameters.Flow.OID4VP
 
     /**
      * Creates a [VerifiablePresentation] with the given [validCredentials].
