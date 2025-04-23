@@ -37,9 +37,11 @@ data class PresentationRequestParameters(
     val transactionData: Pair<Flow, Collection<TransactionData>>? = null,
     /**
      * Handle calculating device signature for ISO mDocs, as this depends on the transport protocol
-     * (OpenId4VP with ISO/IEC 18013-7)
+     * (OpenID4VP with ISO/IEC 18013-7)
      */
-    val calcIsoDeviceSignature: (suspend (docType: String) -> Pair<CoseSigned<ByteArray>, String?>?) = { null },
+    val calcIsoDeviceSignature: (suspend (docType: String) -> Pair<CoseSigned<ByteArray>?, String?>?) = { null },
+    /** mdocGeneratedNonce to be used for the presentation and [calcIsoDeviceSignature] (OpenID4VP with ISO/IEC 18013-7) */
+    val mdocGeneratedNonce: String? = null,
 ) {
     /**
      * Used to differentiate between the OID4VP and the UC5 transaction data flows

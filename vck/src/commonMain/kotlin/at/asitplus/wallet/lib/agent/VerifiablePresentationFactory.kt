@@ -30,6 +30,17 @@ class VerifiablePresentationFactory(
     private val coseService: CoseService,
     private val identifier: String,
 ) {
+
+    suspend fun createVerifiablePresentationForIsoCredentials(
+        request: PresentationRequestParameters,
+        credentialAndDisclosedAttributes: Map<SubjectCredentialStore.StoreEntry.Iso, Collection<NormalizedJsonPath>>,
+    ): KmmResult<CreatePresentationResult> = catching {
+        createIsoPresentation(
+            request = request,
+            credentialAndRequestedClaims = credentialAndDisclosedAttributes,
+        )
+    }
+
     suspend fun createVerifiablePresentation(
         request: PresentationRequestParameters,
         credential: SubjectCredentialStore.StoreEntry,
@@ -49,8 +60,7 @@ class VerifiablePresentationFactory(
 
             is SubjectCredentialStore.StoreEntry.Iso -> createIsoPresentation(
                 request = request,
-                credential = credential,
-                requestedClaims = disclosedAttributes,
+                credentialAndRequestedClaims = mapOf(credential to disclosedAttributes),
             )
         }
     }
@@ -88,92 +98,97 @@ class VerifiablePresentationFactory(
 
             is SubjectCredentialStore.StoreEntry.Iso -> createIsoPresentation(
                 request = request,
-                credential = credential,
-                requestedClaims = when (disclosedAttributes) {
-                    DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult -> credential.issuerSigned.namespaces!!.entries.flatMap { namespace ->
-                        namespace.value.entries.map {
-                            NormalizedJsonPath() + namespace.key + it.value.elementIdentifier
-                        }
-                    }
-
-                    is DCQLCredentialQueryMatchingResult.ClaimsQueryResults -> disclosedAttributes.claimsQueryResults.map {
-                        it as DCQLClaimsQueryResult.IsoMdocResult
-                    }.map {
-                        NormalizedJsonPath() + it.namespace + it.claimName
-                    }
-                },
+                credentialAndRequestedClaims = mapOf(credential to disclosedAttributes.toRequestedIsoClaims(credential)),
             )
+        }
+    }
+
+    private fun DCQLCredentialQueryMatchingResult.toRequestedIsoClaims(
+        credential: SubjectCredentialStore.StoreEntry.Iso
+    ) = when (this) {
+        DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult -> credential.issuerSigned.namespaces!!.entries.flatMap { namespace ->
+            namespace.value.entries.map {
+                NormalizedJsonPath() + namespace.key + it.value.elementIdentifier
+            }
+        }
+
+        is DCQLCredentialQueryMatchingResult.ClaimsQueryResults -> claimsQueryResults.map {
+            it as DCQLClaimsQueryResult.IsoMdocResult
+        }.map {
+            NormalizedJsonPath() + it.namespace + it.claimName
         }
     }
 
     private suspend fun createIsoPresentation(
         request: PresentationRequestParameters,
-        credential: SubjectCredentialStore.StoreEntry.Iso,
-        requestedClaims: Collection<NormalizedJsonPath>,
+        credentialAndRequestedClaims: Map<SubjectCredentialStore.StoreEntry.Iso, Collection<NormalizedJsonPath>>,
     ): CreatePresentationResult.DeviceResponse {
-        Napier.d("createIsoPresentation with $request and $requestedClaims for $credential")
+        Napier.d("createIsoPresentation with $request and $credentialAndRequestedClaims")
 
-        // allows disclosure of attributes from different namespaces
-        val namespaceToAttributesMap = requestedClaims.mapNotNull { normalizedJsonPath ->
-            // namespace + attribute
-            val firstTwoNameSegments = normalizedJsonPath.segments.filterIndexed { index, _ ->
-                // TODO: unsure how to deal with attributes with a depth of more than 2
-                //  revealing the whole attribute for now, which is as fine grained as MDOC can do anyway
-                index < 2
-            }.filterIsInstance<NormalizedJsonPathSegment.NameSegment>()
-            if (firstTwoNameSegments.size == 2) {
-                val namespace = firstTwoNameSegments[0].memberName
-                val attributeName = firstTwoNameSegments[1].memberName
-                namespace to attributeName
-            } else {
-                // TODO: Not a namespaced attribute, how to deal with these?
-                //  treating them as fields that are inherent to the credential for now
-                //  -> no need for selective disclosure
-                null
+        val documents = credentialAndRequestedClaims.map { (credential, requestedClaims) ->
+            // allows disclosure of attributes from different namespaces
+            val namespaceToAttributesMap = requestedClaims.mapNotNull { normalizedJsonPath ->
+                // namespace + attribute
+                val firstTwoNameSegments = normalizedJsonPath.segments.filterIndexed { index, _ ->
+                    // TODO: unsure how to deal with attributes with a depth of more than 2
+                    //  revealing the whole attribute for now, which is as fine grained as MDOC can do anyway
+                    index < 2
+                }.filterIsInstance<NormalizedJsonPathSegment.NameSegment>()
+                if (firstTwoNameSegments.size == 2) {
+                    val namespace = firstTwoNameSegments[0].memberName
+                    val attributeName = firstTwoNameSegments[1].memberName
+                    namespace to attributeName
+                } else {
+                    // TODO: Not a namespaced attribute, how to deal with these?
+                    //  treating them as fields that are inherent to the credential for now
+                    //  -> no need for selective disclosure
+                    null
+                }
+            }.groupBy {
+                it.first  // grouping by namespace
+            }.mapValues {
+                // unrolling values to just the list of attribute names for that namespace
+                it.value.map { it.second }
             }
-        }.groupBy {
-            it.first  // grouping by namespace
-        }.mapValues {
-            // unrolling values to just the list of attribute names for that namespace
-            it.value.map { it.second }
-        }
-        val disclosedItems = namespaceToAttributesMap.mapValues { namespaceToAttributeNamesEntry ->
-            val namespace = namespaceToAttributeNamesEntry.key
-            val attributeNames = namespaceToAttributeNamesEntry.value
-            attributeNames.map { attributeName ->
-                credential.issuerSigned.namespaces?.get(
-                    namespace
-                )?.entries?.find {
-                    it.value.elementIdentifier == attributeName
-                }?.value
-                    ?: throw PresentationException("Attribute not available in credential: $['$namespace']['$attributeName']")
+            val disclosedItems = namespaceToAttributesMap.mapValues { namespaceToAttributeNamesEntry ->
+                val namespace = namespaceToAttributeNamesEntry.key
+                val attributeNames = namespaceToAttributeNamesEntry.value
+                attributeNames.map { attributeName ->
+                    credential.issuerSigned.namespaces?.get(
+                        namespace
+                    )?.entries?.find {
+                        it.value.elementIdentifier == attributeName
+                    }?.value
+                        ?: throw PresentationException("Attribute not available in credential: $['$namespace']['$attributeName']")
+                }
             }
+            val docType = credential.scheme?.isoDocType!!
+            val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
+
+            val (deviceSignature, _) = request.calcIsoDeviceSignature(docType)
+                ?: throw PresentationException("calcIsoDeviceSignature not implemented")
+
+            Document(
+                docType = docType,
+                issuerSigned = IssuerSigned.fromIssuerSignedItems(
+                    namespacedItems = disclosedItems,
+                    issuerAuth = credential.issuerSigned.issuerAuth
+                ),
+                deviceSigned = DeviceSigned(
+                    namespaces = deviceNameSpaceBytes,
+                    deviceAuth = DeviceAuth(
+                        deviceSignature = deviceSignature
+                    )
+                )
+            )
         }
-        val docType = credential.scheme?.isoDocType!!
-        val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
-        val (deviceSignature, mDocGeneratedNonce) = request.calcIsoDeviceSignature.invoke(docType)
-            ?: throw PresentationException("CalculateChallengeResponse not implemented")
         return CreatePresentationResult.DeviceResponse(
             deviceResponse = DeviceResponse(
                 version = "1.0",
-                documents = arrayOf(
-                    Document(
-                        docType = docType,
-                        issuerSigned = IssuerSigned.fromIssuerSignedItems(
-                            namespacedItems = disclosedItems,
-                            issuerAuth = credential.issuerSigned.issuerAuth
-                        ),
-                        deviceSigned = DeviceSigned(
-                            namespaces = deviceNameSpaceBytes,
-                            deviceAuth = DeviceAuth(
-                                deviceSignature = deviceSignature
-                            )
-                        )
-                    )
-                ),
+                documents = documents.toTypedArray(),
                 status = 0U,
             ),
-            mdocGeneratedNonce = mDocGeneratedNonce
+            mdocGeneratedNonce = request.mdocGeneratedNonce
         )
     }
 
@@ -223,7 +238,7 @@ class VerifiablePresentationFactory(
 
     private fun JsonObject.sdElements(): JsonArray? = (get(NAME_SD) as? JsonArray?)
 
-    private fun JsonArray.strings(): List<String>? = mapNotNull { (it as? JsonPrimitive?)?.content }
+    private fun JsonArray.strings(): List<String> = mapNotNull { (it as? JsonPrimitive?)?.content }
 
     private suspend fun createKeyBindingJws(
         request: PresentationRequestParameters,

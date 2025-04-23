@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
@@ -49,7 +50,7 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
             issuerAgent.issueCredential(
                 DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
+                    AtomicAttribute2023,
                     ISO_MDOC,
                 ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
@@ -94,7 +95,7 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
             walletUrl,
             OpenIdRequestOptions(
                 credentials = setOf(
-                    RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, ISO_MDOC, setOf(CLAIM_GIVEN_NAME))
+                    RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC, setOf(CLAIM_GIVEN_NAME))
                 )
             ),
             holderOid4vp
@@ -183,6 +184,38 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
         document.validItems.shouldBeSingleton()
         document.validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
         document.invalidItems.shouldBeEmpty()
+    }
+
+    "Selective Disclosure with two documents and encryption (ISO/IEC 18013-7:2024 Annex B)" {
+        val mdlFamilyName = MobileDrivingLicenceDataElements.FAMILY_NAME
+        val atomicGivenName = CLAIM_GIVEN_NAME
+        verifierOid4vp = OpenId4VpVerifier(
+            keyMaterial = verifierKeyMaterial,
+            clientIdScheme = ClientIdScheme.RedirectUri(clientId),
+        )
+        val requestOptions = OpenIdRequestOptions(
+            credentials = setOf(
+                RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(mdlFamilyName)),
+                RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC, setOf(atomicGivenName))
+            ),
+            responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
+            responseUrl = "https://example.com/response",
+            encryption = true
+        )
+        val authnRequest = verifierOid4vp.createAuthnRequest(
+            requestOptions, OpenId4VpVerifier.CreationOptions.Query(walletUrl)
+        ).getOrThrow().url
+
+        val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
+
+        val documents = verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
+            .shouldBeInstanceOf<AuthnResponseResult.VerifiablePresentationValidationResults>()
+            .validationResults.flatMap { it.shouldBeInstanceOf<AuthnResponseResult.SuccessIso>().documents }
+        documents.first { it.mso.docType == AtomicAttribute2023.isoDocType }
+            .validItems.shouldHaveSingleElement { it.elementIdentifier == atomicGivenName }
+        documents.first { it.mso.docType == MobileDrivingLicenceScheme.isoDocType }
+            .validItems.shouldHaveSingleElement { it.elementIdentifier == mdlFamilyName }
     }
 
     "Selective Disclosure with mDL JSON Path syntax" {
