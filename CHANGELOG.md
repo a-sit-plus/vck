@@ -7,6 +7,8 @@ Release 5.5.2:
    - Fix ISO mDoc presentations containing multiple documents in one device response
  - When creating JWS, and `x5c` header is set, do not set `jwk` and `kid`
  - When creating JWS, and `jwk` header is set, do not set `kid`
+ - Status List:
+   - Set correct JWT type for JWT header: `statuslist+jwt`
 
 Release 5.5.1:
  - OpenID for Verifiable Credential Issuance:
