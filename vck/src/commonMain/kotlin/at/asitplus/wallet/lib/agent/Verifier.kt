@@ -65,7 +65,14 @@ interface Verifier {
     }
 
     sealed class VerifyCredentialResult {
-        data class SuccessJwt(val jws: VerifiableCredentialJws) : VerifyCredentialResult()
+        data class SuccessJwt(
+            val jws: VerifiableCredentialJws,
+            /**
+             * Only available if there is a token status mechanism.
+             */
+            val tokenStatusValidationSummary: TokenStatusValidationSummary?,
+        ) : VerifyCredentialResult()
+
         data class SuccessSdJwt(
             val sdJwtSigned: SdJwtSigned,
             val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
@@ -82,8 +89,8 @@ interface Verifier {
             constructor(message: String) : this(Throwable(message))
         }
     }
-
 }
+
 
 /**
  * Verifies that [input] is a valid identifier for this key

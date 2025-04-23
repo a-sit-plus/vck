@@ -19,9 +19,24 @@ import kotlin.time.toDuration
  * Does not verify the revocation status of the data.
  */
 class Parser(
-    timeLeewaySeconds: Long = 300L,
-    private val clock: Clock = Clock.System,
+    val verifiableCredentialJwsValidator: VerifiableCredentialJwsValidator,
+    timeLeewaySeconds: Long,
+    private val clock: Clock,
 ) {
+    constructor(
+        timeLeewaySeconds: Long = 300L,
+        clock: Clock = Clock.System,
+    ) : this(
+        VerifiableCredentialJwsValidator(
+            VerifiableCredentialJwsTimelinessValidator(
+                timeLeewaySeconds = timeLeewaySeconds,
+                clock = clock,
+            ),
+            verifiableCredentialJwsStructureValidator = VerifiableCredentialJwsStructureValidator(),
+        ),
+        timeLeewaySeconds = timeLeewaySeconds,
+        clock = clock
+    )
 
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
 
@@ -110,6 +125,19 @@ class Parser(
     }
 
     /**
+     * Parses a Verifiable Credential in JWS format
+     *
+     * @param it the JWS enclosing the VC, in compact representation
+     */
+    fun validateVerifiableCredentialJws(vcJws: VerifiableCredentialJws): VerifiableCredentialJwsValidator.ValidationSummary {
+        return verifiableCredentialJwsValidator.validate(vcJws).also {
+            if (!it.containsErrors) {
+                Napier.d("VC is valid")
+            }
+        }
+    }
+
+    /**
      * Verifies the time validity of a [VerifiableCredentialSdJwt]
      */
     fun verifySdJwtValidity(sdJwt: VerifiableCredentialSdJwt): ParseVcResult {
@@ -142,4 +170,5 @@ class Parser(
         }
     }
 }
+
 

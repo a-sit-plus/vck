@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
@@ -12,26 +13,14 @@ import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.*
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
-import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
-import at.asitplus.wallet.lib.cbor.VerifierCoseService
-import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
-import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
-import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
-import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
+import at.asitplus.wallet.lib.cbor.*
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenValidator
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.iso.*
-import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
-import at.asitplus.wallet.lib.jws.SdJwtSigned
-import at.asitplus.wallet.lib.jws.VerifierJwsService
-import at.asitplus.wallet.lib.jws.VerifyJwsSignature
-import at.asitplus.wallet.lib.jws.VerifyJwsObject
-import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
-import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnf
-import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnfFun
+import at.asitplus.wallet.lib.jws.*
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.base64.Base64
@@ -395,27 +384,39 @@ class Validator(
                 return ValidationError("Sub invalid: ${vcJws.subject}")
             }
         }
-        vcJws.vc.credentialStatus?.let {
-            Napier.d("VC: status found")
-            if (checkRevocationStatus(it) == TokenStatus.Invalid) {
+        val errorSummary = parser.validateVerifiableCredentialJws(vcJws)
+        return if (errorSummary.containsErrors) {
+            Napier.d("VC: Invalid structure from Parser")
+            InvalidStructure(input)
+        } else {
+            val tokenStatus = vcJws.vc.credentialStatus?.let {
+                Napier.d("VC: status found")
+                it to kotlin.runCatching {
+                    checkRevocationStatus(it)
+                }.wrap()
+            }
+
+            if (tokenStatus?.second?.getOrNull() == TokenStatus.Invalid) {
                 Napier.d("VC: revoked")
                 return Revoked(input, vcJws)
+            } else {
+                SuccessJwt(
+                    vcJws,
+                    tokenStatusValidationSummary = tokenStatus?.let { (status, result) ->
+                        result.map<TokenStatusValidationSummary> {
+                            TokenStatusValidationSummary.Success(
+                                status = status,
+                                tokenStatus = it
+                            )
+                        }.getOrElse {
+                            TokenStatusValidationSummary.Failure(
+                                status = status,
+                                throwable = it
+                            )
+                        }
+                    },
+                )
             }
-            Napier.d("VC: not revoked")
-        }
-        return when (val vcValid = parser.parseVcJws(input, vcJws)) {
-            is Parser.ParseVcResult.InvalidStructure -> InvalidStructure(input)
-                .also { Napier.d("VC: Invalid structure from Parser") }
-
-            is Parser.ParseVcResult.ValidationError -> ValidationError(vcValid.cause)
-                .also { Napier.d("VC: Validation error: $vcValid") }
-
-            is Parser.ParseVcResult.Success -> SuccessJwt(vcJws)
-                .also { Napier.d("VC: Valid") }
-
-            is Parser.ParseVcResult.SuccessSdJwt -> SuccessJwt(vcJws)
-                .also { Napier.d("VC: Valid") }
-
         }
     }
 
