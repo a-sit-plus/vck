@@ -19,6 +19,8 @@ Release 5.6.0:
    - Replace `JwsService.createSignedJwsAddingParams()` with `SignJwtFun` and `JwsHeaderIdentifierFun`
    - Replace `JwsService.encryptJweObject()` with `EncryptJweFun`
    - Replace `JwsService.decryptJweObject()` with `DecryptJweFun`
+ - Add considerations for separating the semantics "no token status mechanism is defined" from "evaluating token status failed"
+ - Provide revocation status to verifier
 
 Release 5.5.2:
  - OpenID for Verifiable Presentations:

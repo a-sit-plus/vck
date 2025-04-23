@@ -51,6 +51,7 @@ sealed class AuthnResponseResult {
         val reconstructed: JsonObject,
         val disclosures: Collection<SelectiveDisclosureItem>,
         val state: String?,
+        val isRevoked: Boolean?,
     ) : AuthnResponseResult()
 
     /**

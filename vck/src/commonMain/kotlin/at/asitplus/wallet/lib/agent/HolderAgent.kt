@@ -20,6 +20,7 @@ import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.dif.PresentationExchangeInputEvaluator
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.third_party.at.asitplus.oidc.dcql.toDefaultSubmission
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
@@ -123,20 +124,26 @@ class HolderAgent(
     private suspend fun StoreEntry.toStoredCredential() = when (this) {
         is StoreEntry.Iso -> Holder.StoredCredential.Iso(
             this,
-            // TODO: this stauts does not distinguish between "no status mechanism has been provided" and "resolving status mechanism failed"
-            validator.checkRevocationStatus(issuerSigned)?.getOrNull(),
+            // this coerces errors on resolving token status to an invalid token status
+            validator.checkRevocationStatus(issuerSigned)?.let {
+                it.getOrNull() ?: TokenStatus.Invalid
+            },
         )
 
         is StoreEntry.Vc -> Holder.StoredCredential.Vc(
             this,
-            // TODO: this stauts does not distinguish between "no status mechanism has been provided" and "resolving status mechanism failed"
-            validator.checkRevocationStatus(vc)?.getOrNull(),
+            // this coerces errors on resolving token status to an invalid token status
+            validator.checkRevocationStatus(vc)?.let {
+                it.getOrNull() ?: TokenStatus.Invalid
+            },
         )
 
         is StoreEntry.SdJwt -> Holder.StoredCredential.SdJwt(
             this,
-            // TODO: this stauts does not distinguish between "no status mechanism has been provided" and "resolving status mechanism failed"
-            validator.checkRevocationStatus(sdJwt)?.getOrNull(),
+            // this coerces errors on resolving token status to an invalid token status
+            validator.checkRevocationStatus(sdJwt)?.let {
+                it.getOrNull() ?: TokenStatus.Invalid
+            },
         )
     }
 

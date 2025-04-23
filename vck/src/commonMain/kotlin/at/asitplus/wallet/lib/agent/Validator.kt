@@ -254,8 +254,8 @@ class Validator(
     /**
      * Validates an ISO device response, equivalent of a Verifiable Presentation
      */
-    @Throws(IllegalArgumentException::class)
-    fun verifyDeviceResponse(
+    @Throws(IllegalArgumentException::class, CancellationException::class)
+    suspend fun verifyDeviceResponse(
         deviceResponse: DeviceResponse,
         verifyDocumentCallback: (MobileSecurityObject, Document) -> Boolean,
     ): VerifyPresentationResult {
@@ -277,8 +277,8 @@ class Validator(
     /**
      * Validates an ISO document, equivalent of a Verifiable Presentation
      */
-    @Throws(IllegalArgumentException::class)
-    fun verifyDocument(
+    @Throws(IllegalArgumentException::class, CancellationException::class)
+    suspend fun verifyDocument(
         doc: Document,
         verifyDocumentCallback: (MobileSecurityObject, Document) -> Boolean,
     ): IsoDocumentParsed {
@@ -321,8 +321,9 @@ class Validator(
             throw IllegalArgumentException("mso.docType")
         }
 
-        if (!verifyDocumentCallback.invoke(mso, doc))
+        if (!verifyDocumentCallback.invoke(mso, doc)) {
             throw IllegalArgumentException("document callback failed: $doc")
+        }
 
         val validItems = mutableListOf<IssuerSignedItem>()
         val invalidItems = mutableListOf<IssuerSignedItem>()
@@ -335,7 +336,14 @@ class Validator(
                 }
             }
         }
-        return IsoDocumentParsed(mso = mso, validItems = validItems, invalidItems = invalidItems)
+        return IsoDocumentParsed(
+            mso = mso,
+            validItems = validItems,
+            invalidItems = invalidItems,
+            isRevoked = checkRevocationStatus(issuerSigned)?.let {
+                it.getOrThrow() == TokenStatus.Invalid
+            },
+        )
     }
 
     /**
