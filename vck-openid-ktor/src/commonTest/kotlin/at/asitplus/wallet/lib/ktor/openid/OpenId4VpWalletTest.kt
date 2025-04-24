@@ -52,7 +52,7 @@ class OpenId4VpWalletTest : FunSpec() {
 
         test("presentEuPidCredentialSdJwtDirectPost") {
             runTest {
-                val (wallet, url) = setup(
+                val (wallet, url, mockEngine) = setup(
                     scheme = EuPidScheme,
                     representation = SD_JWT,
                     attributes = mapOf(
@@ -64,8 +64,9 @@ class OpenId4VpWalletTest : FunSpec() {
 
                 val requestParametersFrom = wallet.parseAuthenticationRequestParameters(url).getOrThrow()
                 // sends the response to the mock RP, which calls verifyReceivedAttributes, which unlocks the latch
-                wallet.startPresentation(requestParametersFrom).apply {
-                    this.isSuccess shouldBe true
+                wallet.startPresentationReturningUrl(requestParametersFrom).also {
+                    it.isSuccess shouldBe true
+                    it.getOrThrow().redirectUri?.let { HttpClient(mockEngine).get(it) }
                 }
 
                 assertPresentation(countdownLatch)
@@ -75,7 +76,7 @@ class OpenId4VpWalletTest : FunSpec() {
 
         test(" presentEuPidCredentialIsoQuery") {
             runTest {
-                val (wallet, url) = setup(
+                val (wallet, url, mockEngine) = setup(
                     scheme = EuPidScheme,
                     representation = ISO_MDOC,
                     attributes = mapOf(
@@ -87,8 +88,9 @@ class OpenId4VpWalletTest : FunSpec() {
 
                 val requestParametersFrom = wallet.parseAuthenticationRequestParameters(url).getOrThrow()
                 // sends the response to the mock RP, which calls verifyReceivedAttributes, which unlocks the latch
-                wallet.startPresentation(requestParametersFrom).apply {
-                    this.isSuccess shouldBe true
+                wallet.startPresentationReturningUrl(requestParametersFrom).also {
+                    it.isSuccess shouldBe true
+                    it.getOrThrow().redirectUri?.let { HttpClient(mockEngine).get(it) }
                 }
 
                 assertPresentation(countdownLatch)
@@ -104,7 +106,7 @@ class OpenId4VpWalletTest : FunSpec() {
         attributes: Map<String, String>,
         responseMode: ResponseMode,
         clientId: String,
-    ): Pair<OpenId4VpWallet, String> {
+    ): Triple<OpenId4VpWallet, String, HttpClientEngine> {
         val requestOptions = OpenIdRequestOptions(
             credentials = setOf(
                 RequestOptionsCredential(
@@ -120,11 +122,10 @@ class OpenId4VpWalletTest : FunSpec() {
             it.verifyReceivedAttributes(attributes)
         }
         val wallet = setupWallet(mockEngine)
-        return wallet to url
+        return Triple(wallet, url, mockEngine)
     }
 
     private fun setupWallet(mockEngine: HttpClientEngine): OpenId4VpWallet = OpenId4VpWallet(
-        openUrlExternally = { HttpClient(mockEngine).get(it) },
         engine = mockEngine,
         cryptoService = cryptoService,
         holderAgent = holderAgent,

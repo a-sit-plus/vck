@@ -35,7 +35,6 @@ import io.ktor.client.statement.readRawBytes
 import io.ktor.http.*
 import io.ktor.http.content.OutgoingContent
 import io.ktor.serialization.kotlinx.json.json
-import io.ktor.utils.io.charsets.Charsets
 import io.ktor.utils.io.core.toByteArray
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -50,21 +49,18 @@ import kotlinx.serialization.Serializable
  * [OpenID for Verifiable Presentations - draft 21](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html)
  */
 class OpenId4VpWallet(
-    /**
-     * Used to display the success page to the user
-     */
-    private val openUrlExternally: suspend (String) -> Unit,
-    /**
-     * ktor engine to use to make requests to issuing service
-     */
+    @Deprecated("Replaced with methods that return URL directly")
+    private val openUrlExternally: suspend (String) -> Unit = {},
+    /** ktor engine to make requests to the verifier. */
     engine: HttpClientEngine,
-    /**
-     * Additional configuration for building the HTTP client, e.g. callers may enable logging
-     */
+    /** Additional configuration for building the HTTP client, e.g. callers may enable logging. */
     httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
     cryptoService: CryptoService,
     holderAgent: HolderAgent,
 ) {
+
+    data class AuthenticationSuccess(val redirectUri: String? = null)
+
     private val client: HttpClient = HttpClient(engine) {
         followRedirects = false
         install(ContentNegotiation) {
@@ -119,6 +115,7 @@ class OpenId4VpWallet(
      * and optionally [openUrlExternally] with the `redirect_uri` of that POST.
      * In case the result shall be sent as a redirect to the verifier, we call [openUrlExternally].
      */
+    @Deprecated("Use startPresentationReturningUrl instead")
     suspend fun startPresentation(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         isCrossDeviceFlow: Boolean = false,
@@ -127,6 +124,24 @@ class OpenId4VpWallet(
         openId4VpHolder.createAuthnResponse(request).getOrThrow().let {
             when (it) {
                 is AuthenticationResponseResult.Post -> postResponse(it, isCrossDeviceFlow)
+                is AuthenticationResponseResult.Redirect -> redirectResponse(it, isCrossDeviceFlow)
+            }
+        }
+    }
+
+    /**
+     * Calls [openId4VpHolder] to finalize the authentication response.
+     * In case the result shall be POSTed to the verifier, we call [client] to do that,
+     * and return the `redirect_uri` of that POST (which the Wallet may open in a browser).
+     * In case the result shall be sent as a redirect to the verifier, we return that URL.
+     */
+    suspend fun startPresentationReturningUrl(
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
+    ): KmmResult<AuthenticationSuccess> = catching {
+        Napier.i("startPresentation: $request")
+        openId4VpHolder.createAuthnResponse(request).getOrThrow().let {
+            when (it) {
+                is AuthenticationResponseResult.Post -> postResponse(it)
                 is AuthenticationResponseResult.Redirect -> redirectResponse(it)
             }
         }
@@ -138,6 +153,7 @@ class OpenId4VpWallet(
      * and optionally [openUrlExternally] with the `redirect_uri` of that POST.
      * In case the result shall be sent as a redirect to the verifier, we call [openUrlExternally].
      */
+    @Deprecated("Use finalizeAuthorizationResponseReturningUrl instead")
     suspend fun finalizeAuthorizationResponse(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         clientMetadata: RelyingPartyMetadata?,
@@ -152,12 +168,36 @@ class OpenId4VpWallet(
         ).getOrThrow().let {
             when (it) {
                 is AuthenticationResponseResult.Post -> postResponse(it, isCrossDeviceFlow)
+                is AuthenticationResponseResult.Redirect -> redirectResponse(it, isCrossDeviceFlow)
+            }
+        }
+    }
+
+    /**
+     * Calls [openId4VpHolder] to finalize the authentication response.
+     * In case the result shall be POSTed to the verifier, we call [client] to do that,
+     * and return the `redirect_uri` of that POST (which the Wallet may open in a browser).
+     * In case the result shall be sent as a redirect to the verifier, we return that URL.
+     */
+    suspend fun finalizeAuthorizationResponseReturningUrl(
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        clientMetadata: RelyingPartyMetadata?,
+        credentialPresentation: CredentialPresentation,
+    ): KmmResult<AuthenticationSuccess> = catching {
+        Napier.i("startPresentation: $request")
+        openId4VpHolder.finalizeAuthorizationResponse(
+            request = request,
+            clientMetadata = clientMetadata,
+            credentialPresentation = credentialPresentation
+        ).getOrThrow().let {
+            when (it) {
+                is AuthenticationResponseResult.Post -> postResponse(it)
                 is AuthenticationResponseResult.Redirect -> redirectResponse(it)
             }
         }
     }
 
-    private suspend fun postResponse(it: AuthenticationResponseResult.Post, isCrossDeviceFlow: Boolean) {
+    private suspend fun postResponse(it: AuthenticationResponseResult.Post, isCrossDeviceFlow: Boolean) = run {
         Napier.i("postResponse: $it")
         handlePostResponse(
             client.request {
@@ -171,20 +211,6 @@ class OpenId4VpWallet(
         )
     }
 
-    /**
-     * Our implementation of ktor's [FormDataContent], but with [contentType] without charset appended,
-     * so that some strict mDoc verifiers accept our authn response
-     */
-    class FormDataContentPlain(
-        formData: Parameters
-    ) : OutgoingContent.ByteArrayContent() {
-        private val content = formData.formUrlEncode().toByteArray()
-        override val contentLength: Long = content.size.toLong()
-        override val contentType: ContentType = ContentType.Application.FormUrlEncoded
-        override fun bytes(): ByteArray = content
-    }
-
-
     @Throws(Exception::class)
     private suspend fun handlePostResponse(response: HttpResponse, isCrossDeviceFlow: Boolean) {
         Napier.i("handlePostResponse: response $response")
@@ -194,10 +220,51 @@ class OpenId4VpWallet(
         }
     }
 
-    private suspend fun redirectResponse(it: AuthenticationResponseResult.Redirect) {
+    private suspend fun redirectResponse(it: AuthenticationResponseResult.Redirect, isCrossDeviceFlow: Boolean) {
         Napier.i("redirectResponse: ${it.url}")
         openUrlExternally.invoke(it.url)
     }
+
+    private suspend fun postResponse(it: AuthenticationResponseResult.Post) = run {
+        Napier.i("postResponse: $it")
+        handlePostResponse(
+            client.request {
+                url(it.url)
+                method = HttpMethod.Post
+                setBody(FormDataContentPlain(parameters {
+                    it.params.forEach { append(it.key, it.value) }
+                }))
+            }
+        )
+    }
+
+    @Throws(Exception::class)
+    private suspend fun handlePostResponse(response: HttpResponse) = run {
+        Napier.i("handlePostResponse: response $response")
+        when (response.status.value) {
+            in 200..399 -> AuthenticationSuccess(response.extractRedirectUri())
+            else -> throw Exception("${response.status}: ${response.readRawBytes().decodeToString()}")
+        }
+    }
+
+    private fun redirectResponse(it: AuthenticationResponseResult.Redirect) = run {
+        Napier.i("redirectResponse: ${it.url}")
+        AuthenticationSuccess(it.url)
+    }
+
+    /**
+     * Our implementation of ktor's [FormDataContent], but with [contentType] without charset appended,
+     * so that some strict mDoc verifiers accept our authn response
+     */
+    class FormDataContentPlain(
+        formData: Parameters,
+    ) : OutgoingContent.ByteArrayContent() {
+        private val content = formData.formUrlEncode().toByteArray()
+        override val contentLength: Long = content.size.toLong()
+        override val contentType: ContentType = ContentType.Application.FormUrlEncoded
+        override fun bytes(): ByteArray = content
+    }
+
 }
 
 @Serializable

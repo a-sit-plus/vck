@@ -4,6 +4,10 @@ Release 5.5.3:
  - Fix DCQL Query serialization/deserialization in `AuthenticationRequestParameters`
  - Status List:
    - Set correct JWT type for JWT header: `statuslist+jwt`
+ - OpenID for Verifiable Presentations:
+   - In `OpenId4VpWallet` deprecate `openUrlExternally`, and instead return the redirected URL from the verifier
+ - ISO proximity presentations:
+   - Fix session transcript for QR and NFC handover
 
 Release 5.5.2:
  - OpenID for Verifiable Presentations:
