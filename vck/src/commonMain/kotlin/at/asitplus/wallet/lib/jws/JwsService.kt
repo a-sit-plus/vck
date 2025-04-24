@@ -8,23 +8,18 @@ import at.asitplus.signum.indispensable.KeyAgreementPrivateValue
 import at.asitplus.signum.indispensable.asn1.encoding.encodeTo4Bytes
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.*
-import at.asitplus.signum.indispensable.josef.JweEncryption.*
 import at.asitplus.signum.indispensable.josef.JwsExtensions.prependWith4BytesSize
 import at.asitplus.signum.indispensable.josef.JwsSigned.Companion.prepareJwsSignatureInput
-import at.asitplus.signum.supreme.SecretExposure
 import at.asitplus.signum.indispensable.symmetric.*
 import at.asitplus.signum.supreme.agree.Ephemeral
 import at.asitplus.signum.supreme.agree.keyAgreement
 import at.asitplus.signum.supreme.asKmmResult
 import at.asitplus.signum.supreme.hash.digest
 import at.asitplus.signum.supreme.sign.Signer
+import at.asitplus.signum.supreme.symmetric.decrypt
 import at.asitplus.signum.supreme.symmetric.encrypt
-import at.asitplus.signum.supreme.symmetric.keyFrom
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.jws.JweUtils.compositeKey
-import at.asitplus.wallet.lib.jws.JweUtils.concatKdf
-import at.asitplus.wallet.lib.jws.JweUtils.hmacInput
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
 import kotlinx.serialization.SerializationStrategy
@@ -118,28 +113,16 @@ object EncryptJwe {
             require(cryptoPublicKey is CryptoPublicKey.EC)
             val crv = recipientKey.curve
                 ?: throw IllegalArgumentException("No curve in recipient key")
-            val ephemeralKeyPair =  KeyAgreementPrivateValue.ECDH.Ephemeral(crv).getOrThrow()
+            val ephemeralKeyPair = KeyAgreementPrivateValue.ECDH.Ephemeral(crv).getOrThrow()
+            val enc = header.encryption
+            require(enc != null)
 
-            val z = ephemeralKeyPair.keyAgreement(cryptoPublicKey).getOrThrow()
-            val intermediateKey = concatKdf(
-                z,
-                jweEncryption,
-                jweHeader.agreementPartyUInfo,
-                jweHeader.agreementPartyVInfo,
+            val jweHeader = header.copy(
+                jsonWebKey = keyMaterial.jsonWebKey,
+                ephemeralKeyPair = ephemeralKeyPair.publicValue.asCryptoPublicKey().toJsonWebKey()
             )
 
-            val algorithm = jweEncryption.algorithm
-            require(algorithm.requiresNonce())
-            require(algorithm.isAuthenticated())
-            val key = algorithm.keyFromIntermediate(intermediateKey)
-
-            val headerSerialized = jweHeader.serialize()
-            val aad = headerSerialized.encodeToByteArray()
-            val aadForCipher = aad.encodeToByteArray(Base64UrlStrict)
-            val bytes = vckJsonSerializer.encodeToString(serializer, payload).encodeToByteArray()
-            val sealedBox = key.encrypt(bytes, authenticatedData = aadForCipher).getOrThrow()
-
-            JweEncrypted(jweHeader, aad, null, sealedBox.nonce, sealedBox.encryptedData, sealedBox.authTag)
+            JweUtils.encryptJwe(ephemeralKeyPair, recipientKey, enc, jweHeader, payload)
         }
     }
 }
@@ -156,20 +139,56 @@ object JweUtils {
         jweEncryption: JweEncryption,
         apu: ByteArray?,
         apv: ByteArray?,
-        encryptionKeyLengthBits: Int,
     ): ByteArray {
         val digest = Digest.SHA256
-        val repetitions = (encryptionKeyLengthBits.toUInt() + digest.outputLength.bits - 1U) / digest.outputLength.bits
-        val algId = jweEncryption.text.encodeToByteArray().prependWith4BytesSize()
+        val repetitions =
+            (jweEncryption.combinedEncryptionKeyLength.bits + digest.outputLength.bits - 1U) / digest.outputLength.bits
+        val algId = jweEncryption.identifier.encodeToByteArray().prependWith4BytesSize()
         val apuEncoded = apu?.prependWith4BytesSize() ?: 0.encodeTo4Bytes()
         val apvEncoded = apv?.prependWith4BytesSize() ?: 0.encodeTo4Bytes()
-        val keyLength = jweEncryption.encryptionKeyLength.encodeTo4Bytes()
+        val keyLength = jweEncryption.combinedEncryptionKeyLength.bits.toInt().encodeTo4Bytes()
         val otherInfo = algId + apuEncoded + apvEncoded + keyLength + byteArrayOf()
         val output = (1..repetitions.toInt()).fold(byteArrayOf()) { acc, step ->
-            acc + digest.digest(sequenceOf(step.encodeTo4Bytes() + z + otherInfo))
+            acc + digest.digest(step.encodeTo4Bytes() + z + otherInfo)
         }
-        return output.take(encryptionKeyLengthBits / 8).toByteArray()
+        return output.take(jweEncryption.combinedEncryptionKeyLength.bytes.toInt()).toByteArray()
     }
+
+
+    internal suspend fun encryptJwe(
+        ephemeralKeyPair: KeyAgreementPrivateValue.ECDH,
+        recipientKey: JsonWebKey,
+        jweEncryption: JweEncryption,
+        jweHeader: JweHeader,
+        payload: String,
+    ): JweEncrypted {
+
+        val cryptoPublicKey = recipientKey.toCryptoPublicKey().getOrThrow()
+        require(cryptoPublicKey is CryptoPublicKey.EC)
+
+
+        val z = ephemeralKeyPair.keyAgreement(cryptoPublicKey).getOrThrow()
+        val intermediateKey = concatKdf(
+            z,
+            jweEncryption,
+            jweHeader.agreementPartyUInfo,
+            jweHeader.agreementPartyVInfo,
+        )
+
+        val algorithm = jweEncryption.algorithm
+        require(algorithm.requiresNonce())
+        require(algorithm.isAuthenticated())
+        val key = algorithm.keyFromIntermediate(intermediateKey)
+
+        val headerSerialized = jweHeader.serialize()
+        val aad = headerSerialized.encodeToByteArray()
+        val aadForCipher = aad.encodeToByteArray(Base64UrlStrict)
+        val bytes = payload.encodeToByteArray()
+        val sealedBox =key.encrypt(data= bytes, authenticatedData = aadForCipher).getOrThrow()
+
+        return JweEncrypted(jweHeader, aad, null, sealedBox.nonce, sealedBox.encryptedData, sealedBox.authTag)
+    }
+
 }
 
 /** Decrypt a [JweEncrypted] object*/
@@ -189,34 +208,30 @@ object DecryptJwe {
                 ?: throw IllegalArgumentException("No encryption in JWE header")
             val epk = header.ephemeralKeyPair
                 ?: throw IllegalArgumentException("No epk in JWE header")
-            val z = performKeyAgreement(keyMaterial, epk).getOrThrow()
-            val intermediateKey = concatKdf(
+            val z = (keyMaterial.getUnderLyingSigner() as Signer.ECDSA).keyAgreement(epk.toCryptoPublicKey().getOrThrow() as CryptoPublicKey.EC).getOrThrow()
+            val intermediateKey = JweUtils.concatKdf(
                 z,
                 enc,
                 header.agreementPartyUInfo,
-                header.agreementPartyVInfo,
-                enc.encryptionKeyLength
+                header.agreementPartyVInfo
             )
-            val key = enc.symmetricKeyFromJsonWebKeyBytes(intermediateKey)
+            require(alg == JweAlgorithm.ECDH_ES)
+            val algorithm = enc.algorithm
+            require(algorithm.requiresNonce())
+            require(algorithm.isAuthenticated())
+            val key = algorithm.keyFromIntermediate(intermediateKey)
             val iv = jweObject.iv
             val aad = jweObject.headerAsParsed.encodeToByteArray(Base64UrlStrict)
             val ciphertext = jweObject.ciphertext
             val authTag = jweObject.authTag
-            val plaintext = platformCryptoShim.decrypt(key.aesKey, iv, aad, ciphertext, authTag, enc).getOrThrow()
+            val plaintext =  key.decrypt(iv, ciphertext, authTag, aad).getOrThrow()
             val plainObject = plaintext.decodeToString()
-            key.hmacKey?.let { hmacKey ->
-                val expectedAuthTag = platformCryptoShim.hmac(hmacKey, enc, hmacInput(aad, iv, ciphertext))
-                    .getOrThrow()
-                    .take(enc.macLength!!).toByteArray()
-                if (!expectedAuthTag.contentEquals(authTag)) {
-                    throw IllegalArgumentException("Authtag mismatch")
-                }
-            }
+
             JweDecrypted(header, plainObject)
         }
     }
 
-    private suspend fun performKeyAgreement(
+    internal suspend fun performKeyAgreement(
         keyMaterial: KeyMaterial,
         ephemeralKey: JsonWebKey,
     ): KmmResult<ByteArray> = catching {
@@ -372,4 +387,20 @@ object VerifyJwsObject {
             (keys.firstOrNull { it.keyId == keyId } ?: keys.singleOrNull())
         }?.toCryptoPublicKey()?.getOrNull()
 
+}
+
+/**
+ * Derives the key, for use in content encryption in JWE,
+ * per [RFC 7518](https://datatracker.ietf.org/doc/html/rfc7518#section-5.2.2.1)
+ */
+private inline fun SymmetricEncryptionAlgorithm<AuthCapability.Authenticated<*>, NonceTrait.Required, *>.keyFromIntermediate(
+    jweKeyBytes: ByteArray
+): SymmetricKey<AuthCapability.Authenticated<*>, NonceTrait.Required, *> {
+    return ((if (hasDedicatedMac())
+        keyFrom(
+            jweKeyBytes.drop(jweKeyBytes.size / 2).toByteArray(),
+            jweKeyBytes.take(jweKeyBytes.size / 2).toByteArray()
+        ).getOrThrow()
+    else
+        keyFrom(jweKeyBytes).getOrThrow()) as SymmetricKey<AuthCapability.Authenticated<*>, NonceTrait.Required, *>)
 }

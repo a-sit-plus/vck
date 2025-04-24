@@ -95,18 +95,6 @@ interface EphemeralKeyHolder {
     val key: EphemeralKey
 }
 
-open class DefaultEphemeralKeyHolder(val crv: ECCurve) : EphemeralKeyHolder {
-    override val key: EphemeralKey = EphemeralKey {
-        ec {
-            curve = crv
-            digests = setOf(crv.nativeDigest)
-        }
-    }.getOrThrow()
-
-    override val publicJsonWebKey: JsonWebKey?
-        get() = key.publicKey.toJsonWebKey()
-
-}
 
 abstract class SignerBasedKeyMaterial(
     val signer: Signer,

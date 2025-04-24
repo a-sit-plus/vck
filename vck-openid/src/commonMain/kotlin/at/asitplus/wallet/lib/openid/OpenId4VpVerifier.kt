@@ -80,7 +80,7 @@ open class OpenId4VpVerifier(
     val jarMetadata: JwtVcIssuerMetadata by lazy {
         JwtVcIssuerMetadata(
             issuer = clientIdScheme.issuerUri ?: clientIdScheme.clientId,
-            jsonWebKeySet = JsonWebKeySet(setOf(jwsService.keyMaterial.jsonWebKey))
+            jsonWebKeySet = JsonWebKeySet(setOf(keyMaterial.jsonWebKey))
         )
     }
 

@@ -44,7 +44,7 @@ class CoseServiceTest : FreeSpec({
         val parameterSerializer = ByteArraySerializer()
         val payloadToUse = "This is the content: ".encodeToByteArray() + randomPayload
         val signed = signCose(
-            CoseHeader(algorithm = CoseAlgorithm.ES256),
+            CoseHeader(algorithm = CoseAlgorithm.Signature.ES256),
             null,
             payloadToUse,
             parameterSerializer
@@ -66,7 +66,7 @@ class CoseServiceTest : FreeSpec({
         val parameterSerializer = ByteArraySerializer()
         val signed = signCose(
             null,
-            CoseHeader(algorithm = CoseAlgorithm.ES256),
+            CoseHeader(algorithm = CoseAlgorithm.Signature.ES256),
             randomPayload,
             parameterSerializer,
         ).getOrThrow()
@@ -100,7 +100,7 @@ class CoseServiceTest : FreeSpec({
             validityInfo = ValidityInfo(Clock.System.now(), Clock.System.now(), Clock.System.now())
         )
         val signed = signCoseMso(
-            CoseHeader(algorithm = CoseAlgorithm.ES256),
+            CoseHeader(algorithm = CoseAlgorithm.Signature.ES256),
             null,
             mso,
             parameterSerializer

@@ -54,7 +54,7 @@ class OpenId4VpHolder(
     private val signIdToken: SignJwtFun<IdToken> = SignJwt(keyMaterial, JwsHeaderJwk()),
     private val signJarm: SignJwtFun<AuthenticationResponseParameters> = SignJwt(keyMaterial, JwsHeaderJwk()),
     private val encryptJarm: EncryptJweFun = EncryptJwe(keyMaterial),
-    private val supportedAlgorithms: Set<JwsAlgorithm> = setOfNotNull(JwsAlgorithm.ES256),
+    private val supportedAlgorithms: Set<JwsAlgorithm> = setOfNotNull(JwsAlgorithm.Signature.ES256),
     private val signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> =
         SignCoseDetached(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
     private val signDeviceAuthFallback: SignCoseFun<ByteArray> = SignCose(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),

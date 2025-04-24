@@ -20,31 +20,6 @@ import at.asitplus.signum.supreme.sign.verifierFor
 import at.asitplus.signum.supreme.symmetric.decrypt
 import at.asitplus.signum.supreme.symmetric.encrypt
 
-interface CryptoService {
-
-    suspend fun sign(input: ByteArray): SignatureResult<CryptoSignature.RawByteEncodable>
-
-    suspend fun performKeyAgreement(ephemeralKey: KeyAgreementPublicValue.ECDH): KmmResult<ByteArray>
-
-    val keyMaterial: KeyMaterial
-
-
-    suspend fun decrypt(
-        key: SymmetricKey<AuthCapability.Authenticated<*>, NonceTrait.Required, *>,
-        iv: ByteArray,
-        aad: ByteArray,
-        encryptedData: ByteArray,
-        authTag: ByteArray
-    ): KmmResult<ByteArray>
-
-    suspend fun encrypt(
-        key: SymmetricKey<AuthCapability.Authenticated<*>, NonceTrait.Required, *>,
-        plaintext: ByteArray,
-        aad: ByteArray
-    ): KmmResult<SealedBox<AuthCapability.Authenticated<*>, NonceTrait.Required, *>>
-
-}
-
 typealias VerifySignatureFun = (
     input: ByteArray,
     signature: CryptoSignature,
@@ -57,63 +32,5 @@ object VerifySignature {
         algorithm.verifierFor(publicKey).transform {
             it.verify(SignatureInput(input), signature)
         }
-    }
-}
-
-@Deprecated("Use VerifySignatureFun instead")
-interface VerifierCryptoService {
-
-    /**
-     * List of algorithms, for which signatures can be verified in [verify].
-     */
-    val supportedAlgorithms: List<SignatureAlgorithm>
-
-    fun verify(
-        input: ByteArray,
-        signature: CryptoSignature,
-        algorithm: SignatureAlgorithm,
-        publicKey: CryptoPublicKey,
-    ): KmmResult<Verifier.Success>
-}
-
-
-open class DefaultCryptoService(
-    override val keyMaterial: KeyMaterial
-) : CryptoService {
-
-
-    override suspend fun decrypt(
-        key: SymmetricKey<AuthCapability.Authenticated<*>, NonceTrait.Required, *>,
-        iv: ByteArray,
-        aad: ByteArray,
-        encryptedData: ByteArray,
-        authTag: ByteArray
-    ) = catching { key.decrypt(iv, encryptedData, authTag, aad).getOrThrow() }
-
-    override suspend fun encrypt(
-        key: SymmetricKey<AuthCapability.Authenticated<*>, NonceTrait.Required, *>,
-        plaintext: ByteArray,
-        aad: ByteArray
-    ) = key.encrypt(plaintext, authenticatedData = aad)
-
-
-    override suspend fun sign(input: ByteArray) = keyMaterial.sign(input)
-
-    override suspend fun performKeyAgreement(ephemeralKey: KeyAgreementPublicValue.ECDH) =
-        (keyMaterial.getUnderLyingSigner() as Signer.ECDSA).keyAgreement(ephemeralKey)
-
-}
-
-open class DefaultVerifierCryptoService : VerifierCryptoService {
-    override val supportedAlgorithms: List<SignatureAlgorithm> =
-        listOf(SignatureAlgorithm.ECDSAwithSHA256)
-
-    override fun verify(
-        input: ByteArray,
-        signature: CryptoSignature,
-        algorithm: SignatureAlgorithm,
-        publicKey: CryptoPublicKey
-    ): KmmResult<Verifier.Success> = algorithm.verifierFor(publicKey).transform {
-        it.verify(SignatureInput(input), signature)
     }
 }

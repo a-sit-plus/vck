@@ -7,6 +7,7 @@ Release 5.7.0:
    - Remove code elements deprecated in `5.6.0`
  - Holder:
    - Replace `keyPair` with `keyMaterial`
+ - Fully integrated crypto functionality based on Signum 3.16.1
 
 Release 5.6.1:
  - Expose details for `ConstraintFieldsEvaluationException`
