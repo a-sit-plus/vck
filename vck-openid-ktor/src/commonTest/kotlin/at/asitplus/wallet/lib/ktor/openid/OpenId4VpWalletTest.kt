@@ -64,7 +64,7 @@ class OpenId4VpWalletTest : FunSpec() {
 
                 val requestParametersFrom = wallet.parseAuthenticationRequestParameters(url).getOrThrow()
                 // sends the response to the mock RP, which calls verifyReceivedAttributes, which unlocks the latch
-                wallet.startPresentation(requestParametersFrom).also {
+                wallet.startPresentationReturningUrl(requestParametersFrom).also {
                     it.isSuccess shouldBe true
                     it.getOrThrow().redirectUri?.let { HttpClient(mockEngine).get(it) }
                 }
@@ -88,7 +88,7 @@ class OpenId4VpWalletTest : FunSpec() {
 
                 val requestParametersFrom = wallet.parseAuthenticationRequestParameters(url).getOrThrow()
                 // sends the response to the mock RP, which calls verifyReceivedAttributes, which unlocks the latch
-                wallet.startPresentation(requestParametersFrom).also {
+                wallet.startPresentationReturningUrl(requestParametersFrom).also {
                     it.isSuccess shouldBe true
                     it.getOrThrow().redirectUri?.let { HttpClient(mockEngine).get(it) }
                 }

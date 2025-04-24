@@ -7,10 +7,8 @@ import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.AuthorizationResponsePreparationState
@@ -111,7 +109,7 @@ class OpenId4VpWallet(
      * and return the `redirect_uri` of that POST (which the Wallet may open in a browser).
      * In case the result shall be sent as a redirect to the verifier, we return that URL.
      */
-    suspend fun startPresentation(
+    suspend fun startPresentationReturningUrl(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<AuthenticationSuccess> = catching {
         Napier.i("startPresentation: $request")
@@ -129,7 +127,7 @@ class OpenId4VpWallet(
      * and return the `redirect_uri` of that POST (which the Wallet may open in a browser).
      * In case the result shall be sent as a redirect to the verifier, we return that URL.
      */
-    suspend fun finalizeAuthorizationResponse(
+    suspend fun finalizeAuthorizationResponseReturningUrl(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         clientMetadata: RelyingPartyMetadata?,
         credentialPresentation: CredentialPresentation,
@@ -146,6 +144,7 @@ class OpenId4VpWallet(
             }
         }
     }
+
 
     private suspend fun postResponse(it: AuthenticationResponseResult.Post) = run {
         Napier.i("postResponse: $it")
@@ -165,7 +164,7 @@ class OpenId4VpWallet(
      * so that some strict mDoc verifiers accept our authn response
      */
     class FormDataContentPlain(
-        formData: Parameters
+        formData: Parameters,
     ) : OutgoingContent.ByteArrayContent() {
         private val content = formData.formUrlEncode().toByteArray()
         override val contentLength: Long = content.size.toLong()
