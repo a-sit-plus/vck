@@ -35,7 +35,6 @@ import io.ktor.client.statement.readRawBytes
 import io.ktor.http.*
 import io.ktor.http.content.OutgoingContent
 import io.ktor.serialization.kotlinx.json.json
-import io.ktor.utils.io.charsets.Charsets
 import io.ktor.utils.io.core.toByteArray
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -50,21 +49,16 @@ import kotlinx.serialization.Serializable
  * [OpenID for Verifiable Presentations - draft 21](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html)
  */
 class OpenId4VpWallet(
-    /**
-     * Used to display the success page to the user
-     */
-    private val openUrlExternally: suspend (String) -> Unit,
-    /**
-     * ktor engine to use to make requests to issuing service
-     */
+    /** ktor engine to make requests to the verifier. */
     engine: HttpClientEngine,
-    /**
-     * Additional configuration for building the HTTP client, e.g. callers may enable logging
-     */
+    /** Additional configuration for building the HTTP client, e.g. callers may enable logging. */
     httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
     cryptoService: CryptoService,
     holderAgent: HolderAgent,
 ) {
+
+    data class AuthenticationSuccess(val redirectUri: String? = null)
+
     private val client: HttpClient = HttpClient(engine) {
         followRedirects = false
         install(ContentNegotiation) {
@@ -114,19 +108,18 @@ class OpenId4VpWallet(
         openId4VpHolder.startAuthorizationResponsePreparation(input)
 
     /**
-     * Calls [openId4VpHolder] to create the authentication response.
+     * Calls [openId4VpHolder] to finalize the authentication response.
      * In case the result shall be POSTed to the verifier, we call [client] to do that,
-     * and optionally [openUrlExternally] with the `redirect_uri` of that POST.
-     * In case the result shall be sent as a redirect to the verifier, we call [openUrlExternally].
+     * and return the `redirect_uri` of that POST (which the Wallet may open in a browser).
+     * In case the result shall be sent as a redirect to the verifier, we return that URL.
      */
     suspend fun startPresentation(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
-        isCrossDeviceFlow: Boolean = false,
-    ): KmmResult<Unit> = catching {
+    ): KmmResult<AuthenticationSuccess> = catching {
         Napier.i("startPresentation: $request")
         openId4VpHolder.createAuthnResponse(request).getOrThrow().let {
             when (it) {
-                is AuthenticationResponseResult.Post -> postResponse(it, isCrossDeviceFlow)
+                is AuthenticationResponseResult.Post -> postResponse(it)
                 is AuthenticationResponseResult.Redirect -> redirectResponse(it)
             }
         }
@@ -135,15 +128,14 @@ class OpenId4VpWallet(
     /**
      * Calls [openId4VpHolder] to finalize the authentication response.
      * In case the result shall be POSTed to the verifier, we call [client] to do that,
-     * and optionally [openUrlExternally] with the `redirect_uri` of that POST.
-     * In case the result shall be sent as a redirect to the verifier, we call [openUrlExternally].
+     * and return the `redirect_uri` of that POST (which the Wallet may open in a browser).
+     * In case the result shall be sent as a redirect to the verifier, we return that URL.
      */
     suspend fun finalizeAuthorizationResponse(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         clientMetadata: RelyingPartyMetadata?,
         credentialPresentation: CredentialPresentation,
-        isCrossDeviceFlow: Boolean = false,
-    ): KmmResult<Unit> = catching {
+    ): KmmResult<AuthenticationSuccess> = catching {
         Napier.i("startPresentation: $request")
         openId4VpHolder.finalizeAuthorizationResponse(
             request = request,
@@ -151,13 +143,13 @@ class OpenId4VpWallet(
             credentialPresentation = credentialPresentation
         ).getOrThrow().let {
             when (it) {
-                is AuthenticationResponseResult.Post -> postResponse(it, isCrossDeviceFlow)
+                is AuthenticationResponseResult.Post -> postResponse(it)
                 is AuthenticationResponseResult.Redirect -> redirectResponse(it)
             }
         }
     }
 
-    private suspend fun postResponse(it: AuthenticationResponseResult.Post, isCrossDeviceFlow: Boolean) {
+    private suspend fun postResponse(it: AuthenticationResponseResult.Post) = run {
         Napier.i("postResponse: $it")
         handlePostResponse(
             client.request {
@@ -166,8 +158,7 @@ class OpenId4VpWallet(
                 setBody(FormDataContentPlain(parameters {
                     it.params.forEach { append(it.key, it.value) }
                 }))
-            },
-            isCrossDeviceFlow
+            }
         )
     }
 
@@ -186,17 +177,17 @@ class OpenId4VpWallet(
 
 
     @Throws(Exception::class)
-    private suspend fun handlePostResponse(response: HttpResponse, isCrossDeviceFlow: Boolean) {
+    private suspend fun handlePostResponse(response: HttpResponse) = run {
         Napier.i("handlePostResponse: response $response")
         when (response.status.value) {
-            in 200..399 -> response.extractRedirectUri()?.let { if (!isCrossDeviceFlow) openUrlExternally.invoke(it) }
+            in 200..399 -> AuthenticationSuccess(response.extractRedirectUri())
             else -> throw Exception("${response.status}: ${response.readRawBytes().decodeToString()}")
         }
     }
 
-    private suspend fun redirectResponse(it: AuthenticationResponseResult.Redirect) {
+    private fun redirectResponse(it: AuthenticationResponseResult.Redirect) = run {
         Napier.i("redirectResponse: ${it.url}")
-        openUrlExternally.invoke(it.url)
+        AuthenticationSuccess(it.url)
     }
 }
 
