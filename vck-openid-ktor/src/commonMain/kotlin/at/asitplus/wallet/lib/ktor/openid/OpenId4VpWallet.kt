@@ -72,7 +72,6 @@ class OpenId4VpWallet(
     val openId4VpHolder = OpenId4VpHolder(
         holder = holderAgent,
         keyMaterial = cryptoService.keyMaterial,
-        coseService = DefaultCoseService(cryptoService),
         remoteResourceRetriever = { data ->
             withContext(Dispatchers.IO) {
                 if (data.method == HttpMethod.Post) {

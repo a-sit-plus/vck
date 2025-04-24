@@ -55,8 +55,8 @@ class AgentSdJwtTest : FreeSpec({
         holderCredentialStore = InMemorySubjectCredentialStore()
         issuer = IssuerAgent(
             EphemeralKeyWithoutCert(),
-            issuerCredentialStore,
             validator = validator,
+            issuerCredentialStore = issuerCredentialStore,
         )
         holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
         holder = HolderAgent(

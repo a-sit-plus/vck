@@ -45,8 +45,8 @@ class ValidatorMdocTest : FreeSpec() {
             issuerKeyMaterial = EphemeralKeyWithSelfSignedCert()
             issuer = IssuerAgent(
                 issuerKeyMaterial,
-                issuerCredentialStore,
                 validator = validator,
+                issuerCredentialStore = issuerCredentialStore,
             )
             verifierKeyMaterial = EphemeralKeyWithoutCert()
         }

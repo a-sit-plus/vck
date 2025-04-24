@@ -25,7 +25,7 @@ class StoreEntrySerializationTest : FreeSpec({
     beforeEach {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         holderCredentialStore = InMemorySubjectCredentialStore()
-        issuer = IssuerAgent(EphemeralKeyWithSelfSignedCert(), issuerCredentialStore)
+        issuer = IssuerAgent(EphemeralKeyWithSelfSignedCert(), issuerCredentialStore = issuerCredentialStore)
         holderKeyMaterial = EphemeralKeyWithoutCert()
         holder = HolderAgent(holderKeyMaterial, holderCredentialStore)
     }

@@ -56,8 +56,8 @@ class AgentTest : FreeSpec({
 
         issuer = IssuerAgent(
             EphemeralKeyWithoutCert(),
-            issuerCredentialStore,
             validator = validator,
+            issuerCredentialStore = issuerCredentialStore,
         )
 
         holderKeyMaterial = EphemeralKeyWithoutCert()

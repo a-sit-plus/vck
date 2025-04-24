@@ -12,8 +12,13 @@ import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
+import at.asitplus.wallet.lib.cbor.CoseHeaderCertificate
+import at.asitplus.wallet.lib.cbor.CoseHeaderKeyId
+import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
+import at.asitplus.wallet.lib.cbor.SignCose
+import at.asitplus.wallet.lib.cbor.SignCoseFun
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.*
@@ -47,17 +52,18 @@ import kotlin.time.Duration.Companion.hours
  */
 
 class IssuerAgent(
-    private val validator: Validator,
+    override val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+    private val validator: Validator = Validator(),
     private val issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
     private val statusListBaseUrl: String = "https://wallet.a-sit.at/backend/credentials/status",
     private val statusListAggregationUrl: String? = null,
     private val zlibService: ZlibService = DefaultZlibService(),
     private val revocationListLifetime: Duration = 48.hours,
     @Deprecated("Use signIssuedSdJwt, signIssuedVc, signStatusListJwt instead")
-    private val jwsService: JwsService,
-    private val coseService: CoseService,
+    private val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
+    @Deprecated("Use signMobileSecurityObject, signStatusListCwt instead")
+    private val coseService: CoseService = DefaultCoseService(DefaultCryptoService(keyMaterial)),
     private val clock: Clock = Clock.System,
-    override val keyMaterial: KeyMaterial,
     override val cryptoAlgorithms: Set<SignatureAlgorithm> = setOf(keyMaterial.signatureAlgorithm),
     private val timePeriodProvider: TimePeriodProvider = FixedTimePeriodProvider,
     /**
@@ -67,22 +73,11 @@ class IssuerAgent(
     private val signIssuedSdJwt: SignJwtFun<JsonObject> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     private val signIssuedVc: SignJwtFun<VerifiableCredentialJws> = SignJwt(keyMaterial, JwsHeaderKeyId()),
     private val signStatusListJwt: SignJwtFun<StatusListTokenPayload> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
+    private val signMobileSecurityObject: SignCoseFun<MobileSecurityObject> =
+        SignCose(keyMaterial, CoseHeaderNone(), CoseHeaderCertificate()),
+    private val signStatusListCwt: SignCoseFun<StatusListTokenPayload> =
+        SignCose(keyMaterial, CoseHeaderKeyId(), CoseHeaderCertificate()),
 ) : Issuer {
-
-    constructor(
-        keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-        issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
-        validator: Validator = Validator(),
-        identifier: String = keyMaterial.identifier,
-    ) : this(
-        validator = validator,
-        issuerCredentialStore = issuerCredentialStore,
-        jwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
-        coseService = DefaultCoseService(DefaultCryptoService(keyMaterial)),
-        keyMaterial = keyMaterial,
-        cryptoAlgorithms = setOf(keyMaterial.signatureAlgorithm),
-        identifier = identifier,
-    )
 
     /**
      * Wraps the credential-to-be-issued in [credential] into a single instance of [CredentialToBeIssued],
@@ -143,11 +138,8 @@ class IssuerAgent(
         )
         val issuerSigned = IssuerSigned.fromIssuerSignedItems(
             namespacedItems = mapOf(credential.scheme.isoNamespace!! to credential.issuerSignedItems),
-            issuerAuth = coseService.createSignedCose(
-                payload = mso,
-                serializer = MobileSecurityObject.serializer(),
-                addKeyId = false,
-                addCertificate = true,
+            issuerAuth = signMobileSecurityObject(
+                null, null, mso, MobileSecurityObject.serializer(),
             ).getOrThrow(),
         )
         return Issuer.IssuedCredential.Iso(issuerSigned, credential.scheme)
@@ -385,14 +377,11 @@ class IssuerAgent(
     }
 
     private suspend fun wrapStatusListTokenInCoseSigned(statusListTokenPayload: StatusListTokenPayload): CoseSigned<StatusListTokenPayload>? =
-        coseService.createSignedCose(
-            protectedHeader = CoseHeader(
-                type = MediaTypes.Application.STATUSLIST_CWT,
-            ),
-            payload = statusListTokenPayload,
-            serializer = StatusListTokenPayload.serializer(),
-            addKeyId = true,
-            addCertificate = true,
+        signStatusListCwt(
+            CoseHeader(type = MediaTypes.Application.STATUSLIST_CWT),
+            null,
+            statusListTokenPayload,
+            StatusListTokenPayload.serializer(),
         ).getOrElse {
             Napier.w("Could not wrapStatusListInJws", it)
             return null

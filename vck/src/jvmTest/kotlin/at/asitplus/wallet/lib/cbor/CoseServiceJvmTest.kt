@@ -5,7 +5,6 @@ import at.asitplus.signum.indispensable.cosef.*
 import at.asitplus.signum.supreme.HazardousMaterials
 import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
 import at.asitplus.signum.supreme.sign.EphemeralKey
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.iso.vckCborSerializer
 import com.authlete.cbor.CBORByteArray
@@ -73,8 +72,7 @@ class CoseServiceJvmTest : FreeSpec({
 
 
             val keyMaterial = EphemeralKeyWithoutCert(ephemeralKey)
-            val cryptoService = DefaultCryptoService(keyMaterial)
-            val coseService = DefaultCoseService(cryptoService)
+            val signCose = SignCose<ByteArray>(keyMaterial)
             val verifierCoseService = VerifyCoseSignatureWithKey<ByteArray>()
             val coseKey = ephemeralKey.publicKey.toCoseKey().getOrThrow()
 
@@ -85,15 +83,13 @@ class CoseServiceJvmTest : FreeSpec({
             "$testIdentifier:" - {
 
                 "Signed object from int. library can be verified with int. library" {
-                    val signed = coseService.createSignedCose(
-                        payload = randomPayload.encodeToByteArray(),
-                        serializer = ByteArraySerializer(),
-                    ).getOrThrow()
+                    val signed = signCose(null, null, randomPayload.encodeToByteArray(), ByteArraySerializer())
+                        .getOrThrow()
 
                     withClue("$sigAlgo: Signature: ${signed.signature.encodeToTlv().toDerHexString()}") {
                         verifierCoseService(
                             signed,
-                            cryptoService.keyMaterial.publicKey.toCoseKey().getOrThrow(),
+                            keyMaterial.publicKey.toCoseKey().getOrThrow(),
                             byteArrayOf(),
                             null
                         ).isSuccess shouldBe true
@@ -128,12 +124,11 @@ class CoseServiceJvmTest : FreeSpec({
                         parsedSig shouldBe extLibSig
                     }
 
-                    val signed = coseService.createSignedCose(
-                        protectedHeader = CoseHeader(algorithm = coseAlgorithm),
-                        payload = randomPayload.encodeToByteArray(),
-                        serializer = ByteArraySerializer(),
-                        addCertificate = false,
-                        addKeyId = false,
+                    val signed = signCose(
+                        CoseHeader(algorithm = coseAlgorithm),
+                        null,
+                        randomPayload.encodeToByteArray(),
+                        ByteArraySerializer(),
                     ).getOrThrow()
                     val signedSerialized = signed.serialize(ByteArraySerializer()).encodeToString(Base16())
                     val extLibSerialized = extLibCoseSign1.encode().encodeToString(Base16())
@@ -145,12 +140,11 @@ class CoseServiceJvmTest : FreeSpec({
                 }
 
                 "Signed object from int. library can be verified with ext. library" {
-                    val coseSigned = coseService.createSignedCose(
-                        protectedHeader = CoseHeader(algorithm = coseAlgorithm),
-                        payload = randomPayload.encodeToByteArray(),
-                        serializer = ByteArraySerializer(),
-                        addCertificate = false,
-                        addKeyId = false,
+                    val coseSigned = signCose(
+                        CoseHeader(algorithm = coseAlgorithm),
+                        null,
+                        randomPayload.encodeToByteArray(),
+                        ByteArraySerializer(),
                     ).getOrThrow()
 
                     val parsed =

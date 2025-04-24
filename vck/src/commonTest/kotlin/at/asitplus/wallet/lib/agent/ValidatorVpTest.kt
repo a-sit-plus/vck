@@ -61,8 +61,8 @@ class ValidatorVpTest : FreeSpec({
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         issuer = IssuerAgent(
             EphemeralKeyWithoutCert(),
-            issuerCredentialStore,
             validator = validator,
+            issuerCredentialStore = issuerCredentialStore,
         )
         holderCredentialStore = InMemorySubjectCredentialStore()
         holderKeyMaterial = EphemeralKeyWithoutCert()

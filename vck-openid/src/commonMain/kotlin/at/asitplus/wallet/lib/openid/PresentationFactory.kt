@@ -18,7 +18,7 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.*
-import at.asitplus.wallet.lib.cbor.CoseService
+import at.asitplus.wallet.lib.cbor.SignCoseFun
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
@@ -43,7 +43,8 @@ import kotlin.time.Duration.Companion.seconds
 
 internal class PresentationFactory(
     private val supportedAlgorithms: Set<JwsAlgorithm>,
-    private val coseService: CoseService,
+    private val signDeviceAuthDetached: SignCoseFun<ByteArray>,
+    private val signDeviceAuthFallback: SignCoseFun<ByteArray>,
     private val signIdToken: SignJwtFun<IdToken>,
 ) {
     suspend fun createPresentation(
@@ -156,21 +157,13 @@ internal class PresentationFactory(
                 .wrapInCborTag(24)
                 .also { Napier.d("Device authentication signature input is ${it.encodeToString(Base16())}") }
 
-            coseService.createSignedCoseWithDetachedPayload(
-                payload = deviceAuthenticationBytes,
-                serializer = ByteArraySerializer(),
-                addKeyId = false
-            ).getOrElse {
+            signDeviceAuthDetached(null, null, deviceAuthenticationBytes, ByteArraySerializer()).getOrElse {
                 Napier.w("Could not create DeviceAuth for presentation", it)
                 throw PresentationException(it)
             }
         }
     } else {
-        coseService.createSignedCose(
-            payload = nonce.encodeToByteArray(),
-            serializer = ByteArraySerializer(),
-            addKeyId = false
-        ).getOrElse {
+        signDeviceAuthFallback(null, null, nonce.encodeToByteArray(), ByteArraySerializer()).getOrElse {
             Napier.w("Could not create DeviceAuth for presentation", it)
             throw PresentationException(it)
         }
