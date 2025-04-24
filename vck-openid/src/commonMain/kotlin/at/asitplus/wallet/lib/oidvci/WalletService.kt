@@ -16,11 +16,8 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.jws.DefaultJwsService
-import at.asitplus.wallet.lib.jws.JwsHeaderIdentifierFun
-import at.asitplus.wallet.lib.jws.JwsHeaderJwk
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.SignJwt
-import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import com.benasher44.uuid.uuid4
@@ -68,9 +65,6 @@ class WalletService(
 ) {
 
     data class KeyAttestationInput(val clientNonce: String?, val supportedAlgorithms: Collection<String>?)
-
-    private val jweDecryptionService: JwsService? =
-        decryptionKeyMaterial?.let { DefaultJwsService(DefaultCryptoService(decryptionKeyMaterial)) }
 
     val oauth2Client: OAuth2Client = OAuth2Client(clientId, redirectUrl)
 
@@ -242,7 +236,7 @@ class WalletService(
         }.toSet()
 
     private fun IssuerMetadata.credentialResponseEncryption(): CredentialResponseEncryption? =
-        if (requestEncryption && decryptionKeyMaterial != null && jweDecryptionService != null && credentialResponseEncryption != null) {
+        if (requestEncryption && decryptionKeyMaterial != null && credentialResponseEncryption != null) {
             CredentialResponseEncryption(
                 jsonWebKey = decryptionKeyMaterial.jsonWebKey,
                 jweAlgorithm = supportedJweAlgorithm,

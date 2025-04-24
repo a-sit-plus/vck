@@ -32,6 +32,7 @@ import kotlin.random.Random
 /**
  * Creates and parses JWS and JWE objects.
  */
+@Deprecated("Replaced with separate functions, e.g. SignJwtFun")
 interface JwsService {
 
     /**
@@ -62,6 +63,7 @@ interface JwsService {
         contentType: String? = null,
     ): KmmResult<JwsSigned<T>>
 
+    @Deprecated("Use SignJwtFun instead")
     suspend fun <T : Any> createSignedJws(
         header: JwsHeader,
         payload: T,
@@ -80,6 +82,7 @@ interface JwsService {
      * @param addJsonWebKey sets [JwsHeader.jsonWebKey] from [KeyMaterial.jsonWebKey]
      * @param addKeyId sets [JwsHeader.keyId] from [KeyMaterial.identifier]
      */
+    @Deprecated("Use SignJwtFun instead")
     suspend fun <T : Any> createSignedJwsAddingParams(
         header: JwsHeader? = null,
         payload: T,
@@ -89,6 +92,7 @@ interface JwsService {
         addX5c: Boolean = false,
     ): KmmResult<JwsSigned<T>>
 
+    @Deprecated("Use EncryptJweFun instead")
     suspend fun <T : Any> encryptJweObject(
         header: JweHeader? = null,
         payload: T,
@@ -98,6 +102,7 @@ interface JwsService {
         jweEncryption: JweEncryption,
     ): KmmResult<JweEncrypted>
 
+    @Deprecated("Use EncryptJweFun instead")
     suspend fun <T : Any> encryptJweObject(
         type: String,
         payload: T,
@@ -108,6 +113,7 @@ interface JwsService {
         jweEncryption: JweEncryption,
     ): KmmResult<JweEncrypted>
 
+    @Deprecated("Use DecryptJweFun instead")
     suspend fun <T : Any> decryptJweObject(
         jweObject: JweEncrypted,
         serialized: String,
@@ -372,6 +378,7 @@ interface VerifierJwsService {
 
 }
 
+@Deprecated("Replaced with separate functions, e.g. SignJwtFun")
 class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
 
     override val algorithm: JwsAlgorithm =

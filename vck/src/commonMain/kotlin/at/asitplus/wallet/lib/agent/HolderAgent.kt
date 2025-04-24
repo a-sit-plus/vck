@@ -43,6 +43,7 @@ class HolderAgent(
     private val subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
     @Deprecated("Use signVerifiablePresentation, signKeyBinding instead")
     private val jwsService: JwsService,
+    @Deprecated("unused")
     private val coseService: CoseService,
     override val keyPair: KeyMaterial,
     private val signVerifiablePresentation: SignJwtFun<VerifiablePresentationJws> = SignJwt(keyPair, JwsHeaderKeyId()),

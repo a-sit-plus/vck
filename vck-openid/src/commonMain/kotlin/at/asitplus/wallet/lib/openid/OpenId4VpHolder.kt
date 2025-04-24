@@ -4,7 +4,6 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.dif.ddcJsonSerializer
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_JWK
 import at.asitplus.openid.OpenIdConstants.ClientIdScheme
@@ -14,6 +13,7 @@ import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
+import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
@@ -48,15 +48,15 @@ import kotlinx.datetime.Clock
  * The [holder] creates the Authentication Response, see [OpenId4VpVerifier] for the verifier.
  */
 class OpenId4VpHolder(
-    private val holder: Holder,
-    private val agentPublicKey: KeyMaterial,
+    private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+    private val holder: Holder = HolderAgent(keyMaterial),
     @Deprecated("Use signIdToken, signJarm, encryptJarm, supportedAlgorithms instead")
-    private val jwsService: JwsService,
-    private val signIdToken: SignJwtFun<IdToken> = SignJwt(agentPublicKey, JwsHeaderJwk()),
-    private val signJarm: SignJwtFun<AuthenticationResponseParameters> = SignJwt(agentPublicKey, JwsHeaderJwk()),
-    private val encryptJarm: EncryptJweFun = EncryptJwe(agentPublicKey),
+    private val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
+    private val signIdToken: SignJwtFun<IdToken> = SignJwt(keyMaterial, JwsHeaderJwk()),
+    private val signJarm: SignJwtFun<AuthenticationResponseParameters> = SignJwt(keyMaterial, JwsHeaderJwk()),
+    private val encryptJarm: EncryptJweFun = EncryptJwe(keyMaterial),
     private val supportedAlgorithms: Set<JwsAlgorithm> = setOfNotNull(JwsAlgorithm.ES256),
-    private val coseService: CoseService,
+    private val coseService: CoseService = DefaultCoseService(DefaultCryptoService(keyMaterial)),
     private val clock: Clock = Clock.System,
     private val clientId: String = "https://wallet.a-sit.at/",
     /**
@@ -65,45 +65,14 @@ class OpenId4VpHolder(
      * Implementations need to fetch the url passed in, and return either the body, if there is one,
      * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
      */
-    private val remoteResourceRetriever: RemoteResourceRetrieverFunction,
+    private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
     /**
      * Need to verify the request object serialized as a JWS,
      * which may be signed with a pre-registered key (see [ClientIdScheme.PreRegistered]).
      */
-    private val requestObjectJwsVerifier: RequestObjectJwsVerifier,
+    private val requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _ -> true },
     private val walletNonceMapStore: MapStore<String, String> = DefaultMapStore(),
 ) {
-    constructor(
-        keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-        holder: Holder = HolderAgent(keyMaterial),
-        jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
-        coseService: CoseService = DefaultCoseService(DefaultCryptoService(keyMaterial)),
-        clock: Clock = Clock.System,
-        clientId: String = "https://wallet.a-sit.at/",
-        /**
-         * Need to implement if resources are defined by reference, i.e. the URL for a [at.asitplus.signum.indispensable.josef.JsonWebKeySet],
-         * or the authentication request itself as `request_uri`, or `presentation_definition_uri`.
-         * Implementations need to fetch the url passed in, and return either the body, if there is one,
-         * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
-         */
-        remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
-        /**
-         * Need to verify the request object serialized as a JWS,
-         * which may be signed with a pre-registered key (see [ClientIdScheme.PreRegistered]).
-         */
-        requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _ -> true },
-        walletNonceMapStore: MapStore<String, String> = DefaultMapStore(),
-    ) : this(
-        holder = holder,
-        agentPublicKey = keyMaterial,
-        jwsService = jwsService,
-        coseService = coseService,
-        clock = clock,
-        clientId = clientId,
-        remoteResourceRetriever = remoteResourceRetriever,
-        requestObjectJwsVerifier = requestObjectJwsVerifier,
-        walletNonceMapStore = walletNonceMapStore
-    )
 
     private val supportedAlgorithmsStrings = supportedAlgorithms.map { it.identifier }.toSet()
     private val authorizationRequestValidator = AuthorizationRequestValidator(walletNonceMapStore)
@@ -248,7 +217,8 @@ class OpenId4VpHolder(
         val audience = request.parameters.extractAudience(clientJsonWebKeySet)
         val presentationFactory = PresentationFactory(supportedAlgorithms, coseService, signIdToken)
         val jsonWebKeys = clientJsonWebKeySet?.keys?.combine(certKey)
-        val idToken = presentationFactory.createSignedIdToken(clock, agentPublicKey.publicKey, request).getOrNull()?.serialize()
+        val idToken =
+            presentationFactory.createSignedIdToken(clock, keyMaterial.publicKey, request).getOrNull()?.serialize()
 
         val resultContainer = credentialPresentation?.let {
             presentationFactory.createPresentation(
