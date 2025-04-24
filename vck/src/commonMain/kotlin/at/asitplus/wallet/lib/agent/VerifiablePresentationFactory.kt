@@ -8,7 +8,6 @@ import at.asitplus.openid.dcql.DCQLClaimsQueryResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
 import at.asitplus.openid.third_party.at.asitplus.jsonpath.core.plus
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
-import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.SdJwtCreator.NAME_SD
 import at.asitplus.wallet.lib.data.*

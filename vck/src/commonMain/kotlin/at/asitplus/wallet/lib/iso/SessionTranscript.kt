@@ -12,18 +12,23 @@ import kotlinx.serialization.encodeToByteArray
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Session transcript and cipher suite (9.1.5.1) and
  * ISO/IEC 18013-7:2024 standard: Session Transcript (B.4.4)
+ * Must be used with encodeDefaults = false
  */
 @Serializable
 @CborArray
 data class SessionTranscript(
-    /** Set to `null` for OID4VP with ISO/IEC 18013-7 */
     @ByteString
     @ValueTags(CBOR_ENCODED_DATA)
-    val deviceEngagementBytes: ByteArray?,
-    /** Set to `null` for OID4VP with ISO/IEC 18013-7 */
+    val deviceEngagementBytes: ByteArray? = null,
     @ByteString
     @ValueTags(CBOR_ENCODED_DATA)
-    val eReaderKeyBytes: ByteArray?,
+    val eReaderKeyBytes: ByteArray? = null,
+    // Can be removed once https://github.com/Kotlin/kotlinx.serialization/issues/2966 is fixed
+    // Cannot be a ByteArray because encodeDefaults = false does not work with non-null values for ByteArrays
+    /** Set to `null` for OID4VP with ISO/IEC 18013-7 */
+    val deviceEngagementBytesOid: Int? = 42,
+    /** Set to `null` for OID4VP with ISO/IEC 18013-7 */
+    val eReaderKeyBytesOid: Int? = 42,
     val oid4VPHandover: OID4VPHandover? = null,
     val nfcHandover: NFCHandover? = null
 ) {

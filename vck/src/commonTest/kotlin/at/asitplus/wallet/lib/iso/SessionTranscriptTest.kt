@@ -35,8 +35,8 @@ class SessionTranscriptTest : FreeSpec({
         val expectedEncodedSessionTranscript = byteArrayOf(-125, -10, -10, -125, 88, 32, 84, 58, -44, 125, 6, 21, -120, -126, -57, 76, -46, -122, -99, -69, -80, -101, -39, -12, 43, 71, -51, 14, 21, -65, -120, 9, -89, -88, 53, 16, -18, 60, 88, 32, -116, -19, 108, 67, -16, 99, 59, 101, 27, -89, 41, -115, 5, 124, 127, -77, -80, 31, -104, 59, 7, -107, 80, -48, 1, 113, -92, -107, -16, 41, 115, -126, 120, 36, 55, 99, 50, 53, 97, 51, 57, 50, 45, 101, 99, 100, 53, 45, 52, 52, 56, 101, 45, 98, 48, 56, 97, 45, 48, 54, 55, 100, 48, 55, 55, 98, 99, 57, 54, 98)
 
         val sessionTranscript = SessionTranscript(
-            deviceEngagementBytes = null,
-            eReaderKeyBytes = null,
+            deviceEngagementBytesOid = null,
+            eReaderKeyBytesOid = null,
             oid4VPHandover = OID4VPHandover(
                 clientIdHash = clientIdToHash,
                 responseUriHash = responseUriToHash,
