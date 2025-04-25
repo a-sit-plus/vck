@@ -11,7 +11,6 @@ import kotlinx.datetime.Instant
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 
 /**
  * Contents of an OIDC Authentication Request.
@@ -188,7 +187,6 @@ data class AuthenticationRequestParameters(
      * OID4VP: dcql_query: A string containing a JSON-encoded DCQL query as defined in Section 6.
      */
     @SerialName("dcql_query")
-    @Serializable(with = DCQLQueryStringTransformingSerializer::class)
     val dcqlQuery: DCQLQuery? = null,
 
 
