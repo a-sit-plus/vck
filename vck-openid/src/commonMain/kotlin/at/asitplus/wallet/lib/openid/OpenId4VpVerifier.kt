@@ -21,7 +21,7 @@ import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.*
 import at.asitplus.wallet.lib.oidvci.*
 import io.github.aakira.napier.Napier
-import io.ktor.http.*
+import io.ktor.http.URLBuilder
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -680,7 +680,8 @@ open class OpenId4VpVerifier(
             verifiableCredentialSdJwt = verifiableCredentialSdJwt,
             reconstructed = reconstructedJsonObject,
             disclosures = disclosures,
-            state = state
+            state = state,
+            isRevoked = isRevoked
         ).also { Napier.i("VP success: $this") }
     }
 

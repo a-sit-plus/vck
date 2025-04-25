@@ -98,7 +98,7 @@ class ValidatorVcTest : FreeSpec() {
             validator.verifyVcJws(credential.vcJws, verifierKeyMaterial.publicKey)
                 .shouldBeInstanceOf<VerifyCredentialResult.Revoked>()
 
-            validator.checkRevocationStatus(value.jws) shouldBe TokenStatus.Invalid
+            validator.checkRevocationStatus(value.jws)!!.getOrNull() shouldBe TokenStatus.Invalid
         }
 
         "wrong subject keyId is not be valid" {

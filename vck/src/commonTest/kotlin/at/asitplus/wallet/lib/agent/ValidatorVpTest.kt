@@ -150,7 +150,7 @@ class ValidatorVpTest : FreeSpec({
     "valid parsed presentation should separate revoked and valid credentials" {
         val presentationResults = holder.createPresentation(
             request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
-            credentialPresentation= singularPresentationDefinition,
+            credentialPresentation = singularPresentationDefinition,
         ).getOrNull().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
 
         val vp = presentationResults.presentationResults.first()
@@ -178,7 +178,7 @@ class ValidatorVpTest : FreeSpec({
         val credentials = holderCredentialStore.getCredentials().getOrThrow()
         val validCredentials = credentials
             .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
-            .filter { validator.checkRevocationStatus(it.vc) != TokenStatus.Invalid }
+            .filter { validator.checkRevocationStatus(it.vc)?.getOrNull() != TokenStatus.Invalid }
             .map { it.vcSerialized }
         (validCredentials.isEmpty()) shouldBe false
 

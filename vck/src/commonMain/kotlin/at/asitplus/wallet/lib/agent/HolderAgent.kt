@@ -2,12 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.dif.ClaimFormat
-import at.asitplus.dif.FormatHolder
-import at.asitplus.dif.InputDescriptor
-import at.asitplus.dif.PresentationDefinition
-import at.asitplus.dif.PresentationSubmission
-import at.asitplus.dif.PresentationSubmissionDescriptor
+import at.asitplus.dif.*
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.dcql.DCQLQuery
@@ -25,6 +20,7 @@ import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.dif.PresentationExchangeInputEvaluator
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.third_party.at.asitplus.oidc.dcql.toDefaultSubmission
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
@@ -128,15 +124,26 @@ class HolderAgent(
     private suspend fun StoreEntry.toStoredCredential() = when (this) {
         is StoreEntry.Iso -> Holder.StoredCredential.Iso(
             this,
-            validator.checkRevocationStatus(issuerSigned),
+            // this coerces errors on resolving token status to an invalid token status
+            validator.checkRevocationStatus(issuerSigned)?.let {
+                it.getOrNull() ?: TokenStatus.Invalid
+            },
         )
 
         is StoreEntry.Vc -> Holder.StoredCredential.Vc(
-            this, validator.checkRevocationStatus(vc)
+            this,
+            // this coerces errors on resolving token status to an invalid token status
+            validator.checkRevocationStatus(vc)?.let {
+                it.getOrNull() ?: TokenStatus.Invalid
+            },
         )
 
         is StoreEntry.SdJwt -> Holder.StoredCredential.SdJwt(
-            this, validator.checkRevocationStatus(sdJwt)
+            this,
+            // this coerces errors on resolving token status to an invalid token status
+            validator.checkRevocationStatus(sdJwt)?.let {
+                it.getOrNull() ?: TokenStatus.Invalid
+            },
         )
     }
 
