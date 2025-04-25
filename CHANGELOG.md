@@ -25,6 +25,7 @@ Release 5.6.0:
  - Token Status:
    - Add considerations for separating the semantics "no token status mechanism is defined" from "evaluating token status failed"
    - Provide revocation status to verifier
+ - Fix DCQL Query serialization/deserialization in `AuthenticationRequestParameters`
 
 Release 5.5.2:
  - OpenID for Verifiable Presentations:
