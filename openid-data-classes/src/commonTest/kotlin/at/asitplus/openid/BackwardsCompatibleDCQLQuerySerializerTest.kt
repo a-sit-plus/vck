@@ -10,7 +10,7 @@ import io.kotest.datatest.withData
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.json.Json
 
-class BackwardsCompatibleDCQLQueryStringSerializerTest : FreeSpec({
+class BackwardsCompatibleDCQLQuerySerializerTest : FreeSpec({
     val queries = listOf(
         DCQLQuery(
             credentials = DCQLCredentialQueryList(
@@ -27,7 +27,7 @@ class BackwardsCompatibleDCQLQueryStringSerializerTest : FreeSpec({
     "serialization is compatible to default serializer" - {
         withData(queries) { query ->
             val encodedWithNewSerializer = Json.encodeToString<DCQLQuery>(
-                serializer = BackwardsCompatibleDCQLQueryTransformingSerializer,
+                serializer = BackwardsCompatibleDCQLQuerySerializer,
                 query,
             )
             Json.decodeFromString<DCQLQuery>(encodedWithNewSerializer) shouldBe query
@@ -39,7 +39,7 @@ class BackwardsCompatibleDCQLQueryStringSerializerTest : FreeSpec({
                 query,
             )
             Json.decodeFromString<DCQLQuery>(
-                deserializer = BackwardsCompatibleDCQLQueryTransformingSerializer,
+                deserializer = BackwardsCompatibleDCQLQuerySerializer,
                 encodedWithDefaultSerializer,
             ) shouldBe query
         }
@@ -51,7 +51,7 @@ class BackwardsCompatibleDCQLQueryStringSerializerTest : FreeSpec({
                 query,
             )
             Json.decodeFromString<DCQLQuery>(
-                deserializer = BackwardsCompatibleDCQLQueryTransformingSerializer,
+                deserializer = BackwardsCompatibleDCQLQuerySerializer,
                 encodedWithDefaultSerializer,
             ) shouldBe query
         }

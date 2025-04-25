@@ -187,7 +187,7 @@ data class AuthenticationRequestParameters(
      * OID4VP: dcql_query: A string containing a JSON-encoded DCQL query as defined in Section 6.
      */
     @SerialName("dcql_query")
-    @Serializable(with = BackwardsCompatibleDCQLQueryTransformingSerializer::class)
+    @Serializable(with = BackwardsCompatibleDCQLQuerySerializer::class)
     val dcqlQuery: DCQLQuery? = null,
 
 

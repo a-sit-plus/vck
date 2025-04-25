@@ -11,7 +11,7 @@ import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.*
 
 
-object BackwardsCompatibleDCQLQueryTransformingSerializer : KSerializer<DCQLQuery> by TransformingSerializerTemplate<DCQLQuery, JsonElement>(
+object BackwardsCompatibleDCQLQuerySerializer : KSerializer<DCQLQuery> by TransformingSerializerTemplate<DCQLQuery, JsonElement>(
     parent = JsonElement.serializer(),
     encodeAs = { value, encoder ->
         encoder as JsonEncoder
