@@ -19,6 +19,7 @@ Release 5.6.0:
    - Replace `JwsService.createSignedJwsAddingParams()` with `SignJwtFun` and `JwsHeaderIdentifierFun`
    - Replace `JwsService.encryptJweObject()` with `EncryptJweFun`
    - Replace `JwsService.decryptJweObject()` with `DecryptJweFun`
+ - Refactor: Extract VerifiableCredentialJWS validation steps
 
 Release 5.5.2:
  - OpenID for Verifiable Presentations:
