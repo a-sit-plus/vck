@@ -1,5 +1,10 @@
 # Changelog
 
+Release 5.5.4:
+ - Token status:
+   - Add considerations for separating the semantics "no token status mechanism is defined" from "evaluating token status failed"
+   - Provide revocation status to verifier
+
 Release 5.5.3:
  - Fix DCQL Query serialization/deserialization in `AuthenticationRequestParameters`
  - Status List:

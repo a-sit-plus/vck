@@ -676,7 +676,8 @@ open class OpenId4VpVerifier(
             verifiableCredentialSdJwt = verifiableCredentialSdJwt,
             reconstructed = reconstructedJsonObject,
             disclosures = disclosures,
-            state = state
+            state = state,
+            isRevoked = isRevoked
         ).also { Napier.i("VP success: $this") }
     }
 
