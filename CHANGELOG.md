@@ -1,5 +1,8 @@
 # Changelog
 
+Release 5.5.3:
+ - Fix DCQL Query serialization/deserialization in `AuthenticationRequestParameters`
+
 Release 5.5.2:
  - OpenID for Verifiable Presentations:
    - Fix parsing `group` in presentation exchange input descriptors

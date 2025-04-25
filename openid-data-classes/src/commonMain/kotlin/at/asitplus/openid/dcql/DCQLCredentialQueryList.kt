@@ -23,5 +23,5 @@ value class DCQLCredentialQueryList<out DCQLCredentialQueryType: DCQLCredentialQ
         requireDistinctNotNull { it.id }
     }
 
-    constructor(vararg queries: DCQLCredentialQueryType) : this(queries.toList().toNonEmptyList())
+    constructor(query: DCQLCredentialQueryType, vararg queries: DCQLCredentialQueryType) : this(listOf(query, *queries).toNonEmptyList())
 }
