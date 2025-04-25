@@ -391,30 +391,21 @@ class Validator(
         } else {
             val tokenStatus = vcJws.vc.credentialStatus?.let {
                 Napier.d("VC: status found")
-                it to kotlin.runCatching {
-                    checkRevocationStatus(it)
-                }.wrap()
+                TokenStatusValidationSummary(
+                    status = it,
+                    tokenStatus = runCatching {
+                        checkRevocationStatus(it)
+                    }.wrap()
+                )
             }
 
-            if (tokenStatus?.second?.getOrNull() == TokenStatus.Invalid) {
+            if (tokenStatus?.tokenStatus?.getOrNull() == TokenStatus.Invalid) {
                 Napier.d("VC: revoked")
                 return Revoked(input, vcJws)
             } else {
                 SuccessJwt(
                     vcJws,
-                    tokenStatusValidationSummary = tokenStatus?.let { (status, result) ->
-                        result.map<TokenStatusValidationSummary> {
-                            TokenStatusValidationSummary.Success(
-                                status = status,
-                                tokenStatus = it
-                            )
-                        }.getOrElse {
-                            TokenStatusValidationSummary.Rejected(
-                                status = status,
-                                throwable = it
-                            )
-                        }
-                    },
+                    tokenStatusValidationSummary = tokenStatus,
                 )
             }
         }
