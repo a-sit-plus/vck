@@ -645,10 +645,8 @@ open class OpenId4VpVerifier(
     ): DeviceAuthentication {
         val clientIdToHash = ClientIdToHash(clientId = clientId, mdocGeneratedNonce = mdocGeneratedNonce)
         val responseUriToHash = ResponseUriToHash(responseUri = responseUrl, mdocGeneratedNonce = mdocGeneratedNonce)
-        val sessionTranscript = SessionTranscript(
-            deviceEngagementBytesOid = null,
-            eReaderKeyBytesOid = null,
-            oid4VPHandover = OID4VPHandover(
+        val sessionTranscript = SessionTranscript.forOpenId(
+            OID4VPHandover(
                 clientIdHash = clientIdToHash.serialize().sha256(),
                 responseUriHash = responseUriToHash.serialize().sha256(),
                 nonce = challenge

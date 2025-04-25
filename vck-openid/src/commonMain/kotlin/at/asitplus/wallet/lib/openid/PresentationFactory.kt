@@ -191,16 +191,13 @@ internal class PresentationFactory(
             responseUri = responseUrl,
             mdocGeneratedNonce = mdocGeneratedNonce
         )
-        val sessionTranscript = SessionTranscript(
-            deviceEngagementBytesOid = null,
-            eReaderKeyBytesOid = null,
-            oid4VPHandover = OID4VPHandover(
+        return SessionTranscript.forOpenId(
+            OID4VPHandover(
                 clientIdHash = clientIdToHash.serialize().sha256(),
                 responseUriHash = responseUriToHash.serialize().sha256(),
                 nonce = nonce
             ),
         )
-        return sessionTranscript
     }
 
     suspend fun <T : RequestParameters> createSignedIdToken(

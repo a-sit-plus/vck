@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.openid.OpenIdAuthorizationDetails
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.ByteString
 import kotlinx.serialization.cbor.CborArray
@@ -29,8 +30,10 @@ data class SessionTranscript(
     val deviceEngagementBytesOid: Int? = 42,
     /** Set to `null` for OID4VP with ISO/IEC 18013-7 */
     val eReaderKeyBytesOid: Int? = 42,
+    /** Set either this or [nfcHandover] */
     val oid4VPHandover: OID4VPHandover? = null,
-    val nfcHandover: NFCHandover? = null
+    /** Set either this or [oid4VPHandover] */
+    val nfcHandover: NFCHandover? = null,
 ) {
     init {
         check(oid4VPHandover != null || nfcHandover != null) { "One handover element must be set" }
@@ -45,23 +48,23 @@ data class SessionTranscript(
 
         other as SessionTranscript
 
-        if (deviceEngagementBytes != null) {
-            if (other.deviceEngagementBytes == null) return false
-            if (!deviceEngagementBytes.contentEquals(other.deviceEngagementBytes)) return false
-        } else if (other.deviceEngagementBytes != null) return false
-        if (eReaderKeyBytes != null) {
-            if (other.eReaderKeyBytes == null) return false
-            if (!eReaderKeyBytes.contentEquals(other.eReaderKeyBytes)) return false
-        } else if (other.eReaderKeyBytes != null) return false
+        if (deviceEngagementBytesOid != other.deviceEngagementBytesOid) return false
+        if (eReaderKeyBytesOid != other.eReaderKeyBytesOid) return false
+        if (!deviceEngagementBytes.contentEquals(other.deviceEngagementBytes)) return false
+        if (!eReaderKeyBytes.contentEquals(other.eReaderKeyBytes)) return false
         if (oid4VPHandover != other.oid4VPHandover) return false
+        if (nfcHandover != other.nfcHandover) return false
 
         return true
     }
 
     override fun hashCode(): Int {
-        var result = deviceEngagementBytes?.contentHashCode() ?: 0
+        var result = deviceEngagementBytesOid ?: 0
+        result = 31 * result + (eReaderKeyBytesOid ?: 0)
+        result = 31 * result + (deviceEngagementBytes?.contentHashCode() ?: 0)
         result = 31 * result + (eReaderKeyBytes?.contentHashCode() ?: 0)
-        result = 31 * result + oid4VPHandover.hashCode()
+        result = 31 * result + (oid4VPHandover?.hashCode() ?: 0)
+        result = 31 * result + (nfcHandover?.hashCode() ?: 0)
         return result
     }
 
@@ -69,5 +72,23 @@ data class SessionTranscript(
         fun deserialize(it: ByteArray) = runCatching {
             vckCborSerializer.decodeFromByteArray<SessionTranscript>(it)
         }.wrap()
+
+        fun forNfc(
+            deviceEngagementBytes: ByteArray,
+            eReaderKeyBytes: ByteArray,
+            nfcHandover: NFCHandover,
+        ): SessionTranscript = SessionTranscript(
+            deviceEngagementBytes = deviceEngagementBytes,
+            eReaderKeyBytes = eReaderKeyBytes,
+            nfcHandover = nfcHandover
+        )
+
+        fun forOpenId(
+            handover: OID4VPHandover,
+        ): SessionTranscript = SessionTranscript(
+            deviceEngagementBytesOid = null,
+            eReaderKeyBytesOid = null,
+            oid4VPHandover = handover,
+        )
     }
 }
