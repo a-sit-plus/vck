@@ -384,8 +384,8 @@ class Validator(
                 return ValidationError("Sub invalid: ${vcJws.subject}")
             }
         }
-        val errorSummary = parser.validateVerifiableCredentialJws(vcJws)
-        return if (errorSummary.containsErrors) {
+        val validationSummary = parser.validateVerifiableCredentialJws(vcJws)
+        return if (validationSummary.containsErrors) {
             Napier.d("VC: Invalid structure from Parser")
             InvalidStructure(input)
         } else {
@@ -409,7 +409,7 @@ class Validator(
                                 tokenStatus = it
                             )
                         }.getOrElse {
-                            TokenStatusValidationSummary.Failure(
+                            TokenStatusValidationSummary.Rejected(
                                 status = status,
                                 throwable = it
                             )

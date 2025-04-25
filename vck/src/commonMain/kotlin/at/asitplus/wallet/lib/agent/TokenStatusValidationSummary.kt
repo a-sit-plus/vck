@@ -7,7 +7,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 sealed interface TokenStatusValidationSummary {
     val status: Status
 
-    data class Failure(
+    data class Rejected(
         override val status: Status,
         val throwable: Throwable,
     ) : TokenStatusValidationSummary
