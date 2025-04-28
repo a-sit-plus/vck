@@ -2,6 +2,8 @@
 
 Release 5.5.3:
  - Fix DCQL Query serialization/deserialization in `AuthenticationRequestParameters`
+ - Status List:
+   - Set correct JWT type for JWT header: `statuslist+jwt`
 
 Release 5.5.2:
  - OpenID for Verifiable Presentations:
