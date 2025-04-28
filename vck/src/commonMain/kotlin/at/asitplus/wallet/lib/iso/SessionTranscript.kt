@@ -17,7 +17,8 @@ import kotlinx.serialization.encodeToByteArray
  */
 @Serializable
 @CborArray
-data class SessionTranscript(
+@ConsistentCopyVisibility
+data class SessionTranscript private constructor(
     @ByteString
     @ValueTags(CBOR_ENCODED_DATA)
     val deviceEngagementBytes: ByteArray? = null,
@@ -26,18 +27,18 @@ data class SessionTranscript(
     val eReaderKeyBytes: ByteArray? = null,
     // Can be removed once https://github.com/Kotlin/kotlinx.serialization/issues/2966 is fixed
     // Cannot be a ByteArray because encodeDefaults = false does not work with non-null values for ByteArrays
-    /** Set to `null` for OID4VP with ISO/IEC 18013-7 */
+    /** Set to `null` for OID4VP with ISO/IEC 18013-7 or for QR Handover */
     val deviceEngagementBytesOid: Int? = 42,
     /** Set to `null` for OID4VP with ISO/IEC 18013-7 */
     val eReaderKeyBytesOid: Int? = 42,
-    /** Set either this or [nfcHandover] */
+    /** Set either this or [nfcHandover] or deviceEngagementBytesOid to null for QR engagement */
     val oid4VPHandover: OID4VPHandover? = null,
-    /** Set either this or [oid4VPHandover] */
+    /** Set either this or [oid4VPHandover] or deviceEngagementBytesOid to null for QR engagement */
     val nfcHandover: NFCHandover? = null,
 ) {
     init {
-        check(oid4VPHandover != null || nfcHandover != null) { "One handover element must be set" }
-        check(!(oid4VPHandover == null && nfcHandover == null)) { "Only one handover element must be set" }
+        val nrOfHandovers = listOf(oid4VPHandover, nfcHandover).count { it != null }
+        check(nrOfHandovers == 1 || (deviceEngagementBytesOid == null && nrOfHandovers == 0)) { "Exactly one handover element must be set (or null for QR Handover)" }
     }
 
     fun serialize() = vckCborSerializer.encodeToByteArray(this)
@@ -89,6 +90,15 @@ data class SessionTranscript(
             deviceEngagementBytesOid = null,
             eReaderKeyBytesOid = null,
             oid4VPHandover = handover,
+        )
+
+        fun forQr(
+            deviceEngagementBytes: ByteArray,
+            eReaderKeyBytes: ByteArray
+        ): SessionTranscript = SessionTranscript(
+            deviceEngagementBytes = deviceEngagementBytes,
+            eReaderKeyBytes = eReaderKeyBytes,
+            deviceEngagementBytesOid = null
         )
     }
 }
