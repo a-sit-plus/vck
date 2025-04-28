@@ -8,11 +8,13 @@ import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.TransactionData
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.signum.indispensable.cosef.CoseSigned
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.iso.DeviceNameSpaces
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
@@ -39,7 +41,9 @@ data class PresentationRequestParameters(
      * Handle calculating device signature for ISO mDocs, as this depends on the transport protocol
      * (OpenID4VP with ISO/IEC 18013-7)
      */
-    val calcIsoDeviceSignature: (suspend (docType: String) -> Pair<CoseSigned<ByteArray>?, String?>?) = { null },
+    val calcIsoDeviceSignature: (suspend (docType: String, deviceNameSpaceBytes: ByteStringWrapper<DeviceNameSpaces>) -> Pair<CoseSigned<ByteArray>, String?>?) = { _, _ ->
+        null
+    },
     /** mdocGeneratedNonce to be used for the presentation and [calcIsoDeviceSignature] (OpenID4VP with ISO/IEC 18013-7) */
     val mdocGeneratedNonce: String? = null,
 ) {

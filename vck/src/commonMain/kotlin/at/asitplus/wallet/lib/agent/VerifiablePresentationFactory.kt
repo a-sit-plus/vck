@@ -172,10 +172,10 @@ class VerifiablePresentationFactory(
                         ?: throw PresentationException("Attribute not available in credential: $['$namespace']['$attributeName']")
                 }
             }
+
             val docType = credential.scheme?.isoDocType!!
             val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
-
-            val (deviceSignature, _) = request.calcIsoDeviceSignature(docType)
+            val (deviceSignature, _) = request.calcIsoDeviceSignature(docType, deviceNameSpaceBytes)
                 ?: throw PresentationException("calcIsoDeviceSignature not implemented")
 
             Document(
