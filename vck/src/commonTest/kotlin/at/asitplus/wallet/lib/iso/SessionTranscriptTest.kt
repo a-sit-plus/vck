@@ -7,10 +7,9 @@ import io.kotest.matchers.shouldNotBe
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 
-@OptIn(ExperimentalStdlibApi::class)
 class SessionTranscriptTest : FreeSpec({
 
-    "local presentation" {
+    "Local presentation with NFC Handover" {
         val expectedEncodedSessionTranscript ="""
             83                                        # array(3)
                d8 18                                  #   encoded cbor data item, tag(24)
@@ -187,6 +186,130 @@ class SessionTranscriptTest : FreeSpec({
 
         sessionTranscript.oid4VPHandover shouldBe null
         sessionTranscript.nfcHandover shouldNotBe null
+        sessionTranscript.serialize() shouldBe expectedEncodedSessionTranscript
+    }
+
+    "Local presentation with QR Handover" {
+        val expectedEncodedSessionTranscript ="""
+            83                                        # array(3)
+               d8 18                                  #   encoded cbor data item, tag(24)
+                  58 58                               #     bytes(88)
+                     a20063312e30018201d818584ba40102 #       "\xa2\x00c1.0\x01\x82\x01\xd8\x18XK\xa4\x01\x02"
+                     2001215820c334b05dc99df884cf84c8 #       " \x01!X \xc34\xb0]\xc9\x9d\xf8\x84\xcf\x84\xc8"
+                     601fe06ba6acbfda595c9eeaf343555a #       "`\x1f\xe0k\xa6\xac\xbf\xdaY\\\x9e\xea\xf3CUZ"
+                     c37f1641a122582051f157aacace8f46 #       "\xc3\x7f\x16A\xa1\"X Q\xf1W\xaa\xca\xce\x8fF"
+                     a66e12280e6312f3889181bdcca222bc #       "\xa6n\x12(\x0ec\x12\xf3\x88\x91\x81\xbd\xcc\xa2\"\xbc"
+                     2079eefcc1317fe5                 #       " y\xee\xfc\xc11\x7f\xe5"
+                                                      #     encoded cbor data item
+                                                      #       a2                                           # map(2)
+                                                      #          00                                        #   unsigned(0)
+                                                      #          63                                        #   text(3)
+                                                      #             312e30                                 #     "1.0"
+                                                      #          01                                        #   unsigned(1)
+                                                      #          82                                        #   array(2)
+                                                      #             01                                     #     unsigned(1)
+                                                      #             d8 18                                  #     encoded cbor data item, tag(24)
+                                                      #                58 4b                               #       bytes(75)
+                                                      #                   a401022001215820c334b05dc99df884 #         "\xa4\x01\x02 \x01!X \xc34\xb0]\xc9\x9d\xf8\x84"
+                                                      #                   cf84c8601fe06ba6acbfda595c9eeaf3 #         "\xcf\x84\xc8`\x1f\xe0k\xa6\xac\xbf\xdaY\\\x9e\xea\xf3"
+                                                      #                   43555ac37f1641a122582051f157aaca #         "CUZ\xc3\x7f\x16A\xa1\"X Q\xf1W\xaa\xca"
+                                                      #                   ce8f46a66e12280e6312f3889181bdcc #         "\xce\x8fF\xa6n\x12(\x0ec\x12\xf3\x88\x91\x81\xbd\xcc"
+                                                      #                   a222bc2079eefcc1317fe5           #         "\xa2\"\xbc y\xee\xfc\xc11\x7f\xe5"
+                                                      #                                                    #       encoded cbor data item
+                                                      #                                                    #         a4                                     # map(4)
+                                                      #                                                    #            01                                  #   unsigned(1)
+                                                      #                                                    #            02                                  #   unsigned(2)
+                                                      #                                                    #            20                                  #   negative(-1)
+                                                      #                                                    #            01                                  #   unsigned(1)
+                                                      #                                                    #            21                                  #   negative(-2)
+                                                      #                                                    #            58 20                               #   bytes(32)
+                                                      #                                                    #               c334b05dc99df884cf84c8601fe06ba6 #     "\xc34\xb0]\xc9\x9d\xf8\x84\xcf\x84\xc8`\x1f\xe0k\xa6"
+                                                      #                                                    #               acbfda595c9eeaf343555ac37f1641a1 #     "\xac\xbf\xdaY\\\x9e\xea\xf3CUZ\xc3\x7f\x16A\xa1"
+                                                      #                                                    #            22                                  #   negative(-3)
+                                                      #                                                    #            58 20                               #   bytes(32)
+                                                      #                                                    #               51f157aacace8f46a66e12280e6312f3 #     "Q\xf1W\xaa\xca\xce\x8fF\xa6n\x12(\x0ec\x12\xf3"
+                                                      #                                                    #               889181bdcca222bc2079eefcc1317fe5 #     "\x88\x91\x81\xbd\xcc\xa2\"\xbc y\xee\xfc\xc11\x7f\xe5"
+               d8 18                                  #   encoded cbor data item, tag(24)
+                  58 4b                               #     bytes(75)
+                     a401022001215820ff653193738cdce3 #       "\xa4\x01\x02 \x01!X \xffe1\x93s\x8c\xdc\xe3"
+                     38ff42f607a0703a0a033010da16cdd4 #       "8\xffB\xf6\x07\xa0p:\n\x030\x10\xda\x16\xcd\xd4"
+                     510a6bdf468b8833225820513d212d75 #       "Q\nk\xdfF\x8b\x883\"X Q=!-u"
+                     ba67145157e458e1e75ba13e1b070fb5 #       "\xbag\x14QW\xe4X\xe1\xe7[\xa1>\x1b\x07\x0f\xb5"
+                     7135b8fa46907c2bd07e4c           #       "q5\xb8\xfaF\x90|+\xd0~L"
+                                                      #     encoded cbor data item
+                                                      #       a4                                     # map(4)
+                                                      #          01                                  #   unsigned(1)
+                                                      #          02                                  #   unsigned(2)
+                                                      #          20                                  #   negative(-1)
+                                                      #          01                                  #   unsigned(1)
+                                                      #          21                                  #   negative(-2)
+                                                      #          58 20                               #   bytes(32)
+                                                      #             ff653193738cdce338ff42f607a0703a #     "\xffe1\x93s\x8c\xdc\xe38\xffB\xf6\x07\xa0p:"
+                                                      #             0a033010da16cdd4510a6bdf468b8833 #     "\n\x030\x10\xda\x16\xcd\xd4Q\nk\xdfF\x8b\x883"
+                                                      #          22                                  #   negative(-3)
+                                                      #          58 20                               #   bytes(32)
+                                                      #             513d212d75ba67145157e458e1e75ba1 #     "Q=!-u\xbag\x14QW\xe4X\xe1\xe7[\xa1"
+                                                      #             3e1b070fb57135b8fa46907c2bd07e4c #     ">\x1b\x07\x0f\xb5q5\xb8\xfaF\x90|+\xd0~L"
+               f6                                     #   null, simple(22)
+
+        """.decodeFromAnnotatedCbor()
+
+        val coseEncodedEReaderKey = """
+            a4                                     # map(4)
+               01                                  #   unsigned(1)
+               02                                  #   unsigned(2)
+               20                                  #   negative(-1)
+               01                                  #   unsigned(1)
+               21                                  #   negative(-2)
+               58 20                               #   bytes(32)
+                  ff653193738cdce338ff42f607a0703a #     "\xffe1\x93s\x8c\xdc\xe38\xffB\xf6\x07\xa0p:"
+                  0a033010da16cdd4510a6bdf468b8833 #     "\n\x030\x10\xda\x16\xcd\xd4Q\nk\xdfF\x8b\x883"
+               22                                  #   negative(-3)
+               58 20                               #   bytes(32)
+                  513d212d75ba67145157e458e1e75ba1 #     "Q=!-u\xbag\x14QW\xe4X\xe1\xe7[\xa1"
+                  3e1b070fb57135b8fa46907c2bd07e4c #     ">\x1b\x07\x0f\xb5q5\xb8\xfaF\x90|+\xd0~L"
+        """.decodeFromAnnotatedCbor()
+
+        val eReaderCoseKey = CoseKey.deserialize(coseEncodedEReaderKey)
+
+        val encodedDeviceEngagement = """
+            a2                                           # map(2)
+               00                                        #   unsigned(0)
+               63                                        #   text(3)
+                  312e30                                 #     "1.0"
+               01                                        #   unsigned(1)
+               82                                        #   array(2)
+                  01                                     #     unsigned(1)
+                  d8 18                                  #     encoded cbor data item, tag(24)
+                     58 4b                               #       bytes(75)
+                        a401022001215820c334b05dc99df884 #         "\xa4\x01\x02 \x01!X \xc34\xb0]\xc9\x9d\xf8\x84"
+                        cf84c8601fe06ba6acbfda595c9eeaf3 #         "\xcf\x84\xc8`\x1f\xe0k\xa6\xac\xbf\xdaY\\\x9e\xea\xf3"
+                        43555ac37f1641a122582051f157aaca #         "CUZ\xc3\x7f\x16A\xa1\"X Q\xf1W\xaa\xca"
+                        ce8f46a66e12280e6312f3889181bdcc #         "\xce\x8fF\xa6n\x12(\x0ec\x12\xf3\x88\x91\x81\xbd\xcc"
+                        a222bc2079eefcc1317fe5           #         "\xa2\"\xbc y\xee\xfc\xc11\x7f\xe5"
+                                                         #       encoded cbor data item
+                                                         #         a4                                     # map(4)
+                                                         #            01                                  #   unsigned(1)
+                                                         #            02                                  #   unsigned(2)
+                                                         #            20                                  #   negative(-1)
+                                                         #            01                                  #   unsigned(1)
+                                                         #            21                                  #   negative(-2)
+                                                         #            58 20                               #   bytes(32)
+                                                         #               c334b05dc99df884cf84c8601fe06ba6 #     "\xc34\xb0]\xc9\x9d\xf8\x84\xcf\x84\xc8`\x1f\xe0k\xa6"
+                                                         #               acbfda595c9eeaf343555ac37f1641a1 #     "\xac\xbf\xdaY\\\x9e\xea\xf3CUZ\xc3\x7f\x16A\xa1"
+                                                         #            22                                  #   negative(-3)
+                                                         #            58 20                               #   bytes(32)
+                                                         #               51f157aacace8f46a66e12280e6312f3 #     "Q\xf1W\xaa\xca\xce\x8fF\xa6n\x12(\x0ec\x12\xf3"
+                                                         #               889181bdcca222bc2079eefcc1317fe5 #     "\x88\x91\x81\xbd\xcc\xa2\"\xbc y\xee\xfc\xc11\x7f\xe5"
+        """.decodeFromAnnotatedCbor()
+
+        val sessionTranscript = SessionTranscript.forQr(
+            deviceEngagementBytes = encodedDeviceEngagement,
+            eReaderKeyBytes = eReaderCoseKey.getOrThrow().serialize()
+        )
+
+        sessionTranscript.oid4VPHandover shouldBe null
+        sessionTranscript.nfcHandover shouldBe null
         sessionTranscript.serialize() shouldBe expectedEncodedSessionTranscript
     }
 
