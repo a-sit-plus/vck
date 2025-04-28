@@ -1,10 +1,11 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.openid.OpenIdAuthorizationDetails
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.ByteString
 import kotlinx.serialization.cbor.CborArray
+import kotlinx.serialization.cbor.CborTag.CBOR_ENCODED_DATA
 import kotlinx.serialization.cbor.ValueTags
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
@@ -12,18 +13,32 @@ import kotlinx.serialization.encodeToByteArray
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Session transcript and cipher suite (9.1.5.1) and
  * ISO/IEC 18013-7:2024 standard: Session Transcript (B.4.4)
+ * Must be used with encodeDefaults = false
  */
 @Serializable
 @CborArray
 data class SessionTranscript(
-    /** Set to `null` for OID4VP with ISO/IEC 18013-7 */
     @ByteString
-    val deviceEngagementBytes: ByteArray?,
-    /** Set to `null` for OID4VP with ISO/IEC 18013-7 */
+    @ValueTags(CBOR_ENCODED_DATA)
+    val deviceEngagementBytes: ByteArray? = null,
     @ByteString
-    val eReaderKeyBytes: ByteArray?,
-    val handover: OID4VPHandover,
+    @ValueTags(CBOR_ENCODED_DATA)
+    val eReaderKeyBytes: ByteArray? = null,
+    // Can be removed once https://github.com/Kotlin/kotlinx.serialization/issues/2966 is fixed
+    // Cannot be a ByteArray because encodeDefaults = false does not work with non-null values for ByteArrays
+    /** Set to `null` for OID4VP with ISO/IEC 18013-7 */
+    val deviceEngagementBytesOid: Int? = 42,
+    /** Set to `null` for OID4VP with ISO/IEC 18013-7 */
+    val eReaderKeyBytesOid: Int? = 42,
+    /** Set either this or [nfcHandover] */
+    val oid4VPHandover: OID4VPHandover? = null,
+    /** Set either this or [oid4VPHandover] */
+    val nfcHandover: NFCHandover? = null,
 ) {
+    init {
+        check(oid4VPHandover != null || nfcHandover != null) { "One handover element must be set" }
+        check(!(oid4VPHandover == null && nfcHandover == null)) { "Only one handover element must be set" }
+    }
 
     fun serialize() = vckCborSerializer.encodeToByteArray(this)
 
@@ -33,23 +48,23 @@ data class SessionTranscript(
 
         other as SessionTranscript
 
-        if (deviceEngagementBytes != null) {
-            if (other.deviceEngagementBytes == null) return false
-            if (!deviceEngagementBytes.contentEquals(other.deviceEngagementBytes)) return false
-        } else if (other.deviceEngagementBytes != null) return false
-        if (eReaderKeyBytes != null) {
-            if (other.eReaderKeyBytes == null) return false
-            if (!eReaderKeyBytes.contentEquals(other.eReaderKeyBytes)) return false
-        } else if (other.eReaderKeyBytes != null) return false
-        if (handover != other.handover) return false
+        if (deviceEngagementBytesOid != other.deviceEngagementBytesOid) return false
+        if (eReaderKeyBytesOid != other.eReaderKeyBytesOid) return false
+        if (!deviceEngagementBytes.contentEquals(other.deviceEngagementBytes)) return false
+        if (!eReaderKeyBytes.contentEquals(other.eReaderKeyBytes)) return false
+        if (oid4VPHandover != other.oid4VPHandover) return false
+        if (nfcHandover != other.nfcHandover) return false
 
         return true
     }
 
     override fun hashCode(): Int {
-        var result = deviceEngagementBytes?.contentHashCode() ?: 0
+        var result = deviceEngagementBytesOid ?: 0
+        result = 31 * result + (eReaderKeyBytesOid ?: 0)
+        result = 31 * result + (deviceEngagementBytes?.contentHashCode() ?: 0)
         result = 31 * result + (eReaderKeyBytes?.contentHashCode() ?: 0)
-        result = 31 * result + handover.hashCode()
+        result = 31 * result + (oid4VPHandover?.hashCode() ?: 0)
+        result = 31 * result + (nfcHandover?.hashCode() ?: 0)
         return result
     }
 
@@ -57,5 +72,23 @@ data class SessionTranscript(
         fun deserialize(it: ByteArray) = runCatching {
             vckCborSerializer.decodeFromByteArray<SessionTranscript>(it)
         }.wrap()
+
+        fun forNfc(
+            deviceEngagementBytes: ByteArray,
+            eReaderKeyBytes: ByteArray,
+            nfcHandover: NFCHandover,
+        ): SessionTranscript = SessionTranscript(
+            deviceEngagementBytes = deviceEngagementBytes,
+            eReaderKeyBytes = eReaderKeyBytes,
+            nfcHandover = nfcHandover
+        )
+
+        fun forOpenId(
+            handover: OID4VPHandover,
+        ): SessionTranscript = SessionTranscript(
+            deviceEngagementBytesOid = null,
+            eReaderKeyBytesOid = null,
+            oid4VPHandover = handover,
+        )
     }
 }

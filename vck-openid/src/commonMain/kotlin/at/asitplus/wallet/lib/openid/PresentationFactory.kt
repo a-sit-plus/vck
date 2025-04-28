@@ -69,7 +69,7 @@ internal class PresentationFactory(
             nonce = nonce,
             audience = audience,
             transactionData = transactionData,
-            calcIsoDeviceSignature = { docType ->
+            calcIsoDeviceSignature = { docType, _ ->
                 // kept pair result type for backwards compatibility
                 calcDeviceSignature(mdocGeneratedNonce, clientId, responseUrl, nonce, docType) to null
             },
@@ -184,16 +184,13 @@ internal class PresentationFactory(
             responseUri = responseUrl,
             mdocGeneratedNonce = mdocGeneratedNonce
         )
-        val sessionTranscript = SessionTranscript(
-            deviceEngagementBytes = null,
-            eReaderKeyBytes = null,
-            handover = OID4VPHandover(
+        return SessionTranscript.forOpenId(
+            OID4VPHandover(
                 clientIdHash = clientIdToHash.serialize().sha256(),
                 responseUriHash = responseUriToHash.serialize().sha256(),
                 nonce = nonce
             ),
         )
-        return sessionTranscript
     }
 
     suspend fun <T : RequestParameters> createSignedIdToken(
