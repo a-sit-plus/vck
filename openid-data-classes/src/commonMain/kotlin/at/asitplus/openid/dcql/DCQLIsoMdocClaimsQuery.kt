@@ -2,10 +2,15 @@ package at.asitplus.openid.dcql
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.CredentialFormatEnum
+import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.NameSegment
 import com.ionspin.kotlin.bignum.integer.BigInteger
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 
 
 @Serializable
@@ -14,6 +19,8 @@ data class DCQLIsoMdocClaimsQuery(
     override val id: DCQLClaimsQueryIdentifier? = null,
     @SerialName(DCQLClaimsQuery.SerialNames.VALUES)
     override val values: List<DCQLExpectedClaimValue>? = null,
+    @SerialName(DCQLClaimsQuery.SerialNames.PATH)
+    override val path: DCQLClaimsPathPointer? = null,
 
     /**
      * OID4VP draft 23: namespace: REQUIRED if the Credential Format is based on the mdoc format
@@ -21,7 +28,7 @@ data class DCQLIsoMdocClaimsQuery(
      * specifies the namespace of the data element within the mdoc, e.g., org.iso.18013.5.1.
      */
     @SerialName(SerialNames.NAMESPACE)
-    val namespace: String,
+    val namespace: String? = null,
 
     /**
      * OID4VP draft 23: claim_name: REQUIRED if the Credential Format is based on mdoc format
@@ -30,12 +37,39 @@ data class DCQLIsoMdocClaimsQuery(
      * the mdoc, e.g., first_name.
      */
     @SerialName(SerialNames.CLAIM_NAME)
-    val claimName: String,
+    val claimName: String? = null,
+
+    /**
+     * OID4VP draft 28: OPTIONAL. A boolean that is equivalent to IntentToRetain variable defined in
+     * Section 8.3.2.1.2.1 of ISO 18013-5.
+     * */
+    @SerialName(SerialNames.INTENT_TO_RETAIN)
+    val intentToRetain: Boolean? = null,
 ) : DCQLClaimsQuery {
 
     object SerialNames {
         const val NAMESPACE = "namespace"
         const val CLAIM_NAME = "claim_name"
+        const val INTENT_TO_RETAIN = "intent_to_retain"
+    }
+
+    init {
+        if (namespace != null) {
+            require(claimName != null) { "if namespace is set, claimName needs to be set" }
+        }
+        if (claimName != null) {
+            require(namespace != null) { "if claimName is set, namespace needs to be set" }
+        }
+        if (path != null) {
+            require(path.size == 2) { "if path is set, it needs to contain exactly 2 elements " }
+            require(path.all { it is NameSegment }) { "path must contain name segments only" }
+            if (namespace != null) {
+                require((path.first() as NameSegment).name == namespace) { "namespace does not match path" }
+            }
+            if (claimName != null) {
+                require((path.last() as NameSegment).name == claimName) { "claimName does not match path" }
+            }
+        }
     }
 
     /**
@@ -76,7 +110,11 @@ data class DCQLIsoMdocClaimsQuery(
             throw IllegalArgumentException("Inconsistent credential format and claim query")
         }
         val credentialStructure = credentialStructureExtractor(credential)
-
+        val namespace = namespace ?: (path?.firstOrNull() as? NameSegment)?.name
+        val claimName = claimName ?: (path?.lastOrNull() as? NameSegment)?.name
+        if (namespace == null || claimName == null) {
+            throw IllegalArgumentException("Namespace and/or claimName are required for ISO mdoc claims queries")
+        }
         val value = credentialStructure.namespaceClaimValueMap[namespace]!![claimName]!!
         values?.any {
             when (it) {

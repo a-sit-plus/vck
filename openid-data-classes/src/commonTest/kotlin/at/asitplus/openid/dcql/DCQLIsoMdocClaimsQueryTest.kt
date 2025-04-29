@@ -2,6 +2,8 @@ package at.asitplus.openid.dcql
 
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import com.benasher44.uuid.uuid4
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -129,6 +131,76 @@ class DCQLIsoMdocClaimsQueryTest : FreeSpec({
                 format = CredentialFormatEnum.DC_SD_JWT,
             )
         ).isSuccess shouldBe false
+    }
+
+    "new and old parameters need to match" {
+        val namespace = uuid4().toString()
+        val claim = uuid4().toString()
+        val identifier = DCQLClaimsQueryIdentifier(uuid4().toString())
+        DCQLIsoMdocClaimsQuery(
+            id = identifier,
+            namespace = namespace,
+            claimName = claim,
+            path = DCQLClaimsPathPointer(namespace, claim)
+        )
+
+        shouldThrow<IllegalArgumentException> {
+            DCQLIsoMdocClaimsQuery(
+                id = identifier,
+                namespace = namespace,
+                claimName = claim,
+                path = DCQLClaimsPathPointer(namespace.reversed(), claim)
+            )
+        }
+
+        shouldThrow<IllegalArgumentException> {
+            DCQLIsoMdocClaimsQuery(
+                id = identifier,
+                namespace = namespace,
+                claimName = claim,
+                path = DCQLClaimsPathPointer(namespace, claim.reversed())
+            )
+        }
+
+        shouldThrow<IllegalArgumentException> {
+            DCQLIsoMdocClaimsQuery(
+                id = identifier,
+                namespace = namespace,
+                claimName = claim,
+                path = DCQLClaimsPathPointer(claim, namespace)
+            )
+        }
+    }
+
+    "needs to have exactly two path items" {
+        val namespace = uuid4().toString()
+        val claim = uuid4().toString()
+        val identifier = DCQLClaimsQueryIdentifier(uuid4().toString())
+        DCQLIsoMdocClaimsQuery(
+            id = identifier,
+            path = DCQLClaimsPathPointer(namespace, claim)
+        )
+
+        shouldThrow<IllegalArgumentException> {
+            DCQLIsoMdocClaimsQuery(
+                id = identifier,
+                path = DCQLClaimsPathPointer(namespace, claim, claim)
+            )
+        }
+
+        shouldThrow<IllegalArgumentException> {
+            DCQLIsoMdocClaimsQuery(
+                id = identifier,
+                path = DCQLClaimsPathPointer(namespace)
+            )
+        }
+
+        shouldThrow<IllegalArgumentException> {
+            DCQLIsoMdocClaimsQuery(
+                id = identifier,
+                path = DCQLClaimsPathPointer()
+            )
+        }
     }
 })
 
