@@ -66,7 +66,7 @@ open class Configuration {
     open val parser: Parser
         get() = Parser(
             clock = clock,
-            timeLeewaySeconds = timeLeeway.inWholeSeconds,
+            timeLeeway = timeLeeway,
         )
 
     open val clock: Clock

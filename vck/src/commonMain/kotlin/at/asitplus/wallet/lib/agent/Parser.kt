@@ -9,8 +9,8 @@ import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
-import kotlin.time.DurationUnit
-import kotlin.time.toDuration
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 
 /**
@@ -19,27 +19,9 @@ import kotlin.time.toDuration
  * Does not verify the revocation status of the data.
  */
 class Parser(
-    val verifiableCredentialJwsValidator: VerifiableCredentialJwsValidator,
-    timeLeewaySeconds: Long,
-    private val clock: Clock,
+    private val timeLeeway: Duration = 300.seconds,
+    private val clock: Clock = Clock.System,
 ) {
-    constructor(
-        timeLeewaySeconds: Long = 300L,
-        clock: Clock = Clock.System,
-    ) : this(
-        VerifiableCredentialJwsValidator(
-            VerifiableCredentialJwsTimelinessValidator(
-                timeLeewaySeconds = timeLeewaySeconds,
-                clock = clock,
-            ),
-            verifiableCredentialJwsStructureValidator = VerifiableCredentialJwsStructureValidator(),
-        ),
-        timeLeewaySeconds = timeLeewaySeconds,
-        clock = clock
-    )
-
-    private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
-
     /**
      * Parses a Verifiable Presentation in JWS format
      *
@@ -122,19 +104,6 @@ class Parser(
                 .also { Napier.w("nbf invalid: ${vcJws.notBefore}, expected ${vcJws.vc.issuanceDate}") }
         Napier.d("VC is valid")
         return ParseVcResult.Success(vcJws)
-    }
-
-    /**
-     * Parses a Verifiable Credential in JWS format
-     *
-     * @param it the JWS enclosing the VC, in compact representation
-     */
-    fun validateVerifiableCredentialJws(vcJws: VerifiableCredentialJws): VerifiableCredentialJwsValidator.ValidationSummary {
-        return verifiableCredentialJwsValidator.validate(vcJws).also {
-            if (it.isSuccess) {
-                Napier.d("VC is valid")
-            }
-        }
     }
 
     /**
