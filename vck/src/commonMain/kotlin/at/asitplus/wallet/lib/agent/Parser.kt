@@ -131,7 +131,7 @@ class Parser(
      */
     fun validateVerifiableCredentialJws(vcJws: VerifiableCredentialJws): VerifiableCredentialJwsValidator.ValidationSummary {
         return verifiableCredentialJwsValidator.validate(vcJws).also {
-            if (!it.containsErrors) {
+            if (it.isSuccess) {
                 Napier.d("VC is valid")
             }
         }

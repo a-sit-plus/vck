@@ -51,7 +51,7 @@ class VerifiableCredentialJwsStructureValidator {
                 )
             } else null,
         ).also {
-            if(!it.containsErrors) {
+            if(it.isSuccess) {
                 Napier.d("VC structure is valid")
             }
         }
@@ -65,14 +65,14 @@ class VerifiableCredentialJwsStructureValidator {
         val inconsistentNotBeforeTimeError: InconsistentNotBeforeTimeError?,
         val inconsistentExpirationTimeError: InconsistentExpirationTimeError?,
     ) {
-        val containsErrors = listOf(
+        val isSuccess = listOf(
             inconsistentIssuerError != null,
             inconsistentIdentifierError != null,
             inconsistentSubjectError != null,
             missingCredentialTypeError != null,
             inconsistentNotBeforeTimeError != null,
             inconsistentExpirationTimeError != null,
-        ).any { it }
+        ).all { it }
     }
 
     data class InconsistentIssuerError(

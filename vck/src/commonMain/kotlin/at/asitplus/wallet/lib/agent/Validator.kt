@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
@@ -8,6 +7,7 @@ import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
+import at.asitplus.wallet.lib.Configuration
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
@@ -44,6 +44,7 @@ class Validator(
     private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(),
     private val verifyCoseSignatureWithKey: VerifyCoseSignatureWithKeyFun<MobileSecurityObject> = VerifyCoseSignatureWithKey(),
     private val parser: Parser = Parser(),
+    private val verifiableCredentialJwsInputValidator: VerifiableCredentialJwsInputValidator = Configuration.instance.verifiableCredentialJwsInputValidator,
     /**
      * This function should check the status mechanisms in a given status claim in order to
      * evaluate the token status.
@@ -365,48 +366,44 @@ class Validator(
         publicKey: CryptoPublicKey?,
     ): VerifyCredentialResult {
         Napier.d("Verifying VC-JWS $input")
-        val jws = JwsSigned.deserialize<VerifiableCredentialJws>(
-            VerifiableCredentialJws.serializer(),
-            input,
-            vckJsonSerializer
-        ).getOrElse {
-            Napier.w("VC: Could not parse JWS", it)
-            return InvalidStructure(input)
-        }
-        if (!verifyJwsObject(jws)) {
-            Napier.w("VC: Signature invalid")
-            return InvalidStructure(input)
-        }
-        val vcJws = jws.payload
-        publicKey?.let {
-            if (!it.matchesIdentifier(vcJws.subject)) {
-                Napier.d("VC: sub invalid")
-                return ValidationError("Sub invalid: ${vcJws.subject}")
+        val validationresult = verifiableCredentialJwsInputValidator.validate(input, publicKey)
+        return when(validationresult) {
+            is VerifiableCredentialJwsInputValidator.VerifiableCredentialJwsValidationResult.ParsingError -> {
+                Napier.w("VC: Could not parse JWS", validationresult.throwable)
+                InvalidStructure(input)
             }
-        }
-        val validationSummary = parser.validateVerifiableCredentialJws(vcJws)
-        return if (validationSummary.containsErrors) {
-            Napier.d("VC: Invalid structure from Parser")
-            InvalidStructure(input)
-        } else {
-            val tokenStatus = vcJws.vc.credentialStatus?.let {
-                Napier.d("VC: status found")
-                TokenStatusValidationSummary(
-                    status = it,
-                    tokenStatus = runCatching {
-                        checkRevocationStatus(it)
-                    }.wrap()
-                )
-            }
+            is VerifiableCredentialJwsInputValidator.VerifiableCredentialJwsValidationResult.ValidationSummary -> {
+               when {
+                   !validationresult.isIntegrityGood -> {
+                       Napier.w("VC: Signature invalid")
+                       InvalidStructure(input)
+                   }
 
-            if (tokenStatus?.tokenStatus?.getOrNull() == TokenStatus.Invalid) {
-                Napier.d("VC: revoked")
-                return Revoked(input, vcJws)
-            } else {
-                SuccessJwt(
-                    vcJws,
-                    tokenStatusValidationSummary = tokenStatus,
-                )
+                   validationresult.subjectMatchingResult?.isSuccess == false -> {
+                       Napier.d("VC: sub invalid")
+                       ValidationError("Sub invalid: ${validationresult.payload.subject}")
+                   }
+
+                   !validationresult.structureValidationSummary.isSuccess -> {
+                       Napier.d("VC: Invalid structure from Parser")
+                       InvalidStructure(input)
+                   }
+
+                   !validationresult.timelinessValidationSummary.isSuccess -> {
+                       Napier.d("VC: Invalid structure from Parser")
+                       InvalidStructure(input)
+                   }
+
+                   validationresult.tokenStatusValidationSummary?.tokenStatus?.getOrNull() == TokenStatus.Invalid -> {
+                       Napier.d("VC: revoked")
+                       return Revoked(input, validationresult.payload)
+                   }
+
+                   else -> SuccessJwt(
+                       validationresult.payload,
+                       tokenStatusValidationSummary = validationresult.tokenStatusValidationSummary,
+                   )
+               }
             }
         }
     }

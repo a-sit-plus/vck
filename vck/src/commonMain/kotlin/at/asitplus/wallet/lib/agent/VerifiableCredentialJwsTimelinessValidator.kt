@@ -1,18 +1,16 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.wallet.lib.Configuration
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import kotlin.time.DurationUnit
-import kotlin.time.toDuration
+import kotlin.time.Duration
 
 data class VerifiableCredentialJwsTimelinessValidator(
-    val timeLeewaySeconds: Long = 300L,
-    private val clock: Clock = Clock.System,
+    val timeLeeway: Duration = Configuration.instance.timeLeeway,
+    private val clock: Clock = Configuration.instance.clock,
 ) {
-    val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
-
     fun validate(vcJws: VerifiableCredentialJws): ValidationSummary {
         val earliestAcceptedExpirationTime = (clock.now() - timeLeeway)
         val latestAcceptedNotBeforeTime = (clock.now() + timeLeeway)
@@ -47,7 +45,7 @@ data class VerifiableCredentialJwsTimelinessValidator(
                 )
             } else null,
         ).also {
-            if (!it.containsErrors) {
+            if (it.isSuccess) {
                 Napier.d("VC is timely")
             }
         }
@@ -59,12 +57,12 @@ data class VerifiableCredentialJwsTimelinessValidator(
         val jwsNotYetValidError: JwsNotYetValidError?,
         val credentialNotYetValidError: CredentialNotYetValidError?,
     ) {
-        val containsErrors = listOf(
+        val isSuccess = listOf(
             jwsExpiredError,
             credentialExpiredError,
             jwsNotYetValidError,
             credentialNotYetValidError,
-        ).any { it != null }
+        ).all { it == null }
     }
 
     data class JwsExpiredError(
