@@ -15,15 +15,14 @@ data class DCQLJsonClaimsQuery(
     override val id: DCQLClaimsQueryIdentifier? = null,
     @SerialName(DCQLClaimsQuery.SerialNames.VALUES)
     override val values: List<DCQLExpectedClaimValue>? = null,
-
     /**
      * OID4VP draft 23: path: REQUIRED if the Credential Format uses a JSON-based claims structure
      * (e.g., IETF SD-JWT VC and W3C Verifiable Credentials); MUST NOT be present otherwise. The
      * value MUST be a non-empty array representing a claims path pointer that specifies the path
      * to a claim within the Verifiable Credential, as defined in Section 6.4.
      */
-    @SerialName(SerialNames.PATH)
-    val path: DCQLClaimsPathPointer,
+    @SerialName(DCQLClaimsQuery.SerialNames.PATH)
+    override val path: DCQLClaimsPathPointer
 ) : DCQLClaimsQuery {
     object SerialNames {
         const val PATH = "path"

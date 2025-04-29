@@ -151,6 +151,7 @@ data class OpenIdRequestOptions(
                         CredentialRepresentation.ISO_MDOC -> DCQLIsoMdocClaimsQuery(
                             namespace = credential.credentialScheme.isoNamespace!!,
                             claimName = attribute,
+                            path = DCQLClaimsPathPointer(credential.credentialScheme.isoNamespace!!, attribute)
                         )
                     }
                 }.ifEmpty {

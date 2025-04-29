@@ -22,9 +22,12 @@ interface DCQLClaimsQuery {
      */
     val values: List<DCQLExpectedClaimValue>?
 
+    val path: DCQLClaimsPathPointer?
+
     object SerialNames {
         const val ID = "id"
         const val VALUES = "values"
+        const val PATH = "path"
     }
 
     fun <Credential : Any> executeClaimsQueryAgainstCredential(

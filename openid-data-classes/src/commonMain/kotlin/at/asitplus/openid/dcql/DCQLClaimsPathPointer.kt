@@ -34,6 +34,10 @@ class DCQLClaimsPathPointer(
         DCQLClaimsPathPointerSegment.NameSegment(startSegment)
     )
 
+    constructor(startSegment: String, vararg segments: String) : this(
+        (listOf(startSegment) + segments.toList()).map { DCQLClaimsPathPointerSegment.NameSegment(it) }.toNonEmptyList()
+    )
+
     constructor(startSegment: UInt) : this(
         DCQLClaimsPathPointerSegment.IndexSegment(startSegment)
     )

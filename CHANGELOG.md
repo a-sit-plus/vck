@@ -29,6 +29,8 @@ Release 5.6.0:
  - Token Status:
    - Add considerations for separating the semantics "no token status mechanism is defined" from "evaluating token status failed"
    - Provide revocation status to verifier
+ - DCQL:
+   - Parse new format of claim query in OpenID4VP Draft 28
 
 Release 5.5.3:
  - Fix DCQL Query serialization/deserialization in `AuthenticationRequestParameters`
