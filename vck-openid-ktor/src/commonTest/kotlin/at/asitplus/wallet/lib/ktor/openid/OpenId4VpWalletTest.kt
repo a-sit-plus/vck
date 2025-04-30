@@ -39,14 +39,12 @@ class OpenId4VpWalletTest : FunSpec() {
 
     lateinit var countdownLatch: Mutex
     lateinit var keyMaterial: KeyMaterial
-    lateinit var cryptoService: CryptoService
     lateinit var holderAgent: HolderAgent
 
     init {
         beforeEach {
             countdownLatch = Mutex(true)
             keyMaterial = EphemeralKeyWithoutCert()
-            cryptoService = DefaultCryptoService(keyMaterial)
             holderAgent = HolderAgent(keyMaterial)
         }
 
@@ -127,7 +125,7 @@ class OpenId4VpWalletTest : FunSpec() {
 
     private fun setupWallet(mockEngine: HttpClientEngine): OpenId4VpWallet = OpenId4VpWallet(
         engine = mockEngine,
-        cryptoService = cryptoService,
+        keyMaterial = keyMaterial,
         holderAgent = holderAgent,
     )
 

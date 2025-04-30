@@ -5,8 +5,8 @@ import at.asitplus.catching
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestParametersFrom
-import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
@@ -51,7 +51,7 @@ class OpenId4VpWallet(
     engine: HttpClientEngine,
     /** Additional configuration for building the HTTP client, e.g. callers may enable logging. */
     httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
-    cryptoService: CryptoService,
+    keyMaterial: KeyMaterial,
     holderAgent: HolderAgent,
 ) {
 
@@ -69,7 +69,7 @@ class OpenId4VpWallet(
     }
     val openId4VpHolder = OpenId4VpHolder(
         holder = holderAgent,
-        keyMaterial = cryptoService.keyMaterial,
+        keyMaterial = keyMaterial,
         remoteResourceRetriever = { data ->
             withContext(Dispatchers.IO) {
                 if (data.method == HttpMethod.Post) {
