@@ -1,10 +1,9 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.KmmResult
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.contentEquals
 import at.asitplus.openid.sha256
-import at.asitplus.KmmResult
-import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.contentEqualsIfArray
 import at.asitplus.signum.indispensable.cosef.CoseKey
@@ -147,15 +146,15 @@ class Validator(
     /**
      * Checks the revocation state using the provided status mechanisms
      */
-    private suspend fun checkRevocationStatus(status: Status): KmmResult<TokenStatus> = runCatching {
+    private suspend fun checkRevocationStatus(status: Status): KmmResult<TokenStatus> = try {
         val resolver = tokenStatusResolver ?: {
             TokenStatus.Valid
         }
-        resolver.invoke(status)
-    }.onFailure {
+        KmmResult.success(resolver.invoke(status))
+    } catch (it: Throwable) {
         // A status mechanism is specified, but token status cannot be evaluated
-        throw TokenStatusEvaluationException(it)
-    }.wrap()
+        KmmResult.failure(TokenStatusEvaluationException(it))
+    }
 
     /**
      * Validates the content of a JWS, expected to contain a Verifiable Presentation.
@@ -475,7 +474,8 @@ class Validator(
         val isRevoked = checkRevocationStatus(sdJwt)?.let { result ->
             result.getOrNull()?.let {
                 it == TokenStatus.Invalid // TODO: is this the only status we consider "revoked"?
-            } ?: false // TODO: how to handle the case where resolving token status fails? Currently considered "not revoked"
+            }
+                ?: false // TODO: how to handle the case where resolving token status fails? Currently considered "not revoked"
         } ?: false
 
         if (isRevoked) { // How to handle "WE DO NOT KNOW"?
