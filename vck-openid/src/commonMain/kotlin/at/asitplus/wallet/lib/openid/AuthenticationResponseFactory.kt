@@ -31,6 +31,7 @@ internal class AuthenticationResponseFactory(
         DirectPostJwt -> authnResponseDirectPostJwt(request, response)
         Query -> authnResponseQuery(request, response)
         Fragment, null -> authnResponseFragment(request, response)
+        DcApi -> TODO()
         is Other -> TODO()
     }
 
