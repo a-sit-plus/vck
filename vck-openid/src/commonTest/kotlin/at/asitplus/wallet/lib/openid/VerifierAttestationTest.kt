@@ -5,8 +5,9 @@ import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.jws.DefaultJwsService
-import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
+import at.asitplus.wallet.lib.jws.JwsHeaderNone
+import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import com.benasher44.uuid.uuid4
@@ -52,8 +53,8 @@ class VerifierAttestationTest : FreeSpec({
     }
 
     "test with request object and Attestation JWT" {
-        val sprsCryptoService = DefaultCryptoService(EphemeralKeyWithoutCert())
-        val attestationJwt = buildAttestationJwt(sprsCryptoService, clientId, verifierKeyMaterial)
+        val sprsKeyMaterial = EphemeralKeyWithoutCert()
+        val attestationJwt = buildAttestationJwt(sprsKeyMaterial, clientId, verifierKeyMaterial)
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = ClientIdScheme.VerifierAttestation(attestationJwt, redirectUrl),
@@ -64,7 +65,7 @@ class VerifierAttestationTest : FreeSpec({
 
         holderOid4vp = OpenId4VpHolder(
             holder = holderAgent,
-            requestObjectJwsVerifier = attestationJwtVerifier(sprsCryptoService.keyMaterial.jsonWebKey)
+            requestObjectJwsVerifier = attestationJwtVerifier(sprsKeyMaterial.jsonWebKey)
         )
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
@@ -77,8 +78,8 @@ class VerifierAttestationTest : FreeSpec({
         }
     }
     "test with request object and invalid Attestation JWT" {
-        val sprsCryptoService = DefaultCryptoService(EphemeralKeyWithoutCert())
-        val attestationJwt = buildAttestationJwt(sprsCryptoService, clientId, verifierKeyMaterial)
+        val sprsKeyMaterial = EphemeralKeyWithoutCert()
+        val attestationJwt = buildAttestationJwt(sprsKeyMaterial, clientId, verifierKeyMaterial)
 
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
@@ -106,14 +107,12 @@ private fun requestOptionsAtomicAttribute() = OpenIdRequestOptions(
 )
 
 private suspend fun buildAttestationJwt(
-    sprsCryptoService: DefaultCryptoService,
+    sprsKeyMaterial: KeyMaterial,
     clientId: String,
     verifierKeyMaterial: KeyMaterial,
-): JwsSigned<JsonWebToken> = DefaultJwsService(sprsCryptoService).createSignedJws(
-    header = JwsHeader(
-        algorithm = sprsCryptoService.keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
-    ),
-    payload = JsonWebToken(
+): JwsSigned<JsonWebToken> = SignJwt<JsonWebToken>(sprsKeyMaterial, JwsHeaderNone())(
+    null,
+    JsonWebToken(
         issuer = "sprs", // allows Wallet to determine the issuer's key
         subject = clientId,
         issuedAt = Clock.System.now(),
@@ -121,24 +120,24 @@ private suspend fun buildAttestationJwt(
         notBefore = Clock.System.now(),
         confirmationClaim = ConfirmationClaim(jsonWebKey = verifierKeyMaterial.jsonWebKey),
     ),
-    serializer = JsonWebToken.Companion.serializer(),
+    JsonWebToken.Companion.serializer(),
 ).getOrThrow()
 
 private fun attestationJwtVerifier(trustedKey: JsonWebKey) =
     object : RequestObjectJwsVerifier {
-        override fun invoke(jws: JwsSigned<RequestParameters>): Boolean {
+        override suspend fun invoke(jws: JwsSigned<RequestParameters>): Boolean {
             val attestationJwt = jws.header.attestationJwt?.let {
                 JwsSigned.Companion.deserialize<JsonWebToken>(
                     JsonWebToken.Companion.serializer(), it
                 ).getOrThrow()
             }
                 ?: return false
-            val verifierJwsService = DefaultVerifierJwsService()
-            if (!verifierJwsService.verifyJws(attestationJwt, trustedKey))
+            val verifyJwsSignatureWithKey = VerifyJwsSignatureWithKey()
+            if (!verifyJwsSignatureWithKey(attestationJwt, trustedKey))
                 return false
             val verifierPublicKey = attestationJwt.payload.confirmationClaim?.jsonWebKey
                 ?: return false
-            return verifierJwsService.verifyJws(jws, verifierPublicKey)
+            return verifyJwsSignatureWithKey(jws, verifierPublicKey)
         }
     }
 

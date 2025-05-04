@@ -1,6 +1,25 @@
 package at.asitplus.openid
-import kotlinx.serialization.PolymorphicSerializer
+
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import io.ktor.util.*
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.ContextualSerializer
+import kotlinx.serialization.PolymorphicSerializer
+import kotlinx.serialization.json.JsonPrimitive
+import okio.ByteString.Companion.toByteString
+
+
+/**
+ * Denotes a JSON string containing a Base64Url encoded [TransactionData] element
+ * This is useful in classes defined in OpenID4VP since JSON string representation is not
+ * strongly standardized (normal vs pretty-print etc) so de-/serialization between
+ * different parties with different serializer settings may lead to erroneous
+ * request rejection.
+ */
+typealias TransactionDataBase64Url = JsonPrimitive
+
+fun TransactionDataBase64Url.sha256(): ByteArray =
+    this.content.decodeToByteArray(Base64UrlStrict).toByteString().sha256().toByteArray()
 
 /**
  * OID4VP Draft 24: OPTIONAL. Array of strings, where each string is a base64url encoded JSON object that contains a typed parameter
@@ -34,4 +53,8 @@ interface TransactionData {
      * `sha-256` hash algorithm.
      */
     val transactionDataHashAlgorithms: Set<String>?
+
+    fun toBase64UrlJsonString(): TransactionDataBase64Url
+
+    fun sha256(): ByteArray = toBase64UrlJsonString().sha256()
 }

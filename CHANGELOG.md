@@ -1,5 +1,32 @@
 # Changelog
 
+Release 5.6.0:
+ - Remote Qualified Electronic Signatures:
+   - Fix erroneous `InputDescriptor` encoding in `PresentationDefinition` when more specific type  was known (i.e. `DidInputDescriptor`/`QesInputDescriptor`) via contexutal serialziation
+   - Allow fully compliant OID4VP and UC5 `transactionData` handling
+   - Deprecate `RqesOpenId4VpVerifier`
+   - Change `TransactionData` from sealed class to interface
+   - Fix erroneous `TransactionData` encoding in `AuthenticationRequest`
+   - Change transaction data and related data elements from set to list
+   - Change transaction data elements from their class to JsonPrimitive
+   - Add `TransactionDataBase64Uri` typealias for JsonPrimitive
+   - Add transaction data verification to `OpenID4VpVerifier.validateAuthnResponse`
+  - OpenID for Verifiable Credential Issuance:
+   - Remove code elements deprecated in 5.5.0
+ - OpenID for Verifiable Presentations:
+   - In `OpenId4VpVerifier` add constructor parameter `supportedAlgorithms`
+   - In `OpenId4VpWallet` remove `openUrlExternally`, and instead return the redirected URL from the verifier
+ - Use functions over services:
+   - Replace `VerifierCryptoService` with `VerifySignatureFun`
+   - Replace `VerifierJwsService` with `VerifyJwsObjectFun`, `VerifyJwsSignatureWithCnfFun` and `VerifyJwsSignatureWithKeyFun`
+   - Replace `VerifierCoseService` with `VerifyCoseSignatureFun`
+   - Replace `JwsService.createSignedJwt()` with `SignJwtFun`
+   - Replace `JwsService.createSignedJwsAddingParams()` with `SignJwtFun` and `JwsHeaderIdentifierFun`
+   - Replace `JwsService.encryptJweObject()` with `EncryptJweFun`
+   - Replace `JwsService.decryptJweObject()` with `DecryptJweFun`
+   - Replace `CoseService.createSignedCose()` with `SignCoseFun`
+   - Replace `CoseService.createSignedCoseWithDetachedPayload()` with `SignCoseDetachedFun`
+
 Release 5.5.4:
  - Token status:
    - Add considerations for separating the semantics "no token status mechanism is defined" from "evaluating token status failed"
@@ -25,7 +52,7 @@ Release 5.5.2:
  - When creating JWS, and `jwk` header is set, do not set `kid`
 
 Release 5.5.1:
- - OpenID for Verifiable Credential Issuance:
+  - OpenID for Verifiable Credential Issuance:
     - Support AS metadata files at `/.well-known/oauth-authorization-server`
  - OpenID for Verifiable Presentations:
    - In `RequestOptionsCredential` add `id` as an optional parameter

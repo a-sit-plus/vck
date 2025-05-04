@@ -4,17 +4,18 @@ import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.CODE_CHALLENGE_METHOD_SHA256
 import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsService
+import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.MapStore
 import at.asitplus.wallet.lib.oidvci.WalletService
-import at.asitplus.wallet.lib.oidvci.buildDPoPHeader
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.random.Random
 
@@ -38,11 +39,14 @@ class OAuth2Client(
      * and then [TokenRequestParameters.codeVerifier], see [RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636).
      */
     private val stateToCodeStore: MapStore<String, String> = DefaultMapStore(),
+    @Deprecated("Use signPushedAuthorizationRequest instead")
+    val jwsService: JwsService? = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithSelfSignedCert())),
     /**
      * Set this variable to use JAR (JWT-secured authorization requests, RFC 9101)
      * for PAR (Pushed authorization requests, RFC 9126), as mandated by OpenID4VC HAIP.
      */
-    val jwsService: JwsService? = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithSelfSignedCert())),
+    val signPushedAuthorizationRequest: SignJwtFun<AuthenticationRequestParameters>? =
+        SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
 ) {
 
     /**
@@ -50,7 +54,7 @@ class OAuth2Client(
      * Use POST if [OAuth2AuthorizationServerMetadata.pushedAuthorizationRequestEndpoint] is available.
      *
      * Wraps the actual authorization request in a pushed authorization request (i.e. the `request` property),
-     * if the [jwsService] is available.
+     * if the [signPushedAuthorizationRequest] is available.
      *
      * Sample ktor code for GET:
      * ```
@@ -104,26 +108,20 @@ class OAuth2Client(
     ).wrapIfNecessary(wrapAsPar, audience)
 
     private suspend fun AuthenticationRequestParameters.wrapIfNecessary(wrapAsPar: Boolean, audience: String?) =
-        if (jwsService != null && wrapAsPar) wrapInPar(jwsService, audience) else this
+        if (signPushedAuthorizationRequest != null && wrapAsPar) wrapInPar(signPushedAuthorizationRequest, audience) else this
 
     private suspend fun AuthenticationRequestParameters.wrapInPar(
-        jwsService: JwsService,
+        signPushedAuthorizationRequest: SignJwtFun<AuthenticationRequestParameters>,
         audience: String?,
     ) = AuthenticationRequestParameters(
         clientId = clientId,
-        request = jwsService.createSignedJwsAddingParams(
-            header = JwsHeader(
-                algorithm = jwsService.algorithm,
-                type = JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST
-            ),
-            payload = this.copy(
+        request = signPushedAuthorizationRequest(
+            JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST,
+            this.copy(
                 audience = audience,
                 issuer = this.clientId,
             ),
-            serializer = AuthenticationRequestParameters.serializer(),
-            addX5c = true,
-            addJsonWebKey = true,
-            addKeyId = false,
+            AuthenticationRequestParameters.serializer(),
         ).getOrThrow().serialize()
     )
 
@@ -203,7 +201,7 @@ class OAuth2Client(
      * ```
      *
      * Be sure to include a DPoP header if [OAuth2AuthorizationServerMetadata.dpopSigningAlgValuesSupported] is set,
-     * see [buildDPoPHeader].
+     * see [at.asitplus.wallet.lib.oidvci.BuildDPoPHeader].
      *
      * @param state to keep internal state in further requests
      * @param authorization for the token endpoint

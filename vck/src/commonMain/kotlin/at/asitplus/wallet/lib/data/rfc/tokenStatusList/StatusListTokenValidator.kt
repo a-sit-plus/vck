@@ -18,10 +18,10 @@ object StatusListTokenValidator {
      * Check for the existence of the required claims as defined in Section 5.1 and Section 5.2
      * depending on token type.
      */
-    fun <StatusListToken : Any> validateStatusListToken(
+    suspend fun <StatusListToken : Any> validateStatusListToken(
         statusListToken: StatusListToken,
         statusListTokenResolvedAt: Instant?,
-        validateStatusListTokenIntegrity: (StatusListToken) -> StatusListTokenPayload,
+        validateStatusListTokenIntegrity: suspend (StatusListToken) -> StatusListTokenPayload,
         statusListInfo: StatusListInfo,
         isInstantInThePast: (Instant) -> Boolean,
     ): KmmResult<StatusListTokenPayload> = at.asitplus.catching {

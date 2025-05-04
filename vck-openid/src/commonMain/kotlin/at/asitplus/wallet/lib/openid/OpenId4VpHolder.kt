@@ -11,21 +11,32 @@ import at.asitplus.openid.OpenIdConstants.ClientIdScheme
 import at.asitplus.openid.OpenIdConstants.PREFIX_DID_KEY
 import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
-import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
+import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
 import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
+import at.asitplus.wallet.lib.cbor.SignCose
+import at.asitplus.wallet.lib.cbor.SignCoseDetached
+import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
+import at.asitplus.wallet.lib.cbor.SignCoseFun
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DefaultJwsService
+import at.asitplus.wallet.lib.jws.EncryptJwe
+import at.asitplus.wallet.lib.jws.EncryptJweFun
+import at.asitplus.wallet.lib.jws.JwsHeaderJwk
 import at.asitplus.wallet.lib.jws.JwsService
+import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.MapStore
@@ -43,10 +54,19 @@ import kotlinx.datetime.Clock
  * The [holder] creates the Authentication Response, see [OpenId4VpVerifier] for the verifier.
  */
 class OpenId4VpHolder(
-    private val holder: Holder,
-    private val agentPublicKey: CryptoPublicKey,
-    private val jwsService: JwsService,
-    private val coseService: CoseService,
+    private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+    private val holder: Holder = HolderAgent(keyMaterial),
+    @Deprecated("Use signIdToken, signJarm, encryptJarm, supportedAlgorithms instead")
+    private val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
+    private val signIdToken: SignJwtFun<IdToken> = SignJwt(keyMaterial, JwsHeaderJwk()),
+    private val signJarm: SignJwtFun<AuthenticationResponseParameters> = SignJwt(keyMaterial, JwsHeaderJwk()),
+    private val encryptJarm: EncryptJweFun = EncryptJwe(keyMaterial),
+    private val supportedAlgorithms: Set<JwsAlgorithm> = setOfNotNull(JwsAlgorithm.ES256),
+    @Deprecated("Use signDeviceAuthDetached, signDeviceAuthFallback, supportedAlgorithms instead")
+    private val coseService: CoseService = DefaultCoseService(DefaultCryptoService(keyMaterial)),
+    private val signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> =
+        SignCoseDetached(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
+    private val signDeviceAuthFallback: SignCoseFun<ByteArray> = SignCose(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
     private val clock: Clock = Clock.System,
     private val clientId: String = "https://wallet.a-sit.at/",
     /**
@@ -55,49 +75,18 @@ class OpenId4VpHolder(
      * Implementations need to fetch the url passed in, and return either the body, if there is one,
      * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
      */
-    private val remoteResourceRetriever: RemoteResourceRetrieverFunction,
+    private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
     /**
      * Need to verify the request object serialized as a JWS,
      * which may be signed with a pre-registered key (see [ClientIdScheme.PreRegistered]).
      */
-    private val requestObjectJwsVerifier: RequestObjectJwsVerifier,
+    private val requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _ -> true },
     private val walletNonceMapStore: MapStore<String, String> = DefaultMapStore(),
 ) {
-    constructor(
-        keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-        holder: Holder = HolderAgent(keyMaterial),
-        jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
-        coseService: CoseService = DefaultCoseService(DefaultCryptoService(keyMaterial)),
-        clock: Clock = Clock.System,
-        clientId: String = "https://wallet.a-sit.at/",
-        /**
-         * Need to implement if resources are defined by reference, i.e. the URL for a [at.asitplus.signum.indispensable.josef.JsonWebKeySet],
-         * or the authentication request itself as `request_uri`, or `presentation_definition_uri`.
-         * Implementations need to fetch the url passed in, and return either the body, if there is one,
-         * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
-         */
-        remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
-        /**
-         * Need to verify the request object serialized as a JWS,
-         * which may be signed with a pre-registered key (see [ClientIdScheme.PreRegistered]).
-         */
-        requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _ -> true },
-        walletNonceMapStore: MapStore<String, String> = DefaultMapStore(),
-    ) : this(
-        holder = holder,
-        agentPublicKey = keyMaterial.publicKey,
-        jwsService = jwsService,
-        coseService = coseService,
-        clock = clock,
-        clientId = clientId,
-        remoteResourceRetriever = remoteResourceRetriever,
-        requestObjectJwsVerifier = requestObjectJwsVerifier,
-        walletNonceMapStore = walletNonceMapStore
-    )
 
-    private val supportedAlgorithmsStrings = setOf(jwsService.algorithm.identifier)
+    private val supportedAlgorithmsStrings = supportedAlgorithms.map { it.identifier }.toSet()
     private val authorizationRequestValidator = AuthorizationRequestValidator(walletNonceMapStore)
-    private val authenticationResponseFactory = AuthenticationResponseFactory(jwsService)
+    private val authenticationResponseFactory = AuthenticationResponseFactory(signJarm, encryptJarm)
 
     val metadata: OAuth2AuthorizationServerMetadata by lazy {
         OAuth2AuthorizationServerMetadata(
@@ -122,11 +111,7 @@ class OpenId4VpHolder(
                 vcJwt = SupportedAlgorithmsContainer(supportedAlgorithmsStrings = supportedAlgorithmsStrings),
                 vcSdJwt = SupportedAlgorithmsContainer(supportedAlgorithmsStrings = supportedAlgorithmsStrings),
                 dcSdJwt = SupportedAlgorithmsContainer(supportedAlgorithmsStrings = supportedAlgorithmsStrings),
-                msoMdoc = SupportedAlgorithmsContainer(
-                    supportedAlgorithmsStrings = setOfNotNull(
-                        coseService.algorithm.toJwsAlgorithm().getOrNull()?.identifier
-                    )
-                ),
+                msoMdoc = SupportedAlgorithmsContainer(supportedAlgorithmsStrings = supportedAlgorithmsStrings),
             )
         )
     }
@@ -236,9 +221,10 @@ class OpenId4VpHolder(
                 ?.jwsSigned?.header?.certificateChain?.firstOrNull()?.publicKey?.toJsonWebKey()
         val clientJsonWebKeySet = clientMetadata?.loadJsonWebKeySet()
         val audience = request.parameters.extractAudience(clientJsonWebKeySet)
-        val presentationFactory = PresentationFactory(jwsService, coseService)
+        val presentationFactory = PresentationFactory(supportedAlgorithms, signDeviceAuthDetached, signDeviceAuthFallback, signIdToken)
         val jsonWebKeys = clientJsonWebKeySet?.keys?.combine(certKey)
-        val idToken = presentationFactory.createSignedIdToken(clock, agentPublicKey, request).getOrNull()?.serialize()
+        val idToken =
+            presentationFactory.createSignedIdToken(clock, keyMaterial.publicKey, request).getOrNull()?.serialize()
 
         val resultContainer = credentialPresentation?.let {
             presentationFactory.createPresentation(

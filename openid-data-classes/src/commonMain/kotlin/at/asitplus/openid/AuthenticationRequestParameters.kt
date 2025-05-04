@@ -362,7 +362,7 @@ data class AuthenticationRequestParameters(
     /**
      * CSC: OPTIONAL
      * Arbitrary data from the signature application. It can be used to handle a
-     * transaction identifier or other application-spe cific data that may be useful for
+     * transaction identifier or other application-specific data that may be useful for
      * debugging purposes
      */
     @SerialName("clientData")
@@ -378,7 +378,7 @@ data class AuthenticationRequestParameters(
      * For the contextual serializer see [at.asitplus.rqes.serializers.Base64URLTransactionDataSerializer]
      */
     @SerialName("transaction_data")
-    override val transactionData: Set<@Contextual TransactionData>? = null,
+    override val transactionData: List<TransactionDataBase64Url>? = null,
 ) : RequestParameters {
 
     /**

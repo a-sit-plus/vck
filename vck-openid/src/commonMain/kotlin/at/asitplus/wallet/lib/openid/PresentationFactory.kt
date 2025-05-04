@@ -14,16 +14,18 @@ import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.*
-import at.asitplus.wallet.lib.cbor.CoseService
+import at.asitplus.wallet.lib.cbor.SignCoseFun
+import at.asitplus.wallet.lib.agent.PresentationRequestParameters.Flow
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.*
-import at.asitplus.wallet.lib.jws.JwsService
+import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import io.github.aakira.napier.Napier
@@ -33,15 +35,17 @@ import kotlinx.datetime.Clock
 import kotlinx.serialization.PolymorphicSerializer
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.encodeToByteArray
-import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
 internal class PresentationFactory(
-    private val jwsService: JwsService,
-    private val coseService: CoseService,
+    private val supportedAlgorithms: Set<JwsAlgorithm>,
+    private val signDeviceAuthDetached: SignCoseFun<ByteArray>,
+    private val signDeviceAuthFallback: SignCoseFun<ByteArray>,
+    private val signIdToken: SignJwtFun<IdToken>,
 ) {
     suspend fun createPresentation(
         holder: Holder,
@@ -57,7 +61,7 @@ internal class PresentationFactory(
         val responseWillBeEncrypted = jsonWebKeys != null && clientMetadata?.requestsEncryption() == true
         val clientId = request.clientId
         val responseUrl = request.responseUrl
-        val transactionData = parseTransactionData(request)
+        val transactionData = request.parseTransactionData()
         val mdocGeneratedNonce = if (clientId != null && responseUrl != null) {
             if (responseWillBeEncrypted) Random.nextBytes(16).encodeToString(Base64UrlStrict) else ""
         } else null
@@ -90,26 +94,6 @@ internal class PresentationFactory(
     }
 
     /**
-     * Parses all `transaction_data` fields from the request, with a JsonPath, because
-     * ... for OpenID4VP Draft 23, that's encoded in the AuthnRequest
-     * ... but for Potential UC 5, that's encoded in the input descriptor
-     *     and we cannot deserialize into data classes defined in [at.asitplus.rqes]
-     */
-    private fun parseTransactionData(request: RequestParameters): Collection<TransactionData>? =
-        with(vckJsonSerializer.encodeToJsonElement(PolymorphicSerializer(RequestParameters::class), request)) {
-            JsonPath("$..transaction_data").query(this)
-                .flatMap { it.value.jsonArray }
-                .map { vckJsonSerializer.encodeToString<JsonElement>(it) }
-                .mapNotNull {
-                    runCatching {
-                        vckJsonSerializer.decodeFromString(DeprecatedBase64URLTransactionDataSerializer, it)
-                    }.getOrNull()
-                }
-                .distinct()
-                .ifEmpty { null }
-        }
-
-    /**
      * Performs calculation of the [at.asitplus.wallet.lib.iso.SessionTranscript] and [at.asitplus.wallet.lib.iso.DeviceAuthentication],
      * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024, with the [mdocGeneratedNonce] provided if set,
      * or a fallback mechanism used otherwise
@@ -134,21 +118,13 @@ internal class PresentationFactory(
                 .wrapInCborTag(24)
                 .also { Napier.d("Device authentication signature input is ${it.encodeToString(Base16())}") }
 
-            coseService.createSignedCoseWithDetachedPayload(
-                payload = deviceAuthenticationBytes,
-                serializer = ByteArraySerializer(),
-                addKeyId = false
-            ).getOrElse {
+            signDeviceAuthDetached(null, null, deviceAuthenticationBytes, ByteArraySerializer()).getOrElse {
                 Napier.w("Could not create DeviceAuth for presentation", it)
                 throw PresentationException(it)
             }
         }
     } else {
-        coseService.createSignedCose(
-            payload = nonce.encodeToByteArray(),
-            serializer = ByteArraySerializer(),
-            addKeyId = false
-        ).getOrElse {
+        signDeviceAuthFallback(null, null, nonce.encodeToByteArray(), ByteArraySerializer()).getOrElse {
             Napier.w("Could not create DeviceAuth for presentation", it)
             throw PresentationException(it)
         }
@@ -205,13 +181,7 @@ internal class PresentationFactory(
             expiration = now + 60.seconds,
             nonce = nonce,
         )
-        jwsService.createSignedJwsAddingParams(
-            payload = idToken,
-            serializer = IdToken.serializer(),
-            addKeyId = false,
-            addX5c = false,
-            addJsonWebKey = true,
-        ).getOrElse {
+        signIdToken(null, idToken, IdToken.serializer()).getOrElse {
             Napier.w("Could not sign id_token", it)
             throw AccessDenied("Could not sign id_token", it)
         }
@@ -275,19 +245,18 @@ internal class PresentationFactory(
     @Throws(OAuth2Exception::class)
     private fun PresentationResponseParameters.PresentationExchangeParameters.verifyFormatSupport(
         supportedFormats: FormatHolder,
-    ) =
-        presentationSubmission.descriptorMap?.mapIndexed { _, descriptor ->
-            if (supportedFormats.isMissingFormatSupport(descriptor.format)) {
-                Napier.w("Incompatible JWT algorithms for claim format ${descriptor.format}: $supportedFormats")
-                throw RegistrationValueNotSupported("incompatible algorithms")
-            }
+    ) = presentationSubmission.descriptorMap?.mapIndexed { _, descriptor ->
+        if (!supportedFormats.supportsAlgorithm(descriptor.format)) {
+            Napier.w("Incompatible JWT algorithms for claim format ${descriptor.format}: $supportedFormats")
+            throw RegistrationValueNotSupported("incompatible algorithms")
         }
+    }
 
     @Throws(OAuth2Exception::class)
     private fun PresentationResponseParameters.DCQLParameters.verifyFormatSupport(supportedFormats: FormatHolder) =
         verifiablePresentations.entries.mapIndexed { _, descriptor ->
             val format = this.verifiablePresentations.entries.first().value.toFormat()
-            if (supportedFormats.isMissingFormatSupport(format)) {
+            if (!supportedFormats.supportsAlgorithm(format)) {
                 Napier.w("Incompatible JWT algorithms for claim format $format: $supportedFormats")
                 throw RegistrationValueNotSupported("incompatible algorithms")
             }
@@ -300,19 +269,44 @@ internal class PresentationFactory(
     }
 
     @Suppress("DEPRECATION")
-    private fun FormatHolder.isMissingFormatSupport(claimFormat: ClaimFormat): Boolean {
-        return when (claimFormat) {
-            ClaimFormat.JWT_VP -> jwtVp?.algorithms?.let { !it.contains(jwsService.algorithm) } ?: false
-            ClaimFormat.JWT_SD, ClaimFormat.SD_JWT -> {
-                if (jwtSd?.sdJwtAlgorithms?.contains(jwsService.algorithm) == false) return true
-                if (jwtSd?.kbJwtAlgorithms?.contains(jwsService.algorithm) == false) return true
-                if (sdJwt?.sdJwtAlgorithms?.contains(jwsService.algorithm) == false) return true
-                if (sdJwt?.kbJwtAlgorithms?.contains(jwsService.algorithm) == false) return true
-                return false
-            }
+    private fun FormatHolder.supportsAlgorithm(claimFormat: ClaimFormat): Boolean = when (claimFormat) {
+        ClaimFormat.JWT_VP -> jwtVp?.algorithms?.any { supportedAlgorithms.contains(it) } == true
+        ClaimFormat.JWT_SD, ClaimFormat.SD_JWT ->
+            if (jwtSd?.sdJwtAlgorithms?.any { supportedAlgorithms.contains(it) } == true) true
+            else if (jwtSd?.kbJwtAlgorithms?.any { supportedAlgorithms.contains(it) } == true) true
+            else if (sdJwt?.sdJwtAlgorithms?.any { supportedAlgorithms.contains(it) } == true) true
+            else if (sdJwt?.kbJwtAlgorithms?.any { supportedAlgorithms.contains(it) } == true) true
+            else false
 
-            ClaimFormat.MSO_MDOC -> msoMdoc?.algorithms?.let { !it.contains(jwsService.algorithm) } ?: false
-            else -> false
-        }
+        ClaimFormat.MSO_MDOC -> msoMdoc?.algorithms?.any { supportedAlgorithms.contains(it) } == true
+        else -> false
     }
+
+}
+
+/**
+ * Parses all `transaction_data` fields from the request, with a JsonPath, because
+ * ... for OpenID4VP Draft 23, that's encoded in the AuthnRequest
+ * ... but for Potential UC 5, that's encoded in the input descriptor
+ *     and we cannot deserialize into data classes defined in [at.asitplus.rqes]
+ *
+ * The two standards are not compatible
+ * For interoperability if both are present we prefer OpenID over UC5
+ */
+internal fun RequestParameters.parseTransactionData(): Pair<Flow, List<TransactionDataBase64Url>>? {
+    val jsonRequest =
+        vckJsonSerializer.encodeToJsonElement(PolymorphicSerializer(RequestParameters::class), this)
+
+    val rawTransactionData = JsonPath("$..transaction_data").query(jsonRequest)
+        .flatMap { it.value.jsonArray }
+        .map { it as JsonPrimitive }
+        .ifEmpty { return null }
+
+    //Do not change to map because keys are unordered!
+    val oid4vpTransactionData: List<Pair<JsonPrimitive,TransactionData>> = rawTransactionData.map {
+        it to vckJsonSerializer.decodeFromJsonElement(DeprecatedBase64URLTransactionDataSerializer, it)
+    }.filter { it.second.credentialIds != null }
+
+    return if (oid4vpTransactionData.isNotEmpty()) Flow.OID4VP to oid4vpTransactionData.map { it.first }
+    else Flow.UC5 to rawTransactionData
 }

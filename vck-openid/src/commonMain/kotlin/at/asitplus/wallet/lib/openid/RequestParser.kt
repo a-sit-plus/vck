@@ -101,7 +101,7 @@ class RequestParser(
         requestObjectParameters = buildRequestObjectParameters.invoke()
     )
 
-    private fun parseRequestObjectJws(requestObject: String): RequestParametersFrom<*>? =
+    private suspend fun parseRequestObjectJws(requestObject: String): RequestParametersFrom<*>? =
         JwsSigned.deserialize<RequestParameters>(
             PolymorphicSerializer(RequestParameters::class),
             requestObject,

@@ -3,14 +3,14 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.jws.DefaultJwsService
+import at.asitplus.wallet.lib.jws.DecryptJwe
+import at.asitplus.wallet.lib.jws.DecryptJweFun
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
@@ -30,7 +30,7 @@ class OidvciEncryptionTest : FunSpec({
     lateinit var issuer: CredentialIssuer
     lateinit var client: WalletService
     lateinit var state: String
-    lateinit var jweService: JwsService
+    lateinit var decryptJwe: DecryptJweFun
 
     suspend fun getToken(scope: String): TokenResponseParameters {
         val authnRequest = client.oauth2Client.createAuthRequest(
@@ -69,7 +69,7 @@ class OidvciEncryptionTest : FunSpec({
             requestEncryption = true, // this is important
             decryptionKeyMaterial = decryptionKeyMaterial // this is important
         )
-        jweService = DefaultJwsService(DefaultCryptoService(decryptionKeyMaterial))
+        decryptJwe = DecryptJwe(decryptionKeyMaterial)
     }
 
     test("decrypt received credential") {
@@ -87,7 +87,7 @@ class OidvciEncryptionTest : FunSpec({
             val serializedCredential = credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
             val jwe = JweEncrypted.Companion.deserialize(serializedCredential).getOrThrow()
-            val plain = jweService.decryptJweObject(jwe, serializedCredential, String.serializer()).getOrThrow().payload
+            val plain = decryptJwe(jwe).getOrThrow().payload
 
             JwsSigned.Companion.deserialize<VerifiableCredentialJws>(
                 VerifiableCredentialJws.Companion.serializer(),

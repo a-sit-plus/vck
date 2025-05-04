@@ -4,18 +4,19 @@ import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.openid.SignatureQualifier
 import at.asitplus.openid.TransactionData
-import at.asitplus.rqes.collection_entries.TransactionData.QesAuthorization
+import at.asitplus.rqes.rdcJsonSerializer
+import at.asitplus.rqes.serializers.DeprecatedBase64URLTransactionDataSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * D3.1: UC Specification WP3:
  * Transaction data entry used to authorize a qualified electronic signature
  */
-@ConsistentCopyVisibility
 @Serializable
 @SerialName("qes_authorization")
-data class QesAuthorization private constructor(
+data class QesAuthorization(
     /**
      * CSC: OPTIONAL.
      * Identifier of the signature type to be created. A set of such identifiers
@@ -78,6 +79,14 @@ data class QesAuthorization private constructor(
     override val transactionDataHashAlgorithms: Set<String>? = null
 
 ) : TransactionData {
+
+    override fun toBase64UrlJsonString(): JsonPrimitive =
+        rdcJsonSerializer.parseToJsonElement(
+            rdcJsonSerializer.encodeToString(
+                DeprecatedBase64URLTransactionDataSerializer, this
+            )
+        ) as JsonPrimitive
+
     /**
      * Validation according to D3.1: UC Specification WP3
      */
@@ -97,7 +106,7 @@ data class QesAuthorization private constructor(
             credentialIds: Set<String>? = null,
             transactionDataHashAlgorithms: Set<String>? = null,
         ): KmmResult<TransactionData> = runCatching {
-           QesAuthorization(
+            QesAuthorization(
                 signatureQualifier = signatureQualifier,
                 credentialID = credentialId,
                 credentialIds = credentialIds,

@@ -9,21 +9,26 @@ import at.asitplus.openid.OpenIdConstants.ProofType
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JweAlgorithm
+import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JweHeader
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
-import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
-import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
+import at.asitplus.wallet.lib.jws.EncryptJwe
+import at.asitplus.wallet.lib.jws.EncryptJweFun
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.VerifierJwsService
+import at.asitplus.wallet.lib.jws.VerifyJwsObject
+import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.CredentialRequestDenied
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidNonce
@@ -31,11 +36,9 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidProof
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.UnsupportedCredentialType
-import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Clock.System
-import kotlinx.serialization.builtins.serializer
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
@@ -68,7 +71,11 @@ class CredentialIssuer(
     /** Used during issuance, when issuing credentials (using [issuer]) with data from [OidcUserInfoExtended]. */
     private val credentialProvider: CredentialIssuerDataProvider,
     /** Used to verify signature of proof elements in credential requests. */
+    @Deprecated("Use verifyJwsSignatureObject instead")
     private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
+    /** Used to verify signature of proof elements in credential requests. */
+    private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
+    private val supportedAlgorithms: Collection<JwsAlgorithm> = listOf(JwsAlgorithm.ES256),
     /** Clock used to verify timestamps in proof elements in credential requests. */
     private val clock: Clock = System,
     /** Time leeway for verification of timestamps in proof elements in credential requests. */
@@ -79,10 +86,16 @@ class CredentialIssuer(
     private val requireKeyAttestation: Boolean = false,
     /** Used to provide challenge to clients to include in proof of possession of key material. */
     private val clientNonceService: NonceService = DefaultNonceService(),
-    /** Used to optionally encrypt the credential response, if requested by the client. */
+    @Deprecated("Use encryptCredentialRequest instead")
     private val jwsEncryptionService: JwsService = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithoutCert())),
+    /** Used to optionally encrypt the credential response, if requested by the client. */
+    private val encryptCredentialRequest: EncryptJweFun = EncryptJwe(EphemeralKeyWithoutCert()),
     /** Whether to indicate in [metadata] if credential response encryption is required. */
     private val requireEncryption: Boolean = false,
+    /** Algorithms to indicate support for credential response encryption. */
+    private val supportedJweAlgorithms: Set<JweAlgorithm> = setOf(JweAlgorithm.ECDH_ES),
+    /** Algorithms to indicate support for credential response encryption. */
+    private val supportedJweEncryptionAlgorithms: Set<JweEncryption> = setOf(JweEncryption.A256GCM),
 ) {
     private val supportedCredentialConfigurations = credentialSchemes
         .flatMap { it.toSupportedCredentialFormat(issuer.cryptoAlgorithms).entries }
@@ -91,11 +104,11 @@ class CredentialIssuer(
                 it.value.withSupportedProofTypes(
                     supportedProofTypes = mapOf(
                         ProofType.JWT.stringRepresentation to CredentialRequestProofSupported(
-                            supportedSigningAlgorithms = verifierJwsService.supportedAlgorithms.map { it.identifier },
+                            supportedSigningAlgorithms = supportedAlgorithms.map { it.identifier },
                             keyAttestationRequired = KeyAttestationRequired()
                         ),
                         ProofType.ATTESTATION.stringRepresentation to CredentialRequestProofSupported(
-                            supportedSigningAlgorithms = verifierJwsService.supportedAlgorithms.map { it.identifier },
+                            supportedSigningAlgorithms = supportedAlgorithms.map { it.identifier },
                             keyAttestationRequired = KeyAttestationRequired()
                         )
                     )
@@ -119,8 +132,8 @@ class CredentialIssuer(
             supportedCredentialConfigurations = supportedCredentialConfigurations,
             batchCredentialIssuance = BatchCredentialIssuanceMetadata(1),
             credentialResponseEncryption = SupportedAlgorithmsContainer(
-                supportedAlgorithmsStrings = setOf(jwsEncryptionService.encryptionAlgorithm.identifier),
-                supportedEncryptionAlgorithmsStrings = setOf(jwsEncryptionService.encryptionEncoding.text),
+                supportedAlgorithmsStrings = supportedJweAlgorithms.map { it.identifier }.toSet(),
+                supportedEncryptionAlgorithmsStrings = supportedJweEncryptionAlgorithms.map { it.text }.toSet(),
                 encryptionRequired = requireEncryption,
             )
         )
@@ -137,52 +150,6 @@ class CredentialIssuer(
             jsonWebKeySet = JsonWebKeySet(setOf(issuer.keyMaterial.jsonWebKey))
         )
     }
-
-    /**
-     * Offer all [credentialSchemes] to clients.
-     *
-     * Callers need to encode this in [CredentialOfferUrlParameters], and offer the resulting URL to clients,
-     * i.e. by displaying a QR Code that can be scanned with wallet apps.
-     */
-    @Deprecated(
-        "Moved to authorization server",
-        ReplaceWith("authorizationService.credentialOfferWithAuthorizationCode(publicContext)")
-    )
-    suspend fun credentialOfferWithAuthorizationCode(): CredentialOffer = CredentialOffer(
-        credentialIssuer = publicContext,
-        configurationIds = credentialSchemes.flatMap { it.toCredentialIdentifier() },
-        grants = CredentialOfferGrants(
-            authorizationCode = CredentialOfferGrantsAuthCode(
-                issuerState = uuid4().toString(),
-                authorizationServer = authorizationService.publicContext
-            ),
-        )
-    )
-
-    /**
-     * Offer all [credentialSchemes] to clients.
-     *
-     * Callers need to encode this in [CredentialOfferUrlParameters], and offer the resulting URL to clients,
-     * i.e. by displaying a QR Code that can be scanned with wallet apps.
-     *
-     * @param user used to create the credential when the wallet app requests the credential
-     */
-    @Deprecated(
-        "Moved to authorization server",
-        ReplaceWith("authorizationService.credentialOfferWithPreAuthnForUser(user, publicContext)")
-    )
-    suspend fun credentialOfferWithPreAuthnForUser(
-        user: OidcUserInfoExtended,
-    ): CredentialOffer = CredentialOffer(
-        credentialIssuer = publicContext,
-        configurationIds = credentialSchemes.flatMap { it.toCredentialIdentifier() },
-        grants = CredentialOfferGrants(
-            preAuthorizedCode = CredentialOfferGrantsPreAuthCode(
-                preAuthorizedCode = authorizationService.providePreAuthorizedCode(user),
-                authorizationServer = authorizationService.publicContext
-            )
-        )
-    )
 
     /**
      * Provides a fresh nonce to the clients, for incorporating them into the credential proofs.
@@ -218,8 +185,7 @@ class CredentialIssuer(
         val userInfo =
             getUserInfo(authorizationHeader, params.credentialIdentifier, params.credentialConfigurationId, request)
 
-        val (credentialScheme, representation) = params.format?.let { params.extractCredentialScheme(it) }
-            ?: params.credentialIdentifier?.let { decodeFromCredentialIdentifier(it) }
+        val (credentialScheme, representation) = params.credentialIdentifier?.let { decodeFromCredentialIdentifier(it) }
             ?: params.credentialConfigurationId?.let { extractFromCredentialConfigurationId(it) }
             ?: throw UnsupportedCredentialType("credential scheme not known")
                 .also { Napier.w("credential: client did request unknown credential scheme: $params") }
@@ -280,17 +246,14 @@ class CredentialIssuer(
     private fun CredentialRequestParameters.encrypter(): (suspend (String) -> String) = { it: String ->
         if (credentialResponseEncryption?.jweEncryption != null) {
             with(credentialResponseEncryption!!) {
-                jwsEncryptionService.encryptJweObject(
-                    header = JweHeader(
+                encryptCredentialRequest(
+                    JweHeader(
                         algorithm = jweAlgorithm,
                         encryption = jweEncryption,
                         keyId = jsonWebKey.keyId,
                     ),
-                    payload = it,
-                    serializer = String.serializer(),
-                    recipientKey = jsonWebKey,
-                    jweAlgorithm = jweAlgorithm,
-                    jweEncryption = jweEncryption!!,
+                    it,
+                    jsonWebKey,
                 ).getOrNull()?.serialize() ?: it
             }
         } else {
@@ -332,7 +295,7 @@ class CredentialIssuer(
             throw InvalidProof("invalid audience: ${payload.audience}")
         }
 
-        if (!verifierJwsService.verifyJwsObject(this)) {
+        if (!verifyJwsObject(this)) {
             Napier.w("validateJwtProof: invalid signature: $this")
             throw InvalidProof("invalid signature: $this")
         }
@@ -386,23 +349,6 @@ class CredentialIssuer(
         supportedCredentialConfigurations[credentialConfigurationId]?.let {
             decodeFromCredentialIdentifier(credentialConfigurationId)
         }
-}
-
-@Suppress("DEPRECATION")
-private fun CredentialRequestParameters.extractCredentialScheme(format: CredentialFormatEnum) = when (format) {
-    CredentialFormatEnum.JWT_VC -> credentialDefinition?.types?.firstOrNull { it != VERIFIABLE_CREDENTIAL }
-        ?.let { AttributeIndex.resolveAttributeType(it) }
-        ?.let { it to CredentialFormatEnum.JWT_VC }
-
-    CredentialFormatEnum.VC_SD_JWT,
-    CredentialFormatEnum.DC_SD_JWT,
-        -> sdJwtVcType?.let { AttributeIndex.resolveSdJwtAttributeType(it) }
-        ?.let { it to CredentialFormatEnum.DC_SD_JWT }
-
-    CredentialFormatEnum.MSO_MDOC -> docType?.let { AttributeIndex.resolveIsoDoctype(it) }
-        ?.let { it to CredentialFormatEnum.MSO_MDOC }
-
-    else -> null
 }
 
 fun interface CredentialIssuerDataProvider {

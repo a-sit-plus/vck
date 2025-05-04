@@ -16,6 +16,8 @@ import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
+import at.asitplus.wallet.lib.jws.VerifyJwsObject
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldBeNull
@@ -53,9 +55,7 @@ class OpenId4VpInteropTest : FreeSpec({
         holderAgent = HolderAgent(
             holderKeyMaterial,
             validator = Validator(
-                verifierJwsService = DefaultVerifierJwsService(publicKeyLookup = {
-                    setOf(issuerKeyMaterial.publicKey.toJsonWebKey())
-                })
+                verifyJwsObject = VerifyJwsObject(publicKeyLookup = { setOf(issuerKeyMaterial.publicKey.toJsonWebKey()) })
             )
         )
         holderAgent.storeCredential(
@@ -81,12 +81,13 @@ class OpenId4VpInteropTest : FreeSpec({
             verifier = VerifierAgent(
                 identifier = clientIdScheme.clientId,
                 validator = Validator(
-                    verifierJwsService = DefaultVerifierJwsService(publicKeyLookup = {
-                        setOf(
-                            issuerKeyMaterial.publicKey.toJsonWebKey(),
-                            holderKeyMaterial.publicKey.toJsonWebKey(),
-                        )
-                    })
+                    verifyJwsObject = VerifyJwsObject(
+                        publicKeyLookup = {
+                            setOf(
+                                issuerKeyMaterial.publicKey.toJsonWebKey(),
+                                holderKeyMaterial.publicKey.toJsonWebKey(),
+                            )
+                        })
                 )
             ),
             clientIdScheme = clientIdScheme,
@@ -147,9 +148,9 @@ class OpenId4VpInteropTest : FreeSpec({
         if (jar.header.keyId != null) { // web-based key lookup is optional in profile 2.0
             val verifierJwks = verifierJarMetadata.jsonWebKeySet.shouldNotBeNull()
             val verifierRequestSigningKey = verifierJwks.keys.first { it.keyId == jar.header.keyId }
-            DefaultVerifierJwsService().verifyJws(jar, verifierRequestSigningKey) shouldBe true
+            VerifyJwsSignatureWithKey()(jar, verifierRequestSigningKey) shouldBe true
         } else {
-            DefaultVerifierJwsService().verifyJwsObject(jar) shouldBe true
+            VerifyJwsObject()(jar) shouldBe true
         }
 
         val response = holderOid4vp.createAuthnResponse(parameters).getOrThrow()

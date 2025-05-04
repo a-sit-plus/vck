@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.SuccessJwt
-import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.StatusListToken
@@ -9,7 +9,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
-import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
+import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.fail
 import io.kotest.core.spec.style.FreeSpec
@@ -32,7 +32,7 @@ class AgentRevocationTest : FreeSpec({
 
     beforeEach {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
-        issuer = IssuerAgent(EphemeralKeyWithoutCert(), issuerCredentialStore)
+        issuer = IssuerAgent(EphemeralKeyWithoutCert(), issuerCredentialStore = issuerCredentialStore)
         verifierKeyMaterial = EphemeralKeyWithoutCert()
         verifier = VerifierAgent(identifier = "urn:${uuid4()}")
         expectedRevokedIndexes = issuerCredentialStore.revokeRandomCredentials()
@@ -116,14 +116,11 @@ class AgentRevocationTest : FreeSpec({
     "revocation credential should be valid" {
         issuer.issueStatusListJwt().also {
             it.shouldNotBeNull()
-            DefaultVerifierJwsService().verifyJwsObject(it) shouldBe true
+            VerifyJwsObject().invoke(it) shouldBe true
         }
         issuer.issueStatusListCwt().also {
             it.shouldNotBeNull()
-            DefaultVerifierCoseService().verifyCose(
-                it,
-                StatusListTokenPayload.serializer()
-            ).isSuccess shouldBe true
+            VerifyCoseSignature<StatusListTokenPayload>().invoke(it, byteArrayOf(), null).isSuccess shouldBe true
         }
     }
 
@@ -148,7 +145,7 @@ class AgentRevocationTest : FreeSpec({
 
     "encoding to a known value works" {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
-        issuer = IssuerAgent(EphemeralKeyWithoutCert(), issuerCredentialStore)
+        issuer = IssuerAgent(EphemeralKeyWithoutCert(), issuerCredentialStore = issuerCredentialStore)
         expectedRevokedIndexes = listOf(1, 2, 4, 6, 7, 9, 10, 12, 13, 14)
         issuerCredentialStore.revokeCredentialsWithIndexes(expectedRevokedIndexes)
 

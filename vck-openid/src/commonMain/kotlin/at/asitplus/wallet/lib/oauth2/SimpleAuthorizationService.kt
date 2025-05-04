@@ -75,7 +75,6 @@ class SimpleAuthorizationService(
     /** Handles client authentication in [par] and [token]. */
     private val clientAuthenticationService: ClientAuthenticationService = ClientAuthenticationService(
         enforceClientAuthentication = false,
-        verifierJwsService = DefaultVerifierJwsService(),
         verifyClientAttestationJwt = { true }
     ),
     /** Used to parse requests from clients, e.g. when using JWT-Secured Authorization Requests (RFC 9101) */
@@ -447,8 +446,7 @@ class SimpleAuthorizationService(
             .also { Napier.w("token: client did not provide valid grant_type: $grantType") }
     }
 
-    @Suppress("OVERRIDE_DEPRECATION")
-    override suspend fun providePreAuthorizedCode(user: OidcUserInfoExtended): String =
+    suspend fun providePreAuthorizedCode(user: OidcUserInfoExtended): String =
         codeService.provideCode().also {
             codeToClientAuthRequest.put(
                 it,

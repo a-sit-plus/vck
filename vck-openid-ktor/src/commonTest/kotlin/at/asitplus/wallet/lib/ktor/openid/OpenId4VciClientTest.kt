@@ -4,6 +4,8 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.*
 import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
@@ -13,7 +15,12 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.jws.DefaultJwsService
+import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
+import at.asitplus.wallet.lib.jws.JwsHeaderJwk
+import at.asitplus.wallet.lib.jws.JwsHeaderNone
+import at.asitplus.wallet.lib.jws.JwsHeaderNone.invoke
 import at.asitplus.wallet.lib.jws.SdJwtSigned
+import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oauth2.ClientAuthenticationService
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oauth2.RequestInfo
@@ -182,14 +189,19 @@ class OpenId4VciClientTest : FunSpec() {
             storeProvisioningContext = { provisioningContextStore = it },
             loadProvisioningContext = { provisioningContextStore },
             loadClientAttestationJwt = {
-                DefaultJwsService(DefaultCryptoService(EphemeralKeyWithSelfSignedCert()))
-                    .buildClientAttestationJwt(clientId, "issuer", clientAuthKeyMaterial.jsonWebKey).serialize()
+                BuildClientAttestationJwt(
+                    SignJwt<JsonWebToken>(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
+                    clientId = clientId,
+                    issuer = "issuer",
+                    clientKey = clientAuthKeyMaterial.jsonWebKey
+                ).serialize()
             },
-            clientAttestationJwsService = DefaultJwsService(DefaultCryptoService(clientAuthKeyMaterial)),
-            dpopJwsService = DefaultJwsService(DefaultCryptoService(dpopKeyMaterial)),
+            signClientAttestationPop = SignJwt(clientAuthKeyMaterial, JwsHeaderNone()),
+            signDpop = SignJwt(dpopKeyMaterial, JwsHeaderJwk()),
+            dpopAlgorithm = dpopKeyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
             oid4vciService = WalletService(
                 clientId = clientId,
-                cryptoService = DefaultCryptoService(credentialKeyMaterial),
+                keyMaterial = credentialKeyMaterial,
             ),
             storeCredential = storeCredential,
             storeRefreshToken = { refreshTokenStore = it }

@@ -15,6 +15,10 @@ import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.VerifierJwsService
+import at.asitplus.wallet.lib.jws.VerifyJwsObject
+import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKeyFun
 import at.asitplus.wallet.lib.oidvci.NonceService
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidDpopProof
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
@@ -54,7 +58,12 @@ class JwtTokenVerificationService(
     /** Used to verify the signature of the DPoP access token. */
     private val issuerKey: JsonWebKey,
     /** Used to verify client attestation JWTs */
+    @Deprecated("Use verifyJwsSignatureObject instead")
     internal val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
+    /** Used to verify client attestation JWTs */
+    private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
+    /** Used to verify DPoP proofs */
+    private val verifyJwsSignatureWithKey: VerifyJwsSignatureWithKeyFun = VerifyJwsSignatureWithKey(),
     /** Clock used to verify timestamps in access tokens and refresh tokens. */
     private val clock: Clock = System,
     /** Time leeway for verification of timestamps in access tokens and refresh tokens. */
@@ -90,7 +99,7 @@ class JwtTokenVerificationService(
         throw InvalidToken("authorization header not valid: $authorizationHeader")
     }
 
-    private fun validateDpopJwt(
+    private suspend fun validateDpopJwt(
         dpopToken: String?,
         dpopTokenJwt: JwsSigned<OpenId4VciAccessToken>,
         request: RequestInfo?,
@@ -125,13 +134,13 @@ class JwtTokenVerificationService(
         }
     }
 
-    private fun parseAndValidate(dpopHeader: String): JwsSigned<JsonWebToken> =
+    private suspend fun parseAndValidate(dpopHeader: String): JwsSigned<JsonWebToken> =
         JwsSigned.deserialize(JsonWebToken.serializer(), dpopHeader, vckJsonSerializer)
             .getOrElse {
                 Napier.w("parse: could not parse DPoP JWT", it)
                 throw InvalidDpopProof("could not parse DPoP JWT", it)
             }.also {
-                if (!verifierJwsService.verifyJwsObject(it)) {
+                if (!verifyJwsObject(it)) {
                     Napier.w("parse: DPoP not verified")
                     throw InvalidDpopProof("DPoP JWT not verified")
                 }
@@ -147,7 +156,7 @@ class JwtTokenVerificationService(
                 Napier.w("validateDpopToken: could not parse DPoP Token", it)
                 throw InvalidToken("could not parse DPoP Token", it)
             }
-        if (!verifierJwsService.verifyJws(jwt, issuerKey)) {
+        if (!verifyJwsSignatureWithKey(jwt, issuerKey)) {
             Napier.w("validateDpopToken: DPoP not verified")
             throw InvalidToken("DPoP Token not verified")
         }

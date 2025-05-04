@@ -13,6 +13,8 @@ import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.*
@@ -43,26 +45,39 @@ open class OpenId4VpVerifier(
     private val clientIdScheme: ClientIdScheme,
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
+    @Deprecated("Use signAuthnRequest, decryptJwe instead")
     private val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
-    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
-    private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(DefaultVerifierCryptoService()),
+    private val decryptJwe: DecryptJweFun = DecryptJwe(keyMaterial),
+    private val signAuthnRequest: SignJwtFun<AuthenticationRequestParameters> =
+        SignJwt(keyMaterial, JwsHeaderClientIdScheme(clientIdScheme)()),
+    @Deprecated("Use verifyJwsSignatureObject instead")
+    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
+    private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
+    private val supportedAlgorithms: List<JwsAlgorithm> = listOf(JwsAlgorithm.ES256),
+    @Deprecated("Use verifyCoseSignature instead")
+    private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(),
+    private val verifyCoseSignature: VerifyCoseSignatureWithKeyFun<ByteArray> = VerifyCoseSignatureWithKey(),
     timeLeewaySeconds: Long = 300L,
     private val clock: Clock = Clock.System,
     private val nonceService: NonceService = DefaultNonceService(),
     /** Used to store issued authn requests, to verify the authn response to it */
     private val stateToAuthnRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
+    /** Algorithm supported to decrypt responses from wallets, for [metadataWithEncryption]. */
+    private val supportedJweAlgorithm: JweAlgorithm = JweAlgorithm.ECDH_ES,
+    /** Algorithm supported to decrypt responses from wallets, for [metadataWithEncryption]. */
+    private val supportedJweEncryptionAlgorithm: JweEncryption = JweEncryption.A256GCM,
 ) {
 
-    private val responseParser = ResponseParser(jwsService, verifierJwsService)
+    private val supportedAlgorithmStrings = supportedAlgorithms.map { it.identifier }
+    private val responseParser = ResponseParser(decryptJwe, verifyJwsObject)
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
-    private val supportedAlgorithms = verifierJwsService.supportedAlgorithms.map { it.identifier }
     private val supportedSignatureVerificationAlgorithm =
-        (verifierJwsService.supportedAlgorithms.firstOrNull { it == JwsAlgorithm.ES256 }?.identifier
-            ?: verifierJwsService.supportedAlgorithms.first().identifier)
-    private val containerJwt = FormatContainerJwt(algorithmStrings = supportedAlgorithms)
+        (supportedAlgorithms.firstOrNull { it == JwsAlgorithm.ES256 }?.identifier
+            ?: supportedAlgorithms.first().identifier)
+    private val containerJwt = FormatContainerJwt(algorithmStrings = supportedAlgorithmStrings)
     private val containerSdJwt = FormatContainerSdJwt(
-        sdJwtAlgorithmStrings = supportedAlgorithms.toSet(),
-        kbJwtAlgorithmStrings = supportedAlgorithms.toSet()
+        sdJwtAlgorithmStrings = supportedAlgorithmStrings.toSet(),
+        kbJwtAlgorithmStrings = supportedAlgorithmStrings.toSet()
     )
 
     /**
@@ -73,7 +88,7 @@ open class OpenId4VpVerifier(
     val jarMetadata: JwtVcIssuerMetadata by lazy {
         JwtVcIssuerMetadata(
             issuer = clientIdScheme.issuerUri ?: clientIdScheme.clientId,
-            jsonWebKeySet = JsonWebKeySet(setOf(jwsService.keyMaterial.jsonWebKey))
+            jsonWebKeySet = JsonWebKeySet(setOf(keyMaterial.jsonWebKey))
         )
     }
 
@@ -102,8 +117,8 @@ open class OpenId4VpVerifier(
     val metadataWithEncryption by lazy {
         metadata.copy(
             authorizationSignedResponseAlgString = null,
-            authorizationEncryptedResponseAlgString = jwsService.encryptionAlgorithm.identifier,
-            authorizationEncryptedResponseEncodingString = jwsService.encryptionEncoding.text,
+            authorizationEncryptedResponseAlgString = supportedJweAlgorithm.identifier,
+            authorizationEncryptedResponseEncodingString = supportedJweEncryptionAlgorithm.text,
             jsonWebKeySet = metadata.jsonWebKeySet?.let {
                 JsonWebKeySet(it.keys.map { it.copy(publicKeyUse = "enc") })
             }
@@ -233,27 +248,18 @@ open class OpenId4VpVerifier(
         requestObjectParameters: RequestObjectParameters? = null,
     ): KmmResult<JwsSigned<AuthenticationRequestParameters>> = catching {
         val requestObject = createAuthnRequest(requestOptions, requestObjectParameters)
-        val attestationJwt = (clientIdScheme as? ClientIdScheme.VerifierAttestation)?.attestationJwt?.serialize()
-        val certificateChain = (clientIdScheme as? ClientIdScheme.CertificateSanDns)?.chain
         val siopClientId = "https://self-issued.me/v2"
         val issuer = when (clientIdScheme) {
             is ClientIdScheme.PreRegistered -> clientIdScheme.issuerUri ?: clientIdScheme.clientId
             else -> siopClientId
         }
-        jwsService.createSignedJwsAddingParams(
-            header = JwsHeader(
-                algorithm = jwsService.algorithm,
-                attestationJwt = attestationJwt,
-                certificateChain = certificateChain,
-                type = JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST
-            ),
-            payload = requestObject.copy(
+        signAuthnRequest(
+            JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST,
+            requestObject.copy(
                 audience = siopClientId,
                 issuer = issuer,
             ),
-            serializer = AuthenticationRequestParameters.Companion.serializer(),
-            addJsonWebKey = certificateChain == null,
-            addX5c = certificateChain != null,
+            AuthenticationRequestParameters.serializer(),
         ).getOrThrow()
     }
 
@@ -299,8 +305,8 @@ open class OpenId4VpVerifier(
         state = state,
         dcqlQuery = if (isDcql) toDCQLQuery() else null,
         presentationDefinition = if (isPresentationExchange)
-            toPresentationDefinition(containerJwt, containerSdJwt) else null,
-        transactionData = transactionData
+            toPresentationDefinition(containerJwt, containerSdJwt, rqesFlow) else null,
+        transactionData = if (rqesFlow != PresentationRequestParameters.Flow.UC5) transactionData?.map { it.toBase64UrlJsonString() } else null
     )
 
     /**
@@ -394,7 +400,7 @@ open class OpenId4VpVerifier(
         ).getOrNull()
             ?: throw IllegalArgumentException("idToken")
                 .also { Napier.w("Could not parse JWS from idToken: $idTokenJws") }
-        if (!verifierJwsService.verifyJwsObject(jwsSigned))
+        if (!verifyJwsObject(jwsSigned))
             throw IllegalArgumentException("idToken")
                 .also { Napier.w { "JWS of idToken not verified: $idTokenJws" } }
         val idToken = jwsSigned.payload
@@ -455,7 +461,8 @@ open class OpenId4VpVerifier(
                         expectedNonce,
                         responseParameters,
                         authnRequest.clientId,
-                        authnRequest.responseUrl
+                        authnRequest.responseUrl,
+                        authnRequest.parseTransactionData()
                     )
                 }.getOrElse {
                     Napier.w("Invalid presentation format: $relatedPresentation", it)
@@ -483,7 +490,8 @@ open class OpenId4VpVerifier(
                     expectedNonce,
                     responseParameters,
                     authnRequest.clientId,
-                    authnRequest.responseUrl
+                    authnRequest.responseUrl,
+                    authnRequest.parseTransactionData()
                 ).mapToAuthnResponseResult(state)
             }
             return AuthnResponseResult.VerifiableDCQLPresentationValidationResults(presentation)
@@ -527,11 +535,13 @@ open class OpenId4VpVerifier(
         input: ResponseParametersFrom,
         clientId: String?,
         responseUrl: String?,
+        transactionData: Pair<PresentationRequestParameters.Flow, List<TransactionDataBase64Url>>?,
     ) = when (claimFormat) {
         ClaimFormat.JWT_SD, ClaimFormat.SD_JWT -> verifier.verifyPresentationSdJwt(
             input = SdJwtSigned.Companion.parse(relatedPresentation.jsonPrimitive.content)
                 ?: throw IllegalArgumentException("relatedPresentation"),
-            challenge = expectedNonce
+            challenge = expectedNonce,
+            transactionData = transactionData
         )
 
         ClaimFormat.JWT_VP -> verifier.verifyPresentationVcJwt(
@@ -605,17 +615,13 @@ open class OpenId4VpVerifier(
                 .encodeToByteArray(deviceAuthentication.serialize())
                 .wrapInCborTag(24)
                 .also { Napier.d("Device authentication for verification is ${it.encodeToString(Base16())}") }
-            verifierCoseService.verifyCose(
-                deviceSignature,
-                walletKey,
-                detachedPayload = expectedPayload
-            ).onFailure {
+            verifyCoseSignature(deviceSignature, walletKey, byteArrayOf(), expectedPayload).onFailure {
                 val expectedBytes = expectedPayload.encodeToString(Base16)
                 Napier.w("DeviceSignature not verified: $deviceSignature for detached payload $expectedBytes", it)
                 throw IllegalArgumentException("deviceSignature", it)
             }
         } else {
-            verifierCoseService.verifyCose(deviceSignature, walletKey).onFailure {
+            verifyCoseSignature(deviceSignature, walletKey, byteArrayOf(), null).onFailure {
                 Napier.w("DeviceSignature not verified: ${document.deviceSigned.deviceAuth}", it)
                 throw IllegalArgumentException("deviceSignature")
             }
@@ -693,3 +699,13 @@ private val PresentationSubmissionDescriptor.cumulativeJsonPath: String
         }
         return cummulativeJsonPath
     }
+
+
+class JwsHeaderClientIdScheme(val clientIdScheme: ClientIdScheme) {
+    operator fun invoke(): JwsHeaderIdentifierFun = { it, keyMaterial ->
+        val attestationJwt = (clientIdScheme as? ClientIdScheme.VerifierAttestation)?.attestationJwt?.serialize()
+        (clientIdScheme as? ClientIdScheme.CertificateSanDns)?.chain?.let { x5c ->
+            it.copy(certificateChain = x5c, attestationJwt = attestationJwt)
+        } ?: it.copy(jsonWebKey = keyMaterial.jsonWebKey, attestationJwt = attestationJwt)
+    }
+}

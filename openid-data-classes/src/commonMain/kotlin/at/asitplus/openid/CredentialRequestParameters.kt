@@ -27,10 +27,6 @@ data class CredentialRequestParameters(
     @SerialName("credential_configuration_id")
     val credentialConfigurationId: String? = null,
 
-    @SerialName("format")
-    @Deprecated("Removed in OID4VCI draft 15")
-    val format: CredentialFormatEnum? = null,
-
     /**
      * OID4VCI:  OPTIONAL. Object containing information for encrypting the Credential Response. If this request element
      * is not present, the corresponding credential response returned is not encrypted.
@@ -38,25 +34,12 @@ data class CredentialRequestParameters(
     @SerialName("credential_response_encryption")
     val credentialResponseEncryption: CredentialResponseEncryption? = null,
 
-    @SerialName("doctype")
-    @Deprecated("Removed in OID4VCI draft 15")
-    val docType: String? = null,
-
-    @Suppress("DEPRECATION")
-    @SerialName("claims")
-    @Deprecated("Removed in OID4VCI draft 15")
-    val claims: Map<String, Map<String, RequestedCredentialClaimSpecification>>? = null,
-
     /**
      * OID4VCI: W3C VC: OPTIONAL. Object containing a detailed description of the Credential consisting of the
      * following parameters. see [SupportedCredentialFormatDefinition].
      */
     @SerialName("credential_definition")
     val credentialDefinition: SupportedCredentialFormatDefinition? = null,
-
-    @SerialName("vct")
-    @Deprecated("Removed in OID4VCI draft 15")
-    val sdJwtVcType: String? = null,
 
     /**
      * OID4VCI: OPTIONAL. Object providing a single proof of possession of the cryptographic key material to which the

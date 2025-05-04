@@ -22,7 +22,6 @@ class ValidatorMdocTest : FreeSpec() {
 
     private lateinit var issuer: Issuer
     private lateinit var issuerCredentialStore: IssuerCredentialStore
-    private lateinit var issuerJwsService: JwsService
     private lateinit var issuerKeyMaterial: KeyMaterial
     private lateinit var verifierKeyMaterial: KeyMaterial
     private lateinit var validator: Validator
@@ -46,10 +45,9 @@ class ValidatorMdocTest : FreeSpec() {
             issuerKeyMaterial = EphemeralKeyWithSelfSignedCert()
             issuer = IssuerAgent(
                 issuerKeyMaterial,
-                issuerCredentialStore,
                 validator = validator,
+                issuerCredentialStore = issuerCredentialStore,
             )
-            issuerJwsService = DefaultJwsService(DefaultCryptoService(issuerKeyMaterial))
             verifierKeyMaterial = EphemeralKeyWithoutCert()
         }
 

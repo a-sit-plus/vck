@@ -2,26 +2,25 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.ResponseMode.*
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.JwkType
-import at.asitplus.wallet.lib.jws.JwsService
+import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.jws.EncryptJweFun
+import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
-import kotlinx.serialization.builtins.serializer
-import kotlinx.serialization.encodeToString
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.random.Random
 
 internal class AuthenticationResponseFactory(
-    val jwsService: JwsService,
+    val signJarm: SignJwtFun<AuthenticationResponseParameters>,
+    val encryptJarm: EncryptJweFun,
 ) {
     @Throws(OAuth2Exception::class, CancellationException::class)
     internal suspend fun createAuthenticationResponse(
@@ -94,7 +93,7 @@ internal class AuthenticationResponseFactory(
     }
 
     /**
-     * Per OID4VP, the response may either be signed, or encrypted, or even signed and encrypted
+     * Per OID4VP, the response must either be signed, or encrypted, or even signed and encrypted
      */
     @Throws(OAuth2Exception::class, CancellationException::class)
     private suspend fun buildJarm(
@@ -105,22 +104,18 @@ internal class AuthenticationResponseFactory(
     } else if (response.requestsSignature()) {
         sign(response.params)
     } else {
-        odcJsonSerializer.encodeToString(response)
+        throw InvalidRequest("Response must be either signed, encrypted or both.")
     }
 
     private suspend fun sign(payload: AuthenticationResponseParameters): String =
-        jwsService.createSignedJwsAddingParams(
-            payload = payload,
-            serializer = AuthenticationResponseParameters.serializer(),
-            addX5c = false,
-            addJsonWebKey = true,
-            addKeyId = false,
-        ).map { it.serialize() }.getOrElse {
-            Napier.w("buildJarm error", it)
-            throw InvalidRequest("buildJarm error", it)
-        }.also {
-            Napier.d("buildJarm: signed $payload")
-        }
+        signJarm(null, payload, AuthenticationResponseParameters.serializer())
+            .map { it.serialize() }
+            .getOrElse {
+                Napier.w("buildJarm error", it)
+                throw InvalidRequest("buildJarm error", it)
+            }.also {
+                Napier.d("buildJarm: signed $payload")
+            }
 
     private suspend fun encrypt(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
@@ -143,24 +138,12 @@ internal class AuthenticationResponseFactory(
         )
         val jwe = if (response.requestsSignature()) {
             sign(response.params).let { payload ->
-                jwsService.encryptJweObject(
-                    header = header,
-                    payload = payload,
-                    serializer = String.serializer(),
-                    recipientKey = recipientKey,
-                    jweAlgorithm = algorithm,
-                    jweEncryption = encryption,
-                ).also { Napier.d("buildJarm: using $header to encrypt $payload") }
+                encryptJarm(header, payload, recipientKey)
+                    .also { Napier.d("buildJarm: using $header to encrypt $payload") }
             }
         } else {
-            jwsService.encryptJweObject(
-                header = header,
-                payload = response.params,
-                serializer = AuthenticationResponseParameters.serializer(),
-                recipientKey = recipientKey,
-                jweAlgorithm = algorithm,
-                jweEncryption = encryption,
-            ).also { Napier.d("buildJarm: using $header to encrypt ${response.params}") }
+            encryptJarm(header, vckJsonSerializer.encodeToString(response.params), recipientKey)
+                .also { Napier.d("buildJarm: using $header to encrypt ${response.params}") }
         }
         return jwe.map { it.serialize() }.getOrElse {
             Napier.w("buildJarm error", it)

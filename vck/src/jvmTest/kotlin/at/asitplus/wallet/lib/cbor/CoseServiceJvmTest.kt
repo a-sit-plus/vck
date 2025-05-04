@@ -5,7 +5,6 @@ import at.asitplus.signum.indispensable.cosef.*
 import at.asitplus.signum.supreme.HazardousMaterials
 import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
 import at.asitplus.signum.supreme.sign.EphemeralKey
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.iso.vckCborSerializer
 import com.authlete.cbor.CBORByteArray
@@ -73,9 +72,8 @@ class CoseServiceJvmTest : FreeSpec({
 
 
             val keyMaterial = EphemeralKeyWithoutCert(ephemeralKey)
-            val cryptoService = DefaultCryptoService(keyMaterial)
-            val coseService = DefaultCoseService(cryptoService)
-            val verifierCoseService = DefaultVerifierCoseService()
+            val signCose = SignCose<ByteArray>(keyMaterial)
+            val verifierCoseService = VerifyCoseSignatureWithKey<ByteArray>()
             val coseKey = ephemeralKey.publicKey.toCoseKey().getOrThrow()
 
             val randomPayload = uuid4().toString()
@@ -85,14 +83,16 @@ class CoseServiceJvmTest : FreeSpec({
             "$testIdentifier:" - {
 
                 "Signed object from int. library can be verified with int. library" {
-                    val signed = coseService.createSignedCose(
-                        payload = randomPayload.encodeToByteArray(),
-                        serializer = ByteArraySerializer(),
-                    ).getOrThrow()
+                    val signed = signCose(null, null, randomPayload.encodeToByteArray(), ByteArraySerializer())
+                        .getOrThrow()
 
                     withClue("$sigAlgo: Signature: ${signed.signature.encodeToTlv().toDerHexString()}") {
-                        verifierCoseService.verifyCose(signed, cryptoService.keyMaterial.publicKey.toCoseKey().getOrThrow(), byteArrayOf())
-                            .isSuccess shouldBe true
+                        verifierCoseService(
+                            signed,
+                            keyMaterial.publicKey.toCoseKey().getOrThrow(),
+                            byteArrayOf(),
+                            null
+                        ).isSuccess shouldBe true
                     }
                 }
 
@@ -111,7 +111,8 @@ class CoseServiceJvmTest : FreeSpec({
                     extLibVerifier.verify(extLibCoseSign1) shouldBe true
 
                     // Parsing to our structure verifying payload
-                    val coseSigned = CoseSigned.deserialize(ByteArraySerializer(), extLibCoseSign1.encode()).getOrThrow()
+                    val coseSigned =
+                        CoseSigned.deserialize(ByteArraySerializer(), extLibCoseSign1.encode()).getOrThrow()
                     coseSigned.payload shouldBe randomPayload.encodeToByteArray()
                     val parsedDefLengthSignature = coseSigned.signature as CryptoSignature.EC.DefiniteLength
                     val parsedSig = parsedDefLengthSignature.rawByteArray.encodeToString(Base16())
@@ -123,33 +124,32 @@ class CoseServiceJvmTest : FreeSpec({
                         parsedSig shouldBe extLibSig
                     }
 
-                    val signed = coseService.createSignedCose(
-                        protectedHeader = CoseHeader(algorithm = coseAlgorithm),
-                        payload = randomPayload.encodeToByteArray(),
-                        serializer = ByteArraySerializer(),
-                        addCertificate = false,
-                        addKeyId = false,
+                    val signed = signCose(
+                        CoseHeader(algorithm = coseAlgorithm),
+                        null,
+                        randomPayload.encodeToByteArray(),
+                        ByteArraySerializer(),
                     ).getOrThrow()
                     val signedSerialized = signed.serialize(ByteArraySerializer()).encodeToString(Base16())
                     val extLibSerialized = extLibCoseSign1.encode().encodeToString(Base16())
                     signedSerialized.length shouldBe extLibSerialized.length
 
                     withClue("$sigAlgo: Signature: $parsedSig") {
-                        verifierCoseService.verifyCose(coseSigned, coseKey, byteArrayOf()).isSuccess shouldBe true
+                        verifierCoseService(coseSigned, coseKey, byteArrayOf(), null).isSuccess shouldBe true
                     }
                 }
 
                 "Signed object from int. library can be verified with ext. library" {
-                    val coseSigned = coseService.createSignedCose(
-                        protectedHeader = CoseHeader(algorithm = coseAlgorithm),
-                        payload = randomPayload.encodeToByteArray(),
-                        serializer = ByteArraySerializer(),
-                        addCertificate = false,
-                        addKeyId = false,
+                    val coseSigned = signCose(
+                        CoseHeader(algorithm = coseAlgorithm),
+                        null,
+                        randomPayload.encodeToByteArray(),
+                        ByteArraySerializer(),
                     ).getOrThrow()
 
-                    val parsed = CBORDecoder(byteArrayOf(0xD2.toByte()) + coseSigned.serialize(ByteArraySerializer())).next()
-                        .shouldBeInstanceOf<CBORTaggedItem>()
+                    val parsed =
+                        CBORDecoder(byteArrayOf(0xD2.toByte()) + coseSigned.serialize(ByteArraySerializer())).next()
+                            .shouldBeInstanceOf<CBORTaggedItem>()
                     val parsedCoseSign1 = parsed.tagContent
                         .shouldBeInstanceOf<COSESign1>()
                     val parsedPayload = parsedCoseSign1.payload
@@ -165,7 +165,10 @@ class CoseServiceJvmTest : FreeSpec({
                         SigStructureBuilder().sign1(parsedCoseSign1).build().encode().encodeToString(Base16())
                     val signatureInput = CoseSignatureInput(
                         contextString = "Signature1",
-                        protectedHeader = vckCborSerializer.encodeToByteArray(CoseHeader.serializer(), CoseHeader(algorithm = coseAlgorithm)),
+                        protectedHeader = vckCborSerializer.encodeToByteArray(
+                            CoseHeader.serializer(),
+                            CoseHeader(algorithm = coseAlgorithm)
+                        ),
                         externalAad = byteArrayOf(),
                         payload = randomPayload.encodeToByteArray(),
                     ).serialize().encodeToString(Base16())

@@ -5,18 +5,23 @@ import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.StatusListTokenIntegrityValidator
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenValidator
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.third_party.kotlin.ifFalse
 import at.asitplus.wallet.lib.jws.VerifierJwsService
+import at.asitplus.wallet.lib.jws.VerifyJwsObject
+import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import kotlinx.datetime.Instant
 
 sealed interface StatusListToken {
     val resolvedAt: Instant?
     val payload: StatusListTokenPayload
 
-    fun validate(
+    @Deprecated("Use validate with verifyJwsSignatureObject instead")
+    suspend fun validate(
         verifierJwsService: VerifierJwsService,
         verifierCoseService: VerifierCoseService,
         statusListInfo: StatusListInfo,
@@ -26,8 +31,27 @@ sealed interface StatusListToken {
         statusListTokenResolvedAt = resolvedAt,
         validateStatusListTokenIntegrity = {
             StatusListTokenIntegrityValidator(
-                verifierJwsService = verifierJwsService,
-                verifierCoseService = verifierCoseService
+                verifyJwsObject = verifierJwsService::verifyJwsObject,
+                verifyCoseSignature = verifierCoseService::verifyCose,
+            ).validateStatusListTokenIntegrity(it).getOrThrow()
+        },
+        statusListInfo = statusListInfo,
+        isInstantInThePast = isInstantInThePast,
+    )
+
+
+    suspend fun validate(
+        verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
+        verifyCoseSignature: VerifyCoseSignatureFun<StatusListTokenPayload> = VerifyCoseSignature(),
+        statusListInfo: StatusListInfo,
+        isInstantInThePast: (Instant) -> Boolean,
+    ): KmmResult<StatusListTokenPayload> = StatusListTokenValidator.validateStatusListToken(
+        statusListToken = this,
+        statusListTokenResolvedAt = resolvedAt,
+        validateStatusListTokenIntegrity = {
+            StatusListTokenIntegrityValidator(
+                verifyJwsObject = verifyJwsObject,
+                verifyCoseSignature = verifyCoseSignature,
             ).validateStatusListTokenIntegrity(it).getOrThrow()
         },
         statusListInfo = statusListInfo,
@@ -41,23 +65,36 @@ sealed interface StatusListToken {
         override val payload: StatusListTokenPayload
             get() = value.payload
 
-        fun validate(
+        @Deprecated("Use validate with verifyJwsSignatureObject instead")
+        suspend fun validate(
             verifierJwsService: VerifierJwsService,
             statusListInfo: StatusListInfo,
             isInstantInThePast: (Instant) -> Boolean,
         ): KmmResult<StatusListTokenPayload> = StatusListTokenValidator.validateStatusListToken(
             statusListToken = this,
             statusListTokenResolvedAt = resolvedAt,
-            validateStatusListTokenIntegrity = { statusListToken ->
-                val jwsSigned = statusListToken.value
-                verifierJwsService.verifyJwsObject(jwsSigned).ifFalse {
-                    throw IllegalStateException("Invalid Signature.")
-                }
+            validateStatusListTokenIntegrity = {
+                StatusListTokenIntegrityValidator(
+                    verifyJwsObject = verifierJwsService::verifyJwsObject,
+                    verifyCoseSignature = { _, _, _ -> KmmResult.failure(IllegalArgumentException("CWT not expected")) }
+                ).validateStatusListTokenIntegrity(it).getOrThrow()
+            },
+            statusListInfo = statusListInfo,
+            isInstantInThePast = isInstantInThePast,
+        )
 
-                if (jwsSigned.header.type?.lowercase() != MediaTypes.STATUSLIST_JWT.lowercase()) {
-                    throw IllegalArgumentException("Invalid type header")
-                }
-                jwsSigned.payload
+        suspend fun validate(
+            verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
+            statusListInfo: StatusListInfo,
+            isInstantInThePast: (Instant) -> Boolean,
+        ): KmmResult<StatusListTokenPayload> = StatusListTokenValidator.validateStatusListToken(
+            statusListToken = this,
+            statusListTokenResolvedAt = resolvedAt,
+            validateStatusListTokenIntegrity = {
+                StatusListTokenIntegrityValidator(
+                    verifyJwsObject = verifyJwsObject,
+                    verifyCoseSignature = { _, _, _ -> KmmResult.failure(IllegalArgumentException("CWT not expected")) },
+                ).validateStatusListTokenIntegrity(it).getOrThrow()
             },
             statusListInfo = statusListInfo,
             isInstantInThePast = isInstantInThePast,
@@ -71,26 +108,18 @@ sealed interface StatusListToken {
         override val payload: StatusListTokenPayload
             get() = value.payload ?: throw IllegalStateException("Payload not found.")
 
-        fun validate(
-            verifierCoseService: VerifierCoseService,
+        suspend fun validate(
+            verifyCoseSignature: VerifyCoseSignatureFun<StatusListTokenPayload> = VerifyCoseSignature(),
             statusListInfo: StatusListInfo,
             isInstantInThePast: (Instant) -> Boolean,
         ): KmmResult<StatusListTokenPayload> = StatusListTokenValidator.validateStatusListToken(
             statusListToken = this,
             statusListTokenResolvedAt = resolvedAt,
-            validateStatusListTokenIntegrity = { statusListToken ->
-                val coseStatus = statusListToken.value
-                verifierCoseService.verifyCose(
-                    coseSigned = coseStatus,
-                    serializer = StatusListTokenPayload.serializer(),
-                ).isSuccess.ifFalse {
-                    throw IllegalStateException("Invalid Signature.")
-                }
-                if (coseStatus.protectedHeader.type?.lowercase() != MediaTypes.Application.STATUSLIST_CWT.lowercase()) {
-                    throw IllegalArgumentException("Invalid type header")
-                }
-                coseStatus.payload
-                    ?: throw IllegalStateException("Status list token payload not found.")
+            validateStatusListTokenIntegrity = {
+                StatusListTokenIntegrityValidator(
+                    verifyJwsObject = { false },
+                    verifyCoseSignature = verifyCoseSignature,
+                ).validateStatusListTokenIntegrity(it).getOrThrow()
             },
             statusListInfo = statusListInfo,
             isInstantInThePast = isInstantInThePast,

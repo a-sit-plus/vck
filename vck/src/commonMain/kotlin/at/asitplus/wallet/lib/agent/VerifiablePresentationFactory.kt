@@ -8,25 +8,13 @@ import at.asitplus.openid.dcql.DCQLClaimsQueryResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
 import at.asitplus.openid.third_party.at.asitplus.jsonpath.core.plus
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
-import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.SdJwtCreator.NAME_SD
-import at.asitplus.wallet.lib.cbor.CoseService
-import at.asitplus.wallet.lib.data.KeyBindingJws
-import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
-import at.asitplus.wallet.lib.data.VerifiablePresentation
-import at.asitplus.wallet.lib.data.VerifiablePresentationJws
-import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.iso.DeviceAuth
-import at.asitplus.wallet.lib.iso.DeviceNameSpaces
-import at.asitplus.wallet.lib.iso.DeviceResponse
-import at.asitplus.wallet.lib.iso.DeviceSigned
-import at.asitplus.wallet.lib.iso.Document
-import at.asitplus.wallet.lib.iso.IssuerSigned
-import at.asitplus.wallet.lib.iso.sha256
+import at.asitplus.wallet.lib.iso.*
+import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
-import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
@@ -36,9 +24,9 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 class VerifiablePresentationFactory(
-    private val jwsService: JwsService,
-    private val coseService: CoseService,
     private val identifier: String,
+    private val signVerifiablePresentation: SignJwtFun<VerifiablePresentationJws>,
+    private val signKeyBinding: SignJwtFun<KeyBindingJws>,
 ) {
 
     suspend fun createVerifiablePresentationForIsoCredentials(
@@ -253,28 +241,28 @@ class VerifiablePresentationFactory(
     private suspend fun createKeyBindingJws(
         request: PresentationRequestParameters,
         issuerJwtPlusDisclosures: String,
-    ): JwsSigned<KeyBindingJws> = jwsService.createSignedJwsAddingParams(
-        header = JwsHeader(
-            type = JwsContentTypeConstants.KB_JWT,
-            algorithm = jwsService.algorithm,
-        ),
-        payload = KeyBindingJws(
+    ): JwsSigned<KeyBindingJws> = signKeyBinding(
+        JwsContentTypeConstants.KB_JWT,
+        KeyBindingJws(
             issuedAt = Clock.System.now(),
             audience = request.audience,
             challenge = request.nonce,
             sdHash = issuerJwtPlusDisclosures.encodeToByteArray().sha256(),
-            transactionData = request.transactionData,
-            transactionDataHashes = request.getTransactionDataHashes(),
-            transactionDataHashesAlgorithm = request.transactionData?.let { "sha-256" }
+            transactionData = if (request.isUc5()) request.transactionData?.second else null,
+            transactionDataHashes = if (request.isOid4Vp()) request.getTransactionDataHashes() else null,
+            transactionDataHashesAlgorithm = if (request.isOid4Vp()) SdJwtConstants.SHA_256 else null,
         ),
-        serializer = KeyBindingJws.serializer(),
-        addKeyId = false,
-        addJsonWebKey = false,
-        addX5c = false,
+        KeyBindingJws.serializer(),
     ).getOrElse {
         Napier.w("Could not create JWS for presentation", it)
         throw PresentationException(it)
     }
+
+    private fun PresentationRequestParameters.isUc5(): Boolean =
+        transactionData?.first == PresentationRequestParameters.Flow.UC5
+
+    private fun PresentationRequestParameters.isOid4Vp(): Boolean =
+        transactionData?.first == PresentationRequestParameters.Flow.OID4VP
 
     /**
      * Creates a [VerifiablePresentation] with the given [validCredentials].
@@ -285,11 +273,10 @@ class VerifiablePresentationFactory(
         validCredentials: List<String>,
         request: PresentationRequestParameters,
     ) = CreatePresentationResult.Signed(
-        jwsService.createSignedJwt(
-            type = JwsContentTypeConstants.JWT,
-            payload = VerifiablePresentation(validCredentials)
-                .toJws(request.nonce, identifier, request.audience),
-            serializer = VerifiablePresentationJws.serializer(),
+        signVerifiablePresentation(
+            JwsContentTypeConstants.JWT,
+            VerifiablePresentation(validCredentials).toJws(request.nonce, identifier, request.audience),
+            VerifiablePresentationJws.serializer(),
         ).getOrElse {
             Napier.w("Could not create JWS for presentation", it)
             throw PresentationException(it)

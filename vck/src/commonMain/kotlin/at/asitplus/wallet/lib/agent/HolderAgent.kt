@@ -16,11 +16,17 @@ import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
+import at.asitplus.wallet.lib.data.KeyBindingJws
+import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.dif.PresentationExchangeInputEvaluator
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.third_party.at.asitplus.oidc.dcql.toDefaultSubmission
+import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.jws.DefaultJwsService
+import at.asitplus.wallet.lib.jws.JwsHeaderKeyId
+import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.procedures.dcql.DCQLQueryAdapter
@@ -29,17 +35,21 @@ import io.github.aakira.napier.Napier
 
 
 /**
- * An agent that only implements [Holder], i.e. it can receive credentials form other agents
+ * An agent that only implements [Holder], i.e. it can receive credentials from other agents
  * and present credentials to other agents.
  */
 class HolderAgent(
     private val validator: Validator = Validator(),
     private val subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
+    @Deprecated("Use signVerifiablePresentation, signKeyBinding instead")
     private val jwsService: JwsService,
+    @Deprecated("unused")
     private val coseService: CoseService,
     override val keyPair: KeyMaterial,
+    private val signVerifiablePresentation: SignJwtFun<VerifiablePresentationJws> = SignJwt(keyPair, JwsHeaderKeyId()),
+    private val signKeyBinding: SignJwtFun<KeyBindingJws> = SignJwt(keyPair, JwsHeaderNone()),
     private val verifiablePresentationFactory: VerifiablePresentationFactory =
-        VerifiablePresentationFactory(jwsService, coseService, keyPair.identifier),
+        VerifiablePresentationFactory(keyPair.identifier, signVerifiablePresentation, signKeyBinding),
     private val difInputEvaluator: PresentationExchangeInputEvaluator = PresentationExchangeInputEvaluator,
 ) : Holder {
 

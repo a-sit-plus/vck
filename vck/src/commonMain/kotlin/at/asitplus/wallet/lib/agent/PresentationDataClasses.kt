@@ -5,8 +5,9 @@ import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.PresentationSubmission
 import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
-import at.asitplus.openid.TransactionData
+import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
+import at.asitplus.openid.sha256
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -36,7 +37,7 @@ import kotlinx.serialization.json.buildJsonObject
 data class PresentationRequestParameters(
     val nonce: String,
     val audience: String,
-    val transactionData: Collection<TransactionData>? = null,
+    val transactionData: Pair<Flow, List<TransactionDataBase64Url>>? = null,
     /**
      * Handle calculating device signature for ISO mDocs, as this depends on the transport protocol
      * (OpenID4VP with ISO/IEC 18013-7)
@@ -47,14 +48,17 @@ data class PresentationRequestParameters(
     /** mdocGeneratedNonce to be used for the presentation and [calcIsoDeviceSignature] (OpenID4VP with ISO/IEC 18013-7) */
     val mdocGeneratedNonce: String? = null,
 ) {
-    internal fun getTransactionDataHashes(): Set<ByteArray>? = transactionData?.map {
-        (vckJsonSerializer.encodeToJsonElement(
-            DeprecatedBase64URLTransactionDataSerializer,
-            it
-        ) as JsonPrimitive).content.decodeToByteArray(
-            Base64UrlStrict
-        ).sha256()
-    }?.toSet()
+
+    fun getTransactionDataHashes() =
+        transactionData?.second?.map { it.sha256() }
+    /**
+     * Used to differentiate between the OID4VP and the UC5 transaction data flows
+     * since they are not compatible
+     */
+    enum class Flow {
+        OID4VP,
+        UC5
+    }
 }
 
 sealed interface PresentationResponseParameters {

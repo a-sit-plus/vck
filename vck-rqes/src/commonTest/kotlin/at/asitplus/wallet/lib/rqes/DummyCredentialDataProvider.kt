@@ -7,6 +7,7 @@ import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.data.ConstantIndex
+import io.ktor.util.*
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlin.time.Duration.Companion.minutes
@@ -39,6 +40,7 @@ object DummyCredentialDataProvider {
                         optionalClaim(claimNames, GIVEN_NAME, givenName),
                         optionalClaim(claimNames, GIVEN_NAME_BIRTH, givenName),
                         optionalClaim(claimNames, BIRTH_DATE, birthDate),
+                        optionalClaim(claimNames, EuPidScheme.Attributes.BIRTH_DATE, birthDate), //incorrect encoding in german test vector?
                         optionalClaim(claimNames, AGE_EQUAL_OR_OVER_18, true),
                         optionalClaim(claimNames, NATIONALITIES, listOf(nationality)),
                         optionalClaim(claimNames, ISSUANCE_DATE, issuance),

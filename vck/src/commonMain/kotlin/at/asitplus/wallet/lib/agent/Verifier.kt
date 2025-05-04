@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.jwkId
@@ -26,6 +27,7 @@ interface Verifier {
     suspend fun verifyPresentationSdJwt(
         input: SdJwtSigned,
         challenge: String,
+        transactionData: Pair<PresentationRequestParameters.Flow, List<TransactionDataBase64Url>>? = null,
     ): VerifyPresentationResult
 
     /**

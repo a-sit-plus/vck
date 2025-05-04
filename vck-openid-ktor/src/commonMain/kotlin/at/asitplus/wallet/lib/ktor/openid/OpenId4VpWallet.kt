@@ -5,12 +5,10 @@ import at.asitplus.catching
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestParametersFrom
-import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.cbor.DefaultCoseService
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.AuthorizationResponsePreparationState
@@ -49,13 +47,11 @@ import kotlinx.serialization.Serializable
  * [OpenID for Verifiable Presentations - draft 21](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html)
  */
 class OpenId4VpWallet(
-    @Deprecated("Replaced with methods that return URL directly")
-    private val openUrlExternally: suspend (String) -> Unit = {},
     /** ktor engine to make requests to the verifier. */
     engine: HttpClientEngine,
     /** Additional configuration for building the HTTP client, e.g. callers may enable logging. */
     httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
-    cryptoService: CryptoService,
+    keyMaterial: KeyMaterial,
     holderAgent: HolderAgent,
 ) {
 
@@ -73,9 +69,7 @@ class OpenId4VpWallet(
     }
     val openId4VpHolder = OpenId4VpHolder(
         holder = holderAgent,
-        agentPublicKey = cryptoService.keyMaterial.publicKey,
-        jwsService = DefaultJwsService(cryptoService),
-        coseService = DefaultCoseService(cryptoService),
+        keyMaterial = keyMaterial,
         remoteResourceRetriever = { data ->
             withContext(Dispatchers.IO) {
                 if (data.method == HttpMethod.Post) {
@@ -110,26 +104,6 @@ class OpenId4VpWallet(
         openId4VpHolder.startAuthorizationResponsePreparation(input)
 
     /**
-     * Calls [openId4VpHolder] to create the authentication response.
-     * In case the result shall be POSTed to the verifier, we call [client] to do that,
-     * and optionally [openUrlExternally] with the `redirect_uri` of that POST.
-     * In case the result shall be sent as a redirect to the verifier, we call [openUrlExternally].
-     */
-    @Deprecated("Use startPresentationReturningUrl instead")
-    suspend fun startPresentation(
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
-        isCrossDeviceFlow: Boolean = false,
-    ): KmmResult<Unit> = catching {
-        Napier.i("startPresentation: $request")
-        openId4VpHolder.createAuthnResponse(request).getOrThrow().let {
-            when (it) {
-                is AuthenticationResponseResult.Post -> postResponse(it, isCrossDeviceFlow)
-                is AuthenticationResponseResult.Redirect -> redirectResponse(it, isCrossDeviceFlow)
-            }
-        }
-    }
-
-    /**
      * Calls [openId4VpHolder] to finalize the authentication response.
      * In case the result shall be POSTed to the verifier, we call [client] to do that,
      * and return the `redirect_uri` of that POST (which the Wallet may open in a browser).
@@ -143,32 +117,6 @@ class OpenId4VpWallet(
             when (it) {
                 is AuthenticationResponseResult.Post -> postResponse(it)
                 is AuthenticationResponseResult.Redirect -> redirectResponse(it)
-            }
-        }
-    }
-
-    /**
-     * Calls [openId4VpHolder] to finalize the authentication response.
-     * In case the result shall be POSTed to the verifier, we call [client] to do that,
-     * and optionally [openUrlExternally] with the `redirect_uri` of that POST.
-     * In case the result shall be sent as a redirect to the verifier, we call [openUrlExternally].
-     */
-    @Deprecated("Use finalizeAuthorizationResponseReturningUrl instead")
-    suspend fun finalizeAuthorizationResponse(
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
-        clientMetadata: RelyingPartyMetadata?,
-        credentialPresentation: CredentialPresentation,
-        isCrossDeviceFlow: Boolean = false,
-    ): KmmResult<Unit> = catching {
-        Napier.i("startPresentation: $request")
-        openId4VpHolder.finalizeAuthorizationResponse(
-            request = request,
-            clientMetadata = clientMetadata,
-            credentialPresentation = credentialPresentation
-        ).getOrThrow().let {
-            when (it) {
-                is AuthenticationResponseResult.Post -> postResponse(it, isCrossDeviceFlow)
-                is AuthenticationResponseResult.Redirect -> redirectResponse(it, isCrossDeviceFlow)
             }
         }
     }
@@ -197,33 +145,6 @@ class OpenId4VpWallet(
         }
     }
 
-    private suspend fun postResponse(it: AuthenticationResponseResult.Post, isCrossDeviceFlow: Boolean) = run {
-        Napier.i("postResponse: $it")
-        handlePostResponse(
-            client.request {
-                url(it.url)
-                method = HttpMethod.Post
-                setBody(FormDataContentPlain(parameters {
-                    it.params.forEach { append(it.key, it.value) }
-                }))
-            },
-            isCrossDeviceFlow
-        )
-    }
-
-    @Throws(Exception::class)
-    private suspend fun handlePostResponse(response: HttpResponse, isCrossDeviceFlow: Boolean) {
-        Napier.i("handlePostResponse: response $response")
-        when (response.status.value) {
-            in 200..399 -> response.extractRedirectUri()?.let { if (!isCrossDeviceFlow) openUrlExternally.invoke(it) }
-            else -> throw Exception("${response.status}: ${response.readRawBytes().decodeToString()}")
-        }
-    }
-
-    private suspend fun redirectResponse(it: AuthenticationResponseResult.Redirect, isCrossDeviceFlow: Boolean) {
-        Napier.i("redirectResponse: ${it.url}")
-        openUrlExternally.invoke(it.url)
-    }
 
     private suspend fun postResponse(it: AuthenticationResponseResult.Post) = run {
         Napier.i("postResponse: $it")
@@ -236,20 +157,6 @@ class OpenId4VpWallet(
                 }))
             }
         )
-    }
-
-    @Throws(Exception::class)
-    private suspend fun handlePostResponse(response: HttpResponse) = run {
-        Napier.i("handlePostResponse: response $response")
-        when (response.status.value) {
-            in 200..399 -> AuthenticationSuccess(response.extractRedirectUri())
-            else -> throw Exception("${response.status}: ${response.readRawBytes().decodeToString()}")
-        }
-    }
-
-    private fun redirectResponse(it: AuthenticationResponseResult.Redirect) = run {
-        Napier.i("redirectResponse: ${it.url}")
-        AuthenticationSuccess(it.url)
     }
 
     /**
@@ -265,6 +172,20 @@ class OpenId4VpWallet(
         override fun bytes(): ByteArray = content
     }
 
+
+    @Throws(Exception::class)
+    private suspend fun handlePostResponse(response: HttpResponse) = run {
+        Napier.i("handlePostResponse: response $response")
+        when (response.status.value) {
+            in 200..399 -> AuthenticationSuccess(response.extractRedirectUri())
+            else -> throw Exception("${response.status}: ${response.readRawBytes().decodeToString()}")
+        }
+    }
+
+    private fun redirectResponse(it: AuthenticationResponseResult.Redirect) = run {
+        Napier.i("redirectResponse: ${it.url}")
+        AuthenticationSuccess(it.url)
+    }
 }
 
 @Serializable

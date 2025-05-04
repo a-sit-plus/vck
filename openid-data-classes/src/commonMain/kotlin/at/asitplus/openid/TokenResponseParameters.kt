@@ -5,7 +5,6 @@ import at.asitplus.KmmResult.Companion.wrap
 import io.ktor.http.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlin.time.Duration
 
 @Serializable
@@ -57,15 +56,6 @@ data class TokenResponseParameters(
     @SerialName("c_nonce")
     @Deprecated("Removed in OID4VCI draft 14, see ClientNonceResponse")
     val clientNonce: String? = null,
-
-    /**
-     * OID4VCI:
-     * OPTIONAL JSON integer denoting the lifetime in seconds of the [clientNonce].
-     */
-    @SerialName("c_nonce_expires_in")
-    @Serializable(with = DurationSecondsIntSerializer::class)
-    @Deprecated("Removed in OID4VCI draft 14, see ClientNonceResponse")
-    val clientNonceExpiresIn: Duration? = null,
 
     /**
      * OID4VCI:

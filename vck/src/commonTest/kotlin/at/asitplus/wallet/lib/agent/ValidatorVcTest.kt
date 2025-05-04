@@ -10,9 +10,10 @@ import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
-import at.asitplus.wallet.lib.jws.DefaultJwsService
+import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
-import at.asitplus.wallet.lib.jws.JwsService
+import at.asitplus.wallet.lib.jws.JwsHeaderKeyId
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
@@ -29,7 +30,7 @@ class ValidatorVcTest : FreeSpec() {
 
     private lateinit var issuer: Issuer
     private lateinit var issuerCredentialStore: IssuerCredentialStore
-    private lateinit var issuerJwsService: JwsService
+    private lateinit var issuerSignVc: SignJwtFun<VerifiableCredentialJws>
     private lateinit var issuerKeyMaterial: KeyMaterial
     private lateinit var verifierKeyMaterial: KeyMaterial
     private lateinit var validator: Validator
@@ -55,10 +56,10 @@ class ValidatorVcTest : FreeSpec() {
             issuerKeyMaterial = EphemeralKeyWithoutCert()
             issuer = IssuerAgent(
                 issuerKeyMaterial,
-                issuerCredentialStore,
                 validator = validator,
+                issuerCredentialStore = issuerCredentialStore,
             )
-            issuerJwsService = DefaultJwsService(DefaultCryptoService(issuerKeyMaterial))
+            issuerSignVc = SignJwt(issuerKeyMaterial, JwsHeaderKeyId())
             verifierKeyMaterial = EphemeralKeyWithoutCert()
         }
 
@@ -381,7 +382,7 @@ class ValidatorVcTest : FreeSpec() {
         jwtId = jwtId
     )
 
-    private suspend fun signJws(vcJws: VerifiableCredentialJws): String = issuerJwsService.createSignedJwt(
+    private suspend fun signJws(vcJws: VerifiableCredentialJws): String = issuerSignVc(
         JwsContentTypeConstants.JWT,
         vcJws,
         VerifiableCredentialJws.serializer()

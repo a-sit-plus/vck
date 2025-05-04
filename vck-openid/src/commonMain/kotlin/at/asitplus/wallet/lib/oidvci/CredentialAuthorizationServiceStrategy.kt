@@ -10,14 +10,9 @@ import at.asitplus.wallet.lib.oauth2.AuthorizationServiceStrategy
  * Provide authentication and authorization for credential issuance.
  */
 class CredentialAuthorizationServiceStrategy(
-    /** Source of user data. */
-    @Deprecated("Moved to SimpleAuthorizationService")
-    private val dataProvider: OAuth2DataProvider,
     /** List of supported schemes. */
     credentialSchemes: Set<ConstantIndex.CredentialScheme>,
 ) : AuthorizationServiceStrategy {
-
-    constructor(credentialScheme: Set<ConstantIndex.CredentialScheme>) : this(emptyDataProvider(), credentialScheme)
 
     private val supportedCredentialSchemes = credentialSchemes
         .flatMap { it.toSupportedCredentialFormat().entries }
@@ -31,11 +26,6 @@ class CredentialAuthorizationServiceStrategy(
         supportedCredentialSchemes.entries.map {
             OpenIdAuthorizationDetails(credentialConfigurationId = it.key)
         }
-
-    @Suppress("DEPRECATION")
-    @Deprecated("Moved to SimpleAuthorizationService")
-    override suspend fun loadUserInfo(request: AuthenticationRequestParameters, code: String) =
-        dataProvider.loadUserInfo(request, code)
 
     override fun filterScope(scope: String): String? = scope.trim().split(" ")
         .mapNotNull { scope ->

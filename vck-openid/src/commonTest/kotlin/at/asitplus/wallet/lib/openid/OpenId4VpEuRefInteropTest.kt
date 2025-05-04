@@ -20,6 +20,9 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMIL
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DefaultJwsService
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.jws.JwsHeaderJwk
+import at.asitplus.wallet.lib.jws.SignJwt
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeSingleton
@@ -286,16 +289,16 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
     "Request in request URI" {
         val input = "mdoc-openid4vp://?client_id=https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02" +
                 "&request_uri=https%3A%2F%2Fexample.com%2Fd15b5b6f-7821-4031-9a18-ebe491b720a6"
-        val jws = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithoutCert())).createSignedJwsAddingParams(
-            payload = AuthenticationRequestParameters(
+        val signer = SignJwt<AuthenticationRequestParameters>(EphemeralKeyWithoutCert(), JwsHeaderJwk())
+        val jws = signer(
+            JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST,
+            AuthenticationRequestParameters(
                 nonce = "RjEQKQeG8OUaKT4ij84E8mCvry6pVSgDyqRBMW5eBTPItP4DIfbKaT6M6v6q2Dvv8fN7Im7Ifa6GI2j6dHsJaQ==",
                 state = "ef391e30-bacc-4441-af5d-7f42fb682e02",
                 responseUrl = "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02",
                 clientId = "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02",
             ),
-            serializer = AuthenticationRequestParameters.Companion.serializer(),
-            addX5c = false,
-            addJsonWebKey = true,
+            AuthenticationRequestParameters.Companion.serializer(),
         ).getOrThrow().serialize()
 
         val wallet = OpenId4VpHolder(
