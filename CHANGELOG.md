@@ -1,5 +1,8 @@
 # Changelog
 
+Release 5.7.0:
+ - tbd
+
 Release 5.6.0:
  - Remote Qualified Electronic Signatures:
    - Fix erroneous `InputDescriptor` encoding in `PresentationDefinition` when more specific type  was known (i.e. `DidInputDescriptor`/`QesInputDescriptor`) via contexutal serialziation
