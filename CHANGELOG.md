@@ -16,7 +16,7 @@ Release 5.6.0:
  - OpenID for Verifiable Presentations:
    - In `OpenId4VpVerifier` add constructor parameter `supportedAlgorithms`
    - In `OpenId4VpWallet` remove `openUrlExternally`, and instead return the redirected URL from the verifier
- - Use function decomposition:
+ - Use functions over services:
    - Replace `VerifierCryptoService` with `VerifySignatureFun`
    - Replace `VerifierJwsService` with `VerifyJwsObjectFun`, `VerifyJwsSignatureWithCnfFun` and `VerifyJwsSignatureWithKeyFun`
    - Replace `VerifierCoseService` with `VerifyCoseSignatureFun`
@@ -26,7 +26,9 @@ Release 5.6.0:
    - Replace `JwsService.decryptJweObject()` with `DecryptJweFun`
    - Replace `CoseService.createSignedCose()` with `SignCoseFun`
    - Replace `CoseService.createSignedCoseWithDetachedPayload()` with `SignCoseDetachedFun`
- - Token Status:
+
+Release 5.5.4:
+ - Token status:
    - Add considerations for separating the semantics "no token status mechanism is defined" from "evaluating token status failed"
    - Provide revocation status to verifier
  - DCQL:
