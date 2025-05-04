@@ -6,7 +6,6 @@ import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_BEARER
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.*
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.*
@@ -42,12 +41,7 @@ class JwtTokenGenerationService(
     /** Used as issuer for issued DPoP tokens. */
     internal val publicContext: String = "https://wallet.a-sit.at/authorization-server",
     /** Used to verify client attestation JWTs. */
-    @Deprecated("Use verifyJwsSignatureObject instead")
-    internal val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
-    /** Used to verify client attestation JWTs. */
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
-    @Deprecated("Use signToken instead")
-    internal val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithoutCert())),
     /** Used to sign DPoP (RFC 9449) access tokens, if supported by the client. */
     internal val signToken: SignJwtFun<OpenId4VciAccessToken> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderJwk()),
     /** Clock used to verify timestamps in access tokens and refresh tokens. */

@@ -40,12 +40,8 @@ import kotlin.coroutines.cancellation.CancellationException
  * Does verify the revocation status of the data (when a status information is encoded in the credential).
  */
 class Validator(
-    @Deprecated("Use verifyJwsSignatureObject instead")
-    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
     private val verifyJwsSignatureWithCnf: VerifyJwsSignatureWithCnfFun = VerifyJwsSignatureWithCnf(),
-    @Deprecated("Use verifyCoseSignature instead")
-    private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(),
     private val verifyCoseSignatureWithKey: VerifyCoseSignatureWithKeyFun<MobileSecurityObject> = VerifyCoseSignatureWithKey(),
     private val parser: Parser = Parser(),
     /**
@@ -60,22 +56,6 @@ class Validator(
      */
     private val verifyTransactionData: Boolean = true,
 ) {
-    @Deprecated("Use constructor with verifySignature")
-    constructor(
-        cryptoService: VerifierCryptoService,
-        parser: Parser = Parser(),
-        tokenStatusResolver: (suspend (Status) -> TokenStatus)? = null,
-    ) : this(
-        verifyJwsObject = VerifyJwsObject(VerifyJwsSignature { input, signature, algorithm, publicKey ->
-            cryptoService.verify(input, signature, algorithm.toX509SignatureAlgorithm().getOrThrow(), publicKey)
-        }),
-        verifyCoseSignatureWithKey = VerifyCoseSignatureWithKey { input, signature, algorithm, publicKey ->
-            cryptoService.verify(input, signature, algorithm.toX509SignatureAlgorithm().getOrThrow(), publicKey)
-        },
-        parser = parser,
-        tokenStatusResolver = tokenStatusResolver,
-    )
-
     constructor(
         verifySignature: VerifySignatureFun,
         parser: Parser = Parser(),

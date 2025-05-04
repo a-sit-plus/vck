@@ -12,9 +12,7 @@ import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.sha256
-import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
-import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
@@ -57,9 +55,6 @@ class JwtTokenVerificationService(
     private val nonceService: NonceService,
     /** Used to verify the signature of the DPoP access token. */
     private val issuerKey: JsonWebKey,
-    /** Used to verify client attestation JWTs */
-    @Deprecated("Use verifyJwsSignatureObject instead")
-    internal val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
     /** Used to verify client attestation JWTs */
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
     /** Used to verify DPoP proofs */

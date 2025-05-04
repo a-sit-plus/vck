@@ -9,14 +9,11 @@ import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
-import at.asitplus.wallet.lib.jws.DefaultJwsService
-import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
@@ -40,7 +37,6 @@ class WalletService(
     private val redirectUrl: String = "$clientId/callback",
     /** Used to prove possession of the key material to create [CredentialRequestProof], i.e. the holder key. */
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-    private val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
     /**
      * Need to implement if resources are defined by reference, i.e. the URL for a [JsonWebKeySet],
      * or the authentication request itself as `request_uri`, or `presentation_definition_uri`.
@@ -48,11 +44,7 @@ class WalletService(
      * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
      */
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
-    /**
-     * Load key attestation to create [CredentialRequestProof], if required by the credential issuer.
-     * Once the definition of this format becomes clear in OpenID for Verifiable Credential Issuance,
-     * this should probably be moved to [at.asitplus.wallet.lib.agent.CryptoService].
-     */
+    /** Load key attestation to create [CredentialRequestProof], if required by the credential issuer. */
     private val loadKeyAttestation: (suspend (KeyAttestationInput) -> KmmResult<JwsSigned<KeyAttestationJwt>>)? = null,
     /** Whether to request encryption of credentials, if the issuer supports it. */
     private val requestEncryption: Boolean = false,

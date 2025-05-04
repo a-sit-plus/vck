@@ -34,9 +34,7 @@ class RqesOpenId4VpHolderTest : FreeSpec({
 
     val dummyValueProvider = DummyValueProvider()
     val rqesWalletService = RqesOpenId4VpHolder(
-        oauth2Client = OAuth2Client(
-            jwsService = null,
-        )
+        oauth2Client = OAuth2Client(signPushedAuthorizationRequest = null)
     )
 
     fun CredentialInfo.isValid(): Boolean =
