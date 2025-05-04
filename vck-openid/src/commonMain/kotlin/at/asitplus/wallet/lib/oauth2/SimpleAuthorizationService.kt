@@ -6,7 +6,6 @@ import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.iso.sha256
-import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.oidvci.*
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidCode
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidGrant

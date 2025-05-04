@@ -5,11 +5,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 
-
-@Deprecated("Renamed", ReplaceWith("SignDocParameters"))
-typealias SignDocResponse = SignDocResponseParameters
-
-
 /**
  * CSC API v2.0.0.2
  * Data class defined in Ch. 11.11

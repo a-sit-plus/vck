@@ -11,8 +11,6 @@ import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
-import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
-import at.asitplus.wallet.lib.cbor.VerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
@@ -45,17 +43,11 @@ open class OpenId4VpVerifier(
     private val clientIdScheme: ClientIdScheme,
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
-    @Deprecated("Use signAuthnRequest, decryptJwe instead")
-    private val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
     private val decryptJwe: DecryptJweFun = DecryptJwe(keyMaterial),
     private val signAuthnRequest: SignJwtFun<AuthenticationRequestParameters> =
         SignJwt(keyMaterial, JwsHeaderClientIdScheme(clientIdScheme)()),
-    @Deprecated("Use verifyJwsSignatureObject instead")
-    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
     private val supportedAlgorithms: List<JwsAlgorithm> = listOf(JwsAlgorithm.ES256),
-    @Deprecated("Use verifyCoseSignature instead")
-    private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(),
     private val verifyCoseSignature: VerifyCoseSignatureWithKeyFun<ByteArray> = VerifyCoseSignatureWithKey(),
     timeLeewaySeconds: Long = 300L,
     private val clock: Clock = Clock.System,

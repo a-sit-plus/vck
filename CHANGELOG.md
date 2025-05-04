@@ -1,7 +1,10 @@
 # Changelog
 
 Release 5.7.0:
- - tbd
+ - Remote Qualified Electronic Signatures:
+   - Remove code elements deprecated in `5.6.0`
+ - JWS and COSE handling:
+   - Remove code elements deprecated in `5.6.0`
 
 Release 5.6.0:
  - Remote Qualified Electronic Signatures:

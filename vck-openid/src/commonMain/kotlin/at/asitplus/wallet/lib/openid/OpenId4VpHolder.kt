@@ -13,15 +13,11 @@ import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.CoseHeaderNone
-import at.asitplus.wallet.lib.cbor.CoseService
-import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
 import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
@@ -29,11 +25,9 @@ import at.asitplus.wallet.lib.cbor.SignCoseFun
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.EncryptJwe
 import at.asitplus.wallet.lib.jws.EncryptJweFun
 import at.asitplus.wallet.lib.jws.JwsHeaderJwk
-import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
@@ -55,14 +49,10 @@ import kotlinx.datetime.Clock
 class OpenId4VpHolder(
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     private val holder: Holder = HolderAgent(keyMaterial),
-    @Deprecated("Use signIdToken, signJarm, encryptJarm, supportedAlgorithms instead")
-    private val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
     private val signIdToken: SignJwtFun<IdToken> = SignJwt(keyMaterial, JwsHeaderJwk()),
     private val signJarm: SignJwtFun<AuthenticationResponseParameters> = SignJwt(keyMaterial, JwsHeaderJwk()),
     private val encryptJarm: EncryptJweFun = EncryptJwe(keyMaterial),
     private val supportedAlgorithms: Set<JwsAlgorithm> = setOfNotNull(JwsAlgorithm.ES256),
-    @Deprecated("Use signDeviceAuthDetached, signDeviceAuthFallback, supportedAlgorithms instead")
-    private val coseService: CoseService = DefaultCoseService(DefaultCryptoService(keyMaterial)),
     private val signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> =
         SignCoseDetached(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
     private val signDeviceAuthFallback: SignCoseFun<ByteArray> = SignCose(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),

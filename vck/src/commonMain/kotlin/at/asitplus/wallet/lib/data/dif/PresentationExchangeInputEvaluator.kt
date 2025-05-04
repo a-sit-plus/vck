@@ -10,9 +10,6 @@ import at.asitplus.openid.CredentialFormatEnum
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.json.*
 
-@Deprecated("Renamed", ReplaceWith("PresentationExchangeInputEvaluator"))
-typealias InputEvaluator = PresentationExchangeInputEvaluator
-
 /**
  * Specification: https://identity.foundation/presentation-exchange/spec/v2.0.0/#input-evaluation
  */

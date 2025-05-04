@@ -8,9 +8,6 @@ import at.asitplus.rqes.CredentialInfoRequest
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-@Deprecated("Renamed", ReplaceWith("CertificateParameters"))
-typealias CscCertificateParameters = CertificateParameters
-
 /**
  * CSC-API v2.0.0.2
  * JsonObject which is part of [CredentialInfo]

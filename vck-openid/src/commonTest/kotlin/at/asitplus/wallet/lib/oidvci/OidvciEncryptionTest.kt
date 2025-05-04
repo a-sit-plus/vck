@@ -11,7 +11,6 @@ import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DecryptJwe
 import at.asitplus.wallet.lib.jws.DecryptJweFun
-import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
@@ -22,7 +21,6 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.serialization.builtins.serializer
 
 class OidvciEncryptionTest : FunSpec({
 

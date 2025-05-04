@@ -3,9 +3,6 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.signum.indispensable.josef.*
-import at.asitplus.wallet.lib.agent.AuthenticatedCiphertext
-import at.asitplus.wallet.lib.agent.CryptoService
-import at.asitplus.wallet.lib.agent.KeyMaterial
 import javax.crypto.Cipher
 import javax.crypto.Mac
 import javax.crypto.spec.IvParameterSpec
