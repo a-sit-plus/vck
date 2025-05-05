@@ -202,7 +202,7 @@ class InvalidCredentialSchemeException(scheme: String?, expected: Collection<Str
 
 open class ConstraintEvaluationException(message: String) : InputEvaluationException(message)
 
-class ConstraintFieldsEvaluationException(message: String, constraintFieldExceptions: Map<ConstraintField, Throwable>) :
+class ConstraintFieldsEvaluationException(message: String, val constraintFieldExceptions: Map<ConstraintField, Throwable>) :
     ConstraintEvaluationException(message)
 
 open class ConstraintFieldEvaluationException(message: String) : InputEvaluationException(message)
