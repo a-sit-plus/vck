@@ -1,7 +1,7 @@
 # Changelog
 
-Release 5.7.0:
- - tbd
+Release 5.6.1:
+ - Expose details for `ConstraintFieldsEvaluationException`
 
 Release 5.6.0:
  - Remote Qualified Electronic Signatures:
