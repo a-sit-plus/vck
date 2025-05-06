@@ -4,6 +4,8 @@ Release 5.6.1:
  - Expose details for `ConstraintFieldsEvaluationException`
  - Token status:
    - Errors in status list lookup lead to a `null` token status, not to an error as before, i.e. `TokenStatusEvaluationException` is never thrown
+ - Remote Qualified Electronic Signatures:
+   - In `RqesOpenId4VpHolder` fix validation of signing credentials
 
 Release 5.6.0:
  - Remote Qualified Electronic Signatures:
