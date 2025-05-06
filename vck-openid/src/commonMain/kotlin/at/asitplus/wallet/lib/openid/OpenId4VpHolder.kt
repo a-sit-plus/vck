@@ -27,6 +27,7 @@ import at.asitplus.wallet.lib.cbor.SignCoseFun
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.dcapi.request.Oid4vpDCAPIRequest
 import at.asitplus.wallet.lib.jws.EncryptJwe
 import at.asitplus.wallet.lib.jws.EncryptJweFun
 import at.asitplus.wallet.lib.jws.JwsHeaderJwk
@@ -157,7 +158,8 @@ class OpenId4VpHolder(
             finalizeAuthorizationResponseParameters(
                 request = params,
                 clientMetadata = it.clientMetadata,
-                credentialPresentation = it.credentialPresentationRequest?.toCredentialPresentation()
+                credentialPresentation = it.credentialPresentationRequest?.toCredentialPresentation(),
+                dcApiRequest = null
             ).getOrThrow()
         }
 
@@ -192,8 +194,14 @@ class OpenId4VpHolder(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         clientMetadata: RelyingPartyMetadata?,
         credentialPresentation: CredentialPresentation?,
+        dcApiRequest: Oid4vpDCAPIRequest?,
     ): KmmResult<AuthenticationResponseResult> =
-        finalizeAuthorizationResponseParameters(request, clientMetadata, credentialPresentation).map {
+        finalizeAuthorizationResponseParameters(
+            request,
+            clientMetadata,
+            credentialPresentation,
+            dcApiRequest
+        ).map {
             authenticationResponseFactory.createAuthenticationResponse(request, it)
         }
 
@@ -206,12 +214,13 @@ class OpenId4VpHolder(
         request: RequestParametersFrom<T>,
         clientMetadata: RelyingPartyMetadata?,
         credentialPresentation: CredentialPresentation?,
+        dcApiRequest: Oid4vpDCAPIRequest?
     ): KmmResult<AuthenticationResponse> = catching {
         @Suppress("UNCHECKED_CAST") val certKey =
             (request as? RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>)
                 ?.jwsSigned?.header?.certificateChain?.firstOrNull()?.publicKey?.toJsonWebKey()
         val clientJsonWebKeySet = clientMetadata?.loadJsonWebKeySet()
-        val audience = request.parameters.extractAudience(clientJsonWebKeySet)
+        val audience = request.parameters.extractAudience(clientJsonWebKeySet, dcApiRequest)
         val presentationFactory = PresentationFactory(supportedAlgorithms, signDeviceAuthDetached, signDeviceAuthFallback, signIdToken)
         val jsonWebKeys = clientJsonWebKeySet?.keys?.combine(certKey)
         val idToken =
@@ -243,10 +252,20 @@ class OpenId4VpHolder(
         )
     }
 
+
+    /*
+    * DC API:
+    * The audience for the response (for example, the aud value in a Key Binding JWT) MUST be the
+    * Origin, prefixed with origin:, for example origin:https://verifier.example.com/.
+    * This is the case even for signed requests. Therefore, when using OpenID4VP over the DC API,
+    * the Client Identifier is not used as the audience for the response.
+     */
     @Throws(OAuth2Exception::class)
     private fun RequestParameters.extractAudience(
         clientJsonWebKeySet: JsonWebKeySet?,
-    ) = clientId
+        dcApiRequest: Oid4vpDCAPIRequest?
+    ) = dcApiRequest?.let { "origin:${it.callingOrigin}" }
+        ?: clientId
         ?: issuer
         ?: clientJsonWebKeySet?.keys?.firstOrNull()
             ?.let { it.keyId ?: it.didEncoded ?: it.jwkThumbprint }
