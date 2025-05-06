@@ -92,5 +92,17 @@ interface SubjectCredentialStore {
             @SerialName("schema-uri")
             override val schemaUri: String,
         ) : StoreEntry
+
+        @Throws(IllegalArgumentException::class)
+        fun getDcApiId(): String = when (this) {
+            is Vc -> vc.jwtId
+            is SdJwt -> sdJwt.jwtId
+                ?: sdJwt.subject
+                ?: sdJwt.credentialStatus?.statusList?.let { it.uri.string + it.index.toString() }
+                ?: throw IllegalArgumentException("Credential does not have a jwtId")
+            // TODO probably not the best id
+            is Iso -> issuerSigned.issuerAuth.signature.humanReadableString
+        }
+
     }
 }
