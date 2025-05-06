@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.third_party.kotlin.ifTrue
 import io.github.aakira.napier.Napier
@@ -83,11 +82,9 @@ object StatusListTokenValidator {
      * Retrieve the status value of the index specified in the Referenced Token as described in
      * Section 4. Fail if the provided index is out of bound of the Status List
      */
-
     fun extractTokenStatus(
         statusList: StatusList,
         statusListInfo: StatusListInfo,
-        zlibService: ZlibService? = null,
     ): KmmResult<TokenStatus> = catching {
         statusList.view.getOrNull(statusListInfo.index)
             ?: throw IndexOutOfBoundsException("The index specified in the status list info is out of bounds of the status list.")

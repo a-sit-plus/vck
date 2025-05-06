@@ -32,7 +32,7 @@ class InMemoryIssuerCredentialStore(
         subjectPublicKey: CryptoPublicKey,
         issuanceDate: Instant,
         expirationDate: Instant,
-        timePeriod: Int
+        timePeriod: Int,
     ): Long = indexMutex.withLock {
         val list = credentialMap.getOrPut(timePeriod) {
             mutableListOf()
@@ -87,7 +87,7 @@ class InMemoryIssuerCredentialStore(
     }
 
     override fun setStatus(vcId: String, status: TokenStatus, timePeriod: Int): Boolean {
-        if(status.value > tokenStatusBitSize.maxValue) {
+        if (status.value > tokenStatusBitSize.maxValue) {
             throw IllegalStateException("Credential store only accepts token statuses of bitlength `${tokenStatusBitSize.value}`.")
         }
         val entry = credentialMap.getOrPut(timePeriod) {

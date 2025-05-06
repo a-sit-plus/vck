@@ -2,6 +2,8 @@
 
 Release 5.6.1:
  - Expose details for `ConstraintFieldsEvaluationException`
+ - Token status:
+   - Errors in status list lookup lead to a `null` token status, not to an error as before, i.e. `TokenStatusEvaluationException` is never thrown
 
 Release 5.6.0:
  - Remote Qualified Electronic Signatures:

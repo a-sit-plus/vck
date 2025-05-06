@@ -114,7 +114,6 @@ class Validator(
             StatusListTokenValidator.extractTokenStatus(
                 statusList = payload.statusList,
                 statusListInfo = status.statusList,
-                zlibService = zlibService,
             ).getOrThrow()
         },
     )
@@ -146,14 +145,14 @@ class Validator(
     /**
      * Checks the revocation state using the provided status mechanisms
      */
-    private suspend fun checkRevocationStatus(status: Status): KmmResult<TokenStatus> = try {
+    private suspend fun checkRevocationStatus(status: Status): KmmResult<TokenStatus>? = try {
         val resolver = tokenStatusResolver ?: {
             TokenStatus.Valid
         }
         KmmResult.success(resolver.invoke(status))
     } catch (it: Throwable) {
         // A status mechanism is specified, but token status cannot be evaluated
-        KmmResult.failure(TokenStatusEvaluationException(it))
+        null
     }
 
     /**
@@ -423,7 +422,7 @@ class Validator(
         }
         vcJws.vc.credentialStatus?.let {
             Napier.d("VC: status found")
-            if (checkRevocationStatus(it).getOrNull() == TokenStatus.Invalid) {
+            if (checkRevocationStatus(it)?.getOrNull() == TokenStatus.Invalid) {
                 // TODO: how to handle case where resolving token status fails?
                 Napier.d("VC: revoked")
                 return Revoked(input, vcJws)
@@ -523,6 +522,7 @@ class Validator(
     }
 }
 
+@Deprecated("Will not be thrown")
 class TokenStatusEvaluationException(
     val delegate: Throwable
 ) : Exception(delegate)
