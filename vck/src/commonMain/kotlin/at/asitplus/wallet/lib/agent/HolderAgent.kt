@@ -29,7 +29,6 @@ import at.asitplus.wallet.lib.procedures.dcql.DCQLQueryAdapter
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 
-
 /**
  * An agent that only implements [Holder], i.e. it can receive credentials from other agents
  * and present credentials to other agents.
@@ -129,10 +128,12 @@ class HolderAgent(
     }
 
     /**
-     * Gets a list of all valid stored credentials sorted by preference
+     * Gets a list of all valid stored credentials sorted by preference, possibly filtered by
+     * [filterById]
      */
-    private suspend fun getValidCredentialsByPriority() = getCredentials()
+    private suspend fun getValidCredentialsByPriority(filterById: Int? = null) = getCredentials()
         ?.filter { it.status?.isInvalid != true }
+        ?.filter { filterById == null || it.storeEntry.getDcApiId().hashCode() == filterById }
         ?.map { it.storeEntry }
         ?.sortedBy {
             // prefer iso credentials and sd jwt credentials over plain vc credentials
@@ -293,10 +294,11 @@ class HolderAgent(
         inputDescriptors: Collection<InputDescriptor>,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: PathAuthorizationValidator?,
+        filterById: Int?
     ) = catching {
         findInputDescriptorMatches(
             inputDescriptors = inputDescriptors,
-            credentials = getValidCredentialsByPriority()
+            credentials = getValidCredentialsByPriority(filterById = filterById)
                 ?: throw PresentationException("Credentials could not be retrieved from the store"),
             fallbackFormatHolder = fallbackFormatHolder,
             pathAuthorizationValidator = pathAuthorizationValidator,
@@ -349,9 +351,9 @@ class HolderAgent(
         pathAuthorizationValidator = pathAuthorizationValidator,
     )
 
-    override suspend fun matchDCQLQueryAgainstCredentialStore(dcqlQuery: DCQLQuery): KmmResult<DCQLQueryResult<StoreEntry>> {
+    override suspend fun matchDCQLQueryAgainstCredentialStore(dcqlQuery: DCQLQuery, filterById: Int?): KmmResult<DCQLQueryResult<StoreEntry>> {
         return DCQLQueryAdapter(dcqlQuery).select(
-            credentials = getValidCredentialsByPriority()
+            credentials = getValidCredentialsByPriority(filterById)
                 ?: throw PresentationException("Credentials could not be retrieved from the store"),
         )
     }

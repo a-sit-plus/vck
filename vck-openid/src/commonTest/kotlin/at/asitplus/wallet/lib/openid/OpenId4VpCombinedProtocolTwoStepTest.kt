@@ -202,7 +202,8 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
                         credentialPresentation = PresentationExchangePresentation(
                             presentationRequest = presentationExchangeRequest,
                             inputDescriptorSubmissions = submission
-                        )
+                        ),
+                        dcApiRequest = dcApiRequest
                     ).getOrThrow()
                 }
             }
