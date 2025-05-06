@@ -24,7 +24,11 @@ interface Holder {
     /**
      * The public key for this agent, i.e. the "holder key" that the credentials get bound to.
      */
+    val keyMaterial: KeyMaterial
+
+    @Deprecated("Use keyMaterial instead", ReplaceWith("keyMaterial"))
     val keyPair: KeyMaterial
+        get() = keyMaterial
 
     sealed class StoreCredentialInput {
         data class Vc(

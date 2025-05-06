@@ -35,13 +35,13 @@ import io.github.aakira.napier.Napier
  * and present credentials to other agents.
  */
 class HolderAgent(
-    override val keyPair: KeyMaterial,
+    override val keyMaterial: KeyMaterial,
     private val subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
     private val validator: Validator = Validator(),
-    private val signVerifiablePresentation: SignJwtFun<VerifiablePresentationJws> = SignJwt(keyPair, JwsHeaderKeyId()),
-    private val signKeyBinding: SignJwtFun<KeyBindingJws> = SignJwt(keyPair, JwsHeaderNone()),
+    private val signVerifiablePresentation: SignJwtFun<VerifiablePresentationJws> = SignJwt(keyMaterial, JwsHeaderKeyId()),
+    private val signKeyBinding: SignJwtFun<KeyBindingJws> = SignJwt(keyMaterial, JwsHeaderNone()),
     private val verifiablePresentationFactory: VerifiablePresentationFactory =
-        VerifiablePresentationFactory(keyPair.identifier, signVerifiablePresentation, signKeyBinding),
+        VerifiablePresentationFactory(keyMaterial.identifier, signVerifiablePresentation, signKeyBinding),
     private val difInputEvaluator: PresentationExchangeInputEvaluator = PresentationExchangeInputEvaluator,
 ) : Holder {
 
@@ -52,7 +52,7 @@ class HolderAgent(
     override suspend fun storeCredential(credential: Holder.StoreCredentialInput) = catching {
         when (credential) {
             is Holder.StoreCredentialInput.Vc -> {
-                val vc = validator.verifyVcJws(credential.vcJws, keyPair.publicKey)
+                val vc = validator.verifyVcJws(credential.vcJws, keyMaterial.publicKey)
                 if (vc !is Verifier.VerifyCredentialResult.SuccessJwt) {
                     throw VerificationError(vc.toString())
                 }
@@ -64,7 +64,7 @@ class HolderAgent(
             }
 
             is Holder.StoreCredentialInput.SdJwt -> {
-                val sdJwt = validator.verifySdJwt(SdJwtSigned.parse(credential.vcSdJwt)!!, keyPair.publicKey)
+                val sdJwt = validator.verifySdJwt(SdJwtSigned.parse(credential.vcSdJwt)!!, keyMaterial.publicKey)
                 if (sdJwt !is Verifier.VerifyCredentialResult.SuccessSdJwt) {
                     throw VerificationError(sdJwt.toString())
                 }

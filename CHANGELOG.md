@@ -5,6 +5,8 @@ Release 5.7.0:
    - Remove code elements deprecated in `5.6.0`
  - JWS and COSE handling:
    - Remove code elements deprecated in `5.6.0`
+ - Holder:
+   - Replace `keyPair` with `keyMaterial`
 
 Release 5.6.0:
  - Remote Qualified Electronic Signatures:
