@@ -40,9 +40,11 @@ import kotlin.coroutines.cancellation.CancellationException
  * Does verify the revocation status of the data (when a status information is encoded in the credential).
  */
 class Validator(
-    private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
-    private val verifyJwsSignatureWithCnf: VerifyJwsSignatureWithCnfFun = VerifyJwsSignatureWithCnf(),
-    private val verifyCoseSignatureWithKey: VerifyCoseSignatureWithKeyFun<MobileSecurityObject> = VerifyCoseSignatureWithKey(),
+    private val verifySignature: VerifySignatureFun = VerifySignature(),
+    private val verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(verifySignature),
+    private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(verifyJwsSignature),
+    private val verifyJwsSignatureWithCnf: VerifyJwsSignatureWithCnfFun = VerifyJwsSignatureWithCnf(verifyJwsSignature),
+    private val verifyCoseSignatureWithKey: VerifyCoseSignatureWithKeyFun<MobileSecurityObject> = VerifyCoseSignatureWithKey(verifySignature),
     private val parser: Parser = Parser(),
     /**
      * This function should check the status mechanisms in a given status claim in order to
@@ -56,17 +58,6 @@ class Validator(
      */
     private val verifyTransactionData: Boolean = true,
 ) {
-    constructor(
-        verifySignature: VerifySignatureFun,
-        parser: Parser = Parser(),
-        tokenStatusResolver: (suspend (Status) -> TokenStatus)? = null,
-    ) : this(
-        verifyJwsObject = VerifyJwsObject(VerifyJwsSignature(verifySignature)),
-        verifyCoseSignatureWithKey = VerifyCoseSignatureWithKey(verifySignature),
-        parser = parser,
-        tokenStatusResolver = tokenStatusResolver,
-    )
-
     constructor(
         resolveStatusListToken: suspend (UniformResourceIdentifier) -> StatusListToken,
         verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
