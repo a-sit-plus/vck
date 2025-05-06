@@ -11,7 +11,6 @@ import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.pki.X509Certificate
-import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
@@ -40,65 +39,40 @@ import kotlin.coroutines.cancellation.CancellationException
  * Does verify the revocation status of the data (when a status information is encoded in the credential).
  */
 class Validator(
-    private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
-    private val verifyJwsSignatureWithCnf: VerifyJwsSignatureWithCnfFun = VerifyJwsSignatureWithCnf(),
-    private val verifyCoseSignatureWithKey: VerifyCoseSignatureWithKeyFun<MobileSecurityObject> = VerifyCoseSignatureWithKey(),
+    private val verifySignature: VerifySignatureFun = VerifySignature(),
+    private val verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(verifySignature),
+    private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(verifyJwsSignature),
+    private val verifyJwsSignatureWithCnf: VerifyJwsSignatureWithCnfFun = VerifyJwsSignatureWithCnf(verifyJwsSignature),
+    private val verifyCoseSignature: VerifyCoseSignatureFun<StatusListTokenPayload> = VerifyCoseSignature(),
+    private val verifyCoseSignatureWithKey: VerifyCoseSignatureWithKeyFun<MobileSecurityObject> =
+        VerifyCoseSignatureWithKey(verifySignature),
     private val parser: Parser = Parser(),
+    /** Set this function to let the initializer build a [tokenStatusResolver]. */
+    private val resolveStatusListToken: (suspend (UniformResourceIdentifier) -> StatusListToken)? = null,
+    private val zlibService: ZlibService = DefaultZlibService(),
+    private val clock: Clock = Clock.System,
     /**
-     * This function should check the status mechanisms in a given status claim in order to
-     * evaluate the token status.
+     * This function should check the status mechanisms in a given status claim to evaluate the token status.
      * If [tokenStatusResolver] is null, all tokens are considered to be valid.
+     * Callers may also set [resolveStatusListToken], so this function gets build automatically.
      */
-    private val tokenStatusResolver: (suspend (Status) -> TokenStatus)? = null,
-
-    /**
-     * Toggles whether transaction data should be verified if present
-     */
-    private val verifyTransactionData: Boolean = true,
-) {
-    constructor(
-        verifySignature: VerifySignatureFun,
-        parser: Parser = Parser(),
-        tokenStatusResolver: (suspend (Status) -> TokenStatus)? = null,
-    ) : this(
-        verifyJwsObject = VerifyJwsObject(VerifyJwsSignature(verifySignature)),
-        verifyCoseSignatureWithKey = VerifyCoseSignatureWithKey(verifySignature),
-        parser = parser,
-        tokenStatusResolver = tokenStatusResolver,
-    )
-
-    constructor(
-        resolveStatusListToken: suspend (UniformResourceIdentifier) -> StatusListToken,
-        verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
-        verifyCoseSignatureWithKey: VerifyCoseSignatureWithKeyFun<MobileSecurityObject> = VerifyCoseSignatureWithKey(),
-        verifyCoseSignature: VerifyCoseSignatureFun<StatusListTokenPayload> = VerifyCoseSignature(),
-        zlibService: ZlibService = DefaultZlibService(),
-        clock: Clock = Clock.System,
-        parser: Parser = Parser(clock = clock),
-    ) : this(
-        verifyJwsObject = verifyJwsObject,
-        verifyCoseSignatureWithKey = verifyCoseSignatureWithKey,
-        parser = parser,
-        tokenStatusResolver = { status ->
-            val token = resolveStatusListToken(status.statusList.uri)
-
-            val payload = token.validate(
-                verifyJwsObject = verifyJwsObject,
-                verifyCoseSignature = verifyCoseSignature,
-                statusListInfo = status.statusList,
-                isInstantInThePast = {
-                    it < clock.now()
-                },
-            ).getOrThrow()
-
+    private val tokenStatusResolver: (suspend (Status) -> TokenStatus)? = resolveStatusListToken?.let {
+        { status ->
             StatusListTokenValidator.extractTokenStatus(
-                statusList = payload.statusList,
+                statusList = resolveStatusListToken(status.statusList.uri).validate(
+                    verifyJwsObject = verifyJwsObject,
+                    verifyCoseSignature = verifyCoseSignature,
+                    statusListInfo = status.statusList,
+                    isInstantInThePast = { it < clock.now() },
+                ).getOrThrow().statusList,
                 statusListInfo = status.statusList,
                 zlibService = zlibService,
             ).getOrThrow()
-        },
-    )
-
+        }
+    },
+    /** Toggles whether transaction data should be verified if present. */
+    private val verifyTransactionData: Boolean = true,
+) {
     /**
      * Checks the revocation state of the passed MDOC Credential.
      */
@@ -504,5 +478,5 @@ class Validator(
 }
 
 class TokenStatusEvaluationException(
-    val delegate: Throwable
+    val delegate: Throwable,
 ) : Exception(delegate)
