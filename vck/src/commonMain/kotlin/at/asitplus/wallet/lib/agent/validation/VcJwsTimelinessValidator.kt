@@ -11,12 +11,12 @@ data class VcJwsTimelinessValidator(
     private val clock: Clock = Clock.System,
 ) {
 
-    operator fun invoke(vcJws: VerifiableCredentialJws) {
+    operator fun invoke(vcJws: VerifiableCredentialJws): VcJwsTimelinessValidationSummary {
         val now = clock.now()
         val earliestAcceptedExpirationTime = (now - timeLeeway)
         val latestAcceptedNotBeforeTime = (now + timeLeeway)
 
-        VcJwsTimelinessValidationSummary(
+        return VcJwsTimelinessValidationSummary(
             evaluatedAt = now,
             jwsExpiredError = if (vcJws.expiration != null && vcJws.expiration < earliestAcceptedExpirationTime) {
                 Napier.w("exp invalid: ${vcJws.expiration}, now is $now")
