@@ -8,23 +8,27 @@ import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.rqes.CredentialInfo
 import at.asitplus.rqes.QtspSignatureRequest
 import at.asitplus.rqes.SignHashRequestParameters
+import at.asitplus.rqes.collection_entries.AuthParameters
 import at.asitplus.rqes.collection_entries.CertificateParameters
 import at.asitplus.rqes.collection_entries.DocumentDigest
 import at.asitplus.rqes.collection_entries.KeyParameters
 import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm.entries
+import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.serialization.encodeToString
 
 class RqesOpenId4VpHolderTest : FreeSpec({
 
@@ -36,7 +40,8 @@ class RqesOpenId4VpHolderTest : FreeSpec({
     )
 
     fun CredentialInfo.isValid(): Boolean =
-        this.keyParameters.status == KeyParameters.KeyStatusOptions.ENABLED && this.certParameters!!.status == CertificateParameters.CertStatus.VALID
+        keyParameters.status == KeyParameters.KeyStatusOptions.ENABLED
+                && certParameters!!.status == CertificateParameters.CertStatus.VALID
 
     beforeEach {
         rqesWalletService.updateSignatureProperties(
@@ -45,16 +50,45 @@ class RqesOpenId4VpHolderTest : FreeSpec({
         )
     }
     "RqesWalletService Tests" - {
-        repeat(3) {
-            "Certificates can be parsed" {
-                val newCredential = dummyValueProvider.getSigningCredential()
-                val walletWithCredential =
-                    kotlin.runCatching { rqesWalletService.setSigningCredential(newCredential) }.getOrNull()
-                if (newCredential.isValid()) {
-                    walletWithCredential shouldNotBe null
-                } else {
-                    walletWithCredential shouldBe null
+        repeat(10) {
+            "random certificate can be parsed" {
+                dummyValueProvider.getSigningCredential().also {
+                    if (it.isValid()) {
+                        rqesWalletService.setSigningCredential(it)
+                    } else {
+                        shouldThrow<IllegalArgumentException> { rqesWalletService.setSigningCredential(it) }
+                    }
                 }
+            }
+        }
+
+        "certificate without certParameters is invalid" {
+            dummyValueProvider.getSigningCredential(true).copy(
+                certParameters = null
+            ).apply {
+                shouldThrow<IllegalArgumentException> { rqesWalletService.setSigningCredential(this) }
+            }
+        }
+
+        "certificate without status is valid" {
+            dummyValueProvider.getSigningCredential(true).copy(
+                certParameters = CertificateParameters(
+                    status = null,
+                    certificates = listOf(EphemeralKeyWithSelfSignedCert().getCertificate()!!),
+                    issuerDN = uuid4().toString(),
+                    serialNumber = uuid4().toString(),
+                    subjectDN = uuid4().toString(),
+                ),
+            ).apply {
+                rqesWalletService.setSigningCredential(this)
+            }
+        }
+
+        "certificate without certparameters is invalid" {
+            dummyValueProvider.getSigningCredential(true).copy(
+                certParameters = dummyValueProvider.getSigningCredential(true).certParameters!!.copy(certificates = null)
+            ).apply {
+                shouldThrow<IllegalArgumentException> { rqesWalletService.setSigningCredential(this) }
             }
         }
 
