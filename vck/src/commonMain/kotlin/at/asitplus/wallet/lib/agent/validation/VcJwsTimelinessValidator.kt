@@ -10,8 +10,10 @@ data class VcJwsTimelinessValidator(
     val timeLeeway: Duration = 300.seconds,
     private val clock: Clock = Clock.System,
 ) {
-    private val earliestAcceptedExpirationTime = (clock.now() - timeLeeway)
-    private val latestAcceptedNotBeforeTime = (clock.now() + timeLeeway)
+    private val earliestAcceptedExpirationTime
+        get() = (clock.now() - timeLeeway)
+    private val latestAcceptedNotBeforeTime
+        get() = (clock.now() + timeLeeway)
 
     operator fun invoke(vcJws: VerifiableCredentialJws) = VcJwsTimelinessValidationSummary(
         jwsExpiredError = if (vcJws.expiration != null && vcJws.expiration < earliestAcceptedExpirationTime) {
