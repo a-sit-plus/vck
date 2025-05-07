@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.agent.validation
 
 import kotlinx.datetime.Instant
 
-data class VerifiableCredentialJwsContentSemanticsValidationSummary(
+data class VcJwsContentSemanticsValidationSummary(
     val inconsistentIssuerError: InconsistentIssuerError?,
     val inconsistentIdentifierError: InconsistentIdentifierError?,
     val inconsistentSubjectError: InconsistentSubjectError?,

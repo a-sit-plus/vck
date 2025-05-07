@@ -6,38 +6,38 @@ import kotlinx.datetime.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
-data class VerifiableCredentialJwsTimelinessValidator(
+data class VcJwsTimelinessValidator(
     val timeLeeway: Duration = 300.seconds,
     private val clock: Clock = Clock.System,
 ) {
     private val earliestAcceptedExpirationTime = (clock.now() - timeLeeway)
     private val latestAcceptedNotBeforeTime = (clock.now() + timeLeeway)
 
-    operator fun invoke(vcJws: VerifiableCredentialJws) = VerifiableCredentialJwsTimelinessValidationSummary(
+    operator fun invoke(vcJws: VerifiableCredentialJws) = VcJwsTimelinessValidationSummary(
         jwsExpiredError = if (vcJws.expiration != null && vcJws.expiration < earliestAcceptedExpirationTime) {
             Napier.w("exp invalid: ${vcJws.expiration}, now is ${clock.now()}")
-            VerifiableCredentialJwsTimelinessValidationSummary.JwsExpiredError(
+            VcJwsTimelinessValidationSummary.JwsExpiredError(
                 expirationTime = vcJws.expiration,
                 earliestAcceptedExpirationTime = earliestAcceptedExpirationTime,
             )
         } else null,
         credentialExpiredError = if (vcJws.vc.expirationDate != null && vcJws.vc.expirationDate < earliestAcceptedExpirationTime) {
             Napier.w("expirationDate invalid: ${vcJws.vc.expirationDate}, now is ${clock.now()}")
-            VerifiableCredentialJwsTimelinessValidationSummary.CredentialExpiredError(
+            VcJwsTimelinessValidationSummary.CredentialExpiredError(
                 expirationDate = vcJws.vc.expirationDate,
                 earliestAcceptedExpirationDate = earliestAcceptedExpirationTime,
             )
         } else null,
         jwsNotYetValidError = if (vcJws.notBefore > latestAcceptedNotBeforeTime) {
             Napier.w("nbf invalid: ${vcJws.notBefore}, now is ${clock.now()}")
-            VerifiableCredentialJwsTimelinessValidationSummary.JwsNotYetValidError(
+            VcJwsTimelinessValidationSummary.JwsNotYetValidError(
                 notBeforeTime = vcJws.notBefore,
                 latestAcceptedNotBeforeTime = latestAcceptedNotBeforeTime,
             )
         } else null,
         credentialNotYetValidError = if (vcJws.vc.issuanceDate > latestAcceptedNotBeforeTime) {
             Napier.w("issuanceDate invalid: ${vcJws.vc.issuanceDate}, now is ${clock.now()}")
-            VerifiableCredentialJwsTimelinessValidationSummary.CredentialNotYetValidError(
+            VcJwsTimelinessValidationSummary.CredentialNotYetValidError(
                 issuanceDate = vcJws.vc.issuanceDate,
                 latestAcceptedNotBeforeTime = latestAcceptedNotBeforeTime,
             )

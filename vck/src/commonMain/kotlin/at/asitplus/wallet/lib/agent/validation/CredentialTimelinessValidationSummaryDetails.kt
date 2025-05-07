@@ -8,7 +8,7 @@ sealed interface CredentialTimelinessValidationSummaryDetails {
 
     data class VerifiableCredential(
         override val storeEntry: SubjectCredentialStore.StoreEntry.Vc,
-        val summary: VerifiableCredentialJwsTimelinessValidationSummary,
+        val summary: VcJwsTimelinessValidationSummary,
     ) : CredentialTimelinessValidationSummaryDetails {
         override val isSuccess
             get() = summary.isSuccess

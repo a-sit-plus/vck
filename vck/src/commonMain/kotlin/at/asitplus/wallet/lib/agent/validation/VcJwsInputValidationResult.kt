@@ -4,13 +4,13 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 
-sealed interface VerifiableCredentialJwsInputValidationResult {
+sealed interface VcJwsInputValidationResult {
     val isSuccess: Boolean
 
     data class ParsingError(
         val input: String,
         val throwable: Throwable,
-    ) : VerifiableCredentialJwsInputValidationResult {
+    ) : VcJwsInputValidationResult {
         override val isSuccess: Boolean
             get() = false
     }
@@ -20,8 +20,8 @@ sealed interface VerifiableCredentialJwsInputValidationResult {
         val parsed: JwsSigned<VerifiableCredentialJws>,
         val isIntegrityGood: Boolean,
         val subjectMatchingResult: SubjectMatchingResult?,
-        val contentSemanticsValidationSummary: VerifiableCredentialJwsContentSemanticsValidationSummary,
-    ) : VerifiableCredentialJwsInputValidationResult {
+        val contentSemanticsValidationSummary: VcJwsContentSemanticsValidationSummary,
+    ) : VcJwsInputValidationResult {
         val payload: VerifiableCredentialJws
             get() = parsed.payload
 

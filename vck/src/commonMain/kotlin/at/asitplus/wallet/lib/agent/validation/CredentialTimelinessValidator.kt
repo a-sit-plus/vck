@@ -10,7 +10,7 @@ data class CredentialTimelinessValidator(
     val timeLeeway: Duration = 300.seconds,
     private val clock: Clock = Clock.System,
     private val tokenStatusResolver: TokenStatusResolver,
-    private val verifiableCredentialJwsTimelinessValidator: VerifiableCredentialJwsTimelinessValidator = VerifiableCredentialJwsTimelinessValidator(
+    private val vcJwsTimelinessValidator: VcJwsTimelinessValidator = VcJwsTimelinessValidator(
         timeLeeway = timeLeeway,
         clock = clock
     ),
@@ -36,7 +36,7 @@ data class CredentialTimelinessValidator(
 
             is SubjectCredentialStore.StoreEntry.Vc -> CredentialTimelinessValidationSummaryDetails.VerifiableCredential(
                 storeEntry = storeEntry,
-                verifiableCredentialJwsTimelinessValidator(vcJws = storeEntry.vc),
+                vcJwsTimelinessValidator(vcJws = storeEntry.vc),
             )
         }
     ).also {

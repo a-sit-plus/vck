@@ -8,34 +8,34 @@ import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 
-data class VerifiableCredentialJwsInputValidator(
-    val verifiableCredentialJwsContentSemanticsValidator: VerifiableCredentialJwsContentSemanticsValidator = VerifiableCredentialJwsContentSemanticsValidator(),
+data class VcJwsInputValidator(
+    val vcJwsContentSemanticsValidator: VcJwsContentSemanticsValidator = VcJwsContentSemanticsValidator(),
     val jwsIntegrityValidator: VerifyJwsObjectFun = VerifyJwsObject(),
 ) {
     suspend operator fun invoke(
         input: String,
         publicKey: CryptoPublicKey?,
-    ): VerifiableCredentialJwsInputValidationResult {
+    ): VcJwsInputValidationResult {
         val jws = JwsSigned.deserialize<VerifiableCredentialJws>(
             VerifiableCredentialJws.serializer(),
             input,
             vckJsonSerializer
         ).getOrElse {
-            return VerifiableCredentialJwsInputValidationResult.ParsingError(input, it)
+            return VcJwsInputValidationResult.ParsingError(input, it)
         }
         val vcJws = jws.payload
-        return VerifiableCredentialJwsInputValidationResult.ContentValidationSummary(
+        return VcJwsInputValidationResult.ContentValidationSummary(
             input = input,
             parsed = jws,
             isIntegrityGood = jwsIntegrityValidator(jws),
             subjectMatchingResult = publicKey?.let {
-                VerifiableCredentialJwsInputValidationResult.ContentValidationSummary.SubjectMatchingResult(
+                VcJwsInputValidationResult.ContentValidationSummary.SubjectMatchingResult(
                     subject = vcJws.subject,
                     publicKey = publicKey,
                     isSuccess = it.matchesIdentifier(vcJws.subject)
                 )
             },
-            contentSemanticsValidationSummary = verifiableCredentialJwsContentSemanticsValidator.invoke(vcJws),
+            contentSemanticsValidationSummary = vcJwsContentSemanticsValidator.invoke(vcJws),
         )
     }
 }
