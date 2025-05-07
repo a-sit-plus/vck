@@ -25,13 +25,13 @@ import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.dcapi.request.Oid4vpDCAPIRequest
 import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.serialization.PolymorphicSerializer
@@ -57,6 +57,7 @@ internal class PresentationFactory(
         clientMetadata: RelyingPartyMetadata?,
         jsonWebKeys: Collection<JsonWebKey>?,
         credentialPresentation: CredentialPresentation,
+        dcApiRequest: Oid4vpDCAPIRequest?
     ): KmmResult<PresentationResponseParameters> = catching {
         request.verifyResponseType()
 
@@ -73,7 +74,7 @@ internal class PresentationFactory(
             transactionData = transactionData,
             calcIsoDeviceSignature = { docType, _ ->
                 // kept pair result type for backwards compatibility
-                calcDeviceSignature(mdocGeneratedNonce, clientId, responseUrl, nonce, docType) to null
+                calcDeviceSignature(mdocGeneratedNonce, clientId, responseUrl, nonce, docType, dcApiRequest) to null
             },
             mdocGeneratedNonce = mdocGeneratedNonce
         )
@@ -107,18 +108,34 @@ internal class PresentationFactory(
         responseUrl: String?,
         nonce: String,
         docType: String,
-    ): CoseSigned<ByteArray> = if (mdocGeneratedNonce != null && clientId != null && responseUrl != null) {
-        run {
-            val deviceAuthentication = DeviceAuthentication(
-                type = "DeviceAuthentication",
-                sessionTranscript = calcSessionTranscript(mdocGeneratedNonce, clientId, responseUrl, nonce),
-                docType = docType,
-                namespaces = ByteStringWrapper(DeviceNameSpaces(mapOf()))
-            )
-            val deviceAuthenticationBytes = coseCompliantSerializer
-                .encodeToByteArray(ByteStringWrapper(deviceAuthentication))
-                .wrapInCborTag(24)
-                .also { Napier.d("Device authentication signature input is ${it.encodeToString(Base16())}") }
+        dcapiRequest: Oid4vpDCAPIRequest?
+    ): CoseSigned<ByteArray> {
+        val sessionTranscript =
+            if (dcapiRequest != null) {
+                calcSessionTranscript(dcapiRequest, nonce)
+            } else if (mdocGeneratedNonce != null && clientId != null && responseUrl != null) {
+                calcSessionTranscript(
+                    mdocGeneratedNonce,
+                    clientId,
+                    responseUrl,
+                    nonce
+                )
+            } else {
+                null
+            }
+
+        return if (sessionTranscript != null) {
+            run {
+                val deviceAuthentication = DeviceAuthentication(
+                    type = "DeviceAuthentication",
+                    sessionTranscript = sessionTranscript,
+                    docType = docType,
+                    namespaces = ByteStringWrapper(DeviceNameSpaces(mapOf()))
+                )
+                val deviceAuthenticationBytes = coseCompliantSerializer
+                    .encodeToByteArray(ByteStringWrapper(deviceAuthentication))
+                    .wrapInCborTag(24)
+                    .also { Napier.d("Device authentication signature input is ${it.encodeToString(Base16())}") }
 
             signDeviceAuthDetached(
                 protectedHeader = null,
@@ -131,6 +148,7 @@ internal class PresentationFactory(
             }
         }
     } else {
+        Napier.w("Using signDeviceAuthFallback")
         signDeviceAuthFallback(
             protectedHeader = null,
             unprotectedHeader = null,
@@ -141,7 +159,6 @@ internal class PresentationFactory(
             throw PresentationException(it)
         }
     }
-
 
     private fun calcSessionTranscript(
         mdocGeneratedNonce: String,
@@ -162,6 +179,17 @@ internal class PresentationFactory(
                 clientIdHash = clientIdToHash.serialize().sha256(),
                 responseUriHash = responseUriToHash.serialize().sha256(),
                 nonce = nonce
+            ),
+        )
+    }
+
+    private fun calcSessionTranscript(dcapiRequest: Oid4vpDCAPIRequest, nonce: String): SessionTranscript {
+        val openID4VPDCAPIHandoverInfo =  OpenID4VPDCAPIHandoverInfo(dcapiRequest.callingOrigin, nonce, null) // TODO response mode dc_api.jwt
+
+        return SessionTranscript.forOpenIdOverDcApi(
+            DCAPIHandover(
+                type = "OpenID4VPDCAPIHandover",
+                hash = openID4VPDCAPIHandoverInfo.serialize().sha256()
             ),
         )
     }
