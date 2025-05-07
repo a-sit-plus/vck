@@ -1,6 +1,9 @@
 package at.asitplus.wallet.lib.agent.validation
 
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
+import at.asitplus.wallet.lib.agent.validation.mdoc.MdocTimelinessValidationSummary
+import at.asitplus.wallet.lib.agent.validation.sdJwt.SdJwtTimelinessValidationSummary
+import at.asitplus.wallet.lib.agent.validation.vcJws.VcJwsTimelinessValidationSummary
 
 sealed interface CredentialTimelinessValidationSummaryDetails {
     val storeEntry: SubjectCredentialStore.StoreEntry
@@ -24,6 +27,9 @@ sealed interface CredentialTimelinessValidationSummaryDetails {
 
     data class MdocCredential(
         override val storeEntry: SubjectCredentialStore.StoreEntry.Iso,
+        val summary: MdocTimelinessValidationSummary,
+    ) : CredentialTimelinessValidationSummaryDetails {
         override val isSuccess: Boolean
-    ) : CredentialTimelinessValidationSummaryDetails
+            get() = summary.isSuccess
+    }
 }

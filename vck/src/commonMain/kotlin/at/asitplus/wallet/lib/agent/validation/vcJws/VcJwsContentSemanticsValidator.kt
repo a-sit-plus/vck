@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.agent.validation
+package at.asitplus.wallet.lib.agent.validation.vcJws
 
 import at.asitplus.wallet.lib.data.VcDataModelConstants
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
