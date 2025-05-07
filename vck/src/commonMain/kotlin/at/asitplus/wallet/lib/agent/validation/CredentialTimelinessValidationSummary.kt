@@ -5,7 +5,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 
 data class CredentialTimelinessValidationSummary(
     val tokenStatus: KmmResult<TokenStatus>?,
-    val timelinessValidationSummary: CredentialTimelinessValidationSummaryWrapper,
+    val timelinessValidationSummaryDetails: CredentialTimelinessValidationSummaryDetails,
 ) {
-    val isSuccess = tokenStatus?.getOrNull() == TokenStatus.Valid && timelinessValidationSummary.isSuccess
+    val isSuccess = tokenStatus?.getOrNull() == TokenStatus.Valid && timelinessValidationSummaryDetails.isSuccess
 }

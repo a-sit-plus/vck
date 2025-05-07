@@ -15,7 +15,7 @@ data class CredentialTimelinessValidator(
         clock = clock
     ),
 ) {
-    suspend fun validate(storeEntry: SubjectCredentialStore.StoreEntry): CredentialTimelinessValidationSummary {
+    suspend operator fun invoke(storeEntry: SubjectCredentialStore.StoreEntry): CredentialTimelinessValidationSummary {
         val tokenStatus = when(storeEntry) {
             is SubjectCredentialStore.StoreEntry.Iso -> storeEntry.issuerSigned.issuerAuth.payload?.status
             is SubjectCredentialStore.StoreEntry.SdJwt -> storeEntry.sdJwt.credentialStatus
@@ -26,17 +26,20 @@ data class CredentialTimelinessValidator(
 
         return CredentialTimelinessValidationSummary(
             tokenStatus = tokenStatus,
-            timelinessValidationSummary = when(storeEntry) {
-                is SubjectCredentialStore.StoreEntry.Iso -> CredentialTimelinessValidationSummaryWrapper.MdocCredential(
+            timelinessValidationSummaryDetails = when(storeEntry) {
+                is SubjectCredentialStore.StoreEntry.Iso -> CredentialTimelinessValidationSummaryDetails.MdocCredential(
+                    storeEntry = storeEntry,
                     isSuccess = true
                 )
 
-                is SubjectCredentialStore.StoreEntry.SdJwt -> CredentialTimelinessValidationSummaryWrapper.SdJwtCredential(
+                is SubjectCredentialStore.StoreEntry.SdJwt -> CredentialTimelinessValidationSummaryDetails.SdJwtCredential(
+                    storeEntry = storeEntry,
                     isSuccess = true
                 )
 
-                is SubjectCredentialStore.StoreEntry.Vc -> CredentialTimelinessValidationSummaryWrapper.VerifiableCredential(
-                    verifiableCredentialJwsTimelinessValidator.validate(vcJws = storeEntry.vc)
+                is SubjectCredentialStore.StoreEntry.Vc -> CredentialTimelinessValidationSummaryDetails.VerifiableCredential(
+                    storeEntry = storeEntry,
+                    verifiableCredentialJwsTimelinessValidator(vcJws = storeEntry.vc),
                 )
             }
         ).also {

@@ -21,8 +21,6 @@ sealed interface VerifiableCredentialJwsInputValidationResult {
         val isIntegrityGood: Boolean,
         val subjectMatchingResult: SubjectMatchingResult?,
         val contentSemanticsValidationSummary: VerifiableCredentialJwsContentSemanticsValidationSummary,
-//        val timelinessValidationSummary: VerifiableCredentialJwsTimelinessValidationSummary,
-//        val tokenStatusValidationSummary: TokenStatusValidationSummary?,
     ) : VerifiableCredentialJwsInputValidationResult {
         val payload: VerifiableCredentialJws
             get() = parsed.payload
@@ -32,12 +30,6 @@ sealed interface VerifiableCredentialJwsInputValidationResult {
                 isIntegrityGood,
                 subjectMatchingResult?.isSuccess != false,
                 contentSemanticsValidationSummary.isSuccess,
-//                timelinessValidationSummary.isSuccess,
-//                tokenStatusValidationSummary?.tokenStatus?.let {
-//                    it.getOrNull()?.let {
-//                        it != TokenStatus.Invalid
-//                    } ?: false
-//                } ?: false,
             ).all { it }
 
         data class SubjectMatchingResult(

@@ -11,10 +11,8 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 data class VerifiableCredentialJwsInputValidator(
     val verifiableCredentialJwsContentSemanticsValidator: VerifiableCredentialJwsContentSemanticsValidator = VerifiableCredentialJwsContentSemanticsValidator(),
     val jwsIntegrityValidator: VerifyJwsObjectFun = VerifyJwsObject(),
-//    val verifiableCredentialJwsTimelinessValidator: VerifiableCredentialJwsTimelinessValidator = VerifiableCredentialJwsTimelinessValidator(),
-//    val tokenStatusResolver: TokenStatusResolver,
 ) {
-    suspend fun validate(
+    suspend operator fun invoke(
         input: String,
         publicKey: CryptoPublicKey?,
     ): VerifiableCredentialJwsInputValidationResult {
@@ -37,15 +35,7 @@ data class VerifiableCredentialJwsInputValidator(
                     isSuccess = it.matchesIdentifier(vcJws.subject)
                 )
             },
-            contentSemanticsValidationSummary = verifiableCredentialJwsContentSemanticsValidator.validate(vcJws),
-//            timelinessValidationSummary = verifiableCredentialJwsTimelinessValidator.validate(vcJws),
-//            tokenStatusValidationSummary = vcJws.vc.credentialStatus?.let {
-//                Napier.d("VC: status found")
-//                TokenStatusValidationSummary(
-//                    status = it,
-//                    tokenStatus = tokenStatusValidator(it)
-//                )
-//            },
+            contentSemanticsValidationSummary = verifiableCredentialJwsContentSemanticsValidator.invoke(vcJws),
         )
     }
 }

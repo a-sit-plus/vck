@@ -5,7 +5,7 @@ import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import io.github.aakira.napier.Napier
 
 class VerifiableCredentialJwsContentSemanticsValidator {
-    fun validate(vcJws: VerifiableCredentialJws) = VerifiableCredentialJwsContentSemanticsValidationSummary(
+    operator fun invoke(vcJws: VerifiableCredentialJws) = VerifiableCredentialJwsContentSemanticsValidationSummary(
         inconsistentIssuerError = if (vcJws.issuer != vcJws.vc.issuer) {
             Napier.w("iss invalid: ${vcJws.issuer}, expected ${vcJws.vc.issuer}")
             VerifiableCredentialJwsContentSemanticsValidationSummary.InconsistentIssuerError(
