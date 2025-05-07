@@ -29,126 +29,138 @@ import kotlin.random.Random
 
 
 /** How to identify the key material in a [JwsHeader] */
-typealias JwsHeaderIdentifierFun = suspend (JwsHeader, KeyMaterial) -> JwsHeader
+fun interface JwsHeaderIdentifierFun {
+    suspend operator fun invoke(it: JwsHeader, keyMaterial: KeyMaterial): JwsHeader
+}
 
 /** Identify [KeyMaterial] with it's [KeyMaterial.identifier] in [JwsHeader.keyId]. */
-object JwsHeaderKeyId {
-    operator fun invoke(): JwsHeaderIdentifierFun = { it, keyMaterial ->
+class JwsHeaderKeyId : JwsHeaderIdentifierFun {
+    override suspend operator fun invoke(it: JwsHeader, keyMaterial: KeyMaterial) =
         it.copy(keyId = keyMaterial.identifier)
-    }
 }
 
 /**
  * Identify [KeyMaterial] with it's [KeyMaterial.getCertificate] in [JwsHeader.certificateChain] if it exists,
  * or [KeyMaterial.jsonWebKey] in [JwsHeader.jsonWebKey]. */
-object JwsHeaderCertOrJwk {
-    operator fun invoke(): JwsHeaderIdentifierFun = { it, keyMaterial ->
+class JwsHeaderCertOrJwk : JwsHeaderIdentifierFun {
+    override suspend operator fun invoke(it: JwsHeader, keyMaterial: KeyMaterial) =
         keyMaterial.getCertificate()?.let { x5c ->
             it.copy(certificateChain = listOf(x5c))
         } ?: it.copy(jsonWebKey = keyMaterial.jsonWebKey)
-    }
 }
 
 /** Identify [KeyMaterial] with it's [KeyMaterial.jsonWebKey] in [JwsHeader.jsonWebKey]. */
-object JwsHeaderJwk {
-    operator fun invoke(): JwsHeaderIdentifierFun = { it, keyMaterial ->
+class JwsHeaderJwk : JwsHeaderIdentifierFun {
+    override suspend operator fun invoke(it: JwsHeader, keyMaterial: KeyMaterial) =
         it.copy(jsonWebKey = keyMaterial.jsonWebKey)
-    }
 }
 
 /**
  * Identify [KeyMaterial] with it's [KeyMaterial.identifier] set in [JwsHeader.keyId],
  * and URL set in[JwsHeader.jsonWebKeySetUrl].
  */
-object JwsHeaderJwksUrl {
-    operator fun invoke(jsonWebKeySetUrl: String): JwsHeaderIdentifierFun = { it, keyMaterial ->
-        it.copy(keyId = keyMaterial.identifier, jsonWebKeySetUrl = jsonWebKeySetUrl)
-    }
+class JwsHeaderJwksUrl(val jsonWebKeySetUrl: String) : JwsHeaderIdentifierFun {
+    override suspend operator fun invoke(
+        it: JwsHeader,
+        keyMaterial: KeyMaterial,
+    ) = it.copy(keyId = keyMaterial.identifier, jsonWebKeySetUrl = jsonWebKeySetUrl)
 }
 
 /** Don't identify [KeyMaterial] at all in a [JwsHeader], used for SD-JWT KB-JWS. */
-object JwsHeaderNone {
-    operator fun invoke(): JwsHeaderIdentifierFun = { it, keyMaterial -> it }
+class JwsHeaderNone : JwsHeaderIdentifierFun {
+    override suspend operator fun invoke(
+        it: JwsHeader,
+        keyMaterial: KeyMaterial,
+    ) = it
 }
 
 /** Create a [JwsSigned], setting [JwsHeader.type] to the specified value */
-typealias SignJwtFun<P> = suspend (
-    type: String?,
-    payload: P,
-    serializer: SerializationStrategy<P>,
-) -> KmmResult<JwsSigned<P>>
+fun interface SignJwtFun<P : Any> {
+    suspend operator fun invoke(
+        type: String?,
+        payload: P,
+        serializer: SerializationStrategy<P>,
+    ): KmmResult<JwsSigned<P>>
+}
 
 /** Create a [JwsSigned], setting [JwsHeader.type] to the specified value and applying [JwsHeaderIdentifierFun]. */
-object SignJwt {
-    operator fun <P : Any> invoke(
-        keyMaterial: KeyMaterial,
-        headerModifier: JwsHeaderIdentifierFun,
-    ): SignJwtFun<P> = { type, payload, serializer ->
-        catching {
-            val header = JwsHeader(
-                algorithm = keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
-                type = type,
-            ).let { headerModifier(it, keyMaterial) }
-            val plainSignatureInput = prepareJwsSignatureInput(header, payload, serializer, vckJsonSerializer)
-            val signature = keyMaterial.sign(plainSignatureInput).asKmmResult().getOrThrow()
-            JwsSigned(header, payload, signature, plainSignatureInput)
+class SignJwt<P : Any>(
+    val keyMaterial: KeyMaterial,
+    val headerModifier: JwsHeaderIdentifierFun,
+) : SignJwtFun<P> {
+    override suspend operator fun invoke(
+        type: String?,
+        payload: P,
+        serializer: SerializationStrategy<P>,
+    ): KmmResult<JwsSigned<P>> = catching {
+        val header = JwsHeader(
+            algorithm = keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
+            type = type,
+        ).let {
+            headerModifier(it, keyMaterial)
         }
+        val plainSignatureInput = prepareJwsSignatureInput(header, payload, serializer, vckJsonSerializer)
+        val signature = keyMaterial.sign(plainSignatureInput).asKmmResult().getOrThrow()
+        JwsSigned(header, payload, signature, plainSignatureInput)
     }
+}
+
+/** Create a [JweEncrypted], setting values for [JweHeader]. */
+fun interface EncryptJweFun {
+    suspend operator fun invoke(
+        header: JweHeader,
+        payload: String,
+        recipientKey: JsonWebKey,
+    ): KmmResult<JweEncrypted>
 }
 
 
 /** Create a [JweEncrypted], setting values for [JweHeader]. */
-typealias EncryptJweFun = suspend (
-    header: JweHeader,
-    payload: String,
-    recipientKey: JsonWebKey,
-) -> KmmResult<JweEncrypted>
-
-/** Create a [JweEncrypted], setting values for [JweHeader]. */
-object EncryptJwe {
-    operator fun invoke(
-        keyMaterial: KeyMaterial,
-        platformCryptoShim: PlatformCryptoShim = PlatformCryptoShim(),
-    ): EncryptJweFun = { header, payload, recipientKey ->
-        catching {
-            val crv = recipientKey.curve
-                ?: throw IllegalArgumentException("No curve in recipient key")
-            val ephemeralKeyPair = DefaultEphemeralKeyHolder(crv)
-            val jweEncryption = header.encryption
-                ?: throw IllegalArgumentException("No encryption in JWE header")
-            val jweAlgorithm = header.algorithm
-                ?: throw IllegalArgumentException("No algorithm in JWE header")
-            val jweHeader = header.copy(
-                jsonWebKey = keyMaterial.jsonWebKey,
-                ephemeralKeyPair = ephemeralKeyPair.publicJsonWebKey
-            )
-            val z = performKeyAgreement(ephemeralKeyPair, recipientKey).getOrThrow()
-            val intermediateKey = concatKdf(
-                z,
-                jweEncryption,
-                jweHeader.agreementPartyUInfo,
-                jweHeader.agreementPartyVInfo,
-                jweEncryption.encryptionKeyLength
-            )
-            val key = compositeKey(jweEncryption, intermediateKey)
-            // Pending fix in signum
-            val ivLengthBits = when (jweEncryption) {
-                A128GCM, A192GCM, A256GCM -> 96
-                else -> 128
-            }
-            val iv = Random.nextBytes(ivLengthBits / 8)
-            val headerSerialized = jweHeader.serialize()
-            val aad = headerSerialized.encodeToByteArray()
-            val aadForCipher = aad.encodeToByteArray(Base64UrlStrict)
-            val bytes = payload.encodeToByteArray()
-            val ciphertext = platformCryptoShim.encrypt(key.aesKey, iv, aadForCipher, bytes, jweEncryption).getOrThrow()
-            val authTag = key.hmacKey?.let { hmacKey ->
-                platformCryptoShim.hmac(hmacKey, jweEncryption, hmacInput(aadForCipher, iv, ciphertext.ciphertext))
-                    .getOrThrow()
-                    .take(jweEncryption.macLength!!).toByteArray()
-            } ?: ciphertext.authtag
-            JweEncrypted(jweHeader, aad, null, iv, ciphertext.ciphertext, authTag)
+class EncryptJwe(
+    val keyMaterial: KeyMaterial,
+    val platformCryptoShim: PlatformCryptoShim = PlatformCryptoShim(),
+) : EncryptJweFun {
+    override suspend operator fun invoke(
+        header: JweHeader,
+        payload: String, recipientKey: JsonWebKey,
+    ) = catching {
+        val crv = recipientKey.curve
+            ?: throw IllegalArgumentException("No curve in recipient key")
+        val ephemeralKeyPair = DefaultEphemeralKeyHolder(crv)
+        val jweEncryption = header.encryption
+            ?: throw IllegalArgumentException("No encryption in JWE header")
+        val jweAlgorithm = header.algorithm
+            ?: throw IllegalArgumentException("No algorithm in JWE header")
+        val jweHeader = header.copy(
+            jsonWebKey = keyMaterial.jsonWebKey,
+            ephemeralKeyPair = ephemeralKeyPair.publicJsonWebKey
+        )
+        val z = performKeyAgreement(ephemeralKeyPair, recipientKey).getOrThrow()
+        val intermediateKey = concatKdf(
+            z,
+            jweEncryption,
+            jweHeader.agreementPartyUInfo,
+            jweHeader.agreementPartyVInfo,
+            jweEncryption.encryptionKeyLength
+        )
+        val key = compositeKey(jweEncryption, intermediateKey)
+        // Pending fix in signum
+        val ivLengthBits = when (jweEncryption) {
+            A128GCM, A192GCM, A256GCM -> 96
+            else -> 128
         }
+        val iv = Random.nextBytes(ivLengthBits / 8)
+        val headerSerialized = jweHeader.serialize()
+        val aad = headerSerialized.encodeToByteArray()
+        val aadForCipher = aad.encodeToByteArray(Base64UrlStrict)
+        val bytes = payload.encodeToByteArray()
+        val ciphertext = platformCryptoShim.encrypt(key.aesKey, iv, aadForCipher, bytes, jweEncryption).getOrThrow()
+        val authTag = key.hmacKey?.let { hmacKey ->
+            platformCryptoShim.hmac(hmacKey, jweEncryption, hmacInput(aadForCipher, iv, ciphertext.ciphertext))
+                .getOrThrow()
+                .take(jweEncryption.macLength!!).toByteArray()
+        } ?: ciphertext.authtag
+        JweEncrypted(jweHeader, aad, null, iv, ciphertext.ciphertext, authTag)
     }
 
 
@@ -163,7 +175,6 @@ object EncryptJwe {
             ephemeralKey.key.exportPrivateKey().getOrThrow() as CryptoPrivateKey.WithPublicKey<CryptoPublicKey.EC>
         ).getOrThrow()
     }
-
 }
 
 
@@ -217,48 +228,50 @@ object JweUtils {
 }
 
 /** Decrypt a [JweEncrypted] object*/
-typealias DecryptJweFun = suspend (
-    jweObject: JweEncrypted,
-) -> KmmResult<JweDecrypted<String>>
+fun interface DecryptJweFun {
+    suspend operator fun invoke(
+        jweObject: JweEncrypted,
+    ): KmmResult<JweDecrypted<String>>
+}
 
-object DecryptJwe {
-    operator fun invoke(
-        keyMaterial: KeyMaterial,
-        platformCryptoShim: PlatformCryptoShim = PlatformCryptoShim(),
-    ): DecryptJweFun = { jweObject ->
-        catching {
-            val header = jweObject.header
-            val alg = header.algorithm
-                ?: throw IllegalArgumentException("No algorithm in JWE header")
-            val enc = header.encryption
-                ?: throw IllegalArgumentException("No encryption in JWE header")
-            val epk = header.ephemeralKeyPair
-                ?: throw IllegalArgumentException("No epk in JWE header")
-            val z = performKeyAgreement(keyMaterial, epk).getOrThrow()
-            val intermediateKey = concatKdf(
-                z,
-                enc,
-                header.agreementPartyUInfo,
-                header.agreementPartyVInfo,
-                enc.encryptionKeyLength
-            )
-            val key = compositeKey(enc, intermediateKey)
-            val iv = jweObject.iv
-            val aad = jweObject.headerAsParsed.encodeToByteArray(Base64UrlStrict)
-            val ciphertext = jweObject.ciphertext
-            val authTag = jweObject.authTag
-            val plaintext = platformCryptoShim.decrypt(key.aesKey, iv, aad, ciphertext, authTag, enc).getOrThrow()
-            val plainObject = plaintext.decodeToString()
-            key.hmacKey?.let { hmacKey ->
-                val expectedAuthTag = platformCryptoShim.hmac(hmacKey, enc, hmacInput(aad, iv, ciphertext))
-                    .getOrThrow()
-                    .take(enc.macLength!!).toByteArray()
-                if (!expectedAuthTag.contentEquals(authTag)) {
-                    throw IllegalArgumentException("Authtag mismatch")
-                }
+class DecryptJwe(
+    val keyMaterial: KeyMaterial,
+    val platformCryptoShim: PlatformCryptoShim = PlatformCryptoShim(),
+) : DecryptJweFun {
+    override suspend operator fun invoke(
+        jweObject: JweEncrypted,
+    ) = catching {
+        val header = jweObject.header
+        val alg = header.algorithm
+            ?: throw IllegalArgumentException("No algorithm in JWE header")
+        val enc = header.encryption
+            ?: throw IllegalArgumentException("No encryption in JWE header")
+        val epk = header.ephemeralKeyPair
+            ?: throw IllegalArgumentException("No epk in JWE header")
+        val z = performKeyAgreement(keyMaterial, epk).getOrThrow()
+        val intermediateKey = concatKdf(
+            z,
+            enc,
+            header.agreementPartyUInfo,
+            header.agreementPartyVInfo,
+            enc.encryptionKeyLength
+        )
+        val key = compositeKey(enc, intermediateKey)
+        val iv = jweObject.iv
+        val aad = jweObject.headerAsParsed.encodeToByteArray(Base64UrlStrict)
+        val ciphertext = jweObject.ciphertext
+        val authTag = jweObject.authTag
+        val plaintext = platformCryptoShim.decrypt(key.aesKey, iv, aad, ciphertext, authTag, enc).getOrThrow()
+        val plainObject = plaintext.decodeToString()
+        key.hmacKey?.let { hmacKey ->
+            val expectedAuthTag = platformCryptoShim.hmac(hmacKey, enc, hmacInput(aad, iv, ciphertext))
+                .getOrThrow()
+                .take(enc.macLength!!).toByteArray()
+            if (!expectedAuthTag.contentEquals(authTag)) {
+                throw IllegalArgumentException("Authtag mismatch")
             }
-            JweDecrypted(header, plainObject)
         }
+        JweDecrypted(header, plainObject)
     }
 
     private suspend fun performKeyAgreement(
@@ -272,92 +285,104 @@ object DecryptJwe {
 
 }
 
-interface VerifierJwsService {
-
-    val supportedAlgorithms: List<JwsAlgorithm>
-
-    suspend fun verifyJwsObject(jwsObject: JwsSigned<*>): Boolean
-
-    suspend fun verifyJws(jwsObject: JwsSigned<*>, signer: JsonWebKey): Boolean
-
-    suspend fun verifyJws(jwsObject: JwsSigned<*>, cnf: ConfirmationClaim): Boolean
-
-}
 
 /**
  * Clients need to retrieve the URL passed in as the only argument, and parse the content to [JsonWebKeySet].
  */
-typealias JwkSetRetrieverFunction = suspend (String) -> JsonWebKeySet?
+fun interface JwkSetRetrieverFunction {
+    suspend operator fun invoke(
+        url: String,
+    ): JsonWebKeySet?
+}
 
 /**
  * Clients get the parsed [JwsSigned] and need to provide a set of keys, which will be used for verification one-by-one.
  */
-typealias PublicJsonWebKeyLookup = suspend (JwsSigned<*>) -> Set<JsonWebKey>?
-
-typealias VerifyJwsSignatureFun = suspend (jwsObject: JwsSigned<*>, publicKey: CryptoPublicKey) -> Boolean
-
-object VerifyJwsSignature {
-    operator fun invoke(
-        verifySignature: VerifySignatureFun = VerifySignature(),
-    ): VerifyJwsSignatureFun = { jwsObject, publicKey ->
-        catching {
-            verifySignature(
-                jwsObject.plainSignatureInput,
-                jwsObject.signature,
-                jwsObject.header.algorithm.algorithm,
-                publicKey,
-            ).getOrThrow()
-        }.fold(
-            onSuccess = { true },
-            onFailure = {
-                Napier.w("No verification from native code", it)
-                false
-            })
-    }
+fun interface PublicJsonWebKeyLookup {
+    suspend operator fun invoke(
+        jwsObject: JwsSigned<*>,
+    ): Set<JsonWebKey>?
 }
 
-typealias VerifyJwsSignatureWithKeyFun = suspend (jwsObject: JwsSigned<*>, signer: JsonWebKey) -> Boolean
-
-object VerifyJwsSignatureWithKey {
+fun interface VerifyJwsSignatureFun {
     operator fun invoke(
-        verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(),
-    ): VerifyJwsSignatureWithKeyFun = { jwsObject, signer ->
-        signer.toCryptoPublicKey().getOrNull()?.let {
-            verifyJwsSignature(jwsObject, it)
-        } ?: false.also { Napier.w("Could not convert signer to public key: $signer") }
-    }
+        jwsObject: JwsSigned<*>,
+        publicKey: CryptoPublicKey,
+    ): Boolean
 }
 
-typealias VerifyJwsSignatureWithCnfFun = suspend (jwsObject: JwsSigned<*>, cnf: ConfirmationClaim) -> Boolean
+class VerifyJwsSignature(
+    val verifySignature: VerifySignatureFun = VerifySignature(),
+) : VerifyJwsSignatureFun {
+    override operator fun invoke(
+        jwsObject: JwsSigned<*>,
+        publicKey: CryptoPublicKey,
+    ) = catching {
+        verifySignature(
+            jwsObject.plainSignatureInput,
+            jwsObject.signature,
+            jwsObject.header.algorithm.algorithm,
+            publicKey,
+        ).getOrThrow()
+    }.fold(
+        onSuccess = { true },
+        onFailure = {
+            Napier.w("No verification from native code", it)
+            false
+        })
+}
 
-object VerifyJwsSignatureWithCnf {
+fun interface VerifyJwsSignatureWithKeyFun {
     operator fun invoke(
-        verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(),
-        /**
-         * Need to implement if JSON web keys in JWS headers are referenced by a `kid`, and need to be retrieved from
-         * the `jku`.
-         */
-        jwkSetRetriever: JwkSetRetrieverFunction = { null },
-    ): VerifyJwsSignatureWithCnfFun = { jwsObject, cnf ->
-        cnf.loadPublicKeys(jwkSetRetriever).any { verifyJwsSignature(jwsObject, it) }
-    }
+        jwsObject: JwsSigned<*>,
+        signer: JsonWebKey,
+    ): Boolean
+}
+
+class VerifyJwsSignatureWithKey(
+    val verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(),
+) : VerifyJwsSignatureWithKeyFun {
+    override operator fun invoke(
+        jwsObject: JwsSigned<*>,
+        signer: JsonWebKey,
+    ) = signer.toCryptoPublicKey().getOrNull()?.let {
+        verifyJwsSignature(jwsObject, it)
+    } ?: false.also { Napier.w("Could not convert signer to public key: $signer") }
+}
+
+fun interface VerifyJwsSignatureWithCnfFun {
+    suspend operator fun invoke(
+        jwsObject: JwsSigned<*>,
+        cnf: ConfirmationClaim,
+    ): Boolean
+}
+
+class VerifyJwsSignatureWithCnf(
+    val verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(),
+    /**
+     * Need to implement if JSON web keys in JWS headers are referenced by a `kid`, and need to be retrieved from
+     * the `jku`.
+     */
+    val jwkSetRetriever: JwkSetRetrieverFunction = nullJwkSetRetrieverFunction(),
+) : VerifyJwsSignatureWithCnfFun {
+    override suspend operator fun invoke(
+        jwsObject: JwsSigned<*>,
+        cnf: ConfirmationClaim,
+    ) = cnf.loadPublicKeys().any { verifyJwsSignature(jwsObject, it) }
 
     /**
      * Loads all referenced [JsonWebKey]s, i.e. from [ConfirmationClaim.jsonWebKey] and [ConfirmationClaim.jsonWebKeySetUrl].
      */
-    private suspend fun ConfirmationClaim.loadPublicKeys(
-        jwkSetRetriever: JwkSetRetrieverFunction = { null },
-    ): Set<CryptoPublicKey> =
+    private suspend fun ConfirmationClaim.loadPublicKeys(): Set<CryptoPublicKey> =
         setOfNotNull(
             jsonWebKey?.toCryptoPublicKey()?.getOrNull(),
-            jsonWebKeySetUrl?.let { retrieveJwkFromKeySetUrl(jwkSetRetriever, it, keyId) }
+            jsonWebKeySetUrl?.let { retrieveJwkFromKeySetUrl(it, keyId) }
         )
 
     /**
      * Either take the single key from the JSON Web Key Set, or the one matching the keyId
      */
     private suspend fun retrieveJwkFromKeySetUrl(
-        jwkSetRetriever: JwkSetRetrieverFunction = { null },
         jku: String,
         keyId: String?,
     ): CryptoPublicKey? =
@@ -367,39 +392,40 @@ object VerifyJwsSignatureWithCnf {
 
 }
 
-typealias VerifyJwsObjectFun = suspend (jwsObject: JwsSigned<*>) -> Boolean
+private fun nullJwkSetRetrieverFunction(): JwkSetRetrieverFunction = object : JwkSetRetrieverFunction {
+    override suspend operator fun invoke(url: String): JsonWebKeySet? = null
+}
 
-object VerifyJwsObject {
-    operator fun invoke(
-        verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(),
-        /**
-         * Need to implement if JSON web keys in JWS headers are referenced by a `kid`, and need to be retrieved from
-         * the `jku`.
-         */
-        jwkSetRetriever: JwkSetRetrieverFunction = { null },
-        /** Need to implement if valid keys for JWS are transported somehow out-of-band, e.g. provided by a trust store */
-        publicKeyLookup: PublicJsonWebKeyLookup = { null },
-    ): VerifyJwsObjectFun = { jwsObject ->
-        jwsObject.loadPublicKeys(jwkSetRetriever, publicKeyLookup).any { verifyJwsSignature(jwsObject, it) }
-    }
+private fun nullPublicJsonWebKeyLookup(): PublicJsonWebKeyLookup = object : PublicJsonWebKeyLookup {
+    override suspend operator fun invoke(jwsObject: JwsSigned<*>) = null
+}
+
+fun interface VerifyJwsObjectFun {
+    suspend operator fun invoke(jwsObject: JwsSigned<*>): Boolean
+}
+
+class VerifyJwsObject(
+    val verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(),
+    /**
+     * Need to implement if JSON web keys in JWS headers are referenced by a `kid`, and need to be retrieved from
+     * the `jku`.
+     */
+    val jwkSetRetriever: JwkSetRetrieverFunction = nullJwkSetRetrieverFunction(),
+    /** Need to implement if valid keys for JWS are transported somehow out-of-band, e.g. provided by a trust store */
+    val publicKeyLookup: PublicJsonWebKeyLookup = nullPublicJsonWebKeyLookup(),
+) : VerifyJwsObjectFun {
+    override suspend operator fun invoke(jwsObject: JwsSigned<*>) =
+        jwsObject.loadPublicKeys().any { verifyJwsSignature(jwsObject, it) }
 
     /**
      * Returns a list of public keys that may have been used to sign this [JwsSigned]
      * by evaluating its header values (see [JwsHeader.jsonWebKey], [JwsHeader.jsonWebKeySetUrl])
      * as well as out-of-band transmitted keys from [publicKeyLookup].
      */
-    private suspend fun JwsSigned<*>.loadPublicKeys(
-        /**
-         * Need to implement if JSON web keys in JWS headers are referenced by a `kid`, and need to be retrieved from
-         * the `jku`.
-         */
-        jwkSetRetriever: JwkSetRetrieverFunction = { null },
-        /** Need to implement if valid keys for JWS are transported somehow out-of-band, e.g. provided by a trust store */
-        publicKeyLookup: PublicJsonWebKeyLookup = { null },
-    ): Set<CryptoPublicKey> =
+    private suspend fun JwsSigned<*>.loadPublicKeys(): Set<CryptoPublicKey> =
         header.publicKey?.let { setOf(it) }
             ?: header.jsonWebKeySetUrl?.let {
-                retrieveJwkFromKeySetUrl(jwkSetRetriever, it, header.keyId)?.let { setOf(it) }
+                retrieveJwkFromKeySetUrl(it, header.keyId)?.let { setOf(it) }
             } ?: publicKeyLookup(this)?.mapNotNull { jwk -> jwk.toCryptoPublicKey().getOrNull() }?.toSet()
             ?: setOf()
 
@@ -407,7 +433,6 @@ object VerifyJwsObject {
      * Either take the single key from the JSON Web Key Set, or the one matching the keyId
      */
     private suspend fun retrieveJwkFromKeySetUrl(
-        jwkSetRetriever: JwkSetRetrieverFunction = { null },
         jku: String,
         keyId: String?,
     ): CryptoPublicKey? =
