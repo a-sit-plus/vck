@@ -11,7 +11,7 @@ data class Oid4vpDCAPIRequest(
     val request: String,
     val credentialId: Int,
     val callingPackageName: String?,
-    val callingOrigin: String?,
+    val callingOrigin: String, // TODO test with requester that is an Android app
 ) : DCAPIRequest() {
     init {
         require(callingOrigin != null || callingPackageName != null)

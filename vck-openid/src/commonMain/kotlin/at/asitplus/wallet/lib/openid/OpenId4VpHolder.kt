@@ -234,6 +234,7 @@ class OpenId4VpHolder(
                 credentialPresentation = credentialPresentation,
                 clientMetadata = clientMetadata,
                 jsonWebKeys = jsonWebKeys,
+                dcApiRequest = dcApiRequest
             ).getOrThrow()
         }
 

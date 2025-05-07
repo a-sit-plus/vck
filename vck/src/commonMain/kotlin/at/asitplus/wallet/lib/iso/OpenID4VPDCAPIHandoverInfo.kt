@@ -21,7 +21,7 @@ data class OpenID4VPDCAPIHandoverInfo(
      * of the Verifier's public key used to encrypt the response.
      * If the Response Mode is dc_api, the third element MUST be null */
     @ByteString
-    val jwkThumbprint: ByteArray
+    val jwkThumbprint: ByteArray?
 ) {
     fun serialize() = vckCborSerializer.encodeToByteArray(this)
 
