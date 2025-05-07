@@ -12,20 +12,20 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 data class CredentialTimelinessValidator(
-    val timeLeeway: Duration = 300.seconds,
+    private val timeLeeway: Duration = 300.seconds,
     private val clock: Clock = Clock.System,
     private val tokenStatusResolver: TokenStatusResolver = TokenStatusResolver {
         KmmResult.success(TokenStatus.Valid)
     },
-    private val vcJwsTimelinessValidator: VcJwsTimelinessValidator = VcJwsTimelinessValidator(
+    val vcJwsTimelinessValidator: VcJwsTimelinessValidator = VcJwsTimelinessValidator(
         timeLeeway = timeLeeway,
         clock = clock
     ),
-    private val sdJwtTimelinessValidator: SdJwtTimelinessValidator = SdJwtTimelinessValidator(
+    val sdJwtTimelinessValidator: SdJwtTimelinessValidator = SdJwtTimelinessValidator(
         timeLeeway = timeLeeway,
         clock = clock
     ),
-    private val mdocTimelinessValidator: MdocTimelinessValidator = MdocTimelinessValidator(
+    val mdocTimelinessValidator: MdocTimelinessValidator = MdocTimelinessValidator(
         timeLeeway = timeLeeway,
         clock = clock
     ),
@@ -41,7 +41,7 @@ data class CredentialTimelinessValidator(
         timelinessValidationSummaryDetails = when (storeEntry) {
             is SubjectCredentialStore.StoreEntry.Iso -> CredentialTimelinessValidationSummaryDetails.MdocCredential(
                 storeEntry = storeEntry,
-                summary = mdocTimelinessValidator.invoke(storeEntry),
+                summary = mdocTimelinessValidator.invoke(storeEntry.issuerSigned),
             )
 
             is SubjectCredentialStore.StoreEntry.SdJwt -> CredentialTimelinessValidationSummaryDetails.SdJwtCredential(

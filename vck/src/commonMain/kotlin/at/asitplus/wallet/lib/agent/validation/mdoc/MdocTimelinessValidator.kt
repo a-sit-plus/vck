@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.agent.validation.mdoc
 
-import at.asitplus.wallet.lib.agent.SubjectCredentialStore
+import at.asitplus.wallet.lib.iso.IssuerSigned
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
 import kotlin.time.Duration
@@ -13,8 +13,8 @@ class MdocTimelinessValidator(
         timeLeeway = timeLeeway,
     ),
 ) {
-    operator fun invoke(storeEntry: SubjectCredentialStore.StoreEntry.Iso) = MdocTimelinessValidationSummary(
-        msoTimelinessValidationSummary = storeEntry.issuerSigned.issuerAuth.payload?.let {
+    operator fun invoke(issuerSigned: IssuerSigned) = MdocTimelinessValidationSummary(
+        msoTimelinessValidationSummary = issuerSigned.issuerAuth.payload?.let {
             mobileSecurityObjectTimelinessValidator(it)
         }?.also {
             if(it.isSuccess) {
