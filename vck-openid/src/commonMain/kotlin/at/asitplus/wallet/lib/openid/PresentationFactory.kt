@@ -20,6 +20,7 @@ import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.SignCoseFun
 import at.asitplus.wallet.lib.agent.PresentationRequestParameters.Flow
+import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
@@ -43,7 +44,7 @@ import kotlin.time.Duration.Companion.seconds
 
 internal class PresentationFactory(
     private val supportedAlgorithms: Set<JwsAlgorithm>,
-    private val signDeviceAuthDetached: SignCoseFun<ByteArray>,
+    private val signDeviceAuthDetached: SignCoseDetachedFun<ByteArray>,
     private val signDeviceAuthFallback: SignCoseFun<ByteArray>,
     private val signIdToken: SignJwtFun<IdToken>,
 ) {
