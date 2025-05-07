@@ -52,7 +52,7 @@ class StatusListTokenIntegrityValidator(
     /**
      * Validate the integrity of a status list cwt
      */
-    fun validateStatusListCwtIntegrity(statusListToken: StatusListToken.StatusListCwt): KmmResult<StatusListTokenPayload> =
+    suspend fun validateStatusListCwtIntegrity(statusListToken: StatusListToken.StatusListCwt): KmmResult<StatusListTokenPayload> =
         catching {
             val coseStatus = statusListToken.value
             verifyCoseSignature(coseStatus, byteArrayOf(), null).isSuccess.ifFalse {

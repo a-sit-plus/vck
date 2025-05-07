@@ -18,91 +18,111 @@ import kotlinx.serialization.KSerializer
 import kotlin.byteArrayOf
 
 /** How to identify the key material in a [CoseHeader] */
-typealias CoseHeaderIdentifierFun = suspend (CoseHeader?, KeyMaterial) -> CoseHeader?
+fun interface CoseHeaderIdentifierFun {
+    suspend operator fun invoke(
+        it: CoseHeader?,
+        keyMaterial: KeyMaterial,
+    ): CoseHeader?
+}
 
 /** Don't identify [KeyMaterial] in [CoseHeader]. */
-object CoseHeaderNone {
-    operator fun invoke(): CoseHeaderIdentifierFun = { it, keyMaterial -> it }
+class CoseHeaderNone : CoseHeaderIdentifierFun {
+    override suspend operator fun invoke(
+        it: CoseHeader?,
+        keyMaterial: KeyMaterial,
+    ): CoseHeader? = it
 }
 
 /** Identify [KeyMaterial] with it's [KeyMaterial.identifier] in (protected) [CoseHeader.keyId]. */
-object CoseHeaderKeyId {
-    operator fun invoke(): CoseHeaderIdentifierFun = { it, keyMaterial ->
-        it?.copy(kid = keyMaterial.identifier.encodeToByteArray())
-    }
+class CoseHeaderKeyId : CoseHeaderIdentifierFun {
+    override suspend fun invoke(
+        it: CoseHeader?,
+        keyMaterial: KeyMaterial,
+    ): CoseHeader? = it?.copy(kid = keyMaterial.identifier.encodeToByteArray())
 }
 
 /** Identify [KeyMaterial] with it's [KeyMaterial.getCertificate] in (unprotected) [CoseHeader.certificateChain]. */
-object CoseHeaderCertificate {
-    operator fun invoke(): CoseHeaderIdentifierFun = { it, keyMaterial ->
-        it?.copy(certificateChain = keyMaterial.getCertificate()?.let { listOf(it.encodeToDer()) })
-    }
+class CoseHeaderCertificate : CoseHeaderIdentifierFun {
+    override suspend fun invoke(
+        it: CoseHeader?,
+        keyMaterial: KeyMaterial,
+    ) = it?.copy(certificateChain = keyMaterial.getCertificate()?.let { listOf(it.encodeToDer()) })
 }
 
-typealias SignCoseFun<P> = suspend (
-    protectedHeader: CoseHeader?,
-    unprotectedHeader: CoseHeader?,
-    payload: P?,
-    serializer: KSerializer<P>,
-) -> KmmResult<CoseSigned<P>>
+fun interface SignCoseFun<P> {
+    suspend operator fun invoke(
+        protectedHeader: CoseHeader?,
+        unprotectedHeader: CoseHeader?,
+        payload: P?,
+        serializer: KSerializer<P>,
+    ): KmmResult<CoseSigned<P>>
+}
 
 /** Create a [CoseSigned], setting protected and unprotected headers, and applying [CoseHeaderIdentifierFun]. */
-object SignCose {
-    operator fun <P : Any> invoke(
-        keyMaterial: KeyMaterial,
-        protectedHeaderModifier: CoseHeaderIdentifierFun? = null,
-        unprotectedHeaderModifier: CoseHeaderIdentifierFun? = null,
-    ): SignCoseFun<P> = { protectedHeader, unprotectedHeader, payload, serializer ->
-        catching {
-            val algorithm = keyMaterial.signatureAlgorithm.toCoseAlgorithm().getOrThrow()
-            val headerWithAlg = (protectedHeader ?: CoseHeader()).copy(algorithm = algorithm)
-            val protectedHeader = protectedHeaderModifier?.invoke(headerWithAlg, keyMaterial) ?: headerWithAlg
-            val unprotectedHeader = unprotectedHeaderModifier?.invoke(unprotectedHeader ?: CoseHeader(), keyMaterial)
-                ?: unprotectedHeader
-            calcSignature(keyMaterial, protectedHeader, payload, serializer).let { signature ->
-                CoseSigned.create(
-                    protectedHeader = protectedHeader,
-                    unprotectedHeader = unprotectedHeader,
-                    payload = payload,
-                    signature = signature,
-                    payloadSerializer = serializer,
-                )
-            }
+class SignCose<P : Any>(
+    val keyMaterial: KeyMaterial,
+    val protectedHeaderModifier: CoseHeaderIdentifierFun? = null,
+    val unprotectedHeaderModifier: CoseHeaderIdentifierFun? = null,
+) : SignCoseFun<P> {
+    override suspend fun invoke(
+        protectedHeader: CoseHeader?,
+        unprotectedHeader: CoseHeader?,
+        payload: P?,
+        serializer: KSerializer<P>,
+    ): KmmResult<CoseSigned<P>> = catching {
+        val algorithm = keyMaterial.signatureAlgorithm.toCoseAlgorithm().getOrThrow()
+        val headerWithAlg = (protectedHeader ?: CoseHeader()).copy(algorithm = algorithm)
+        val protectedHeader = protectedHeaderModifier?.invoke(headerWithAlg, keyMaterial) ?: headerWithAlg
+        val unprotectedHeader = unprotectedHeaderModifier?.invoke(unprotectedHeader ?: CoseHeader(), keyMaterial)
+            ?: unprotectedHeader
+        calcSignature(keyMaterial, protectedHeader, payload, serializer).let { signature ->
+            CoseSigned.create(
+                protectedHeader = protectedHeader,
+                unprotectedHeader = unprotectedHeader,
+                payload = payload,
+                signature = signature,
+                payloadSerializer = serializer,
+            )
         }
     }
 }
 
-typealias SignCoseDetachedFun<P> = suspend (
-    protectedHeader: CoseHeader?,
-    unprotectedHeader: CoseHeader?,
-    payload: P?,
-    serializer: KSerializer<P>,
-) -> KmmResult<CoseSigned<P>>
+fun interface SignCoseDetachedFun<P> {
+    suspend operator fun invoke(
+        protectedHeader: CoseHeader?,
+        unprotectedHeader: CoseHeader?,
+        payload: P?,
+        serializer: KSerializer<P>,
+    ): KmmResult<CoseSigned<P>>
+}
 
 /**
  * Create a [CoseSigned] with detached payload,
  * setting protected and unprotected headers, and applying [CoseHeaderIdentifierFun]. */
-object SignCoseDetached {
-    operator fun <P : Any> invoke(
-        keyMaterial: KeyMaterial,
-        protectedHeaderModifier: CoseHeaderIdentifierFun? = null,
-        unprotectedHeaderModifier: CoseHeaderIdentifierFun? = null,
-    ): SignCoseDetachedFun<P> = { protectedHeader, unprotectedHeader, payload, serializer ->
-        catching {
-            val algorithm = keyMaterial.signatureAlgorithm.toCoseAlgorithm().getOrThrow()
-            val headerWithAlg = (protectedHeader ?: CoseHeader()).copy(algorithm = algorithm)
-            val protectedHeader = protectedHeaderModifier?.invoke(headerWithAlg, keyMaterial) ?: headerWithAlg
-            val unprotectedHeader = unprotectedHeaderModifier?.invoke(unprotectedHeader ?: CoseHeader(), keyMaterial)
-                ?: unprotectedHeader
-            calcSignature(keyMaterial, protectedHeader, payload, serializer).let { signature ->
-                CoseSigned.create(
-                    protectedHeader = protectedHeader,
-                    unprotectedHeader = unprotectedHeader,
-                    payload = null,
-                    signature = signature,
-                    payloadSerializer = serializer,
-                )
-            }
+class SignCoseDetached<P : Any>(
+    val keyMaterial: KeyMaterial,
+    val protectedHeaderModifier: CoseHeaderIdentifierFun? = null,
+    val unprotectedHeaderModifier: CoseHeaderIdentifierFun? = null,
+) : SignCoseDetachedFun<P> {
+    override suspend fun invoke(
+        protectedHeader: CoseHeader?,
+        unprotectedHeader: CoseHeader?,
+        payload: P?,
+        serializer: KSerializer<P>,
+    ) = catching {
+        val algorithm = keyMaterial.signatureAlgorithm.toCoseAlgorithm().getOrThrow()
+        val headerWithAlg = (protectedHeader ?: CoseHeader()).copy(algorithm = algorithm)
+        val protectedHeader = protectedHeaderModifier?.invoke(headerWithAlg, keyMaterial) ?: headerWithAlg
+        val unprotectedHeader = unprotectedHeaderModifier?.invoke(unprotectedHeader ?: CoseHeader(), keyMaterial)
+            ?: unprotectedHeader
+        calcSignature(keyMaterial, protectedHeader, payload, serializer).let { signature ->
+            CoseSigned.create(
+                protectedHeader = protectedHeader,
+                unprotectedHeader = unprotectedHeader,
+                payload = null,
+                signature = signature,
+                payloadSerializer = serializer,
+            )
         }
     }
 }
@@ -134,66 +154,81 @@ object CoseUtils {
 
 }
 
-typealias VerifyCoseSignatureFun<P> = (
-    coseSigned: CoseSigned<P>,
-    externalAad: ByteArray,
-    detachedPayload: ByteArray?,
-) -> KmmResult<Verifier.Success>
+fun interface VerifyCoseSignatureFun<P> {
+    suspend operator fun invoke(
+        coseSigned: CoseSigned<P>,
+        externalAad: ByteArray,
+        detachedPayload: ByteArray?,
+    ): KmmResult<Verifier.Success>
+}
 
-object VerifyCoseSignature {
-    operator fun <P : Any> invoke(
-        verifyCoseSignature: VerifyCoseSignatureWithKeyFun<P> = VerifyCoseSignatureWithKey<P>(),
-        /** Need to implement if valid keys for CoseSigned are transported somehow out-of-band, e.g. provided by a trust store */
-        publicKeyLookup: PublicCoseKeyLookup = { null },
-    ): VerifyCoseSignatureFun<P> = { coseSigned, externalAad, detachedPayload ->
-        catching {
-            coseSigned.loadPublicKeys(publicKeyLookup).also {
-                Napier.d("Public keys available: ${it.size}")
-            }.firstNotNullOf { coseKey ->
-                verifyCoseSignature(coseSigned, coseKey, externalAad, detachedPayload).getOrNull()
-            }
+class VerifyCoseSignature<P : Any>(
+    val verifyCoseSignature: VerifyCoseSignatureWithKeyFun<P> = VerifyCoseSignatureWithKey<P>(),
+    /** Need to implement if valid keys for CoseSigned are transported somehow out-of-band, e.g. provided by a trust store */
+    val publicKeyLookup: PublicCoseKeyLookup = nullPublicCoseKeyLookup(),
+) : VerifyCoseSignatureFun<P> {
+    override suspend fun invoke(
+        coseSigned: CoseSigned<P>,
+        externalAad: ByteArray,
+        detachedPayload: ByteArray?,
+    ) = catching {
+        coseSigned.loadPublicKeys().also {
+            Napier.d("Public keys available: ${it.size}")
+        }.firstNotNullOf { coseKey ->
+            verifyCoseSignature(coseSigned, coseKey, externalAad, detachedPayload).getOrNull()
         }
     }
 
-    fun CoseSigned<*>.loadPublicKeys(
-        publicKeyLookup: PublicCoseKeyLookup = { null },
-    ): Set<CoseKey> = (protectedHeader.publicKey ?: unprotectedHeader?.publicKey)?.let { setOf(it) }
-        ?: publicKeyLookup(this) ?: setOf()
+    suspend fun CoseSigned<*>.loadPublicKeys(): Set<CoseKey> =
+        (protectedHeader.publicKey ?: unprotectedHeader?.publicKey)?.let { setOf(it) }
+            ?: publicKeyLookup(this) ?: setOf()
 }
 
-typealias VerifyCoseSignatureWithKeyFun<P> = (
-    coseSigned: CoseSigned<P>,
-    signer: CoseKey,
-    externalAad: ByteArray,
-    detachedPayload: ByteArray?,
-) -> KmmResult<Verifier.Success>
+private fun nullPublicCoseKeyLookup(): PublicCoseKeyLookup = object : PublicCoseKeyLookup {
+    override suspend fun invoke(coseSigned: CoseSigned<*>): Set<CoseKey>? = null
+}
 
-object VerifyCoseSignatureWithKey {
-    operator fun <P : Any> invoke(
-        verifySignature: VerifySignatureFun = VerifySignature(),
-    ): VerifyCoseSignatureWithKeyFun<P> = { coseSigned, signer, externalAad, detachedPayload ->
-        catching {
-            val signatureInput = coseSigned.prepareCoseSignatureInput(externalAad, detachedPayload)
-                .also { Napier.d("verifyCose input is ${it.encodeToString(Base16())}") }
-            val algorithm = coseSigned.protectedHeader.algorithm
-                ?: throw IllegalArgumentException("Algorithm not specified")
-            require(algorithm is CoseAlgorithm.Signature) {"CoseAlgorithm not supported: $algorithm"}
-            val publicKey = signer.toCryptoPublicKey().getOrElse { ex ->
-                throw IllegalArgumentException("Signer not convertible", ex)
-                    .also { Napier.w("Could not convert signer to public key: $signer", ex) }
-            }
-            verifySignature(
-                signatureInput,
-                coseSigned.signature,
-                algorithm.algorithm,
-                publicKey
-            ).getOrThrow()
+fun interface VerifyCoseSignatureWithKeyFun<P> {
+    operator fun invoke(
+        coseSigned: CoseSigned<P>,
+        signer: CoseKey,
+        externalAad: ByteArray,
+        detachedPayload: ByteArray?,
+    ): KmmResult<Verifier.Success>
+}
+
+class VerifyCoseSignatureWithKey<P : Any>(
+    val verifySignature: VerifySignatureFun = VerifySignature(),
+) : VerifyCoseSignatureWithKeyFun<P> {
+    override fun invoke(
+        coseSigned: CoseSigned<P>,
+        signer: CoseKey,
+        externalAad: ByteArray,
+        detachedPayload: ByteArray?,
+    ) = catching {
+        val signatureInput = coseSigned.prepareCoseSignatureInput(externalAad, detachedPayload)
+            .also { Napier.d("verifyCose input is ${it.encodeToString(Base16())}") }
+        val algorithm = coseSigned.protectedHeader.algorithm
+            ?: throw IllegalArgumentException("Algorithm not specified")
+        require(algorithm is CoseAlgorithm.Signature) {"CoseAlgorithm not supported: $algorithm"}
+        val publicKey = signer.toCryptoPublicKey().getOrElse { ex ->
+            throw IllegalArgumentException("Signer not convertible", ex)
+                .also { Napier.w("Could not convert signer to public key: $signer", ex) }
         }
+        verifySignature(
+            signatureInput,
+            coseSigned.signature,
+            algorithm.algorithm,
+            publicKey
+        ).getOrThrow()
     }
 }
 
-// TODO should be suspend
-typealias PublicCoseKeyLookup = (CoseSigned<*>) -> Set<CoseKey>?
+fun interface PublicCoseKeyLookup {
+    suspend operator fun invoke(
+        coseSigned: CoseSigned<*>,
+    ): Set<CoseKey>?
+}
 
 /**
  * Tries to compute a public key in order from [coseKey], [kid] or
