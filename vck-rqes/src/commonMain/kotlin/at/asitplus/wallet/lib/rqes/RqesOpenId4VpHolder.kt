@@ -31,7 +31,7 @@ class RqesOpenId4VpHolder(
     private val oauth2Client: OAuth2Client = OAuth2Client(
         clientId = clientId,
         redirectUrl = redirectUrl,
-    )
+    ),
 ) {
     data class SignatureProperties(
         val signatureQualifier: SignatureQualifier = SignatureQualifier.EU_EIDAS_QES,
@@ -57,20 +57,26 @@ class RqesOpenId4VpHolder(
         CREDENTIAL("credential"),
     }
 
-    suspend fun setSigningCredential(credentialInfo: CredentialInfo) {
-        require(credentialInfo.credentialID != null) { "credentialID must not be null (Required by SignHashRequestParameters)" }
+    @Throws(IllegalArgumentException::class)
+    fun setSigningCredential(credentialInfo: CredentialInfo) {
+        require(credentialInfo.credentialID != null) {
+            "credentialID must not be null (Required by SignHashRequestParameters)"
+        }
 
-        credentialInfo.certParameters?.let {
-            require(!it.certificates.isNullOrEmpty()) { "Signing Certificate chain must not be null or empty" }
-            it.status?.let { status -> require(status == CertificateParameters.CertStatus.VALID) { "Signing Certificate status must be valid" } }
-        } ?: throw IllegalArgumentException("Certificate parameters must not be null")
+        with(credentialInfo.certParameters) {
+            require(this != null) { "Certificate parameters must not be null" }
+            require(!this.certificates.isNullOrEmpty()) { "Signing Certificate chain must not be null or empty" }
+            this.status?.let { status ->
+                require(status == CertificateParameters.CertStatus.VALID) { "Signing Certificate status must be valid" }
+            }
+        }
 
         with(credentialInfo.keyParameters) {
             require(status == KeyParameters.KeyStatusOptions.ENABLED) { "Signing key parameters must be enabled" }
         }
 
-        val signingAlgos =
-            credentialInfo.keyParameters.algo.mapNotNull { oid -> catching { entries.first { it.oid == oid } }.getOrNull() }
+        val signingAlgos = credentialInfo.keyParameters.algo
+            .mapNotNull { oid -> catching { entries.first { it.oid == oid } }.getOrNull() }
 
         require(signingAlgos.isNotEmpty()) { "Supported signing algorithms must not be null or empty" }
 
@@ -101,7 +107,7 @@ class RqesOpenId4VpHolder(
     suspend fun getCscAuthenticationDetails(
         documentDigests: Collection<OAuthDocumentDigest>,
         hashAlgorithm: Digest,
-        documentLocation: Collection<DocumentLocation>? = null
+        documentLocation: Collection<DocumentLocation>? = null,
     ): AuthorizationDetails = signingCredential?.let { signingCred ->
         CscAuthorizationDetails(
             credentialID = signingCred.credentialId,
@@ -150,7 +156,7 @@ class RqesOpenId4VpHolder(
         hashAlgorithm: Digest,
         wrapAsPar: Boolean = false,
         optionalParameters: OAuth2RqesParameters.Optional? = null,
-        documentLocation: Collection<DocumentLocation>? = null
+        documentLocation: Collection<DocumentLocation>? = null,
     ): AuthenticationRequestParameters = oauth2Client.createAuthRequest(
         state = uuid4().toString(),
         authorizationDetails = setOf(getCscAuthenticationDetails(documentDigests, hashAlgorithm, documentLocation)),
