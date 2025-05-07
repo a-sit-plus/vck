@@ -17,10 +17,10 @@ data class VcJwsTimelinessValidator(
         val latestAcceptedNotBeforeTime = (now + timeLeeway)
 
         return VcJwsTimelinessValidationSummary(
-            evaluatedAt = now,
+            evaluationTime = now,
             jwsExpiredError = if (vcJws.expiration != null && vcJws.expiration < earliestAcceptedExpirationTime) {
                 Napier.w("exp invalid: ${vcJws.expiration}, now is $now")
-                VcJwsTimelinessValidationSummary.JwsExpiredError(
+                JwsExpiredError(
                     expirationTime = vcJws.expiration,
                     earliestAcceptedExpirationTime = earliestAcceptedExpirationTime,
                 )
@@ -34,7 +34,7 @@ data class VcJwsTimelinessValidator(
             } else null,
             jwsNotYetValidError = if (vcJws.notBefore > latestAcceptedNotBeforeTime) {
                 Napier.w("nbf invalid: ${vcJws.notBefore}, now is $now")
-                VcJwsTimelinessValidationSummary.JwsNotYetValidError(
+                JwsNotYetValidError(
                     notBeforeTime = vcJws.notBefore,
                     latestAcceptedNotBeforeTime = latestAcceptedNotBeforeTime,
                 )

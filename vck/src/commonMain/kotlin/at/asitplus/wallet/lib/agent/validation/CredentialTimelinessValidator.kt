@@ -14,6 +14,10 @@ data class CredentialTimelinessValidator(
         timeLeeway = timeLeeway,
         clock = clock
     ),
+    private val sdJwtTimelinessValidator: SdJwtTimelinessValidator = SdJwtTimelinessValidator(
+        timeLeeway = timeLeeway,
+        clock = clock
+    ),
 ) {
     suspend operator fun invoke(storeEntry: SubjectCredentialStore.StoreEntry) = CredentialTimelinessValidationSummary(
         tokenStatus = when (storeEntry) {
@@ -31,7 +35,7 @@ data class CredentialTimelinessValidator(
 
             is SubjectCredentialStore.StoreEntry.SdJwt -> CredentialTimelinessValidationSummaryDetails.SdJwtCredential(
                 storeEntry = storeEntry,
-                isSuccess = true
+                sdJwtTimelinessValidator(storeEntry.sdJwt),
             )
 
             is SubjectCredentialStore.StoreEntry.Vc -> CredentialTimelinessValidationSummaryDetails.VerifiableCredential(

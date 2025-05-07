@@ -16,8 +16,11 @@ sealed interface CredentialTimelinessValidationSummaryDetails {
 
     data class SdJwtCredential(
         override val storeEntry: SubjectCredentialStore.StoreEntry.SdJwt,
+        val summary: SdJwtTimelinessValidationSummary,
+    ) : CredentialTimelinessValidationSummaryDetails {
         override val isSuccess: Boolean
-    ) : CredentialTimelinessValidationSummaryDetails
+            get() = summary.isSuccess
+    }
 
     data class MdocCredential(
         override val storeEntry: SubjectCredentialStore.StoreEntry.Iso,
