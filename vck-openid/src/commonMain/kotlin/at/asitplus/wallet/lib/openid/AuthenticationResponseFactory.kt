@@ -36,6 +36,16 @@ internal class AuthenticationResponseFactory(
     }
 
     @Throws(OAuth2Exception::class, CancellationException::class)
+    internal suspend fun responseDcApi(
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        response: AuthenticationResponse
+    ) : AuthenticationResponseResult.DcApi {
+        val responseSerialized = buildJarm(request, response)
+        val jarm = AuthenticationResponseParameters(
+            response = responseSerialized,
+        )
+        return AuthenticationResponseResult.DcApi(jarm)
+    }
     internal suspend fun authnResponseDirectPostJwt(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
@@ -108,7 +118,10 @@ internal class AuthenticationResponseFactory(
     } else if (response.requestsSignature()) {
         sign(response.params)
     } else {
-        throw InvalidRequest("Response must be either signed, encrypted or both.")
+        if(request.parameters.responseMode !is DcApi) {
+            throw InvalidRequest("Response must be either signed, encrypted or both.")
+        }
+        response.params.serialize()
     }
 
     private suspend fun sign(payload: AuthenticationResponseParameters): String =

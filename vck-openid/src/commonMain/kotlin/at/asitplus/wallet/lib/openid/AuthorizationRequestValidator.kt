@@ -79,6 +79,7 @@ internal class AuthorizationRequestValidator(
     private fun RequestParametersFrom<AuthenticationRequestParameters>.verifyClientIdSchemeX509() {
         val clientIdScheme = parameters.clientIdSchemeExtracted
         val responseModeIsDirectPost = parameters.responseMode.isAnyDirectPost()
+        val responseModeIsDcApi = parameters.responseMode.isDcApi()
         val prefix = "client_id_scheme is $clientIdScheme"
         if (this !is RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>
             || jwsSigned.header.certificateChain == null || jwsSigned.header.certificateChain?.isEmpty() == true
@@ -101,7 +102,7 @@ internal class AuthorizationRequestValidator(
                 Napier.w("$prefix, but client_id does not match any dnsName in the leaf certificate")
                 throw InvalidRequest("client_id not in dnsNames in x5c")
             }
-            if (!responseModeIsDirectPost) {
+            if (!responseModeIsDirectPost && !responseModeIsDcApi) {
                 val parsedUrl = parameters.redirectUrl?.let { Url(it) } ?: run {
                     Napier.w("$prefix, but no redirect_url was provided")
                     throw InvalidRequest("redirect_uri is null")
@@ -128,6 +129,9 @@ internal class AuthorizationRequestValidator(
             }
         }
     }
+
+    private fun OpenIdConstants.ResponseMode?.isDcApi() =
+        (this == OpenIdConstants.ResponseMode.DcApi)
 
     private fun OpenIdConstants.ResponseMode?.isAnyDirectPost() =
         (this == OpenIdConstants.ResponseMode.DirectPost) || (this == OpenIdConstants.ResponseMode.DirectPostJwt)
