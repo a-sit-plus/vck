@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.agent.validation
 import kotlinx.datetime.Instant
 
 data class VcJwsTimelinessValidationSummary(
+    val evaluatedAt: Instant,
     val jwsExpiredError: JwsExpiredError?,
     val credentialExpiredError: CredentialExpiredError?,
     val jwsNotYetValidError: JwsNotYetValidError?,
