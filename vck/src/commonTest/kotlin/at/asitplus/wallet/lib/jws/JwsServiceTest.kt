@@ -71,7 +71,9 @@ class JwsServiceTest : FreeSpec({
         val signer = SignJwt<String>(keyMaterial, JwsHeaderJwksUrl(jku))
         val signed = signer(null, randomPayload, String.serializer()).getOrThrow()
         val validKey = keyMaterial.jsonWebKey
-        val jwkSetRetriever: JwkSetRetrieverFunction = { JsonWebKeySet(keys = listOf(validKey)) }
+        val jwkSetRetriever: JwkSetRetrieverFunction = object : JwkSetRetrieverFunction {
+            override suspend fun invoke(url: String): JsonWebKeySet? = JsonWebKeySet(keys = listOf(validKey))
+        }
         verifierJwsService = VerifyJwsObject(jwkSetRetriever = jwkSetRetriever)
         verifierJwsService(signed) shouldBe true
     }
@@ -81,7 +83,9 @@ class JwsServiceTest : FreeSpec({
         val signer = SignJwt<String>(keyMaterial, JwsHeaderJwksUrl(jku))
         val signed = signer(null, randomPayload, String.serializer()).getOrThrow()
         val invalidKey = EphemeralKeyWithoutCert().jsonWebKey
-        val jwkSetRetriever: JwkSetRetrieverFunction = { JsonWebKeySet(keys = listOf(invalidKey)) }
+        val jwkSetRetriever: JwkSetRetrieverFunction = object : JwkSetRetrieverFunction {
+            override suspend fun invoke(url: String): JsonWebKeySet? = JsonWebKeySet(keys = listOf(invalidKey))
+        }
         verifierJwsService = VerifyJwsObject(jwkSetRetriever = jwkSetRetriever)
         verifierJwsService(signed) shouldBe false
     }
@@ -98,7 +102,9 @@ class JwsServiceTest : FreeSpec({
         val signer = SignJwt<String>(keyMaterial, JwsHeaderNone())
         val signed = signer(null, randomPayload, String.serializer()).getOrThrow()
 
-        val publicKeyLookup: PublicJsonWebKeyLookup = { setOf(keyMaterial.jsonWebKey) }
+        val publicKeyLookup: PublicJsonWebKeyLookup = object : PublicJsonWebKeyLookup {
+            override suspend fun invoke(jwsObject: JwsSigned<*>): Set<JsonWebKey>? = setOf(keyMaterial.jsonWebKey)
+        }
         verifierJwsService = VerifyJwsObject(publicKeyLookup = publicKeyLookup)
         verifierJwsService(signed) shouldBe true
     }

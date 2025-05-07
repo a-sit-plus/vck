@@ -45,7 +45,7 @@ open class OpenId4VpVerifier(
     val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
     private val decryptJwe: DecryptJweFun = DecryptJwe(keyMaterial),
     private val signAuthnRequest: SignJwtFun<AuthenticationRequestParameters> =
-        SignJwt(keyMaterial, JwsHeaderClientIdScheme(clientIdScheme)()),
+        SignJwt(keyMaterial, JwsHeaderClientIdScheme(clientIdScheme)),
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
     private val supportedAlgorithms: List<JwsAlgorithm> = listOf(JwsAlgorithm.Signature.ES256),
     private val verifyCoseSignature: VerifyCoseSignatureWithKeyFun<ByteArray> = VerifyCoseSignatureWithKey(),
@@ -693,8 +693,11 @@ private val PresentationSubmissionDescriptor.cumulativeJsonPath: String
     }
 
 
-class JwsHeaderClientIdScheme(val clientIdScheme: ClientIdScheme) {
-    operator fun invoke(): JwsHeaderIdentifierFun = { it, keyMaterial ->
+class JwsHeaderClientIdScheme(val clientIdScheme: ClientIdScheme) : JwsHeaderIdentifierFun {
+    override suspend fun invoke(
+        it: JwsHeader,
+        keyMaterial: KeyMaterial,
+    ) = run {
         val attestationJwt = (clientIdScheme as? ClientIdScheme.VerifierAttestation)?.attestationJwt?.serialize()
         (clientIdScheme as? ClientIdScheme.CertificateSanDns)?.chain?.let { x5c ->
             it.copy(certificateChain = x5c, attestationJwt = attestationJwt)
