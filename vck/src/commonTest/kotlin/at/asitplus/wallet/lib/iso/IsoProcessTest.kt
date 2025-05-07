@@ -174,7 +174,12 @@ class Verifier {
                         )
                     )
                 ),
-                readerAuth = signCose(null, CoseHeader(), null, ByteArraySerializer()).getOrThrow()
+                readerAuth = signCose(
+                    protectedHeader = null,
+                    unprotectedHeader = CoseHeader(),
+                    payload = null,
+                    serializer = ByteArraySerializer()
+                ).getOrThrow()
             )
         )
     )
