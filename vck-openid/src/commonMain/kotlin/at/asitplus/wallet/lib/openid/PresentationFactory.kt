@@ -119,13 +119,23 @@ internal class PresentationFactory(
                 .wrapInCborTag(24)
                 .also { Napier.d("Device authentication signature input is ${it.encodeToString(Base16())}") }
 
-            signDeviceAuthDetached(null, null, deviceAuthenticationBytes, ByteArraySerializer()).getOrElse {
+            signDeviceAuthDetached(
+                protectedHeader = null,
+                unprotectedHeader = null,
+                payload = deviceAuthenticationBytes,
+                serializer = ByteArraySerializer()
+            ).getOrElse {
                 Napier.w("Could not create DeviceAuth for presentation", it)
                 throw PresentationException(it)
             }
         }
     } else {
-        signDeviceAuthFallback(null, null, nonce.encodeToByteArray(), ByteArraySerializer()).getOrElse {
+        signDeviceAuthFallback(
+            protectedHeader = null,
+            unprotectedHeader = null,
+            payload = nonce.encodeToByteArray(),
+            serializer = ByteArraySerializer()
+        ).getOrElse {
             Napier.w("Could not create DeviceAuth for presentation", it)
             throw PresentationException(it)
         }
@@ -304,7 +314,7 @@ internal fun RequestParameters.parseTransactionData(): Pair<Flow, List<Transacti
         .ifEmpty { return null }
 
     //Do not change to map because keys are unordered!
-    val oid4vpTransactionData: List<Pair<JsonPrimitive,TransactionData>> = rawTransactionData.map {
+    val oid4vpTransactionData: List<Pair<JsonPrimitive, TransactionData>> = rawTransactionData.map {
         it to vckJsonSerializer.decodeFromJsonElement(DeprecatedBase64URLTransactionDataSerializer, it)
     }.filter { it.second.credentialIds != null }
 

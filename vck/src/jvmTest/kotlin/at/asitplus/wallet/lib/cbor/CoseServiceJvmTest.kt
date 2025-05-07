@@ -83,8 +83,12 @@ class CoseServiceJvmTest : FreeSpec({
             "$testIdentifier:" - {
 
                 "Signed object from int. library can be verified with int. library" {
-                    val signed = signCose(null, null, randomPayload.encodeToByteArray(), ByteArraySerializer())
-                        .getOrThrow()
+                    val signed = signCose(
+                        protectedHeader = null,
+                        unprotectedHeader = null,
+                        payload = randomPayload.encodeToByteArray(),
+                        serializer = ByteArraySerializer()
+                    ).getOrThrow()
 
                     withClue("$sigAlgo: Signature: ${signed.signature.encodeToTlv().toDerHexString()}") {
                         verifierCoseService(
@@ -125,10 +129,10 @@ class CoseServiceJvmTest : FreeSpec({
                     }
 
                     val signed = signCose(
-                        CoseHeader(algorithm = coseAlgorithm),
-                        null,
-                        randomPayload.encodeToByteArray(),
-                        ByteArraySerializer(),
+                        protectedHeader = CoseHeader(algorithm = coseAlgorithm),
+                        unprotectedHeader = null,
+                        payload = randomPayload.encodeToByteArray(),
+                        serializer = ByteArraySerializer(),
                     ).getOrThrow()
                     val signedSerialized = signed.serialize(ByteArraySerializer()).encodeToString(Base16())
                     val extLibSerialized = extLibCoseSign1.encode().encodeToString(Base16())
@@ -141,10 +145,10 @@ class CoseServiceJvmTest : FreeSpec({
 
                 "Signed object from int. library can be verified with ext. library" {
                     val coseSigned = signCose(
-                        CoseHeader(algorithm = coseAlgorithm),
-                        null,
-                        randomPayload.encodeToByteArray(),
-                        ByteArraySerializer(),
+                        protectedHeader = CoseHeader(algorithm = coseAlgorithm),
+                        unprotectedHeader = null,
+                        payload = randomPayload.encodeToByteArray(),
+                        serializer = ByteArraySerializer(),
                     ).getOrThrow()
 
                     val parsed =
