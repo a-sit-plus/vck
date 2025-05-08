@@ -529,14 +529,14 @@ class OidvciInteropTest : FunSpec({
         parsed.authorizationEndpoint shouldBe "https://auth.eudiw.dev/realms/pid-issuer-realm/protocol/openid-connect/auth"
         parsed.jsonWebKeySetUrl shouldBe "https://auth.eudiw.dev/realms/pid-issuer-realm/protocol/openid-connect/certs"
         parsed.grantTypesSupported.shouldNotBeNull() shouldContainAll listOf("authorization_code")
-        parsed.idTokenSigningAlgorithmsSupported.shouldNotBeNull() shouldContain JwsAlgorithm.ES256
+        parsed.idTokenSigningAlgorithmsSupported.shouldNotBeNull() shouldContain JwsAlgorithm.Signature.ES256
         parsed.responseModesSupported.shouldNotBeNull() shouldContainAll listOf(
             "query", "fragment", "form_post", "fragment.jwt", "form_post.jwt", "jwt"
         )
         parsed.scopesSupported.shouldNotBeNull() shouldContainAll listOf(
             "openid", "eu.europa.ec.eudi.pid_vc_sd_jwt", "eu.europa.ec.eudi.pid_mso_mdoc", "org.iso.18013.5.1.mDL"
         )
-        parsed.dpopSigningAlgValuesSupported.shouldNotBeNull() shouldContain JwsAlgorithm.ES256
+        parsed.dpopSigningAlgValuesSupported.shouldNotBeNull() shouldContain JwsAlgorithm.Signature.ES256
     }
 
 })

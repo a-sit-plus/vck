@@ -82,7 +82,7 @@ class OpenId4VciClient(
     private val signClientAttestationPop: SignJwtFun<JsonWebToken> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderNone()),
     /** Used to calculate DPoP, i.e. the key the access token and refresh token gets bound to. */
     private val signDpop: SignJwtFun<JsonWebToken> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderJwk()),
-    private val dpopAlgorithm: JwsAlgorithm = JwsAlgorithm.ES256,
+    private val dpopAlgorithm: JwsAlgorithm = JwsAlgorithm.Signature.ES256,
     /**
      * Implements OID4VCI protocol, `redirectUrl` needs to be registered by the OS for this application, so redirection
      * back from browser works, `cryptoService` provides proof of possession for credential key material.

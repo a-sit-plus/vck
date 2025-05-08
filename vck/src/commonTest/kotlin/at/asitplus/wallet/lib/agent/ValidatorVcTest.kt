@@ -390,7 +390,7 @@ class ValidatorVcTest : FreeSpec() {
 
     private suspend fun wrapVcInJwsWrongKey(vcJws: VerifiableCredentialJws): String {
         val jwsHeader = JwsHeader(
-            algorithm = JwsAlgorithm.ES256,
+            algorithm = JwsAlgorithm.Signature.ES256,
             keyId = verifierKeyMaterial.identifier,
             type = JwsContentTypeConstants.JWT
         )

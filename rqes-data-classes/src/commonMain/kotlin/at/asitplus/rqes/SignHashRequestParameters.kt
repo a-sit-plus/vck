@@ -4,10 +4,10 @@ import at.asitplus.openid.Hashes
 import at.asitplus.openid.contentEquals
 import at.asitplus.openid.contentHashCode
 import at.asitplus.rqes.enums.OperationMode
-import at.asitplus.rqes.serializers.QtspSignatureRequestSerializer
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
+import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -91,6 +91,7 @@ data class SignHashRequestParameters(
      * String containing the OID of the hash algorithm used to generate the hashes
      */
     @SerialName("hashAlgorithmOID")
+    @Serializable(with = ObjectIdentifierStringSerializer::class)
     val hashAlgorithmOid: ObjectIdentifier? = null,
 
     /**
@@ -100,6 +101,7 @@ data class SignHashRequestParameters(
      * in `credentials/list`
      */
     @SerialName("signAlgo")
+    @Serializable(with = ObjectIdentifierStringSerializer::class)
     val signAlgoOid: ObjectIdentifier,
 
     /**

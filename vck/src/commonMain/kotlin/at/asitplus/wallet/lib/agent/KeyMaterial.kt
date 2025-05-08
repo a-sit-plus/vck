@@ -4,7 +4,6 @@ import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.ECCurve
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.signum.indispensable.nativeDigest
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
@@ -95,18 +94,6 @@ interface EphemeralKeyHolder {
     val key: EphemeralKey
 }
 
-open class DefaultEphemeralKeyHolder(val crv: ECCurve) : EphemeralKeyHolder {
-    override val key: EphemeralKey = EphemeralKey {
-        ec {
-            curve = crv
-            digests = setOf(crv.nativeDigest)
-        }
-    }.getOrThrow()
-
-    override val publicJsonWebKey: JsonWebKey?
-        get() = key.publicKey.toJsonWebKey()
-
-}
 
 abstract class SignerBasedKeyMaterial(
     val signer: Signer,
