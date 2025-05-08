@@ -1,8 +1,9 @@
-package at.asitplus.wallet.lib.agent.validation
+package at.asitplus.wallet.lib.agent.validation.vcJws
 
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.matchesIdentifier
+import at.asitplus.wallet.lib.agent.validation.common.SubjectMatchingResult
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
@@ -29,7 +30,7 @@ data class VcJwsInputValidator(
             parsed = jws,
             isIntegrityGood = jwsIntegrityValidator(jws),
             subjectMatchingResult = publicKey?.let {
-                VcJwsInputValidationResult.ContentValidationSummary.SubjectMatchingResult(
+                SubjectMatchingResult(
                     subject = vcJws.subject,
                     publicKey = publicKey,
                     isSuccess = it.matchesIdentifier(vcJws.subject)

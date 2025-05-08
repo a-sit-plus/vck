@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.agent.validation
+package at.asitplus.wallet.lib.agent.validation.vcJws
 
 import kotlinx.datetime.Instant
 
@@ -11,12 +11,12 @@ data class VcJwsContentSemanticsValidationSummary(
     val inconsistentExpirationTimeError: InconsistentExpirationTimeError?,
 ) {
     val isSuccess = listOf(
-        inconsistentIssuerError != null,
-        inconsistentIdentifierError != null,
-        inconsistentSubjectError != null,
-        missingCredentialTypeError != null,
-        inconsistentNotBeforeTimeError != null,
-        inconsistentExpirationTimeError != null,
+        inconsistentIssuerError == null,
+        inconsistentIdentifierError == null,
+        inconsistentSubjectError == null,
+        missingCredentialTypeError == null,
+        inconsistentNotBeforeTimeError == null,
+        inconsistentExpirationTimeError == null,
     ).all { it }
 
     data class InconsistentIssuerError(

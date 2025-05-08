@@ -1,5 +1,7 @@
-package at.asitplus.wallet.lib.agent.validation
+package at.asitplus.wallet.lib.agent.validation.vcJws
 
+import at.asitplus.wallet.lib.agent.validation.common.EntityExpiredError
+import at.asitplus.wallet.lib.agent.validation.common.EntityNotYetValidError
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
@@ -17,32 +19,32 @@ data class VcJwsTimelinessValidator(
         val latestAcceptedNotBeforeTime = (now + timeLeeway)
 
         return VcJwsTimelinessValidationSummary(
-            evaluatedAt = now,
+            evaluationTime = now,
             jwsExpiredError = if (vcJws.expiration != null && vcJws.expiration < earliestAcceptedExpirationTime) {
                 Napier.w("exp invalid: ${vcJws.expiration}, now is $now")
-                VcJwsTimelinessValidationSummary.JwsExpiredError(
+                EntityExpiredError(
                     expirationTime = vcJws.expiration,
                     earliestAcceptedExpirationTime = earliestAcceptedExpirationTime,
                 )
             } else null,
             credentialExpiredError = if (vcJws.vc.expirationDate != null && vcJws.vc.expirationDate < earliestAcceptedExpirationTime) {
                 Napier.w("expirationDate invalid: ${vcJws.vc.expirationDate}, now is $now")
-                VcJwsTimelinessValidationSummary.CredentialExpiredError(
-                    expirationDate = vcJws.vc.expirationDate,
-                    earliestAcceptedExpirationDate = earliestAcceptedExpirationTime,
+                EntityExpiredError(
+                    expirationTime = vcJws.vc.expirationDate,
+                    earliestAcceptedExpirationTime = earliestAcceptedExpirationTime,
                 )
             } else null,
             jwsNotYetValidError = if (vcJws.notBefore > latestAcceptedNotBeforeTime) {
                 Napier.w("nbf invalid: ${vcJws.notBefore}, now is $now")
-                VcJwsTimelinessValidationSummary.JwsNotYetValidError(
+                EntityNotYetValidError(
                     notBeforeTime = vcJws.notBefore,
                     latestAcceptedNotBeforeTime = latestAcceptedNotBeforeTime,
                 )
             } else null,
             credentialNotYetValidError = if (vcJws.vc.issuanceDate > latestAcceptedNotBeforeTime) {
                 Napier.w("issuanceDate invalid: ${vcJws.vc.issuanceDate}, now is $now")
-                VcJwsTimelinessValidationSummary.CredentialNotYetValidError(
-                    issuanceDate = vcJws.vc.issuanceDate,
+                EntityNotYetValidError(
+                    notBeforeTime = vcJws.vc.issuanceDate,
                     latestAcceptedNotBeforeTime = latestAcceptedNotBeforeTime,
                 )
             } else null,

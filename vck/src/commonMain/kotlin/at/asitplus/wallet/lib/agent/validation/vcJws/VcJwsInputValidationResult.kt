@@ -1,7 +1,7 @@
-package at.asitplus.wallet.lib.agent.validation
+package at.asitplus.wallet.lib.agent.validation.vcJws
 
-import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.wallet.lib.agent.validation.common.SubjectMatchingResult
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 
 sealed interface VcJwsInputValidationResult {
@@ -31,11 +31,6 @@ sealed interface VcJwsInputValidationResult {
                 subjectMatchingResult?.isSuccess != false,
                 contentSemanticsValidationSummary.isSuccess,
             ).all { it }
-
-        data class SubjectMatchingResult(
-            val subject: String,
-            val publicKey: CryptoPublicKey,
-            val isSuccess: Boolean,
-        )
     }
 }
+
