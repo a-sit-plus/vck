@@ -213,42 +213,38 @@ class OpenId4VciClientTest : FunSpec() {
         representationToIssue: ConstantIndex.CredentialRepresentation,
         attributesToIssue: Map<String, String>,
     ): Triple<HttpClientEngine, CredentialIssuer, SimpleAuthorizationService> {
-        val dataProvider = object : OAuth2DataProvider {
-            override suspend fun loadUserInfo(
-                request: AuthenticationRequestParameters,
-                code: String,
-            ) = dummyUser()
-        }
-        val credentialProvider = object : CredentialIssuerDataProvider {
-            override fun getCredential(
-                userInfo: OidcUserInfoExtended,
-                subjectPublicKey: CryptoPublicKey,
-                credentialScheme: ConstantIndex.CredentialScheme,
-                representation: ConstantIndex.CredentialRepresentation,
-                claimNames: Collection<String>?,
-            ): KmmResult<CredentialToBeIssued> = catching {
-                require(credentialScheme == scheme)
-                require(representation == representationToIssue)
-                var digestId = 0u
-                when (representation) {
-                    PLAIN_JWT -> TODO()
-                    SD_JWT -> CredentialToBeIssued.VcSd(
-                        attributesToIssue.map { ClaimToBeIssued(it.key, it.value) },
-                        Clock.System.now(),
-                        credentialScheme,
-                        subjectPublicKey
-                    )
+        val dataProvider = OAuth2DataProvider { _, _ -> dummyUser() }
+        val credentialProvider =
+            CredentialIssuerDataProvider { _, subjectPublicKey: CryptoPublicKey, credentialScheme, representation, _ ->
+                catching {
+                    require(credentialScheme == scheme)
+                    require(representation == representationToIssue)
+                    var digestId = 0u
+                    when (representation) {
+                        PLAIN_JWT -> TODO()
+                        SD_JWT -> CredentialToBeIssued.VcSd(
+                            attributesToIssue.map { ClaimToBeIssued(it.key, it.value) },
+                            Clock.System.now(),
+                            credentialScheme,
+                            subjectPublicKey
+                        )
 
-                    ISO_MDOC -> CredentialToBeIssued.Iso(
-                        attributesToIssue.map { IssuerSignedItem(digestId++, Random.nextBytes(32), it.key, it.value) },
-                        Clock.System.now(),
-                        credentialScheme,
-                        subjectPublicKey
-                    )
+                        ISO_MDOC -> CredentialToBeIssued.Iso(
+                            attributesToIssue.map {
+                                IssuerSignedItem(
+                                    digestId++,
+                                    Random.nextBytes(32),
+                                    it.key,
+                                    it.value
+                                )
+                            },
+                            Clock.System.now(),
+                            credentialScheme,
+                            subjectPublicKey
+                        )
+                    }
                 }
-
             }
-        }
         val credentialSchemes = setOf(EuPidScheme)
         val authorizationEndpointPath = "/authorize"
         val tokenEndpointPath = "/token"

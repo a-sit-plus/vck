@@ -165,7 +165,7 @@ fun interface VerifyCoseSignatureFun<P> {
 class VerifyCoseSignature<P : Any>(
     val verifyCoseSignature: VerifyCoseSignatureWithKeyFun<P> = VerifyCoseSignatureWithKey<P>(),
     /** Need to implement if valid keys for CoseSigned are transported somehow out-of-band, e.g. provided by a trust store */
-    val publicKeyLookup: PublicCoseKeyLookup = nullPublicCoseKeyLookup(),
+    val publicKeyLookup: PublicCoseKeyLookup = PublicCoseKeyLookup { null }
 ) : VerifyCoseSignatureFun<P> {
     override suspend fun invoke(
         coseSigned: CoseSigned<P>,
@@ -182,10 +182,6 @@ class VerifyCoseSignature<P : Any>(
     suspend fun CoseSigned<*>.loadPublicKeys(): Set<CoseKey> =
         (protectedHeader.publicKey ?: unprotectedHeader?.publicKey)?.let { setOf(it) }
             ?: publicKeyLookup(this) ?: setOf()
-}
-
-private fun nullPublicCoseKeyLookup(): PublicCoseKeyLookup = object : PublicCoseKeyLookup {
-    override suspend fun invoke(coseSigned: CoseSigned<*>): Set<CoseKey>? = null
 }
 
 fun interface VerifyCoseSignatureWithKeyFun<P> {

@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -79,6 +78,3 @@ fun OpenIdAuthorizationDetails.matches(other: OpenIdAuthorizationDetails): Boole
     else -> false
 }
 
-private fun emptyDataProvider(): OAuth2DataProvider = object : OAuth2DataProvider {
-    override suspend fun loadUserInfo(request: AuthenticationRequestParameters, code: String) = null
-}
