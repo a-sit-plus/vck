@@ -11,7 +11,7 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 
 data class VcJwsInputValidator(
     val vcJwsContentSemanticsValidator: VcJwsContentSemanticsValidator = VcJwsContentSemanticsValidator(),
-    val jwsIntegrityValidator: VerifyJwsObjectFun = VerifyJwsObject(),
+    val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
 ) {
     suspend operator fun invoke(
         input: String,
@@ -25,10 +25,11 @@ data class VcJwsInputValidator(
             return VcJwsInputValidationResult.ParsingError(input, it)
         }
         val vcJws = jws.payload
+
         return VcJwsInputValidationResult.ContentValidationSummary(
             input = input,
             parsed = jws,
-            isIntegrityGood = jwsIntegrityValidator(jws),
+            isIntegrityGood = verifyJwsObject(jws),
             subjectMatchingResult = publicKey?.let {
                 SubjectMatchingResult(
                     subject = vcJws.subject,
@@ -38,6 +39,36 @@ data class VcJwsInputValidator(
             },
             contentSemanticsValidationSummary = vcJwsContentSemanticsValidator.invoke(vcJws),
         )
+    }
+}
+
+sealed interface VcJwsInputValidationResult {
+    val isSuccess: Boolean
+
+    data class ParsingError(
+        val input: String,
+        val throwable: Throwable,
+    ) : VcJwsInputValidationResult {
+        override val isSuccess: Boolean
+            get() = false
+    }
+
+    data class ContentValidationSummary(
+        val input: String,
+        val parsed: JwsSigned<VerifiableCredentialJws>,
+        val isIntegrityGood: Boolean,
+        val subjectMatchingResult: SubjectMatchingResult?,
+        val contentSemanticsValidationSummary: VcJwsContentSemanticsValidationSummary,
+    ) : VcJwsInputValidationResult {
+        val payload: VerifiableCredentialJws
+            get() = parsed.payload
+
+        override val isSuccess: Boolean
+            get() = listOf(
+                isIntegrityGood,
+                subjectMatchingResult?.isSuccess != false,
+                contentSemanticsValidationSummary.isSuccess,
+            ).all { it }
     }
 }
 

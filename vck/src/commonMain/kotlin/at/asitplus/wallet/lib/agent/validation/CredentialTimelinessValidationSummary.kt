@@ -1,11 +1,34 @@
 package at.asitplus.wallet.lib.agent.validation
 
-import at.asitplus.KmmResult
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
+import at.asitplus.wallet.lib.agent.validation.mdoc.MdocTimelinessValidationSummary
+import at.asitplus.wallet.lib.agent.validation.sdJwt.SdJwtTimelinessValidationSummary
+import at.asitplus.wallet.lib.agent.validation.vcJws.VcJwsTimelinessValidationSummary
 
-data class CredentialTimelinessValidationSummary(
-    val tokenStatus: KmmResult<TokenStatus>?,
-    val timelinessValidationSummaryDetails: CredentialTimelinessValidationSummaryDetails,
-) {
-    val isSuccess = tokenStatus?.getOrNull() == TokenStatus.Valid && timelinessValidationSummaryDetails.isSuccess
+sealed interface CredentialTimelinessValidationSummary {
+    val credential: CredentialWrapper
+    val isSuccess: Boolean
+
+    data class VcJws(
+        override val credential: CredentialWrapper.VcJws,
+        val summary: VcJwsTimelinessValidationSummary,
+    ) : CredentialTimelinessValidationSummary {
+        override val isSuccess
+            get() = summary.isSuccess
+    }
+
+    data class SdJwt(
+        override val credential: CredentialWrapper.SdJwt,
+        val summary: SdJwtTimelinessValidationSummary,
+    ) : CredentialTimelinessValidationSummary {
+        override val isSuccess: Boolean
+            get() = summary.isSuccess
+    }
+
+    data class Mdoc(
+        override val credential: CredentialWrapper.Mdoc,
+        val summary: MdocTimelinessValidationSummary,
+    ) : CredentialTimelinessValidationSummary {
+        override val isSuccess: Boolean
+            get() = summary.isSuccess
+    }
 }

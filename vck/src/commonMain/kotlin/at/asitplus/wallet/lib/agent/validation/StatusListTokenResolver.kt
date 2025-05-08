@@ -11,7 +11,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenValidator
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
-import kotlin.time.Clock
+import kotlinx.datetime.Clock
 
 fun interface StatusListTokenResolver {
     suspend operator fun invoke(statusListUrl: UniformResourceIdentifier): StatusListToken

@@ -9,8 +9,9 @@ data class SdJwtTimelinessValidationSummary(
     val jwsExpiredError: EntityExpiredError?,
     val jwsNotYetValidError: EntityNotYetValidError?,
 ) {
-    val isSuccess = listOf(
-        jwsExpiredError,
-        jwsNotYetValidError,
-    ).all { it == null }
+    val isSuccess: Boolean
+        get() = listOf(
+            jwsExpiredError,
+            jwsNotYetValidError,
+        ).all { it == null }
 }
