@@ -16,8 +16,9 @@ data class Oid4vpDCAPIRequest(
     init {
         require(callingOrigin != null || callingPackageName != null)
         require((protocol.startsWith(OID4VP_PREFIX) && protocol.count { it == DELIMITER } == 2)
-                || protocol == "openid4vp") // legacy beahaviour
-        getOpenIdVersion().getOrNull()?.let { require(it == "1") }
+                || protocol == OID4VP_PREFIX) // legacy beahaviour
+        getOpenIdVersion().getOrNull()?.let { require(it == "v1" || protocol == OID4VP_PREFIX) }
+        getRequestType().getOrNull()?.let { require(it != "multisigned") }
     }
 
     fun getOpenIdVersion() =
@@ -34,7 +35,7 @@ data class Oid4vpDCAPIRequest(
     override fun serialize(): String = vckJsonSerializer.encodeToString(this)
 
     companion object {
-        private const val OID4VP_PREFIX = "openid4vp-v"
+        private const val OID4VP_PREFIX = "openid4vp"
         private const val DELIMITER = '-'
         fun deserialize(input: String) =
             catching { vckJsonSerializer.decodeFromString<Oid4vpDCAPIRequest>(input) }
