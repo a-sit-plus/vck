@@ -18,4 +18,5 @@ sealed class AuthenticationResponseResult {
      * for further use.
      */
     data class Redirect(val url: String, val params: AuthenticationResponseParameters) : AuthenticationResponseResult()
+    data class DcApi(val params: AuthenticationResponseParameters) : AuthenticationResponseResult()
 }

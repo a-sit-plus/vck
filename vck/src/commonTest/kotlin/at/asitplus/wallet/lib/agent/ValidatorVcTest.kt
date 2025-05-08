@@ -397,7 +397,7 @@ class ValidatorVcTest : FreeSpec() {
         val signatureInput = jwsHeader.serialize().encodeToByteArray().encodeToString(Base64UrlStrict) +
                 "." + vcJws.serialize().encodeToByteArray().encodeToString(Base64UrlStrict)
         val signatureInputBytes = signatureInput.encodeToByteArray()
-        val signature = DefaultCryptoService(issuerKeyMaterial).sign(signatureInputBytes).signature
+        val signature = issuerKeyMaterial.sign(signatureInputBytes).signature
         return JwsSigned(jwsHeader, vcJws, signature, signatureInputBytes).serialize()
     }
 

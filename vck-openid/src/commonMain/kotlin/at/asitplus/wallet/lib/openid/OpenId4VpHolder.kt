@@ -14,15 +14,11 @@ import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.CoseHeaderNone
-import at.asitplus.wallet.lib.cbor.CoseService
-import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
 import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
@@ -30,11 +26,10 @@ import at.asitplus.wallet.lib.cbor.SignCoseFun
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.jws.DefaultJwsService
+import at.asitplus.wallet.lib.dcapi.request.Oid4vpDCAPIRequest
 import at.asitplus.wallet.lib.jws.EncryptJwe
 import at.asitplus.wallet.lib.jws.EncryptJweFun
 import at.asitplus.wallet.lib.jws.JwsHeaderJwk
-import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
@@ -56,14 +51,10 @@ import kotlinx.datetime.Clock
 class OpenId4VpHolder(
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     private val holder: Holder = HolderAgent(keyMaterial),
-    @Deprecated("Use signIdToken, signJarm, encryptJarm, supportedAlgorithms instead")
-    private val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
     private val signIdToken: SignJwtFun<IdToken> = SignJwt(keyMaterial, JwsHeaderJwk()),
     private val signJarm: SignJwtFun<AuthenticationResponseParameters> = SignJwt(keyMaterial, JwsHeaderJwk()),
     private val encryptJarm: EncryptJweFun = EncryptJwe(keyMaterial),
     private val supportedAlgorithms: Set<JwsAlgorithm> = setOfNotNull(JwsAlgorithm.ES256),
-    @Deprecated("Use signDeviceAuthDetached, signDeviceAuthFallback, supportedAlgorithms instead")
-    private val coseService: CoseService = DefaultCoseService(DefaultCryptoService(keyMaterial)),
     private val signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> =
         SignCoseDetached(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
     private val signDeviceAuthFallback: SignCoseFun<ByteArray> = SignCose(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
@@ -166,7 +157,8 @@ class OpenId4VpHolder(
             finalizeAuthorizationResponseParameters(
                 request = params,
                 clientMetadata = it.clientMetadata,
-                credentialPresentation = it.credentialPresentationRequest?.toCredentialPresentation()
+                credentialPresentation = it.credentialPresentationRequest?.toCredentialPresentation(),
+                dcApiRequest = null
             ).getOrThrow()
         }
 
@@ -201,8 +193,14 @@ class OpenId4VpHolder(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         clientMetadata: RelyingPartyMetadata?,
         credentialPresentation: CredentialPresentation?,
+        dcApiRequest: Oid4vpDCAPIRequest?,
     ): KmmResult<AuthenticationResponseResult> =
-        finalizeAuthorizationResponseParameters(request, clientMetadata, credentialPresentation).map {
+        finalizeAuthorizationResponseParameters(
+            request,
+            clientMetadata,
+            credentialPresentation,
+            dcApiRequest
+        ).map {
             authenticationResponseFactory.createAuthenticationResponse(request, it)
         }
 
@@ -215,12 +213,13 @@ class OpenId4VpHolder(
         request: RequestParametersFrom<T>,
         clientMetadata: RelyingPartyMetadata?,
         credentialPresentation: CredentialPresentation?,
+        dcApiRequest: Oid4vpDCAPIRequest?
     ): KmmResult<AuthenticationResponse> = catching {
         @Suppress("UNCHECKED_CAST") val certKey =
             (request as? RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>)
                 ?.jwsSigned?.header?.certificateChain?.firstOrNull()?.publicKey?.toJsonWebKey()
         val clientJsonWebKeySet = clientMetadata?.loadJsonWebKeySet()
-        val audience = request.parameters.extractAudience(clientJsonWebKeySet)
+        val audience = request.parameters.extractAudience(clientJsonWebKeySet, dcApiRequest)
         val presentationFactory = PresentationFactory(supportedAlgorithms, signDeviceAuthDetached, signDeviceAuthFallback, signIdToken)
         val jsonWebKeys = clientJsonWebKeySet?.keys?.combine(certKey)
         val idToken =
@@ -235,6 +234,7 @@ class OpenId4VpHolder(
                 credentialPresentation = credentialPresentation,
                 clientMetadata = clientMetadata,
                 jsonWebKeys = jsonWebKeys,
+                dcApiRequest = dcApiRequest
             ).getOrThrow()
         }
 
@@ -252,10 +252,20 @@ class OpenId4VpHolder(
         )
     }
 
+
+    /*
+    * DC API:
+    * The audience for the response (for example, the aud value in a Key Binding JWT) MUST be the
+    * Origin, prefixed with origin:, for example origin:https://verifier.example.com/.
+    * This is the case even for signed requests. Therefore, when using OpenID4VP over the DC API,
+    * the Client Identifier is not used as the audience for the response.
+     */
     @Throws(OAuth2Exception::class)
     private fun RequestParameters.extractAudience(
         clientJsonWebKeySet: JsonWebKeySet?,
-    ) = clientId
+        dcApiRequest: Oid4vpDCAPIRequest?
+    ) = dcApiRequest?.let { "origin:${it.callingOrigin}" }
+        ?: clientId
         ?: issuer
         ?: clientJsonWebKeySet?.keys?.firstOrNull()
             ?.let { it.keyId ?: it.didEncoded ?: it.jwkThumbprint }

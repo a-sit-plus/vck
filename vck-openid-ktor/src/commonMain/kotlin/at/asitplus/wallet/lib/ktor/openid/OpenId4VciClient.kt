@@ -9,11 +9,8 @@ import at.asitplus.openid.OpenIdConstants.PARAMETER_PROMPT_LOGIN
 import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER
 import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
-import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
-import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.Holder.StoreCredentialInput.*
@@ -21,10 +18,8 @@ import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.IssuerSigned
-import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsHeaderJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
-import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oauth2.OAuth2Client.AuthorizationForToken
@@ -83,12 +78,8 @@ class OpenId4VciClient(
      * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-04.html)
      */
     private val loadClientAttestationJwt: suspend () -> String,
-    @Deprecated("Use signClientAttestationPop instead")
-    private val clientAttestationJwsService: JwsService = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithoutCert())),
     /** Used for authenticating the client at the authorization server with client attestation. */
     private val signClientAttestationPop: SignJwtFun<JsonWebToken> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderNone()),
-    @Deprecated("Use signDpop instead")
-    private val dpopJwsService: JwsService = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithoutCert())),
     /** Used to calculate DPoP, i.e. the key the access token and refresh token gets bound to. */
     private val signDpop: SignJwtFun<JsonWebToken> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderJwk()),
     private val dpopAlgorithm: JwsAlgorithm = JwsAlgorithm.ES256,

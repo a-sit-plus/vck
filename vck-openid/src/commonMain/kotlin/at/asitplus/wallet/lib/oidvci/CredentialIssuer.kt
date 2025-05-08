@@ -16,17 +16,12 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
-import at.asitplus.wallet.lib.jws.DefaultJwsService
-import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.EncryptJwe
 import at.asitplus.wallet.lib.jws.EncryptJweFun
-import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.oauth2.RequestInfo
@@ -71,9 +66,6 @@ class CredentialIssuer(
     /** Used during issuance, when issuing credentials (using [issuer]) with data from [OidcUserInfoExtended]. */
     private val credentialProvider: CredentialIssuerDataProvider,
     /** Used to verify signature of proof elements in credential requests. */
-    @Deprecated("Use verifyJwsSignatureObject instead")
-    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
-    /** Used to verify signature of proof elements in credential requests. */
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
     private val supportedAlgorithms: Collection<JwsAlgorithm> = listOf(JwsAlgorithm.ES256),
     /** Clock used to verify timestamps in proof elements in credential requests. */
@@ -86,8 +78,6 @@ class CredentialIssuer(
     private val requireKeyAttestation: Boolean = false,
     /** Used to provide challenge to clients to include in proof of possession of key material. */
     private val clientNonceService: NonceService = DefaultNonceService(),
-    @Deprecated("Use encryptCredentialRequest instead")
-    private val jwsEncryptionService: JwsService = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithoutCert())),
     /** Used to optionally encrypt the credential response, if requested by the client. */
     private val encryptCredentialRequest: EncryptJweFun = EncryptJwe(EphemeralKeyWithoutCert()),
     /** Whether to indicate in [metadata] if credential response encryption is required. */
