@@ -1,9 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.signum.indispensable.CryptoPrivateKey
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.ECCurve
-import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.nativeDigest
@@ -13,7 +11,6 @@ import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.signum.supreme.asKmmResult
 import at.asitplus.signum.supreme.sign.EphemeralKey
 import at.asitplus.signum.supreme.sign.Signer
-import at.asitplus.signum.supreme.sign.signerFor
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock

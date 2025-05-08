@@ -8,6 +8,7 @@ import at.asitplus.rqes.collection_entries.KeyParameters
 import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.josef.ecCurve
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import com.benasher44.uuid.bytes

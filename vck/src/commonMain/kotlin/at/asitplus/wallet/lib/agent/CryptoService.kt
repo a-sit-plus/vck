@@ -28,6 +28,21 @@ interface CryptoService {
 
     val keyMaterial: KeyMaterial
 
+
+    suspend fun decrypt(
+        key: SymmetricKey<AuthCapability.Authenticated<*>, NonceTrait.Required, *>,
+        iv: ByteArray,
+        aad: ByteArray,
+        encryptedData: ByteArray,
+        authTag: ByteArray
+    ): KmmResult<ByteArray>
+
+    suspend fun encrypt(
+        key: SymmetricKey<AuthCapability.Authenticated<*>, NonceTrait.Required, *>,
+        plaintext: ByteArray,
+        aad: ByteArray
+    ): KmmResult<SealedBox<AuthCapability.Authenticated<*>, NonceTrait.Required, *>>
+
 }
 
 typealias VerifySignatureFun = (
@@ -43,20 +58,6 @@ object VerifySignature {
             it.verify(SignatureInput(input), signature)
         }
     }
-
-    fun decrypt(
-        key: SymmetricKey<AuthCapability.Authenticated<*>, NonceTrait.Required, *>,
-        iv: ByteArray,
-        aad: ByteArray,
-        encryptedData: ByteArray,
-        authTag: ByteArray
-    ): KmmResult<ByteArray>
-
-    fun encrypt(
-        key: SymmetricKey<AuthCapability.Authenticated<*>, NonceTrait.Required, *>,
-        plaintext: ByteArray,
-        aad: ByteArray
-    ): KmmResult<SealedBox<AuthCapability.Authenticated<*>, NonceTrait.Required, *>>
 }
 
 @Deprecated("Use VerifySignatureFun instead")
@@ -81,7 +82,7 @@ open class DefaultCryptoService(
 ) : CryptoService {
 
 
-    override fun decrypt(
+    override suspend fun decrypt(
         key: SymmetricKey<AuthCapability.Authenticated<*>, NonceTrait.Required, *>,
         iv: ByteArray,
         aad: ByteArray,
@@ -89,7 +90,7 @@ open class DefaultCryptoService(
         authTag: ByteArray
     ) = catching { key.decrypt(iv, encryptedData, authTag, aad).getOrThrow() }
 
-    override fun encrypt(
+    override suspend fun encrypt(
         key: SymmetricKey<AuthCapability.Authenticated<*>, NonceTrait.Required, *>,
         plaintext: ByteArray,
         aad: ByteArray

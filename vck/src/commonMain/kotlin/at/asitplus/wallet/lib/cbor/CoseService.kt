@@ -177,6 +177,7 @@ object VerifyCoseSignatureWithKey {
                 .also { Napier.d("verifyCose input is ${it.encodeToString(Base16())}") }
             val algorithm = coseSigned.protectedHeader.algorithm
                 ?: throw IllegalArgumentException("Algorithm not specified")
+            require(algorithm is CoseAlgorithm.Signature) {"CoseAlgorithm not supported: $algorithm"}
             val publicKey = signer.toCryptoPublicKey().getOrElse { ex ->
                 throw IllegalArgumentException("Signer not convertible", ex)
                     .also { Napier.w("Could not convert signer to public key: $signer", ex) }

@@ -10,6 +10,8 @@ import at.asitplus.openid.OpenIdConstants.ClientIdScheme
 import at.asitplus.openid.OpenIdConstants.PREFIX_DID_KEY
 import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
+import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm

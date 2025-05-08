@@ -160,7 +160,7 @@ data class RelyingPartyMetadata(
      * element from OpenID Connect Discovery 1.0.
      */
     @Transient
-    val idTokenSignedResponseAlg: JwsAlgorithm? = idTokenSignedResponseAlgString
+    val idTokenSignedResponseAlg: JwsAlgorithm<*>? = idTokenSignedResponseAlgString
         ?.let { s -> JwsAlgorithm.entries.firstOrNull { it.identifier == s } }
 
     /**
@@ -169,7 +169,7 @@ data class RelyingPartyMetadata(
      * The algorithm `none` is not allowed. The default, if omitted, is RS256.
      */
     @Transient
-    val authorizationSignedResponseAlg: JwsAlgorithm? = authorizationSignedResponseAlgString
+    val authorizationSignedResponseAlg: JwsAlgorithm<*>? = authorizationSignedResponseAlgString
         ?.let { s -> JwsAlgorithm.entries.firstOrNull { it.identifier == s } }
 
     /**

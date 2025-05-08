@@ -11,6 +11,8 @@ import at.asitplus.signum.indispensable.josef.JweEncryption.*
 import at.asitplus.signum.indispensable.josef.JwsExtensions.prependWith4BytesSize
 import at.asitplus.signum.indispensable.josef.JwsSigned.Companion.prepareJwsSignatureInput
 import at.asitplus.signum.supreme.SecretExposure
+import at.asitplus.signum.indispensable.symmetric.*
+import at.asitplus.signum.supreme.agree.Ephemeral
 import at.asitplus.signum.supreme.agree.keyAgreement
 import at.asitplus.signum.supreme.asKmmResult
 import at.asitplus.signum.supreme.hash.digest
@@ -253,10 +255,13 @@ object VerifyJwsSignature {
         verifySignature: VerifySignatureFun = VerifySignature(),
     ): VerifyJwsSignatureFun = { jwsObject, publicKey ->
         catching {
+
+            val jwsAlgorithm = jwsObject.header.algorithm
+            require(jwsAlgorithm is JwsAlgorithm.Signature) { "Algorithm not supported: $jwsAlgorithm" }
             verifySignature(
                 jwsObject.plainSignatureInput,
                 jwsObject.signature,
-                jwsObject.header.algorithm.algorithm,
+                jwsAlgorithm.algorithm,
                 publicKey,
             ).getOrThrow()
         }.fold(

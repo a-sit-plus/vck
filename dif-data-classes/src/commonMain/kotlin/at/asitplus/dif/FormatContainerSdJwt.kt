@@ -18,11 +18,11 @@ data class FormatContainerSdJwt(
     val kbJwtAlgorithmStrings: Set<String>? = null,
 ) {
     @Transient
-    val sdJwtAlgorithms: Set<JwsAlgorithm>? = sdJwtAlgorithmStrings
+    val sdJwtAlgorithms: Set<JwsAlgorithm<*>>? = sdJwtAlgorithmStrings
         ?.mapNotNull { s -> JwsAlgorithm.entries.firstOrNull { it.identifier == s } }?.toSet()
 
     @Transient
-    val kbJwtAlgorithms: Set<JwsAlgorithm>? = kbJwtAlgorithmStrings
+    val kbJwtAlgorithms: Set<JwsAlgorithm<*>>? = kbJwtAlgorithmStrings
         ?.mapNotNull { s -> JwsAlgorithm.entries.firstOrNull { it.identifier == s } }?.toSet()
 
 

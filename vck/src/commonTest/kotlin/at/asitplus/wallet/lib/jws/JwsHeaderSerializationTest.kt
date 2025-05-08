@@ -32,7 +32,7 @@ class JwsHeaderSerializationTest : FreeSpec({
     "Serialization contains x5c as strings" {
         val first = randomCertificate()
         val second = randomCertificate()
-        val algorithm = JwsAlgorithm.ES256
+        val algorithm = JwsAlgorithm.Signature.ES256
         val kid = uuid4().toString()
         val type = JwsContentTypeConstants.JWT
         val header = JwsHeader(
@@ -52,7 +52,7 @@ class JwsHeaderSerializationTest : FreeSpec({
     "Deserialization is correct" {
         val first = randomCertificate()
         val second = randomCertificate()
-        val algorithm = JwsAlgorithm.ES256
+        val algorithm = JwsAlgorithm.Signature.ES256
         val kid = uuid4().toString()
         val type = JwsContentTypeConstants.JWT
 

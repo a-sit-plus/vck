@@ -11,6 +11,7 @@ import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
@@ -271,7 +272,7 @@ class Validator(
         val issuerSigned = doc.issuerSigned
         val issuerAuth = issuerSigned.issuerAuth
 
-        val certificateChain = issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull() ?: run {
+        val certificateChain = issuerAuth.unprotectedHeader?.certificateChain?: run {
             Napier.w("Got no issuer certificate in $issuerAuth")
             throw IllegalArgumentException("issuerKey")
         }
@@ -478,5 +479,5 @@ class Validator(
 }
 
 class TokenStatusEvaluationException(
-    val delegate: Throwable,
-) : Exception(delegate)
+    val delegate: Throwable
+) : Throwable(delegate)

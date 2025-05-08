@@ -280,7 +280,7 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
         cm.authorizationEncryptedResponseEncoding shouldBe JweEncryption.A128CBC_HS256
         cm.idTokenEncryptedResponseAlg shouldBe JweAlgorithm.RSA_OAEP_256
         cm.idTokenEncryptedResponseEncoding shouldBe JweEncryption.A128CBC_HS256
-        cm.idTokenSignedResponseAlg shouldBe JwsAlgorithm.RS256
+        cm.idTokenSignedResponseAlg shouldBe JwsAlgorithm.Signature.RS256
         cm.jsonWebKeySetUrl shouldBe "https://verifier-backend.eudiw.dev/wallet/jarm/" +
                 "xgagB1vsIrWhMLixoJTCVZZvOHsZ8QrulEFxc0bjJdMRyzqO6j2-UB00gmOZraocfoknlxXY-kaoLlX8kygqxw/jwks.json"
     }

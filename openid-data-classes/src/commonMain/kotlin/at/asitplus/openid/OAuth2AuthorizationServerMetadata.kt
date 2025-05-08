@@ -375,7 +375,7 @@ data class OAuth2AuthorizationServerMetadata(
      * Valid values include `RS256`, `ES256`, `ES256K`, and `EdDSA`.
      */
     @Transient
-    val idTokenSigningAlgorithmsSupported: Set<JwsAlgorithm>? = idTokenSigningAlgorithmsSupportedStrings
+    val idTokenSigningAlgorithmsSupported: Set<JwsAlgorithm<*>>? = idTokenSigningAlgorithmsSupportedStrings
         ?.mapNotNull { s -> JwsAlgorithm.entries.firstOrNull { it.identifier == s } }?.toSet()
 
     /**
@@ -384,7 +384,7 @@ data class OAuth2AuthorizationServerMetadata(
      * Valid values include `none`, `RS256`, `ES256`, `ES256K`, and `EdDSA`.
      */
     @Transient
-    val requestObjectSigningAlgorithmsSupported: Set<JwsAlgorithm>? = requestObjectSigningAlgorithmsSupportedStrings
+    val requestObjectSigningAlgorithmsSupported: Set<JwsAlgorithm<*>>? = requestObjectSigningAlgorithmsSupportedStrings
         ?.mapNotNull { s -> JwsAlgorithm.entries.firstOrNull { it.identifier == s } }?.toSet()
 
     /**
