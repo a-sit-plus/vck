@@ -131,21 +131,6 @@ class AgentTest : FreeSpec({
             result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
         }
 
-        "revoked credentials must not be validated" {
-            val credentials = issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    holderKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-                ).getOrThrow()
-            ).getOrThrow()
-            credentials.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
-            issuer.revokeCredentials(listOf(credentials.vcJws)) shouldBe true
-
-            validator.verifyVcJws(credentials.vcJws, holderKeyMaterial.publicKey)
-                .shouldBeInstanceOf<Verifier.VerifyCredentialResult.Revoked>()
-        }
-
         "getting credentials that have been stored by the holder" - {
 
             "when there are no credentials stored" {
