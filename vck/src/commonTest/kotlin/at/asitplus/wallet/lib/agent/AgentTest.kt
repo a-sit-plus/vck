@@ -131,64 +131,6 @@ class AgentTest : FreeSpec({
             result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
         }
 
-        "revoked credentials must not be validated" {
-            val credentials = issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    holderKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-                ).getOrThrow()
-            ).getOrThrow()
-            credentials.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
-            issuer.revokeCredentials(listOf(credentials.vcJws)) shouldBe true
-
-            validator.verifyVcJws(credentials.vcJws, holderKeyMaterial.publicKey)
-                .shouldBeInstanceOf<Verifier.VerifyCredentialResult.Revoked>()
-        }
-
-        "building presentation with revoked credentials should not work" - {
-
-            "when setting a revocation list before storing credentials" {
-                val credentials = issuer.issueCredential(
-                    DummyCredentialDataProvider.getCredential(
-                        holderKeyMaterial.publicKey,
-                        ConstantIndex.AtomicAttribute2023,
-                        ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-                    ).getOrThrow()
-                ).getOrThrow()
-                credentials.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
-                issuer.revokeCredentials(listOf(credentials.vcJws)) shouldBe true
-
-                val storedCredentials = holder.storeCredential(credentials.toStoreCredentialInput())
-                storedCredentials.isFailure shouldBe true
-            }
-
-            "and when setting a revocation list after storing credentials" {
-                val credentials = issuer.issueCredential(
-                    DummyCredentialDataProvider.getCredential(
-                        holderKeyMaterial.publicKey,
-                        ConstantIndex.AtomicAttribute2023,
-                        ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-                    ).getOrThrow()
-                ).getOrThrow()
-                credentials.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
-
-                val storedCredentials =
-                    holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
-                storedCredentials.shouldBeInstanceOf<Holder.StoredCredential.Vc>()
-
-                issuer.revokeCredentials(listOf(credentials.vcJws)) shouldBe true
-
-                holder.createPresentation(
-                    request = PresentationRequestParameters(
-                        nonce = challenge,
-                        audience = "urn:${uuid4()}"
-                    ),
-                    credentialPresentation = singularPresentationDefinition,
-                ).getOrNull() shouldBe null
-            }
-        }
-
         "getting credentials that have been stored by the holder" - {
 
             "when there are no credentials stored" {
@@ -197,7 +139,7 @@ class AgentTest : FreeSpec({
                 holderCredentials.shouldBeEmpty()
             }
 
-            "when they are valid" - {
+            "when they are valid" {
                 val credentials = issuer.issueCredential(
                     DummyCredentialDataProvider.getCredential(
                         holderKeyMaterial.publicKey,
@@ -207,24 +149,15 @@ class AgentTest : FreeSpec({
                 ).getOrThrow()
                 credentials.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-                val storedCredentials =
-                    holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
+                val storedCredentials = holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
                 storedCredentials.shouldBeInstanceOf<Holder.StoredCredential.Vc>()
 
-                "without a revocation list set" {
-                    val holderCredentials = holder.getCredentials()
-                    holderCredentials.shouldNotBeNull()
-                    holderCredentials.filterIsInstance<Holder.StoredCredential.Vc>().forEach {
-                        it.status.shouldBe(null)
-                    }
-                }
-
-                "with a revocation list set" {
-                    val holderCredentials = holder.getCredentials()
-                    holderCredentials.shouldNotBeNull()
-                    holderCredentials.filterIsInstance<Holder.StoredCredential.Vc>().forEach {
-                        it.status.shouldBe(TokenStatus.Valid)
-                    }
+                holderCredentialStore.getCredentials().getOrThrow().shouldHaveSize(1)
+                val holderCredentials = holder.getCredentials()
+                holderCredentials.shouldNotBeNull()
+                holderCredentials.shouldHaveSize(1)
+                holderCredentials.filterIsInstance<Holder.StoredCredential.Vc>().forEach {
+                    validator.checkRevocationStatus(it.storeEntry.vc)?.getOrNull()?.shouldBe(TokenStatus.Valid)
                 }
             }
 
@@ -247,7 +180,7 @@ class AgentTest : FreeSpec({
                 val holderCredentials = holder.getCredentials()
                 holderCredentials.shouldNotBeNull()
                 holderCredentials.filterIsInstance<Holder.StoredCredential.Vc>().forEach {
-                    it.status.shouldBe(TokenStatus.Invalid)
+                    validator.checkRevocationStatus(it.storeEntry.vc)?.getOrNull().shouldBe(TokenStatus.Invalid)
                 }
             }
         }
@@ -282,7 +215,8 @@ class AgentTest : FreeSpec({
 
             verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge).also {
                 it.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
-                it.vp.revokedVerifiableCredentials.shouldBeEmpty()
+                it.vp.untimelyVerifiableCredentials.shouldBeEmpty()
+                it.vp.invalidVerifiableCredentials.shouldBeEmpty()
                 it.vp.verifiableCredentials shouldHaveSize 1
             }
         }
@@ -377,34 +311,6 @@ class AgentTest : FreeSpec({
             result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
         }
 
-        "building presentation with revoked credentials should not work" - {
-
-            "and when setting a revocation list after storing credentials" {
-                val credentials = issuer.issueCredential(
-                    DummyCredentialDataProvider.getCredential(
-                        holderKeyMaterial.publicKey,
-                        ConstantIndex.AtomicAttribute2023,
-                        ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-                    ).getOrThrow()
-                ).getOrThrow()
-                credentials.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
-
-                val storedCredentials =
-                    holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
-                storedCredentials.shouldBeInstanceOf<Holder.StoredCredential.Vc>()
-
-                issuer.revokeCredentials(listOf(credentials.vcJws)) shouldBe true
-
-                holder.createDefaultPresentation(
-                    request = PresentationRequestParameters(
-                        nonce = challenge,
-                        audience = "urn:${uuid4()}"
-                    ),
-                    credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(singularDCQLRequest)
-                ).getOrNull() as PresentationResponseParameters.DCQLParameters? shouldBe null
-            }
-        }
-
         "building presentation without necessary credentials" {
             holder.createDefaultPresentation(
                 request = PresentationRequestParameters(
@@ -435,7 +341,7 @@ class AgentTest : FreeSpec({
 
             verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge).also {
                 it.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
-                it.vp.revokedVerifiableCredentials.shouldBeEmpty()
+                it.vp.untimelyVerifiableCredentials.shouldBeEmpty()
                 it.vp.verifiableCredentials shouldHaveSize 1
             }
         }

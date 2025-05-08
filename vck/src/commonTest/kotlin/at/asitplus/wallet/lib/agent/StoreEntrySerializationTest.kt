@@ -12,7 +12,6 @@ import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.builtins.ByteArraySerializer
-import kotlinx.serialization.encodeToString
 
 class StoreEntrySerializationTest : FreeSpec({
 

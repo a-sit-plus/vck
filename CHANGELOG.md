@@ -12,6 +12,8 @@ Release 5.7.0:
    - This finally cleans up the RSAorHMAC
      - `SignatureAlgorithm.RSAorHMAC` is now properly split into `SignatureAlgorithm` and `MessageAuthenticationCode`. Both implement `DataIntegrityAlgorithm`.
      - This split also affects `JwsAlgorithm`, which now has subtypes: `Signature` and `MAC`. Hence, `JwsAlgorithm.ES256` -> `JwsAlgorithm.Signature.ES256`
+ - Separate credential timeliness validation from content semantics validation
+   - Change `VerifiablePresentationParsed.revokedVerifiableCredentials` to `VerifiablePresentationParsed.untimelyVerifiableCredentials`
 
 Release 5.6.1:
  - Expose details for `ConstraintFieldsEvaluationException`
