@@ -17,13 +17,19 @@ data class Oid4vpDCAPIRequest(
         require(callingOrigin != null || callingPackageName != null)
         require((protocol.startsWith(OID4VP_PREFIX) && protocol.count { it == DELIMITER } == 2)
                 || protocol == "openid4vp") // legacy beahaviour
+        getOpenIdVersion().getOrNull()?.let { require(it == "1") }
     }
 
     fun getOpenIdVersion() =
-        protocol.removePrefix(OID4VP_PREFIX).split(DELIMITER).first()
+        catching { protocol.removePrefix(OID4VP_PREFIX).split(DELIMITER).first() }
 
     fun getRequestType() =
-        protocol.removePrefix(OID4VP_PREFIX).split(DELIMITER)[1]
+        catching { protocol.removePrefix(OID4VP_PREFIX).split(DELIMITER)[1] }
+
+    fun isSignedRequest() =
+        catching {
+            getRequestType().getOrThrow().let { it == "signed" || it == "multisigned" }
+        }.getOrElse { false }
 
     override fun serialize(): String = vckJsonSerializer.encodeToString(this)
 
