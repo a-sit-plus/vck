@@ -8,6 +8,8 @@ import at.asitplus.signum.indispensable.KeyAgreementPrivateValue
 import at.asitplus.signum.indispensable.asn1.encoding.encodeTo4Bytes
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.*
+import at.asitplus.signum.indispensable.josef.JsonWebKeySet
+import at.asitplus.signum.indispensable.josef.JweEncryption.*
 import at.asitplus.signum.indispensable.josef.JwsExtensions.prependWith4BytesSize
 import at.asitplus.signum.indispensable.josef.JwsSigned.Companion.prepareJwsSignatureInput
 import at.asitplus.signum.indispensable.symmetric.*
@@ -245,9 +247,7 @@ class DecryptJwe(
  * Clients need to retrieve the URL passed in as the only argument, and parse the content to [JsonWebKeySet].
  */
 fun interface JwkSetRetrieverFunction {
-    suspend operator fun invoke(
-        url: String,
-    ): JsonWebKeySet?
+    operator fun invoke(url: String): JsonWebKeySet?
 }
 
 /**
@@ -320,7 +320,7 @@ class VerifyJwsSignatureWithCnf(
      * Need to implement if JSON web keys in JWS headers are referenced by a `kid`, and need to be retrieved from
      * the `jku`.
      */
-    val jwkSetRetriever: JwkSetRetrieverFunction = nullJwkSetRetrieverFunction(),
+    val jwkSetRetriever: JwkSetRetrieverFunction = JwkSetRetrieverFunction { null },
 ) : VerifyJwsSignatureWithCnfFun {
     override suspend operator fun invoke(
         jwsObject: JwsSigned<*>,
@@ -349,14 +349,6 @@ class VerifyJwsSignatureWithCnf(
 
 }
 
-private fun nullJwkSetRetrieverFunction(): JwkSetRetrieverFunction = object : JwkSetRetrieverFunction {
-    override suspend operator fun invoke(url: String): JsonWebKeySet? = null
-}
-
-private fun nullPublicJsonWebKeyLookup(): PublicJsonWebKeyLookup = object : PublicJsonWebKeyLookup {
-    override suspend operator fun invoke(jwsObject: JwsSigned<*>) = null
-}
-
 fun interface VerifyJwsObjectFun {
     suspend operator fun invoke(jwsObject: JwsSigned<*>): Boolean
 }
@@ -367,9 +359,9 @@ class VerifyJwsObject(
      * Need to implement if JSON web keys in JWS headers are referenced by a `kid`, and need to be retrieved from
      * the `jku`.
      */
-    val jwkSetRetriever: JwkSetRetrieverFunction = nullJwkSetRetrieverFunction(),
+    val jwkSetRetriever: JwkSetRetrieverFunction = JwkSetRetrieverFunction { null },
     /** Need to implement if valid keys for JWS are transported somehow out-of-band, e.g. provided by a trust store */
-    val publicKeyLookup: PublicJsonWebKeyLookup = nullPublicJsonWebKeyLookup(),
+    val publicKeyLookup: PublicJsonWebKeyLookup = PublicJsonWebKeyLookup { null },
 ) : VerifyJwsObjectFun {
     override suspend operator fun invoke(jwsObject: JwsSigned<*>) =
         jwsObject.loadPublicKeys().any { verifyJwsSignature(jwsObject, it) }

@@ -127,20 +127,18 @@ private suspend fun buildAttestationJwt(
 ).getOrThrow()
 
 private fun attestationJwtVerifier(trustedKey: JsonWebKey) =
-    object : RequestObjectJwsVerifier {
-        override suspend fun invoke(jws: JwsSigned<RequestParameters>): Boolean {
-            val attestationJwt = jws.header.attestationJwt?.let {
-                JwsSigned.Companion.deserialize<JsonWebToken>(
-                    JsonWebToken.Companion.serializer(), it
-                ).getOrThrow()
-            }
-                ?: return false
-            val verifyJwsSignatureWithKey = VerifyJwsSignatureWithKey()
-            if (!verifyJwsSignatureWithKey(attestationJwt, trustedKey))
-                return false
-            val verifierPublicKey = attestationJwt.payload.confirmationClaim?.jsonWebKey
-                ?: return false
-            return verifyJwsSignatureWithKey(jws, verifierPublicKey)
-        }
+    RequestObjectJwsVerifier { jws: JwsSigned<RequestParameters> ->
+        val attestationJwt = jws.header.attestationJwt?.let {
+            JwsSigned.Companion.deserialize<JsonWebToken>(
+                JsonWebToken.Companion.serializer(), it
+            ).getOrThrow()
+        } ?: return@RequestObjectJwsVerifier false
+        val verifyJwsSignatureWithKey = VerifyJwsSignatureWithKey()
+        if (!verifyJwsSignatureWithKey(attestationJwt, trustedKey))
+            return@RequestObjectJwsVerifier false
+        val verifierPublicKey = attestationJwt.payload.confirmationClaim?.jsonWebKey
+            ?: return@RequestObjectJwsVerifier false
+        verifyJwsSignatureWithKey(jws, verifierPublicKey)
     }
+
 
