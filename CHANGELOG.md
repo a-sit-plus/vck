@@ -7,7 +7,11 @@ Release 5.7.0:
    - Remove code elements deprecated in `5.6.0`
  - Holder:
    - Replace `keyPair` with `keyMaterial`
- - Fully integrated crypto functionality based on Signum 3.16.1
+ - Fully integrated crypto functionality based on Signum 3.16.1. This carries over breaking changes:
+   - All debug-only kotlinx.serialization for cryptographic datatypes like certificates, public keys, etc. was removed
+   - This finally cleans up the RSAorHMAC
+     - `SignatureAlgorithm.RSAorHMAC` is now properly split into `SignatureAlgorithm` and `MessageAuthenticationCode`. Both implement `DataIntegrityAlgorithm`.
+     - This split also affects `JwsAlgorithm`, which now has subtypes: `Signature` and `MAC`. Hence, `JwsAlgorithm.ES256` -> `JwsAlgorithm.Signature.ES256`
 
 Release 5.6.1:
  - Expose details for `ConstraintFieldsEvaluationException`
