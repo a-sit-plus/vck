@@ -130,7 +130,10 @@ class IssuerAgent(
         val issuerSigned = IssuerSigned.fromIssuerSignedItems(
             namespacedItems = mapOf(credential.scheme.isoNamespace!! to credential.issuerSignedItems),
             issuerAuth = signMobileSecurityObject(
-                null, null, mso, MobileSecurityObject.serializer(),
+                protectedHeader = null,
+                unprotectedHeader = null,
+                payload = mso,
+                serializer = MobileSecurityObject.serializer(),
             ).getOrThrow(),
         )
         return Issuer.IssuedCredential.Iso(issuerSigned, credential.scheme)
@@ -369,10 +372,10 @@ class IssuerAgent(
 
     private suspend fun wrapStatusListTokenInCoseSigned(statusListTokenPayload: StatusListTokenPayload): CoseSigned<StatusListTokenPayload>? =
         signStatusListCwt(
-            CoseHeader(type = MediaTypes.Application.STATUSLIST_CWT),
-            null,
-            statusListTokenPayload,
-            StatusListTokenPayload.serializer(),
+            protectedHeader = CoseHeader(type = MediaTypes.Application.STATUSLIST_CWT),
+            unprotectedHeader = null,
+            payload = statusListTokenPayload,
+            serializer = StatusListTokenPayload.serializer(),
         ).getOrElse {
             Napier.w("Could not wrapStatusListInJws", it)
             return null

@@ -20,6 +20,7 @@ import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.SignCoseFun
 import at.asitplus.wallet.lib.agent.PresentationRequestParameters.Flow
+import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
@@ -43,7 +44,7 @@ import kotlin.time.Duration.Companion.seconds
 
 internal class PresentationFactory(
     private val supportedAlgorithms: Set<JwsAlgorithm>,
-    private val signDeviceAuthDetached: SignCoseFun<ByteArray>,
+    private val signDeviceAuthDetached: SignCoseDetachedFun<ByteArray>,
     private val signDeviceAuthFallback: SignCoseFun<ByteArray>,
     private val signIdToken: SignJwtFun<IdToken>,
 ) {
@@ -118,13 +119,23 @@ internal class PresentationFactory(
                 .wrapInCborTag(24)
                 .also { Napier.d("Device authentication signature input is ${it.encodeToString(Base16())}") }
 
-            signDeviceAuthDetached(null, null, deviceAuthenticationBytes, ByteArraySerializer()).getOrElse {
+            signDeviceAuthDetached(
+                protectedHeader = null,
+                unprotectedHeader = null,
+                payload = deviceAuthenticationBytes,
+                serializer = ByteArraySerializer()
+            ).getOrElse {
                 Napier.w("Could not create DeviceAuth for presentation", it)
                 throw PresentationException(it)
             }
         }
     } else {
-        signDeviceAuthFallback(null, null, nonce.encodeToByteArray(), ByteArraySerializer()).getOrElse {
+        signDeviceAuthFallback(
+            protectedHeader = null,
+            unprotectedHeader = null,
+            payload = nonce.encodeToByteArray(),
+            serializer = ByteArraySerializer()
+        ).getOrElse {
             Napier.w("Could not create DeviceAuth for presentation", it)
             throw PresentationException(it)
         }
@@ -303,7 +314,7 @@ internal fun RequestParameters.parseTransactionData(): Pair<Flow, List<Transacti
         .ifEmpty { return null }
 
     //Do not change to map because keys are unordered!
-    val oid4vpTransactionData: List<Pair<JsonPrimitive,TransactionData>> = rawTransactionData.map {
+    val oid4vpTransactionData: List<Pair<JsonPrimitive, TransactionData>> = rawTransactionData.map {
         it to vckJsonSerializer.decodeFromJsonElement(DeprecatedBase64URLTransactionDataSerializer, it)
     }.filter { it.second.credentialIds != null }
 
