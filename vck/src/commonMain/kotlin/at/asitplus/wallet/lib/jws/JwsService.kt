@@ -71,28 +71,30 @@ object JwsHeaderNone {
     operator fun invoke(): JwsHeaderIdentifierFun = { it, keyMaterial -> it }
 }
 
-/** Create a [JwsSigned], setting [JwsHeader.type] to the specified value */
-typealias SignJwtFun<P> = suspend (
-    type: String?,
-    payload: P,
-    serializer: SerializationStrategy<P>,
-) -> KmmResult<JwsSigned<P>>
+fun interface SignJwtFun<P : Any> {
+    suspend operator fun invoke(
+        type: String?,
+        payload: P,
+        serializer: SerializationStrategy<P>,
+    ): KmmResult<JwsSigned<P>>
+}
 
-/** Create a [JwsSigned], setting [JwsHeader.type] to the specified value and applying [JwsHeaderIdentifierFun]. */
-object SignJwt {
-    operator fun <P : Any> invoke(
-        keyMaterial: KeyMaterial,
-        headerModifier: JwsHeaderIdentifierFun,
-    ): SignJwtFun<P> = { type, payload, serializer ->
-        catching {
-            val header = JwsHeader(
-                algorithm = keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
-                type = type,
-            ).let { headerModifier(it, keyMaterial) }
-            val plainSignatureInput = prepareJwsSignatureInput(header, payload, serializer, vckJsonSerializer)
-            val signature = keyMaterial.sign(plainSignatureInput).asKmmResult().getOrThrow()
-            JwsSigned(header, payload, signature, plainSignatureInput)
-        }
+data class SignJwt<P : Any>(
+    val keyMaterial: KeyMaterial,
+    val headerModifier: JwsHeaderIdentifierFun,
+) : SignJwtFun<P> {
+    override suspend operator fun invoke(
+        type: String?,
+        payload: P,
+        serializer: SerializationStrategy<P>,
+    ) = catching {
+        val header = JwsHeader(
+            algorithm = keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
+            type = type,
+        ).let { headerModifier(it, keyMaterial) }
+        val plainSignatureInput = prepareJwsSignatureInput(header, payload, serializer, vckJsonSerializer)
+        val signature = keyMaterial.sign(plainSignatureInput).asKmmResult().getOrThrow()
+        JwsSigned(header, payload, signature, plainSignatureInput)
     }
 }
 

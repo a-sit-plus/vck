@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_PRESENTATION
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
@@ -67,62 +66,6 @@ class Parser(
         }
         Napier.d("VP is valid")
         return ParseVpResult.Success(vpJws)
-    }
-
-    /**
-     * Parses a Verifiable Credential in JWS format
-     *
-     * @param it the JWS enclosing the VC, in compact representation
-     */
-    fun parseVcJws(it: String, vcJws: VerifiableCredentialJws): ParseVcResult {
-        if (vcJws.issuer != vcJws.vc.issuer)
-            return ParseVcResult.InvalidStructure(it)
-                .also { Napier.w("iss invalid: ${vcJws.issuer}, expected ${vcJws.vc.issuer}") }
-        if (vcJws.jwtId != vcJws.vc.id)
-            return ParseVcResult.InvalidStructure(it)
-                .also { Napier.w("jti invalid: ${vcJws.jwtId}, expected ${vcJws.vc.id}") }
-        if (vcJws.subject != vcJws.vc.credentialSubject.id)
-            return ParseVcResult.InvalidStructure(it)
-                .also { Napier.w("sub invalid: ${vcJws.subject}, expected ${vcJws.vc.credentialSubject.id}") }
-        if (!vcJws.vc.type.contains(VERIFIABLE_CREDENTIAL))
-            return ParseVcResult.InvalidStructure(it)
-                .also { Napier.w("type invalid: ${vcJws.vc.type}, expected to contain $VERIFIABLE_CREDENTIAL") }
-        if (vcJws.expiration != null && vcJws.expiration < (clock.now() - timeLeeway))
-            return ParseVcResult.InvalidStructure(it)
-                .also { Napier.w("exp invalid: ${vcJws.expiration}, now is ${clock.now()}") }
-        if (vcJws.vc.expirationDate != null && vcJws.vc.expirationDate < (clock.now() - timeLeeway))
-            return ParseVcResult.InvalidStructure(it)
-                .also { Napier.w("expirationDate invalid: ${vcJws.vc.expirationDate}, now is ${clock.now()}") }
-        if (vcJws.expiration?.epochSeconds != vcJws.vc.expirationDate?.epochSeconds)
-            return ParseVcResult.InvalidStructure(it)
-                .also { Napier.w("exp invalid: ${vcJws.expiration}, expected ${vcJws.vc.expirationDate}") }
-        if (vcJws.notBefore > (clock.now() + timeLeeway))
-            return ParseVcResult.InvalidStructure(it)
-                .also { Napier.w("nbf invalid: ${vcJws.notBefore}, now is ${clock.now()}") }
-        if (vcJws.vc.issuanceDate > (clock.now() + timeLeeway))
-            return ParseVcResult.InvalidStructure(it)
-                .also { Napier.w("issuanceDate invalid: ${vcJws.vc.issuanceDate}, now is ${clock.now()}") }
-        if (vcJws.notBefore.epochSeconds != vcJws.vc.issuanceDate.epochSeconds)
-            return ParseVcResult.InvalidStructure(it)
-                .also { Napier.w("nbf invalid: ${vcJws.notBefore}, expected ${vcJws.vc.issuanceDate}") }
-        Napier.d("VC is valid")
-        return ParseVcResult.Success(vcJws)
-    }
-
-    /**
-     * Verifies the time validity of a [VerifiableCredentialSdJwt]
-     */
-    fun verifySdJwtValidity(sdJwt: VerifiableCredentialSdJwt): ParseVcResult {
-        if (sdJwt.expiration != null && sdJwt.expiration < (clock.now() - timeLeeway)) {
-            Napier.w("exp invalid: ${sdJwt.expiration}, now is ${clock.now()}")
-            return ParseVcResult.ValidationError("exp invalid: ${sdJwt.expiration}, now is ${clock.now()}")
-        }
-        if (sdJwt.notBefore != null && sdJwt.notBefore > (clock.now() + timeLeeway)) {
-            Napier.w("nbf invalid: ${sdJwt.notBefore}, now is ${clock.now()}")
-            return ParseVcResult.ValidationError("nbf invalid: ${sdJwt.notBefore}, now is ${clock.now()}")
-        }
-        Napier.d("SD-JWT is valid")
-        return ParseVcResult.SuccessSdJwt(sdJwt)
     }
 
     sealed class ParseVcResult {

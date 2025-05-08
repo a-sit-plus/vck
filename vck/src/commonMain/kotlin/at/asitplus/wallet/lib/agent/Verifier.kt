@@ -1,11 +1,14 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.KmmResult
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.jwkId
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
+import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary
 import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.iso.DeviceResponse
 import at.asitplus.wallet.lib.iso.Document
 import at.asitplus.wallet.lib.iso.IssuerSigned
@@ -56,7 +59,8 @@ interface Verifier {
             val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
             val reconstructedJsonObject: JsonObject,
             val disclosures: Collection<SelectiveDisclosureItem>,
-            val isRevoked: Boolean,
+            val timelinessValidationSummary: CredentialTimelinessValidationSummary.SdJwt,
+            val tokenStatus: KmmResult<TokenStatus>?,
         ) : VerifyPresentationResult()
 
         data class SuccessIso(val documents: List<IsoDocumentParsed>) : VerifyPresentationResult()
@@ -74,7 +78,6 @@ interface Verifier {
             val reconstructedJsonObject: JsonObject,
             /** Map of serialized disclosure item (as [String]) to parsed item (as [SelectiveDisclosureItem]) */
             val disclosures: Map<String, SelectiveDisclosureItem>,
-            val isRevoked: Boolean,
         ) : VerifyCredentialResult()
 
         data class SuccessIso(val issuerSigned: IssuerSigned) : VerifyCredentialResult()

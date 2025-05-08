@@ -8,6 +8,6 @@ data class VerifiablePresentationParsed(
     val id: String,
     val type: String,
     val verifiableCredentials: Collection<VerifiableCredentialJws> = listOf(),
-    val revokedVerifiableCredentials: Collection<VerifiableCredentialJws> = listOf(),
+    val untimelyVerifiableCredentials: Collection<VerifiableCredentialJws> = listOf(),
     val invalidVerifiableCredentials: Collection<String> = listOf(),
 )
