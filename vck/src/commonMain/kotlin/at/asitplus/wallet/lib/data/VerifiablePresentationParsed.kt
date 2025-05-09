@@ -1,9 +1,5 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.KmmResult
-import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
-
 /**
  * Intermediate class used by [at.asitplus.wallet.lib.agent.Validator.verifyVpJws] when parsing a verifiable
  * presentation, and also by [at.asitplus.wallet.lib.agent.VerifierAgent.verifyPresentationVcJwt].
@@ -28,8 +24,3 @@ data class VerifiablePresentationParsed(
         }
 }
 
-data class VcJwsVerificationResultWrapper(
-    val vcJws: VerifiableCredentialJws,
-    val tokenStatus: KmmResult<TokenStatus>?,
-    val timelinessValidationSummary: CredentialTimelinessValidationSummary.VcJws,
-)
