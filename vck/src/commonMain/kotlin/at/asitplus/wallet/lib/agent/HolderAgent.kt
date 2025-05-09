@@ -11,20 +11,11 @@ import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
-import at.asitplus.wallet.lib.data.CredentialPresentation
-import at.asitplus.wallet.lib.data.CredentialPresentationRequest
-import at.asitplus.wallet.lib.data.CredentialToJsonConverter
-import at.asitplus.wallet.lib.data.KeyBindingJws
-import at.asitplus.wallet.lib.data.VerifiablePresentationJws
+import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.dif.PresentationExchangeInputEvaluator
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.third_party.at.asitplus.oidc.dcql.toDefaultSubmission
-import at.asitplus.wallet.lib.jws.SignJwt
-import at.asitplus.wallet.lib.jws.SignJwtFun
-import at.asitplus.wallet.lib.jws.JwsHeaderKeyId
-import at.asitplus.wallet.lib.jws.JwsHeaderNone
-import at.asitplus.wallet.lib.jws.SdJwtSigned
+import at.asitplus.wallet.lib.jws.*
 import at.asitplus.wallet.lib.procedures.dcql.DCQLQueryAdapter
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
@@ -38,7 +29,10 @@ class HolderAgent(
     override val keyMaterial: KeyMaterial,
     private val subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
     private val validator: Validator = Validator(),
-    private val signVerifiablePresentation: SignJwtFun<VerifiablePresentationJws> = SignJwt(keyMaterial, JwsHeaderKeyId()),
+    private val signVerifiablePresentation: SignJwtFun<VerifiablePresentationJws> = SignJwt(
+        keyMaterial,
+        JwsHeaderKeyId(),
+    ),
     private val signKeyBinding: SignJwtFun<KeyBindingJws> = SignJwt(keyMaterial, JwsHeaderNone()),
     private val verifiablePresentationFactory: VerifiablePresentationFactory =
         VerifiablePresentationFactory(keyMaterial.identifier, signVerifiablePresentation, signKeyBinding),
@@ -102,39 +96,17 @@ class HolderAgent(
         return credentials.map { it.toStoredCredential() }
     }
 
-    private suspend fun StoreEntry.toStoredCredential() = when (this) {
-        is StoreEntry.Iso -> Holder.StoredCredential.Iso(
-            this,
-            // this coerces errors on resolving token status to an invalid token status
-            validator.checkRevocationStatus(issuerSigned)?.let {
-                it.getOrNull() ?: TokenStatus.Invalid
-            },
-        )
-
-        is StoreEntry.Vc -> Holder.StoredCredential.Vc(
-            this,
-            // this coerces errors on resolving token status to an invalid token status
-            validator.checkRevocationStatus(vc)?.let {
-                it.getOrNull() ?: TokenStatus.Invalid
-            },
-        )
-
-        is StoreEntry.SdJwt -> Holder.StoredCredential.SdJwt(
-            this,
-            // this coerces errors on resolving token status to an invalid token status
-            validator.checkRevocationStatus(sdJwt)?.let {
-                it.getOrNull() ?: TokenStatus.Invalid
-            },
-        )
+    private fun StoreEntry.toStoredCredential() = when (this) {
+        is StoreEntry.Iso -> Holder.StoredCredential.Iso(this)
+        is StoreEntry.Vc -> Holder.StoredCredential.Vc(this)
+        is StoreEntry.SdJwt -> Holder.StoredCredential.SdJwt(this)
     }
 
     /**
      * Gets a list of all valid stored credentials sorted by preference
      */
-    private suspend fun getValidCredentialsByPriority() = getCredentials()
-        ?.filter { it.status?.isInvalid != true }
-        ?.map { it.storeEntry }
-        ?.sortedBy {
+    private suspend fun getValidCredentialsByPriority(): List<StoreEntry>? {
+        return getCredentials()?.map { it.storeEntry }?.sortedBy {
             // prefer iso credentials and sd jwt credentials over plain vc credentials
             // -> they support selective disclosure!
             when (it) {
@@ -142,7 +114,14 @@ class HolderAgent(
                 is StoreEntry.SdJwt -> 1
                 is StoreEntry.Iso -> 1
             }
-        }
+        }?.sortedBy {
+            if (validator.checkTimeliness(it).isSuccess) {
+                0
+            } else {
+                1
+            }
+        } // TODO: Do we also want to sort by token status here? Seems like a lot of time overhead..
+    }
 
     override suspend fun createDefaultPresentation(
         request: PresentationRequestParameters,
@@ -150,12 +129,12 @@ class HolderAgent(
     ): KmmResult<PresentationResponseParameters> = when (credentialPresentationRequest) {
         is CredentialPresentationRequest.PresentationExchangeRequest -> createPresentation(
             request = request,
-            credentialPresentation = credentialPresentationRequest.toCredentialPresentation()
+            credentialPresentation = credentialPresentationRequest.toCredentialPresentation(),
         )
 
         is CredentialPresentationRequest.DCQLRequest -> createPresentation(
             request = request,
-            credentialPresentation = credentialPresentationRequest.toCredentialPresentation()
+            credentialPresentation = credentialPresentationRequest.toCredentialPresentation(),
         )
     }
 

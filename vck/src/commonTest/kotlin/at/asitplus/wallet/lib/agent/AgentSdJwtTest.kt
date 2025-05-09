@@ -10,6 +10,7 @@ import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.SdJwtSigned
@@ -20,6 +21,7 @@ import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.jsonPrimitive
@@ -97,7 +99,7 @@ class AgentSdJwtTest : FreeSpec({
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
 
         verified.reconstructedJsonObject.keys shouldContain CLAIM_GIVEN_NAME
-        verified.isRevoked shouldBe false
+        verified.tokenStatus?.getOrNull() shouldNotBe TokenStatus.Invalid
     }
 
     "when using presentation exchange" - {
@@ -115,7 +117,7 @@ class AgentSdJwtTest : FreeSpec({
 
             verified.reconstructedJsonObject[CLAIM_GIVEN_NAME]?.jsonPrimitive?.content shouldBe "Susanne"
             verified.reconstructedJsonObject[CLAIM_DATE_OF_BIRTH]?.jsonPrimitive?.content shouldBe "1990-01-01"
-            verified.isRevoked shouldBe false
+            verified.tokenStatus?.getOrNull() shouldNotBe TokenStatus.Invalid
         }
 
         "wrong key binding jwt" {
@@ -163,7 +165,7 @@ class AgentSdJwtTest : FreeSpec({
             issuer.revokeCredentialsWithId(listOfJwtId) shouldBe true
             val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-            verified.isRevoked shouldBe true
+            verified.tokenStatus?.getOrNull() shouldBe TokenStatus.Invalid
         }
     }
 
@@ -191,7 +193,7 @@ class AgentSdJwtTest : FreeSpec({
 
             verified.reconstructedJsonObject[CLAIM_GIVEN_NAME]?.jsonPrimitive?.content shouldBe "Susanne"
             verified.reconstructedJsonObject[CLAIM_DATE_OF_BIRTH]?.jsonPrimitive?.content shouldBe "1990-01-01"
-            verified.isRevoked shouldBe false
+            verified.tokenStatus?.getOrNull() shouldNotBe TokenStatus.Invalid
         }
 
         "wrong key binding jwt" {
@@ -261,7 +263,7 @@ class AgentSdJwtTest : FreeSpec({
             issuer.revokeCredentialsWithId(listOfJwtId) shouldBe true
             val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-            verified.isRevoked shouldBe true
+            verified.tokenStatus?.getOrNull() shouldBe TokenStatus.Invalid
         }
     }
 })

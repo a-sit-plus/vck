@@ -7,7 +7,20 @@ package at.asitplus.wallet.lib.data
 data class VerifiablePresentationParsed(
     val id: String,
     val type: String,
-    val verifiableCredentials: Collection<VerifiableCredentialJws> = listOf(),
-    val revokedVerifiableCredentials: Collection<VerifiableCredentialJws> = listOf(),
+    val timelyVerifiableCredentials: Collection<VcJwsVerificationResultWrapper> = listOf(),
+    val untimelyVerifiableCredentials: Collection<VcJwsVerificationResultWrapper> = listOf(),
     val invalidVerifiableCredentials: Collection<String> = listOf(),
-)
+) {
+    @Suppress("UNUSED")
+    @Deprecated("Renamed to represent new validation semantics.", ReplaceWith("untimelyVerifiableCredentials"))
+    val revokedVerifiableCredentials
+        get() = untimelyVerifiableCredentials
+
+    @Suppress("UNUSED")
+    @Deprecated("Renamed to represent new validation semantics.", ReplaceWith("timelyVerifiableCredentials.map { it.vcJws }"))
+    val verifiableCredentials
+        get() = timelyVerifiableCredentials.map {
+            it.vcJws
+        }
+}
+

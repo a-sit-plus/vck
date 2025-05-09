@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.agent.validation.mdoc
 
-data class MdocTimelinessValidationSummary(
+data class MdocTimelinessValidationDetails(
     val msoTimelinessValidationSummary: MobileSecurityObjectTimelinessValidationSummary?,
 ) {
     val isSuccess: Boolean

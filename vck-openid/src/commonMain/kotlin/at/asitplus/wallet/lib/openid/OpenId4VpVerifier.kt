@@ -675,10 +675,10 @@ open class OpenId4VpVerifier(
             reconstructed = reconstructedJsonObject,
             disclosures = disclosures,
             state = state,
-            isRevoked = isRevoked
+            timelinessValidationSummary = timelinessValidationSummary,
+            tokenStatus = tokenStatus,
         ).also { Napier.i("VP success: $this") }
     }
-
 }
 
 private val PresentationSubmissionDescriptor.cumulativeJsonPath: String

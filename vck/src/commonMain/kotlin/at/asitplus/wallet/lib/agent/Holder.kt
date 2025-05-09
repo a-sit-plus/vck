@@ -58,30 +58,19 @@ interface Holder {
      */
     suspend fun getCredentials(): Collection<StoredCredential>?
 
-    sealed class StoredCredential(
-        open val storeEntry: SubjectCredentialStore.StoreEntry,
-        val status: TokenStatus?,
-    ) {
+    // TODO: Replace with StoreEntry?
+    sealed class StoredCredential(open val storeEntry: SubjectCredentialStore.StoreEntry) {
         class Vc(
             override val storeEntry: SubjectCredentialStore.StoreEntry.Vc,
-            status: TokenStatus?
-        ) : StoredCredential(
-            storeEntry = storeEntry, status = status
-        )
+        ) : StoredCredential(storeEntry = storeEntry)
 
         class SdJwt(
             override val storeEntry: SubjectCredentialStore.StoreEntry.SdJwt,
-            status: TokenStatus?
-        ) : StoredCredential(
-            storeEntry = storeEntry, status = status
-        )
+        ) : StoredCredential(storeEntry = storeEntry)
 
         class Iso(
             override val storeEntry: SubjectCredentialStore.StoreEntry.Iso,
-            status: TokenStatus?,
-        ) : StoredCredential(
-            storeEntry = storeEntry, status = status
-        )
+        ) : StoredCredential(storeEntry = storeEntry)
     }
 
     /**

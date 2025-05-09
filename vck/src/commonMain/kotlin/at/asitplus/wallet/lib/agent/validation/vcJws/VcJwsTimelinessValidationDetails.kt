@@ -4,7 +4,7 @@ import at.asitplus.wallet.lib.agent.validation.common.EntityExpiredError
 import at.asitplus.wallet.lib.agent.validation.common.EntityNotYetValidError
 import kotlinx.datetime.Instant
 
-data class VcJwsTimelinessValidationSummary(
+data class VcJwsTimelinessValidationDetails(
     val evaluationTime: Instant,
     val jwsExpiredError: EntityExpiredError?,
     val credentialExpiredError: EntityExpiredError?,

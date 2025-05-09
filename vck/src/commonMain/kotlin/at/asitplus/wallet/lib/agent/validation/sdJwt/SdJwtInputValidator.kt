@@ -51,8 +51,10 @@ data class SdJwtInputValidator(
         val credentialPayload = payloadCredentialValidationSummary.getOrNull()
         val sdJwtValidator = payloadJsonValidationSummary.getOrNull()
 
-        val payloadValidationSummary = if (credentialPayload == null || sdJwtValidator == null) {
-            KmmResult.failure(IllegalArgumentException())
+        val payloadValidationSummary = if (credentialPayload == null) {
+            KmmResult.failure(payloadCredentialValidationSummary.exceptionOrNull()!!)
+        } else if(sdJwtValidator == null) {
+            KmmResult.failure(payloadJsonValidationSummary.exceptionOrNull()!!)
         } else {
             val reconstructedJsonObject = sdJwtValidator.reconstructedJsonObject ?: buildJsonObject { }
 
@@ -65,7 +67,6 @@ data class SdJwtInputValidator(
                     verifiableCredentialSdJwt = credentialPayload.verifiableCredentialSdJwt,
                     reconstructedJsonObject = reconstructedJsonObject,
                     disclosures = validDisclosures,
-                    isRevoked = false,
                 )
             )
         }
@@ -79,7 +80,7 @@ data class SdJwtInputValidator(
             },
             payloadCredentialValidationSummary = payloadCredentialValidationSummary,
             payloadJsonValidationSummary = payloadJsonValidationSummary,
-            payloadValidationSummary = payloadValidationSummary,
+            payload = payloadValidationSummary,
         )
     }
 }

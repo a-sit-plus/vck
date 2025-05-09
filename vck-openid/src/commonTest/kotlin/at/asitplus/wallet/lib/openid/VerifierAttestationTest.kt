@@ -1,7 +1,10 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.RequestParameters
-import at.asitplus.signum.indispensable.josef.*
+import at.asitplus.signum.indispensable.josef.ConfirmationClaim
+import at.asitplus.signum.indispensable.josef.JsonWebKey
+import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -72,8 +75,8 @@ class VerifierAttestationTest : FreeSpec({
 
         val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
             .shouldBeInstanceOf<AuthnResponseResult.Success>()
-        result.vp.verifiableCredentials.shouldNotBeEmpty()
-        result.vp.verifiableCredentials.forEach {
+        result.vp.timelyVerifiableCredentials.shouldNotBeEmpty()
+        result.vp.timelyVerifiableCredentials.map { it.vcJws }.forEach {
             it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
         }
     }

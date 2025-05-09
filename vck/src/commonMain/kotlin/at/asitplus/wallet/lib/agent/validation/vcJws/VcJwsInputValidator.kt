@@ -11,7 +11,7 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 
 data class VcJwsInputValidator(
     val vcJwsContentSemanticsValidator: VcJwsContentSemanticsValidator = VcJwsContentSemanticsValidator(),
-    val jwsIntegrityValidator: VerifyJwsObjectFun = VerifyJwsObject(),
+    val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
 ) {
     suspend operator fun invoke(
         input: String,
@@ -25,10 +25,11 @@ data class VcJwsInputValidator(
             return VcJwsInputValidationResult.ParsingError(input, it)
         }
         val vcJws = jws.payload
+
         return VcJwsInputValidationResult.ContentValidationSummary(
             input = input,
             parsed = jws,
-            isIntegrityGood = jwsIntegrityValidator(jws),
+            isIntegrityGood = verifyJwsObject(jws),
             subjectMatchingResult = publicKey?.let {
                 SubjectMatchingResult(
                     subject = vcJws.subject,

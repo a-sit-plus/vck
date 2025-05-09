@@ -33,4 +33,3 @@ sealed interface VcJwsInputValidationResult {
             ).all { it }
     }
 }
-

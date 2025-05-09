@@ -13,14 +13,14 @@ class MdocTimelinessValidator(
         timeLeeway = timeLeeway,
     ),
 ) {
-    operator fun invoke(issuerSigned: IssuerSigned) = MdocTimelinessValidationSummary(
+    operator fun invoke(issuerSigned: IssuerSigned) = MdocTimelinessValidationDetails(
         msoTimelinessValidationSummary = issuerSigned.issuerAuth.payload?.let {
             mobileSecurityObjectTimelinessValidator(it)
-        }?.also {
-            if(it.isSuccess) {
-                Napier.d("Verifying ISO Cred $it")
-            }
         }
-    )
+    ).also {
+        if(it.isSuccess) {
+            Napier.d("ISO Cred $it is timely")
+        }
+    }
 }
 

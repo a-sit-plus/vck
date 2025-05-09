@@ -1,12 +1,12 @@
 package at.asitplus.wallet.lib.agent.validation
 
-import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.agent.validation.mdoc.MdocTimelinessValidator
 import at.asitplus.wallet.lib.agent.validation.sdJwt.SdJwtTimelinessValidator
 import at.asitplus.wallet.lib.agent.validation.vcJws.VcJwsTimelinessValidator
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
-import io.github.aakira.napier.Napier
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
+import at.asitplus.wallet.lib.iso.IssuerSigned
 import kotlinx.datetime.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -14,9 +14,6 @@ import kotlin.time.Duration.Companion.seconds
 data class CredentialTimelinessValidator(
     private val timeLeeway: Duration = 300.seconds,
     private val clock: Clock = Clock.System,
-    private val tokenStatusResolver: TokenStatusResolver = TokenStatusResolver {
-        KmmResult.success(TokenStatus.Valid)
-    },
     val vcJwsTimelinessValidator: VcJwsTimelinessValidator = VcJwsTimelinessValidator(
         timeLeeway = timeLeeway,
         clock = clock
@@ -30,34 +27,32 @@ data class CredentialTimelinessValidator(
         clock = clock
     ),
 ) {
-    suspend operator fun invoke(storeEntry: SubjectCredentialStore.StoreEntry) = CredentialTimelinessValidationSummary(
-        tokenStatus = when (storeEntry) {
-            is SubjectCredentialStore.StoreEntry.Iso -> storeEntry.issuerSigned.issuerAuth.payload?.status
-            is SubjectCredentialStore.StoreEntry.SdJwt -> storeEntry.sdJwt.credentialStatus
-            is SubjectCredentialStore.StoreEntry.Vc -> storeEntry.vc.vc.credentialStatus
-        }?.let {
-            tokenStatusResolver(it)
-        },
-        timelinessValidationSummaryDetails = when (storeEntry) {
-            is SubjectCredentialStore.StoreEntry.Iso -> CredentialTimelinessValidationSummaryDetails.MdocCredential(
-                storeEntry = storeEntry,
-                summary = mdocTimelinessValidator.invoke(storeEntry.issuerSigned),
-            )
+    operator fun invoke(issuerSigned: IssuerSigned) = CredentialTimelinessValidationSummary.Mdoc(
+        mdocTimelinessValidator(issuerSigned),
+    )
 
-            is SubjectCredentialStore.StoreEntry.SdJwt -> CredentialTimelinessValidationSummaryDetails.SdJwtCredential(
-                storeEntry = storeEntry,
-                sdJwtTimelinessValidator(storeEntry.sdJwt),
-            )
+    operator fun invoke(sdJwt: VerifiableCredentialSdJwt) = CredentialTimelinessValidationSummary.SdJwt(
+        sdJwtTimelinessValidator(sdJwt),
+    )
 
-            is SubjectCredentialStore.StoreEntry.Vc -> CredentialTimelinessValidationSummaryDetails.VerifiableCredential(
-                storeEntry = storeEntry,
-                vcJwsTimelinessValidator(vcJws = storeEntry.vc),
-            )
-        }
-    ).also {
-        if (it.isSuccess) {
-            Napier.d("VC is timely")
-        }
+    operator fun invoke(vcJws: VerifiableCredentialJws) = CredentialTimelinessValidationSummary.VcJws(
+        vcJwsTimelinessValidator(vcJws = vcJws),
+    )
+
+    operator fun invoke(storeEntry: SubjectCredentialStore.StoreEntry) = when (storeEntry) {
+        is SubjectCredentialStore.StoreEntry.Iso -> invoke(storeEntry)
+        is SubjectCredentialStore.StoreEntry.SdJwt -> invoke(storeEntry)
+        is SubjectCredentialStore.StoreEntry.Vc -> invoke(storeEntry)
+    }
+    operator fun invoke(storeEntry: SubjectCredentialStore.StoreEntry.Vc) = invoke(storeEntry.vc)
+    operator fun invoke(storeEntry: SubjectCredentialStore.StoreEntry.SdJwt) = invoke(storeEntry.sdJwt)
+    operator fun invoke(storeEntry: SubjectCredentialStore.StoreEntry.Iso) = invoke(storeEntry.issuerSigned)
+
+
+    operator fun invoke(credentialWrapper: CredentialWrapper): CredentialTimelinessValidationSummary = when (credentialWrapper) {
+        is CredentialWrapper.Mdoc -> invoke(credentialWrapper.issuerSigned)
+        is CredentialWrapper.SdJwt -> invoke(credentialWrapper.sdJwt)
+        is CredentialWrapper.VcJws -> invoke(credentialWrapper.verifiableCredentialJws)
     }
 }
 
