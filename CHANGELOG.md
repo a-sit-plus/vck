@@ -13,7 +13,19 @@ Release 5.7.0:
      - `SignatureAlgorithm.RSAorHMAC` is now properly split into `SignatureAlgorithm` and `MessageAuthenticationCode`. Both implement `DataIntegrityAlgorithm`.
      - This split also affects `JwsAlgorithm`, which now has subtypes: `Signature` and `MAC`. Hence, `JwsAlgorithm.ES256` -> `JwsAlgorithm.Signature.ES256`
  - Separate credential timeliness validation from content semantics validation
-   - Change `VerifiablePresentationParsed.revokedVerifiableCredentials` to `VerifiablePresentationParsed.untimelyVerifiableCredentials`
+   - Change `Validator` constructor to include configuration of separate credential structure validators 
+   - Change `Validator` constructor to include configuration of credential timeliness validator 
+   - Change `Validator.verifyVcJws` to not perform timeliness validation
+   - Change `Validator.verifySdJwt` to not perform timeliness validation
+   - Replace property`isRevoked` with properties `timelinessValidationSummary` and `tokenStatus` in:
+     - `Verifier.VerifyPresentationResult.SuccessSdJwt` 
+     - `IsoDocumentParsed`
+     - `AuthnResponseResult.SuccessSdJwt`
+   - Rename `VerifiablePresentationParsed.verifiableCredentials` to `VerifiablePresentationParsed.timelyCredentials`
+   - Rename `VerifiablePresentationParsed.revokedVerifiableCredentials` to `VerifiablePresentationParsed.untimelyVerifiableCredentials`
+   - Change type of `VerifiablePresentationParsed.verifiableCredentials` and `revokedVerifiableCredentials` to `Collection<VcJwsVerificationResultWrapper`> 
+   - Add `Validator.checkTimeliness`
+   - Remove `Holder.StoredCredential.status`
 
 Release 5.6.1:
  - Expose details for `ConstraintFieldsEvaluationException`

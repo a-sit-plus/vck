@@ -12,12 +12,12 @@ data class SdJwtTimelinessValidator(
     val timeLeeway: Duration = 300.seconds,
     private val clock: Clock = Clock.System,
 ) {
-    operator fun invoke(sdJwt: VerifiableCredentialSdJwt): SdJwtTimelinessValidationSummary {
+    operator fun invoke(sdJwt: VerifiableCredentialSdJwt): SdJwtTimelinessValidationDetails {
         val now = clock.now()
         val earliestAcceptedExpirationTime = (now - timeLeeway)
         val latestAcceptedNotBeforeTime = (now + timeLeeway)
 
-        return SdJwtTimelinessValidationSummary(
+        return SdJwtTimelinessValidationDetails(
             evaluationTime = now,
             jwsExpiredError = if (sdJwt.expiration != null && sdJwt.expiration < earliestAcceptedExpirationTime) {
                 Napier.w("exp invalid: ${sdJwt.expiration}, now is $now")

@@ -74,13 +74,18 @@ class Validator(
         verifyCoseSignatureWithKey = verifyCoseSignatureWithKey,
     ),
     /**
-     * This function [tokenStatusResolver] should check the status mechanisms in a given status claim in order to
-     * evaluate the token status.
+     * @param timeLeeway specifies tolerance for expiration and start of validity of credentials.
+     * A credential that expired at most `timeLeeway` ago is not yet considered expired.
+     * A credential that is valid in at most `timeLeeway` is already considered valid.
      */
     private val timeLeeway: Duration = 300.seconds,
     private val clock: Clock = Clock.System,
     private val zlibService: ZlibService = DefaultZlibService(),
     private val resolveStatusListToken: StatusListTokenResolver? = null,
+    /**
+     * The function [tokenStatusResolver] should check the status mechanisms in a given status claim in order to
+     * evaluate the token status.
+     */
     private val tokenStatusResolver: TokenStatusResolver = resolveStatusListToken?.toTokenStatusResolver(
         verifyJwsObjectIntegrity = verifyJwsObject,
         zlibService = zlibService,
@@ -101,7 +106,7 @@ class Validator(
         timeLeeway = timeLeeway,
         clock = clock,
     ),
-    val credentialTimelinessValidator: CredentialTimelinessValidator = CredentialTimelinessValidator(
+    private val credentialTimelinessValidator: CredentialTimelinessValidator = CredentialTimelinessValidator(
         clock = clock,
         timeLeeway = timeLeeway,
         vcJwsTimelinessValidator = vcJwsTimelinessValidator,
@@ -109,45 +114,21 @@ class Validator(
         mdocTimelinessValidator = mdocTimelinessValidator,
     ),
 ) {
+    /**
+     * Checks the timeliness of the passed credential.
+     */
     fun checkTimeliness(storeEntry: SubjectCredentialStore.StoreEntry) = credentialTimelinessValidator(storeEntry)
-
-    fun checkTimeliness(issuerSigned: IssuerSigned) =
-        credentialTimelinessValidator(CredentialWrapper.Mdoc(issuerSigned))
-
-    fun checkTimeliness(vcJws: VerifiableCredentialJws) =
-        credentialTimelinessValidator(CredentialWrapper.VcJws(vcJws))
-
-    fun checkTimeliness(sdJwt: VerifiableCredentialSdJwt) =
-        credentialTimelinessValidator(CredentialWrapper.SdJwt(sdJwt))
+    fun checkTimeliness(issuerSigned: IssuerSigned) = credentialTimelinessValidator(issuerSigned)
+    fun checkTimeliness(vcJws: VerifiableCredentialJws) = credentialTimelinessValidator(vcJws)
+    fun checkTimeliness(sdJwt: VerifiableCredentialSdJwt) = credentialTimelinessValidator(sdJwt)
 
     /**
-     * Checks the revocation state of the passed MDOC Credential.
+     * Checks the revocation state of the passed credential.
      */
-    suspend fun checkRevocationStatus(issuerSigned: IssuerSigned): KmmResult<TokenStatus>? =
-        issuerSigned.issuerAuth.payload?.status?.let {
-            checkRevocationStatus(it)
-        }
-
-    /**
-     * Checks the revocation state of the passed Verifiable Credential.
-     */
-    suspend fun checkRevocationStatus(vcJws: VerifiableCredentialJws): KmmResult<TokenStatus>? =
-        vcJws.vc.credentialStatus?.let {
-            checkRevocationStatus(it)
-        }
-
-    /**
-     * Checks the revocation state of the passed Verifiable Credential.
-     */
-    suspend fun checkRevocationStatus(sdJwt: VerifiableCredentialSdJwt): KmmResult<TokenStatus>? =
-        sdJwt.credentialStatus?.let {
-            checkRevocationStatus(it)
-        }
-
-    /**
-     * Checks the revocation state using the provided status mechanisms
-     */
-    private suspend fun checkRevocationStatus(status: Status): KmmResult<TokenStatus> = tokenStatusResolver(status)
+    suspend fun checkRevocationStatus(storeEntry: SubjectCredentialStore.StoreEntry) = tokenStatusResolver(storeEntry)
+    suspend fun checkRevocationStatus(issuerSigned: IssuerSigned): KmmResult<TokenStatus>? = tokenStatusResolver(issuerSigned)
+    suspend fun checkRevocationStatus(sdJwt: VerifiableCredentialSdJwt): KmmResult<TokenStatus>? = tokenStatusResolver(sdJwt)
+    suspend fun checkRevocationStatus(vcJws: VerifiableCredentialJws): KmmResult<TokenStatus>?  = tokenStatusResolver(vcJws)
 
     /**
      * Validates the content of a JWS, expected to contain a Verifiable Presentation.
@@ -184,24 +165,34 @@ class Validator(
             it.second
         }.filterIsInstance<SuccessJwt>().map {
             it.jws
+        }.map {
+            VcJwsVerificationResultWrapper(
+                vcJws = it,
+                tokenStatus = tokenStatusResolver(
+                    CredentialWrapper.VcJws(it)
+                ),
+                timelinessValidationSummary = credentialTimelinessValidator(it),
+            )
         }.groupBy {
-            credentialTimelinessValidator.vcJwsTimelinessValidator(it).isSuccess && tokenStatusResolver(
-                CredentialWrapper.VcJws(it)
-            )?.getOrNull() != TokenStatus.Invalid
+            it.timelinessValidationSummary.isSuccess && it.tokenStatus?.let {
+                // The library should probably not implicitly consider credentials valid if it isn't clear.
+                // Valid credentials should probably require no further considerations.
+                // Only consider TokenStatus.Valid is therefore implicitly considered valid.
+                //  - If other credentials shall be accepted, those can be selected from `untimelyVerifiableCredentials`
+                //      - selection should consider their token and expiration time status.
+                it.getOrNull() == TokenStatus.Valid
+            } ?: true
         }
 
-        val validVcList = isTimelyGrouping[true] ?: listOf()
-        val revokedVcList = isTimelyGrouping[false] ?: listOf()
         val vp = VerifiablePresentationParsed(
             id = parsedVp.jws.vp.id,
             type = parsedVp.jws.vp.type,
-            verifiableCredentials = validVcList,
-            untimelyVerifiableCredentials = revokedVcList,
+            timelyVerifiableCredentials = isTimelyGrouping[true] ?: listOf(),
+            untimelyVerifiableCredentials = isTimelyGrouping[false] ?: listOf(),
             invalidVerifiableCredentials = invalidVcList,
         )
         Napier.d("VP: Valid")
 
-        // TODO: How to handle this? each credential possibly has their own timeliness validation status
         return VerifyPresentationResult.Success(vp)
     }
 
@@ -275,14 +266,13 @@ class Validator(
 
 
         Napier.d("verifyVpSdJwt: Valid")
-        val rawCredentialWrapper = CredentialWrapper.SdJwt(sdJwt = sdJwtResult.verifiableCredentialSdJwt)
         return VerifyPresentationResult.SuccessSdJwt(
             sdJwtSigned = sdJwtResult.sdJwtSigned,
             verifiableCredentialSdJwt = vcSdJwt,
             reconstructedJsonObject = sdJwtResult.reconstructedJsonObject,
             disclosures = sdJwtResult.disclosures.values,
-            timelinessValidationSummary = credentialTimelinessValidator(rawCredentialWrapper) as CredentialTimelinessValidationSummary.SdJwt,
-            tokenStatus = tokenStatusResolver(rawCredentialWrapper)
+            timelinessValidationSummary = checkTimeliness(sdJwtResult.verifiableCredentialSdJwt),
+            tokenStatus = checkRevocationStatus(sdJwtResult.verifiableCredentialSdJwt)
         )
     }
 
@@ -376,9 +366,7 @@ class Validator(
             validItems = validItems,
             invalidItems = invalidItems,
             tokenStatus = checkRevocationStatus(issuerSigned),
-            timelinessValidationSummary = (credentialTimelinessValidator.invoke(
-                CredentialWrapper.Mdoc(issuerSigned)
-            ) as CredentialTimelinessValidationSummary.Mdoc).summary
+            timelinessValidationSummary = checkTimeliness(issuerSigned)
         )
     }
 

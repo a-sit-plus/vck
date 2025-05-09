@@ -156,8 +156,8 @@ class AgentTest : FreeSpec({
                 val holderCredentials = holder.getCredentials()
                 holderCredentials.shouldNotBeNull()
                 holderCredentials.shouldHaveSize(1)
-                holderCredentials.filterIsInstance<Holder.StoredCredential.Vc>().forEach {
-                    validator.checkRevocationStatus(it.storeEntry.vc)?.getOrNull()?.shouldBe(TokenStatus.Valid)
+                holderCredentials.forEach {
+                    validator.checkRevocationStatus(it.storeEntry)?.getOrNull()?.shouldBe(TokenStatus.Valid)
                 }
             }
 
@@ -179,8 +179,8 @@ class AgentTest : FreeSpec({
 
                 val holderCredentials = holder.getCredentials()
                 holderCredentials.shouldNotBeNull()
-                holderCredentials.filterIsInstance<Holder.StoredCredential.Vc>().forEach {
-                    validator.checkRevocationStatus(it.storeEntry.vc)?.getOrNull().shouldBe(TokenStatus.Invalid)
+                holderCredentials.forEach {
+                    validator.checkRevocationStatus(it.storeEntry)?.getOrNull().shouldBe(TokenStatus.Invalid)
                 }
             }
         }
@@ -217,7 +217,7 @@ class AgentTest : FreeSpec({
                 it.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
                 it.vp.untimelyVerifiableCredentials.shouldBeEmpty()
                 it.vp.invalidVerifiableCredentials.shouldBeEmpty()
-                it.vp.verifiableCredentials shouldHaveSize 1
+                it.vp.timelyVerifiableCredentials shouldHaveSize 1
             }
         }
 
@@ -342,7 +342,7 @@ class AgentTest : FreeSpec({
             verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge).also {
                 it.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
                 it.vp.untimelyVerifiableCredentials.shouldBeEmpty()
-                it.vp.verifiableCredentials shouldHaveSize 1
+                it.vp.timelyVerifiableCredentials shouldHaveSize 1
             }
         }
 

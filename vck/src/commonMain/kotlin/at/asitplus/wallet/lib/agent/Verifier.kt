@@ -81,7 +81,6 @@ interface Verifier {
         ) : VerifyCredentialResult()
 
         data class SuccessIso(val issuerSigned: IssuerSigned) : VerifyCredentialResult()
-        data class Revoked(val input: String, val jws: VerifiableCredentialJws) : VerifyCredentialResult()
         data class InvalidStructure(val input: String) : VerifyCredentialResult()
         data class ValidationError(val cause: Throwable) : VerifyCredentialResult() {
             constructor(message: String) : this(Throwable(message))

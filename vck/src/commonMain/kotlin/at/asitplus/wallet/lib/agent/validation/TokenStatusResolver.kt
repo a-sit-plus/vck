@@ -3,11 +3,18 @@ package at.asitplus.wallet.lib.agent.validation
 import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.data.Status
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
+import at.asitplus.wallet.lib.iso.IssuerSigned
 
 fun interface TokenStatusResolver {
     suspend operator fun invoke(status: Status): KmmResult<TokenStatus>
 }
+
+suspend operator fun TokenStatusResolver.invoke(issuerSigned: IssuerSigned) = invoke(CredentialWrapper.Mdoc(issuerSigned))
+suspend operator fun TokenStatusResolver.invoke(sdJwt: VerifiableCredentialSdJwt) = invoke(CredentialWrapper.SdJwt(sdJwt))
+suspend operator fun TokenStatusResolver.invoke(vcJws: VerifiableCredentialJws) = invoke(CredentialWrapper.VcJws(vcJws))
 
 suspend operator fun TokenStatusResolver.invoke(storeEntry: SubjectCredentialStore.StoreEntry) = when (storeEntry) {
     is SubjectCredentialStore.StoreEntry.Iso -> invoke(CredentialWrapper.Mdoc(storeEntry.issuerSigned))

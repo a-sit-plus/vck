@@ -1,13 +1,7 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.wallet.eupid.EuPidScheme
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.toStoreCredentialInput
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
@@ -97,8 +91,8 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
 
                 val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
                     .shouldBeInstanceOf<AuthnResponseResult.Success>()
-                result.vp.verifiableCredentials.shouldNotBeEmpty()
-                result.vp.verifiableCredentials.forEach {
+                result.vp.timelyVerifiableCredentials.shouldNotBeEmpty()
+                result.vp.timelyVerifiableCredentials.map { it.vcJws }.forEach {
                     it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
                 }
             }
