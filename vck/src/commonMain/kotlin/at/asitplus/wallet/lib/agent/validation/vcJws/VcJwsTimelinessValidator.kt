@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.agent.validation.vcJws
 
-import at.asitplus.wallet.lib.agent.validation.TimeScope
+import at.asitplus.wallet.lib.agent.validation.TimeScope.Companion.timeScoped
 import at.asitplus.wallet.lib.agent.validation.common.EntityExpiredError
 import at.asitplus.wallet.lib.agent.validation.common.EntityNotYetValidError
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
@@ -14,7 +14,7 @@ data class VcJwsTimelinessValidator(
     private val clock: Clock = Clock.System,
 ) {
 
-    operator fun invoke(vcJws: VerifiableCredentialJws) = TimeScope(clock.now(), timeLeeway).run {
+    operator fun invoke(vcJws: VerifiableCredentialJws) = timeScoped(clock, timeLeeway) {
         VcJwsTimelinessValidationDetails(
             evaluationTime = now,
             jwsExpiredError = if (vcJws.expiration != null && vcJws.expiration.isTooEarly()) {

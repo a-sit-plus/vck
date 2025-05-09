@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.agent.validation.sdJwt
 
-import at.asitplus.wallet.lib.agent.validation.TimeScope
+import at.asitplus.wallet.lib.agent.validation.TimeScope.Companion.timeScoped
 import at.asitplus.wallet.lib.agent.validation.common.EntityExpiredError
 import at.asitplus.wallet.lib.agent.validation.common.EntityNotYetValidError
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
@@ -13,7 +13,7 @@ data class SdJwtTimelinessValidator(
     val timeLeeway: Duration = 300.seconds,
     private val clock: Clock = Clock.System,
 ) {
-    operator fun invoke(sdJwt: VerifiableCredentialSdJwt)  = TimeScope(clock.now(), timeLeeway).run {
+    operator fun invoke(sdJwt: VerifiableCredentialSdJwt)  = timeScoped(clock, timeLeeway) {
         SdJwtTimelinessValidationDetails(
             evaluationTime = now,
             jwsExpiredError = if (sdJwt.expiration != null && sdJwt.expiration.isTooEarly()) {

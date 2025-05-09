@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.agent.validation.mdoc
 
-import at.asitplus.wallet.lib.agent.validation.TimeScope
+import at.asitplus.wallet.lib.agent.validation.TimeScope.Companion.timeScoped
 import at.asitplus.wallet.lib.agent.validation.common.EntityExpiredError
 import at.asitplus.wallet.lib.agent.validation.common.EntityNotYetValidError
 import at.asitplus.wallet.lib.iso.MobileSecurityObject
@@ -13,7 +13,7 @@ data class MobileSecurityObjectTimelinessValidator(
     val timeLeeway: Duration = 300.seconds,
     private val clock: Clock = Clock.System,
 ) {
-    operator fun invoke(mobileSecurityObject: MobileSecurityObject) = TimeScope(clock.now(), timeLeeway).run {
+    operator fun invoke(mobileSecurityObject: MobileSecurityObject) = timeScoped(clock, timeLeeway) {
         MobileSecurityObjectTimelinessValidationSummary(
             evaluationTime = now,
             mdocExpiredError = if (mobileSecurityObject.validityInfo.validUntil.isTooEarly()) {
