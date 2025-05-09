@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent.validation.sdJwt
 
+import at.asitplus.wallet.lib.agent.validation.TimeScope
 import at.asitplus.wallet.lib.agent.validation.common.EntityExpiredError
 import at.asitplus.wallet.lib.agent.validation.common.EntityNotYetValidError
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
@@ -12,25 +13,21 @@ data class SdJwtTimelinessValidator(
     val timeLeeway: Duration = 300.seconds,
     private val clock: Clock = Clock.System,
 ) {
-    operator fun invoke(sdJwt: VerifiableCredentialSdJwt): SdJwtTimelinessValidationDetails {
-        val now = clock.now()
-        val earliestAcceptedExpirationTime = (now - timeLeeway)
-        val latestAcceptedNotBeforeTime = (now + timeLeeway)
-
-        return SdJwtTimelinessValidationDetails(
+    operator fun invoke(sdJwt: VerifiableCredentialSdJwt)  = TimeScope(clock.now(), timeLeeway).run {
+        SdJwtTimelinessValidationDetails(
             evaluationTime = now,
-            jwsExpiredError = if (sdJwt.expiration != null && sdJwt.expiration < earliestAcceptedExpirationTime) {
+            jwsExpiredError = if (sdJwt.expiration != null && sdJwt.expiration.isTooEarly()) {
                 Napier.w("exp invalid: ${sdJwt.expiration}, now is $now")
                 EntityExpiredError(
                     expirationTime = sdJwt.expiration,
-                    earliestAcceptedExpirationTime = earliestAcceptedExpirationTime,
+                    earliestAcceptedExpirationTime = earliestTime,
                 )
             } else null,
-            jwsNotYetValidError = if (sdJwt.notBefore != null && sdJwt.notBefore > latestAcceptedNotBeforeTime) {
+            jwsNotYetValidError = if (sdJwt.notBefore != null && sdJwt.notBefore.isTooLate()) {
                 Napier.w("nbf invalid: ${sdJwt.notBefore}, now is $now")
                 EntityNotYetValidError(
                     notBeforeTime = sdJwt.notBefore,
-                    latestAcceptedNotBeforeTime = latestAcceptedNotBeforeTime,
+                    latestAcceptedNotBeforeTime = latestTime,
                 )
             } else null,
         ).also {
