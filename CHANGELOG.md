@@ -31,6 +31,7 @@ Release 5.7.0:
        - `Verifier.VerifyPresentationResult.SuccessSdJwt`
        - `IsoDocumentParsed`
        - `AuthnResponseResult.SuccessSdJwt`
+ - Add constructor parameter `Validator.acceptedTokenStatuses` to allow library client to define token statuses deemed valid
  - Remove `Validator.checkTimeliness` and `Validator.checkRevocationStatus` in favor of `Validator.checkCredentialFreshness`
  - Combine members `timelinessValidationSummary` and `tokenStatus` as `freshnessSummary` in:
    - `IsoDocumentParsed`
