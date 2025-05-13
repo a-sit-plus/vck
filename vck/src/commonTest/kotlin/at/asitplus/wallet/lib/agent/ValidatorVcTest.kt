@@ -6,6 +6,7 @@ import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.supreme.signature
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
+import at.asitplus.wallet.lib.agent.validation.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
@@ -98,7 +99,9 @@ class ValidatorVcTest : FreeSpec() {
             validator.verifyVcJws(credential.vcJws, verifierKeyMaterial.publicKey)
                 .shouldBeInstanceOf<VerifyCredentialResult.SuccessJwt>()
 
-            validator.checkRevocationStatus(value.jws)!!.getOrNull() shouldBe TokenStatus.Invalid
+            validator.checkRevocationStatus(value.jws)
+                .shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
+                .tokenStatus shouldBe TokenStatus.Invalid
         }
 
         "wrong subject keyId is not be valid" {

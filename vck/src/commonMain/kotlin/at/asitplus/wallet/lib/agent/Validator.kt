@@ -84,7 +84,7 @@ class Validator(
     private val resolveStatusListToken: StatusListTokenResolver? = null,
     /**
      * The function [tokenStatusResolver] should check the status mechanisms in a given status claim in order to
-     * evaluate the token status.
+     * extract the token status.
      */
     private val tokenStatusResolver: TokenStatusResolver = resolveStatusListToken?.toTokenStatusResolver(
         verifyJwsObjectIntegrity = verifyJwsObject,
@@ -94,6 +94,10 @@ class Validator(
     ) ?: TokenStatusResolver {
         KmmResult.success(TokenStatus.Valid)
     },
+    private val acceptedTokenStatuses: Set<TokenStatus> = setOf(TokenStatus.Valid),
+    private val tokenStatusValidator: TokenStatusValidator = tokenStatusResolver.toTokenStatusValidator(
+        acceptedTokenStatuses
+    ),
     private val vcJwsTimelinessValidator: VcJwsTimelinessValidator = VcJwsTimelinessValidator(
         timeLeeway = timeLeeway,
         clock = clock,
@@ -125,10 +129,10 @@ class Validator(
     /**
      * Checks the revocation state of the passed credential.
      */
-    suspend fun checkRevocationStatus(storeEntry: SubjectCredentialStore.StoreEntry) = tokenStatusResolver(storeEntry)
-    suspend fun checkRevocationStatus(issuerSigned: IssuerSigned): KmmResult<TokenStatus>? = tokenStatusResolver(issuerSigned)
-    suspend fun checkRevocationStatus(sdJwt: VerifiableCredentialSdJwt): KmmResult<TokenStatus>? = tokenStatusResolver(sdJwt)
-    suspend fun checkRevocationStatus(vcJws: VerifiableCredentialJws): KmmResult<TokenStatus>?  = tokenStatusResolver(vcJws)
+    suspend fun checkRevocationStatus(storeEntry: SubjectCredentialStore.StoreEntry): TokenStatusValidationResult = tokenStatusValidator(storeEntry)
+    suspend fun checkRevocationStatus(issuerSigned: IssuerSigned): TokenStatusValidationResult = tokenStatusValidator(issuerSigned)
+    suspend fun checkRevocationStatus(sdJwt: VerifiableCredentialSdJwt): TokenStatusValidationResult = tokenStatusValidator(sdJwt)
+    suspend fun checkRevocationStatus(vcJws: VerifiableCredentialJws): TokenStatusValidationResult = tokenStatusValidator(vcJws)
 
     /**
      * Validates the content of a JWS, expected to contain a Verifiable Presentation.
@@ -168,9 +172,7 @@ class Validator(
         }.map {
             VcJwsVerificationResultWrapper(
                 vcJws = it,
-                tokenStatus = tokenStatusResolver(
-                    CredentialWrapper.VcJws(it)
-                ),
+                tokenStatus = tokenStatusResolver(it),
                 timelinessValidationSummary = credentialTimelinessValidator(it),
             )
         }.groupBy {
@@ -405,7 +407,7 @@ class Validator(
             !validationSummary.contentSemanticsValidationSummary.isSuccess -> InvalidStructure(input)
             validationSummary.subjectMatchingResult?.isSuccess == false -> ValidationError(input)
             validationSummary.isSuccess -> SuccessJwt(validationSummary.payload)
-            else -> ValidationError(input) // this branch shouldn't be executed happen anyway
+            else -> ValidationError(input) // this branch shouldn't be executed anyway
         }
     }
 

@@ -11,6 +11,7 @@ import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
+import at.asitplus.wallet.lib.agent.validation.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.dif.PresentationExchangeInputEvaluator
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
@@ -19,6 +20,9 @@ import at.asitplus.wallet.lib.jws.*
 import at.asitplus.wallet.lib.procedures.dcql.DCQLQueryAdapter
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.joinAll
 
 
 /**
@@ -106,7 +110,11 @@ class HolderAgent(
      * Gets a list of all valid stored credentials sorted by preference
      */
     private suspend fun getValidCredentialsByPriority(): List<StoreEntry>? {
-        return getCredentials()?.map { it.storeEntry }?.sortedBy {
+        val availableCredentials = getCredentials() ?: return null
+
+        val presortedCredentials = availableCredentials.map {
+            it.storeEntry
+        }.sortedBy {
             // prefer iso credentials and sd jwt credentials over plain vc credentials
             // -> they support selective disclosure!
             when (it) {
@@ -114,13 +122,30 @@ class HolderAgent(
                 is StoreEntry.SdJwt -> 1
                 is StoreEntry.Iso -> 1
             }
-        }?.sortedBy {
-            if (validator.checkTimeliness(it).isSuccess) {
+        }
+
+        val withRevocationStatusQueryIssued = presortedCredentials.map {
+            it to coroutineScope {
+                async {
+                    validator.checkRevocationStatus(it)
+                }
+            }
+        }
+        withRevocationStatusQueryIssued.map {
+            it.second
+        }.joinAll()
+        val withRevocationStatusAvailable = withRevocationStatusQueryIssued.map {
+            it.first to it.second.await()
+        }
+        return withRevocationStatusAvailable.sortedBy {
+            if (validator.checkTimeliness(it.first).isSuccess && it.second is TokenStatusValidationResult.Valid) {
                 0
             } else {
                 1
             }
-        } // TODO: Do we also want to sort by token status here? Seems like a lot of time overhead..
+        }.map {
+            it.first
+        }
     }
 
     override suspend fun createDefaultPresentation(
