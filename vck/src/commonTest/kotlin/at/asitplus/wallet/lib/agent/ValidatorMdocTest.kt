@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
@@ -96,7 +97,7 @@ class ValidatorMdocTest : FreeSpec() {
                 status = TokenStatus.Invalid,
                 FixedTimePeriodProvider.timePeriod,
             ) shouldBe true
-            validator.checkRevocationStatus(value.issuerSigned)?.getOrNull() shouldBe TokenStatus.Invalid
+            validator.checkRevocationStatus(value.issuerSigned).shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
         }
     }
 }

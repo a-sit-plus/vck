@@ -26,6 +26,11 @@ Release 5.7.0:
    - Change type of `VerifiablePresentationParsed.verifiableCredentials` and `revokedVerifiableCredentials` to `Collection<VcJwsVerificationResultWrapper`> 
    - Add `Validator.checkTimeliness`
    - Remove `Holder.StoredCredential.status`
+ - Add class `TokenStatusValidationResult`
+   - Change type of property `tokenStatus` in:
+       - `Verifier.VerifyPresentationResult.SuccessSdJwt`
+       - `IsoDocumentParsed`
+       - `AuthnResponseResult.SuccessSdJwt`
 
 Release 5.6.1:
  - Expose details for `ConstraintFieldsEvaluationException`

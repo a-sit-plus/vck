@@ -9,11 +9,11 @@ import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialQueryInstance
 import at.asitplus.openid.dcql.DCQLCredentialQueryList
 import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.StatusListToken
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -157,7 +157,7 @@ class AgentTest : FreeSpec({
                 holderCredentials.shouldNotBeNull()
                 holderCredentials.shouldHaveSize(1)
                 holderCredentials.forEach {
-                    validator.checkRevocationStatus(it.storeEntry)?.getOrNull()?.shouldBe(TokenStatus.Valid)
+                    validator.checkRevocationStatus(it.storeEntry).shouldBeInstanceOf<TokenStatusValidationResult.Valid>()
                 }
             }
 
@@ -180,7 +180,7 @@ class AgentTest : FreeSpec({
                 val holderCredentials = holder.getCredentials()
                 holderCredentials.shouldNotBeNull()
                 holderCredentials.forEach {
-                    validator.checkRevocationStatus(it.storeEntry)?.getOrNull().shouldBe(TokenStatus.Invalid)
+                    validator.checkRevocationStatus(it.storeEntry).shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
                 }
             }
         }
