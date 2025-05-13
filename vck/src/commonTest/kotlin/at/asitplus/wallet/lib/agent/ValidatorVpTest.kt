@@ -107,8 +107,8 @@ class ValidatorVpTest : FreeSpec({
         val holderCredentials = holder.getCredentials()
         holderCredentials.shouldNotBeNull()
         val holderVcSerialized = holderCredentials
-            .filterIsInstance<Holder.StoredCredential.Vc>()
-            .map { it.storeEntry.vcSerialized }
+            .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
+            .map { it.vcSerialized }
             .map { it.reversed() }
         val vp = holder.createVcPresentation(
             holderVcSerialized,

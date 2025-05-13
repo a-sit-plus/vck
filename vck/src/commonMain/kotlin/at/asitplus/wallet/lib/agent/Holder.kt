@@ -11,7 +11,6 @@ import at.asitplus.openid.dcql.DCQLQueryResult
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.iso.IssuerSigned
 
 /**
@@ -51,27 +50,12 @@ interface Holder {
      * Stores the verifiable credential in [credential] if it parses and validates,
      * and returns it for future reference.
      */
-    suspend fun storeCredential(credential: StoreCredentialInput): KmmResult<StoredCredential>
+    suspend fun storeCredential(credential: StoreCredentialInput): KmmResult<SubjectCredentialStore.StoreEntry>
 
     /**
      * Gets a list of all stored credentials, with a revocation status.
      */
-    suspend fun getCredentials(): Collection<StoredCredential>?
-
-    // TODO: Replace with StoreEntry?
-    sealed class StoredCredential(open val storeEntry: SubjectCredentialStore.StoreEntry) {
-        class Vc(
-            override val storeEntry: SubjectCredentialStore.StoreEntry.Vc,
-        ) : StoredCredential(storeEntry = storeEntry)
-
-        class SdJwt(
-            override val storeEntry: SubjectCredentialStore.StoreEntry.SdJwt,
-        ) : StoredCredential(storeEntry = storeEntry)
-
-        class Iso(
-            override val storeEntry: SubjectCredentialStore.StoreEntry.Iso,
-        ) : StoredCredential(storeEntry = storeEntry)
-    }
+    suspend fun getCredentials(): Collection<SubjectCredentialStore.StoreEntry>?
 
     /**
      * Creates [PresentationResponseParameters] as specified using the parameter [credentialPresentation]
