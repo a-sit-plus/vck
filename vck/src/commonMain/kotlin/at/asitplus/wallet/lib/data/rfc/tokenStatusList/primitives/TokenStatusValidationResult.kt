@@ -1,6 +1,4 @@
-package at.asitplus.wallet.lib.agent.validation
-
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
+package at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives
 
 sealed interface TokenStatusValidationResult {
     data class Rejected(val throwable: Throwable) : TokenStatusValidationResult

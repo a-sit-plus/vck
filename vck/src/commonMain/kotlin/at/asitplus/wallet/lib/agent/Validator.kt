@@ -31,6 +31,7 @@ import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.*
 import io.github.aakira.napier.Napier
@@ -172,18 +173,11 @@ class Validator(
         }.map {
             VcJwsVerificationResultWrapper(
                 vcJws = it,
-                tokenStatus = tokenStatusResolver(it),
+                tokenStatus = checkRevocationStatus(it),
                 timelinessValidationSummary = credentialTimelinessValidator(it),
             )
         }.groupBy {
-            it.timelinessValidationSummary.isSuccess && it.tokenStatus?.let {
-                // The library should probably not implicitly consider credentials valid if it isn't clear.
-                // Valid credentials should probably require no further considerations.
-                // Only consider TokenStatus.Valid is therefore implicitly considered valid.
-                //  - If other credentials shall be accepted, those can be selected from `untimelyVerifiableCredentials`
-                //      - selection should consider their token and expiration time status.
-                it.getOrNull() == TokenStatus.Valid
-            } ?: true
+            it.timelinessValidationSummary.isSuccess && it.tokenStatus is TokenStatusValidationResult.Valid
         }
 
         val vp = VerifiablePresentationParsed(

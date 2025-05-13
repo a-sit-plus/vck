@@ -5,6 +5,7 @@ import at.asitplus.wallet.lib.data.Status
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.iso.IssuerSigned
 
 fun interface TokenStatusValidator {

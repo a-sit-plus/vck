@@ -6,7 +6,7 @@ import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.dcql.*
 import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.wallet.lib.agent.validation.TokenStatusValidationResult
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME

@@ -5,10 +5,10 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
-import at.asitplus.wallet.lib.agent.validation.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderKeyId
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -19,7 +19,6 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.datetime.Clock
 import kotlin.random.Random

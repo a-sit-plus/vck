@@ -6,7 +6,7 @@ import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.supreme.signature
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
-import at.asitplus.wallet.lib.agent.validation.TokenStatusValidationResult
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus

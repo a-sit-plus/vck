@@ -6,8 +6,8 @@ import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.jwkId
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary
-import at.asitplus.wallet.lib.agent.validation.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.iso.DeviceResponse
 import at.asitplus.wallet.lib.iso.Document
 import at.asitplus.wallet.lib.iso.IssuerSigned

@@ -9,7 +9,7 @@ import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialQueryInstance
 import at.asitplus.openid.dcql.DCQLCredentialQueryList
 import at.asitplus.openid.dcql.DCQLQuery
-import at.asitplus.wallet.lib.agent.validation.TokenStatusValidationResult
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest

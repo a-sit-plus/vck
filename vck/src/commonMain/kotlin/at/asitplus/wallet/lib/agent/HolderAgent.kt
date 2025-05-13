@@ -11,10 +11,10 @@ import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
-import at.asitplus.wallet.lib.agent.validation.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.dif.PresentationExchangeInputEvaluator
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.third_party.at.asitplus.oidc.dcql.toDefaultSubmission
 import at.asitplus.wallet.lib.jws.*
 import at.asitplus.wallet.lib.procedures.dcql.DCQLQueryAdapter

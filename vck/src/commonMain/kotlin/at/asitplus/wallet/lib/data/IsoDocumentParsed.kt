@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.data
 
 import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary
-import at.asitplus.wallet.lib.agent.validation.TokenStatusValidationResult
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.iso.MobileSecurityObject
 

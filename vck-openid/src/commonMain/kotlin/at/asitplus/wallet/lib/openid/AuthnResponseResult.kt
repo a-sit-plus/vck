@@ -2,11 +2,11 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary
-import at.asitplus.wallet.lib.agent.validation.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import kotlinx.serialization.json.JsonObject
 
