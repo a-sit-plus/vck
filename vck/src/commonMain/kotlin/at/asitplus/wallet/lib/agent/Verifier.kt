@@ -5,6 +5,7 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.jwkId
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
+import at.asitplus.wallet.lib.agent.validation.CredentialFreshnessSummary
 import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
@@ -58,9 +59,16 @@ interface Verifier {
             val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
             val reconstructedJsonObject: JsonObject,
             val disclosures: Collection<SelectiveDisclosureItem>,
-            val timelinessValidationSummary: CredentialTimelinessValidationSummary.SdJwt,
-            val tokenStatus: TokenStatusValidationResult,
-        ) : VerifyPresentationResult()
+            val freshnessSummary: CredentialFreshnessSummary.SdJwt,
+        ) : VerifyPresentationResult() {
+            @Deprecated("Replaced with more expressive TokenStatusValidationResult, supporting token status values as defined by the library client.", ReplaceWith("freshnessSummary.tokenStatusValidationResult"))
+            val tokenStatus: TokenStatusValidationResult
+                get() = freshnessSummary.tokenStatusValidationResult
+
+            @Deprecated("", ReplaceWith("credentialFreshnessSummary.timelinessValidationSummary"))
+            val timelinessValidationSummary: CredentialTimelinessValidationSummary.SdJwt
+                get() = freshnessSummary.timelinessValidationSummary
+        }
 
         data class SuccessIso(val documents: List<IsoDocumentParsed>) : VerifyPresentationResult()
         data class InvalidStructure(val input: String) : VerifyPresentationResult()

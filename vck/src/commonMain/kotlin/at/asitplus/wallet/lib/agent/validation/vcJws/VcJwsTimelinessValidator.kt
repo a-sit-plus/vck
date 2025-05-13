@@ -1,20 +1,16 @@
 package at.asitplus.wallet.lib.agent.validation.vcJws
 
-import at.asitplus.wallet.lib.agent.validation.TimeScope.Companion.timeScoped
+import at.asitplus.wallet.lib.agent.validation.TimeScope
 import at.asitplus.wallet.lib.agent.validation.common.EntityExpiredError
 import at.asitplus.wallet.lib.agent.validation.common.EntityNotYetValidError
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import io.github.aakira.napier.Napier
-import kotlinx.datetime.Clock
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
 
-data class VcJwsTimelinessValidator(
-    val timeLeeway: Duration = 300.seconds,
-    private val clock: Clock = Clock.System,
-) {
-
-    operator fun invoke(vcJws: VerifiableCredentialJws) = timeScoped(clock, timeLeeway) {
+class VcJwsTimelinessValidator {
+    operator fun invoke(
+        vcJws: VerifiableCredentialJws,
+        timeScope: TimeScope,
+    ) = timeScope {
         VcJwsTimelinessValidationDetails(
             evaluationTime = now,
             jwsExpiredError = if (vcJws.expiration != null && vcJws.expiration.isTooEarly()) {
@@ -46,7 +42,7 @@ data class VcJwsTimelinessValidator(
                 )
             } else null,
         ).also {
-            if (it.isSuccess) {
+            if (it.isTimely) {
                 Napier.d("VC is timely")
             }
         }

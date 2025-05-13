@@ -118,8 +118,8 @@ class ValidatorVpTest : FreeSpec({
 
         verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge).also {
             it.shouldBeInstanceOf<VerifyPresentationResult.Success>()
-            it.vp.timelyVerifiableCredentials.shouldBeEmpty()
-            it.vp.untimelyVerifiableCredentials.shouldBeEmpty()
+            it.vp.freshVerifiableCredentials.shouldBeEmpty()
+            it.vp.notVerifiablyFreshVerifiableCredentials.shouldBeEmpty()
             it.vp.invalidVerifiableCredentials.shouldBe(holderVcSerialized)
         }
     }
@@ -169,7 +169,7 @@ class ValidatorVpTest : FreeSpec({
 
         verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge).also {
             it.shouldBeInstanceOf<VerifyPresentationResult.Success>()
-            it.vp.timelyVerifiableCredentials.shouldBeEmpty()
+            it.vp.freshVerifiableCredentials.shouldBeEmpty()
         }
         holderCredentialStore.getCredentials().getOrThrow()
             .shouldHaveSize(1)

@@ -1,8 +1,16 @@
 package at.asitplus.wallet.lib.agent.validation.mdoc
 
+import at.asitplus.wallet.lib.agent.validation.TimelinessIndicator
+import kotlinx.datetime.Instant
+
 data class MdocTimelinessValidationDetails(
+    override val evaluationTime: Instant,
     val msoTimelinessValidationSummary: MobileSecurityObjectTimelinessValidationSummary?,
-) {
-    val isSuccess: Boolean
-        get() = msoTimelinessValidationSummary?.isSuccess != false
+) : TimelinessIndicator {
+    override val isExpired: Boolean
+        get() = msoTimelinessValidationSummary?.isExpired ?: false
+
+    override val isNotYetValid: Boolean
+        get() = msoTimelinessValidationSummary?.isNotYetValid ?: false
 }
+

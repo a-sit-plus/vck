@@ -1,19 +1,16 @@
 package at.asitplus.wallet.lib.agent.validation.sdJwt
 
-import at.asitplus.wallet.lib.agent.validation.TimeScope.Companion.timeScoped
+import at.asitplus.wallet.lib.agent.validation.TimeScope
 import at.asitplus.wallet.lib.agent.validation.common.EntityExpiredError
 import at.asitplus.wallet.lib.agent.validation.common.EntityNotYetValidError
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import io.github.aakira.napier.Napier
-import kotlinx.datetime.Clock
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
 
-data class SdJwtTimelinessValidator(
-    val timeLeeway: Duration = 300.seconds,
-    private val clock: Clock = Clock.System,
-) {
-    operator fun invoke(sdJwt: VerifiableCredentialSdJwt)  = timeScoped(clock, timeLeeway) {
+class SdJwtTimelinessValidator {
+    operator fun invoke(
+        sdJwt: VerifiableCredentialSdJwt,
+        timeScope: TimeScope,
+    )  = timeScope {
         SdJwtTimelinessValidationDetails(
             evaluationTime = now,
             jwsExpiredError = if (sdJwt.expiration != null && sdJwt.expiration.isTooEarly()) {
@@ -31,7 +28,7 @@ data class SdJwtTimelinessValidator(
                 )
             } else null,
         ).also {
-            if (it.isSuccess) {
+            if (it.isTimely) {
                 Napier.d("SD-JWT is timely")
             }
         }

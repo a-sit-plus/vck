@@ -18,12 +18,9 @@ import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.*
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.agent.validation.*
 import at.asitplus.wallet.lib.agent.validation.mdoc.MdocInputValidator
-import at.asitplus.wallet.lib.agent.validation.mdoc.MdocTimelinessValidator
 import at.asitplus.wallet.lib.agent.validation.sdJwt.SdJwtInputValidator
-import at.asitplus.wallet.lib.agent.validation.sdJwt.SdJwtTimelinessValidator
 import at.asitplus.wallet.lib.agent.validation.vcJws.VcJwsInputValidationResult
 import at.asitplus.wallet.lib.agent.validation.vcJws.VcJwsInputValidator
-import at.asitplus.wallet.lib.agent.validation.vcJws.VcJwsTimelinessValidator
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
@@ -31,7 +28,6 @@ import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.*
 import io.github.aakira.napier.Napier
@@ -99,41 +95,41 @@ class Validator(
     private val tokenStatusValidator: TokenStatusValidator = tokenStatusResolver.toTokenStatusValidator(
         acceptedTokenStatuses
     ),
-    private val vcJwsTimelinessValidator: VcJwsTimelinessValidator = VcJwsTimelinessValidator(
-        timeLeeway = timeLeeway,
-        clock = clock,
-    ),
-    private val sdJwtTimelinessValidator: SdJwtTimelinessValidator = SdJwtTimelinessValidator(
-        timeLeeway = timeLeeway,
-        clock = clock,
-    ),
-    private val mdocTimelinessValidator: MdocTimelinessValidator = MdocTimelinessValidator(
-        timeLeeway = timeLeeway,
-        clock = clock,
-    ),
     private val credentialTimelinessValidator: CredentialTimelinessValidator = CredentialTimelinessValidator(
         clock = clock,
         timeLeeway = timeLeeway,
-        vcJwsTimelinessValidator = vcJwsTimelinessValidator,
-        sdJwtTimelinessValidator = sdJwtTimelinessValidator,
-        mdocTimelinessValidator = mdocTimelinessValidator,
     ),
 ) {
     /**
-     * Checks the timeliness of the passed credential.
+     * Checks both the timeliness and the token status of the passed credentials
      */
-    fun checkTimeliness(storeEntry: SubjectCredentialStore.StoreEntry) = credentialTimelinessValidator(storeEntry)
-    fun checkTimeliness(issuerSigned: IssuerSigned) = credentialTimelinessValidator(issuerSigned)
-    fun checkTimeliness(vcJws: VerifiableCredentialJws) = credentialTimelinessValidator(vcJws)
-    fun checkTimeliness(sdJwt: VerifiableCredentialSdJwt) = credentialTimelinessValidator(sdJwt)
+    suspend fun checkCredentialFreshness(storeEntry: SubjectCredentialStore.StoreEntry) = when(storeEntry) {
+        is SubjectCredentialStore.StoreEntry.Iso -> checkCredentialFreshness(storeEntry.issuerSigned)
+        is SubjectCredentialStore.StoreEntry.SdJwt -> checkCredentialFreshness(storeEntry.sdJwt)
+        is SubjectCredentialStore.StoreEntry.Vc -> checkCredentialFreshness(storeEntry.vc)
+    }
+    suspend fun checkCredentialFreshness(issuerSigned: IssuerSigned) = CredentialFreshnessSummary.Mdoc(
+        tokenStatusValidationResult = checkRevocationStatus(issuerSigned),
+        timelinessValidationSummary = credentialTimelinessValidator(issuerSigned)
+    )
+    suspend fun checkCredentialFreshness(sdJwt: VerifiableCredentialSdJwt) = CredentialFreshnessSummary.SdJwt(
+        tokenStatusValidationResult = checkRevocationStatus(sdJwt),
+        timelinessValidationSummary = credentialTimelinessValidator(sdJwt)
+    )
+    suspend fun checkCredentialFreshness(vcJws: VerifiableCredentialJws) = CredentialFreshnessSummary.VcJws(
+        tokenStatusValidationResult = checkRevocationStatus(vcJws),
+        timelinessValidationSummary = credentialTimelinessValidator(vcJws)
+    )
+
+    internal fun checkCredentialTimeliness(vcJws: VerifiableCredentialJws) = credentialTimelinessValidator(vcJws)
 
     /**
      * Checks the revocation state of the passed credential.
      */
-    suspend fun checkRevocationStatus(storeEntry: SubjectCredentialStore.StoreEntry): TokenStatusValidationResult = tokenStatusValidator(storeEntry)
-    suspend fun checkRevocationStatus(issuerSigned: IssuerSigned): TokenStatusValidationResult = tokenStatusValidator(issuerSigned)
-    suspend fun checkRevocationStatus(sdJwt: VerifiableCredentialSdJwt): TokenStatusValidationResult = tokenStatusValidator(sdJwt)
-    suspend fun checkRevocationStatus(vcJws: VerifiableCredentialJws): TokenStatusValidationResult = tokenStatusValidator(vcJws)
+    internal suspend fun checkRevocationStatus(storeEntry: SubjectCredentialStore.StoreEntry) = tokenStatusValidator(storeEntry)
+    internal suspend fun checkRevocationStatus(issuerSigned: IssuerSigned) = tokenStatusValidator(issuerSigned)
+    internal suspend fun checkRevocationStatus(sdJwt: VerifiableCredentialSdJwt) = tokenStatusValidator(sdJwt)
+    internal suspend fun checkRevocationStatus(vcJws: VerifiableCredentialJws) = tokenStatusValidator(vcJws)
 
     /**
      * Validates the content of a JWS, expected to contain a Verifiable Presentation.
@@ -166,25 +162,26 @@ class Validator(
             it.first
         }
 
-        val isTimelyGrouping = vcValidationResults.map {
+        val verificationResultWithFreshnessSummary = vcValidationResults.map {
             it.second
         }.filterIsInstance<SuccessJwt>().map {
             it.jws
         }.map {
             VcJwsVerificationResultWrapper(
                 vcJws = it,
-                tokenStatus = checkRevocationStatus(it),
-                timelinessValidationSummary = credentialTimelinessValidator(it),
+                freshnessSummary = checkCredentialFreshness(it),
             )
-        }.groupBy {
-            it.timelinessValidationSummary.isSuccess && it.tokenStatus is TokenStatusValidationResult.Valid
         }
 
         val vp = VerifiablePresentationParsed(
             id = parsedVp.jws.vp.id,
             type = parsedVp.jws.vp.type,
-            timelyVerifiableCredentials = isTimelyGrouping[true] ?: listOf(),
-            untimelyVerifiableCredentials = isTimelyGrouping[false] ?: listOf(),
+            freshVerifiableCredentials = verificationResultWithFreshnessSummary.filter {
+                it.freshnessSummary.isFresh
+            },
+            notVerifiablyFreshVerifiableCredentials = verificationResultWithFreshnessSummary.filter {
+                !it.freshnessSummary.isFresh
+            },
             invalidVerifiableCredentials = invalidVcList,
         )
         Napier.d("VP: Valid")
@@ -267,8 +264,7 @@ class Validator(
             verifiableCredentialSdJwt = vcSdJwt,
             reconstructedJsonObject = sdJwtResult.reconstructedJsonObject,
             disclosures = sdJwtResult.disclosures.values,
-            timelinessValidationSummary = checkTimeliness(sdJwtResult.verifiableCredentialSdJwt),
-            tokenStatus = checkRevocationStatus(sdJwtResult.verifiableCredentialSdJwt)
+            freshnessSummary = checkCredentialFreshness(sdJwtResult.verifiableCredentialSdJwt),
         )
     }
 
@@ -310,13 +306,13 @@ class Validator(
         val issuerSigned = doc.issuerSigned
         val issuerAuth = issuerSigned.issuerAuth
 
-        val certificateChain = issuerAuth.unprotectedHeader?.certificateChain?: run {
+        val certificateChain = issuerAuth.unprotectedHeader?.certificateChain ?: run {
             Napier.w("Got no issuer certificate in $issuerAuth")
             throw IllegalArgumentException("issuerKey")
         }
         val x509Certificate = X509Certificate.decodeFromDerSafe(certificateChain.first()).getOrElse {
             Napier.w(
-                "Could not parse issuer certificate in ${certificateChain.joinToString{it.encodeToString(Base64())}}",
+                "Could not parse issuer certificate in ${certificateChain.joinToString { it.encodeToString(Base64()) }}",
                 it
             )
             throw IllegalArgumentException("issuerKey")
@@ -361,8 +357,7 @@ class Validator(
             mso = mso,
             validItems = validItems,
             invalidItems = invalidItems,
-            tokenStatus = checkRevocationStatus(issuerSigned),
-            timelinessValidationSummary = checkTimeliness(issuerSigned)
+            freshnessSummary = checkCredentialFreshness(issuerSigned),
         )
     }
 

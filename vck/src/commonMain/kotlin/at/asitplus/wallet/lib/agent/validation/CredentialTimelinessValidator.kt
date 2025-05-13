@@ -14,29 +14,20 @@ import kotlin.time.Duration.Companion.seconds
 data class CredentialTimelinessValidator(
     private val timeLeeway: Duration = 300.seconds,
     private val clock: Clock = Clock.System,
-    val vcJwsTimelinessValidator: VcJwsTimelinessValidator = VcJwsTimelinessValidator(
-        timeLeeway = timeLeeway,
-        clock = clock
-    ),
-    val sdJwtTimelinessValidator: SdJwtTimelinessValidator = SdJwtTimelinessValidator(
-        timeLeeway = timeLeeway,
-        clock = clock
-    ),
-    val mdocTimelinessValidator: MdocTimelinessValidator = MdocTimelinessValidator(
-        timeLeeway = timeLeeway,
-        clock = clock
-    ),
+    val vcJwsTimelinessValidator: VcJwsTimelinessValidator = VcJwsTimelinessValidator(),
+    val sdJwtTimelinessValidator: SdJwtTimelinessValidator = SdJwtTimelinessValidator(),
+    val mdocTimelinessValidator: MdocTimelinessValidator = MdocTimelinessValidator(),
 ) {
     operator fun invoke(issuerSigned: IssuerSigned) = CredentialTimelinessValidationSummary.Mdoc(
-        mdocTimelinessValidator(issuerSigned),
+        mdocTimelinessValidator(issuerSigned, timeScope = TimeScope(clock.now(), timeLeeway)),
     )
 
     operator fun invoke(sdJwt: VerifiableCredentialSdJwt) = CredentialTimelinessValidationSummary.SdJwt(
-        sdJwtTimelinessValidator(sdJwt),
+        sdJwtTimelinessValidator(sdJwt, timeScope = TimeScope(clock.now(), timeLeeway)),
     )
 
     operator fun invoke(vcJws: VerifiableCredentialJws) = CredentialTimelinessValidationSummary.VcJws(
-        vcJwsTimelinessValidator(vcJws = vcJws),
+        vcJwsTimelinessValidator(vcJws, timeScope = TimeScope(clock.now(), timeLeeway)),
     )
 
     operator fun invoke(storeEntry: SubjectCredentialStore.StoreEntry) = when (storeEntry) {

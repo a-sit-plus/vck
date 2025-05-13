@@ -31,6 +31,18 @@ Release 5.7.0:
        - `Verifier.VerifyPresentationResult.SuccessSdJwt`
        - `IsoDocumentParsed`
        - `AuthnResponseResult.SuccessSdJwt`
+ - Remove `Validator.checkTimeliness` and `Validator.checkRevocationStatus` in favour of `Validator.checkCredentialFreshness`
+ - Combine members `timelinessValidationSummary` and `tokenStatus` as `freshnessSummary` in:
+   - `IsoDocumentParsed`
+   - `Verifier.VerifyPresentationResult.SuccessSdJwt`
+   - `AuthnResponseResult.SuccessSdJwt`
+   - `VcJwsVerificationResultWrapper`
+ - Rename `isSuccess` to `isTimely` in:
+   - `CredentialTimelinessValidationSummary`
+   - `MdocTimelinessValidationDetails`
+   - `MobileSecurityObjectTimelinessValidationSummary`
+   - `SdJwtTimelinessValidationDetails`
+   - `VcJwsTimelinessValidationDetails`
  - Remove `Holder.StoredCredential` in favor of `SubjectCredentialStore.StoreEntry` 
 
 Release 5.6.1:

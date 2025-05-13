@@ -1,15 +1,51 @@
 package at.asitplus.wallet.lib.agent.validation
 
 import at.asitplus.KmmResult
+import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.wallet.lib.DefaultZlibService
+import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
 import at.asitplus.wallet.lib.data.Status
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenValidator
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.wallet.lib.jws.VerifyJwsObject
+import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
+import kotlinx.datetime.Clock
 
 fun interface TokenStatusResolver {
     suspend operator fun invoke(status: Status): KmmResult<TokenStatus>
+}
+
+fun StatusListTokenResolver.toTokenStatusResolver(
+    clock: Clock = Clock.System,
+    zlibService: ZlibService = DefaultZlibService(),
+    verifyJwsObjectIntegrity: VerifyJwsObjectFun = VerifyJwsObject(),
+    verifyCoseSignature: VerifyCoseSignatureFun<StatusListTokenPayload> = VerifyCoseSignature(),
+) = TokenStatusResolver { status ->
+    runCatching {
+        val token = this(status.statusList.uri)
+
+        val payload = token.validate(
+            verifyJwsObject = verifyJwsObjectIntegrity,
+            verifyCoseSignature = verifyCoseSignature,
+            statusListInfo = status.statusList,
+            isInstantInThePast = {
+                it < kotlinx.datetime.Instant.fromEpochMilliseconds(clock.now().toEpochMilliseconds())
+            },
+        ).getOrThrow()
+
+        StatusListTokenValidator.extractTokenStatus(
+            statusList = payload.statusList,
+            statusListInfo = status.statusList,
+            zlibService = zlibService,
+        ).getOrThrow()
+    }.wrap()
 }
 
 suspend operator fun TokenStatusResolver.invoke(issuerSigned: IssuerSigned) = invoke(CredentialWrapper.Mdoc(issuerSigned))
