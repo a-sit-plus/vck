@@ -1,5 +1,8 @@
 package at.asitplus.wallet.lib.data
 
+import at.asitplus.KmmResult
+import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.iso.MobileSecurityObject
 
@@ -11,5 +14,6 @@ data class IsoDocumentParsed(
     val mso: MobileSecurityObject,
     val validItems: List<IssuerSignedItem> = listOf(),
     val invalidItems: List<IssuerSignedItem> = listOf(),
-    val isRevoked: Boolean?,
+    val tokenStatus: KmmResult<TokenStatus>?,
+    val timelinessValidationSummary: CredentialTimelinessValidationSummary.Mdoc,
 )

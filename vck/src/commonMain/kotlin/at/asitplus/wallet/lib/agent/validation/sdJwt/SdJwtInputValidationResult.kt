@@ -10,13 +10,13 @@ data class SdJwtInputValidationResult(
     val isIntegrityGood: Boolean,
     val payloadCredentialValidationSummary: KmmResult<SdJwtCredentialPayloadValidationSummary>,
     val payloadJsonValidationSummary: KmmResult<SdJwtValidator>,
-    val payloadValidationSummary: KmmResult<Verifier.VerifyCredentialResult.SuccessSdJwt>,
+    val payload: KmmResult<Verifier.VerifyCredentialResult.SuccessSdJwt>,
 ) {
     val isSuccess: Boolean
         get() = listOf(
             isIntegrityGood,
             payloadCredentialValidationSummary.isSuccess,
             payloadJsonValidationSummary.isSuccess,
-            payloadValidationSummary.isSuccess
+            payload.isSuccess
         ).all { it }
 }

@@ -8,10 +8,10 @@ import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
-import at.asitplus.wallet.lib.jws.SignJwt
-import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderKeyId
+import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.SignJwtFun
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -117,8 +117,8 @@ class ValidatorVpTest : FreeSpec({
 
         verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge).also {
             it.shouldBeInstanceOf<VerifyPresentationResult.Success>()
-            it.vp.verifiableCredentials.shouldBeEmpty()
-            it.vp.revokedVerifiableCredentials.shouldBeEmpty()
+            it.vp.timelyVerifiableCredentials.shouldBeEmpty()
+            it.vp.untimelyVerifiableCredentials.shouldBeEmpty()
             it.vp.invalidVerifiableCredentials.shouldBe(holderVcSerialized)
         }
     }
@@ -168,7 +168,7 @@ class ValidatorVpTest : FreeSpec({
 
         verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge).also {
             it.shouldBeInstanceOf<VerifyPresentationResult.Success>()
-            it.vp.verifiableCredentials.shouldBeEmpty()
+            it.vp.timelyVerifiableCredentials.shouldBeEmpty()
         }
         holderCredentialStore.getCredentials().getOrThrow()
             .shouldHaveSize(1)
