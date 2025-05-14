@@ -46,7 +46,7 @@ import kotlin.time.Duration.Companion.minutes
 /**
  * Implements the client side of
  * [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
- *  * , Draft 15, 2024-12-19.
+ *  Draft 15, 2024-12-19.
  *
  * Supported features:
  *  * Pre-authorized grants
@@ -56,8 +56,6 @@ import kotlin.time.Duration.Companion.minutes
  *  * [OAuth 2.0 Pushed Authorization Requests](https://datatracker.ietf.org/doc/html/rfc9126)
  */
 class OpenId4VciClient(
-    /** Used to continue authentication in a web browser, be sure to call back this service at [resumeWithAuthCode]. */
-    private val openUrlExternally: suspend (String) -> Unit,
     /** ktor engine to use to make requests to issuing service. */
     engine: HttpClientEngine,
     /**
@@ -67,10 +65,6 @@ class OpenId4VciClient(
     cookiesStorage: CookiesStorage? = null,
     /** Additional configuration for building the HTTP client, e.g. callers may enable logging. */
     httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
-    /** Store context before jumping to an external browser with [openUrlExternally]. */
-    private val storeProvisioningContext: suspend (ProvisioningContext) -> Unit,
-    /** Load context after resuming with auth code in [resumeWithAuthCode]. */
-    private val loadProvisioningContext: suspend () -> ProvisioningContext?,
     /**
      * Callback to load the client attestation JWT, which may be needed as authentication at the AS, where the
      * `clientId` must match [WalletService.clientId] in [oid4vciService] and the key attested in `cnf` must match
@@ -79,7 +73,10 @@ class OpenId4VciClient(
      */
     private val loadClientAttestationJwt: suspend () -> String,
     /** Used for authenticating the client at the authorization server with client attestation. */
-    private val signClientAttestationPop: SignJwtFun<JsonWebToken> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderNone()),
+    private val signClientAttestationPop: SignJwtFun<JsonWebToken> = SignJwt(
+        EphemeralKeyWithoutCert(),
+        JwsHeaderNone()
+    ),
     /** Used to calculate DPoP, i.e. the key the access token and refresh token gets bound to. */
     private val signDpop: SignJwtFun<JsonWebToken> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderJwk()),
     private val dpopAlgorithm: JwsAlgorithm = JwsAlgorithm.Signature.ES256,
@@ -88,10 +85,6 @@ class OpenId4VciClient(
      * back from browser works, `cryptoService` provides proof of possession for credential key material.
      */
     val oid4vciService: WalletService = WalletService(),
-    /** Final callback upon receiving credentials from the issuing service. */
-    private val storeCredential: (suspend (Holder.StoreCredentialInput) -> Unit),
-    /** Callback to store refresh tokens received from the AS, to refresh credentials sometime late. */
-    private val storeRefreshToken: suspend (RefreshTokenInfo) -> Unit,
 ) {
     private val client: HttpClient = HttpClient(engine) {
         followRedirects = false
@@ -139,8 +132,7 @@ class OpenId4VciClient(
 
     /**
      * Starts the issuing process at [credentialIssuerUrl].
-     * This will call [openUrlExternally] to perform authentication at the authorization server, typically in an
-     * external browser to show appropriate user interface.
+     * Clients need to handle the result, i.e. open the URL for user authentication or store the credentials.
      * Clients need to call [resumeWithAuthCode] after getting the authorization code back from the authorization
      * server, e.g. by the Wallet app getting opened (see `redirectUrl` at [oid4vciService]) after the browser being
      * redirecting back from the authorization server.
@@ -148,10 +140,10 @@ class OpenId4VciClient(
      * @param credentialIssuerUrl URL of the credential issuer service
      * @param credentialIdentifierInfo credential to request, i.e. picked by user selection
      */
-    suspend fun startProvisioningWithAuthRequest(
+    suspend fun startProvisioningWithAuthRequestReturningResult(
         credentialIssuerUrl: String,
         credentialIdentifierInfo: CredentialIdentifierInfo,
-    ): KmmResult<Unit> = catching {
+    ): KmmResult<CredentialIssuanceResult.OpenUrlForAuthnRequest> = catching {
         Napier.i("startProvisioningWithAuthRequest: $credentialIssuerUrl with $credentialIdentifierInfo")
 
         val issuerMetadata = credentialIdentifierInfo.issuerMetadata
@@ -166,26 +158,12 @@ class OpenId4VciClient(
         }
 
         val state = uuid4().toString()
-        ProvisioningContext(
+        startAuthorization(
             state = state,
-            credential = credentialIdentifierInfo,
-            oauthMetadata = oauthMetadata,
-            issuerMetadata = issuerMetadata
-        ).let {
-            storeProvisioningContext.invoke(it)
-            Napier.i("Store context: $it")
-        }
-
-        openAuthRequestInBrowser(
-            state = state,
-            scope = credentialIdentifierInfo.supportedCredentialFormat.scope,
-            authorizationDetails = oid4vciService.buildAuthorizationDetails(
-                credentialIdentifierInfo.credentialIdentifier,
-                issuerMetadata.authorizationServers
-            ),
+            credentialIdentifierInfo = credentialIdentifierInfo,
+            issuerMetadata = issuerMetadata,
             credentialIssuer = credentialIssuerUrl,
-            issuerState = null,
-            oauthMetadata = oauthMetadata
+            oauthMetadata = oauthMetadata,
         )
     }
 
@@ -200,14 +178,12 @@ class OpenId4VciClient(
      *
      * @param url the URL as it has been redirected back from the authorization server, i.e. containing param `code`
      */
-    @Throws(Exception::class)
     suspend fun resumeWithAuthCode(
         url: String,
-    ): KmmResult<Unit> = catching {
+        context: ProvisioningContext,
+    ): KmmResult<CredentialIssuanceResult.Success> = catching {
         Napier.i("resumeWithAuthCode")
-        Napier.d("resumeWithAuthCode: $url")
-        val context = loadProvisioningContext()
-            ?: throw Exception("No provisioning context")
+        Napier.d("resumeWithAuthCode: $url, $context")
 
         val authnResponse = Url(url).parameters.flattenEntries().toMap()
             .decodeFromUrlQuery<AuthenticationResponseParameters>()
@@ -255,10 +231,9 @@ class OpenId4VciClient(
      * [OpenID4VC HAIP](https://openid.net/specs/openid4vc-high-assurance-interoperability-profile-1_0.html),
      * but falls back to authorization details if needed.
      */
-    @Throws(Exception::class)
-    suspend fun refreshCredential(
+    suspend fun refreshCredentialReturningResult(
         refreshTokenInfo: RefreshTokenInfo,
-    ): KmmResult<Unit> = catching {
+    ): KmmResult<CredentialIssuanceResult.Success> = catching {
         with(refreshTokenInfo) {
             Napier.i("refreshCredential")
             Napier.d("refreshCredential: $refreshToken, $credentialFormat, $credentialIdentifier")
@@ -350,8 +325,8 @@ class OpenId4VciClient(
         credentialScheme: ConstantIndex.CredentialScheme,
         oauthMetadata: OAuth2AuthorizationServerMetadata,
         credentialIdentifier: String,
-        previouslyRequestedScope: String?
-    ) {
+        previouslyRequestedScope: String?,
+    ): CredentialIssuanceResult.Success {
         val credentialEndpointUrl = issuerMetadata.credentialEndpointUrl
         Napier.i("postCredentialRequestAndStore: $credentialEndpointUrl")
         Napier.d("postCredentialRequestAndStore: $tokenResponse")
@@ -374,19 +349,7 @@ class OpenId4VciClient(
             BuildDPoPHeader(signDpop, url = credentialEndpointUrl, accessToken = tokenResponse.accessToken)
         else null
 
-        if (tokenResponse.refreshToken != null) {
-            storeRefreshToken.invoke(
-                RefreshTokenInfo(
-                    refreshToken = tokenResponse.refreshToken!!,
-                    issuerMetadata = issuerMetadata,
-                    oauthMetadata = oauthMetadata,
-                    credentialFormat = credentialFormat,
-                    credentialIdentifier = credentialIdentifier,
-                )
-            )
-        }
-
-        credentialRequests.forEach { credentialRequest ->
+        val storeCredentialInputs = credentialRequests.flatMap { credentialRequest ->
             val credentialResponse: CredentialResponseParameters = client.post(credentialEndpointUrl) {
                 contentType(ContentType.Application.Json)
                 setBody(credentialRequest)
@@ -398,12 +361,19 @@ class OpenId4VciClient(
 
             credentialResponse.extractCredentials()
                 .ifEmpty { throw Exception("No credential was received") }
-                .forEach {
-                    storeCredential.invoke(
-                        it.toStoreCredentialInput(credentialFormat.format.toRepresentation(), credentialScheme)
-                    )
-                }
+                .map { it.toStoreCredentialInput(credentialFormat.format.toRepresentation(), credentialScheme) }
         }
+        return CredentialIssuanceResult.Success(
+            storeCredentialInputs,
+            tokenResponse.refreshToken?.let {
+                RefreshTokenInfo(
+                    refreshToken = tokenResponse.refreshToken!!,
+                    issuerMetadata = issuerMetadata,
+                    oauthMetadata = oauthMetadata,
+                    credentialFormat = credentialFormat,
+                    credentialIdentifier = credentialIdentifier,
+                )
+            })
     }
 
     /**
@@ -413,12 +383,11 @@ class OpenId4VciClient(
      * @param credentialIdentifierInfo as selected by the user from the issuer's metadata
      * @param transactionCode if required from Issuing service, i.e. transmitted out-of-band to the user
      */
-    @Throws(Throwable::class)
-    suspend fun loadCredentialWithOffer(
+    suspend fun loadCredentialWithOfferReturningResult(
         credentialOffer: CredentialOffer,
         credentialIdentifierInfo: CredentialIdentifierInfo,
         transactionCode: String? = null,
-    ): KmmResult<Unit> = catching {
+    ): KmmResult<CredentialIssuanceResult> = catching {
         Napier.i("loadCredentialWithOffer: $credentialOffer")
         val issuerMetadata = credentialIdentifierInfo.issuerMetadata
         val authorizationServer = issuerMetadata.authorizationServers?.firstOrNull()
@@ -463,23 +432,10 @@ class OpenId4VciClient(
                 previouslyRequestedScope = credentialIdentifierInfo.supportedCredentialFormat.scope,
             )
         } ?: credentialOffer.grants?.authorizationCode?.let {
-            ProvisioningContext(
+            startAuthorization(
                 state = state,
-                credential = credentialIdentifierInfo,
-                oauthMetadata = oauthMetadata,
-                issuerMetadata = issuerMetadata
-            ).let {
-                storeProvisioningContext.invoke(it)
-                Napier.d("Store context: $it")
-            }
-
-            openAuthRequestInBrowser(
-                state = state,
-                scope = credentialIdentifierInfo.supportedCredentialFormat.scope,
-                authorizationDetails = oid4vciService.buildAuthorizationDetails(
-                    credentialIdentifierInfo.credentialIdentifier,
-                    issuerMetadata.authorizationServers
-                ),
+                credentialIdentifierInfo = credentialIdentifierInfo,
+                issuerMetadata = issuerMetadata,
                 credentialIssuer = credentialOffer.credentialIssuer,
                 issuerState = it.issuerState,
                 oauthMetadata = oauthMetadata,
@@ -510,19 +466,22 @@ class OpenId4VciClient(
      * Uses Pushed Authorization Requests [RFC 9126](https://datatracker.ietf.org/doc/html/rfc9126) if advised
      * by the authorization server.
      *
-     * Will call [openUrlExternally] in the end to perform user authentication in a browser.
-     *
-     * Process continues at [resumeWithAuthCode].
+     * Clients need to contiune the process (after getting back from the browser) with [resumeWithAuthCode].
      */
     @Throws(Exception::class)
-    private suspend fun openAuthRequestInBrowser(
+    private suspend fun startAuthorization(
         state: String,
-        scope: String?,
-        authorizationDetails: Set<OpenIdAuthorizationDetails>,
+        credentialIdentifierInfo: CredentialIdentifierInfo,
+        issuerMetadata: IssuerMetadata,
         credentialIssuer: String,
         issuerState: String? = null,
         oauthMetadata: OAuth2AuthorizationServerMetadata,
-    ) {
+    ): CredentialIssuanceResult.OpenUrlForAuthnRequest {
+        val scope = credentialIdentifierInfo.supportedCredentialFormat.scope
+        val authorizationDetails = oid4vciService.buildAuthorizationDetails(
+            credentialIdentifierInfo.credentialIdentifier,
+            issuerMetadata.authorizationServers
+        )
         val authorizationEndpointUrl = oauthMetadata.authorizationEndpoint
             ?: throw Exception("no authorizationEndpoint in $oauthMetadata")
         val authRequest = oid4vciService.oauth2Client.createAuthRequest(
@@ -554,8 +513,14 @@ class OpenId4VciClient(
                 builder.parameters.append(PARAMETER_PROMPT, PARAMETER_PROMPT_LOGIN)
             }.build().toString()
         }
-        Napier.i("Provisioning starts by opening URL $authorizationUrl")
-        openUrlExternally.invoke(authorizationUrl)
+        val context = ProvisioningContext(
+            state = state,
+            credential = credentialIdentifierInfo,
+            oauthMetadata = oauthMetadata,
+            issuerMetadata = issuerMetadata
+        )
+        Napier.i("Provisioning starts by returning URL to open: $authorizationUrl")
+        return CredentialIssuanceResult.OpenUrlForAuthnRequest(authorizationUrl, context)
     }
 
     @Throws(Exception::class)
@@ -620,6 +585,29 @@ data class ProvisioningContext(
     val oauthMetadata: OAuth2AuthorizationServerMetadata,
     val issuerMetadata: IssuerMetadata,
 )
+
+/**
+ * Result of the credential issuance process: Either open an authentication request URL externally (i.e. the browser),
+ * or store the received credentials.
+ */
+sealed interface CredentialIssuanceResult {
+    /**
+     * Store credentials in [credentials], and optionally the [refreshToken] for a later renewal of those credentials.
+     */
+    data class Success(
+        val credentials: Collection<Holder.StoreCredentialInput>,
+        val refreshToken: RefreshTokenInfo? = null,
+    ) : CredentialIssuanceResult
+
+    /**
+     * Open the [url] in a browser (so the user can authenticate at the AS), and store [context] to use in next call
+     * to [at.asitplus.wallet.lib.ktor.openid.OpenId4VciClient.resumeWithAuthCode].
+     */
+    data class OpenUrlForAuthnRequest(
+        val url: String,
+        val context: ProvisioningContext,
+    ) : CredentialIssuanceResult
+}
 
 /**
  * Gets parsed from the credential issuer's metadata, essentially an entry from
