@@ -47,26 +47,34 @@ import kotlinx.serialization.Serializable
  * [OpenID for Verifiable Presentations - draft 21](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html)
  */
 class OpenId4VpWallet(
-    /** ktor engine to make requests to the verifier. */
-    engine: HttpClientEngine,
-    /** Additional configuration for building the HTTP client, e.g. callers may enable logging. */
-    httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
+    private val client: HttpClient,
     keyMaterial: KeyMaterial,
     holderAgent: HolderAgent,
 ) {
+    constructor(
+        /** ktor engine to make requests to the verifier. */
+        engine: HttpClientEngine,
+        /** Additional configuration for building the HTTP client, e.g. callers may enable logging. */
+        httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
+        keyMaterial: KeyMaterial,
+        holderAgent: HolderAgent,
+    ) : this(
+        client = HttpClient(engine) {
+            followRedirects = false
+            install(ContentNegotiation) {
+                json(vckJsonSerializer)
+            }
+            install(DefaultRequest) {
+                header(HttpHeaders.ContentType, ContentType.Application.Json)
+            }
+            httpClientConfig?.let { apply(it) }
+        },
+        keyMaterial = keyMaterial,
+        holderAgent =  holderAgent,
+    )
 
     data class AuthenticationSuccess(val redirectUri: String? = null)
 
-    private val client: HttpClient = HttpClient(engine) {
-        followRedirects = false
-        install(ContentNegotiation) {
-            json(vckJsonSerializer)
-        }
-        install(DefaultRequest) {
-            header(HttpHeaders.ContentType, ContentType.Application.Json)
-        }
-        httpClientConfig?.let { apply(it) }
-    }
     val openId4VpHolder = OpenId4VpHolder(
         holder = holderAgent,
         keyMaterial = keyMaterial,
