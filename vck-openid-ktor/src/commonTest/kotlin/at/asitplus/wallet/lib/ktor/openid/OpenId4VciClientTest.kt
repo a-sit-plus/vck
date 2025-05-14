@@ -9,19 +9,14 @@ import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
-import at.asitplus.wallet.lib.data.*
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
-import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
-import at.asitplus.wallet.lib.jws.JwsHeaderJwk
-import at.asitplus.wallet.lib.jws.JwsHeaderNone
-import at.asitplus.wallet.lib.jws.SdJwtSigned
-import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.*
 import at.asitplus.wallet.lib.oauth2.ClientAuthenticationService
-import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oauth2.RequestInfo
+import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oauth2.TokenService
 import at.asitplus.wallet.lib.oidvci.*
 import com.benasher44.uuid.uuid4
@@ -182,7 +177,7 @@ class OpenId4VciClientTest : FunSpec() {
         var provisioningContextStore: ProvisioningContext? = null
         val clientId = "https://example.com/rp"
         client = OpenId4VciClient(
-            openUrlExternally = { clientBrowser.openUrlExternally(it) },
+            openUrlExternally = { url, _ -> clientBrowser.openUrlExternally(url) },
             engine = mockEngine,
             storeProvisioningContext = { provisioningContextStore = it },
             loadProvisioningContext = { provisioningContextStore },
