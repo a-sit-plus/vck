@@ -220,7 +220,7 @@ class PreRegisteredClientTest : FreeSpec({
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
         authnResponse.url.shouldBe(redirectUrl)
-        authnResponse.params.shouldHaveSize(1) // only the "response" object!
+        authnResponse.params.shouldHaveSize(2) // only the "response" object, but also "state" for buggy backends
         val jarmResponse = authnResponse.params.entries.first { it.key == "response" }.value
         val jwsObject = JwsSigned.Companion.deserialize<AuthenticationResponseParameters>(
             AuthenticationResponseParameters.Companion.serializer(), jarmResponse

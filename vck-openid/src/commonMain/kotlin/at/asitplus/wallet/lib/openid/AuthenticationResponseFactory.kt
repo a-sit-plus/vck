@@ -44,6 +44,9 @@ internal class AuthenticationResponseFactory(
             ?: throw InvalidRequest("no response_uri or redirect_uri")
         val responseSerialized = buildJarm(request, response)
         val jarm = AuthenticationResponseParameters(
+            // Everybody knows this is wrong, but EUDIW reference implementation required this some time ago
+            // so for maximum compatibility with those verifiers we'll include it
+            state = request.parameters.state,
             response = responseSerialized,
         )
         return AuthenticationResponseResult.Post(url, jarm.encodeToParameters())

@@ -1,5 +1,9 @@
 # Changelog
 
+Release 5.6.2:
+ - OpenID for Verifiable Presentations:
+   - Send `state` parameter for `direct_post.jwt` to increase compatibility with buggy verifiers
+
 Release 5.6.1:
  - Expose details for `ConstraintFieldsEvaluationException`
  - Token status:
