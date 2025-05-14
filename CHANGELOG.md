@@ -4,7 +4,10 @@ Release 5.6.3:
  - OpenID for Verifiable Credential Issuance:
    - Increase interop with wwWallet (optional parameter `proof_signing_alg_values_supported`)
    - Expose `oauth2Client` in `WalletService`
-
+   - In `OpenId4VciClient` deprecate constructor parameters needed for callbacks, and return `CredentialIssuanceResult` in method calls instead
+     - Deprecates parameters`openUrlExternally`, `storeProvisioningContext`, `loadProvisioningContext`, `storeCredential`, `storeRefreshToken`
+     - Deprecates methods `startProvisioningWithAuthRequest`, `resumeWithAuthCode` (without `context`), `refreshCredential`, `loadCredentialWithOffer`
+ 
 Release 5.6.2:
  - OpenID for Verifiable Presentations:
    - Send `state` parameter for `direct_post.jwt` to increase compatibility with buggy verifiers
