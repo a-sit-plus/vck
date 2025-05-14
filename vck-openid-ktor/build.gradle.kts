@@ -37,6 +37,7 @@ kotlin {
         commonMain {
             dependencies {
                 api(project(":vck-openid"))
+                implementation(ktor("server-core"))
                 implementation(ktor("client-cio"))
                 implementation(ktor("client-logging"))
                 implementation(ktor("client-content-negotiation"))

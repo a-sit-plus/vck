@@ -36,6 +36,7 @@ import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
+import io.ktor.server.application.*
 import io.ktor.util.*
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
@@ -57,16 +58,8 @@ import kotlin.time.Duration.Companion.minutes
  */
 class OpenId4VciClient(
     /** Used to continue authentication in a web browser, be sure to call back this service at [resumeWithAuthCode]. */
-    private val openUrlExternally: suspend (String) -> Unit,
-    /** ktor engine to use to make requests to issuing service. */
-    engine: HttpClientEngine,
-    /**
-     * Callers are advised to implement a persistent cookie storage,
-     * to keep the session at the issuing service alive after receiving the auth code.
-     */
-    cookiesStorage: CookiesStorage? = null,
-    /** Additional configuration for building the HTTP client, e.g. callers may enable logging. */
-    httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
+    private val openUrlExternally: suspend (String, ApplicationCall?) -> Unit,
+    private val client: HttpClient,
     /** Store context before jumping to an external browser with [openUrlExternally]. */
     private val storeProvisioningContext: suspend (ProvisioningContext) -> Unit,
     /** Load context after resuming with auth code in [resumeWithAuthCode]. */
@@ -79,7 +72,9 @@ class OpenId4VciClient(
      */
     private val loadClientAttestationJwt: suspend () -> String,
     /** Used for authenticating the client at the authorization server with client attestation. */
-    private val signClientAttestationPop: SignJwtFun<JsonWebToken> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderNone()),
+    private val signClientAttestationPop: SignJwtFun<JsonWebToken> = SignJwt(
+        EphemeralKeyWithoutCert(), JwsHeaderNone()
+    ),
     /** Used to calculate DPoP, i.e. the key the access token and refresh token gets bound to. */
     private val signDpop: SignJwtFun<JsonWebToken> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderJwk()),
     private val dpopAlgorithm: JwsAlgorithm = JwsAlgorithm.Signature.ES256,
@@ -93,21 +88,70 @@ class OpenId4VciClient(
     /** Callback to store refresh tokens received from the AS, to refresh credentials sometime late. */
     private val storeRefreshToken: suspend (RefreshTokenInfo) -> Unit,
 ) {
-    private val client: HttpClient = HttpClient(engine) {
-        followRedirects = false
-        install(ContentNegotiation) {
-            json(vckJsonSerializer)
-        }
-        install(DefaultRequest) {
-            header(HttpHeaders.ContentType, ContentType.Application.Json)
-        }
-        httpClientConfig?.let { apply(it) }
-        install(HttpCookies) {
-            cookiesStorage?.let {
-                storage = it
+    constructor(
+        /** Used to continue authentication in a web browser, be sure to call back this service at [resumeWithAuthCode]. */
+        openUrlExternally: suspend (String, ApplicationCall?) -> Unit,
+        /** ktor engine to use to make requests to issuing service. */
+        engine: HttpClientEngine,
+        /**
+         * Callers are advised to implement a persistent cookie storage,
+         * to keep the session at the issuing service alive after receiving the auth code.
+         */
+        cookiesStorage: CookiesStorage? = null,
+        /** Additional configuration for building the HTTP client, e.g. callers may enable logging. */
+        httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
+        /** Store context before jumping to an external browser with [openUrlExternally]. */
+        storeProvisioningContext: suspend (ProvisioningContext) -> Unit,
+        /** Load context after resuming with auth code in [resumeWithAuthCode]. */
+        loadProvisioningContext: suspend () -> ProvisioningContext?,
+        /**
+         * Callback to load the client attestation JWT, which may be needed as authentication at the AS, where the
+         * `clientId` must match [WalletService.clientId] in [oid4vciService] and the key attested in `cnf` must match
+         * the key behind [signClientAttestationPop], see
+         * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-04.html)
+         */
+        loadClientAttestationJwt: suspend () -> String,
+        /** Used for authenticating the client at the authorization server with client attestation. */
+        signClientAttestationPop: SignJwtFun<JsonWebToken> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderNone()),
+        /** Used to calculate DPoP, i.e. the key the access token and refresh token gets bound to. */
+        signDpop: SignJwtFun<JsonWebToken> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderJwk()),
+        dpopAlgorithm: JwsAlgorithm = JwsAlgorithm.Signature.ES256,
+        /**
+         * Implements OID4VCI protocol, `redirectUrl` needs to be registered by the OS for this application, so redirection
+         * back from browser works, `cryptoService` provides proof of possession for credential key material.
+         */
+        oid4vciService: WalletService = WalletService(),
+        /** Final callback upon receiving credentials from the issuing service. */
+        storeCredential: (suspend (Holder.StoreCredentialInput) -> Unit),
+        /** Callback to store refresh tokens received from the AS, to refresh credentials sometime late. */
+        storeRefreshToken: suspend (RefreshTokenInfo) -> Unit,
+    ) : this(
+        openUrlExternally = openUrlExternally,
+        client = HttpClient(engine) {
+            followRedirects = false
+            install(ContentNegotiation) {
+                json(vckJsonSerializer)
             }
-        }
-    }
+            install(DefaultRequest) {
+                header(HttpHeaders.ContentType, ContentType.Application.Json)
+            }
+            httpClientConfig?.let { apply(it) }
+            install(HttpCookies) {
+                cookiesStorage?.let {
+                    storage = it
+                }
+            }
+        },
+        storeProvisioningContext = storeProvisioningContext,
+        loadProvisioningContext = loadProvisioningContext,
+        loadClientAttestationJwt = loadClientAttestationJwt,
+        signClientAttestationPop = signClientAttestationPop,
+        signDpop = signDpop,
+        dpopAlgorithm = dpopAlgorithm,
+        oid4vciService = oid4vciService,
+        storeCredential = storeCredential,
+        storeRefreshToken = storeRefreshToken,
+    )
 
     /**
      * Loads credential metadata info from [host], parses it, returns list of [CredentialIdentifierInfo].
@@ -147,10 +191,12 @@ class OpenId4VciClient(
      *
      * @param credentialIssuerUrl URL of the credential issuer service
      * @param credentialIdentifierInfo credential to request, i.e. picked by user selection
+     * @param applicationCall is required by KTOR web apps to use the browser
      */
     suspend fun startProvisioningWithAuthRequest(
         credentialIssuerUrl: String,
         credentialIdentifierInfo: CredentialIdentifierInfo,
+        applicationCall: ApplicationCall? = null
     ): KmmResult<Unit> = catching {
         Napier.i("startProvisioningWithAuthRequest: $credentialIssuerUrl with $credentialIdentifierInfo")
 
@@ -185,7 +231,8 @@ class OpenId4VciClient(
             ),
             credentialIssuer = credentialIssuerUrl,
             issuerState = null,
-            oauthMetadata = oauthMetadata
+            oauthMetadata = oauthMetadata,
+            applicationCall = applicationCall
         )
     }
 
@@ -412,12 +459,14 @@ class OpenId4VciClient(
      * @param credentialOffer as loaded and decoded from the QR Code
      * @param credentialIdentifierInfo as selected by the user from the issuer's metadata
      * @param transactionCode if required from Issuing service, i.e. transmitted out-of-band to the user
+     * @param applicationCall is required for KTOR web apps to use the browser
      */
     @Throws(Throwable::class)
     suspend fun loadCredentialWithOffer(
         credentialOffer: CredentialOffer,
         credentialIdentifierInfo: CredentialIdentifierInfo,
         transactionCode: String? = null,
+        applicationCall: ApplicationCall? = null
     ): KmmResult<Unit> = catching {
         Napier.i("loadCredentialWithOffer: $credentialOffer")
         val issuerMetadata = credentialIdentifierInfo.issuerMetadata
@@ -483,6 +532,7 @@ class OpenId4VciClient(
                 credentialIssuer = credentialOffer.credentialIssuer,
                 issuerState = it.issuerState,
                 oauthMetadata = oauthMetadata,
+                applicationCall = applicationCall
             )
         } ?: throw Exception("No offer grants received in ${credentialOffer.grants}")
     }
@@ -511,6 +561,7 @@ class OpenId4VciClient(
      * by the authorization server.
      *
      * Will call [openUrlExternally] in the end to perform user authentication in a browser.
+     * A KTOR web-app requires [ApplicationCall] to use the browser!
      *
      * Process continues at [resumeWithAuthCode].
      */
@@ -522,6 +573,7 @@ class OpenId4VciClient(
         credentialIssuer: String,
         issuerState: String? = null,
         oauthMetadata: OAuth2AuthorizationServerMetadata,
+        applicationCall: ApplicationCall?
     ) {
         val authorizationEndpointUrl = oauthMetadata.authorizationEndpoint
             ?: throw Exception("no authorizationEndpoint in $oauthMetadata")
@@ -555,7 +607,7 @@ class OpenId4VciClient(
             }.build().toString()
         }
         Napier.i("Provisioning starts by opening URL $authorizationUrl")
-        openUrlExternally.invoke(authorizationUrl)
+        openUrlExternally.invoke(authorizationUrl, applicationCall)
     }
 
     @Throws(Exception::class)
