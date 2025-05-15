@@ -11,7 +11,7 @@ import at.asitplus.signum.supreme.sign.Verifier
 import at.asitplus.signum.supreme.sign.verifierFor
 
 fun interface VerifySignatureFun {
-    operator fun invoke(
+    suspend operator fun invoke(
         input: ByteArray,
         signature: CryptoSignature,
         algorithm: SignatureAlgorithm,
@@ -20,12 +20,12 @@ fun interface VerifySignatureFun {
 }
 
 class VerifySignature() : VerifySignatureFun {
-    override fun invoke(
+    override suspend operator fun invoke(
         input: ByteArray,
         signature: CryptoSignature,
         algorithm: SignatureAlgorithm,
-        publicKey: CryptoPublicKey,
-    ) = algorithm.verifierFor(publicKey).transform {
+        publicKey: CryptoPublicKey
+    ): KmmResult<Verifier.Success> = algorithm.verifierFor(publicKey).transform {
         it.verify(SignatureInput(input), signature)
     }
 }

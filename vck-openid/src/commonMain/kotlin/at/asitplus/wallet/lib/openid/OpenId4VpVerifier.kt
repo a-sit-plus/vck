@@ -592,7 +592,7 @@ open class OpenId4VpVerifier(
         clientId: String?,
         responseUrl: String?,
         expectedNonce: String,
-    ): (MobileSecurityObject, Document) -> Boolean = { mso, document ->
+    ): suspend (MobileSecurityObject, Document) -> Boolean = { mso, document ->
         Napier.d("verifyDocument: mdocGeneratedNonce='$mdocGeneratedNonce', clientId='$clientId', responseUrl='$responseUrl', expectedNonce='$expectedNonce'")
         val deviceSignature = document.deviceSigned.deviceAuth.deviceSignature ?: run {
             Napier.w("DeviceSignature is null: ${document.deviceSigned.deviceAuth}")
@@ -694,7 +694,7 @@ private val PresentationSubmissionDescriptor.cumulativeJsonPath: String
 
 
 class JwsHeaderClientIdScheme(val clientIdScheme: ClientIdScheme) : JwsHeaderIdentifierFun {
-    override suspend fun invoke(
+    override suspend operator fun invoke(
         it: JwsHeader,
         keyMaterial: KeyMaterial,
     ) = run {

@@ -9,6 +9,7 @@ Release 5.7.0:
    - Replace `keyPair` with `keyMaterial`
  - Functions:
    - Replace type aliases with functional interfaces (providing named parameters in implementations)
+   - Make cryptographic verification functions suspending
  - Fully integrated crypto functionality based on Signum 3.16.1. This carries over breaking changes:
    - All debug-only kotlinx.serialization for cryptographic datatypes like certificates, public keys, etc. was removed
    - This finally cleans up the RSAorHMAC

@@ -184,7 +184,7 @@ class Verifier {
         )
     )
 
-    fun verifyResponse(deviceResponse: DeviceResponse, issuerKey: CoseKey) {
+    suspend fun verifyResponse(deviceResponse: DeviceResponse, issuerKey: CoseKey) {
         val documents = deviceResponse.documents.shouldNotBeNull()
         val doc = documents.first()
         doc.docType shouldBe ConstantIndex.AtomicAttribute2023.isoDocType

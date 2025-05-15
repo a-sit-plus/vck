@@ -278,7 +278,7 @@ class Validator(
     @Throws(IllegalArgumentException::class, CancellationException::class)
     suspend fun verifyDeviceResponse(
         deviceResponse: DeviceResponse,
-        verifyDocumentCallback: (MobileSecurityObject, Document) -> Boolean,
+        verifyDocumentCallback: suspend (MobileSecurityObject, Document) -> Boolean,
     ): VerifyPresentationResult {
         if (deviceResponse.status != 0U) {
             Napier.w("Status invalid: ${deviceResponse.status}")
@@ -301,7 +301,7 @@ class Validator(
     @Throws(IllegalArgumentException::class, CancellationException::class)
     suspend fun verifyDocument(
         doc: Document,
-        verifyDocumentCallback: (MobileSecurityObject, Document) -> Boolean,
+        verifyDocumentCallback: suspend (MobileSecurityObject, Document) -> Boolean,
     ): IsoDocumentParsed {
         if (doc.errors != null) {
             Napier.w("Document has errors: ${doc.errors}")
@@ -431,7 +431,7 @@ class Validator(
      *
      * @param it The [IssuerSigned] structure from ISO 18013-5
      */
-    fun verifyIsoCred(it: IssuerSigned, issuerKey: CoseKey?): VerifyCredentialResult {
+    suspend fun verifyIsoCred(it: IssuerSigned, issuerKey: CoseKey?): VerifyCredentialResult {
         Napier.d("Verifying ISO Cred $it")
         if (!mdocInputValidator(it, issuerKey).isSuccess) {
             return InvalidStructure(it.serialize().encodeToString(Base16(strict = true)))

@@ -247,7 +247,7 @@ class DecryptJwe(
  * Clients need to retrieve the URL passed in as the only argument, and parse the content to [JsonWebKeySet].
  */
 fun interface JwkSetRetrieverFunction {
-    operator fun invoke(url: String): JsonWebKeySet?
+    suspend operator fun invoke(url: String): JsonWebKeySet?
 }
 
 /**
@@ -260,7 +260,7 @@ fun interface PublicJsonWebKeyLookup {
 }
 
 fun interface VerifyJwsSignatureFun {
-    operator fun invoke(
+    suspend operator fun invoke(
         jwsObject: JwsSigned<*>,
         publicKey: CryptoPublicKey,
     ): Boolean
@@ -269,7 +269,7 @@ fun interface VerifyJwsSignatureFun {
 class VerifyJwsSignature(
     val verifySignature: VerifySignatureFun = VerifySignature(),
 ) : VerifyJwsSignatureFun {
-    override operator fun invoke(
+    override suspend operator fun invoke(
         jwsObject: JwsSigned<*>,
         publicKey: CryptoPublicKey,
     ) = catching {
@@ -290,7 +290,7 @@ class VerifyJwsSignature(
 }
 
 fun interface VerifyJwsSignatureWithKeyFun {
-    operator fun invoke(
+    suspend operator fun invoke(
         jwsObject: JwsSigned<*>,
         signer: JsonWebKey,
     ): Boolean
@@ -299,7 +299,7 @@ fun interface VerifyJwsSignatureWithKeyFun {
 class VerifyJwsSignatureWithKey(
     val verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(),
 ) : VerifyJwsSignatureWithKeyFun {
-    override operator fun invoke(
+    override suspend operator fun invoke(
         jwsObject: JwsSigned<*>,
         signer: JsonWebKey,
     ) = signer.toCryptoPublicKey().getOrNull()?.let {

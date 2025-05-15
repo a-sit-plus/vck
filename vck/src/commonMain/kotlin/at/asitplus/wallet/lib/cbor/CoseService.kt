@@ -35,7 +35,7 @@ class CoseHeaderNone : CoseHeaderIdentifierFun {
 
 /** Identify [KeyMaterial] with it's [KeyMaterial.identifier] in (protected) [CoseHeader.keyId]. */
 class CoseHeaderKeyId : CoseHeaderIdentifierFun {
-    override suspend fun invoke(
+    override suspend operator fun invoke(
         it: CoseHeader?,
         keyMaterial: KeyMaterial,
     ): CoseHeader? = it?.copy(kid = keyMaterial.identifier.encodeToByteArray())
@@ -43,7 +43,7 @@ class CoseHeaderKeyId : CoseHeaderIdentifierFun {
 
 /** Identify [KeyMaterial] with it's [KeyMaterial.getCertificate] in (unprotected) [CoseHeader.certificateChain]. */
 class CoseHeaderCertificate : CoseHeaderIdentifierFun {
-    override suspend fun invoke(
+    override suspend operator fun invoke(
         it: CoseHeader?,
         keyMaterial: KeyMaterial,
     ) = it?.copy(certificateChain = keyMaterial.getCertificate()?.let { listOf(it.encodeToDer()) })
@@ -64,7 +64,7 @@ class SignCose<P : Any>(
     val protectedHeaderModifier: CoseHeaderIdentifierFun? = null,
     val unprotectedHeaderModifier: CoseHeaderIdentifierFun? = null,
 ) : SignCoseFun<P> {
-    override suspend fun invoke(
+    override suspend operator fun invoke(
         protectedHeader: CoseHeader?,
         unprotectedHeader: CoseHeader?,
         payload: P?,
@@ -104,7 +104,7 @@ class SignCoseDetached<P : Any>(
     val protectedHeaderModifier: CoseHeaderIdentifierFun? = null,
     val unprotectedHeaderModifier: CoseHeaderIdentifierFun? = null,
 ) : SignCoseDetachedFun<P> {
-    override suspend fun invoke(
+    override suspend operator fun invoke(
         protectedHeader: CoseHeader?,
         unprotectedHeader: CoseHeader?,
         payload: P?,
@@ -167,7 +167,7 @@ class VerifyCoseSignature<P : Any>(
     /** Need to implement if valid keys for CoseSigned are transported somehow out-of-band, e.g. provided by a trust store */
     val publicKeyLookup: PublicCoseKeyLookup = PublicCoseKeyLookup { null }
 ) : VerifyCoseSignatureFun<P> {
-    override suspend fun invoke(
+    override suspend operator fun invoke(
         coseSigned: CoseSigned<P>,
         externalAad: ByteArray,
         detachedPayload: ByteArray?,
@@ -185,7 +185,7 @@ class VerifyCoseSignature<P : Any>(
 }
 
 fun interface VerifyCoseSignatureWithKeyFun<P> {
-    operator fun invoke(
+    suspend operator fun invoke(
         coseSigned: CoseSigned<P>,
         signer: CoseKey,
         externalAad: ByteArray,
@@ -196,7 +196,7 @@ fun interface VerifyCoseSignatureWithKeyFun<P> {
 class VerifyCoseSignatureWithKey<P : Any>(
     val verifySignature: VerifySignatureFun = VerifySignature(),
 ) : VerifyCoseSignatureWithKeyFun<P> {
-    override fun invoke(
+    override suspend operator fun invoke(
         coseSigned: CoseSigned<P>,
         signer: CoseKey,
         externalAad: ByteArray,

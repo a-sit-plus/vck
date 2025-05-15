@@ -48,7 +48,7 @@ interface Verifier {
     suspend fun verifyPresentationIsoMdoc(
         input: DeviceResponse,
         challenge: String,
-        verifyDocument: (MobileSecurityObject, Document) -> Boolean,
+        verifyDocument: suspend (MobileSecurityObject, Document) -> Boolean,
     ): VerifyPresentationResult
 
     sealed class VerifyPresentationResult {

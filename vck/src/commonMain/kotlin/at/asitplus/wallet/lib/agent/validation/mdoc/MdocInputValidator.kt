@@ -10,8 +10,8 @@ import io.github.aakira.napier.Napier
 class MdocInputValidator(
     private val verifyCoseSignatureWithKey: VerifyCoseSignatureWithKeyFun<MobileSecurityObject> = VerifyCoseSignatureWithKey(),
 ) {
-    operator fun invoke(it: IssuerSigned, issuerKey: CoseKey?) = MdocInputValidationSummary(
-        integrityValidationSummary = if(issuerKey == null) {
+    suspend operator fun invoke(it: IssuerSigned, issuerKey: CoseKey?) = MdocInputValidationSummary(
+        integrityValidationSummary = if (issuerKey == null) {
             Napier.w("ISO: No issuer key")
             MdocInputValidationSummary.IntegrityValidationSummary.IntegrityNotValidated
         } else {
@@ -23,7 +23,7 @@ class MdocInputValidator(
             )
         },
     ).also {
-        if(it.isSuccess) {
+        if (it.isSuccess) {
             Napier.d("Verifying ISO Cred $it")
         }
     }
