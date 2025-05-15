@@ -15,7 +15,15 @@ data class IsoDocumentParsed(
     val invalidItems: List<IssuerSignedItem> = listOf(),
     val freshnessSummary: CredentialFreshnessSummary.Mdoc,
 ) {
-    @Deprecated("Replaced with more expressive freshness information", ReplaceWith("freshnessSummary.tokenStatusValidationResult is TokenStatusValidationResult.Invalid"))
-    val isRevoked: Boolean
-        get() = freshnessSummary.tokenStatusValidationResult is TokenStatusValidationResult.Invalid
+    @Deprecated("Replaced with more expressive freshness information", ReplaceWith("""freshnessSummary.let { when(it.tokenStatusValidationResult) {
+            is TokenStatusValidationResult.Rejected -> null
+            is TokenStatusValidationResult.Invalid -> true
+            is TokenStatusValidationResult.Valid -> false
+        }}"""))
+    val isRevoked: Boolean?
+        get() = when(freshnessSummary.tokenStatusValidationResult) {
+            is TokenStatusValidationResult.Rejected -> null
+            is TokenStatusValidationResult.Invalid -> true
+            is TokenStatusValidationResult.Valid -> false
+        }
 }

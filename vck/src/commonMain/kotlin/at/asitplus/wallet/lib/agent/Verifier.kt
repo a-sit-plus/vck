@@ -59,7 +59,19 @@ interface Verifier {
             val reconstructedJsonObject: JsonObject,
             val disclosures: Collection<SelectiveDisclosureItem>,
             val freshnessSummary: CredentialFreshnessSummary.SdJwt,
-        ) : VerifyPresentationResult()
+        ) : VerifyPresentationResult() {
+            @Deprecated("Replaced with more expressive freshness information", ReplaceWith("""freshnessSummary.let { when(it.tokenStatusValidationResult) {
+                is TokenStatusValidationResult.Rejected -> null
+                is TokenStatusValidationResult.Invalid -> true
+                is TokenStatusValidationResult.Valid -> false
+            }}"""))
+            val isRevoked: Boolean?
+                get() = when(freshnessSummary.tokenStatusValidationResult) {
+                    is TokenStatusValidationResult.Rejected -> null
+                    is TokenStatusValidationResult.Invalid -> true
+                    is TokenStatusValidationResult.Valid -> false
+                }
+        }
 
         data class SuccessIso(val documents: List<IsoDocumentParsed>) : VerifyPresentationResult()
         data class InvalidStructure(val input: String) : VerifyPresentationResult()

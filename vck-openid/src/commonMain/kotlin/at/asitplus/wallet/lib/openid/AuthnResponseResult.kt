@@ -6,6 +6,7 @@ import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import kotlinx.serialization.json.JsonObject
 
@@ -53,7 +54,15 @@ sealed class AuthnResponseResult {
         val disclosures: Collection<SelectiveDisclosureItem>,
         val state: String?,
         val freshnessSummary: CredentialFreshnessSummary.SdJwt,
-    ) : AuthnResponseResult()
+    ) : AuthnResponseResult() {
+        @Deprecated("Replaced with more expressive freshness information", ReplaceWith("freshnessSummary.tokenStatusValidationResult is TokenStatusValidationResult.Invalid"))
+        val isRevoked: Boolean?
+            get() = if(freshnessSummary.tokenStatusValidationResult is TokenStatusValidationResult.Rejected) {
+                null
+            } else {
+                freshnessSummary.tokenStatusValidationResult is TokenStatusValidationResult.Invalid
+            }
+    }
 
     /**
      * Successfully decoded and validated the response from the Wallet (ISO credential)

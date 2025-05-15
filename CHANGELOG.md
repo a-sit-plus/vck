@@ -23,8 +23,9 @@ Release 5.7.0:
    - Change type of `VerifiablePresentationParsed.verifiableCredentials` and `revokedVerifiableCredentials` to `Collection<VcJwsVerificationResultWrapper`>
    - Rename `VerifiablePresentationParsed.verifiableCredentials` to `VerifiablePresentationParsed.freshVerifiableCredentials`
    - Rename `VerifiablePresentationParsed.revokedVerifiableCredentials` to `VerifiablePresentationParsed.notVerifiablyFreshVerifiableCredentials`
-   - Add `Validator.checkCredentialFreshness`
+   - Remove `Validator.checkRevocationStatus` in favor of `Validator.checkCredentialFreshness`
    - Remove `Holder.StoredCredential.status`
+   - Remove `Verifier.VerifyCredentialResult.Revoked`
  - Add constructor parameter `Validator.acceptedTokenStatuses` to allow library client to define token statuses deemed valid
  - Remove `Holder.StoredCredential` in favor of `SubjectCredentialStore.StoreEntry` 
 

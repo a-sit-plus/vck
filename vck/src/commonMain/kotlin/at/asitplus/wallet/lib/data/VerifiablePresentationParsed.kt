@@ -15,15 +15,15 @@ data class VerifiablePresentationParsed(
     val invalidVerifiableCredentials: Collection<String> = listOf(),
 ) {
     @Suppress("UNUSED")
-    @Deprecated("Renamed to represent new validation semantics.", ReplaceWith("notVerifiablyFreshVerifiableCredentials"))
-    val revokedVerifiableCredentials
-        get() = notVerifiablyFreshVerifiableCredentials
-
-    @Suppress("UNUSED")
     @Deprecated("Renamed to represent new validation semantics.", ReplaceWith("freshVerifiableCredentials.map { it.vcJws }"))
     val verifiableCredentials
         get() = freshVerifiableCredentials.map {
             it.vcJws
         }
+
+    @Suppress("UNUSED")
+    @Deprecated("Renamed to represent new validation semantics.", ReplaceWith("notVerifiablyFreshVerifiableCredentials"))
+    val revokedVerifiableCredentials
+        get() = notVerifiablyFreshVerifiableCredentials
 }
 
