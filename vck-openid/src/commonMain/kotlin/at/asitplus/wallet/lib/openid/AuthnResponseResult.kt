@@ -2,12 +2,10 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.wallet.lib.agent.validation.CredentialFreshnessSummary
-import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import kotlinx.serialization.json.JsonObject
 
@@ -55,15 +53,7 @@ sealed class AuthnResponseResult {
         val disclosures: Collection<SelectiveDisclosureItem>,
         val state: String?,
         val freshnessSummary: CredentialFreshnessSummary.SdJwt,
-    ) : AuthnResponseResult() {
-        @Deprecated("Replaced with more expressive TokenStatusValidationResult, supporting token status values as defined by the library client.", ReplaceWith("freshnessSummary.tokenStatusValidationResult"))
-        val tokenStatus: TokenStatusValidationResult
-            get() = freshnessSummary.tokenStatusValidationResult
-
-        @Deprecated("", ReplaceWith("credentialFreshnessSummary.timelinessValidationSummary"))
-        val timelinessValidationSummary: CredentialTimelinessValidationSummary.SdJwt
-            get() = freshnessSummary.timelinessValidationSummary
-    }
+    ) : AuthnResponseResult()
 
     /**
      * Successfully decoded and validated the response from the Wallet (ISO credential)

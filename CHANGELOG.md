@@ -13,37 +13,19 @@ Release 5.7.0:
      - `SignatureAlgorithm.RSAorHMAC` is now properly split into `SignatureAlgorithm` and `MessageAuthenticationCode`. Both implement `DataIntegrityAlgorithm`.
      - This split also affects `JwsAlgorithm`, which now has subtypes: `Signature` and `MAC`. Hence, `JwsAlgorithm.ES256` -> `JwsAlgorithm.Signature.ES256`
  - Separate credential timeliness validation from content semantics validation
-   - Change `Validator` constructor to include configuration of separate credential structure validators 
-   - Change `Validator` constructor to include configuration of credential timeliness validator 
+   - Change `Validator` constructor to include configuration of the credential timeliness validator
    - Change `Validator.verifyVcJws` to not perform timeliness validation
    - Change `Validator.verifySdJwt` to not perform timeliness validation
-   - Replace property`isRevoked` with properties `timelinessValidationSummary` and `tokenStatus` in:
+   - Replace property`isRevoked` with property `freshnessSummary` in:
      - `Verifier.VerifyPresentationResult.SuccessSdJwt` 
      - `IsoDocumentParsed`
      - `AuthnResponseResult.SuccessSdJwt`
-   - Rename `VerifiablePresentationParsed.verifiableCredentials` to `VerifiablePresentationParsed.timelyCredentials`
-   - Rename `VerifiablePresentationParsed.revokedVerifiableCredentials` to `VerifiablePresentationParsed.untimelyVerifiableCredentials`
-   - Change type of `VerifiablePresentationParsed.verifiableCredentials` and `revokedVerifiableCredentials` to `Collection<VcJwsVerificationResultWrapper`> 
-   - Add `Validator.checkTimeliness`
+   - Change type of `VerifiablePresentationParsed.verifiableCredentials` and `revokedVerifiableCredentials` to `Collection<VcJwsVerificationResultWrapper`>
+   - Rename `VerifiablePresentationParsed.verifiableCredentials` to `VerifiablePresentationParsed.freshVerifiableCredentials`
+   - Rename `VerifiablePresentationParsed.revokedVerifiableCredentials` to `VerifiablePresentationParsed.notVerifiablyFreshVerifiableCredentials`
+   - Add `Validator.checkCredentialFreshness`
    - Remove `Holder.StoredCredential.status`
- - Add class `TokenStatusValidationResult`
-   - Change type of property `tokenStatus` in:
-       - `Verifier.VerifyPresentationResult.SuccessSdJwt`
-       - `IsoDocumentParsed`
-       - `AuthnResponseResult.SuccessSdJwt`
  - Add constructor parameter `Validator.acceptedTokenStatuses` to allow library client to define token statuses deemed valid
- - Remove `Validator.checkTimeliness` and `Validator.checkRevocationStatus` in favor of `Validator.checkCredentialFreshness`
- - Combine members `timelinessValidationSummary` and `tokenStatus` as `freshnessSummary` in:
-   - `IsoDocumentParsed`
-   - `Verifier.VerifyPresentationResult.SuccessSdJwt`
-   - `AuthnResponseResult.SuccessSdJwt`
-   - `VcJwsVerificationResultWrapper`
- - Rename `isSuccess` to `isTimely` in:
-   - `CredentialTimelinessValidationSummary`
-   - `MdocTimelinessValidationDetails`
-   - `MobileSecurityObjectTimelinessValidationSummary`
-   - `SdJwtTimelinessValidationDetails`
-   - `VcJwsTimelinessValidationDetails`
  - Remove `Holder.StoredCredential` in favor of `SubjectCredentialStore.StoreEntry` 
 
 Release 5.6.1:
