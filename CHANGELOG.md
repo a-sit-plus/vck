@@ -1,5 +1,9 @@
 # Changelog
 
+Release 5.6.3:
+ - OpenID for Verifiable Credential Issuance:
+   - Increase interop with wwWallet (optional parameter `proof_signing_alg_values_supported`)
+
 Release 5.6.2:
  - OpenID for Verifiable Presentations:
    - Send `state` parameter for `direct_post.jwt` to increase compatibility with buggy verifiers
