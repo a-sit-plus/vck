@@ -253,7 +253,7 @@ class WalletService(
 
     internal suspend fun createCredentialRequestProofAttestation(
         clientNonce: String?,
-        supportedSigningAlgorithms: Collection<String>,
+        supportedSigningAlgorithms: Collection<String>?,
     ): CredentialRequestProof = CredentialRequestProof(
         proofType = ProofType.ATTESTATION,
         attestation = this.loadKeyAttestation?.invoke(KeyAttestationInput(clientNonce, supportedSigningAlgorithms))

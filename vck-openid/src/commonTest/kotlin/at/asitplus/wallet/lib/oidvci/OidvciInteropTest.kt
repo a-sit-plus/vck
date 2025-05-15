@@ -205,7 +205,7 @@ class OidvciInteropTest : FunSpec({
         credential.scope shouldBe "eu.europa.ec.eudi.pid_vc_sd_jwt"
         credential.supportedBindingMethods!!.shouldHaveSingleElement("jwk")
         credential.supportedSigningAlgorithms!!.shouldHaveSingleElement("ES256")
-        credential.supportedProofTypes!!["jwt"]!!.supportedSigningAlgorithms.shouldContainAll("RS256", "ES256")
+        credential.supportedProofTypes!!["jwt"]!!.supportedSigningAlgorithms?.shouldContainAll("RS256", "ES256")
         credential.sdJwtVcType shouldBe "eu.europa.ec.eudi.pid.1"
         // this is still wrong in EUDIW's metadata:
         // Should be an array: credentialConfig.credentialDefinition!!.types,

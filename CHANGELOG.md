@@ -32,6 +32,10 @@ Release 5.7.0:
  - Add constructor parameter `Validator.acceptedTokenStatuses` to allow library client to define token statuses deemed valid
  - Remove `Holder.StoredCredential` in favor of `SubjectCredentialStore.StoreEntry` 
 
+Release 5.6.3:
+ - OpenID for Verifiable Credential Issuance:
+   - Increase interop with wwWallet (optional parameter `proof_signing_alg_values_supported`)
+
 Release 5.6.2:
  - OpenID for Verifiable Presentations:
    - Send `state` parameter for `direct_post.jwt` to increase compatibility with buggy verifiers

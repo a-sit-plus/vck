@@ -11,7 +11,7 @@ data class CredentialRequestProofSupported(
      * key proof type and are defined in Section 7.2.1.
      */
     @SerialName("proof_signing_alg_values_supported")
-    val supportedSigningAlgorithms: Collection<String>,
+    val supportedSigningAlgorithms: Collection<String>? = null,
 
     /**
      * OID4VCI: OPTIONAL. Object that describes the requirement for key attestations as described in Appendix D,
