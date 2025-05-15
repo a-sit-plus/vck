@@ -40,8 +40,7 @@ class StoreEntrySerializationTest : FreeSpec({
             .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
         val entry = holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
-            .shouldBeInstanceOf<Holder.StoredCredential.Vc>()
-            .storeEntry
+            .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Vc>()
 
         val serialized = vckJsonSerializer.encodeToString(entry)
 
@@ -60,8 +59,7 @@ class StoreEntrySerializationTest : FreeSpec({
             .shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>()
 
         val entry = holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
-            .shouldBeInstanceOf<Holder.StoredCredential.SdJwt>()
-            .storeEntry
+            .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.SdJwt>()
 
         val serialized = vckJsonSerializer.encodeToString(entry)
 
@@ -86,8 +84,7 @@ class StoreEntrySerializationTest : FreeSpec({
             .shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
 
         val entry = holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
-            .shouldBeInstanceOf<Holder.StoredCredential.Iso>()
-            .storeEntry
+            .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Iso>()
 
         val serialized = vckJsonSerializer.encodeToString(entry)
 
@@ -364,8 +361,7 @@ class StoreEntrySerializationTest : FreeSpec({
             .shouldNotBeNull()
 
         val entry = holder.storeCredential(credentialsInput).getOrThrow()
-            .shouldBeInstanceOf<Holder.StoredCredential.Iso>()
-            .storeEntry
+            .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Iso>()
 
         val serialized = vckJsonSerializer.encodeToString(entry)
 

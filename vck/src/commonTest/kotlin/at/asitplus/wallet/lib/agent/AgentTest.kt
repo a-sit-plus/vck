@@ -9,11 +9,11 @@ import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialQueryInstance
 import at.asitplus.openid.dcql.DCQLCredentialQueryList
 import at.asitplus.openid.dcql.DCQLQuery
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.StatusListToken
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -150,14 +150,14 @@ class AgentTest : FreeSpec({
                 credentials.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
                 val storedCredentials = holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
-                storedCredentials.shouldBeInstanceOf<Holder.StoredCredential.Vc>()
+                storedCredentials.shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Vc>()
 
                 holderCredentialStore.getCredentials().getOrThrow().shouldHaveSize(1)
                 val holderCredentials = holder.getCredentials()
                 holderCredentials.shouldNotBeNull()
                 holderCredentials.shouldHaveSize(1)
                 holderCredentials.forEach {
-                    validator.checkRevocationStatus(it.storeEntry).shouldBeInstanceOf<TokenStatusValidationResult.Valid>()
+                    validator.checkRevocationStatus(it).shouldBeInstanceOf<TokenStatusValidationResult.Valid>()
                 }
             }
 
@@ -173,14 +173,14 @@ class AgentTest : FreeSpec({
 
                 val storedCredentials =
                     holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
-                storedCredentials.shouldBeInstanceOf<Holder.StoredCredential.Vc>()
+                storedCredentials.shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Vc>()
 
                 issuer.revokeCredentials(listOf(credentials.vcJws)) shouldBe true
 
                 val holderCredentials = holder.getCredentials()
                 holderCredentials.shouldNotBeNull()
                 holderCredentials.forEach {
-                    validator.checkRevocationStatus(it.storeEntry).shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
+                    validator.checkRevocationStatus(it).shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
                 }
             }
         }

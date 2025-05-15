@@ -31,6 +31,7 @@ Release 5.7.0:
        - `Verifier.VerifyPresentationResult.SuccessSdJwt`
        - `IsoDocumentParsed`
        - `AuthnResponseResult.SuccessSdJwt`
+ - Remove `Holder.StoredCredential` in favor of `SubjectCredentialStore.StoreEntry` 
 
 Release 5.6.1:
  - Expose details for `ConstraintFieldsEvaluationException`

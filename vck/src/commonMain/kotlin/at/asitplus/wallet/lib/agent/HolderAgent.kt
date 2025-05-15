@@ -58,7 +58,7 @@ class HolderAgent(
                     vc.jws,
                     credential.vcJws,
                     credential.scheme,
-                ).toStoredCredential()
+                )
             }
 
             is Holder.StoreCredentialInput.SdJwt -> {
@@ -71,7 +71,7 @@ class HolderAgent(
                     credential.vcSdJwt,
                     sdJwt.disclosures,
                     credential.scheme,
-                ).toStoredCredential()
+                )
             }
 
             is Holder.StoreCredentialInput.Iso -> {
@@ -85,7 +85,6 @@ class HolderAgent(
                     throw VerificationError(iso.toString())
                 }
                 subjectCredentialStore.storeCredential(iso.issuerSigned, credential.scheme)
-                    .toStoredCredential()
             }
         }
     }
@@ -94,16 +93,9 @@ class HolderAgent(
     /**
      * Gets a list of all stored credentials, with a revocation status.
      */
-    override suspend fun getCredentials(): Collection<Holder.StoredCredential>? {
-        val credentials = subjectCredentialStore.getCredentials().getOrNull()
-            ?: return null.also { Napier.w("Got no credentials from subjectCredentialStore") }
-        return credentials.map { it.toStoredCredential() }
-    }
-
-    private fun StoreEntry.toStoredCredential() = when (this) {
-        is StoreEntry.Iso -> Holder.StoredCredential.Iso(this)
-        is StoreEntry.Vc -> Holder.StoredCredential.Vc(this)
-        is StoreEntry.SdJwt -> Holder.StoredCredential.SdJwt(this)
+    override suspend fun getCredentials(): Collection<SubjectCredentialStore.StoreEntry>? {
+        return subjectCredentialStore.getCredentials().getOrNull()
+            ?: null.also { Napier.w("Got no credentials from subjectCredentialStore") }
     }
 
     /**
@@ -112,9 +104,7 @@ class HolderAgent(
     private suspend fun getValidCredentialsByPriority(): List<StoreEntry>? {
         val availableCredentials = getCredentials() ?: return null
 
-        val presortedCredentials = availableCredentials.map {
-            it.storeEntry
-        }.sortedBy {
+        val presortedCredentials = availableCredentials.sortedBy {
             // prefer iso credentials and sd jwt credentials over plain vc credentials
             // -> they support selective disclosure!
             when (it) {

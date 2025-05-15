@@ -93,5 +93,4 @@ interface SubjectCredentialStore {
             override val schemaUri: String,
         ) : StoreEntry
     }
-
 }

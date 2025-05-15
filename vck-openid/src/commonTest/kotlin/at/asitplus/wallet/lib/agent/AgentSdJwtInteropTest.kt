@@ -78,7 +78,7 @@ class AgentSdJwtInteropTest : FreeSpec({
             Holder.StoreCredentialInput.SdJwt(input, EuPidScheme)
         ).getOrThrow()
 
-        val entry = stored.storeEntry
+        val entry = stored
         entry.shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.SdJwt>()
         entry.disclosures.size shouldBe 9
 
