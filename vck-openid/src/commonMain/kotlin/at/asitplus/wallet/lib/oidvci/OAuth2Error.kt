@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.openid.odcJsonSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -19,4 +21,15 @@ data class OAuth2Error(
 
     @SerialName("error_uri")
     val errorUri: String? = null,
-)
+
+    @SerialName("state")
+    val state: String? = null
+) {
+    fun serialize() = odcJsonSerializer.encodeToString(this)
+
+    companion object {
+        fun deserialize(it: String) = kotlin.runCatching {
+            odcJsonSerializer.decodeFromString<OAuth2Error>(it)
+        }.wrap()
+    }
+}
