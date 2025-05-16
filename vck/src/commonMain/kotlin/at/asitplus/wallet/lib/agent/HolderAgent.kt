@@ -14,7 +14,6 @@ import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.dif.PresentationExchangeInputEvaluator
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.third_party.at.asitplus.oidc.dcql.toDefaultSubmission
 import at.asitplus.wallet.lib.jws.*
 import at.asitplus.wallet.lib.procedures.dcql.DCQLQueryAdapter
@@ -117,7 +116,7 @@ class HolderAgent(
         val withRevocationStatusQueryIssued = presortedCredentials.map {
             it to coroutineScope {
                 async {
-                    validator.checkRevocationStatus(it)
+                    validator.checkCredentialFreshness(it)
                 }
             }
         }
@@ -128,7 +127,7 @@ class HolderAgent(
             it.first to it.second.await()
         }
         return withRevocationStatusAvailable.sortedBy {
-            if (validator.checkTimeliness(it.first).isSuccess && it.second is TokenStatusValidationResult.Valid) {
+            if (it.second.isFresh) {
                 0
             } else {
                 1

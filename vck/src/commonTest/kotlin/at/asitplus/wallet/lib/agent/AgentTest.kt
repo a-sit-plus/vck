@@ -215,9 +215,9 @@ class AgentTest : FreeSpec({
 
             verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge).also {
                 it.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
-                it.vp.untimelyVerifiableCredentials.shouldBeEmpty()
+                it.vp.notVerifiablyFreshVerifiableCredentials.shouldBeEmpty()
                 it.vp.invalidVerifiableCredentials.shouldBeEmpty()
-                it.vp.timelyVerifiableCredentials shouldHaveSize 1
+                it.vp.freshVerifiableCredentials shouldHaveSize 1
             }
         }
 
@@ -341,8 +341,8 @@ class AgentTest : FreeSpec({
 
             verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge).also {
                 it.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
-                it.vp.untimelyVerifiableCredentials.shouldBeEmpty()
-                it.vp.timelyVerifiableCredentials shouldHaveSize 1
+                it.vp.notVerifiablyFreshVerifiableCredentials.shouldBeEmpty()
+                it.vp.freshVerifiableCredentials shouldHaveSize 1
             }
         }
 

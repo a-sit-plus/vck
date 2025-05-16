@@ -5,7 +5,7 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.jwkId
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary
+import at.asitplus.wallet.lib.agent.validation.CredentialFreshnessSummary
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.iso.DeviceResponse
@@ -58,9 +58,20 @@ interface Verifier {
             val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
             val reconstructedJsonObject: JsonObject,
             val disclosures: Collection<SelectiveDisclosureItem>,
-            val timelinessValidationSummary: CredentialTimelinessValidationSummary.SdJwt,
-            val tokenStatus: TokenStatusValidationResult,
-        ) : VerifyPresentationResult()
+            val freshnessSummary: CredentialFreshnessSummary.SdJwt,
+        ) : VerifyPresentationResult() {
+            @Deprecated("Replaced with more expressive freshness information", ReplaceWith("""freshnessSummary.let { when(it.tokenStatusValidationResult) {
+                is TokenStatusValidationResult.Rejected -> null
+                is TokenStatusValidationResult.Invalid -> true
+                is TokenStatusValidationResult.Valid -> false
+            }}"""))
+            val isRevoked: Boolean?
+                get() = when(freshnessSummary.tokenStatusValidationResult) {
+                    is TokenStatusValidationResult.Rejected -> null
+                    is TokenStatusValidationResult.Invalid -> true
+                    is TokenStatusValidationResult.Valid -> false
+                }
+        }
 
         data class SuccessIso(val documents: List<IsoDocumentParsed>) : VerifyPresentationResult()
         data class InvalidStructure(val input: String) : VerifyPresentationResult()

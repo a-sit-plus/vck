@@ -675,8 +675,7 @@ open class OpenId4VpVerifier(
             reconstructed = reconstructedJsonObject,
             disclosures = disclosures,
             state = state,
-            timelinessValidationSummary = timelinessValidationSummary,
-            tokenStatus = tokenStatus,
+            freshnessSummary = freshnessSummary,
         ).also { Napier.i("VP success: $this") }
     }
 }

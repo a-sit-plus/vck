@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
-import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary
+import at.asitplus.wallet.lib.agent.validation.CredentialFreshnessSummary
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
@@ -53,9 +53,16 @@ sealed class AuthnResponseResult {
         val reconstructed: JsonObject,
         val disclosures: Collection<SelectiveDisclosureItem>,
         val state: String?,
-        val timelinessValidationSummary: CredentialTimelinessValidationSummary.SdJwt,
-        val tokenStatus: TokenStatusValidationResult,
-    ) : AuthnResponseResult()
+        val freshnessSummary: CredentialFreshnessSummary.SdJwt,
+    ) : AuthnResponseResult() {
+        @Deprecated("Replaced with more expressive freshness information", ReplaceWith("freshnessSummary.tokenStatusValidationResult is TokenStatusValidationResult.Invalid"))
+        val isRevoked: Boolean?
+            get() = if(freshnessSummary.tokenStatusValidationResult is TokenStatusValidationResult.Rejected) {
+                null
+            } else {
+                freshnessSummary.tokenStatusValidationResult is TokenStatusValidationResult.Invalid
+            }
+    }
 
     /**
      * Successfully decoded and validated the response from the Wallet (ISO credential)
