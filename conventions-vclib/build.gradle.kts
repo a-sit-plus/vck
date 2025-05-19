@@ -11,7 +11,7 @@ group = "at.asitplus.gradle"
 dependencies {
     api("at.asitplus.gradle:k2")
     api("com.squareup:kotlinpoet:1.16.0")
-    api("com.android.library:com.android.library.gradle.plugin:8.2.2")
+    api("com.android.library:com.android.library.gradle.plugin:8.10.0")
     api("de.mannodermaus.gradle.plugins:android-junit5:1.11.0.0")
 
 }
