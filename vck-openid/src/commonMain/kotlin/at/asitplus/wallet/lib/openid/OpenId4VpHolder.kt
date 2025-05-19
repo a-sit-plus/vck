@@ -178,10 +178,11 @@ class OpenId4VpHolder(
      */
     suspend fun startAuthorizationResponsePreparation(
         params: RequestParametersFrom<AuthenticationRequestParameters>,
+        incomingDcApiRequest: Oid4vpDCAPIRequest? = null
     ): KmmResult<AuthorizationResponsePreparationState> = catching {
         val clientMetadata = params.parameters.loadClientMetadata()
         val presentationDefinition = params.parameters.loadCredentialRequest()
-        authorizationRequestValidator.validateAuthorizationRequest(params)
+        authorizationRequestValidator.validateAuthorizationRequest(params, incomingDcApiRequest)
         AuthorizationResponsePreparationState(presentationDefinition, clientMetadata)
     }
 
