@@ -100,8 +100,9 @@ class OpenId4VpWallet(
 
     suspend fun startAuthorizationResponsePreparation(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
+        incomingDcApiRequest: Oid4vpDCAPIRequest? = null
     ): KmmResult<AuthorizationResponsePreparationState> =
-        openId4VpHolder.startAuthorizationResponsePreparation(request)
+        openId4VpHolder.startAuthorizationResponsePreparation(request, incomingDcApiRequest)
 
     suspend fun startAuthorizationResponsePreparation(
         input: String,
