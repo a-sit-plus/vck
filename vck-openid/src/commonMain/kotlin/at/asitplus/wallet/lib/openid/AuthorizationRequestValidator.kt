@@ -27,6 +27,9 @@ internal class AuthorizationRequestValidator(
             throw InvalidRequest("response_type is null")
         }
 
+        if (request is RequestParametersFrom.JwsSigned) {
+            request.parameters.verifyClientIdPresent()
+        }
 
         val clientIdScheme = request.parameters.clientIdSchemeExtracted
         if (clientIdScheme == OpenIdConstants.ClientIdScheme.RedirectUri) {
@@ -72,6 +75,14 @@ internal class AuthorizationRequestValidator(
         if (clientMetadata == null && clientMetadataUri == null) {
             Napier.w("client_id_scheme is redirect_uri, but metadata is not set")
             throw InvalidRequest("client_metadata is null")
+        }
+    }
+
+    @Throws(OAuth2Exception::class)
+    private fun AuthenticationRequestParameters.verifyClientIdPresent() {
+        if (clientId == null) {
+            Napier.w("client_id is not set even though it is required")
+            throw InvalidRequest("client_id is null")
         }
     }
 
