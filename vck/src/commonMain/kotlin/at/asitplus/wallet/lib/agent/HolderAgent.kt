@@ -11,8 +11,6 @@ import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
-import at.asitplus.wallet.lib.cbor.CoseService
-import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
@@ -24,46 +22,27 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.third_party.at.asitplus.oidc.dcql.toDefaultSubmission
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
-import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsHeaderKeyId
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
-import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.procedures.dcql.DCQLQueryAdapter
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
-
 
 /**
  * An agent that only implements [Holder], i.e. it can receive credentials from other agents
  * and present credentials to other agents.
  */
 class HolderAgent(
-    private val validator: Validator = Validator(),
-    private val subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
-    @Deprecated("Use signVerifiablePresentation, signKeyBinding instead")
-    private val jwsService: JwsService,
-    @Deprecated("unused")
-    private val coseService: CoseService,
     override val keyPair: KeyMaterial,
+    private val subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
+    private val validator: Validator = Validator(),
     private val signVerifiablePresentation: SignJwtFun<VerifiablePresentationJws> = SignJwt(keyPair, JwsHeaderKeyId()),
     private val signKeyBinding: SignJwtFun<KeyBindingJws> = SignJwt(keyPair, JwsHeaderNone()),
     private val verifiablePresentationFactory: VerifiablePresentationFactory =
         VerifiablePresentationFactory(keyPair.identifier, signVerifiablePresentation, signKeyBinding),
     private val difInputEvaluator: PresentationExchangeInputEvaluator = PresentationExchangeInputEvaluator,
 ) : Holder {
-
-    constructor(
-        keyMaterial: KeyMaterial,
-        subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
-        validator: Validator = Validator(),
-    ) : this(
-        validator = validator,
-        subjectCredentialStore = subjectCredentialStore,
-        jwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
-        coseService = DefaultCoseService(DefaultCryptoService(keyMaterial)),
-        keyPair = keyMaterial
-    )
 
     /**
      * Stores the verifiable credential in [credential] if it parses and validates,
@@ -149,10 +128,12 @@ class HolderAgent(
     }
 
     /**
-     * Gets a list of all valid stored credentials sorted by preference
+     * Gets a list of all valid stored credentials sorted by preference, possibly filtered by
+     * [filterById]
      */
-    private suspend fun getValidCredentialsByPriority() = getCredentials()
+    private suspend fun getValidCredentialsByPriority(filterById: Int? = null) = getCredentials()
         ?.filter { it.status?.isInvalid != true }
+        ?.filter { filterById == null || it.storeEntry.getDcApiId().hashCode() == filterById }
         ?.map { it.storeEntry }
         ?.sortedBy {
             // prefer iso credentials and sd jwt credentials over plain vc credentials
@@ -313,10 +294,11 @@ class HolderAgent(
         inputDescriptors: Collection<InputDescriptor>,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: PathAuthorizationValidator?,
+        filterById: Int?
     ) = catching {
         findInputDescriptorMatches(
             inputDescriptors = inputDescriptors,
-            credentials = getValidCredentialsByPriority()
+            credentials = getValidCredentialsByPriority(filterById = filterById)
                 ?: throw PresentationException("Credentials could not be retrieved from the store"),
             fallbackFormatHolder = fallbackFormatHolder,
             pathAuthorizationValidator = pathAuthorizationValidator,
@@ -369,9 +351,9 @@ class HolderAgent(
         pathAuthorizationValidator = pathAuthorizationValidator,
     )
 
-    override suspend fun matchDCQLQueryAgainstCredentialStore(dcqlQuery: DCQLQuery): KmmResult<DCQLQueryResult<StoreEntry>> {
+    override suspend fun matchDCQLQueryAgainstCredentialStore(dcqlQuery: DCQLQuery, filterById: Int?): KmmResult<DCQLQueryResult<StoreEntry>> {
         return DCQLQueryAdapter(dcqlQuery).select(
-            credentials = getValidCredentialsByPriority()
+            credentials = getValidCredentialsByPriority(filterById)
                 ?: throw PresentationException("Credentials could not be retrieved from the store"),
         )
     }

@@ -4,13 +4,10 @@ import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.CODE_CHALLENGE_METHOD_SHA256
 import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.iso.sha256
-import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
-import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidvci.DefaultMapStore
@@ -39,8 +36,6 @@ class OAuth2Client(
      * and then [TokenRequestParameters.codeVerifier], see [RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636).
      */
     private val stateToCodeStore: MapStore<String, String> = DefaultMapStore(),
-    @Deprecated("Use signPushedAuthorizationRequest instead")
-    val jwsService: JwsService? = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithSelfSignedCert())),
     /**
      * Set this variable to use JAR (JWT-secured authorization requests, RFC 9101)
      * for PAR (Pushed authorization requests, RFC 9126), as mandated by OpenID4VC HAIP.

@@ -5,9 +5,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 import at.asitplus.rqes.CredentialInfo
 
-@Deprecated("Renamed", ReplaceWith("AuthParameter"))
-typealias CscAuthParameter = AuthParameters
-
 /**
  * CSC-API v2.0.0.2
  * Part of [CredentialInfo]

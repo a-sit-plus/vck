@@ -4,9 +4,6 @@ import at.asitplus.rqes.enums.OperationMode
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-@Deprecated("Renamed", ReplaceWith("SignHashResponseParameters"))
-typealias SignHashResponse = SignHashResponseParameters
-
 /**
  * CSC API v2.0.0.2
  * Data class defined in Ch. 11.10

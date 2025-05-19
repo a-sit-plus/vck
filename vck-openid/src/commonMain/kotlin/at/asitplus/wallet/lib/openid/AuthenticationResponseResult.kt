@@ -18,4 +18,9 @@ sealed class AuthenticationResponseResult {
      * for further use.
      */
     data class Redirect(val url: String, val params: AuthenticationResponseParameters) : AuthenticationResponseResult()
+
+    /**
+     * Wallet uses the digital credentials API to return the [at.asitplus.openid.AuthenticationResponseParameters]
+     */
+    data class DcApi(val params: AuthenticationResponseParameters) : AuthenticationResponseResult()
 }

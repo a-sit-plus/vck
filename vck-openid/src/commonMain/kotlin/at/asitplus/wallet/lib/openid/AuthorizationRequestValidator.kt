@@ -4,6 +4,7 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.pki.leaf
+import at.asitplus.wallet.lib.dcapi.request.Oid4vpDCAPIRequest
 import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.MapStore
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
@@ -16,7 +17,10 @@ internal class AuthorizationRequestValidator(
     private val walletNonceMapStore: MapStore<String, String> = DefaultMapStore(),
 ) {
     @Throws(OAuth2Exception::class, CancellationException::class)
-    suspend fun validateAuthorizationRequest(request: RequestParametersFrom<AuthenticationRequestParameters>) {
+    suspend fun validateAuthorizationRequest(
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        incomingDcApiRequest: Oid4vpDCAPIRequest?
+    ) {
         request.parameters.responseType?.let {
             if (!it.contains(OpenIdConstants.ID_TOKEN) && !it.contains(OpenIdConstants.VP_TOKEN)) {
                 Napier.w("createAuthnResponse: Unknown response_type $it")
@@ -27,6 +31,10 @@ internal class AuthorizationRequestValidator(
             throw InvalidRequest("response_type is null")
         }
 
+        if (request is RequestParametersFrom.JwsSigned && request.parameters.responseMode.isAnyDcApi()) {
+            request.parameters.verifyClientIdPresent()
+            request.parameters.verifyExpectedOrigin(incomingDcApiRequest?.callingOrigin)
+        }
 
         val clientIdScheme = request.parameters.clientIdSchemeExtracted
         if (clientIdScheme == OpenIdConstants.ClientIdScheme.RedirectUri) {
@@ -76,9 +84,28 @@ internal class AuthorizationRequestValidator(
     }
 
     @Throws(OAuth2Exception::class)
+    private fun AuthenticationRequestParameters.verifyClientIdPresent() {
+        if (clientId == null) {
+            Napier.w("client_id is not set even though it is required")
+            throw InvalidRequest("client_id is null")
+        }
+    }
+
+    @Throws(OAuth2Exception::class)
+    private fun AuthenticationRequestParameters.verifyExpectedOrigin(actualOrigin: String?) {
+        expectedOrigins.run {
+            if (this == null || !this.contains(actualOrigin)) {
+                Napier.w("actual origin does not match any of the expected origins")
+                throw InvalidRequest("origin not in expected_origins")
+            }
+        }
+    }
+
+    @Throws(OAuth2Exception::class)
     private fun RequestParametersFrom<AuthenticationRequestParameters>.verifyClientIdSchemeX509() {
         val clientIdScheme = parameters.clientIdSchemeExtracted
         val responseModeIsDirectPost = parameters.responseMode.isAnyDirectPost()
+        val responseModeIsDcApi = parameters.responseMode.isAnyDcApi()
         val prefix = "client_id_scheme is $clientIdScheme"
         if (this !is RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>
             || jwsSigned.header.certificateChain == null || jwsSigned.header.certificateChain?.isEmpty() == true
@@ -101,7 +128,7 @@ internal class AuthorizationRequestValidator(
                 Napier.w("$prefix, but client_id does not match any dnsName in the leaf certificate")
                 throw InvalidRequest("client_id not in dnsNames in x5c")
             }
-            if (!responseModeIsDirectPost) {
+            if (!responseModeIsDirectPost && !responseModeIsDcApi) {
                 val parsedUrl = parameters.redirectUrl?.let { Url(it) } ?: run {
                     Napier.w("$prefix, but no redirect_url was provided")
                     throw InvalidRequest("redirect_uri is null")
@@ -128,6 +155,9 @@ internal class AuthorizationRequestValidator(
             }
         }
     }
+
+    private fun OpenIdConstants.ResponseMode?.isAnyDcApi() =
+        (this == OpenIdConstants.ResponseMode.DcApi)  || (this == OpenIdConstants.ResponseMode.DcApiJwt)
 
     private fun OpenIdConstants.ResponseMode?.isAnyDirectPost() =
         (this == OpenIdConstants.ResponseMode.DirectPost) || (this == OpenIdConstants.ResponseMode.DirectPostJwt)

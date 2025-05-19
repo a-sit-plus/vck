@@ -25,11 +25,13 @@ import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.dcapi.request.Oid4vpDCAPIRequest
 import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import io.github.aakira.napier.Napier
+import io.ktor.utils.io.core.toByteArray
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
@@ -56,6 +58,7 @@ internal class PresentationFactory(
         clientMetadata: RelyingPartyMetadata?,
         jsonWebKeys: Collection<JsonWebKey>?,
         credentialPresentation: CredentialPresentation,
+        dcApiRequest: Oid4vpDCAPIRequest?
     ): KmmResult<PresentationResponseParameters> = catching {
         request.verifyResponseType()
 
@@ -72,7 +75,16 @@ internal class PresentationFactory(
             transactionData = transactionData,
             calcIsoDeviceSignature = { docType, _ ->
                 // kept pair result type for backwards compatibility
-                calcDeviceSignature(mdocGeneratedNonce, clientId, responseUrl, nonce, docType) to null
+                calcDeviceSignature(
+                    mdocGeneratedNonce,
+                    clientId,
+                    responseUrl,
+                    nonce,
+                    docType,
+                    dcApiRequest,
+                    jsonWebKeys,
+                    responseWillBeEncrypted
+                ) to null
             },
             mdocGeneratedNonce = mdocGeneratedNonce
         )
@@ -106,31 +118,50 @@ internal class PresentationFactory(
         responseUrl: String?,
         nonce: String,
         docType: String,
-    ): CoseSigned<ByteArray> = if (mdocGeneratedNonce != null && clientId != null && responseUrl != null) {
-        run {
-            val deviceAuthentication = DeviceAuthentication(
-                type = "DeviceAuthentication",
-                sessionTranscript = calcSessionTranscript(mdocGeneratedNonce, clientId, responseUrl, nonce),
-                docType = docType,
-                namespaces = ByteStringWrapper(DeviceNameSpaces(mapOf()))
-            )
-            val deviceAuthenticationBytes = coseCompliantSerializer
-                .encodeToByteArray(ByteStringWrapper(deviceAuthentication))
-                .wrapInCborTag(24)
-                .also { Napier.d("Device authentication signature input is ${it.encodeToString(Base16())}") }
+        dcapiRequest: Oid4vpDCAPIRequest?,
+        jsonWebKeys: Collection<JsonWebKey>?,
+        responseWillBeEncrypted: Boolean
+    ): CoseSigned<ByteArray> {
+        val sessionTranscript =
+            if (dcapiRequest != null) {
+                calcSessionTranscript(dcapiRequest, nonce, jsonWebKeys, responseWillBeEncrypted)
+            } else if (mdocGeneratedNonce != null && clientId != null && responseUrl != null) {
+                calcSessionTranscript(
+                    mdocGeneratedNonce,
+                    clientId,
+                    responseUrl,
+                    nonce
+                )
+            } else {
+                null
+            }
 
-            signDeviceAuthDetached(null, null, deviceAuthenticationBytes, ByteArraySerializer()).getOrElse {
+        return if (sessionTranscript != null) {
+            run {
+                val deviceAuthentication = DeviceAuthentication(
+                    type = "DeviceAuthentication",
+                    sessionTranscript = sessionTranscript,
+                    docType = docType,
+                    namespaces = ByteStringWrapper(DeviceNameSpaces(mapOf()))
+                )
+                val deviceAuthenticationBytes = coseCompliantSerializer
+                    .encodeToByteArray(ByteStringWrapper(deviceAuthentication))
+                    .wrapInCborTag(24)
+                    .also { Napier.d("Device authentication signature input is ${it.encodeToString(Base16())}") }
+
+                signDeviceAuthDetached(null, null, deviceAuthenticationBytes, ByteArraySerializer()).getOrElse {
+                    Napier.w("Could not create DeviceAuth for presentation", it)
+                    throw PresentationException(it)
+                }
+            }
+        } else {
+            Napier.w("Using signDeviceAuthFallback")
+            signDeviceAuthFallback(null, null, nonce.encodeToByteArray(), ByteArraySerializer()).getOrElse {
                 Napier.w("Could not create DeviceAuth for presentation", it)
                 throw PresentationException(it)
             }
         }
-    } else {
-        signDeviceAuthFallback(null, null, nonce.encodeToByteArray(), ByteArraySerializer()).getOrElse {
-            Napier.w("Could not create DeviceAuth for presentation", it)
-            throw PresentationException(it)
-        }
     }
-
 
     private fun calcSessionTranscript(
         mdocGeneratedNonce: String,
@@ -152,6 +183,31 @@ internal class PresentationFactory(
                 responseUriHash = responseUriToHash.serialize().sha256(),
                 nonce = nonce
             ),
+        )
+    }
+
+    private fun calcSessionTranscript(
+        dcApiRequest: Oid4vpDCAPIRequest,
+        nonce: String,
+        jsonWebKeys: Collection<JsonWebKey>?,
+        responseWillBeEncrypted: Boolean
+    ): SessionTranscript {
+        //if (responseWillBeEncrypted != dcApiRequest.) TODO check if response mode is dcapi-jwt
+        val jwkThumbprint = if (responseWillBeEncrypted && !jsonWebKeys.isNullOrEmpty()) {
+            //TODO what if there are multiple JSON web keys?
+            require(jsonWebKeys.size == 1)
+            jsonWebKeys.first().jwkThumbprint
+        } else null
+
+        val openID4VPDCAPIHandoverInfo = OpenID4VPDCAPIHandoverInfo(
+            dcApiRequest.callingOrigin, nonce, jwkThumbprint?.toByteArray()
+        )
+
+        return SessionTranscript.forOpenIdOverDcApi(
+            DCAPIHandover(
+                type = "OpenID4VPDCAPIHandover",
+                hash = openID4VPDCAPIHandoverInfo.serialize().sha256()
+            )
         )
     }
 

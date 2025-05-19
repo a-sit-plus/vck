@@ -7,7 +7,6 @@ import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
-import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
@@ -15,8 +14,6 @@ import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
 import at.asitplus.wallet.lib.cbor.CoseHeaderCertificate
 import at.asitplus.wallet.lib.cbor.CoseHeaderKeyId
 import at.asitplus.wallet.lib.cbor.CoseHeaderNone
-import at.asitplus.wallet.lib.cbor.CoseService
-import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.cbor.SignCoseFun
 import at.asitplus.wallet.lib.data.*
@@ -31,11 +28,9 @@ import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
-import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderKeyId
-import at.asitplus.wallet.lib.jws.JwsService
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
@@ -59,10 +54,6 @@ class IssuerAgent(
     private val statusListAggregationUrl: String? = null,
     private val zlibService: ZlibService = DefaultZlibService(),
     private val revocationListLifetime: Duration = 48.hours,
-    @Deprecated("Use signIssuedSdJwt, signIssuedVc, signStatusListJwt instead")
-    private val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
-    @Deprecated("Use signMobileSecurityObject, signStatusListCwt instead")
-    private val coseService: CoseService = DefaultCoseService(DefaultCryptoService(keyMaterial)),
     private val clock: Clock = Clock.System,
     override val cryptoAlgorithms: Set<SignatureAlgorithm> = setOf(keyMaterial.signatureAlgorithm),
     private val timePeriodProvider: TimePeriodProvider = FixedTimePeriodProvider,

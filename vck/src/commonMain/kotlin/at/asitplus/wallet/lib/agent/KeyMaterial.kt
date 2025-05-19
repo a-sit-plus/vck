@@ -16,7 +16,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * Abstracts the management of key material away from [CryptoService].
+ * Abstracts the management of key material away from cryptographic functions.
  */
 interface KeyMaterial : Signer {
     val identifier: String
@@ -24,7 +24,7 @@ interface KeyMaterial : Signer {
     fun getUnderLyingSigner(): Signer
 
     /**
-     * May be used in [at.asitplus.wallet.lib.cbor.CoseService] to transport the signing key for a COSE structure.
+     * May be used to transport the signing key for a COSE structure.
      * a `null` value signifies that raw public keys are used and no certificate is present
      */
     suspend fun getCertificate(): X509Certificate?

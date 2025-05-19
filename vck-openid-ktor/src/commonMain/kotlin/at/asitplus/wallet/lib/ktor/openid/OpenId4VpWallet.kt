@@ -9,6 +9,7 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.dcapi.request.Oid4vpDCAPIRequest
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.AuthorizationResponsePreparationState
@@ -55,7 +56,11 @@ class OpenId4VpWallet(
     holderAgent: HolderAgent,
 ) {
 
-    data class AuthenticationSuccess(val redirectUri: String? = null)
+    sealed interface AuthenticationResult
+
+    data class AuthenticationSuccess(val redirectUri: String? = null) : AuthenticationResult
+    data class AuthenticationForward(val authenticationResponseResult: AuthenticationResponseResult.DcApi) : AuthenticationResult
+
 
     private val client: HttpClient = HttpClient(engine) {
         followRedirects = false
@@ -95,8 +100,9 @@ class OpenId4VpWallet(
 
     suspend fun startAuthorizationResponsePreparation(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
+        incomingDcApiRequest: Oid4vpDCAPIRequest? = null
     ): KmmResult<AuthorizationResponsePreparationState> =
-        openId4VpHolder.startAuthorizationResponsePreparation(request)
+        openId4VpHolder.startAuthorizationResponsePreparation(request, incomingDcApiRequest)
 
     suspend fun startAuthorizationResponsePreparation(
         input: String,
@@ -117,6 +123,7 @@ class OpenId4VpWallet(
             when (it) {
                 is AuthenticationResponseResult.Post -> postResponse(it)
                 is AuthenticationResponseResult.Redirect -> redirectResponse(it)
+                is AuthenticationResponseResult.DcApi -> TODO()
             }
         }
     }
@@ -131,16 +138,19 @@ class OpenId4VpWallet(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         clientMetadata: RelyingPartyMetadata?,
         credentialPresentation: CredentialPresentation,
-    ): KmmResult<AuthenticationSuccess> = catching {
+        dcApiRequest: Oid4vpDCAPIRequest?,
+    ): KmmResult<AuthenticationResult> = catching {
         Napier.i("startPresentation: $request")
         openId4VpHolder.finalizeAuthorizationResponse(
             request = request,
             clientMetadata = clientMetadata,
-            credentialPresentation = credentialPresentation
+            credentialPresentation = credentialPresentation,
+            dcApiRequest = dcApiRequest
         ).getOrThrow().let {
             when (it) {
                 is AuthenticationResponseResult.Post -> postResponse(it)
                 is AuthenticationResponseResult.Redirect -> redirectResponse(it)
+                is AuthenticationResponseResult.DcApi -> AuthenticationForward(it)
             }
         }
     }
