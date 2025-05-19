@@ -31,7 +31,7 @@ internal class AuthorizationRequestValidator(
             throw InvalidRequest("response_type is null")
         }
 
-        if (request is RequestParametersFrom.JwsSigned && request.parameters.responseMode.let { it.isPlainDcApi() || it.isEncryptedDcApi() }) {
+        if (request is RequestParametersFrom.JwsSigned && request.parameters.responseMode.isAnyDcApi()) {
             request.parameters.verifyClientIdPresent()
             request.parameters.verifyExpectedOrigin(incomingDcApiRequest?.callingOrigin)
         }
@@ -105,7 +105,7 @@ internal class AuthorizationRequestValidator(
     private fun RequestParametersFrom<AuthenticationRequestParameters>.verifyClientIdSchemeX509() {
         val clientIdScheme = parameters.clientIdSchemeExtracted
         val responseModeIsDirectPost = parameters.responseMode.isAnyDirectPost()
-        val responseModeIsDcApi = parameters.responseMode.isPlainDcApi()
+        val responseModeIsDcApi = parameters.responseMode.isAnyDcApi()
         val prefix = "client_id_scheme is $clientIdScheme"
         if (this !is RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>
             || jwsSigned.header.certificateChain == null || jwsSigned.header.certificateChain?.isEmpty() == true
@@ -156,11 +156,8 @@ internal class AuthorizationRequestValidator(
         }
     }
 
-    private fun OpenIdConstants.ResponseMode?.isPlainDcApi() =
-        (this == OpenIdConstants.ResponseMode.DcApi)
-
-    private fun OpenIdConstants.ResponseMode?.isEncryptedDcApi() =
-        (this == OpenIdConstants.ResponseMode.DcApiJwt)
+    private fun OpenIdConstants.ResponseMode?.isAnyDcApi() =
+        (this == OpenIdConstants.ResponseMode.DcApi)  || (this == OpenIdConstants.ResponseMode.DcApiJwt)
 
     private fun OpenIdConstants.ResponseMode?.isAnyDirectPost() =
         (this == OpenIdConstants.ResponseMode.DirectPost) || (this == OpenIdConstants.ResponseMode.DirectPostJwt)
