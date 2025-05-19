@@ -1,7 +1,9 @@
 package at.asitplus.wallet.lib.dcapi.request
 
 import at.asitplus.catching
+import at.asitplus.openid.OpenIdConstants.DC_API_OID4VP_PROTOCOL_IDENTIFIER
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -10,22 +12,21 @@ data class Oid4vpDCAPIRequest(
     val protocol: String,
     val request: String,
     val credentialId: Int,
-    val callingPackageName: String?,
+    val callingPackageName: String,
     val callingOrigin: String, // TODO test with requester that is an Android app
 ) : DCAPIRequest() {
     init {
-        require(callingOrigin != null || callingPackageName != null)
-        require((protocol.startsWith(OID4VP_PREFIX) && protocol.count { it == DELIMITER } == 2)
-                || protocol == OID4VP_PREFIX) // legacy beahaviour
-        getOpenIdVersion().getOrNull()?.let { require(it == "v1" || protocol == OID4VP_PREFIX) }
-        getRequestType().getOrNull()?.let { require(it != "multisigned") }
+        require((protocol.startsWith(DC_API_OID4VP_PROTOCOL_IDENTIFIER) && protocol.count { it == DELIMITER } == 2)
+                || protocol == DC_API_OID4VP_PROTOCOL_IDENTIFIER) // legacy beahaviour
+        require(getOpenIdVersion().getOrNull() == "v1" || protocol == DC_API_OID4VP_PROTOCOL_IDENTIFIER)
+        getRequestType().getOrNull().let { require(it == "unsigned" || it == "signed") }
     }
 
     fun getOpenIdVersion() =
-        catching { protocol.removePrefix(OID4VP_PREFIX).split(DELIMITER).first() }
+        catching { protocol.removePrefix(DC_API_OID4VP_PROTOCOL_IDENTIFIER).split(DELIMITER)[1] }
 
     fun getRequestType() =
-        catching { protocol.removePrefix(OID4VP_PREFIX).split(DELIMITER)[1] }
+        catching { protocol.removePrefix(DC_API_OID4VP_PROTOCOL_IDENTIFIER).split(DELIMITER)[2] }
 
     fun isSignedRequest() =
         catching {
@@ -35,7 +36,6 @@ data class Oid4vpDCAPIRequest(
     override fun serialize(): String = vckJsonSerializer.encodeToString(this)
 
     companion object {
-        private const val OID4VP_PREFIX = "openid4vp"
         private const val DELIMITER = '-'
         fun deserialize(input: String) =
             catching { vckJsonSerializer.decodeFromString<Oid4vpDCAPIRequest>(input) }
