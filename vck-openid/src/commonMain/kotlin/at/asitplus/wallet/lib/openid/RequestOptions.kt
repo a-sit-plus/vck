@@ -17,6 +17,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import com.benasher44.uuid.uuid4
 import io.ktor.http.*
 
+// TODO Should be NormalizedJsonPath
 typealias RequestedAttributes = Set<String>
 
 interface RequestOptions {
@@ -98,7 +99,7 @@ interface RequestOptions {
     fun toInputDescriptor(
         containerJwt: FormatContainerJwt,
         containerSdJwt: FormatContainerSdJwt,
-        flow: Flow? = null
+        flow: Flow? = null,
     ): List<InputDescriptor>
 }
 
@@ -145,7 +146,7 @@ data class OpenIdRequestOptions(
                         CredentialRepresentation.SD_JWT,
                         CredentialRepresentation.PLAIN_JWT,
                             -> DCQLJsonClaimsQuery(
-                            path = DCQLClaimsPathPointer(attribute)
+                            path = splitByDotToDcqlPath(attribute)
                         )
 
                         CredentialRepresentation.ISO_MDOC -> DCQLIsoMdocClaimsQuery(
@@ -170,6 +171,10 @@ data class OpenIdRequestOptions(
         ),
     )
 
+    private fun splitByDotToDcqlPath(attribute: String) = DCQLClaimsPathPointer(
+        attribute.split(".").map { DCQLClaimsPathPointerSegment.NameSegment(it) }.toNonEmptyList()
+    )
+
     override fun toPresentationDefinition(
         containerJwt: FormatContainerJwt,
         containerSdJwt: FormatContainerSdJwt,
@@ -182,7 +187,7 @@ data class OpenIdRequestOptions(
     override fun toInputDescriptor(
         containerJwt: FormatContainerJwt,
         containerSdJwt: FormatContainerSdJwt,
-        flow: Flow?
+        flow: Flow?,
     ): List<InputDescriptor> = credentials.map {
         DifInputDescriptor(
             id = it.buildId(),
@@ -199,13 +204,32 @@ data class RequestOptionsCredential(
     val representation: CredentialRepresentation = CredentialRepresentation.PLAIN_JWT,
     /**
      * List of attributes that shall be requested explicitly (selective disclosure),
-     * or `null` to make no restrictions
+     * or `null` to make no restrictions.
+     *
+     * **By convention, strings containing a `.` are assumed to request nested claims**
+     *
+     * Use the claim names `name` and `address.formatted` to request all claims within this credential:
+     * ````
+     *   "name": "Mustermann",
+     *   "address": {
+     *      "formatted": "Herrengasse 1"
+     *   }
+     * ```
      */
     val requestedAttributes: RequestedAttributes? = null,
     /**
      * List of attributes that shall be requested explicitly (selective disclosure),
-     * but are not required (i.e. marked as optional),
-     * or `null` to make no restrictions
+     * but are not required (i.e. marked as optional), or `null` to make no restrictions.
+     *
+     * **By convention, strings containing a `.` are assumed to request nested claims**
+     *
+     * Use the claim names `name` and `address.formatted` to request all claims within this credential:
+     * ````
+     *   "name": "Mustermann",
+     *   "address": {
+     *      "formatted": "Herrengasse 1"
+     *   }
+     * ```
      */
     val requestedOptionalAttributes: RequestedAttributes? = null,
     /** ID to be used in [DifInputDescriptor] or [QesInputDescriptor], or [DCQLCredentialQueryInstance] */
@@ -252,7 +276,10 @@ data class RequestOptionsCredential(
         ConstraintField(path = listOf(scheme.prefixWithIsoNamespace(this)), intentToRetain = false)
 
     private fun String.toJwtConstraintField(optional: Boolean): ConstraintField =
-        ConstraintField(path = listOf("$[${quote()}]"), optional = optional)
+        ConstraintField(path = listOf(splitByDotToJsonPath()), optional = optional)
+
+    private fun String.splitByDotToJsonPath(): String =
+        NormalizedJsonPath(split(".").map { NameSegment(it) }).toString()
 
     private fun ConstantIndex.CredentialScheme?.prefixWithIsoNamespace(attribute: String): String = NormalizedJsonPath(
         NameSegment(this?.isoNamespace ?: "mdoc"),
