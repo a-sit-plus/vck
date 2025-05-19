@@ -65,7 +65,7 @@ object OpenIdConstants {
 
     const val PARAMETER_PROMPT_LOGIN = "login"
 
-    const val DC_API_PROTOCOL_IDENTIFIER = "openid4vp"
+    const val DC_API_OID4VP_PROTOCOL_IDENTIFIER = "openid4vp"
 
 
     @Serializable(with = ProofType.Serializer::class)
