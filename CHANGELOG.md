@@ -1,5 +1,9 @@
 # Changelog
 
+Release 5.6.4:
+ - OpenID for Verifiable Presentations:
+   - Correctly handle requested attributes with nested paths, i.e. `address.formatted`
+
 Release 5.6.3:
  - OpenID for Verifiable Credential Issuance:
    - Increase interop with wwWallet (optional parameter `proof_signing_alg_values_supported`)

@@ -64,15 +64,14 @@ class AgentComplexSdJwtTest : FreeSpec({
                 .presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-
-            verified.disclosures.size shouldBe 1 // for address only
-
-            verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
-                ?.jsonPrimitive?.content shouldBe "Vienna"
-            verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
-                ?.jsonPrimitive?.content shouldBe "AT"
+            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
+                    disclosures.size shouldBe 1 // for address only
+                    reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
+                        ?.jsonPrimitive?.content shouldBe "Vienna"
+                    reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
+                        ?.jsonPrimitive?.content shouldBe "AT"
+                }
         }
 
         "with claims in address selectively disclosable, but address not" {
@@ -98,15 +97,14 @@ class AgentComplexSdJwtTest : FreeSpec({
                 .presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-
-            verified.disclosures.size shouldBe 2 // for region, country
-
-            verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
-                ?.jsonPrimitive?.content shouldBe "Vienna"
-            verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
-                ?.jsonPrimitive?.content shouldBe "AT"
+            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
+                    disclosures.size shouldBe 2 // for region, country
+                    reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
+                        ?.jsonPrimitive?.content shouldBe "Vienna"
+                    reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
+                        ?.jsonPrimitive?.content shouldBe "AT"
+                }
         }
 
         "with claims in address recursively selectively disclosable" {
@@ -133,15 +131,14 @@ class AgentComplexSdJwtTest : FreeSpec({
                 .presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-
-            verified.disclosures.size shouldBe 3 // for address, region, country
-
-            verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
-                ?.jsonPrimitive?.content shouldBe "Vienna"
-            verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
-                ?.jsonPrimitive?.content shouldBe "AT"
+            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
+                    disclosures.size shouldBe 3 // for address, region, country
+                    reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
+                        ?.jsonPrimitive?.content shouldBe "Vienna"
+                    reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
+                        ?.jsonPrimitive?.content shouldBe "AT"
+                }
         }
 
         "with claims in address selectively disclosable, getting all inner disclosures" {
@@ -165,15 +162,14 @@ class AgentComplexSdJwtTest : FreeSpec({
                 .presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-
-            verified.disclosures.size shouldBe 3 // for address, region, country
-
-            verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
-                ?.jsonPrimitive?.content shouldBe "Vienna"
-            verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
-                ?.jsonPrimitive?.content shouldBe "AT"
+            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
+                    disclosures.size shouldBe 3 // for address, region, country
+                    reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
+                        ?.jsonPrimitive?.content shouldBe "Vienna"
+                    reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
+                        ?.jsonPrimitive?.content shouldBe "AT"
+                }
         }
 
         "with claims in address in dot-notation" {
@@ -195,15 +191,14 @@ class AgentComplexSdJwtTest : FreeSpec({
                 .presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-
-            verified.disclosures.size shouldBe 3 // for address, region, country
-
-            verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
-                ?.jsonPrimitive?.content shouldBe "Vienna"
-            verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
-                ?.jsonPrimitive?.content shouldBe "AT"
+            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
+                    disclosures.size shouldBe 3 // for address, region, country
+                    reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
+                        ?.jsonPrimitive?.content shouldBe "Vienna"
+                    reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
+                        ?.jsonPrimitive?.content shouldBe "AT"
+                }
         }
 
         "simple walk-through success" {
@@ -227,17 +222,16 @@ class AgentComplexSdJwtTest : FreeSpec({
                 .presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-
-            verified.disclosures.size shouldBe 2 // claim_given_name, claim_family_name
-
-            verified.reconstructedJsonObject[CLAIM_GIVEN_NAME]
-                ?.jsonPrimitive?.content shouldBe "Susanne"
-            verified.reconstructedJsonObject[CLAIM_FAMILY_NAME]
-                ?.jsonPrimitive?.content shouldBe "Meier"
-            verified.reconstructedJsonObject[CLAIM_ALWAYS_VISIBLE]
-                ?.jsonPrimitive?.content shouldBe "anything"
+            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
+                    disclosures.size shouldBe 2 // claim_given_name, claim_family_name
+                    reconstructedJsonObject[CLAIM_GIVEN_NAME]
+                        ?.jsonPrimitive?.content shouldBe "Susanne"
+                    reconstructedJsonObject[CLAIM_FAMILY_NAME]
+                        ?.jsonPrimitive?.content shouldBe "Meier"
+                    reconstructedJsonObject[CLAIM_ALWAYS_VISIBLE]
+                        ?.jsonPrimitive?.content shouldBe "anything"
+                }
         }
     }
 
@@ -265,15 +259,14 @@ class AgentComplexSdJwtTest : FreeSpec({
             val vp = createPresentation(holder, challenge, dcqlQuery, verifierId)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-
-            verified.disclosures.size shouldBe 1 // for address only
-
-            verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
-                ?.jsonPrimitive?.content shouldBe "Vienna"
-            verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
-                ?.jsonPrimitive?.content shouldBe "AT"
+            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
+                    disclosures.size shouldBe 1 // for address only
+                    reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
+                        ?.jsonPrimitive?.content shouldBe "Vienna"
+                    reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
+                        ?.jsonPrimitive?.content shouldBe "AT"
+                }
         }
 
         "with claims in address selectively disclosable, but address not" {
@@ -299,15 +292,15 @@ class AgentComplexSdJwtTest : FreeSpec({
             val vp = createPresentation(holder, challenge, dcqlQuery, verifierId)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
+                    disclosures.size shouldBe 2 // for region, country
 
-            verified.disclosures.size shouldBe 2 // for region, country
-
-            verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
-                ?.jsonPrimitive?.content shouldBe "Vienna"
-            verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
-                ?.jsonPrimitive?.content shouldBe "AT"
+                    reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
+                        ?.jsonPrimitive?.content shouldBe "Vienna"
+                    reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
+                        ?.jsonPrimitive?.content shouldBe "AT"
+                }
         }
 
         "with claims in address recursively selectively disclosable" {
@@ -334,15 +327,14 @@ class AgentComplexSdJwtTest : FreeSpec({
             val vp = createPresentation(holder, challenge, dcqlQuery, verifierId)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-
-            verified.disclosures.size shouldBe 3 // for address, region, country
-
-            verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
-                ?.jsonPrimitive?.content shouldBe "Vienna"
-            verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
-                ?.jsonPrimitive?.content shouldBe "AT"
+            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
+                    disclosures.size shouldBe 3 // for address, region, country
+                    reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
+                        ?.jsonPrimitive?.content shouldBe "Vienna"
+                    reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
+                        ?.jsonPrimitive?.content shouldBe "AT"
+                }
         }
 
         "with claims in address recursively selectively disclosable, getting inner disclosures" {
@@ -362,15 +354,14 @@ class AgentComplexSdJwtTest : FreeSpec({
             val vp = createPresentation(holder, challenge, dcqlQuery, verifierId)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-
-            verified.disclosures.size shouldBe 3 // for address, region, country
-
-            verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
-                ?.jsonPrimitive?.content shouldBe "Vienna"
-            verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
-                ?.jsonPrimitive?.content shouldBe "AT"
+            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
+                    disclosures.size shouldBe 3 // for address, region, country
+                    reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
+                        ?.jsonPrimitive?.content shouldBe "Vienna"
+                    reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
+                        ?.jsonPrimitive?.content shouldBe "AT"
+                }
         }
 
         "with claims in address in dot-notation" {
@@ -392,15 +383,14 @@ class AgentComplexSdJwtTest : FreeSpec({
             val vp = createPresentation(holder, challenge, dcqlQuery, verifierId)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-
-            verified.disclosures.size shouldBe 3 // for address, region, country
-
-            verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
-                ?.jsonPrimitive?.content shouldBe "Vienna"
-            verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
-                ?.jsonPrimitive?.content shouldBe "AT"
+            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
+                    disclosures.size shouldBe 3 // for address, region, country
+                    reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
+                        ?.jsonPrimitive?.content shouldBe "Vienna"
+                    reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
+                        ?.jsonPrimitive?.content shouldBe "AT"
+                }
         }
 
         "simple walk-through success" {
@@ -426,17 +416,16 @@ class AgentComplexSdJwtTest : FreeSpec({
             val vp = createPresentation(holder, challenge, dcqlQuery, verifierId)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-
-            verified.disclosures.size shouldBe 2 // claim_given_name, claim_family_name
-
-            verified.reconstructedJsonObject[CLAIM_GIVEN_NAME]
-                ?.jsonPrimitive?.content shouldBe "Susanne"
-            verified.reconstructedJsonObject[CLAIM_FAMILY_NAME]
-                ?.jsonPrimitive?.content shouldBe "Meier"
-            verified.reconstructedJsonObject[CLAIM_ALWAYS_VISIBLE]
-                ?.jsonPrimitive?.content shouldBe "anything"
+            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
+                    disclosures.size shouldBe 2 // claim_given_name, claim_family_name
+                    reconstructedJsonObject[CLAIM_GIVEN_NAME]
+                        ?.jsonPrimitive?.content shouldBe "Susanne"
+                    reconstructedJsonObject[CLAIM_FAMILY_NAME]
+                        ?.jsonPrimitive?.content shouldBe "Meier"
+                    reconstructedJsonObject[CLAIM_ALWAYS_VISIBLE]
+                        ?.jsonPrimitive?.content shouldBe "anything"
+                }
         }
     }
 })

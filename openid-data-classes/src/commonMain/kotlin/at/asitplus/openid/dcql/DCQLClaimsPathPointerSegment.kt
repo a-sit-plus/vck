@@ -25,7 +25,7 @@ sealed interface DCQLClaimsPathPointerSegment {
         }
 
         override fun toString(): String {
-            return super.toString() + "($name)"
+            return "NameSegment($name)"
         }
     }
 
@@ -41,7 +41,7 @@ sealed interface DCQLClaimsPathPointerSegment {
         }
 
         override fun toString(): String {
-            return super.toString() + "($index)"
+            return "IndexSegment($index)"
         }
     }
 
@@ -56,6 +56,10 @@ sealed interface DCQLClaimsPathPointerSegment {
                 }
             }.getOrNull()
         }.flatten()
+
+        override fun toString(): String {
+            return "NullSegment"
+        }
     }
 }
 
