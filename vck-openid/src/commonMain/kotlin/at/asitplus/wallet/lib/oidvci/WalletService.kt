@@ -54,11 +54,13 @@ class WalletService(
     private val supportedJweAlgorithm: JweAlgorithm = JweAlgorithm.ECDH_ES,
     /** Algorithm to decrypt credential response encryption, see [requestEncryption]. */
     private val supportedJweEncryptionAlgorithm: JweEncryption = JweEncryption.A256GCM,
+    /** OAuth2 client to build authorization requests */
+    val oauth2Client: OAuth2Client = OAuth2Client(clientId, redirectUrl)
 ) {
 
     data class KeyAttestationInput(val clientNonce: String?, val supportedAlgorithms: Collection<String>?)
 
-    val oauth2Client: OAuth2Client = OAuth2Client(clientId, redirectUrl)
+
 
     data class RequestOptions(
         /**

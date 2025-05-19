@@ -35,6 +35,7 @@ Release 5.7.0:
 Release 5.6.3:
  - OpenID for Verifiable Credential Issuance:
    - Increase interop with wwWallet (optional parameter `proof_signing_alg_values_supported`)
+   - Expose `oauth2Client` in `WalletService`
 
 Release 5.6.2:
  - OpenID for Verifiable Presentations:
