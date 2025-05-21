@@ -123,7 +123,7 @@ class OpenId4VpWallet(
             when (it) {
                 is AuthenticationResponseResult.Post -> postResponse(it)
                 is AuthenticationResponseResult.Redirect -> redirectResponse(it)
-                is AuthenticationResponseResult.DcApi -> TODO()
+                is AuthenticationResponseResult.DcApi -> throw UnsupportedOperationException("Returning a URL not supported for DC API")
             }
         }
     }
