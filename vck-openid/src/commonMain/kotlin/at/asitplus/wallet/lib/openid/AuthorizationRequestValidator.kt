@@ -31,7 +31,7 @@ internal class AuthorizationRequestValidator(
             throw InvalidRequest("response_type is null")
         }
 
-        if (request is RequestParametersFrom.JwsSigned && request.parameters.responseMode.isAnyDcApi()) {
+        if (request.parameters.responseMode.isAnyDcApi() && request is RequestParametersFrom.JwsSigned) {
             request.parameters.verifyClientIdPresent()
             request.parameters.verifyExpectedOrigin(incomingDcApiRequest?.callingOrigin)
         }
