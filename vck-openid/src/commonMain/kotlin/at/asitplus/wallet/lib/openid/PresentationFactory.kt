@@ -147,28 +147,37 @@ internal class PresentationFactory(
                 val deviceAuthenticationBytes = coseCompliantSerializer
                     .encodeToByteArray(ByteStringWrapper(deviceAuthentication))
                     .wrapInCborTag(24)
-                    .also { Napier.d("Device authentication signature input is ${it.encodeToString(Base16())}") }
+                    .also {
+                        Napier.d(
+                            "Device authentication signature input is ${
+                                it.encodeToString(
+                                    Base16()
+                                )
+                            }"
+                        )
+                    }
 
-            signDeviceAuthDetached(
+                signDeviceAuthDetached(
+                    protectedHeader = null,
+                    unprotectedHeader = null,
+                    payload = deviceAuthenticationBytes,
+                    serializer = ByteArraySerializer()
+                ).getOrElse {
+                    Napier.w("Could not create DeviceAuth for presentation", it)
+                    throw PresentationException(it)
+                }
+            }
+        } else {
+            Napier.w("Using signDeviceAuthFallback")
+            signDeviceAuthFallback(
                 protectedHeader = null,
                 unprotectedHeader = null,
-                payload = deviceAuthenticationBytes,
+                payload = nonce.encodeToByteArray(),
                 serializer = ByteArraySerializer()
             ).getOrElse {
                 Napier.w("Could not create DeviceAuth for presentation", it)
                 throw PresentationException(it)
             }
-        }
-    } else {
-        Napier.w("Using signDeviceAuthFallback")
-        signDeviceAuthFallback(
-            protectedHeader = null,
-            unprotectedHeader = null,
-            payload = nonce.encodeToByteArray(),
-            serializer = ByteArraySerializer()
-        ).getOrElse {
-            Napier.w("Could not create DeviceAuth for presentation", it)
-            throw PresentationException(it)
         }
     }
 
