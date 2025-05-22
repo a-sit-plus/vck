@@ -71,9 +71,9 @@ class OpenId4VciClient(
      * the key behind [signClientAttestationPop], see
      * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-04.html)
      */
-    private val loadClientAttestationJwt: suspend () -> String,
+    private val loadClientAttestationJwt: (suspend () -> String)? = null,
     /** Used for authenticating the client at the authorization server with client attestation. */
-    private val signClientAttestationPop: SignJwtFun<JsonWebToken> = SignJwt(
+    private val signClientAttestationPop: SignJwtFun<JsonWebToken>? = SignJwt(
         EphemeralKeyWithoutCert(),
         JwsHeaderNone()
     ),
@@ -280,16 +280,17 @@ class OpenId4VciClient(
         Napier.i("postToken: $tokenEndpointUrl with $tokenRequest")
 
         val clientAttestationJwt = if (oauthMetadata.useClientAuth()) {
-            loadClientAttestationJwt.invoke()
+            loadClientAttestationJwt?.invoke()
         } else null
-        val clientAttestationPoPJwt = if (oauthMetadata.useClientAuth()) {
-            BuildClientAttestationPoPJwt(
-                signClientAttestationPop,
-                clientId = oid4vciService.clientId,
-                audience = issuerMetadata.credentialIssuer,
-                lifetime = 10.minutes,
-            ).serialize()
-        } else null
+        val clientAttestationPoPJwt =
+            if (oauthMetadata.useClientAuth() && signClientAttestationPop != null && clientAttestationJwt != null) {
+                BuildClientAttestationPoPJwt(
+                    signClientAttestationPop,
+                    clientId = oid4vciService.clientId,
+                    audience = issuerMetadata.credentialIssuer,
+                    lifetime = 10.minutes,
+                ).serialize()
+            } else null
         val dpopHeader = if (oauthMetadata.hasMatchingDpopAlgorithm()) {
             BuildDPoPHeader(signDpop, url = tokenEndpointUrl)
         } else null
@@ -535,16 +536,17 @@ class OpenId4VciClient(
     ): AuthenticationRequestParameters {
         val shouldIncludeClientAttestation = tokenAuthMethods?.contains(AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH) == true
         val clientAttestationJwt = if (shouldIncludeClientAttestation) {
-            loadClientAttestationJwt.invoke()
+            loadClientAttestationJwt?.invoke()
         } else null
-        val clientAttestationPoPJwt = if (shouldIncludeClientAttestation) {
-            BuildClientAttestationPoPJwt(
-                signClientAttestationPop,
-                clientId = oid4vciService.clientId,
-                audience = credentialIssuer,
-                lifetime = 10.minutes,
-            ).serialize()
-        } else null
+        val clientAttestationPoPJwt =
+            if (shouldIncludeClientAttestation && signClientAttestationPop != null && clientAttestationJwt != null) {
+                BuildClientAttestationPoPJwt(
+                    signClientAttestationPop,
+                    clientId = oid4vciService.clientId,
+                    audience = credentialIssuer,
+                    lifetime = 10.minutes,
+                ).serialize()
+            } else null
         val response = client.submitForm(
             url = url,
             formParameters = parameters {
