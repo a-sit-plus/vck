@@ -69,7 +69,6 @@ class WalletService(
     data class KeyAttestationInput(val clientNonce: String?, val supportedAlgorithms: Collection<String>?)
 
 
-
     data class RequestOptions(
         /**
          * Credential type to request
@@ -223,10 +222,11 @@ class WalletService(
 
     private fun Set<AuthorizationDetails>.toCredentialRequest(): List<CredentialRequestParameters> =
         filterIsInstance<OpenIdAuthorizationDetails>().flatMap {
-            require(it.credentialIdentifiers != null) { "credential_identifiers are null" }
-            it.credentialIdentifiers!!.map {
-                CredentialRequestParameters(credentialIdentifier = it)
-            }
+            it.credentialIdentifiers?.let {
+                it.map { CredentialRequestParameters(credentialIdentifier = it) }
+            } ?: it.credentialConfigurationId?.let {
+                listOf(CredentialRequestParameters(credentialConfigurationId = it))
+            } ?: throw IllegalArgumentException("Authorization details can't be parsed: $it")
         }
 
     private fun String.toCredentialRequest(metadata: IssuerMetadata): Set<CredentialRequestParameters> =
