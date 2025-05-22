@@ -11,7 +11,6 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.serialization.json.JsonObject
 
 class OAuth2ClientTest : FunSpec({
 
@@ -83,7 +82,7 @@ class OAuth2ClientTest : FunSpec({
         val authnRequest = client.createAuthRequest(
             state = state,
             scope = scope,
-            wrapAsPar = true
+            wrapAsJar = true
         )
         val authnResponse = server.authorize(authnRequest).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
@@ -104,7 +103,7 @@ class OAuth2ClientTest : FunSpec({
         val authnRequest = client.createAuthRequest(
             state = state,
             scope = scope,
-            wrapAsPar = false
+            wrapAsJar = false
         )
         val authnResponse = server.authorize(authnRequest).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()

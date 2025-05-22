@@ -38,6 +38,10 @@ Release 5.7.0:
 Release 5.6.4:
  - OpenID for Verifiable Presentations:
    - Correctly handle requested attributes with nested paths, i.e. `address.formatted`
+ - OAuth2.0:
+   - In `OAuth2Client.createAuthRequest()` rename `wrapAsPar` to `wrapAsJar` to match its semantics
+ - OpenID for Verifiable Credential Issuance:
+   - Sign authn request as JAR only when AS supports it
 
 Release 5.6.3:
  - OpenID for Verifiable Credential Issuance:

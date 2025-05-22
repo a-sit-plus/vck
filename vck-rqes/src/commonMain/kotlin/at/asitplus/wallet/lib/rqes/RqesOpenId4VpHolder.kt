@@ -140,7 +140,7 @@ class RqesOpenId4VpHolder(
     ): AuthenticationRequestParameters = oauth2Client.createAuthRequest(
         state = uuid4().toString(),
         scope = RqesOauthScope.SERVICE.value,
-        wrapAsPar = wrapAsPar,
+        wrapAsJar = wrapAsPar,
     ).enrichAuthRequest(
         redirectUrl = redirectUrl,
         optionalParameters = optionalParameters
@@ -160,7 +160,7 @@ class RqesOpenId4VpHolder(
     ): AuthenticationRequestParameters = oauth2Client.createAuthRequest(
         state = uuid4().toString(),
         authorizationDetails = setOf(getCscAuthenticationDetails(documentDigests, hashAlgorithm, documentLocation)),
-        wrapAsPar = wrapAsPar,
+        wrapAsJar = wrapAsPar,
     ).enrichAuthRequest(
         redirectUrl = redirectUrl,
         optionalParameters = optionalParameters

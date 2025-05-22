@@ -484,15 +484,17 @@ class OpenId4VciClient(
         )
         val authorizationEndpointUrl = oauthMetadata.authorizationEndpoint
             ?: throw Exception("no authorizationEndpoint in $oauthMetadata")
+        val wrapAsJar = oauthMetadata.requestObjectSigningAlgorithmsSupported?.contains(JwsAlgorithm.Signature.ES256) == true
         val authRequest = oid4vciService.oauth2Client.createAuthRequest(
             state = state,
             authorizationDetails = if (scope == null) authorizationDetails else null,
             issuerState = issuerState,
-            scope = scope
+            scope = scope,
+            wrapAsJar = wrapAsJar
         )
-        val push = oauthMetadata.requirePushedAuthorizationRequests == true
+        val requiresPar = oauthMetadata.requirePushedAuthorizationRequests == true
         val parEndpointUrl = oauthMetadata.pushedAuthorizationRequestEndpoint
-        val authorizationUrl = if (parEndpointUrl != null && push) {
+        val authorizationUrl = if (parEndpointUrl != null && requiresPar) {
             val authRequestAfterPar = pushAuthorizationRequest(
                 authRequest = authRequest,
                 state = state,
