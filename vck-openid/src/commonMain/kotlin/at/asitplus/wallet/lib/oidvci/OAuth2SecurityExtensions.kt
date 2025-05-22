@@ -12,6 +12,7 @@ import kotlinx.datetime.Clock
 import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
+import io.github.aakira.napier.Napier
 
 object BuildDPoPHeader {
     /**
@@ -33,7 +34,9 @@ object BuildDPoPHeader {
             accessTokenHash = accessToken?.encodeToByteArray()?.sha256()?.encodeToString(Base64UrlStrict),
             issuedAt = Clock.System.now(),
             nonce = nonce,
-        ),
+        ).also {
+            Napier.d("Building DPoP JWT: $it")
+        },
         JsonWebToken.serializer(),
     ).getOrThrow().serialize()
 }
@@ -73,7 +76,9 @@ object BuildClientAttestationJwt {
             confirmationClaim = ConfirmationClaim(
                 jsonWebKey = clientKey,
             )
-        ),
+        ).also {
+            Napier.d("Building client attestation JWT: $it")
+        },
         JsonWebToken.Companion.serializer(),
     ).getOrThrow()
 }
@@ -106,7 +111,9 @@ object BuildClientAttestationPoPJwt {
             nonce = nonce,
             issuedAt = Clock.System.now() - clockSkew,
             expiration = Clock.System.now() - clockSkew + lifetime,
-        ),
+        ).also {
+            Napier.d("Building client attestation PoP JWT: $it")
+        },
         JsonWebToken.Companion.serializer(),
     ).getOrThrow()
 }
