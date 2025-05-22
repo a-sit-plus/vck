@@ -42,6 +42,7 @@ Release 5.6.4:
    - In `OAuth2Client.createAuthRequest()` rename `wrapAsPar` to `wrapAsJar` to match its semantics
  - OpenID for Verifiable Credential Issuance:
    - Sign authn request as JAR only when AS supports it
+   - Support extracting `credential_configuration_id` from server's authorization details
 
 Release 5.6.3:
  - OpenID for Verifiable Credential Issuance:
