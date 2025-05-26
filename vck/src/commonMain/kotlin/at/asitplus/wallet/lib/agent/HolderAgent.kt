@@ -169,21 +169,6 @@ class HolderAgent(
         )
     }
 
-    private suspend fun createDefaultPresentationExchangePresentation(
-        request: PresentationRequestParameters,
-        presentationDefinition: PresentationDefinition,
-        fallbackFormatHolder: FormatHolder?,
-    ): KmmResult<PresentationResponseParameters.PresentationExchangeParameters> =
-        createPresentationExchangePresentation(
-            request = request,
-            credentialPresentation = CredentialPresentation.PresentationExchangePresentation(
-                CredentialPresentationRequest.PresentationExchangeRequest(
-                    presentationDefinition,
-                    fallbackFormatHolder,
-                ),
-            )
-        )
-
     private suspend fun createPresentationExchangePresentation(
         request: PresentationRequestParameters,
         credentialPresentation: CredentialPresentation.PresentationExchangePresentation,
@@ -355,17 +340,6 @@ class HolderAgent(
         )
     }
 
-    /** assume credential format to be supported by the verifier if no format holder is specified */
-    @Suppress("DEPRECATION")
-    private fun StoreEntry.isFormatSupported(supportedFormats: FormatHolder?): Boolean =
-        supportedFormats?.let { formatHolder ->
-            when (this) {
-                is StoreEntry.Vc -> formatHolder.jwtVp != null
-                is StoreEntry.SdJwt -> formatHolder.jwtSd != null || formatHolder.sdJwt != null
-                is StoreEntry.Iso -> formatHolder.msoMdoc != null
-            }
-        } ?: true
-
     private fun PresentationSubmission.Companion.fromMatches(
         presentationId: String?,
         matches: List<Pair<String, PresentationExchangeCredentialDisclosure>>,
@@ -436,7 +410,7 @@ class HolderAgent(
             // find a matching path for each constraint field
             constraintFieldMatches.filter {
                 // only need to validate non-optional constraint fields
-                it.key.optional != true
+                it.key.optional == true
             }.forEach { constraintField ->
                 val allowedPaths = constraintField.value.map {
                     it.normalizedJsonPath.toString()

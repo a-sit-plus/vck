@@ -53,6 +53,8 @@ Release 5.6.5:
  - OpenID for Verifiable Presentations:
    - Change JSON Path serialization for claims to dot notation (for EUDIW reference implementation)
    - Change `vct` filter to contain `const` instead of `pattern` (for EUDIW reference implementation)
+   - Treat requested attributes as optional, if not explicitly set as required
+   - Treat selected submission from the user as valid, let verifier decide if submission shall be accepted
 
 Release 5.6.4:
  - OpenID for Verifiable Presentations:
