@@ -4,6 +4,7 @@ import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.ResponseMode.*
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
+import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.JwkType
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -28,7 +29,7 @@ internal class AuthenticationResponseFactory(
         response: AuthenticationResponse,
     ) = when (request.parameters.responseMode) {
         DirectPost -> authnResponseDirectPost(request, response)
-        DirectPostJwt -> authnResponseDirectPostJwt(request, response)
+        DirectPostJwt -> authnResponseDirectPostJwt(request, response, true)
         Query -> authnResponseQuery(request, response)
         Fragment, null -> authnResponseFragment(request, response)
         DcApi -> responseDcApi(request, response, false)
@@ -42,7 +43,8 @@ internal class AuthenticationResponseFactory(
         response: AuthenticationResponse,
         requestsEncryption: Boolean
     ) : AuthenticationResponseResult.DcApi {
-        val responseSerialized = buildJarm(request, response, requestsEncryption)
+
+        val responseSerialized = buildResponse(request, response, requestsEncryption)
         val jarm = AuthenticationResponseParameters(
             response = responseSerialized,
         )
@@ -53,11 +55,12 @@ internal class AuthenticationResponseFactory(
     internal suspend fun authnResponseDirectPostJwt(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
+        requestsEncryption: Boolean
     ): AuthenticationResponseResult.Post {
         val url = request.parameters.responseUrl
             ?: request.parameters.redirectUrlExtracted
             ?: throw InvalidRequest("no response_uri or redirect_uri")
-        val responseSerialized = buildJarm(request, response)
+        val responseSerialized = buildResponse(request, response, requestsEncryption)
         val jarm = AuthenticationResponseParameters(
             // Everybody knows this is wrong, but EUDIW reference implementation required this some time ago
             // so for maximum compatibility with those verifiers we'll include it
@@ -110,15 +113,15 @@ internal class AuthenticationResponseFactory(
         return AuthenticationResponseResult.Redirect(url, response.params)
     }
 
-    /**
-     * Per OID4VP, the response must either be signed, or encrypted, or even signed and encrypted
-     */
+
     @Throws(OAuth2Exception::class, CancellationException::class)
-    private suspend fun buildJarm(
+    private suspend fun buildResponse(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
         requestsEncryption: Boolean = false
-    ) = if (response.requestsEncryption()) {
+    ) = if (response.requestsLegacyEncryption()) {
+        legacyEncrypt(request, response)
+    } else if (response.requiredFieldsForEncryptionSet() && requestsEncryption) {
         encrypt(request, response)
     } else if (response.requestsSignature()) {
         sign(response.params)
@@ -142,12 +145,36 @@ internal class AuthenticationResponseFactory(
                 Napier.d("buildJarm: signed $payload")
             }
 
+    @Deprecated("Used attributes are removed from OpenID4VP Draft 26", replaceWith = ReplaceWith("encrypt(RequestParametersFrom<AuthenticationRequestParameters>, AuthenticationResponse)"))
+    private suspend fun legacyEncrypt(
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        response: AuthenticationResponse
+    ): String {
+        val algorithm = response.clientMetadata!!.authorizationEncryptedResponseAlg!!
+        val encryption = response.clientMetadata.authorizationEncryptedResponseEncoding!!
+        return encrypt(request, response, algorithm, encryption)
+    }
+
     private suspend fun encrypt(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
     ): String {
-        val algorithm = response.clientMetadata!!.authorizationEncryptedResponseAlg!!
-        val encryption = response.clientMetadata.authorizationEncryptedResponseEncoding!!
+        val encryption = response.clientMetadata!!.encryptedResponseEncoding!!
+        //val key = response.jsonWebKeys!!.firstOrNull { it.algorithm == encryption }
+        val key = response.jsonWebKeys!!.firstOrNull { it.algorithm != null }
+
+        val jsonWebAlgorithm = key!!.algorithm
+        val jweAlgorithm = JweAlgorithm.entries.firstOrNull { it.identifier == jsonWebAlgorithm!!.identifier }
+
+        return encrypt(request, response, jweAlgorithm!!, encryption) //TODO throw on not found
+    }
+
+    private suspend fun encrypt(
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        response: AuthenticationResponse,
+        algorithm: JweAlgorithm,
+        encryption: JweEncryption,
+        ): String {
         val recipientKey = response.jsonWebKeys!!.getEcdhEsKey()
         val apv = request.parameters.nonce?.encodeToByteArray()
             ?: Random.nextBytes(16)
@@ -187,11 +214,19 @@ internal class AuthenticationResponseFactory(
 
 }
 
-internal fun AuthenticationResponse.requestsEncryption(): Boolean =
-    clientMetadata != null && jsonWebKeys != null && clientMetadata.requestsEncryption()
+internal fun AuthenticationResponse.requiredFieldsForEncryptionSet(): Boolean
+    {
+    //jsonWebKeys!!.first().algorithm = ""
+    return clientMetadata != null && jsonWebKeys != null && jsonWebKeys.any { it.algorithm != null } && clientMetadata.encryptionSupported() }
+
+internal fun AuthenticationResponse.requestsLegacyEncryption(): Boolean =
+    clientMetadata != null && jsonWebKeys != null && clientMetadata.requestsLegacyEncryption()
 
 internal fun AuthenticationResponse.requestsSignature(): Boolean =
     clientMetadata != null && clientMetadata.authorizationSignedResponseAlg != null
 
-internal fun RelyingPartyMetadata.requestsEncryption() =
+internal fun RelyingPartyMetadata.encryptionSupported() =
+    encryptedResponseEncoding != null
+
+internal fun RelyingPartyMetadata.requestsLegacyEncryption() =
     authorizationEncryptedResponseAlg != null && authorizationEncryptedResponseEncoding != null

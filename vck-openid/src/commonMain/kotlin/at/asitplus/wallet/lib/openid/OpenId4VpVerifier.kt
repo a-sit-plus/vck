@@ -54,9 +54,9 @@ open class OpenId4VpVerifier(
     private val nonceService: NonceService = DefaultNonceService(),
     /** Used to store issued authn requests, to verify the authn response to it */
     private val stateToAuthnRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
-    /** Algorithm supported to decrypt responses from wallets, for [metadataWithEncryption]. */
+    /** Algorithm supported to decrypt responses from wallets, for [metadataWithLegacyEncryption]. */
     private val supportedJweAlgorithm: JweAlgorithm = JweAlgorithm.ECDH_ES,
-    /** Algorithm supported to decrypt responses from wallets, for [metadataWithEncryption]. */
+    /** Algorithm supported to decrypt responses from wallets, for [metadataWithLegacyEncryption]. */
     private val supportedJweEncryptionAlgorithm: JweEncryption = JweEncryption.A256GCM,
 ) {
 
@@ -85,7 +85,7 @@ open class OpenId4VpVerifier(
     }
 
     /**
-     * Creates the [at.asitplus.openid.RelyingPartyMetadata], without encryption (see [metadataWithEncryption])
+     * Creates the [at.asitplus.openid.RelyingPartyMetadata], without encryption (see [metadataWithLegacyEncryption])
      */
     val metadata by lazy {
         RelyingPartyMetadata(
@@ -106,11 +106,30 @@ open class OpenId4VpVerifier(
      * responses, see [RelyingPartyMetadata.authorizationEncryptedResponseAlg]
      * and [RelyingPartyMetadata.authorizationEncryptedResponseEncoding].
      */
-    val metadataWithEncryption by lazy {
+    @Deprecated("Removed from OpenID4VP Draft 28", replaceWith = ReplaceWith("metadataWithEncryption"))
+    val metadataWithLegacyEncryption by lazy {
         metadata.copy(
             authorizationSignedResponseAlgString = null,
             authorizationEncryptedResponseAlgString = supportedJweAlgorithm.identifier,
-            authorizationEncryptedResponseEncodingString = supportedJweEncryptionAlgorithm.text,
+            authorizationEncryptedResponseEncodingString = supportedJweEncryptionAlgorithm.identifier,
+            jsonWebKeySet = metadata.jsonWebKeySet?.let {
+                JsonWebKeySet(it.keys.map { it.copy(publicKeyUse = "enc") })
+            }
+        )
+    }
+
+    /**
+     * Creates the [RelyingPartyMetadata], but with parameters set to request encryption of pushed authentication
+     * responses, see [RelyingPartyMetadata.authorizationEncryptedResponseAlg]
+     * and [RelyingPartyMetadata.authorizationEncryptedResponseEncoding].
+     */
+
+    val metadataWithEncryption by lazy {
+        TODO("update")
+        metadata.copy(
+            authorizationSignedResponseAlgString = null,
+            authorizationEncryptedResponseAlgString = supportedJweAlgorithm.identifier,
+            authorizationEncryptedResponseEncodingString = supportedJweEncryptionAlgorithm.identifier,
             jsonWebKeySet = metadata.jsonWebKeySet?.let {
                 JsonWebKeySet(it.keys.map { it.copy(publicKeyUse = "enc") })
             }
@@ -317,7 +336,8 @@ open class OpenId4VpVerifier(
         if (options.clientMetadataUrl != null && clientIdScheme !is ClientIdScheme.RedirectUri) {
             null
         } else {
-            if (options.encryption) metadataWithEncryption else metadata
+            if (options.encryption) metadataWithLegacyEncryption else metadata
+            TODO("how to detect whether to use new or old encryption")
         }
 
     /**

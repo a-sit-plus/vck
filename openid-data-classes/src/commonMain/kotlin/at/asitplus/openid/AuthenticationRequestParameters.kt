@@ -121,6 +121,7 @@ data class AuthenticationRequestParameters(
      * that would normally be provided to an OP during Dynamic RP Registration.
      * It MUST not be present if the RP uses OpenID Federation 1.0 Automatic Registration to pass its metadata.
      */
+    @Deprecated("Removed from OpenID4VP Draft 21")
     @SerialName("client_metadata_uri")
     val clientMetadataUri: String? = null,
 
