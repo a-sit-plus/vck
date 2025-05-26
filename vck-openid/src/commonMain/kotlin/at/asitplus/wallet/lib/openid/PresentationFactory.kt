@@ -62,7 +62,7 @@ internal class PresentationFactory(
     ): KmmResult<PresentationResponseParameters> = catching {
         request.verifyResponseType()
 
-        val responseWillBeEncrypted = jsonWebKeys != null && clientMetadata?.requestsEncryption() == true
+        val responseWillBeEncrypted = jsonWebKeys != null && clientMetadata?.requestsLegacyEncryption() == true
         val clientId = request.clientId
         val responseUrl = request.responseUrl
         val transactionData = request.parseTransactionData()

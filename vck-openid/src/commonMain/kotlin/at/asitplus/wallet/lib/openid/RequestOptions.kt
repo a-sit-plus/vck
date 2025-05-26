@@ -59,7 +59,7 @@ interface RequestOptions {
 
     /**
      * Set this value to include metadata with encryption parameters set. Beware if setting this value and also
-     * [clientMetadataUrl], that the URL shall point to [OpenId4VpVerifier.metadataWithEncryption].
+     * [clientMetadataUrl], that the URL shall point to [OpenId4VpVerifier.metadataWithLegacyEncryption].
      */
     val encryption: Boolean
 

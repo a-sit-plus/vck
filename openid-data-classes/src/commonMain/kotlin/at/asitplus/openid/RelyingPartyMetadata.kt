@@ -9,7 +9,6 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import kotlinx.serialization.encodeToString
 
 @Serializable
 data class RelyingPartyMetadata(
@@ -72,6 +71,7 @@ data class RelyingPartyMetadata(
      * If both signing and encryption are requested, the response will be signed then encrypted, with the result being
      * a Nested JWT, as defined in JWT (RFC7519). The default, if omitted, is that no encryption is performed.
      */
+    @Deprecated("Removed from OpenID4VP Draft 26", replaceWith = ReplaceWith("use JWT directly"))
     @SerialName("authorization_encrypted_response_alg")
     val authorizationEncryptedResponseAlgString: String? = null,
 
@@ -81,8 +81,18 @@ data class RelyingPartyMetadata(
      * When [authorizationEncryptedResponseEncoding] is included, [authorizationEncryptedResponseAlg] MUST also be
      * provided.
      */
+    @Deprecated("Removed from OpenID4VP Draft 28", replaceWith = ReplaceWith("encryptedResponseEncodingValuesSupportedString"))
     @SerialName("authorization_encrypted_response_enc")
     val authorizationEncryptedResponseEncodingString: String? = null,
+
+    /**
+     * OPTIONAL. Array of strings, where each string is a JWE [RFC7516] enc algorithm that can be used
+     * as the content encryption algorithm for encrypting the Response. When a response_mode requiring
+     * encryption of the Response (such as dc_api.jwt or direct_post.jwt) is specified, this MUST be
+     * present for anything other than the default single value of A128GCM. Otherwise, this SHOULD be absent.
+     */
+    @SerialName("encrypted_response_enc_values_supported")
+    val encryptedResponseEncodingValuesSupportedStrings: List<String>? = null,
 
     /**
      * OIDC Registration: OPTIONAL. JWE alg algorithm REQUIRED for encrypting the ID Token issued to this Client.
@@ -139,6 +149,7 @@ data class RelyingPartyMetadata(
      * a Nested JWT, as defined in JWT (RFC7519). The default, if omitted, is that no encryption is performed.
      */
     @Transient
+    @Deprecated("Removed from OpenID4VP Draft 26", replaceWith = ReplaceWith("use JWT directly"))
     val authorizationEncryptedResponseAlg: JweAlgorithm? = authorizationEncryptedResponseAlgString
         ?.let { s -> JweAlgorithm.entries.firstOrNull { it.identifier == s } }
 
@@ -178,9 +189,14 @@ data class RelyingPartyMetadata(
      * When [authorizationEncryptedResponseEncoding] is included, [authorizationEncryptedResponseAlg] MUST also be
      * provided.
      */
+    @Deprecated("Removed from OpenID4VP Draft 28", replaceWith = ReplaceWith("encryptedResponseEncoding"))
     @Transient
     val authorizationEncryptedResponseEncoding: JweEncryption? = authorizationEncryptedResponseEncodingString
-        ?.let { s -> JweEncryption.entries.firstOrNull { it.text == s } }
+        ?.let { s -> JweEncryption.entries.firstOrNull { it.identifier == s } }
+
+    @Transient
+    val encryptedResponseEncoding: JweEncryption? = if (encryptedResponseEncodingValuesSupportedStrings == null) JweEncryption.A128GCM else
+          JweEncryption.entries.firstOrNull { encryptedResponseEncodingValuesSupportedStrings.contains(it.identifier) }
 
     /**
      * OIDC Registration: OPTIONAL. JWE enc algorithm REQUIRED for encrypting the ID Token issued to this Client.
@@ -189,6 +205,6 @@ data class RelyingPartyMetadata(
      */
     @Transient
     val idTokenEncryptedResponseEncoding: JweEncryption? = idTokenEncryptedResponseEncodingString
-        ?.let { s -> JweEncryption.entries.firstOrNull { it.text == s } }
+        ?.let { s -> JweEncryption.entries.firstOrNull { it.identifier == s } }
 }
 
