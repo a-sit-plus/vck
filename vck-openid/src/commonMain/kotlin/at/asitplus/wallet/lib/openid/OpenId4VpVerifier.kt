@@ -359,6 +359,7 @@ open class OpenId4VpVerifier(
      * Validates [AuthenticationResponseParameters] from the Wallet
      */
     suspend fun validateAuthnResponse(input: ResponseParametersFrom): AuthnResponseResult {
+        Napier.d("validateAuthnResponse: $input")
         val params = input.parameters
         val state = params.state
             ?: return AuthnResponseResult.ValidationError("state", params.state)
