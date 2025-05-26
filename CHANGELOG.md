@@ -48,6 +48,11 @@ Release 5.7.0:
  - Move ISO data classes `DeviceRequest`, `DocRequest`, `ItemsRequest`, `ItemsRequestList`, `ItemsRequestListSerializer`, and `SigleItemsRequest` to `openid-data-classes`. Package changes from `at.asitplus.wallet.lib.iso` to `at.asitplus.iso`. The `serialize` and `deserialize` methods have been removed from these classes. Use your preferred serializer directly to serialize/deserialize these classes.
  - Make `OAuth2Exception` serializable
  - Add data class `LocalDateOrInstant` to be used by credentials
+  
+Release 5.6.5:
+ - OpenID for Verifiable Presentations:
+   - Change JSON Path serialization for claims to dot notation (for EUDIW reference implementation)
+   - Change `vct` filter to contain `const` instead of `pattern` (for EUDIW reference implementation)
 
 Release 5.6.4:
  - OpenID for Verifiable Presentations:

@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.dif.*
 import at.asitplus.jsonpath.core.NormalizedJsonPath
+import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment.NameSegment
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
@@ -15,7 +16,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import com.benasher44.uuid.uuid4
-import io.ktor.http.*
+import kotlinx.serialization.json.JsonPrimitive
 
 // TODO Should be NormalizedJsonPath
 typealias RequestedAttributes = Set<String>
@@ -269,17 +270,28 @@ data class RequestOptionsCredential(
         scheme: ConstantIndex.CredentialScheme?,
         optional: Boolean,
     ): Collection<ConstraintField> = map {
-        if (isMdoc) it.toIsoMdocConstraintField(scheme) else it.toJwtConstraintField(optional)
+        if (isMdoc) it.toIsoMdocConstraintField(scheme, optional) else it.toJwtConstraintField(optional)
     }
 
-    private fun String.toIsoMdocConstraintField(scheme: ConstantIndex.CredentialScheme?) =
-        ConstraintField(path = listOf(scheme.prefixWithIsoNamespace(this)), intentToRetain = false)
+    private fun String.toIsoMdocConstraintField(scheme: ConstantIndex.CredentialScheme?, optional: Boolean) =
+        ConstraintField(path = listOf(scheme.prefixWithIsoNamespace(this)), intentToRetain = false, optional = optional)
 
     private fun String.toJwtConstraintField(optional: Boolean): ConstraintField =
         ConstraintField(path = listOf(splitByDotToJsonPath()), optional = optional)
 
+    // EUDIW Reference Implementation only supports dot notation for JSONPath
     private fun String.splitByDotToJsonPath(): String =
-        NormalizedJsonPath(split(".").map { NameSegment(it) }).toString()
+        NormalizedJsonPath(split(".").map { NameSegment(it) }).toDotNotation()
+
+    private fun NormalizedJsonPath.toDotNotation(): String =
+        "$" + segments.joinToString("") { it.toDotNotation() }
+
+    private fun NormalizedJsonPathSegment.toDotNotation(): CharSequence = when (this) {
+        is NormalizedJsonPathSegment.IndexSegment -> toString()
+        is NameSegment -> if (memberName.contains(".") || memberName.isDigitsOnly()) toString() else ".$memberName"
+    }
+
+    private fun String.isDigitsOnly() = all { it.isDigit() }
 
     private fun ConstantIndex.CredentialScheme?.prefixWithIsoNamespace(attribute: String): String = NormalizedJsonPath(
         NameSegment(this?.isoNamespace ?: "mdoc"),
@@ -291,7 +303,7 @@ data class RequestOptionsCredential(
             path = listOf("$.type"),
             filter = ConstraintFilter(
                 type = "string",
-                pattern = vcType,
+                const = JsonPrimitive(vcType),
             )
         ) else null
 
@@ -300,7 +312,7 @@ data class RequestOptionsCredential(
             path = listOf("$.vct"),
             filter = ConstraintFilter(
                 type = "string",
-                pattern = sdJwtType!!
+                const = JsonPrimitive(sdJwtType!!)
             )
         ) else null
 }
