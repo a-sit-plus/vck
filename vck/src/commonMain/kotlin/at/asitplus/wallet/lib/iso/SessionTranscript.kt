@@ -70,7 +70,6 @@ data class SessionTranscript private constructor(
         return result
     }
 
-
     companion object {
         fun deserialize(it: ByteArray) = runCatching {
             vckCborSerializer.decodeFromByteArray<SessionTranscript>(it)
