@@ -4,6 +4,9 @@ package at.asitplus.wallet.lib.iso
 
 import at.asitplus.KmmResult.Companion.wrap
 import kotlinx.serialization.*
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.Base64.PaddingOption
+import kotlin.io.encoding.ExperimentalEncodingApi
 
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for mdoc request (8.3.2.1.2.1)
@@ -37,6 +40,15 @@ data class DeviceRequest(
     companion object {
         fun deserialize(it: ByteArray) = kotlin.runCatching {
             vckCborSerializer.decodeFromByteArray<DeviceRequest>(it)
+        }.wrap()
+
+        @OptIn(ExperimentalEncodingApi::class)
+        fun deserialize(it: String) = kotlin.runCatching {
+            vckCborSerializer.decodeFromByteArray<DeviceRequest>(
+                Base64.UrlSafe.withPadding(
+                    PaddingOption.ABSENT_OPTIONAL
+                ).decode(it)
+            )
         }.wrap()
     }
 }

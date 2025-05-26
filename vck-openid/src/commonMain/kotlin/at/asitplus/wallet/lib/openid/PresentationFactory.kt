@@ -118,13 +118,13 @@ internal class PresentationFactory(
         responseUrl: String?,
         nonce: String,
         docType: String,
-        dcapiRequest: Oid4vpDCAPIRequest?,
+        dcApiRequest: Oid4vpDCAPIRequest?,
         jsonWebKeys: Collection<JsonWebKey>?,
         responseWillBeEncrypted: Boolean
     ): CoseSigned<ByteArray> {
         val sessionTranscript =
-            if (dcapiRequest != null) {
-                calcSessionTranscript(dcapiRequest, nonce, jsonWebKeys, responseWillBeEncrypted)
+            if (dcApiRequest != null) {
+                calcSessionTranscript(dcApiRequest, nonce, jsonWebKeys, responseWillBeEncrypted)
             } else if (mdocGeneratedNonce != null && clientId != null && responseUrl != null) {
                 calcSessionTranscript(
                     mdocGeneratedNonce,
@@ -221,7 +221,7 @@ internal class PresentationFactory(
             dcApiRequest.callingOrigin, nonce, jwkThumbprint?.toByteArray()
         )
 
-        return SessionTranscript.forOpenIdOverDcApi(
+        return SessionTranscript.forDcApi(
             DCAPIHandover(
                 type = "OpenID4VPDCAPIHandover",
                 hash = openID4VPDCAPIHandoverInfo.serialize().sha256()

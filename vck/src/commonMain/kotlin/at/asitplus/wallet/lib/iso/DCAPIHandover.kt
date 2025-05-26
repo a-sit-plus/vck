@@ -19,6 +19,10 @@ data class DCAPIHandover(
     @ByteString
     val hash: ByteArray
 ) {
+    init {
+        require(type == "dcapi" || type == "OpenID4VPDCAPIHandover")
+    }
+
     fun serialize() = vckCborSerializer.encodeToByteArray(this)
 
     override fun equals(other: Any?): Boolean {

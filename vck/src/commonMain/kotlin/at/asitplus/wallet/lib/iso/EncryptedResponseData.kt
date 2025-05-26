@@ -1,35 +1,32 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.signum.indispensable.cosef.CoseKey
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.ByteString
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
 
-/**
+/*
  * Part of ISO 18013-7 Annex C
+ * The outcome of the single shot encryption are the enc and cipherText values as defined in the HPKE single shot
+encryption. In the EncryptedResponseData, enc is the serialized ephemeral public key, the cipherText is
+the ciphertext.
  */
 @Serializable
-data class EncryptionParameters(
-    /** nonce with at least 16 bytes */
+data class EncryptedResponseData(
     @ByteString
-    @SerialName("nonce")
-    val nonce: ByteArray,
-    /** public key of the recipient */
-    @SerialName("recipientPublicKey")
-    val recipientPublicKey: CoseKey
+    @SerialName("enc")
+    val enc: ByteArray,
+    @ByteString
+    @SerialName("cipherText")
+    val cipherText: ByteArray
 ) {
-    init {
-        require(nonce.size >= 16)
-    }
-
     fun serialize() = vckCborSerializer.encodeToByteArray(this)
 
     companion object {
         fun deserialize(it: ByteArray) = runCatching {
-            vckCborSerializer.decodeFromByteArray<EncryptionParameters>(it)
+            vckCborSerializer.decodeFromByteArray<EncryptedResponseData>(it)
         }.wrap()
     }
 
@@ -37,18 +34,17 @@ data class EncryptionParameters(
         if (this === other) return true
         if (other == null || this::class != other::class) return false
 
-        other as EncryptionParameters
+        other as EncryptedResponseData
 
-        if (!nonce.contentEquals(other.nonce)) return false
-        if (recipientPublicKey != other.recipientPublicKey) return false
+        if (!enc.contentEquals(other.enc)) return false
+        if (!cipherText.contentEquals(other.cipherText)) return false
 
         return true
     }
 
     override fun hashCode(): Int {
-        var result = nonce.contentHashCode()
-        result = 31 * result + recipientPublicKey.hashCode()
+        var result = enc.contentHashCode()
+        result = 31 * result + cipherText.contentHashCode()
         return result
     }
-
 }

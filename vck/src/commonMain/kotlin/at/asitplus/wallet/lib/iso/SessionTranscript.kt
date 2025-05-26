@@ -94,7 +94,7 @@ data class SessionTranscript private constructor(
             oid4VPHandover = handover,
         )
 
-        fun forOpenIdOverDcApi(
+        fun forDcApi(
             handover: DCAPIHandover,
         ): SessionTranscript = SessionTranscript(
             deviceEngagementBytesOid = null,

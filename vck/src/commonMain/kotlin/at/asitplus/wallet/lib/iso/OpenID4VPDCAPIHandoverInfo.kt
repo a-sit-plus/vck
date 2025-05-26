@@ -23,6 +23,9 @@ data class OpenID4VPDCAPIHandoverInfo(
     @ByteString
     val jwkThumbprint: ByteArray?
 ) {
+    init {
+        require(!origin.startsWith("origin:"))
+    }
     fun serialize() = vckCborSerializer.encodeToByteArray(this)
 
     override fun equals(other: Any?): Boolean {
