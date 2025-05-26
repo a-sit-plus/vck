@@ -18,6 +18,7 @@ import at.asitplus.iso.wrapInCborTag
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.IdToken
 import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.OpenIdConstants.ResponseMode.*
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestParametersFrom
@@ -81,11 +82,9 @@ internal class PresentationFactory(
         dcApiRequest: Oid4vpDCAPIRequest?,
     ): KmmResult<PresentationResponseParameters> = catching {
         request.verifyResponseType()
-
-        val requestsDcApiEncryption =
-            request.responseMode == OpenIdConstants.ResponseMode.DcApiJwt // TODO enable this check in draft28 branch && clientMetadata?.encryptionSupported() == true
+        val responseModeIsJwt = request.responseMode == DcApiJwt || request.responseMode == DirectPostJwt
         val responseWillBeEncrypted =
-            jsonWebKeys != null && (clientMetadata?.requestsEncryption() == true || requestsDcApiEncryption)
+            jsonWebKeys != null && (clientMetadata?.requestsEncryption() == true || responseModeIsJwt)
         val clientId = request.clientId
         val responseUrl = request.responseUrl
         val transactionData = request.transactionData

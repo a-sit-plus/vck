@@ -49,63 +49,56 @@ internal class AuthenticationResponseFactory(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
         requestsEncryption: Boolean,
-    ): AuthenticationResponseResult.DcApi {
-        val responseSerialized = buildJarm(request, response, requestsEncryption)
-        val jarm = AuthenticationResponseParameters(
-            response = responseSerialized,
+    ) = AuthenticationResponseResult.DcApi(
+        AuthenticationResponseParameters(
+            response = buildResponse(request, response, requestsEncryption),
         )
-        return AuthenticationResponseResult.DcApi(jarm)
-    }
+    )
 
     @Throws(OAuth2Exception::class, CancellationException::class)
     internal suspend fun authnResponseDirectPostJwt(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
-    ): AuthenticationResponseResult.Post {
-        val url = request.parameters.responseUrl
+    ) = AuthenticationResponseResult.Post(
+        url = request.parameters.responseUrl
             ?: request.parameters.redirectUrlExtracted
-            ?: throw InvalidRequest("no response_uri or redirect_uri")
-        val responseSerialized = buildJarm(request, response)
-        val jarm = AuthenticationResponseParameters(
-            response = responseSerialized,
-        )
-        return AuthenticationResponseResult.Post(url, jarm.encodeToParameters())
-    }
+            ?: throw InvalidRequest("no response_uri or redirect_uri"),
+        params = AuthenticationResponseParameters(
+            response = buildResponse(request, response, true),
+        ).encodeToParameters()
+    )
 
     @Throws(OAuth2Exception::class)
     internal fun authnResponseDirectPost(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
-    ): AuthenticationResponseResult.Post {
-        val url = request.parameters.responseUrl
+    ) = AuthenticationResponseResult.Post(
+        url = request.parameters.responseUrl
             ?: request.parameters.redirectUrlExtracted
-            ?: throw InvalidRequest("no response_uri or redirect_uri")
-        val params: Map<String, String> = response.params?.encodeToParameters()
-            ?: response.error?.encodeToParameters()
+            ?: throw InvalidRequest("no response_uri or redirect_uri"),
+        params = response.params?.encodeToParameters<AuthenticationResponseParameters>()
+            ?: response.error?.encodeToParameters<OAuth2Error>()
             ?: throw InvalidRequest("nothing to encode")
-
-        return AuthenticationResponseResult.Post(url, params)
-    }
+    )
 
     @Throws(OAuth2Exception::class)
     internal fun authnResponseQuery(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
-    ): AuthenticationResponseResult.Redirect {
-        val url = catchingUnwrapped {
+    ) = AuthenticationResponseResult.Redirect(
+        url = catchingUnwrapped {
             request.parameters.redirectUrlExtracted?.let { redirectUrl ->
                 URLBuilder(redirectUrl).apply {
-                    response.params.encodeToParameters().forEach {
-                        this.parameters.append(it.key, it.value)
+                    response.params.encodeToParameters<AuthenticationResponseParameters?>().forEach {
+                        parameters.append(it.key, it.value)
                     }
                 }.buildString()
             } ?: throw InvalidRequest("no redirect_uri")
         }.getOrElse {
             throw InvalidRequest("Unable to build url")
-        }
-
-        return AuthenticationResponseResult.Redirect(url, response.params ?: throw InvalidRequest("no params"))
-    }
+        },
+        params = response.params ?: throw InvalidRequest("no params")
+    )
 
     /**
      * That's the default for `id_token` and `vp_token`
@@ -114,29 +107,29 @@ internal class AuthenticationResponseFactory(
     internal fun authnResponseFragment(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
-    ): AuthenticationResponseResult.Redirect {
-        val url = catchingUnwrapped {
+    ) = AuthenticationResponseResult.Redirect(
+        url = catchingUnwrapped {
             request.parameters.redirectUrlExtracted?.let { redirectUrl ->
                 URLBuilder(redirectUrl).apply {
-                    encodedFragment = response.params.encodeToParameters().formUrlEncode()
+                    encodedFragment =
+                        response.params.encodeToParameters<AuthenticationResponseParameters?>().formUrlEncode()
                 }.buildString()
             } ?: throw InvalidRequest("no redirect_uri")
         }.getOrElse {
             throw InvalidRequest("Unable to build url")
-        }
-
-        return AuthenticationResponseResult.Redirect(url, response.params ?: throw InvalidRequest("no params"))
-    }
+        },
+        params = response.params ?: throw InvalidRequest("no params")
+    )
 
     /**
      * Per OID4VP, the response must either be signed, or encrypted, or even signed and encrypted
      */
     @Throws(OAuth2Exception::class, CancellationException::class)
-    private suspend fun buildJarm(
+    private suspend fun buildResponse(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
         requestsEncryption: Boolean = false,
-    ) = if (response.requestsEncryption()) {
+    ) = if (requestsEncryption || response.requestsEncryption()) {
         encrypt(request, response)
     } else if (response.requestsSignature()) {
         response.params?.let { sign(it) } ?: throw InvalidRequest("No params in response")
@@ -213,10 +206,10 @@ internal class AuthenticationResponseFactory(
 }
 
 internal fun AuthenticationResponse.requestsEncryption(): Boolean =
-    clientMetadata != null && jsonWebKeys != null && clientMetadata.requestsEncryption()
+    (clientMetadata != null && jsonWebKeys != null && clientMetadata.requestsEncryption())
 
 internal fun AuthenticationResponse.requestsSignature(): Boolean =
     clientMetadata != null && clientMetadata.authorizationSignedResponseAlg != null
 
 internal fun RelyingPartyMetadata.requestsEncryption() =
-    authorizationEncryptedResponseAlg != null && authorizationEncryptedResponseEncoding != null
+    (authorizationEncryptedResponseAlg != null && authorizationEncryptedResponseEncoding != null) || encryptedResponseEncryptionAlgorithm != null
