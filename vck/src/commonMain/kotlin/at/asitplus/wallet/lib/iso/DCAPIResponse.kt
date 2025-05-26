@@ -19,10 +19,13 @@ data class DCAPIResponse private constructor(
 
     companion object {
         @OptIn(ExperimentalEncodingApi::class)
-        fun create(response: EncryptedResponse): DCAPIResponse =
+        fun createIsoMdocResponse(response: EncryptedResponse): DCAPIResponse =
             DCAPIResponse(
                 Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT_OPTIONAL)
                     .encode(response.serialize())
             )
+
+        fun createOid4vpResponse(response: String): DCAPIResponse =
+            DCAPIResponse(response)
     }
 }

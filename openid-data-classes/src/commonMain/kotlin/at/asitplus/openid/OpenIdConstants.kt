@@ -322,8 +322,6 @@ object OpenIdConstants {
          * Section 8.3.
          */
         object DcApi : ResponseMode(STRING_DC_API)
-
-
         object DcApiJwt : ResponseMode(STRING_DC_API_JWT)
 
         /**
