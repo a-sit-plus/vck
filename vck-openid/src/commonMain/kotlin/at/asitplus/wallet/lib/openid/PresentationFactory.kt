@@ -26,6 +26,7 @@ import at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.data.dcapi.request.Oid4vpDCAPIRequest
+import at.asitplus.signum.indispensable.josef.JwkType
 import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
@@ -62,7 +63,8 @@ internal class PresentationFactory(
     ): KmmResult<PresentationResponseParameters> = catching {
         request.verifyResponseType()
 
-        val responseWillBeEncrypted = jsonWebKeys != null && clientMetadata?.requestsEncryption() == true
+        val requestsDcApiEncryption = (request as? AuthenticationRequestParameters)?.responseMode == OpenIdConstants.ResponseMode.DcApiJwt && clientMetadata?.encryptionSupported() == true
+        val responseWillBeEncrypted = jsonWebKeys != null && (clientMetadata?.requestsLegacyEncryption() == true || requestsDcApiEncryption)
         val clientId = request.clientId
         val responseUrl = request.responseUrl
         val transactionData = request.parseTransactionData()
@@ -210,11 +212,8 @@ internal class PresentationFactory(
         jsonWebKeys: Collection<JsonWebKey>?,
         responseWillBeEncrypted: Boolean
     ): SessionTranscript {
-        //if (responseWillBeEncrypted != dcApiRequest.) TODO check if response mode is dcapi-jwt
         val jwkThumbprint = if (responseWillBeEncrypted && !jsonWebKeys.isNullOrEmpty()) {
-            //TODO what if there are multiple JSON web keys?
-            require(jsonWebKeys.size == 1)
-            jsonWebKeys.first().jwkThumbprint
+            jsonWebKeys.firstOrNull { it.publicKeyUse == "enc" || it.type == JwkType.EC }?.jwkThumbprint
         } else null
 
         val openID4VPDCAPIHandoverInfo = OpenID4VPDCAPIHandoverInfo(
