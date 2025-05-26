@@ -62,7 +62,8 @@ internal class PresentationFactory(
     ): KmmResult<PresentationResponseParameters> = catching {
         request.verifyResponseType()
 
-        val responseWillBeEncrypted = jsonWebKeys != null && clientMetadata?.requestsLegacyEncryption() == true
+        val requestsDcApiEncryption = (request as? AuthenticationRequestParameters)?.responseMode == OpenIdConstants.ResponseMode.DcApiJwt && clientMetadata?.encryptionSupported() == true
+        val responseWillBeEncrypted = jsonWebKeys != null && (clientMetadata?.requestsLegacyEncryption() == true || requestsDcApiEncryption)
         val clientId = request.clientId
         val responseUrl = request.responseUrl
         val transactionData = request.parseTransactionData()
@@ -210,7 +211,6 @@ internal class PresentationFactory(
         jsonWebKeys: Collection<JsonWebKey>?,
         responseWillBeEncrypted: Boolean
     ): SessionTranscript {
-        //if (responseWillBeEncrypted != dcApiRequest.) TODO check if response mode is dcapi-jwt
         val jwkThumbprint = if (responseWillBeEncrypted && !jsonWebKeys.isNullOrEmpty()) {
             //TODO what if there are multiple JSON web keys?
             require(jsonWebKeys.size == 1)
