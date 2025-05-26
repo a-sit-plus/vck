@@ -86,7 +86,7 @@ class OpenId4VpComplexSdJwtProtocolTest : FreeSpec({
                         it.path.shouldBeSingleton().first().apply {
                             JsonPath(this)
                             if (!this.contains("vct"))
-                                split("][").shouldHaveSize(2)
+                                split(".").shouldHaveSize(3) // "$", first segment, second segment
                         }
                     }
                 }
