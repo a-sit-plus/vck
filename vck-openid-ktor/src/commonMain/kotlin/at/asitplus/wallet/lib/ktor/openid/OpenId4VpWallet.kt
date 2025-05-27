@@ -95,14 +95,16 @@ class OpenId4VpWallet(
         requestObjectJwsVerifier = { _ -> true }, // unsure about this one?
     )
 
-    suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> =
-        openId4VpHolder.parseAuthenticationRequestParameters(input)
+    suspend fun parseAuthenticationRequestParameters(
+        input: String,
+        dcApiRequest: Oid4vpDCAPIRequest?
+    ): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> =
+        openId4VpHolder.parseAuthenticationRequestParameters(input, dcApiRequest)
 
     suspend fun startAuthorizationResponsePreparation(
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
-        incomingDcApiRequest: Oid4vpDCAPIRequest? = null
+        request: RequestParametersFrom<AuthenticationRequestParameters>
     ): KmmResult<AuthorizationResponsePreparationState> =
-        openId4VpHolder.startAuthorizationResponsePreparation(request, incomingDcApiRequest)
+        openId4VpHolder.startAuthorizationResponsePreparation(request)
 
     suspend fun startAuthorizationResponsePreparation(
         input: String,

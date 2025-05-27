@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.dcapi.request
 
 import at.asitplus.catching
+import at.asitplus.dcapi.request.DCAPIRequest
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.DeviceRequest
 import at.asitplus.wallet.lib.iso.EncryptionInfo

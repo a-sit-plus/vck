@@ -7,6 +7,7 @@ import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.dcapi.request.Oid4vpDCAPIRequest
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
@@ -41,7 +42,10 @@ class RequestParser(
      * or a serialized JWS (which may have been extracted from a `request` parameter),
      * to parse the [AuthenticationRequestParameters], wrapped in [RequestParametersFrom].
      */
-    suspend fun parseRequestParameters(input: String): KmmResult<RequestParametersFrom<*>> = catching {
+    suspend fun parseRequestParameters(
+        input: String,
+        dcApiRequest: Oid4vpDCAPIRequest? = null
+    ): KmmResult<RequestParametersFrom<*>> = catching {
         // maybe it is a request JWS
         val parsedParams = run { parseRequestObjectJws(input) }
             ?: runCatching { // maybe it's in the URL parameters
@@ -55,7 +59,7 @@ class RequestParser(
             }.getOrNull()
             ?: catching {  // maybe it is already a JSON string
                 val params = vckJsonSerializer.decodeFromString(PolymorphicSerializer(RequestParameters::class), input)
-                matchRequestParameterCases(input, params)
+                matchRequestParameterCases(input, params, dcApiRequest)
             }.onFailure {
                 Napier.d("parseRequestParameters: Failed for $input", it)
             }.getOrNull()
@@ -118,11 +122,19 @@ class RequestParser(
         }
 
     @Suppress("UNCHECKED_CAST")
-    private fun <T> matchRequestParameterCases(input: T, params: RequestParameters): RequestParametersFrom<*> =
+    private fun <T> matchRequestParameterCases(
+        input: T,
+        params: RequestParameters,
+        dcApiRequest: Oid4vpDCAPIRequest? = null
+    ): RequestParametersFrom<*> =
         when (input) {
             is Url -> RequestParametersFrom.Uri(input, params)
-            is JwsSigned<*> -> RequestParametersFrom.JwsSigned(input as JwsSigned<RequestParameters>, params)
-            is String -> RequestParametersFrom.Json(input, params)
+            is JwsSigned<*> -> RequestParametersFrom.JwsSigned(
+                input as JwsSigned<RequestParameters>,
+                params,
+                dcApiRequest
+            )
+            is String -> RequestParametersFrom.Json(input, params, dcApiRequest)
             else -> throw Exception("matchRequestParameterCases: unknown type ${input?.let { it::class.simpleName } ?: "null"}")
         }
 }

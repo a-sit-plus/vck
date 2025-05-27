@@ -128,10 +128,13 @@ class OpenId4VpHolder(
      * to create [at.asitplus.openid.AuthenticationResponseParameters] that can be sent back to the Verifier, see
      * [AuthenticationResponseResult].
      */
-    suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> =
+    suspend fun parseAuthenticationRequestParameters(
+        input: String,
+        dcApiRequest: Oid4vpDCAPIRequest? = null
+    ): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> =
         catching {
             @Suppress("UNCHECKED_CAST")
-            requestParser.parseRequestParameters(input)
+            requestParser.parseRequestParameters(input, dcApiRequest)
                 .getOrThrow() as RequestParametersFrom<AuthenticationRequestParameters>
         }
 
@@ -175,12 +178,11 @@ class OpenId4VpHolder(
      * Starts the authorization response building process from the RP's authentication request in [params]
      */
     suspend fun startAuthorizationResponsePreparation(
-        params: RequestParametersFrom<AuthenticationRequestParameters>,
-        incomingDcApiRequest: Oid4vpDCAPIRequest? = null
+        params: RequestParametersFrom<AuthenticationRequestParameters>
     ): KmmResult<AuthorizationResponsePreparationState> = catching {
         val clientMetadata = params.parameters.loadClientMetadata()
         val presentationDefinition = params.parameters.loadCredentialRequest()
-        authorizationRequestValidator.validateAuthorizationRequest(params, incomingDcApiRequest)
+        authorizationRequestValidator.validateAuthorizationRequest(params)
         AuthorizationResponsePreparationState(presentationDefinition, clientMetadata)
     }
 

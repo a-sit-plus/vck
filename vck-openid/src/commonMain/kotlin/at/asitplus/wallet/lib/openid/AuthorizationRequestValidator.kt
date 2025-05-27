@@ -18,8 +18,7 @@ internal class AuthorizationRequestValidator(
 ) {
     @Throws(OAuth2Exception::class, CancellationException::class)
     suspend fun validateAuthorizationRequest(
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
-        incomingDcApiRequest: Oid4vpDCAPIRequest?
+        request: RequestParametersFrom<AuthenticationRequestParameters>
     ) {
         request.parameters.responseType?.let {
             if (!it.contains(OpenIdConstants.ID_TOKEN) && !it.contains(OpenIdConstants.VP_TOKEN)) {
@@ -32,8 +31,12 @@ internal class AuthorizationRequestValidator(
         }
 
         if (request.parameters.responseMode.isAnyDcApi() && request is RequestParametersFrom.JwsSigned) {
+            if (request.dcApiRequest == null || request.dcApiRequest !is Oid4vpDCAPIRequest) {
+                throw InvalidRequest("DC API request not set even though response mode is dcapi")
+            }
+            val dcApiRequest = request.dcApiRequest as Oid4vpDCAPIRequest
             request.parameters.verifyClientIdPresent()
-            request.parameters.verifyExpectedOrigin(incomingDcApiRequest?.callingOrigin)
+            request.parameters.verifyExpectedOrigin(dcApiRequest.callingOrigin)
         }
 
         val clientIdScheme = request.parameters.clientIdSchemeExtracted

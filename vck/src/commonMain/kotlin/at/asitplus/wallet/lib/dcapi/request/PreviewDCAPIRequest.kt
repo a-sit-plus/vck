@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.dcapi.request
 
 import at.asitplus.catching
+import at.asitplus.dcapi.request.DCAPIRequest
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import kotlinx.serialization.Serializable
 
