@@ -2,6 +2,8 @@ package at.asitplus.openid
 
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import io.ktor.util.*
+import io.ktor.utils.io.charsets.*
+import io.ktor.utils.io.core.*
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.ContextualSerializer
 import kotlinx.serialization.PolymorphicSerializer
@@ -19,7 +21,7 @@ import okio.ByteString.Companion.toByteString
 typealias TransactionDataBase64Url = JsonPrimitive
 
 fun TransactionDataBase64Url.sha256(): ByteArray =
-    this.content.decodeToByteArray(Base64UrlStrict).toByteString().sha256().toByteArray()
+    this.content.toByteArray(Charsets.UTF_8).toByteString().sha256().toByteArray()
 
 /**
  * OID4VP Draft 24: OPTIONAL. Array of strings, where each string is a base64url encoded JSON object that contains a typed parameter

@@ -8,6 +8,7 @@ Release 5.7.0:
  - OpenID for Verifiable Credential Issuance:
    - Expose `oauth2Client` in `WalletService`
    - Remove code elements deprecated in `5.6.3` in `OpenId4VciClient` 
+   - Update transaction_data_hashes according to result from https://github.com/openid/OpenID4VP/pull/621
  - Holder:
    - Replace `keyPair` with `keyMaterial`
  - Functions:
