@@ -4,6 +4,7 @@ import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.dif.*
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
+import at.asitplus.jsonpath.core.NormalizedJsonPathSegment.IndexSegment
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment.NameSegment
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
@@ -287,11 +288,16 @@ data class RequestOptionsCredential(
         "$" + segments.joinToString("") { it.toDotNotation() }
 
     private fun NormalizedJsonPathSegment.toDotNotation(): CharSequence = when (this) {
-        is NormalizedJsonPathSegment.IndexSegment -> toString()
-        is NameSegment -> if (memberName.contains(".") || memberName.isDigitsOnly()) toString() else ".$memberName"
+        is IndexSegment -> toString()
+        is NameSegment -> if (memberName.isValidForDotNotation()) ".$memberName" else toString()
     }
 
-    private fun String.isDigitsOnly() = all { it.isDigit() }
+    private fun String.isValidForDotNotation(): Boolean =
+        firstOrNull().isLetterOrUnderscore() && all { it.isLetterOrDigit() || it.isUnderscore() }
+
+    private fun Char?.isLetterOrUnderscore(): Boolean = if (this == null) false else (isLetter() || this.isUnderscore())
+
+    private fun Char.isUnderscore(): Boolean = this == '_'
 
     private fun ConstantIndex.CredentialScheme?.prefixWithIsoNamespace(attribute: String): String = NormalizedJsonPath(
         NameSegment(this?.isoNamespace ?: "mdoc"),
