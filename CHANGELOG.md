@@ -37,7 +37,7 @@ Release 5.7.0:
  - Add support for Digital Credentials API as defined in OID4VP draft 28 and ISO 18013-7 Annex C
    - Implement `DCAPIRequest` for requests received via the Digital Credentials API, with implementations for OID4VP (`Oid4vpDCAPIRequest`), ISO 18013-7 Annex C (`IsoMdocRequest`) and a non-standardised preview protocol (`PreviewDCAPIRequest`)
    - New property of type `Oid4vpDCAPIRequest` for requests originating from the Digital Credentials API in `AuthorizationResponsePreparationState`
-   - New parameter of type `Oid4vpDCAPIRequest` for requests originating from the Digital Credentials API in `OpenId4VpHolder.parseAuthenticationRequestParameters`, `RequestParameters.extractAudience` `PresentationFactory.createPresentation` `PresentationFactory.calcDeviceSignature` `RequestParser.parseRequestParameters` `RequestParser.extractRequestObject` `RequestParser.parseRequestObjectJws` `RequestParser.matchRequestParameterCases` `HolderAgent.getValidCredentialsByPriority` `` `` `` ``
+   - New parameter of type `Oid4vpDCAPIRequest` for requests originating from the Digital Credentials API in `OpenId4VpHolder.parseAuthenticationRequestParameters`, `RequestParameters.extractAudience` `PresentationFactory.createPresentation` `PresentationFactory.calcDeviceSignature` `RequestParser.parseRequestParameters` `RequestParser.extractRequestObject` `RequestParser.parseRequestObjectJws` `RequestParser.matchRequestParameterCases` `HolderAgent.getValidCredentialsByPriority`
    - New optional parameter `filterById` of type `String` in `Holder.matchInputDescriptorsAgainstCredentialStore`, `HolderAgent.getValidCredentialsByPriority` `HolderAgent.matchInputDescriptorsAgainstCredentialStore` `HolderAgent.matchDCQLQueryAgainstCredentialStore` to filter credentials by id
    - New method `SubjectCredentialStore.getDcApiId` to generate an id of type `String` for a credential
    - New optional property of type `DCAPIHandover` for `SessionTranscript`
@@ -47,7 +47,7 @@ Release 5.7.0:
  - Update AGP to 8.6.0 for composite builds with Valera
  - Move ISO data classes `DeviceRequest`, `DocRequest`, `ItemsRequest`, `ItemsRequestList`, `ItemsRequestListSerializer`, and `SigleItemsRequest` to `openid-data-classes`. Package changes from `at.asitplus.wallet.lib.iso` to `at.asitplus.iso`. The `serialize` and `deserialize` methods have been removed from these classes. Use your preferred serializer directly to serialize/deserialize these classes.
  - Make `OAuth2Exception` serializable
-  
+ - Add data class `LocalDateOrInstant` to be used by credentials
 
 Release 5.6.4:
  - OpenID for Verifiable Presentations:
