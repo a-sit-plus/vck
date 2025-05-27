@@ -135,8 +135,10 @@ class OpenId4VpWallet(
      * In case the result shall be POSTed to the verifier, we call [client] to do that,
      * and return the `redirect_uri` of that POST (which the Wallet may open in a browser).
      * In case the result shall be sent as a redirect to the verifier, we return that URL.
+     * In case the result shall be returned via the Digital Credentials API, an [AuthenticationForward]
+     * will be returned with the result to be forwarded.
      */
-    suspend fun finalizeAuthorizationResponseReturningUrl(
+    suspend fun finalizeAuthorizationResponse(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         clientMetadata: RelyingPartyMetadata?,
         credentialPresentation: CredentialPresentation,
