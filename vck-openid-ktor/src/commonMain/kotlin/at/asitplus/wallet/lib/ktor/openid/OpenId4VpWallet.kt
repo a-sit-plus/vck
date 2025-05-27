@@ -97,7 +97,7 @@ class OpenId4VpWallet(
 
     suspend fun parseAuthenticationRequestParameters(
         input: String,
-        dcApiRequest: Oid4vpDCAPIRequest?
+        dcApiRequest: Oid4vpDCAPIRequest? = null
     ): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> =
         openId4VpHolder.parseAuthenticationRequestParameters(input, dcApiRequest)
 
@@ -142,14 +142,12 @@ class OpenId4VpWallet(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         clientMetadata: RelyingPartyMetadata?,
         credentialPresentation: CredentialPresentation,
-        dcApiRequest: Oid4vpDCAPIRequest?,
     ): KmmResult<AuthenticationResult> = catching {
         Napier.i("startPresentation: $request")
         openId4VpHolder.finalizeAuthorizationResponse(
             request = request,
             clientMetadata = clientMetadata,
-            credentialPresentation = credentialPresentation,
-            dcApiRequest = dcApiRequest
+            credentialPresentation = credentialPresentation
         ).getOrThrow().let {
             when (it) {
                 is AuthenticationResponseResult.Post -> postResponse(it)

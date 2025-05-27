@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.dcapi.request.DCAPIRequest
 import at.asitplus.openid.*
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
@@ -44,15 +45,15 @@ class RequestParser(
      */
     suspend fun parseRequestParameters(
         input: String,
-        dcApiRequest: Oid4vpDCAPIRequest? = null
+        dcApiRequest: DCAPIRequest? = null
     ): KmmResult<RequestParametersFrom<*>> = catching {
         // maybe it is a request JWS
-        val parsedParams = run { parseRequestObjectJws(input) }
+        val parsedParams = run { parseRequestObjectJws(input, dcApiRequest) }
             ?: runCatching { // maybe it's in the URL parameters
                 Url(input).let {
                     val params = it.parameters.flattenEntries().toMap().decodeFromUrlQuery<JsonObject>()
                     val parsed = json.decodeFromJsonElement(PolymorphicSerializer(RequestParameters::class), params)
-                    matchRequestParameterCases(it, parsed)
+                    matchRequestParameterCases(it, parsed, dcApiRequest)
                 }
             }.onFailure {
                 Napier.d("parseRequestParameters: Failed for $input", it)
@@ -67,7 +68,7 @@ class RequestParser(
                 .also { Napier.w("Could not parse authentication request: $input") }
 
         (parsedParams.parameters as? AuthenticationRequestParameters)?.let {
-            extractRequestObject(it)
+            extractRequestObject(it, dcApiRequest)
         } ?: parsedParams
             .also { Napier.i("Parsed authentication request: $it") }
     }
@@ -89,9 +90,12 @@ class RequestParser(
         } ?: input
     }
 
-    private suspend fun extractRequestObject(params: AuthenticationRequestParameters): RequestParametersFrom<*>? =
+    private suspend fun extractRequestObject(
+        params: AuthenticationRequestParameters,
+        dcApiRequest: DCAPIRequest?
+    ): RequestParametersFrom<*>? =
         params.request?.let { requestObject ->
-            parseRequestObjectJws(requestObject)
+            parseRequestObjectJws(requestObject, dcApiRequest)
         } ?: params.requestUri?.let { uri ->
             remoteResourceRetriever.invoke(params.resourceRetrieverInput(uri))
                 ?.let { parseRequestParameters(it).getOrNull() }
@@ -105,7 +109,10 @@ class RequestParser(
         requestObjectParameters = buildRequestObjectParameters.invoke()
     )
 
-    private suspend fun parseRequestObjectJws(requestObject: String): RequestParametersFrom<*>? =
+    private suspend fun parseRequestObjectJws(
+        requestObject: String,
+        dcApiRequest: DCAPIRequest? = null
+    ): RequestParametersFrom<*>? =
         JwsSigned.deserialize<RequestParameters>(
             PolymorphicSerializer(RequestParameters::class),
             requestObject,
@@ -114,7 +121,7 @@ class RequestParser(
             Napier.d("parseRequestObjectJws: Error for $requestObject", it)
         }.getOrNull()?.let { jws ->
             if (requestObjectJwsVerifier.invoke(jws)) {
-                RequestParametersFrom.JwsSigned(jws, jws.payload)
+                RequestParametersFrom.JwsSigned(jws, jws.payload, dcApiRequest)
             } else {
                 Napier.w("parseRequestObjectJws: Signature not verified for $jws")
                 null
@@ -125,7 +132,7 @@ class RequestParser(
     private fun <T> matchRequestParameterCases(
         input: T,
         params: RequestParameters,
-        dcApiRequest: Oid4vpDCAPIRequest? = null
+        dcApiRequest: DCAPIRequest? = null
     ): RequestParametersFrom<*> =
         when (input) {
             is Url -> RequestParametersFrom.Uri(input, params)

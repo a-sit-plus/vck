@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
+import at.asitplus.dcapi.request.DCAPIRequest
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_JWK
@@ -130,7 +131,7 @@ class OpenId4VpHolder(
      */
     suspend fun parseAuthenticationRequestParameters(
         input: String,
-        dcApiRequest: Oid4vpDCAPIRequest? = null
+        dcApiRequest: DCAPIRequest? = null
     ): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> =
         catching {
             @Suppress("UNCHECKED_CAST")
@@ -159,8 +160,7 @@ class OpenId4VpHolder(
             finalizeAuthorizationResponseParameters(
                 request = params,
                 clientMetadata = it.clientMetadata,
-                credentialPresentation = it.credentialPresentationRequest?.toCredentialPresentation(),
-                dcApiRequest = null
+                credentialPresentation = it.credentialPresentationRequest?.toCredentialPresentation()
             ).getOrThrow()
         }
 
@@ -183,7 +183,11 @@ class OpenId4VpHolder(
         val clientMetadata = params.parameters.loadClientMetadata()
         val presentationDefinition = params.parameters.loadCredentialRequest()
         authorizationRequestValidator.validateAuthorizationRequest(params)
-        AuthorizationResponsePreparationState(presentationDefinition, clientMetadata)
+        AuthorizationResponsePreparationState(
+            presentationDefinition,
+            clientMetadata,
+            params.extractDcApiRequest() as? Oid4vpDCAPIRequest?
+        )
     }
 
     /**
@@ -194,14 +198,12 @@ class OpenId4VpHolder(
     suspend fun finalizeAuthorizationResponse(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         clientMetadata: RelyingPartyMetadata?,
-        credentialPresentation: CredentialPresentation?,
-        dcApiRequest: Oid4vpDCAPIRequest?,
+        credentialPresentation: CredentialPresentation?
     ): KmmResult<AuthenticationResponseResult> =
         finalizeAuthorizationResponseParameters(
             request,
             clientMetadata,
-            credentialPresentation,
-            dcApiRequest
+            credentialPresentation
         ).map {
             authenticationResponseFactory.createAuthenticationResponse(request, it)
         }
@@ -215,12 +217,12 @@ class OpenId4VpHolder(
         request: RequestParametersFrom<T>,
         clientMetadata: RelyingPartyMetadata?,
         credentialPresentation: CredentialPresentation?,
-        dcApiRequest: Oid4vpDCAPIRequest?
     ): KmmResult<AuthenticationResponse> = catching {
         @Suppress("UNCHECKED_CAST") val certKey =
             (request as? RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>)
                 ?.jwsSigned?.header?.certificateChain?.firstOrNull()?.publicKey?.toJsonWebKey()
         val clientJsonWebKeySet = clientMetadata?.loadJsonWebKeySet()
+        val dcApiRequest = request.extractDcApiRequest() as? Oid4vpDCAPIRequest?
         val audience = request.parameters.extractAudience(clientJsonWebKeySet, dcApiRequest)
         val presentationFactory = PresentationFactory(supportedAlgorithms, signDeviceAuthDetached, signDeviceAuthFallback, signIdToken)
         val jsonWebKeys = clientJsonWebKeySet?.keys?.combine(certKey)

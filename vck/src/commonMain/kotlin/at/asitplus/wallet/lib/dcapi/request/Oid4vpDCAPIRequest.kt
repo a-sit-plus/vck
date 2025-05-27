@@ -4,15 +4,21 @@ import at.asitplus.catching
 import at.asitplus.dcapi.request.DCAPIRequest
 import at.asitplus.openid.OpenIdConstants.DC_API_OID4VP_PROTOCOL_IDENTIFIER
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class Oid4vpDCAPIRequest(
     // openid4vp-v<version>-<request-type>
+    @SerialName("protocol")
     val protocol: String,
+    @SerialName("request")
     val request: String,
+    @SerialName("credentialId")
     val credentialId: String,
+    @SerialName("callingPackageName")
     val callingPackageName: String,
+    @SerialName("callingOrigin")
     val callingOrigin: String
 ) : DCAPIRequest() {
     val openIdVersion =
