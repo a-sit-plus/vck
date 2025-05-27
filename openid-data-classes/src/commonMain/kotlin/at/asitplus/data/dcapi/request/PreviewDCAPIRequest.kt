@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.dcapi.request
+package at.asitplus.data.dcapi.request
 
 import at.asitplus.catching
 import at.asitplus.wallet.lib.data.vckJsonSerializer

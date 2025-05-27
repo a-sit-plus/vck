@@ -315,13 +315,16 @@ object OpenIdConstants {
         object Fragment : ResponseMode(STRING_FRAGMENT)
 
         /**
-         *The value of the response_mode parameter MUST be dc_api when the response is not encrypted and dc_api.jwt
-         * when the response is encrypted as defined in Section 8.3. The Response Mode dc_api causes the Wallet to
-         * send the Authorization Response via the DC API. For Response Mode dc_api.jwt, the Wallet includes the
-         * response parameter, which contains an encrypted JWT encapsulating the Authorization Response, as defined in
-         * Section 8.3.
+         * The value of the response_mode parameter MUST be dc_api when the response is not encrypted.
+         * The Response Mode dc_api causes the Wallet to send the Authorization Response via the DC API.
          */
         object DcApi : ResponseMode(STRING_DC_API)
+
+        /**
+         * The value of the response_mode parameter MUST be dc_api.jwt when the response is encrypted.
+         * For Response Mode dc_api.jwt, the Wallet includes the response parameter, which contains an
+         * encrypted JWT encapsulating the Authorization Response, as defined in Section 8.3.
+         */
         object DcApiJwt : ResponseMode(STRING_DC_API_JWT)
 
         /**

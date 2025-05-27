@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.dcapi.request
+package at.asitplus.data.dcapi.request
 
 import at.asitplus.catching
 import at.asitplus.openid.OpenIdConstants.DC_API_OID4VP_PROTOCOL_IDENTIFIER
@@ -15,25 +15,29 @@ data class Oid4vpDCAPIRequest(
     val callingPackageName: String,
     val callingOrigin: String
 ) : DCAPIRequest() {
+    val openIdVersion =
+        catching {
+            protocol.removePrefix(DC_API_OID4VP_PROTOCOL_IDENTIFIER).split(DELIMITER)[1]
+        }.getOrNull()
+
+    val requestType =
+        catching {
+            protocol.removePrefix(DC_API_OID4VP_PROTOCOL_IDENTIFIER).split(DELIMITER)[2]
+        }.getOrNull()
+
+    val isSignedRequest =
+        catching {
+            requestType?.let { it == "signed" || it == "multisigned" }
+        }.getOrElse { false }
+
     init {
         require((protocol.startsWith(DC_API_OID4VP_PROTOCOL_IDENTIFIER) && protocol.count { it == DELIMITER } == 2))
-        require(getOpenIdVersion().getOrNull() == "v1")
-        if (getRequestType().getOrNull() == "multisigned") {
+        require(openIdVersion == "v1")
+        if (requestType == "multisigned") {
             throw InvalidRequest("multisigned not supported")
         }
-        getRequestType().getOrNull().let { require(it == "unsigned" || it == "signed") }
+        requestType?.let { require(it == "unsigned" || it == "signed") }
     }
-
-    fun getOpenIdVersion() =
-        catching { protocol.removePrefix(DC_API_OID4VP_PROTOCOL_IDENTIFIER).split(DELIMITER)[1] }
-
-    fun getRequestType() =
-        catching { protocol.removePrefix(DC_API_OID4VP_PROTOCOL_IDENTIFIER).split(DELIMITER)[2] }
-
-    fun isSignedRequest() =
-        catching {
-            getRequestType().getOrNull().let { it == "signed" || it == "multisigned" }
-        }.getOrElse { false }
 
     override fun serialize(): String = vckJsonSerializer.encodeToString(this)
 

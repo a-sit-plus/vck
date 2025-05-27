@@ -33,7 +33,11 @@ Release 5.7.0:
    - Remove `Holder.StoredCredential.status`
    - Remove `Verifier.VerifyCredentialResult.Revoked`
  - Add constructor parameter `Validator.acceptedTokenStatuses` to allow library client to define token statuses deemed valid
- - Remove `Holder.StoredCredential` in favor of `SubjectCredentialStore.StoreEntry` 
+ - Remove `Holder.StoredCredential` in favor of `SubjectCredentialStore.StoreEntry`
+ - Add support for Digital Credentials API as defined in OID4VP draft 28 and ISO 18013-7 Annex C
+ - Return member of interface `AuthenticationResult` instead of `AuthenticationSuccess` as authorization response in `OpenId4VpWallet`. Can either be
+   - `AuthenticationSuccess`: contains a `redirectUri` (same behaviour as in 5.6.x)
+   - `AuthenticationForward`: contains the `authenticationResponseResult` for responses via the Digital Credentials API
 
 Release 5.6.4:
  - OpenID for Verifiable Presentations:
