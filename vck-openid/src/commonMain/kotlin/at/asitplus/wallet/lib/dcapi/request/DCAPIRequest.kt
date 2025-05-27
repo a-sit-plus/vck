@@ -1,4 +1,4 @@
-package at.asitplus.data.dcapi.request
+package at.asitplus.wallet.lib.dcapi.request
 
 /*
  * Sealed abstract base class for requests received via the Digital Credentials API.

@@ -1,4 +1,4 @@
-package at.asitplus.data.dcapi.request
+package at.asitplus.wallet.lib.dcapi.request
 
 import at.asitplus.catching
 import at.asitplus.openid.OpenIdConstants.DC_API_OID4VP_PROTOCOL_IDENTIFIER
@@ -11,7 +11,7 @@ data class Oid4vpDCAPIRequest(
     // openid4vp-v<version>-<request-type>
     val protocol: String,
     val request: String,
-    val credentialId: Int,
+    val credentialId: String,
     val callingPackageName: String,
     val callingOrigin: String
 ) : DCAPIRequest() {

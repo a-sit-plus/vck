@@ -100,11 +100,11 @@ class HolderAgent(
      * Gets a list of all valid stored credentials sorted by preference, possibly filtered by
      * [filterById]
      */
-    private suspend fun getValidCredentialsByPriority(filterById: Int? = null): List<StoreEntry>? {
+    private suspend fun getValidCredentialsByPriority(filterById: String? = null): List<StoreEntry>? {
         val availableCredentials = getCredentials() ?: return null
 
         val presortedCredentials = availableCredentials.filter {
-            filterById == null || it.getDcApiId().hashCode() == filterById
+            filterById == null || it.getDcApiId() == filterById
         }.sortedBy {
             // prefer iso credentials and sd jwt credentials over plain vc credentials
             // -> they support selective disclosure!
@@ -288,7 +288,7 @@ class HolderAgent(
         inputDescriptors: Collection<InputDescriptor>,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: PathAuthorizationValidator?,
-        filterById: Int?
+        filterById: String?
     ) = catching {
         findInputDescriptorMatches(
             inputDescriptors = inputDescriptors,
@@ -345,7 +345,10 @@ class HolderAgent(
         pathAuthorizationValidator = pathAuthorizationValidator,
     )
 
-    override suspend fun matchDCQLQueryAgainstCredentialStore(dcqlQuery: DCQLQuery, filterById: Int?): KmmResult<DCQLQueryResult<StoreEntry>> {
+    override suspend fun matchDCQLQueryAgainstCredentialStore(
+        dcqlQuery: DCQLQuery,
+        filterById: String?
+    ): KmmResult<DCQLQueryResult<StoreEntry>> {
         return DCQLQueryAdapter(dcqlQuery).select(
             credentials = getValidCredentialsByPriority(filterById)
                 ?: throw PresentationException("Credentials could not be retrieved from the store"),

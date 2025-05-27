@@ -92,7 +92,7 @@ interface Holder {
         inputDescriptors: Collection<InputDescriptor>,
         fallbackFormatHolder: FormatHolder? = null,
         pathAuthorizationValidator: PathAuthorizationValidator? = null,
-        filterById: Int? = null
+        filterById: String? = null
     ): KmmResult<Map<String, InputDescriptorMatches>>
 
     /**
@@ -119,7 +119,7 @@ interface Holder {
      */
     suspend fun matchDCQLQueryAgainstCredentialStore(
         dcqlQuery: DCQLQuery,
-        filterById: Int? = null
+        filterById: String? = null
     ): KmmResult<DCQLQueryResult<SubjectCredentialStore.StoreEntry>>
 }
 

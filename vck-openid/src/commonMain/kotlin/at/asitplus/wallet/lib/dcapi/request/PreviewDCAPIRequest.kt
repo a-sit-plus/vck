@@ -1,4 +1,4 @@
-package at.asitplus.data.dcapi.request
+package at.asitplus.wallet.lib.dcapi.request
 
 import at.asitplus.catching
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -9,7 +9,7 @@ data class PreviewDCAPIRequest(
     val request: String,
     // namespace -> name, intentToRetain
     val requestedData: MutableMap<String, MutableList<Pair<String, Boolean>>>,
-    val credentialId: Int,
+    val credentialId: String,
     val callingPackageName: String? = null,
     val callingOrigin: String? = null,
     val nonce: ByteArray,

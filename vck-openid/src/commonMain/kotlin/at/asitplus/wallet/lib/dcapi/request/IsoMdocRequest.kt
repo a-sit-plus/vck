@@ -1,4 +1,4 @@
-package at.asitplus.data.dcapi.request
+package at.asitplus.wallet.lib.dcapi.request
 
 import at.asitplus.catching
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -10,10 +10,11 @@ import kotlinx.serialization.Serializable
 data class IsoMdocRequest(
     val parsedDeviceRequest: DeviceRequest,
     val parsedEncryptionInfo: EncryptionInfo,
-    val credentialId: Int,
+    val credentialId: String,
     val callingPackageName: String,
     val callingOrigin: String
 ) : DCAPIRequest() {
+
     override fun serialize(): String = vckJsonSerializer.encodeToString(this)
 
     companion object {

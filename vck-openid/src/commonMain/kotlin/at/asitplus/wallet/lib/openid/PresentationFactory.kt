@@ -25,7 +25,7 @@ import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.data.dcapi.request.Oid4vpDCAPIRequest
+import at.asitplus.wallet.lib.dcapi.request.Oid4vpDCAPIRequest
 import at.asitplus.signum.indispensable.josef.JwkType
 import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.SignJwtFun
@@ -63,8 +63,8 @@ internal class PresentationFactory(
     ): KmmResult<PresentationResponseParameters> = catching {
         request.verifyResponseType()
 
-        val requestsDcApiEncryption = (request as? AuthenticationRequestParameters)?.responseMode == OpenIdConstants.ResponseMode.DcApiJwt && clientMetadata?.encryptionSupported() == true
-        val responseWillBeEncrypted = jsonWebKeys != null && (clientMetadata?.requestsLegacyEncryption() == true || requestsDcApiEncryption)
+        val requestsDcApiEncryption = (request as? AuthenticationRequestParameters)?.responseMode == OpenIdConstants.ResponseMode.DcApiJwt // TODO enable this check in draft28 branch && clientMetadata?.encryptionSupported() == true
+        val responseWillBeEncrypted = jsonWebKeys != null && (clientMetadata?.requestsEncryption() == true || requestsDcApiEncryption)
         val clientId = request.clientId
         val responseUrl = request.responseUrl
         val transactionData = request.parseTransactionData()
