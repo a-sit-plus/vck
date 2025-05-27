@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.wallet.lib.iso.sha256
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -93,6 +94,7 @@ interface SubjectCredentialStore {
             override val schemaUri: String,
         ) : StoreEntry
 
+        @OptIn(ExperimentalStdlibApi::class)
         @Throws(IllegalArgumentException::class)
         fun getDcApiId(): String = when (this) {
             is Vc -> vc.jwtId
@@ -100,8 +102,7 @@ interface SubjectCredentialStore {
                 ?: sdJwt.subject
                 ?: sdJwt.credentialStatus?.statusList?.let { it.uri.string + it.index.toString() }
                 ?: throw IllegalArgumentException("Credential does not have a jwtId")
-            // TODO probably not the best id
-            is Iso -> issuerSigned.issuerAuth.signature.humanReadableString
+            is Iso -> issuerSigned.serialize().sha256().toHexString()
         }
 
     }
