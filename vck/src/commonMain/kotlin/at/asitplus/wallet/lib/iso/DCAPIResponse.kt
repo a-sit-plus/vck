@@ -9,9 +9,11 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 @ConsistentCopyVisibility
 @Serializable
 data class DCAPIResponse private constructor(
-    // ISO 18013-7 Annex-C:
-    // response: Base64EncryptedResponse contains the cbor encoded EncryptedResponse as a
-    // base64-url-without-padding string
+    /**
+     * ISO 18013-7 Annex-C:
+     * response: Base64EncryptedResponse contains the cbor encoded EncryptedResponse as a
+     * base64-url-without-padding string
+     */
     @SerialName("response")
     val response: String
 ) {

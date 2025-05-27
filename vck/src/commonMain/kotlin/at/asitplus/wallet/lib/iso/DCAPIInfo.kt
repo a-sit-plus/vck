@@ -30,13 +30,13 @@ data class DCAPIInfo(
         }.wrap()
 
         @OptIn(ExperimentalEncodingApi::class)
-        fun create(encryptionInfo: EncryptionInfo, origin: String): DCAPIInfo {
-            val encodedEncryptionInfo = Base64.UrlSafe.withPadding(
-                PaddingOption.ABSENT_OPTIONAL
-            ).encode(encryptionInfo.serialize())
-
-            return DCAPIInfo(encodedEncryptionInfo, origin)
-        }
+        inline fun create(encryptionInfo: EncryptionInfo, origin: String): DCAPIInfo =
+            DCAPIInfo(
+                base64EncryptionInfo = Base64.UrlSafe.withPadding(
+                    PaddingOption.ABSENT_OPTIONAL
+                ).encode(encryptionInfo.serialize()),
+                serializedOrigin = origin
+            )
     }
 
 }
