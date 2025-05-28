@@ -1,9 +1,7 @@
-package at.asitplus.wallet.lib.dcapi.request
+package at.asitplus.dcapi.request
 
 import at.asitplus.catching
-import at.asitplus.dcapi.request.DCAPIRequest
 import at.asitplus.openid.OpenIdConstants.DC_API_OID4VP_PROTOCOL_IDENTIFIER
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -45,11 +43,7 @@ data class Oid4vpDCAPIRequest(
         requestType?.let { require(it == "unsigned" || it == "signed") }
     }
 
-    override fun serialize(): String = vckJsonSerializer.encodeToString(this)
-
     companion object {
         private const val DELIMITER = '-'
-        fun deserialize(input: String) =
-            catching { vckJsonSerializer.decodeFromString<Oid4vpDCAPIRequest>(input) }
     }
 }

@@ -1,6 +1,8 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.catching
+import at.asitplus.iso.DocRequest
+import at.asitplus.iso.ItemsRequest
 import at.asitplus.signum.indispensable.CryptoSignature
 import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseEllipticCurve

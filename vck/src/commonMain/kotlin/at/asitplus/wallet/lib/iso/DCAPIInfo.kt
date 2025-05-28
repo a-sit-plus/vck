@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.iso.EncryptionInfo
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.CborArray
 import kotlinx.serialization.decodeFromByteArray
@@ -16,10 +17,12 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 @CborArray
 data class DCAPIInfo(
     /** Base64EncryptionInfo contains the cbor encoded EncryptionInfo as
-    a base64-url-without-padding string. */
+     * a base64-url-without-padding string.
+     */
     val base64EncryptionInfo: String,
     /** Serialized origin of the request as defined in
-     * https://html.spec.whatwg.org/multipage/browsers.html#ascii-serialisation-of-an-origin */
+     * https://html.spec.whatwg.org/multipage/browsers.html#ascii-serialisation-of-an-origin
+     */
     val serializedOrigin: String
 ) {
     fun serialize() = vckCborSerializer.encodeToByteArray(this)
@@ -34,7 +37,7 @@ data class DCAPIInfo(
             DCAPIInfo(
                 base64EncryptionInfo = Base64.UrlSafe.withPadding(
                     PaddingOption.ABSENT_OPTIONAL
-                ).encode(encryptionInfo.serialize()),
+                ).encode(vckCborSerializer.encodeToByteArray(encryptionInfo)),
                 serializedOrigin = origin
             )
     }

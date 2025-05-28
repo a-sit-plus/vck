@@ -25,7 +25,7 @@ import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.dcapi.request.Oid4vpDCAPIRequest
+import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
 import at.asitplus.signum.indispensable.josef.JwkType
 import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.SignJwtFun
@@ -150,13 +150,7 @@ internal class PresentationFactory(
                     .encodeToByteArray(ByteStringWrapper(deviceAuthentication))
                     .wrapInCborTag(24)
                     .also {
-                        Napier.d(
-                            "Device authentication signature input is ${
-                                it.encodeToString(
-                                    Base16()
-                                )
-                            }"
-                        )
+                        Napier.d("Device authentication signature input is ${it.encodeToString(Base16())}")
                     }
 
                 signDeviceAuthDetached(

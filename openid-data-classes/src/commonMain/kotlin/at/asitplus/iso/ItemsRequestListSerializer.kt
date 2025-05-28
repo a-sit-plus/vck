@@ -1,12 +1,21 @@
-package at.asitplus.wallet.lib.iso
+package at.asitplus.iso
 
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.listSerialDescriptor
+import kotlinx.serialization.descriptors.mapSerialDescriptor
+import kotlinx.serialization.encoding.CompositeDecoder
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.encoding.decodeStructure
+import kotlinx.serialization.encoding.encodeStructure
+import kotlin.collections.plusAssign
 
 /**
  * Serializes [ItemsRequestList.entries] as an "inline map",
- * having [SingleItemsRequest.key] as the map key and [SingleItemsRequest.value] as the map value,
+ * having [at.asitplus.wallet.lib.iso.SingleItemsRequest.key] as the map key and [at.asitplus.wallet.lib.iso.SingleItemsRequest.value] as the map value,
  * for the map represented by [ItemsRequestList].
  */
 object ItemsRequestListSerializer : KSerializer<ItemsRequestList> {
@@ -33,7 +42,7 @@ object ItemsRequestListSerializer : KSerializer<ItemsRequestList> {
             var value: Boolean
             while (true) {
                 val index = decodeElementIndex(descriptor)
-                if (index == CompositeDecoder.DECODE_DONE) {
+                if (index == CompositeDecoder.Companion.DECODE_DONE) {
                     break
                 } else if (index % 2 == 0) {
                     key = decodeStringElement(descriptor, index)

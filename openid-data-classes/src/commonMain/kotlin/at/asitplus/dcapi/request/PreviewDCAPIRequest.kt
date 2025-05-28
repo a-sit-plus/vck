@@ -1,8 +1,6 @@
-package at.asitplus.wallet.lib.dcapi.request
+package at.asitplus.dcapi.request
 
 import at.asitplus.catching
-import at.asitplus.dcapi.request.DCAPIRequest
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -21,7 +19,6 @@ data class PreviewDCAPIRequest(
         require(callingOrigin != null || callingPackageName != null)
     }
 
-    override fun serialize(): String = vckJsonSerializer.encodeToString(this)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -51,11 +48,5 @@ data class PreviewDCAPIRequest(
         result = 31 * result + readerPublicKeyBase64.hashCode()
         result = 31 * result + docType.hashCode()
         return result
-    }
-
-
-    companion object {
-        fun deserialize(input: String) =
-            catching { vckJsonSerializer.decodeFromString<PreviewDCAPIRequest>(input) }
     }
 }

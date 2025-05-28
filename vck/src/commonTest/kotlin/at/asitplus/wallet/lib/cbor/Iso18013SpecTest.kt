@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.cbor
 
+import at.asitplus.iso.DeviceRequest
+import at.asitplus.iso.ItemsRequestList
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.wallet.lib.iso.*
 import io.kotest.core.spec.style.FreeSpec

@@ -1,12 +1,9 @@
-package at.asitplus.wallet.lib.iso
+package at.asitplus.iso
 
-import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.ByteString
-import kotlinx.serialization.decodeFromByteArray
-import kotlinx.serialization.encodeToByteArray
 
 /**
  * Part of ISO 18013-7 Annex C
@@ -23,14 +20,6 @@ data class EncryptionParameters(
 ) {
     init {
         require(nonce.size >= 16)
-    }
-
-    fun serialize() = vckCborSerializer.encodeToByteArray(this)
-
-    companion object {
-        fun deserialize(it: ByteArray) = runCatching {
-            vckCborSerializer.decodeFromByteArray<EncryptionParameters>(it)
-        }.wrap()
     }
 
     override fun equals(other: Any?): Boolean {

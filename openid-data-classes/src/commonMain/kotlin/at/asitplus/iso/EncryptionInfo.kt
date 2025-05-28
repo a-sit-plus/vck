@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.iso
+package at.asitplus.iso
 
 import at.asitplus.KmmResult.Companion.wrap
 import kotlinx.serialization.Serializable
@@ -22,22 +22,4 @@ data class EncryptionInfo(
     init {
         require(type == "dcapi")
     }
-
-    fun serialize() = vckCborSerializer.encodeToByteArray(this)
-
-    companion object {
-        fun deserialize(it: ByteArray) = runCatching {
-            vckCborSerializer.decodeFromByteArray<EncryptionInfo>(it)
-        }.wrap()
-
-        @OptIn(ExperimentalEncodingApi::class)
-        fun deserialize(it: String) = kotlin.runCatching {
-            vckCborSerializer.decodeFromByteArray<EncryptionInfo>(
-                Base64.UrlSafe.withPadding(
-                    PaddingOption.ABSENT_OPTIONAL
-                ).decode(it)
-            )
-        }.wrap()
-    }
-
 }
