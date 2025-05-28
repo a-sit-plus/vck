@@ -75,8 +75,11 @@ class Iso18013SpecTest : FreeSpec({
             9bb7f80bf
         """.trimIndent().replace("\n", "").uppercase()
 
-        val deviceRequest = DeviceRequest.deserialize(input.decodeToByteArray(Base16(true)))
-            .getOrThrow().shouldNotBeNull()
+        val deviceRequest =
+            vckCborSerializer.decodeFromByteArray(
+                DeviceRequest.serializer(),
+                input.decodeToByteArray(Base16(true))
+            ).shouldNotBeNull()
 
         deviceRequest.version shouldBe "1.0"
         val docRequest = deviceRequest.docRequests.first()
@@ -92,9 +95,10 @@ class Iso18013SpecTest : FreeSpec({
         itemsRequestList.findItem("portrait") shouldBe false
 
         docRequest.readerAuth.shouldNotBeNull()
-        docRequest.readerAuth.unprotectedHeader?.certificateChain?.shouldNotBeNull()
+        docRequest.readerAuth!!.unprotectedHeader?.certificateChain?.shouldNotBeNull()
 
-        deviceRequest.serialize().encodeToString(Base16(true)).uppercase() shouldBe input
+        vckCborSerializer.encodeToByteArray(DeviceRequest.serializer(), deviceRequest)
+            .encodeToString(Base16(true)).uppercase() shouldBe input
     }
 
     // From ISO/IEC 18013-5:2021(E), D4.1.2, page 116
