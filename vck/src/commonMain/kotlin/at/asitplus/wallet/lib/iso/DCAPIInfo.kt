@@ -30,7 +30,7 @@ data class DCAPIInfo(
         }.wrap()
 
         @OptIn(ExperimentalEncodingApi::class)
-        inline fun create(encryptionInfo: EncryptionInfo, origin: String): DCAPIInfo =
+        fun create(encryptionInfo: EncryptionInfo, origin: String): DCAPIInfo =
             DCAPIInfo(
                 base64EncryptionInfo = Base64.UrlSafe.withPadding(
                     PaddingOption.ABSENT_OPTIONAL
