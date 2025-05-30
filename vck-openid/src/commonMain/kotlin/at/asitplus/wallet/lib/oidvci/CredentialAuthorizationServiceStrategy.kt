@@ -26,7 +26,7 @@ class CredentialAuthorizationServiceStrategy(
             OpenIdAuthorizationDetails(credentialConfigurationId = it.key)
         }
 
-    override fun filterScope(scope: String): String? = scope.trim().split(" ")
+    override fun filterScope(scope: String): String = scope.trim().split(" ")
         .mapNotNull { scope ->
             if (supportedCredentialSchemes.values.find { it.scope == scope } != null) scope
             else null
