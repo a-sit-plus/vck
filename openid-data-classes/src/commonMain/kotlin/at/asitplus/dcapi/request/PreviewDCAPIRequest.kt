@@ -1,18 +1,27 @@
 package at.asitplus.dcapi.request
 
-import at.asitplus.catching
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
+@Deprecated("Legacy preview protocol. Use OID4VP or ISO 18013-7 Annex C", replaceWith = ReplaceWith("Oid4vpDCAPIRequest or IsoMdocRequest"))
 data class PreviewDCAPIRequest(
+    @SerialName("request")
     val request: String,
     // namespace -> name, intentToRetain
+    @SerialName("requestedData")
     val requestedData: MutableMap<String, MutableList<Pair<String, Boolean>>>,
+    @SerialName("credentialId")
     val credentialId: String,
+    @SerialName("callingPackageName")
     val callingPackageName: String? = null,
+    @SerialName("callingOrigin")
     val callingOrigin: String? = null,
+    @SerialName("nonce")
     val nonce: ByteArray,
+    @SerialName("readerPublicKeyBase64")
     val readerPublicKeyBase64: String,
+    @SerialName("docType")
     val docType: String,
 ) : DCAPIRequest() {
     init {
