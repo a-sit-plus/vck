@@ -9,5 +9,5 @@ import kotlinx.serialization.Serializable
 data class AuthorizationResponsePreparationState(
     val credentialPresentationRequest: CredentialPresentationRequest?,
     val clientMetadata: RelyingPartyMetadata?,
-    var oid4vpDCAPIRequest: Oid4vpDCAPIRequest?
+    val oid4vpDCAPIRequest: Oid4vpDCAPIRequest?
 )
