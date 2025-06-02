@@ -35,8 +35,8 @@ data class Oid4vpDCAPIRequest(
         }.getOrElse { false }
 
     init {
-        require((protocol.startsWith(DC_API_OID4VP_PROTOCOL_IDENTIFIER) && protocol.count { it == DELIMITER } == 2))
-        require(openIdVersion == "v1")
+        require((protocol.startsWith(DC_API_OID4VP_PROTOCOL_IDENTIFIER) && protocol.count { it == DELIMITER } == 2) || protocol == "openid4vp" /* draft 24*/)
+        require(openIdVersion == "v1" || openIdVersion == null /* draft 24*/)
         if (requestType == "multisigned") {
             throw IllegalArgumentException("multisigned not supported")
         }
