@@ -12,6 +12,15 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+      - name: Cache gradle
+        uses: actions/cache@v4
+        env:
+          cache-name: cache-gradle
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: iOS-${{ hashFiles('./conventions-vclib/src/main/resources/vcLibVersions.properties') }}
       - name: Build klibs
         run: ./gradlew iosArm64MainKlibrary iosSimulatorArm64MainKlibrary
       - name: Run tests
