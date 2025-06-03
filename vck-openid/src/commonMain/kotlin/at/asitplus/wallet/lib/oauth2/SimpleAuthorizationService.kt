@@ -301,8 +301,8 @@ class SimpleAuthorizationService(
         if (request.authorizationDetails != null) {
             val filtered = strategy.filterAuthorizationDetails(request.authorizationDetails!!)
             if (filtered.isEmpty()) {
-                throw InvalidRequest("No matching authorization details")
                 Napier.w("authorize: authorization details not valid: ${request.authorizationDetails}")
+                throw InvalidRequest("No matching authorization details")
             }
         }
     }
@@ -337,18 +337,14 @@ class SimpleAuthorizationService(
             httpRequest?.clientAttestationPop,
             request.clientId
         )
+
         val token = if (request.authorizationDetails != null) {
             if (clientAuthRequest.authnDetails == null)
                 throw InvalidRequest("No authn details for issued code: ${clientAuthRequest.issuedCode}")
 
-            val filtered = strategy.filterAuthorizationDetails(request.authorizationDetails!!).also {
-                if (it.isEmpty())
-                    throw InvalidRequest("No valid authorization details in ${request.authorizationDetails}")
-                it.forEach { filter ->
-                    if (!filter.requestedFromCode(clientAuthRequest))
-                        throw InvalidRequest("Authorization details not from auth code: $filter")
-                }
-            }
+            val filtered = strategy.filterAuthorizationDetails(request.authorizationDetails!!)
+
+            strategy.matchAuthorizationDetails(clientAuthRequest, filtered)
             tokenService.generation.buildToken(
                 httpRequest = httpRequest,
                 userInfo = clientAuthRequest.userInfo,
@@ -370,7 +366,7 @@ class SimpleAuthorizationService(
             )
         } else if (clientAuthRequest.authnDetails != null) {
             val filtered = strategy.filterAuthorizationDetails(
-                clientAuthRequest.authnDetails.filterIsInstance<OpenIdAuthorizationDetails>()
+                clientAuthRequest.authnDetails
             ).also {
                 if (it.isEmpty())
                     throw InvalidRequest("No valid authorization details in ${clientAuthRequest.authnDetails}")
@@ -400,9 +396,6 @@ class SimpleAuthorizationService(
         Napier.i("token returns $token")
         token
     }
-
-    private fun OpenIdAuthorizationDetails.requestedFromCode(clientAuthRequest: ClientAuthRequest): Boolean =
-        clientAuthRequest.authnDetails!!.filterIsInstance<OpenIdAuthorizationDetails>().any { matches(it) }
 
     private fun validateCodeChallenge(code: String, codeVerifier: String?, codeChallenge: String) {
         if (codeVerifier == null) {
