@@ -26,18 +26,7 @@ data class SdJwtInputValidator(
         publicKey: CryptoPublicKey?,
     ): SdJwtInputValidationResult {
         val payloadCredentialValidationSummary = sdJwtSigned.getPayloadAsVerifiableCredentialSdJwt().map { sdJwt ->
-            SdJwtCredentialPayloadValidationSummary(
-                verifiableCredentialSdJwt = sdJwt,
-                subjectMatchingResult = if (publicKey != null && sdJwt.subject != null) SubjectMatchingResult(
-                    subject = sdJwt.subject,
-                    publicKey = publicKey,
-                    isSuccess = publicKey.matchesIdentifier(sdJwt.subject).also {
-                        if (!it) {
-                            Napier.d("verifySdJwt: sub invalid")
-                        }
-                    }
-                ) else null
-            )
+            SdJwtCredentialPayloadValidationSummary(verifiableCredentialSdJwt = sdJwt)
         }.onFailure { ex ->
             Napier.w("verifySdJwt: Could not parse payload", ex)
         }
@@ -53,7 +42,7 @@ data class SdJwtInputValidator(
 
         val payloadValidationSummary = if (credentialPayload == null) {
             KmmResult.failure(payloadCredentialValidationSummary.exceptionOrNull()!!)
-        } else if(sdJwtValidator == null) {
+        } else if (sdJwtValidator == null) {
             KmmResult.failure(payloadJsonValidationSummary.exceptionOrNull()!!)
         } else {
             val reconstructedJsonObject = sdJwtValidator.reconstructedJsonObject ?: buildJsonObject { }

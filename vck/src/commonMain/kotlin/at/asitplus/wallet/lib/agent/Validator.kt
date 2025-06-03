@@ -103,19 +103,22 @@ class Validator(
     /**
      * Checks both the timeliness and the token status of the passed credentials
      */
-    suspend fun checkCredentialFreshness(storeEntry: SubjectCredentialStore.StoreEntry) = when(storeEntry) {
+    suspend fun checkCredentialFreshness(storeEntry: SubjectCredentialStore.StoreEntry) = when (storeEntry) {
         is SubjectCredentialStore.StoreEntry.Iso -> checkCredentialFreshness(storeEntry.issuerSigned)
         is SubjectCredentialStore.StoreEntry.SdJwt -> checkCredentialFreshness(storeEntry.sdJwt)
         is SubjectCredentialStore.StoreEntry.Vc -> checkCredentialFreshness(storeEntry.vc)
     }
+
     suspend fun checkCredentialFreshness(issuerSigned: IssuerSigned) = CredentialFreshnessSummary.Mdoc(
         tokenStatusValidationResult = checkRevocationStatus(issuerSigned),
         timelinessValidationSummary = credentialTimelinessValidator(issuerSigned)
     )
+
     suspend fun checkCredentialFreshness(sdJwt: VerifiableCredentialSdJwt) = CredentialFreshnessSummary.SdJwt(
         tokenStatusValidationResult = checkRevocationStatus(sdJwt),
         timelinessValidationSummary = credentialTimelinessValidator(sdJwt)
     )
+
     suspend fun checkCredentialFreshness(vcJws: VerifiableCredentialJws) = CredentialFreshnessSummary.VcJws(
         tokenStatusValidationResult = checkRevocationStatus(vcJws),
         timelinessValidationSummary = credentialTimelinessValidator(vcJws)
@@ -126,7 +129,9 @@ class Validator(
     /**
      * Checks the revocation state of the passed credential.
      */
-    internal suspend fun checkRevocationStatus(storeEntry: SubjectCredentialStore.StoreEntry) = tokenStatusValidator(storeEntry)
+    internal suspend fun checkRevocationStatus(storeEntry: SubjectCredentialStore.StoreEntry) =
+        tokenStatusValidator(storeEntry)
+
     internal suspend fun checkRevocationStatus(issuerSigned: IssuerSigned) = tokenStatusValidator(issuerSigned)
     internal suspend fun checkRevocationStatus(sdJwt: VerifiableCredentialSdJwt) = tokenStatusValidator(sdJwt)
     internal suspend fun checkRevocationStatus(vcJws: VerifiableCredentialJws) = tokenStatusValidator(vcJws)
@@ -151,7 +156,8 @@ class Validator(
         val parsedVp = parser.parseVpJws(input.payload, challenge, clientId)
         if (parsedVp !is Parser.ParseVpResult.Success) {
             Napier.d("VP: Could not parse content")
-            throw IllegalArgumentException("vp.content")
+            throw (parsedVp as? Parser.ParseVpResult.ValidationError)?.cause
+                ?: IllegalArgumentException("vp.content")
         }
         val vcValidationResults = parsedVp.jws.vp.verifiableCredential
             .map { it to verifyVcJws(it, null) }
@@ -206,7 +212,9 @@ class Validator(
         val sdJwtResult = verifySdJwt(input, null)
         if (sdJwtResult !is SuccessSdJwt) {
             Napier.w("verifyVpSdJwt: Could not verify SD-JWT: $sdJwtResult")
-            return VerifyPresentationResult.ValidationError("SD-JWT not verified")
+            val error = (sdJwtResult as? VerifyCredentialResult.ValidationError)?.cause
+                ?: Throwable("SD-JWT not verified")
+            return VerifyPresentationResult.ValidationError(error)
         }
         val keyBindingSigned = sdJwtResult.sdJwtSigned.keyBindingJws ?: run {
             Napier.w("verifyVpSdJwt: No key binding JWT")
@@ -394,7 +402,7 @@ class Validator(
             validationSummary !is VcJwsInputValidationResult.ContentValidationSummary -> InvalidStructure(input)
             !validationSummary.isIntegrityGood -> InvalidStructure(input)
             !validationSummary.contentSemanticsValidationSummary.isSuccess -> InvalidStructure(input)
-            validationSummary.subjectMatchingResult?.isSuccess == false -> ValidationError(input)
+            validationSummary.subjectMatchingResult?.isSuccess == false -> ValidationError("subject not matching key")
             validationSummary.isSuccess -> SuccessJwt(validationSummary.payload)
             else -> ValidationError(input) // this branch shouldn't be executed anyway
         }
@@ -403,7 +411,7 @@ class Validator(
     /**
      * Validates the content of an [SdJwtSigned], expected to contain a [VerifiableCredentialSdJwt].
      *
-     * @param publicKey Optionally the local key, to verify SD-JWT was issued to correct subject
+     * @param publicKey Optionally the local key, to verify SD-JWT was bound to correct subject
      */
     suspend fun verifySdJwt(
         sdJwtSigned: SdJwtSigned,
@@ -413,11 +421,7 @@ class Validator(
         val validationResult = sdJwtInputValidator.invoke(sdJwtSigned, publicKey)
         return when {
             !validationResult.isIntegrityGood -> ValidationError("Signature not verified")
-            validationResult.payloadCredentialValidationSummary.getOrNull()?.isSuccess == false -> ValidationError("subject invalid")
-
-            else -> validationResult.payload.getOrElse {
-                return ValidationError(it)
-            }
+            else -> validationResult.payload.getOrElse { return ValidationError(it) }
         }
     }
 

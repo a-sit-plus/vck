@@ -49,6 +49,11 @@ Release 5.7.0:
  - Make `OAuth2Exception` serializable
  - Add data class `LocalDateOrInstant` to be used by credentials
   
+
+Release 5.6.6:
+ - OpenID for Verifiable Credential Issuance:
+   - Subject of SD-JWT does not need to represent the holder public key
+
 Release 5.6.5:
  - OpenID for Verifiable Presentations:
    - Change JSON Path serialization for claims to dot notation (for EUDIW reference implementation)
