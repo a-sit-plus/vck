@@ -4,6 +4,8 @@ import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oauth2.AuthorizationServiceStrategy
+import at.asitplus.wallet.lib.oauth2.ClientAuthRequest
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 
 /**
  * Provide authentication and authorization for credential issuance.
@@ -45,12 +47,20 @@ class CredentialAuthorizationServiceStrategy(
             }
             .toSet()
 
+    override fun matchAuthorizationDetails(
+        clientRequest: ClientAuthRequest,
+        filterAuthorizationDetails: Set<AuthorizationDetails>
+    ): Unit = (filterAuthorizationDetails as? Set<OpenIdAuthorizationDetails>)?.forEach { filter ->
+        if (clientRequest.authnDetails!!.all { !filter.matches(it) })
+            throw InvalidRequest("Authorization details not from auth code: $filter")
+    } ?: throw InvalidRequest("Request does not contain OAuth authorization details: $clientRequest")
+
     private fun OpenIdAuthorizationDetails.filterFormat(): OpenIdAuthorizationDetails? =
         supportedCredentialSchemes.entries.firstOrNull {
             it.value.format == format &&
-                    it.value.docType == docType &&
-                    it.value.sdJwtVcType == sdJwtVcType &&
-                    it.value.credentialDefinition == credentialDefinition
+            it.value.docType == docType &&
+            it.value.sdJwtVcType == sdJwtVcType &&
+            it.value.credentialDefinition == credentialDefinition
         }?.let { matchingCredential ->
             copy(credentialIdentifiers = setOf(matchingCredential.key))
         }
@@ -68,7 +78,8 @@ class CredentialAuthorizationServiceStrategy(
  * i.e. it has either the same [OpenIdAuthorizationDetails.credentialConfigurationId]
  * or the same [OpenIdAuthorizationDetails.format] plus format-specific properties.
  */
-fun OpenIdAuthorizationDetails.matches(other: OpenIdAuthorizationDetails): Boolean = when {
+fun OpenIdAuthorizationDetails.matches(other: AuthorizationDetails): Boolean = when {
+    other !is OpenIdAuthorizationDetails -> false
     credentialConfigurationId != null -> other.credentialConfigurationId == credentialConfigurationId
     format != null -> other.format == format
             && other.docType == docType

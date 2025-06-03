@@ -9,8 +9,14 @@ import at.asitplus.openid.OpenIdAuthorizationDetails
  */
 interface AuthorizationServiceStrategy {
 
-    /** Filter requested authorization details in token requests to ones valued for credential issuance */
-    fun filterAuthorizationDetails(authorizationDetails: Collection<AuthorizationDetails>): Set<OpenIdAuthorizationDetails>
+    /** Filter requested authorization details in token requests */
+    fun filterAuthorizationDetails(authorizationDetails: Collection<AuthorizationDetails>): Set<AuthorizationDetails>
+
+    /** Semantically match filtered authorization details against request */
+    fun matchAuthorizationDetails(
+        clientRequest: ClientAuthRequest,
+        filterAuthorizationDetails: Set<AuthorizationDetails>
+    ): Unit
 
     /** Filter the requested scope in the access token request to ones valid for credential issuance */
     fun filterScope(scope: String): String?
@@ -19,10 +25,8 @@ interface AuthorizationServiceStrategy {
     fun validScopes(): String
 
     /** Return all valid authorization details for pre-authorized codes, that the client may use in token requests */
-    fun validAuthorizationDetails(): Collection<OpenIdAuthorizationDetails>
+    fun validAuthorizationDetails(): Collection<AuthorizationDetails>
 
     /** Return all valid credential identifiers for all schemes. */
     fun allCredentialIdentifier(): Collection<String>
-
-
 }
