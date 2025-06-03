@@ -22,7 +22,7 @@ typealias TransactionDataBase64Url = JsonPrimitive
 
 fun TransactionDataBase64Url.sha256(): ByteArray =
     this.content.toByteArray(Charsets.UTF_8).toByteString().sha256().toByteArray()
-
+ 
 /**
  * OID4VP Draft 24: OPTIONAL. Array of strings, where each string is a base64url encoded JSON object that contains a typed parameter
  * set with details about the transaction that the Verifier is requesting the End-User to authorize.
