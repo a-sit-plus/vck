@@ -72,26 +72,30 @@ class HolderAgent(
     override suspend fun storeCredential(credential: Holder.StoreCredentialInput) = catching {
         when (credential) {
             is Holder.StoreCredentialInput.Vc -> {
-                val vc = validator.verifyVcJws(credential.vcJws, keyPair.publicKey)
-                if (vc !is Verifier.VerifyCredentialResult.SuccessJwt) {
-                    throw VerificationError(vc.toString())
+                val validated = validator.verifyVcJws(credential.vcJws, keyPair.publicKey)
+                if (validated !is Verifier.VerifyCredentialResult.SuccessJwt) {
+                    val error = (validated as? Verifier.VerifyCredentialResult.ValidationError)?.cause
+                        ?: Throwable("Invalid VC JWS")
+                    throw VerificationError(error)
                 }
                 subjectCredentialStore.storeCredential(
-                    vc.jws,
+                    validated.jws,
                     credential.vcJws,
                     credential.scheme,
                 ).toStoredCredential()
             }
 
             is Holder.StoreCredentialInput.SdJwt -> {
-                val sdJwt = validator.verifySdJwt(SdJwtSigned.parse(credential.vcSdJwt)!!, keyPair.publicKey)
-                if (sdJwt !is Verifier.VerifyCredentialResult.SuccessSdJwt) {
-                    throw VerificationError(sdJwt.toString())
+                val validated = validator.verifySdJwt(SdJwtSigned.parse(credential.vcSdJwt)!!, keyPair.publicKey)
+                if (validated !is Verifier.VerifyCredentialResult.SuccessSdJwt) {
+                    val error = (validated as? Verifier.VerifyCredentialResult.ValidationError)?.cause
+                        ?: Throwable("Invalid SD-JWT")
+                    throw VerificationError(error)
                 }
                 subjectCredentialStore.storeCredential(
-                    sdJwt.verifiableCredentialSdJwt,
+                    validated.verifiableCredentialSdJwt,
                     credential.vcSdJwt,
-                    sdJwt.disclosures,
+                    validated.disclosures,
                     credential.scheme,
                 ).toStoredCredential()
             }
@@ -102,11 +106,13 @@ class HolderAgent(
                         runCatching { X509Certificate.decodeFromDer(it) }.getOrNull()?.publicKey?.toCoseKey()
                             ?.getOrNull()
                     }
-                val iso = validator.verifyIsoCred(credential.issuerSigned, issuerKey)
-                if (iso !is Verifier.VerifyCredentialResult.SuccessIso) {
-                    throw VerificationError(iso.toString())
+                val validated = validator.verifyIsoCred(credential.issuerSigned, issuerKey)
+                if (validated !is Verifier.VerifyCredentialResult.SuccessIso) {
+                    val error = (validated as? Verifier.VerifyCredentialResult.ValidationError)?.cause
+                        ?: Throwable("Invalid ISO MDOC")
+                    throw VerificationError(error)
                 }
-                subjectCredentialStore.storeCredential(iso.issuerSigned, credential.scheme)
+                subjectCredentialStore.storeCredential(validated.issuerSigned, credential.scheme)
                     .toStoredCredential()
             }
         }
