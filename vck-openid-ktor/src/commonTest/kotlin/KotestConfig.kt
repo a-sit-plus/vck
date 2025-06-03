@@ -9,5 +9,6 @@ class KotestConfig : AbstractProjectConfig() {
         Napier.base(DebugAntilog())
         initOpenIdModule()
         at.asitplus.wallet.eupid.Initializer.initWithVCK()
+        at.asitplus.wallet.mdl.Initializer.initWithVCK()
     }
 }
