@@ -1,5 +1,8 @@
 # Changelog
 
+Release 5.6.6:
+ - tbd
+
 Release 5.6.5:
  - OpenID for Verifiable Presentations:
    - Change JSON Path serialization for claims to dot notation (for EUDIW reference implementation)
