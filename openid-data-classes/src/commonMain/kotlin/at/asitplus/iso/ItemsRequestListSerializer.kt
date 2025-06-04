@@ -15,7 +15,7 @@ import kotlin.collections.plusAssign
 
 /**
  * Serializes [ItemsRequestList.entries] as an "inline map",
- * having [at.asitplus.wallet.lib.iso.SingleItemsRequest.key] as the map key and [at.asitplus.wallet.lib.iso.SingleItemsRequest.value] as the map value,
+ * having [SingleItemsRequest.key] as the map key and [SingleItemsRequest.value] as the map value,
  * for the map represented by [ItemsRequestList].
  */
 object ItemsRequestListSerializer : KSerializer<ItemsRequestList> {
