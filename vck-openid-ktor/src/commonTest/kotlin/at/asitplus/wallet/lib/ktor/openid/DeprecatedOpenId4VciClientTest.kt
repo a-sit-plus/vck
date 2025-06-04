@@ -104,11 +104,10 @@ class DeprecatedOpenId4VciClientTest : FunSpec() {
                     storeCredential = {
                         it.shouldBeInstanceOf<Holder.StoreCredentialInput.SdJwt>()
                         it.scheme shouldBe EuPidScheme
-                        val sdJwt =
-                            Validator().verifySdJwt(
-                                SdJwtSigned.Companion.parse(it.vcSdJwt)!!,
-                                credentialKeyMaterial.publicKey
-                            )
+                        val sdJwt = Validator().verifySdJwt(
+                            SdJwtSigned.Companion.parse(it.vcSdJwt)!!,
+                            credentialKeyMaterial.publicKey
+                        )
                         sdJwt.shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessSdJwt>()
                         sdJwt.disclosures.values.any { it.claimName == EuPidScheme.Attributes.FAMILY_NAME && it.claimValue.jsonPrimitive.content == expectedFamilyName }
                             .shouldBeTrue()
@@ -408,7 +407,8 @@ class DeprecatedOpenId4VciClientTest : FunSpec() {
         clientAttestationPop = headers["OAuth-Client-Attestation-PoP"],
     )
 
-    private fun dummyUser(): OidcUserInfoExtended = OidcUserInfoExtended.Companion.deserialize("{\"sub\": \"foo\"}").getOrThrow()
+    private fun dummyUser(): OidcUserInfoExtended =
+        OidcUserInfoExtended.Companion.deserialize("{\"sub\": \"foo\"}").getOrThrow()
 
     // If the countdownLatch has been unlocked, the correct credential has been stored, and we're done!
     private suspend fun assertCorrectCredentialIssued() {
@@ -419,6 +419,7 @@ class DeprecatedOpenId4VciClientTest : FunSpec() {
         }
     }
 }
+
 data class SetupResult(
     val openId4VciClient: OpenId4VciClient,
     val credentialIssuer: CredentialIssuer,
