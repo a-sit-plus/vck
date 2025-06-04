@@ -1,7 +1,15 @@
 # Changelog
 
 Release 5.8.0:
- - tbd
+ - Refactor `AuthorizationServiceStrategy`
+   - Allow for general AuthorizationDetails
+   - Remove `filterAuthorizationDetails` function
+   - Add `validateAuthorizationDetails` function 
+   - Add `matchAuthorizationDetails` function
+   - Add `RqesAuthorizationServiceStrategy` class
+ - Refactor `SimpleAuthorizationService` and 
+   - Add `SimpleQtspAuthorizationService` class
+   - Remove `AuthorizationDetail` matching and validation from class to interface function
 
 Release 5.7.0:
  - Remote Qualified Electronic Signatures:

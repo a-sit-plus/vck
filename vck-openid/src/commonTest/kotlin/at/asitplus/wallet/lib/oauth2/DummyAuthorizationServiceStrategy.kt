@@ -17,15 +17,19 @@ class DummyAuthorizationServiceStrategy(
     override fun validAuthorizationDetails(): Collection<OpenIdAuthorizationDetails> = listOf()
 
     override fun filterAuthorizationDetails(authorizationDetails: Collection<AuthorizationDetails>): Set<AuthorizationDetails> =
-        authorizationDetails.toSet().also { if (it.isEmpty()) throw InvalidRequest("No valid authorization details in $authorizationDetails") }
+        authorizationDetails.toSet()
+            .also { if (it.isEmpty()) throw InvalidRequest("No valid authorization details in $authorizationDetails") }
 
     override fun matchAuthorizationDetails(
         clientRequest: ClientAuthRequest,
-        filterAuthorizationDetails: Set<AuthorizationDetails>
-    ) = (filterAuthorizationDetails as? Set<OpenIdAuthorizationDetails>)?.forEach { filter ->
+        filteredAuthorizationDetails: Set<AuthorizationDetails>
+    ) = filteredAuthorizationDetails.filterIsInstance<OpenIdAuthorizationDetails>().let {
+        require(it.isNotEmpty()) { "Request does not contain OAuth authorization details: $clientRequest" }
+        it.forEach { filter ->
             if (!filter.requestedFromCode(clientRequest))
                 throw InvalidRequest("Authorization details not from auth code: $filter")
-        } ?: throw InvalidRequest("Request does not contain OAuth authorization details: $clientRequest")
+        }
+    }
 
     private fun OpenIdAuthorizationDetails.requestedFromCode(clientAuthRequest: ClientAuthRequest): Boolean =
         clientAuthRequest.authnDetails!!.filterIsInstance<OpenIdAuthorizationDetails>().any { matches(it) }

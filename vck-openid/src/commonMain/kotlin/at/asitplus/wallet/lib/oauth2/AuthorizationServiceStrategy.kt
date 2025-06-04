@@ -15,7 +15,7 @@ interface AuthorizationServiceStrategy {
     /** Semantically match filtered authorization details against request */
     fun matchAuthorizationDetails(
         clientRequest: ClientAuthRequest,
-        filterAuthorizationDetails: Set<AuthorizationDetails>
+        filteredAuthorizationDetails: Set<AuthorizationDetails>
     ): Unit
 
     /** Filter the requested scope in the access token request to ones valid for credential issuance */
