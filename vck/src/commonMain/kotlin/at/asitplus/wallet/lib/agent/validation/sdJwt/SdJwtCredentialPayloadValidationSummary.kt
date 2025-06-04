@@ -4,7 +4,8 @@ import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 
 data class SdJwtCredentialPayloadValidationSummary(
     val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
+    val confirmationClaimMatchingResult: ConfirmationClaimMatchingResult?,
 ) {
     val isSuccess: Boolean
-        get() = true
+        get() = confirmationClaimMatchingResult?.isSuccess != false
 }

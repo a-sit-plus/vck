@@ -314,15 +314,12 @@ class Validator(
         val issuerSigned = doc.issuerSigned
         val issuerAuth = issuerSigned.issuerAuth
 
-        val certificateChain = issuerAuth.unprotectedHeader?.certificateChain ?: run {
+        val certificateHead = issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull() ?: run {
             Napier.w("Got no issuer certificate in $issuerAuth")
             throw IllegalArgumentException("issuerKey")
         }
-        val x509Certificate = X509Certificate.decodeFromDerSafe(certificateChain.first()).getOrElse {
-            Napier.w(
-                "Could not parse issuer certificate in ${certificateChain.joinToString { it.encodeToString(Base64()) }}",
-                it
-            )
+        val x509Certificate = X509Certificate.decodeFromDerSafe(certificateHead).getOrElse {
+            Napier.w("Could not parse issuer certificate in ${certificateHead.encodeToString(Base64())}}", it)
             throw IllegalArgumentException("issuerKey")
         }
         val issuerKey = x509Certificate.publicKey.toCoseKey().getOrElse {
@@ -378,7 +375,8 @@ class Validator(
         val issuerHash = mdlItems?.entries?.firstOrNull { it.key == value.digestId }
             ?: return false
         val verifierHash =
-            vckCborSerializer.encodeToByteArray(ByteArraySerializer(), serialized).wrapInCborTag(24).sha256()
+            vckCborSerializer.encodeToByteArray(ByteArraySerializer(), serialized).wrapInCborTag(24)
+                .sha256()
         if (!verifierHash.contentEquals(issuerHash.value)) {
             Napier.w("Could not verify hash of value for ${value.elementIdentifier}")
             return false
@@ -411,7 +409,7 @@ class Validator(
     /**
      * Validates the content of an [SdJwtSigned], expected to contain a [VerifiableCredentialSdJwt].
      *
-     * @param publicKey Optionally the local key, to verify SD-JWT was bound to correct subject
+     * @param publicKey Optionally, the local key, to verify SD-JWT was bound to it
      */
     suspend fun verifySdJwt(
         sdJwtSigned: SdJwtSigned,
@@ -421,6 +419,9 @@ class Validator(
         val validationResult = sdJwtInputValidator.invoke(sdJwtSigned, publicKey)
         return when {
             !validationResult.isIntegrityGood -> ValidationError("Signature not verified")
+            validationResult.payloadCredentialValidationSummary.getOrNull()?.isSuccess == false
+                -> ValidationError("cnf claim invalid")
+
             else -> validationResult.payload.getOrElse { return ValidationError(it) }
         }
     }

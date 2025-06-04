@@ -164,11 +164,10 @@ class OpenId4VciClientTest : FunSpec() {
         success.credentials.shouldBeSingleton().also {
             it.first().shouldBeInstanceOf<Holder.StoreCredentialInput.SdJwt>().also {
                 it.scheme shouldBe EuPidScheme
-                val sdJwt =
-                    Validator().verifySdJwt(
-                        SdJwtSigned.parse(it.vcSdJwt)!!,
-                        credentialKeyMaterial.publicKey
-                    )
+                val sdJwt = Validator().verifySdJwt(
+                    SdJwtSigned.parse(it.vcSdJwt)!!,
+                    credentialKeyMaterial.publicKey
+                )
                 sdJwt.shouldBeInstanceOf<VerifyCredentialResult.SuccessSdJwt>()
                 sdJwt.disclosures.values.any { it.claimName == EuPidScheme.Attributes.FAMILY_NAME && it.claimValue.jsonPrimitive.content == expectedFamilyName }
                     .shouldBeTrue()

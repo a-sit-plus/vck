@@ -51,10 +51,10 @@ Release 5.7.0:
   
 
 Release 5.6.6:
- - OpenID for Verifiable Credential Issuance:
-   - Subject of SD-JWT does not need to represent the holder public key
  - OpenID for Verifiable Presentations:
    - Fix applying presentation exchange filters to credentials (`array` and `object` filters)
+ - OpenID for Verifiable Credential Issuance:
+   - On issued SD-JWT VC do not validate subject but the confirmation claim
 
 Release 5.6.5:
  - OpenID for Verifiable Presentations:

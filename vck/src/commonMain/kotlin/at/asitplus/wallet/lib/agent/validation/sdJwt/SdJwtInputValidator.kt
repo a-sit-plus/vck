@@ -4,8 +4,6 @@ import at.asitplus.KmmResult
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.lib.agent.SdJwtValidator
 import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.agent.matchesIdentifier
-import at.asitplus.wallet.lib.agent.validation.common.SubjectMatchingResult
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
@@ -26,7 +24,16 @@ data class SdJwtInputValidator(
         publicKey: CryptoPublicKey?,
     ): SdJwtInputValidationResult {
         val payloadCredentialValidationSummary = sdJwtSigned.getPayloadAsVerifiableCredentialSdJwt().map { sdJwt ->
-            SdJwtCredentialPayloadValidationSummary(verifiableCredentialSdJwt = sdJwt)
+            SdJwtCredentialPayloadValidationSummary(
+                verifiableCredentialSdJwt = sdJwt,
+                confirmationClaimMatchingResult = publicKey?.let {
+                    ConfirmationClaimMatchingResult(
+                        sdJwt.confirmationClaim,
+                        publicKey,
+                        sdJwt.confirmationClaim?.jsonWebKey?.toCryptoPublicKey()?.getOrNull() == publicKey
+                    )
+                }
+            )
         }.onFailure { ex ->
             Napier.w("verifySdJwt: Could not parse payload", ex)
         }
