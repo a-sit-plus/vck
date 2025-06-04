@@ -4,7 +4,6 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.dif.ClaimFormat
 import at.asitplus.dif.FormatHolder
-import at.asitplus.dif.PresentationDefinition
 import at.asitplus.jsonpath.JsonPath
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
@@ -23,7 +22,6 @@ import at.asitplus.wallet.lib.agent.PresentationRequestParameters.Flow
 import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer
-import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.SignJwtFun
@@ -193,53 +191,6 @@ internal class PresentationFactory(
         if (responseType == null || !responseType!!.contains(VP_TOKEN)) {
             Napier.w("vp_token not requested in response_type='$responseType'")
             throw InvalidRequest("response_type invalid")
-        }
-    }
-
-    @Throws(OAuth2Exception::class)
-    private fun PresentationDefinition.validateSubmission(
-        holder: Holder,
-        clientMetadata: RelyingPartyMetadata?,
-        credentialSubmissions: Map<String, PresentationExchangeCredentialDisclosure>,
-    ) {
-        val validator = PresentationSubmissionValidator.createInstance(this).getOrThrow()
-        if (!validator.isValidSubmission(credentialSubmissions.keys)) {
-            Napier.w("submission requirements are not satisfied")
-            throw UserCancelled("submission requirements not satisfied")
-        }
-
-        // making sure, that all the submissions actually match the corresponding input descriptor requirements
-        credentialSubmissions.forEach { submission ->
-            val inputDescriptor = this.inputDescriptors.firstOrNull { it.id == submission.key } ?: run {
-                Napier.w("Invalid input descriptor id: ${submission.key}")
-                throw UserCancelled("invalid input_descriptor_id")
-            }
-
-            val constraintFieldMatches = holder.evaluateInputDescriptorAgainstCredential(
-                inputDescriptor = inputDescriptor,
-                credential = submission.value.credential,
-                fallbackFormatHolder = clientMetadata?.vpFormats,
-                pathAuthorizationValidator = { true },
-            ).getOrThrow()
-
-            val disclosedAttributes = submission.value.disclosedAttributes.map { it.toString() }
-
-            // find a matching path for each constraint field
-            constraintFieldMatches.filter {
-                // only need to validate non-optional constraint fields
-                it.key.optional != true
-            }.forEach { constraintField ->
-                val allowedPaths = constraintField.value.map {
-                    it.normalizedJsonPath.toString()
-                }
-                disclosedAttributes.firstOrNull { allowedPaths.contains(it) } ?: run {
-                    val keyId = constraintField.key.id?.let { " Missing field: $it" }
-                    Napier.w("Input descriptor constraints not satisfied: ${inputDescriptor.id}.$keyId")
-                    throw UserCancelled("constraints not satisfied")
-                }
-            }
-            // TODO: maybe we also want to validate, whether there are any redundant disclosed attributes?
-            //  this would be the case if there is only one constraint field with path "$['name']", but two attributes are disclosed
         }
     }
 

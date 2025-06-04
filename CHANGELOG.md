@@ -1,7 +1,8 @@
 # Changelog
 
 Release 5.6.6:
- - tbd
+ - OpenID for Verifiable Presentations:
+   - Fix applying presentation exchange filters to credentials (`array` and `object` filters)
 
 Release 5.6.5:
  - OpenID for Verifiable Presentations:
