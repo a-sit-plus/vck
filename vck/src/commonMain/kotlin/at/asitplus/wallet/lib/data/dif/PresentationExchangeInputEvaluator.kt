@@ -146,8 +146,8 @@ internal fun JsonElement.satisfiesConstraintFilter(filter: ConstraintFilter): Bo
     // this currently is only a tentative implementation
     val typeMatchesElement = when (this) {
         // TODO: need recursive type check; Need element count check (minItems = 1) for root, need check for unique items at root (whatever that means)
-        is JsonArray -> filter.type == "array"
-        is JsonObject -> filter.type == "object"
+        is JsonArray -> filter.type == null || filter.type == "array"
+        is JsonObject -> filter.type == null || filter.type == "object"
         is JsonPrimitive -> when (filter.type) {
             "string" -> this.isString
             "null" -> this == JsonNull
