@@ -18,14 +18,14 @@ class RqesAuthorizationServiceStrategy(
 
     //We do not need to filter CscAuthDetails
     override fun filterAuthorizationDetails(authorizationDetails: Collection<AuthorizationDetails>): Set<AuthorizationDetails> =
-        seperateAuthDetails(authorizationDetails).let { (openIdAuthDetails, cscAuthDetails) ->
+        separateAuthDetails(authorizationDetails).let { (openIdAuthDetails, cscAuthDetails) ->
             authorizationServiceStrategy.filterAuthorizationDetails(openIdAuthDetails) + cscAuthDetails
         }
 
     override fun matchAuthorizationDetails(
         clientRequest: ClientAuthRequest,
-        filterAuthorizationDetails: Set<AuthorizationDetails>
-    ) = seperateAuthDetails(filterAuthorizationDetails).let { (openIdAuthDetails, cscAuthDetails) ->
+        filteredAuthorizationDetails: Set<AuthorizationDetails>
+    ) = separateAuthDetails(filteredAuthorizationDetails).let { (openIdAuthDetails, cscAuthDetails) ->
         authorizationServiceStrategy.matchAuthorizationDetails(clientRequest, openIdAuthDetails.toSet())
         cscAuthDetails.forEach { filter ->
             if (clientRequest.authnDetails!!.all { filter != it })
@@ -33,7 +33,7 @@ class RqesAuthorizationServiceStrategy(
         }
     }
 
-    private fun seperateAuthDetails(authDetails: Collection<AuthorizationDetails>): Pair<Collection<OpenIdAuthorizationDetails>, Collection<CscAuthorizationDetails>> =
+    private fun separateAuthDetails(authDetails: Collection<AuthorizationDetails>): Pair<Collection<OpenIdAuthorizationDetails>, Collection<CscAuthorizationDetails>> =
         (authDetails.filterIsInstance<OpenIdAuthorizationDetails>() to authDetails.filterIsInstance<CscAuthorizationDetails>()).also { (openIdAuth, cscAuth) ->
             if (openIdAuth.size + cscAuth.size != authDetails.size) Napier.w { "Not all authorization detail entries could be classified (they will be ignored!)" }
         }

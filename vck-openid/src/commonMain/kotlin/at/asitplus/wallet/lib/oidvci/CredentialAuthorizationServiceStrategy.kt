@@ -28,12 +28,11 @@ class CredentialAuthorizationServiceStrategy(
             OpenIdAuthorizationDetails(credentialConfigurationId = it.key)
         }
 
-    override fun filterScope(scope: String): String? = scope.trim().split(" ")
+    override fun filterScope(scope: String): String = scope.trim().split(" ")
         .mapNotNull { scope ->
             if (supportedCredentialSchemes.values.find { it.scope == scope } != null) scope
             else null
-        }
-        .joinToString(" ")
+        }.joinToString(" ")
 
     override fun filterAuthorizationDetails(authorizationDetails: Collection<AuthorizationDetails>) =
         authorizationDetails
@@ -49,11 +48,14 @@ class CredentialAuthorizationServiceStrategy(
 
     override fun matchAuthorizationDetails(
         clientRequest: ClientAuthRequest,
-        filterAuthorizationDetails: Set<AuthorizationDetails>
-    ): Unit = (filterAuthorizationDetails as? Set<OpenIdAuthorizationDetails>)?.forEach { filter ->
-        if (clientRequest.authnDetails!!.all { !filter.matches(it) })
-            throw InvalidRequest("Authorization details not from auth code: $filter")
-    } ?: throw InvalidRequest("Request does not contain OAuth authorization details: $clientRequest")
+        filteredAuthorizationDetails: Set<AuthorizationDetails>
+    ): Unit = filteredAuthorizationDetails.filterIsInstance<OpenIdAuthorizationDetails>().let {
+        require(it.isNotEmpty()) { "Request does not contain OAuth authorization details: $clientRequest" }
+        it.forEach { filter ->
+            if (clientRequest.authnDetails!!.all { authDetails -> !filter.matches(authDetails) })
+                throw InvalidRequest("Authorization details not from auth code: $filter")
+        }
+    }
 
     private fun OpenIdAuthorizationDetails.filterFormat(): OpenIdAuthorizationDetails? =
         supportedCredentialSchemes.entries.firstOrNull {
