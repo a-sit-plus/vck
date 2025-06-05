@@ -1,22 +1,44 @@
 package at.asitplus.wallet.lib.ktor.openid
 
+import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
+import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
+import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.OpenIdConstants.ResponseMode
+import at.asitplus.openid.RelyingPartyMetadata
+import at.asitplus.openid.dcql.DCQLClaimsPathPointer
+import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.NameSegment
+import at.asitplus.openid.dcql.DCQLClaimsQueryList
+import at.asitplus.openid.dcql.DCQLClaimsQueryResult.IsoMdocResult
+import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
+import at.asitplus.openid.dcql.DCQLCredentialQueryList
+import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.ClaimsQueryResults
+import at.asitplus.openid.dcql.DCQLCredentialSubmissionOption
+import at.asitplus.openid.dcql.DCQLIsoMdocClaimsQuery
+import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstraints
+import at.asitplus.openid.dcql.DCQLIsoMdocCredentialQuery
+import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.CredentialPresentation.DCQLPresentation
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.openid.*
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessIso
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessSdJwt
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.CreationOptions
+import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.client.*
 import io.ktor.client.engine.*
 import io.ktor.client.engine.mock.*
@@ -84,14 +106,123 @@ class OpenId4VpWalletTest : FunSpec() {
                     clientId = uuid4().toString()
                 )
 
-                val requestParametersFrom = wallet.parseAuthenticationRequestParameters(url).getOrThrow()
+                val requestParametersFrom =
+                    wallet.parseAuthenticationRequestParameters(url).getOrThrow()
                 // sends the response to the mock RP, which calls verifyReceivedAttributes, which unlocks the latch
                 wallet.startPresentationReturningUrl(requestParametersFrom).also {
                     it.isSuccess shouldBe true
                     it.getOrThrow().redirectUri?.let { HttpClient(mockEngine).get(it) }
                 }
+            }
+        }
 
-                assertPresentation(countdownLatch)
+        test("DC API") {
+            runTest {
+                val wallet = setupWallet(HttpClient().engine)
+
+                val attributes = mapOf(
+                    "family_name" to "XXXMûstérfřău",
+                    "given_name" to "XXXĤáčęk Elfriede Hàčêk",
+                    "age_over_21" to true
+                )
+
+                val credential = holderAgent.storeMockCredentials(
+                    MobileDrivingLicenceScheme,
+                    ISO_MDOC,
+                    attributes
+                )
+
+                val dcqlQuery = DCQLQuery(
+                    credentials = DCQLCredentialQueryList(
+                        list = nonEmptyListOf(
+                            DCQLIsoMdocCredentialQuery(
+                                id = DCQLCredentialQueryIdentifier("cred1"),
+                                format = CredentialFormatEnum.MSO_MDOC,
+                                meta = DCQLIsoMdocCredentialMetadataAndValidityConstraints(
+                                    doctypeValue = MobileDrivingLicenceScheme.isoDocType
+                                ),
+                                claims = DCQLClaimsQueryList(
+                                    list = nonEmptyListOf(
+                                        DCQLIsoMdocClaimsQuery(
+                                            path = DCQLClaimsPathPointer(
+                                                nonEmptyListOf(
+                                                    NameSegment("org.iso.18013.5.1"),
+                                                    NameSegment("family_name")
+                                                )
+                                            ),
+                                        ),
+                                        DCQLIsoMdocClaimsQuery(
+                                            path = DCQLClaimsPathPointer(
+                                                nonEmptyListOf(
+                                                    NameSegment("org.iso.18013.5.1"),
+                                                    NameSegment("given_name")
+                                                )
+                                            ),
+                                        ),
+                                        DCQLIsoMdocClaimsQuery(
+                                            id = null,
+                                            values = null,
+                                            path = DCQLClaimsPathPointer(
+                                                nonEmptyListOf(
+                                                    NameSegment("org.iso.18013.5.1"),
+                                                    NameSegment("age_over_21")
+                                                )
+                                            ),
+                                        )
+                                    )
+                                ),
+                            )
+                        )
+                    ),
+                )
+
+                val matchingResult = ClaimsQueryResults(
+                    claimsQueryResults = listOf(
+                        IsoMdocResult(
+                            namespace = "org.iso.18013.5.1",
+                            claimName = "family_name",
+                            claimValue = "XXXMûstérfřău"
+                        ),
+                        IsoMdocResult(
+                            namespace = "org.iso.18013.5.1",
+                            claimName = "given_name",
+                            claimValue = "XXXĤáčęk Elfriede Hàčêk"
+                        ),
+                        IsoMdocResult(
+                            namespace = "org.iso.18013.5.1",
+                            claimName = "age_over_21",
+                            claimValue = true
+                        )
+                    )
+                )
+
+                val credentialQuerySubmissions = mapOf(
+                    DCQLCredentialQueryIdentifier("cred1") to DCQLCredentialSubmissionOption(
+                        credential = credential,
+                        matchingResult = matchingResult
+                    )
+                )
+
+                val request = "{\"client_metadata\":{\"vp_formats_supported\":{\"mso_mdoc\":{\"deviceauth_alg_values\":[-7],\"issuerauth_alg_values\":[-7]}}},\"dcql_query\":{\"credentials\":[{\"claims\":[{\"path\":[\"org.iso.18013.5.1\",\"family_name\"]},{\"path\":[\"org.iso.18013.5.1\",\"given_name\"]},{\"path\":[\"org.iso.18013.5.1\",\"age_over_21\"]}],\"format\":\"mso_mdoc\",\"id\":\"cred1\",\"meta\":{\"doctype_value\":\"org.iso.18013.5.1.mDL\"}}]},\"nonce\":\"4mqexiA_rQQyzHOYkuW6-BrHKaza02b8JHFVoyB5Iw8\",\"response_mode\":\"dc_api\",\"response_type\":\"vp_token\"}"
+                val dcApiRequest = Oid4vpDCAPIRequest(
+                    protocol = "openid4vp-v1-unsigned",
+                    request = request,
+                    credentialId = "c72a2a8a6e94564cd8dea6ef0c7eb47b31a31947620ebcc0f07177bb71078def",
+                    callingPackageName = "com.android.chrome",
+                    callingOrigin = "https://apps.egiz.gv.at/customverifier"
+                )
+
+                val requestParametersFrom = wallet.parseAuthenticationRequestParameters(request, dcApiRequest).getOrThrow()
+                val clientMetadata = RelyingPartyMetadata()
+                val presentation = DCQLPresentation(DCQLRequest(dcqlQuery), credentialQuerySubmissions)
+                wallet.finalizeAuthorizationResponse(requestParametersFrom, clientMetadata, presentation).also {
+                    it.isSuccess shouldBe true
+                    val response = it.getOrThrow()
+                    response.shouldBeInstanceOf<OpenId4VpWallet.AuthenticationForward>()
+                    response.authenticationResponseResult.shouldBeInstanceOf<AuthenticationResponseResult.DcApi>()
+                    response.authenticationResponseResult.params.response shouldContain "vp_token"
+                    response.authenticationResponseResult.params.response shouldContain "cred1"
+                }
             }
         }
     }
@@ -132,18 +263,16 @@ class OpenId4VpWalletTest : FunSpec() {
     private suspend fun HolderAgent.storeMockCredentials(
         scheme: ConstantIndex.CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation,
-        attributes: Map<String, String>,
-    ) {
-        storeCredential(
-            IssuerAgent(EphemeralKeyWithSelfSignedCert()).issueCredential(
-                representation.toCredentialToBeIssued(scheme, attributes)
-            ).getOrThrow().toStoreCredentialInput()
-        ).getOrThrow()
-    }
+        attributes: Map<String, Any>,
+    ) = storeCredential(
+        IssuerAgent(EphemeralKeyWithSelfSignedCert()).issueCredential(
+            representation.toCredentialToBeIssued(scheme, attributes)
+        ).getOrThrow().toStoreCredentialInput()
+    ).getOrThrow()
 
     private fun ConstantIndex.CredentialRepresentation.toCredentialToBeIssued(
         scheme: ConstantIndex.CredentialScheme,
-        attributes: Map<String, String>,
+        attributes: Map<String, Any>,
     ): CredentialToBeIssued = when (this) {
         SD_JWT -> CredentialToBeIssued.VcSd(
             claims = attributes.map { it.toClaimToBeIssued() },
@@ -162,9 +291,9 @@ class OpenId4VpWalletTest : FunSpec() {
         else -> TODO()
     }
 
-    private fun Map.Entry<String, String>.toClaimToBeIssued(): ClaimToBeIssued = ClaimToBeIssued(key, value)
+    private fun Map.Entry<String, Any>.toClaimToBeIssued(): ClaimToBeIssued = ClaimToBeIssued(key, value)
 
-    private fun Map.Entry<String, String>.toIssuerSignedItem(): IssuerSignedItem =
+    private fun Map.Entry<String, Any>.toIssuerSignedItem(): IssuerSignedItem =
         IssuerSignedItem(0U, Random.nextBytes(16), key, value)
 
     private fun AuthnResponseResult.verifyReceivedAttributes(expectedAttributes: Map<String, String>) {

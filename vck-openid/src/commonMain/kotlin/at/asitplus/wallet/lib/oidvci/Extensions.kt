@@ -29,8 +29,14 @@ import at.asitplus.wallet.lib.data.ConstantIndex.supportsIso
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import at.asitplus.wallet.lib.data.VcDataModelConstants
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.serialization.DeserializationStrategy
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.JsonContentPolymorphicSerializer
+import kotlinx.serialization.json.JsonElement
 
 @Suppress("DEPRECATION")
 fun CredentialScheme.toSupportedCredentialFormat(
@@ -208,32 +214,101 @@ suspend fun Issuer.IssuedCredential.toCredentialResponseSingleCredential(
 private fun Issuer.IssuedCredential.Iso.toBase64UrlStrict(): String =
     issuerSigned.serialize().encodeToString(Base64UrlStrict)
 
-sealed class OAuth2Exception : Throwable {
-    constructor(error: String, errorDescription: String, cause: Throwable?) : super("$error: $errorDescription", cause)
-    constructor(error: String, errorDescription: String) : super("$error: $errorDescription")
-    constructor(error: String, cause: Throwable?) : super(error, cause)
+@Serializable
+sealed class OAuth2Exception(
+    val error: String,
+    @Transient val errorDescription: String? = null,
+) : Throwable("$error${errorDescription?.let { ": $it" }}") {
 
-    class InvalidRequest(message: String, cause: Throwable? = null) : OAuth2Exception(INVALID_REQUEST, message, cause)
-    class InvalidClient(message: String, cause: Throwable? = null) : OAuth2Exception(INVALID_CLIENT, message, cause)
-    class InvalidScope(message: String, cause: Throwable? = null) : OAuth2Exception(INVALID_SCOPE, message, cause)
-    class InvalidGrant(message: String, cause: Throwable? = null) : OAuth2Exception(INVALID_GRANT, message, cause)
-    class InvalidCode(message: String, cause: Throwable? = null) : OAuth2Exception(INVALID_CODE, message, cause)
-    class InvalidToken(message: String, cause: Throwable? = null) : OAuth2Exception(INVALID_TOKEN, message, cause)
-    class InvalidProof(message: String, cause: Throwable? = null) : OAuth2Exception(INVALID_PROOF, message, cause)
-    class UserCancelled(message: String, cause: Throwable? = null) : OAuth2Exception(USER_CANCELLED, message, cause)
-    class InvalidDpopProof(message: String, cause: Throwable? = null) :
-        OAuth2Exception(INVALID_DPOP_PROOF, message, cause)
+    fun serialize() = vckJsonSerializer.encodeToString(OAuth2ExceptionSerializer, this)
 
-    class UnsupportedCredentialType(message: String, cause: Throwable? = null) :
-        OAuth2Exception(UNSUPPORTED_CREDENTIAL_TYPE, message, cause)
+    @Serializable
+    class InvalidRequest(
+        @Transient val description: String? = null,
+        @Transient override val cause: Throwable? = null
+    ) : OAuth2Exception(INVALID_REQUEST, description)
 
-    class CredentialRequestDenied(message: String, cause: Throwable? = null) :
-        OAuth2Exception(CREDENTIAL_REQUEST_DENIED, message, cause)
+    @Serializable
+    class InvalidClient(
+        @Transient val description: String? = null,
+        @Transient override val cause: Throwable? = null
+    ) : OAuth2Exception(INVALID_CLIENT, description)
 
-    class InvalidNonce(message: String, cause: Throwable? = null) : OAuth2Exception(INVALID_NONCE, message, cause)
-    class AccessDenied(message: String, cause: Throwable? = null) : OAuth2Exception(ACCESS_DENIED, message, cause)
-    class RegistrationValueNotSupported(message: String, cause: Throwable? = null) :
-        OAuth2Exception(REGISTRATION_VALUE_NOT_SUPPORTED, message, cause)
+    @Serializable
+    class InvalidScope(
+        @Transient val description: String? = null,
+        @Transient override val cause: Throwable? = null
+    ) : OAuth2Exception(INVALID_SCOPE, description)
+
+    @Serializable
+    class InvalidGrant(
+        @Transient val description: String? = null,
+        @Transient override val cause: Throwable? = null
+    ) : OAuth2Exception(INVALID_GRANT, description)
+
+    @Serializable
+    class InvalidCode(
+        @Transient val description: String? = null,
+        @Transient override val cause: Throwable? = null
+    ) : OAuth2Exception(INVALID_CODE, description)
+
+    @Serializable
+    class InvalidToken(
+        @Transient val description: String? = null,
+        @Transient override val cause: Throwable? = null
+    ) : OAuth2Exception(INVALID_TOKEN, description)
+
+    @Serializable
+    class InvalidProof(
+        @Transient val description: String? = null,
+        @Transient override val cause: Throwable? = null
+    ) : OAuth2Exception(INVALID_PROOF, description)
+
+    @Serializable
+    class UserCancelled(
+        @Transient val description: String? = null,
+        @Transient override val cause: Throwable? = null
+    ) : OAuth2Exception(USER_CANCELLED, description)
+
+    @Serializable
+    class InvalidDpopProof(
+        @Transient val description: String? = null,
+        @Transient override val cause: Throwable? = null
+    ) : OAuth2Exception(INVALID_DPOP_PROOF, description)
+
+    @Serializable
+    class UnsupportedCredentialType(
+        @Transient val description: String? = null,
+        @Transient override val cause: Throwable? = null
+    ) : OAuth2Exception(UNSUPPORTED_CREDENTIAL_TYPE, description)
+
+    @Serializable
+    class CredentialRequestDenied(
+        @Transient val description: String? = null,
+        @Transient override val cause: Throwable? = null
+    ) : OAuth2Exception(CREDENTIAL_REQUEST_DENIED, description)
+
+    @Serializable
+    class InvalidNonce(
+        @Transient val description: String? = null,
+        @Transient override val cause: Throwable? = null
+    ) : OAuth2Exception(INVALID_NONCE, description)
+
+    @Serializable
+    class AccessDenied(
+        @Transient val description: String? = null,
+        @Transient override val cause: Throwable? = null
+    ) : OAuth2Exception(ACCESS_DENIED, description)
+
+    @Serializable
+    class RegistrationValueNotSupported(
+        @Transient val description: String? = null,
+        @Transient override val cause: Throwable? = null
+    ) : OAuth2Exception(REGISTRATION_VALUE_NOT_SUPPORTED, description)
 }
 
-
+object OAuth2ExceptionSerializer : JsonContentPolymorphicSerializer<OAuth2Exception>(OAuth2Exception::class) {
+    override fun selectDeserializer(element: JsonElement): DeserializationStrategy<OAuth2Exception> {
+        throw NotImplementedError("Deserialization not supported")
+    }
+}

@@ -86,11 +86,13 @@ interface Holder {
      *  This will mostly resolve to be the same `clientMetadata.vpFormats`.
      * @param pathAuthorizationValidator Provides the user of this library with a way to enforce
      *  authorization rules on attribute credentials that are to be disclosed.
+     * @param filterById filter the list of possible credentials by the provided ID
      */
     suspend fun matchInputDescriptorsAgainstCredentialStore(
         inputDescriptors: Collection<InputDescriptor>,
         fallbackFormatHolder: FormatHolder? = null,
         pathAuthorizationValidator: PathAuthorizationValidator? = null,
+        filterById: String? = null
     ): KmmResult<Map<String, InputDescriptorMatches>>
 
     /**
@@ -112,7 +114,12 @@ interface Holder {
     /**
      * Creates a mapping from the dcql credential query identifiers of the dcql query to matching
      * credentials and the claims credential set queries to be satisfied.
+     *
+     * @param filterById filter the list of possible credentials by the provided ID
      */
-    suspend fun matchDCQLQueryAgainstCredentialStore(dcqlQuery: DCQLQuery): KmmResult<DCQLQueryResult<SubjectCredentialStore.StoreEntry>>
+    suspend fun matchDCQLQueryAgainstCredentialStore(
+        dcqlQuery: DCQLQuery,
+        filterById: String? = null
+    ): KmmResult<DCQLQueryResult<SubjectCredentialStore.StoreEntry>>
 }
 

@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.openid.OpenIdAuthorizationDetails
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.ByteString
 import kotlinx.serialization.cbor.CborArray
@@ -35,14 +34,14 @@ data class SessionTranscript private constructor(
     val oid4VPHandover: OID4VPHandover? = null,
     /** Set either this or [oid4VPHandover] or deviceEngagementBytesOid to null for QR engagement */
     val nfcHandover: NFCHandover? = null,
+    val dcapiHandover: DCAPIHandover? = null,
 ) {
     init {
-        val nrOfHandovers = listOf(oid4VPHandover, nfcHandover).count { it != null }
+        val nrOfHandovers = listOf(oid4VPHandover, nfcHandover, dcapiHandover).count { it != null }
         check(nrOfHandovers == 1 || (deviceEngagementBytesOid == null && nrOfHandovers == 0)) { "Exactly one handover element must be set (or null for QR Handover)" }
     }
 
     fun serialize() = vckCborSerializer.encodeToByteArray(this)
-
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
@@ -55,6 +54,7 @@ data class SessionTranscript private constructor(
         if (!eReaderKeyBytes.contentEquals(other.eReaderKeyBytes)) return false
         if (oid4VPHandover != other.oid4VPHandover) return false
         if (nfcHandover != other.nfcHandover) return false
+        if (dcapiHandover != other.dcapiHandover) return false
 
         return true
     }
@@ -66,6 +66,7 @@ data class SessionTranscript private constructor(
         result = 31 * result + (eReaderKeyBytes?.contentHashCode() ?: 0)
         result = 31 * result + (oid4VPHandover?.hashCode() ?: 0)
         result = 31 * result + (nfcHandover?.hashCode() ?: 0)
+        result = 31 * result + (dcapiHandover?.hashCode() ?: 0)
         return result
     }
 
@@ -90,6 +91,14 @@ data class SessionTranscript private constructor(
             deviceEngagementBytesOid = null,
             eReaderKeyBytesOid = null,
             oid4VPHandover = handover,
+        )
+
+        fun forDcApi(
+            handover: DCAPIHandover,
+        ): SessionTranscript = SessionTranscript(
+            deviceEngagementBytesOid = null,
+            eReaderKeyBytesOid = null,
+            dcapiHandover = handover,
         )
 
         fun forQr(

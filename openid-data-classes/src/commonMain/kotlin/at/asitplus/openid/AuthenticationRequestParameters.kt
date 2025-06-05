@@ -36,6 +36,13 @@ data class AuthenticationRequestParameters(
     /**
      * OIDC: REQUIRED. OAuth 2.0 Client Identifier valid at the Authorization Server.
      *
+     * DC API: The client_id parameter MUST be omitted in unsigned requests defined in Appendix
+     * A.3.1. The Wallet MUST ignore any client_id parameter that is present in an unsigned request.
+     * The client_id parameter MUST be present in signed requests defined in Appendix A.3.2,
+     * as it communicates to the wallet which Client Identifier Prefix and Client Identifier to use
+     * when authenticating the client through verification of the request signature or retrieving
+     * client metadata.
+     *
      * See also [clientIdWithoutPrefix] and the notes there.
      */
     @SerialName("client_id")
@@ -381,6 +388,18 @@ data class AuthenticationRequestParameters(
      */
     @SerialName("transaction_data")
     override val transactionData: List<TransactionDataBase64Url>? = null,
+
+    /**
+     * DCAPI: REQUIRED when signed requests defined in Appendix A.3.2 are used with the Digital
+     * Credentials API (DC API). An array of strings, each string representing an Origin of the
+     * Verifier that is making the request. The Wallet MUST compare values in this parameter to the
+     * Origin to detect replay of the request from a malicious Verifier. If the Origin does not
+     * match any of the entries in expected_origins, the Wallet MUST return an error. This error
+     * SHOULD be an invalid_request error. This parameter is not for use in unsigned requests and
+     * therefore a Wallet MUST ignore this parameter if it is present in an unsigned request.
+     */
+    @SerialName("expected_origins")
+    val expectedOrigins: List<String>? = null,
 ) : RequestParameters {
 
     /**

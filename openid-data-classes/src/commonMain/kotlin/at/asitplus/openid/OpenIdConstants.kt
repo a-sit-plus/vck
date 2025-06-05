@@ -65,6 +65,8 @@ object OpenIdConstants {
 
     const val PARAMETER_PROMPT_LOGIN = "login"
 
+    const val DC_API_OID4VP_PROTOCOL_IDENTIFIER = "openid4vp"
+
 
     @Serializable(with = ProofType.Serializer::class)
     sealed class ProofType(val stringRepresentation: String) {
@@ -279,6 +281,8 @@ object OpenIdConstants {
             private const val STRING_DIRECT_POST_JWT = "direct_post.jwt"
             private const val STRING_QUERY = "query"
             private const val STRING_FRAGMENT = "fragment"
+            private const val STRING_DC_API = "dc_api"
+            private const val STRING_DC_API_JWT = "dc_api.jwt"
         }
 
         /**
@@ -311,6 +315,19 @@ object OpenIdConstants {
         object Fragment : ResponseMode(STRING_FRAGMENT)
 
         /**
+         * The value of the response_mode parameter MUST be dc_api when the response is not encrypted.
+         * The Response Mode dc_api causes the Wallet to send the Authorization Response via the DC API.
+         */
+        object DcApi : ResponseMode(STRING_DC_API)
+
+        /**
+         * The value of the response_mode parameter MUST be dc_api.jwt when the response is encrypted.
+         * For Response Mode dc_api.jwt, the Wallet includes the response parameter, which contains an
+         * encrypted JWT encapsulating the Authorization Response, as defined in Section 8.3.
+         */
+        object DcApiJwt : ResponseMode(STRING_DC_API_JWT)
+
+        /**
          * Any not natively supported Client ID Scheme, so it can still be parsed
          */
         class Other(stringRepresentation: String) : ResponseMode(stringRepresentation)
@@ -322,6 +339,8 @@ object OpenIdConstants {
                 STRING_DIRECT_POST_JWT -> DirectPostJwt
                 STRING_QUERY -> Query
                 STRING_FRAGMENT -> Fragment
+                STRING_DC_API -> DcApi
+                STRING_DC_API_JWT -> DcApiJwt
                 else -> Other(string)
             }
 

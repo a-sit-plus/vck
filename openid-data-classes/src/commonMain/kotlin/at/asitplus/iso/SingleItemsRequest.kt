@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.iso
+package at.asitplus.iso
 
 /**
  * Convenience class with a custom serializer ([ItemsRequestListSerializer]) to prevent
