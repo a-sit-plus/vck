@@ -276,7 +276,8 @@ class CredentialIssuer(
     private suspend fun CredentialRequestProofContainer.validateProof() = when (proofType) {
         ProofType.JWT -> jwtParsed?.flatMap { it.validateJwtProof() }
         ProofType.ATTESTATION -> attestationParsed?.flatMap { it.validateAttestationProof() }
-        else -> null
+        else -> jwtParsed?.flatMap { it.validateJwtProof() }
+            ?: attestationParsed?.flatMap { it.validateAttestationProof() }
     }
 
     private suspend fun JwsSigned<JsonWebToken>.validateJwtProof(): Collection<CryptoPublicKey> {

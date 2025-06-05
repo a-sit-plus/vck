@@ -171,7 +171,6 @@ class OidvciPreAuthTest : FreeSpec({
         val credentialRequest = CredentialRequestParameters(
             credentialIdentifier = credentialIdentifier,
             proofs = CredentialRequestProofContainer(
-                proofType = OpenIdConstants.ProofType.JWT,
                 jwt = setOf(proof.jwt!!, differentProof.jwt!!)
             )
         )

@@ -12,7 +12,7 @@ data class CredentialRequestProofContainer(
      * OID4VCI: e.g. `jwt`, or `ldp_vp`. See [at.asitplus.openid.OpenIdConstants.ProofType].
      */
     @SerialName("proof_type")
-    val proofType: OpenIdConstants.ProofType,
+    val proofType: OpenIdConstants.ProofType? = null,
 
     /**
      * OID4VCI: A JWT (RFC7519) is used as proof of possession. When [proofType] is `jwt`, a proof object MUST include
