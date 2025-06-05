@@ -20,6 +20,7 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
+            ~/.m2/repository
           key: iOS-${{ hashFiles('./conventions-vclib/src/main/resources/vcLibVersions.properties') }}
       - name: Build klibs
         run: ./gradlew iosArm64MainKlibrary iosSimulatorArm64MainKlibrary
