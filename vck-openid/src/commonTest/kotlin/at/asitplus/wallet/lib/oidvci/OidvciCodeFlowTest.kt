@@ -161,7 +161,6 @@ class OidvciCodeFlowTest : FreeSpec({
         val credentialRequest = CredentialRequestParameters(
             credentialConfigurationId = scope,
             proofs = CredentialRequestProofContainer(
-                proofType = OpenIdConstants.ProofType.JWT,
                 jwt = setOf(proof.jwt!!, differentProof.jwt!!)
             )
         )

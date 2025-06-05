@@ -55,6 +55,7 @@ Release 5.6.6:
    - Fix applying presentation exchange filters to credentials (`array` and `object` filters)
  - OpenID for Verifiable Credential Issuance:
    - On issued SD-JWT VC do not validate subject but the confirmation claim
+   - Do not require `proof_type` in `proofs` in a credential request to be set
 
 Release 5.6.5:
  - OpenID for Verifiable Presentations:

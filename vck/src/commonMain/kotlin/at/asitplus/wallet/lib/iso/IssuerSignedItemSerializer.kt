@@ -59,7 +59,7 @@ open class IssuerSignedItemSerializer(private val namespace: String, private val
     /**
      * Tags date time elements correctly,
      * see [RFC 8949 3.4.1](https://datatracker.ietf.org/doc/html/rfc8949#name-standard-date-time-string) for [Instant]
-     * (or "date-time"),  see [RFC 8943](https://datatracker.ietf.org/doc/html/rfc8943) for [LocalDate] (or "full-date")
+     * (or "date-time"), see [RFC 8943](https://datatracker.ietf.org/doc/html/rfc8943) for [LocalDate] (or "full-date")
      */
     @OptIn(ExperimentalUnsignedTypes::class)
     private fun Any.annotations() =
