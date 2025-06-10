@@ -1,11 +1,23 @@
 package at.asitplus.wallet.lib.cbor
 
+import at.asitplus.iso.CborCredentialSerializer
 import at.asitplus.iso.DeviceAuth
 import at.asitplus.iso.DeviceKeyInfo
+import at.asitplus.iso.DeviceNameSpaces
+import at.asitplus.wallet.lib.iso.DeviceResponse
+import at.asitplus.iso.DeviceSigned
+import at.asitplus.wallet.lib.iso.Document
+import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.iso.IssuerSignedItem
+import at.asitplus.iso.IssuerSignedItemSerializer
+import at.asitplus.wallet.lib.iso.MobileSecurityObject
 import at.asitplus.iso.ValidityInfo
+import at.asitplus.iso.ValueDigest
+import at.asitplus.iso.ValueDigestList
 import at.asitplus.signum.indispensable.CryptoSignature
 import at.asitplus.signum.indispensable.cosef.*
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.data.LocalDateOrInstant
 import at.asitplus.wallet.lib.data.LocalDateOrInstantSerializer
@@ -48,10 +60,11 @@ class IssuerSignedItemSerializationTest : FreeSpec({
             elementIdentifier = elementId,
             elementValue = uuid4().toString(),
         )
-        val serialized = vckCborSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementId), item)
+        val serialized =
+            coseCompliantSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementId), item)
         serialized.encodeToString(Base16()).shouldNotContain("D903EC")
 
-        vckCborSerializer.decodeFromByteArray(IssuerSignedItemSerializer("", elementId), serialized) shouldBe item
+        coseCompliantSerializer.decodeFromByteArray(IssuerSignedItemSerializer("", elementId), serialized) shouldBe item
     }
 
     "serialization with Instant" {
@@ -63,7 +76,8 @@ class IssuerSignedItemSerializationTest : FreeSpec({
             elementValue = Clock.System.now(),
         )
 
-        val serialized = vckCborSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementId), item)
+        val serialized =
+            coseCompliantSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementId), item)
             .also {
                 it.encodeToString(Base16()).shouldContain(
                     "elementValue".toHex()
@@ -72,7 +86,7 @@ class IssuerSignedItemSerializationTest : FreeSpec({
                 )
             }
 
-        vckCborSerializer.decodeFromByteArray(
+        coseCompliantSerializer.decodeFromByteArray(
             IssuerSignedItemSerializer(namespace, elementId),
             serialized
         ) shouldBe item
@@ -87,7 +101,8 @@ class IssuerSignedItemSerializationTest : FreeSpec({
             elementValue = LocalDate.fromEpochDays(Random.nextInt(32768))
         )
 
-        val serialized = vckCborSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementId), item)
+        val serialized =
+            coseCompliantSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementId), item)
             .also {
                 it.encodeToString(Base16()).shouldContain(
                     "elementValue".toHex()
@@ -96,7 +111,7 @@ class IssuerSignedItemSerializationTest : FreeSpec({
                 )
             }
 
-        vckCborSerializer.decodeFromByteArray(
+        coseCompliantSerializer.decodeFromByteArray(
             IssuerSignedItemSerializer(namespace, elementId),
             serialized
         ) shouldBe item
@@ -147,13 +162,13 @@ class IssuerSignedItemSerializationTest : FreeSpec({
                 DeviceAuth()
             )
         )
-        val serialized = vckCborSerializer.encodeToByteArray(doc).also {
+        val serialized = coseCompliantSerializer.encodeToByteArray(doc).also {
             it.encodeToString(Base16()).also {
                 it.shouldNotContain("D903EC")
-                val itemSerialized = vckCborSerializer.encodeToByteArray(
+                val itemSerialized = coseCompliantSerializer.encodeToByteArray(
                     IssuerSignedItemSerializer(namespace, item.elementIdentifier), item
                 )
-                val itemBytes = vckCborSerializer.encodeToByteArray(ByteArraySerializer(), itemSerialized)
+                val itemBytes = coseCompliantSerializer.encodeToByteArray(ByteArraySerializer(), itemSerialized)
                 it.shouldContain( // inside the document
                     "nameSpaces".toHex()
                             + "A1" // map(1)
@@ -176,7 +191,7 @@ class IssuerSignedItemSerializationTest : FreeSpec({
             }
         }
 
-        vckCborSerializer.decodeFromByteArray<Document>(serialized) shouldBe doc
+        coseCompliantSerializer.decodeFromByteArray<Document>(serialized) shouldBe doc
     }
 
     // Contains LocalDates instead of Instants, as we expected, so we'll handle this with LocalDateOrInstantSerializer
@@ -228,7 +243,7 @@ class IssuerSignedItemSerializationTest : FreeSpec({
         """.trimIndent()
 
         input.decodeToByteArray(Base64UrlStrict)
-            .let { vckCborSerializer.decodeFromByteArray<DeviceResponse>(it) }
+            .let { coseCompliantSerializer.decodeFromByteArray<DeviceResponse>(it) }
             .apply {
                 documents.shouldNotBeNull().first().apply {
                     issuerSigned.namespaces.shouldNotBeNull().values.first().apply {
@@ -291,7 +306,7 @@ class IssuerSignedItemSerializationTest : FreeSpec({
             656E744964656E7469666965727169737375696E675F617574686F72697479
         """.trimIndent().replace("\n", "")
 
-        val parsed = vckCborSerializer.decodeFromByteArray<IssuerSigned>(input.decodeToByteArray(Base16()))
+        val parsed = coseCompliantSerializer.decodeFromByteArray<IssuerSigned>(input.decodeToByteArray(Base16()))
 
         val namespaces = parsed.namespaces
             .shouldNotBeNull()

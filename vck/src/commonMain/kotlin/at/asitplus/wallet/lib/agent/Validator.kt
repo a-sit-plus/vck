@@ -1,6 +1,12 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.wallet.lib.iso.DeviceResponse
+import at.asitplus.wallet.lib.iso.Document
+import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.iso.IssuerSignedItem
+import at.asitplus.wallet.lib.iso.MobileSecurityObject
+import at.asitplus.iso.ValueDigestList
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.contentEquals
 import at.asitplus.openid.sha256
@@ -9,6 +15,7 @@ import at.asitplus.signum.indispensable.contentEqualsIfArray
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.pki.X509Certificate
@@ -32,7 +39,6 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.*
 import io.github.aakira.napier.Napier
-import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
@@ -377,7 +383,7 @@ class Validator(
         val issuerHash = mdlItems?.entries?.firstOrNull { it.key == value.digestId }
             ?: return false
         val verifierHash =
-            vckCborSerializer.encodeToByteArray(ByteArraySerializer(), serialized).wrapInCborTag(24)
+            coseCompliantSerializer.encodeToByteArray(ByteArraySerializer(), serialized).wrapInCborTag(24)
                 .sha256()
         if (!verifierHash.contentEquals(issuerHash.value)) {
             Napier.w("Could not verify hash of value for ${value.elementIdentifier}")
@@ -436,7 +442,7 @@ class Validator(
     suspend fun verifyIsoCred(it: IssuerSigned, issuerKey: CoseKey?): VerifyCredentialResult {
         Napier.d("Verifying ISO Cred $it")
         if (!mdocInputValidator(it, issuerKey).isSuccess) {
-            return InvalidStructure(vckCborSerializer.encodeToByteArray(it).encodeToString(Base16Strict))
+            return InvalidStructure(coseCompliantSerializer.encodeToByteArray(it).encodeToString(Base16Strict))
         }
         return SuccessIso(it)
     }

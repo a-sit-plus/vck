@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.iso
+package at.asitplus.iso
 
 import at.asitplus.dcapi.DCAPIHandover
 import at.asitplus.dcapi.NFCHandover

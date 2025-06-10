@@ -2,7 +2,9 @@ package at.asitplus.wallet.lib.iso
 
 import at.asitplus.dcapi.NFCHandover
 import at.asitplus.dcapi.OID4VPHandover
+import at.asitplus.iso.SessionTranscript
 import at.asitplus.signum.indispensable.cosef.CoseKey
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -149,7 +151,7 @@ class SessionTranscriptTest : FreeSpec({
         """.decodeFromAnnotatedCbor()
 
         val eReaderCoseKey = CoseKey.deserialize(coseEncodedEReaderKey).getOrThrow()
-        val nfcHandover = vckCborSerializer.decodeFromByteArray<NFCHandover>(coseEncodedNFCHandover)
+        val nfcHandover = coseCompliantSerializer.decodeFromByteArray<NFCHandover>(coseEncodedNFCHandover)
 
         val encodedDeviceEngagement = """
             a2                                           # map(2)
@@ -184,14 +186,14 @@ class SessionTranscriptTest : FreeSpec({
 
         val sessionTranscript = SessionTranscript.forNfc(
             deviceEngagementBytes = encodedDeviceEngagement,
-            eReaderKeyBytes = vckCborSerializer.encodeToByteArray(eReaderCoseKey),
+            eReaderKeyBytes = coseCompliantSerializer.encodeToByteArray(eReaderCoseKey),
             nfcHandover = nfcHandover
         )
 
         sessionTranscript.oid4VPHandover shouldBe null
         sessionTranscript.nfcHandover shouldNotBe null
 
-        vckCborSerializer.encodeToByteArray(sessionTranscript) shouldBe expectedEncodedSessionTranscript
+        coseCompliantSerializer.encodeToByteArray(sessionTranscript) shouldBe expectedEncodedSessionTranscript
     }
 
     "Local presentation with QR Handover" {
@@ -315,7 +317,7 @@ class SessionTranscriptTest : FreeSpec({
 
         sessionTranscript.oid4VPHandover shouldBe null
         sessionTranscript.nfcHandover shouldBe null
-        vckCborSerializer.encodeToByteArray(sessionTranscript) shouldBe expectedEncodedSessionTranscript
+        coseCompliantSerializer.encodeToByteArray(sessionTranscript) shouldBe expectedEncodedSessionTranscript
     }
 
     "oid4vp" {
@@ -351,7 +353,7 @@ class SessionTranscriptTest : FreeSpec({
 
         sessionTranscript.oid4VPHandover shouldNotBe null
         sessionTranscript.nfcHandover shouldBe null
-        vckCborSerializer.encodeToByteArray(sessionTranscript) shouldBe expectedEncodedSessionTranscript
+        coseCompliantSerializer.encodeToByteArray(sessionTranscript) shouldBe expectedEncodedSessionTranscript
     }
 
 })

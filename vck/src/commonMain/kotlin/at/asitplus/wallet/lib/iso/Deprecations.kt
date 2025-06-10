@@ -1,10 +1,5 @@
 package at.asitplus.wallet.lib.iso
 
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.cbor.CborArray
-import kotlinx.serialization.cbor.ValueTags
-
 @Deprecated("Moved", ReplaceWith("at.asitplus.iso.ClientIdToHash"))
 typealias ClientIdToHash = at.asitplus.iso.ClientIdToHash
 
@@ -52,3 +47,33 @@ typealias SingleItemsRequest = at.asitplus.iso.SingleItemsRequest
 
 @Deprecated("Moved", ReplaceWith("at.asitplus.iso.ValidityInfo"))
 typealias ValidityInfo = at.asitplus.iso.ValidityInfo
+
+@Deprecated("Moved", ReplaceWith("at.asitplus.iso.DeviceAuthentication"))
+typealias DeviceAuthentication = at.asitplus.iso.DeviceAuthentication
+
+@Deprecated("Moved", ReplaceWith("at.asitplus.iso.DeviceSigned"))
+typealias DeviceSigned = at.asitplus.iso.DeviceSigned
+
+@Deprecated("Moved", ReplaceWith("at.asitplus.iso.DeviceNameSpaces"))
+typealias DeviceNameSpaces = at.asitplus.iso.DeviceNameSpaces
+
+@Deprecated("Moved", ReplaceWith("at.asitplus.iso.DeviceSignedItemList"))
+typealias DeviceSignedItemList = at.asitplus.iso.DeviceSignedItemList
+
+@Deprecated("Moved", ReplaceWith("at.asitplus.iso.DeviceSignedItem"))
+typealias DeviceSignedItem = at.asitplus.iso.DeviceSignedItem
+
+@Deprecated("Moved", ReplaceWith("at.asitplus.iso.IssuerSignedItem"))
+typealias IssuerSignedItem = at.asitplus.iso.IssuerSignedItem
+
+@Deprecated("Moved", ReplaceWith("at.asitplus.iso.IssuerSignedList"))
+typealias IssuerSignedList = at.asitplus.iso.IssuerSignedList
+
+@Deprecated("Moved", ReplaceWith("at.asitplus.iso.SessionTranscript"))
+typealias SessionTranscript = at.asitplus.iso.SessionTranscript
+
+@Deprecated("Moved", ReplaceWith("at.asitplus.iso.ValueDigest"))
+typealias ValueDigest = at.asitplus.iso.ValueDigest
+
+@Deprecated("Moved", ReplaceWith("at.asitplus.iso.ValueDigestList"))
+typealias ValueDigestList = at.asitplus.iso.ValueDigestList

@@ -14,13 +14,12 @@ import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.iso.DeviceNameSpaces
-import at.asitplus.wallet.lib.iso.vckCborSerializer
+import at.asitplus.iso.DeviceNameSpaces
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToByteArray
-import kotlinx.serialization.json.Json.Default.encodeToString
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
@@ -108,7 +107,7 @@ sealed interface PresentationResponseParameters {
             is CreatePresentationResult.Signed -> JsonPrimitive(presentationResult.serialized)
             is CreatePresentationResult.SdJwt -> JsonPrimitive(presentationResult.serialized)
             is CreatePresentationResult.DeviceResponse -> JsonPrimitive(
-                vckCborSerializer.encodeToByteArray(presentationResult.deviceResponse).encodeToString(Base64UrlStrict)
+                coseCompliantSerializer.encodeToByteArray(presentationResult.deviceResponse).encodeToString(Base64UrlStrict)
             )
         }
     }

@@ -19,6 +19,7 @@ import at.asitplus.openid.OpenIdConstants.Errors.UNSUPPORTED_CREDENTIAL_TYPE
 import at.asitplus.openid.OpenIdConstants.Errors.USER_CANCELLED
 import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.signum.indispensable.SignatureAlgorithm
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.Issuer
@@ -30,7 +31,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import at.asitplus.wallet.lib.data.VcDataModelConstants
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.iso.vckCborSerializer
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.Serializable
@@ -214,7 +214,7 @@ suspend fun Issuer.IssuedCredential.toCredentialResponseSingleCredential(
 )
 
 private fun Issuer.IssuedCredential.Iso.toBase64UrlStrict(): String =
-    vckCborSerializer.encodeToByteArray(issuerSigned).encodeToString(Base64UrlStrict)
+    coseCompliantSerializer.encodeToByteArray(issuerSigned).encodeToString(Base64UrlStrict)
 
 @Serializable
 sealed class OAuth2Exception(

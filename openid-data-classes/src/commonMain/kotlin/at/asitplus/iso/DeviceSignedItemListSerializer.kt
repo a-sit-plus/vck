@@ -1,6 +1,6 @@
-package at.asitplus.wallet.lib.iso
+package at.asitplus.iso
 
-import at.asitplus.wallet.lib.data.InstantStringSerializer
+import at.asitplus.signum.indispensable.io.TransformingSerializerTemplate
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
@@ -48,7 +48,7 @@ open class DeviceSignedItemListSerializer(private val namespace: String) :
             is Int -> encodeIntElement(descriptor, index, it)
             is Long -> encodeLongElement(descriptor, index, it)
             is LocalDate -> encodeSerializableElement(descriptor, index, LocalDate.serializer(), it)
-            is Instant -> encodeSerializableElement(descriptor, index, InstantStringSerializer(), it)
+            is Instant -> encodeSerializableElement(descriptor, index, InstantStringSerializer, it)
             is Boolean -> encodeBooleanElement(descriptor, index, it)
             is ByteArray -> encodeSerializableElement(descriptor, index, ByteArraySerializer(), it)
             else -> CborCredentialSerializer.encode(namespace, value.key, descriptor, index, this, it)
@@ -64,7 +64,7 @@ open class DeviceSignedItemListSerializer(private val namespace: String) :
         is Int -> Int.serializer()
         is Long -> Long.serializer()
         is LocalDate -> LocalDate.serializer()
-        is Instant -> InstantStringSerializer()
+        is Instant -> InstantStringSerializer
         is Boolean -> Boolean.serializer()
         is ByteArray -> ByteArraySerializer()
         is Any -> CborCredentialSerializer.lookupSerializer(namespace, elementIdentifier)
@@ -118,3 +118,11 @@ open class DeviceSignedItemListSerializer(private val namespace: String) :
         throw IllegalArgumentException("Could not decode value at $index")
     }
 }
+
+
+/** De-/serializes X509Certificate as Base64Url-encoded String */
+internal object InstantStringSerializer: TransformingSerializerTemplate<Instant, String>(
+    parent = String.serializer(),
+    encodeAs = { it.toString() },
+    decodeAs = { Instant.parse(it) }
+)

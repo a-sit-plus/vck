@@ -49,7 +49,7 @@ Release 5.7.0:
  - Refactoring of ISO data classes:
    - Move data classes from `vck` to `openid-data-classes`
    - Remove `serialize()` and `deserialize()` methods, please use the preferred serializer directly (e.g. `vckCborSerializer`)
-   - List of classes moved: `ClientIdToHash`, `DeviceAuth`, `DeviceKeyInfo`, `DeviceRequest`, `DocRequest`, `ItemsRequest`, `ItemsRequestList`, `ItemsRequestListSerializer`, `KeyAuthorization`, `ResponseUriToHash`, `ServerItemsRequest`, `ServerRequest`, `ServerResponse` `SingleItemsRequest`, `ValidityInfo`
+   - List of classes moved: `ClientIdToHash`, `DeviceAuth`, `DeviceAuthentication`, `DeviceKeyInfo`, `DeviceRequest`, `DeviceSigned`, `DeviceSignedItemListSerializer`, `DeviceSignedList`, `DocRequest`, `ItemsRequest`,  `IssuerSignedItem`, `IssuerSignedItemSerializer`, `IsserSignedList`, `IssuerSignedListSerializer`, `ItemsRequestList`, `ItemsRequestListSerializer`, `KeyAuthorization`, `NamespacedDeviceNameSpacesSerializer`, `NamespacedIssuerSignedListSerializer`,  `ResponseUriToHash`, `ServerItemsRequest`, `ServerRequest`, `ServerResponse`, `SessionTranscript`, `SingleItemsRequest`, `ValidityInfo`, `ValueDigest`, `ValueDigestList`, `ValueDigestListSerializer`
  - Make `OAuth2Exception` serializable
  - Add data class `LocalDateOrInstant` to be used by credentials
   

@@ -1,10 +1,5 @@
-package at.asitplus.wallet.lib.iso
+package at.asitplus.iso
 
-import at.asitplus.wallet.lib.data.InstantStringSerializer
-import at.asitplus.wallet.lib.iso.IssuerSignedItem.Companion.PROP_DIGEST_ID
-import at.asitplus.wallet.lib.iso.IssuerSignedItem.Companion.PROP_ELEMENT_ID
-import at.asitplus.wallet.lib.iso.IssuerSignedItem.Companion.PROP_ELEMENT_VALUE
-import at.asitplus.wallet.lib.iso.IssuerSignedItem.Companion.PROP_RANDOM
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
@@ -14,16 +9,21 @@ import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.cbor.ValueTags
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.encoding.CompositeDecoder
+import kotlinx.serialization.encoding.CompositeEncoder
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.encoding.decodeStructure
+import kotlinx.serialization.encoding.encodeStructure
 
 open class IssuerSignedItemSerializer(private val namespace: String, private val elementIdentifier: String) :
     KSerializer<IssuerSignedItem> {
 
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor("IssuerSignedItem") {
-        element(PROP_DIGEST_ID, Long.serializer().descriptor)
-        element(PROP_RANDOM, ByteArraySerializer().descriptor)
-        element(PROP_ELEMENT_ID, String.serializer().descriptor)
-        element(PROP_ELEMENT_VALUE, String.serializer().descriptor)
+        element(IssuerSignedItem.Companion.PROP_DIGEST_ID, Long.serializer().descriptor)
+        element(IssuerSignedItem.Companion.PROP_RANDOM, ByteArraySerializer().descriptor)
+        element(IssuerSignedItem.Companion.PROP_ELEMENT_ID, String.serializer().descriptor)
+        element(IssuerSignedItem.Companion.PROP_ELEMENT_VALUE, String.serializer().descriptor)
     }
 
     override fun serialize(encoder: Encoder, value: IssuerSignedItem) {
@@ -38,10 +38,10 @@ open class IssuerSignedItemSerializer(private val namespace: String, private val
     private fun CompositeEncoder.encodeAnything(value: IssuerSignedItem, index: Int) {
         val elementValueSerializer = buildElementValueSerializer(namespace, value.elementValue, value.elementIdentifier)
         val descriptor = buildClassSerialDescriptor("IssuerSignedItem") {
-            element(PROP_DIGEST_ID, Long.serializer().descriptor)
-            element(PROP_RANDOM, ByteArraySerializer().descriptor)
-            element(PROP_ELEMENT_ID, String.serializer().descriptor)
-            element(PROP_ELEMENT_VALUE, elementValueSerializer.descriptor, value.elementValue.annotations())
+            element(IssuerSignedItem.Companion.PROP_DIGEST_ID, Long.serializer().descriptor)
+            element(IssuerSignedItem.Companion.PROP_RANDOM, ByteArraySerializer().descriptor)
+            element(IssuerSignedItem.Companion.PROP_ELEMENT_ID, String.serializer().descriptor)
+            element(IssuerSignedItem.Companion.PROP_ELEMENT_VALUE, elementValueSerializer.descriptor, value.elementValue.annotations())
         }
 
         when (val it = value.elementValue) {
@@ -49,7 +49,7 @@ open class IssuerSignedItemSerializer(private val namespace: String, private val
             is Int -> encodeIntElement(descriptor, index, it)
             is Long -> encodeLongElement(descriptor, index, it)
             is LocalDate -> encodeSerializableElement(descriptor, index, LocalDate.serializer(), it)
-            is Instant -> encodeSerializableElement(descriptor, index, InstantStringSerializer(), it)
+            is Instant -> encodeSerializableElement(descriptor, index, InstantStringSerializer, it)
             is Boolean -> encodeBooleanElement(descriptor, index, it)
             is ByteArray -> encodeSerializableElement(descriptor, index, ByteArraySerializer(), it)
             else -> CborCredentialSerializer.encode(namespace, value.elementIdentifier, descriptor, index, this, it)
@@ -78,7 +78,7 @@ open class IssuerSignedItemSerializer(private val namespace: String, private val
         is Int -> Int.serializer()
         is Long -> Long.serializer()
         is LocalDate -> LocalDate.serializer()
-        is Instant -> InstantStringSerializer()
+        is Instant -> InstantStringSerializer
         is Boolean -> Boolean.serializer()
         is ByteArray -> ByteArraySerializer()
         is Any -> CborCredentialSerializer.lookupSerializer(namespace, elementIdentifier)
@@ -98,12 +98,12 @@ open class IssuerSignedItemSerializer(private val namespace: String, private val
                 // Don't call decodeElementIndex, as it would check for tags. this would break decodeAnything
                 val index = descriptor.getElementIndex(name)
                 when (name) {
-                    PROP_DIGEST_ID -> digestId = decodeLongElement(descriptor, index).toUInt()
-                    PROP_RANDOM -> random = decodeSerializableElement(descriptor, index, ByteArraySerializer())
-                    PROP_ELEMENT_ID -> if (elementIdentifier != decodeStringElement(descriptor, index))
+                    IssuerSignedItem.Companion.PROP_DIGEST_ID -> digestId = decodeLongElement(descriptor, index).toUInt()
+                    IssuerSignedItem.Companion.PROP_RANDOM -> random = decodeSerializableElement(descriptor, index, ByteArraySerializer())
+                    IssuerSignedItem.Companion.PROP_ELEMENT_ID -> if (elementIdentifier != decodeStringElement(descriptor, index))
                         throw IllegalArgumentException("Element identifier mismatch")
 
-                    PROP_ELEMENT_VALUE -> elementValue = decodeAnything(index, elementIdentifier)
+                    IssuerSignedItem.Companion.PROP_ELEMENT_VALUE -> elementValue = decodeAnything(index, elementIdentifier)
                 }
                 if (random != null && elementValue != null) break
             }

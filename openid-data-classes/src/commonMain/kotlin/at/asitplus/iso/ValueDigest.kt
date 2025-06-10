@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.iso
+package at.asitplus.iso
 
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import io.matthewnelson.encoding.base16.Base16
@@ -7,7 +7,7 @@ import kotlinx.serialization.builtins.ByteArraySerializer
 
 /**
  * Convenience class with a custom serializer ([ValueDigestListSerializer]) to prevent
- * usage of the type `Map<String, Map<UInt, ByteArray>>` in [MobileSecurityObject.valueDigests].
+ * usage of the type `Map<String, Map<UInt, ByteArray>>` in [at.asitplus.wallet.lib.iso.MobileSecurityObject.valueDigests].
  */
 data class ValueDigest(
     val key: UInt,

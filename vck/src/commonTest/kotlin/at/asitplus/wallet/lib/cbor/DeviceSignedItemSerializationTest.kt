@@ -1,10 +1,20 @@
 package at.asitplus.wallet.lib.cbor
 
+import at.asitplus.iso.CborCredentialSerializer
+import at.asitplus.iso.DeviceNameSpaces
+import at.asitplus.iso.DeviceSigned
+import at.asitplus.iso.DeviceSignedItem
+import at.asitplus.iso.DeviceSignedItemList
+import at.asitplus.wallet.lib.iso.Document
+import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.iso.IssuerSignedItem
+import at.asitplus.wallet.lib.iso.MobileSecurityObject
 import at.asitplus.signum.indispensable.CryptoSignature
 import kotlinx.serialization.encodeToByteArray
 import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseSigned
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.wallet.lib.iso.*
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
@@ -28,10 +38,10 @@ class DeviceSignedItemSerializationTest : FreeSpec({
         )
         val deviceNameSpaces = DeviceNameSpaces(mapOf(namespace to DeviceSignedItemList(listOf(item))))
 
-        val serialized = vckCborSerializer.encodeToByteArray(deviceNameSpaces)
+        val serialized = coseCompliantSerializer.encodeToByteArray(deviceNameSpaces)
         serialized.encodeToString(Base16(true)).shouldNotContain("D903EC")
 
-        val parsed = vckCborSerializer.decodeFromByteArray<DeviceNameSpaces>(serialized)
+        val parsed = coseCompliantSerializer.decodeFromByteArray<DeviceNameSpaces>(serialized)
 
         parsed shouldBe deviceNameSpaces
     }
@@ -77,9 +87,9 @@ class DeviceSignedItemSerializationTest : FreeSpec({
                 deviceAuth
             )
         )
-        val serialized = vckCborSerializer.encodeToByteArray(doc)
+        val serialized = coseCompliantSerializer.encodeToByteArray(doc)
         serialized.encodeToString(Base16(true)).shouldNotContain("D903EC")
 
-        vckCborSerializer.decodeFromByteArray<Document>(serialized) shouldBe doc
+        coseCompliantSerializer.decodeFromByteArray<Document>(serialized) shouldBe doc
     }
 })

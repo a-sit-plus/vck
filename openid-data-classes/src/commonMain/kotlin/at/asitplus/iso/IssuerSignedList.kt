@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.iso
+package at.asitplus.iso
 
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
@@ -6,7 +6,7 @@ import kotlinx.serialization.encodeToByteArray
 
 /**
  * Convenience class with a custom serializer ([IssuerSignedListSerializer]) to prevent
- * usage of the type `Map<String, List<ByteStringWrapper<IssuerSignedItem>>>` in [IssuerSigned.namespaces].
+ * usage of the type `Map<String, List<ByteStringWrapper<IssuerSignedItem>>>` in [at.asitplus.wallet.lib.iso.IssuerSigned.namespaces].
  */
 data class IssuerSignedList(
     val entries: List<ByteStringWrapper<IssuerSignedItem>>,
@@ -26,7 +26,7 @@ data class IssuerSignedList(
 
     companion object {
         /**
-         * Ensures the serialization of this structure in [Document.issuerSigned]:
+         * Ensures the serialization of this structure in [at.asitplus.wallet.lib.iso.Document.issuerSigned]:
          * ```
          * IssuerNameSpaces = { ; Returned data elements for each namespace
          *     + NameSpace => [ + IssuerSignedItemBytes ]

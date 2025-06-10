@@ -2,10 +2,10 @@
 
 package at.asitplus.wallet.lib
 
+import at.asitplus.iso.CborCredentialSerializer
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.JsonCredentialSerializer
-import at.asitplus.wallet.lib.iso.CborCredentialSerializer
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.modules.SerializersModule
@@ -44,7 +44,7 @@ object LibraryInitializer {
      * Register [credentialScheme] to be used with this library, e.g. in OpenID protocol implementations.
      * Used for credentials supporting [at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC],
      * which need to specify several functions to allow encoding any values
-     * in [at.asitplus.wallet.lib.iso.IssuerSignedItem].
+     * in [at.asitplus.iso.IssuerSignedItem].
      * See the function typealiases in [JsonValueEncoder] and [ElementIdentifierToItemValueSerializerMap]
      * for implementation notes.
      *
@@ -81,7 +81,7 @@ object LibraryInitializer {
      * @param jsonValueEncoder used to describe the credential in input descriptors used in verifiable presentations,
      * e.g. when used in SIOPv2
      * @param itemValueSerializerMap used to actually serialize and deserialize `Any` object in
-     * [at.asitplus.wallet.lib.iso.IssuerSignedItemSerializer], with `elementIdentifier` as the key
+     * [at.asitplus.iso.IssuerSignedItemSerializer], with `elementIdentifier` as the key
      */
     fun registerExtensionLibrary(
         credentialScheme: ConstantIndex.CredentialScheme,
@@ -110,7 +110,7 @@ typealias JsonValueEncoder
         = (value: Any) -> JsonElement?
 
 /**
- * Maps from [at.asitplus.wallet.lib.iso.IssuerSignedItem.elementIdentifier] (the claim name) to its corresponding
+ * Maps from [at.asitplus.iso.IssuerSignedItem.elementIdentifier] (the claim name) to its corresponding
  * [KSerializer].
  */
 typealias ElementIdentifierToItemValueSerializerMap

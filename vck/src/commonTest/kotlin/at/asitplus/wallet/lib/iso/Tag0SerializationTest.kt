@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.iso.ValidityInfo
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -26,7 +27,7 @@ class Tag0SerializationTest : FreeSpec({
             expectedUpdate = Clock.System.now(),
         )
 
-        val serialized = vckCborSerializer.encodeToByteArray(input)
+        val serialized = coseCompliantSerializer.encodeToByteArray(input)
 
         val text = "78" // COSE "text" for text value, i.e. the serialized Instant
         val tag0 = "C0$text" // COSE tag 0 plus "text"
@@ -35,7 +36,7 @@ class Tag0SerializationTest : FreeSpec({
         hexEncoded.shouldContain("76616C696446726F6D$tag0") // "validFrom"<tag><text>
         hexEncoded.shouldContain("76616C6964556E74696C$tag0") // "validUntil"<tag><text>
         hexEncoded.shouldContain("6578706563746564557064617465$tag0") // "expectedUpdate"<tag><text>
-        vckCborSerializer.decodeFromByteArray<ValidityInfo>(serialized) shouldBe input
+        coseCompliantSerializer.decodeFromByteArray<ValidityInfo>(serialized) shouldBe input
     }
 
 })

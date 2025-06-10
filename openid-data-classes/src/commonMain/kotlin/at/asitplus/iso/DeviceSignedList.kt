@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.iso
+package at.asitplus.iso
 
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable

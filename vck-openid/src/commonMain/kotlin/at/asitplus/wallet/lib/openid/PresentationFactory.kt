@@ -28,7 +28,11 @@ import at.asitplus.iso.ClientIdToHash
 import at.asitplus.dcapi.DCAPIHandover
 import at.asitplus.dcapi.OID4VPHandover
 import at.asitplus.dcapi.OpenID4VPDCAPIHandoverInfo
+import at.asitplus.iso.DeviceAuthentication
+import at.asitplus.iso.DeviceNameSpaces
 import at.asitplus.iso.ResponseUriToHash
+import at.asitplus.iso.SessionTranscript
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JwkType
 import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.SignJwtFun
@@ -114,7 +118,7 @@ internal class PresentationFactory(
     }
 
     /**
-     * Performs calculation of the [at.asitplus.wallet.lib.iso.SessionTranscript] and [at.asitplus.wallet.lib.iso.DeviceAuthentication],
+     * Performs calculation of the [at.asitplus.iso.SessionTranscript] and [at.asitplus.iso.DeviceAuthentication],
      * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024, with the [mdocGeneratedNonce] provided if set,
      * or a fallback mechanism used otherwise
      */
@@ -198,8 +202,8 @@ internal class PresentationFactory(
         )
         return SessionTranscript.forOpenId(
             OID4VPHandover(
-                clientIdHash = vckCborSerializer.encodeToByteArray(clientIdToHash).sha256(),
-                responseUriHash = vckCborSerializer.encodeToByteArray(responseUriToHash).sha256(),
+                clientIdHash = coseCompliantSerializer.encodeToByteArray(clientIdToHash).sha256(),
+                responseUriHash = coseCompliantSerializer.encodeToByteArray(responseUriToHash).sha256(),
                 nonce = nonce
             ),
         )
@@ -222,7 +226,7 @@ internal class PresentationFactory(
         return SessionTranscript.forDcApi(
             DCAPIHandover(
                 type = "OpenID4VPDCAPIHandover",
-                hash = vckCborSerializer.encodeToByteArray(openID4VPDCAPIHandoverInfo).sha256()
+                hash = coseCompliantSerializer.encodeToByteArray(openID4VPDCAPIHandoverInfo).sha256()
             )
         )
     }

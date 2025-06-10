@@ -1,8 +1,7 @@
-package at.asitplus.wallet.lib.iso
+package at.asitplus.iso
 
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.wallet.lib.iso.IssuerSignedItem.Companion.PROP_ELEMENT_ID
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SealedSerializationApi
@@ -76,7 +75,7 @@ open class IssuerSignedListSerializer(private val namespace: String) : KSerializ
                 }
                 val readBytes = decoder.decodeSerializableValue(ByteArraySerializer())
                 val item = Cbor.decodeFromByteArray<CborObject>(readBytes) as CborMap
-                val elementIdItem = item.first { (it.key as CborText).value == PROP_ELEMENT_ID }
+                val elementIdItem = item.first { (it.key as CborText).value == IssuerSignedItem.Companion.PROP_ELEMENT_ID }
                 val elementId = (elementIdItem.value as CborText).value
                 entries += ByteStringWrapper(
                     coseCompliantSerializer.decodeFromByteArray(IssuerSignedItemSerializer(namespace, elementId), item.cbor),

@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.iso
+package at.asitplus.iso
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.MapSerializer
@@ -8,21 +8,22 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
-object NamespacedIssuerSignedListSerializer : KSerializer<Map<String, IssuerSignedList>> {
+object NamespacedDeviceNameSpacesSerializer : KSerializer<DeviceNameSpaces> {
 
-    private val mapSerializer = MapSerializer(String.serializer(), object : IssuerSignedListSerializer("") {})
+    private val mapSerializer = MapSerializer(String.serializer(), object : DeviceSignedItemListSerializer("") {})
 
     override val descriptor = mapSerializer.descriptor
 
-    override fun deserialize(decoder: Decoder): Map<String, IssuerSignedList> = NamespacedMapEntryDeserializer().let {
-        MapSerializer(it.namespaceSerializer, it.itemSerializer).deserialize(decoder)
-    }
+    override fun deserialize(decoder: Decoder): DeviceNameSpaces =
+        DeviceNameSpaces(NamespacedMapEntryDeserializer().let {
+            MapSerializer(it.namespaceSerializer, it.itemSerializer).deserialize(decoder)
+        })
 
     class NamespacedMapEntryDeserializer {
         lateinit var key: String
 
         val namespaceSerializer = NamespaceSerializer()
-        val itemSerializer = IssuerSignedListSerializer()
+        val itemSerializer = DeviceSignedItemListSerializer()
 
         inner class NamespaceSerializer internal constructor() : KSerializer<String> {
             override val descriptor = PrimitiveSerialDescriptor("ISO namespace", PrimitiveKind.STRING)
@@ -34,20 +35,20 @@ object NamespacedIssuerSignedListSerializer : KSerializer<Map<String, IssuerSign
             }
         }
 
-        inner class IssuerSignedListSerializer internal constructor() : KSerializer<IssuerSignedList> {
+        inner class DeviceSignedItemListSerializer internal constructor() : KSerializer<DeviceSignedItemList> {
             override val descriptor = mapSerializer.descriptor
 
-            override fun deserialize(decoder: Decoder): IssuerSignedList =
-                decoder.decodeSerializableValue(IssuerSignedListSerializer(key))
+            override fun deserialize(decoder: Decoder): DeviceSignedItemList =
+                decoder.decodeSerializableValue(DeviceSignedItemListSerializer(key))
 
-            override fun serialize(encoder: Encoder, value: IssuerSignedList) {
-                encoder.encodeSerializableValue(IssuerSignedListSerializer(key), value)
+            override fun serialize(encoder: Encoder, value: DeviceSignedItemList) {
+                encoder.encodeSerializableValue(DeviceSignedItemListSerializer(key), value)
             }
         }
     }
 
-    override fun serialize(encoder: Encoder, value: Map<String, IssuerSignedList>) =
+    override fun serialize(encoder: Encoder, value: DeviceNameSpaces) =
         NamespacedMapEntryDeserializer().let {
-            MapSerializer(it.namespaceSerializer, it.itemSerializer).serialize(encoder, value)
+            MapSerializer(it.namespaceSerializer, it.itemSerializer).serialize(encoder, value.entries)
         }
 }

@@ -5,7 +5,12 @@ import at.asitplus.catching
 import at.asitplus.dcapi.OID4VPHandover
 import at.asitplus.dif.*
 import at.asitplus.iso.ClientIdToHash
+import at.asitplus.iso.DeviceAuthentication
+import at.asitplus.wallet.lib.iso.DeviceResponse
+import at.asitplus.wallet.lib.iso.Document
+import at.asitplus.wallet.lib.iso.MobileSecurityObject
 import at.asitplus.iso.ResponseUriToHash
+import at.asitplus.iso.SessionTranscript
 import at.asitplus.jsonpath.JsonPath
 import at.asitplus.openid.*
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
@@ -558,7 +563,7 @@ open class OpenId4VpVerifier(
             val apuNested = ((input as? ResponseParametersFrom.JwsSigned)?.parent as? ResponseParametersFrom.JweForJws)
                 ?.jweDecrypted?.header?.agreementPartyUInfo
             val deviceResponse = relatedPresentation.jsonPrimitive.content.decodeToByteArray(Base64UrlStrict)
-                .let { vckCborSerializer.decodeFromByteArray<DeviceResponse>(it) }
+                .let { coseCompliantSerializer.decodeFromByteArray<DeviceResponse>(it) }
 
             val mdocGeneratedNonce = apuDirect?.decodeToString()
                 ?: apuNested?.decodeToString()
@@ -588,7 +593,7 @@ open class OpenId4VpVerifier(
     }
 
     /**
-     * Performs verification of the [at.asitplus.wallet.lib.iso.SessionTranscript] and [at.asitplus.wallet.lib.iso.DeviceAuthentication],
+     * Performs verification of the [at.asitplus.iso.SessionTranscript] and [at.asitplus.iso.DeviceAuthentication],
      * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024, if required (i.e. response is encrypted)
      */
     @Throws(IllegalArgumentException::class)
@@ -608,8 +613,8 @@ open class OpenId4VpVerifier(
         if (clientId != null && responseUrl != null) {
             val deviceAuthentication =
                 document.calcDeviceAuthentication(expectedNonce, mdocGeneratedNonce, clientId, responseUrl)
-            val expectedPayload = vckCborSerializer
-                .encodeToByteArray(vckCborSerializer.encodeToByteArray(deviceAuthentication))
+            val expectedPayload = coseCompliantSerializer
+                .encodeToByteArray(coseCompliantSerializer.encodeToByteArray(deviceAuthentication))
                 .wrapInCborTag(24)
                 .also { Napier.d("Device authentication for verification is ${it.encodeToString(Base16())}") }
             verifyCoseSignature(deviceSignature, walletKey, byteArrayOf(), expectedPayload).onFailure {
@@ -635,7 +640,7 @@ open class OpenId4VpVerifier(
     }
 
     /**
-     * Performs calculation of the [at.asitplus.wallet.lib.iso.SessionTranscript] and [at.asitplus.wallet.lib.iso.DeviceAuthentication],
+     * Performs calculation of the [at.asitplus.iso.SessionTranscript] and [at.asitplus.iso.DeviceAuthentication],
      * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024
      */
     private fun Document.calcDeviceAuthentication(
@@ -648,8 +653,8 @@ open class OpenId4VpVerifier(
         val responseUriToHash = ResponseUriToHash(responseUri = responseUrl, mdocGeneratedNonce = mdocGeneratedNonce)
         val sessionTranscript = SessionTranscript.forOpenId(
             OID4VPHandover(
-                clientIdHash = vckCborSerializer.encodeToByteArray(clientIdToHash).sha256(),
-                responseUriHash = vckCborSerializer.encodeToByteArray(responseUriToHash).sha256(),
+                clientIdHash = coseCompliantSerializer.encodeToByteArray(clientIdToHash).sha256(),
+                responseUriHash = coseCompliantSerializer.encodeToByteArray(responseUriToHash).sha256(),
                 nonce = challenge
             ),
         )

@@ -18,7 +18,7 @@ import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.IssuerSigned
-import at.asitplus.wallet.lib.iso.vckCborSerializer
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.wallet.lib.jws.JwsHeaderJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -454,7 +454,7 @@ class OpenId4VciClient(
         ConstantIndex.CredentialRepresentation.PLAIN_JWT -> Vc(this, credentialScheme)
         ConstantIndex.CredentialRepresentation.SD_JWT -> SdJwt(this, credentialScheme)
         ConstantIndex.CredentialRepresentation.ISO_MDOC ->
-            runCatching { Iso(vckCborSerializer.decodeFromByteArray<IssuerSigned>(decodeToByteArray(Base64())), credentialScheme) }
+            runCatching { Iso(coseCompliantSerializer.decodeFromByteArray<IssuerSigned>(decodeToByteArray(Base64())), credentialScheme) }
                 .getOrElse { throw Exception("Invalid credential format: $this", it) }
     }
 

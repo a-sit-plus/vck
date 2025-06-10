@@ -3,8 +3,8 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.wallet.lib.iso.sha256
-import at.asitplus.wallet.lib.iso.vckCborSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToByteArray
@@ -104,7 +104,7 @@ interface SubjectCredentialStore {
                 ?: sdJwt.subject
                 ?: sdJwt.credentialStatus?.statusList?.let { it.uri.string + it.index.toString() }
                 ?: throw IllegalArgumentException("Credential does not have a jwtId")
-            is Iso -> vckCborSerializer.encodeToByteArray(issuerSigned).sha256().toHexString()
+            is Iso -> coseCompliantSerializer.encodeToByteArray(issuerSigned).sha256().toHexString()
         }
 
     }
