@@ -101,7 +101,7 @@ interface SubjectCredentialStore {
             is SdJwt -> sdJwt.jwtId
                 ?: sdJwt.subject
                 ?: sdJwt.credentialStatus?.statusList?.let { it.uri.string + it.index.toString() }
-                ?: throw IllegalArgumentException("Credential does not have a jwtId")
+                ?: sdJwt.serialize()
             is Iso -> issuerSigned.serialize().sha256().toHexString()
         }
 
