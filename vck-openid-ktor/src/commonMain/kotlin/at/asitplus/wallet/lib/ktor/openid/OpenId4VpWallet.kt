@@ -9,6 +9,7 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.AuthorizationResponsePreparationState
@@ -30,8 +31,14 @@ import io.ktor.client.request.url
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.readRawBytes
-import io.ktor.http.*
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
+import io.ktor.http.Parameters
+import io.ktor.http.URLBuilder
 import io.ktor.http.content.OutgoingContent
+import io.ktor.http.formUrlEncode
+import io.ktor.http.parameters
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.utils.io.core.toByteArray
 import kotlinx.coroutines.Dispatchers
@@ -90,6 +97,19 @@ class OpenId4VpWallet(
         requestObjectJwsVerifier = { _ -> true }, // unsure about this one?
     )
 
+    suspend fun createErrorResponse(
+        error: OAuth2Error,
+        request: RequestParametersFrom<AuthenticationRequestParameters>
+    ) = catching {
+        openId4VpHolder.createAuthnErrorResponse(error = error, request = request).getOrThrow().let {
+            when (it) {
+                is AuthenticationResponseResult.Post -> postResponse(it)
+                is AuthenticationResponseResult.Redirect -> redirectResponse(it)
+            }
+        }
+    }
+
+
     suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> =
         openId4VpHolder.parseAuthenticationRequestParameters(input)
 
@@ -133,15 +153,23 @@ class OpenId4VpWallet(
         credentialPresentation: CredentialPresentation,
     ): KmmResult<AuthenticationSuccess> = catching {
         Napier.i("startPresentation: $request")
-        openId4VpHolder.finalizeAuthorizationResponse(
+        val response = openId4VpHolder.finalizeAuthorizationResponse(
             request = request,
             clientMetadata = clientMetadata,
             credentialPresentation = credentialPresentation
-        ).getOrThrow().let {
-            when (it) {
-                is AuthenticationResponseResult.Post -> postResponse(it)
-                is AuthenticationResponseResult.Redirect -> redirectResponse(it)
-            }
+        ).getOrElse {
+            createErrorResponse(
+                error = OAuth2Error(
+                    error = "invalid_request",
+                    errorDescription = it.message,
+                    state = request.parameters.state
+                ), request = request
+            )
+            throw it
+        }
+        when (response) {
+            is AuthenticationResponseResult.Post -> postResponse(response)
+            is AuthenticationResponseResult.Redirect -> redirectResponse(response)
         }
     }
 
