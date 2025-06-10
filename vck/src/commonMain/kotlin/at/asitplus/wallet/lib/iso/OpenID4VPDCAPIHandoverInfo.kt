@@ -1,11 +1,8 @@
 package at.asitplus.wallet.lib.iso
 
-import at.asitplus.KmmResult.Companion.wrap
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.ByteString
 import kotlinx.serialization.cbor.CborArray
-import kotlinx.serialization.decodeFromByteArray
-import kotlinx.serialization.encodeToByteArray
 
 /**
  * Part of OpenID for Verifiable Presentations - draft 26 (B.3.5.1)
@@ -21,12 +18,11 @@ data class OpenID4VPDCAPIHandoverInfo(
      * of the Verifier's public key used to encrypt the response.
      * If the Response Mode is dc_api, the third element MUST be null */
     @ByteString
-    val jwkThumbprint: ByteArray?
+    val jwkThumbprint: ByteArray?,
 ) {
     init {
         require(!origin.startsWith("origin:"))
     }
-    fun serialize() = vckCborSerializer.encodeToByteArray(this)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -46,12 +42,6 @@ data class OpenID4VPDCAPIHandoverInfo(
         result = 31 * result + nonce.hashCode()
         result = 31 * result + jwkThumbprint.contentHashCode()
         return result
-    }
-
-    companion object {
-        fun deserialize(it: ByteArray) = runCatching {
-            vckCborSerializer.decodeFromByteArray<OpenID4VPDCAPIHandoverInfo>(it)
-        }.wrap()
     }
 
 }

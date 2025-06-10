@@ -1,8 +1,9 @@
 package at.asitplus.wallet.lib.iso
 
-import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.signum.indispensable.cosef.CoseSigned
-import kotlinx.serialization.*
+import kotlinx.serialization.Contextual
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for mdoc request (8.3.2.1.2.1)
@@ -16,8 +17,6 @@ data class IssuerSigned private constructor(
     @SerialName("issuerAuth")
     val issuerAuth: CoseSigned<MobileSecurityObject>,
 ) {
-
-    fun serialize() = vckCborSerializer.encodeToByteArray(this)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -36,11 +35,6 @@ data class IssuerSigned private constructor(
     }
 
     companion object {
-        fun deserialize(it: ByteArray) = kotlin.runCatching {
-            vckCborSerializer.decodeFromByteArray<IssuerSigned>(it)
-        }.wrap()
-
-
         // Note: Can't be a secondary constructor, because it would have the same JVM signature as the primary one.
         /**
          * Ensures the serialization of this structure in [Document.issuerSigned]:

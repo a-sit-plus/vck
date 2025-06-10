@@ -6,11 +6,13 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import kotlinx.serialization.decodeFromByteArray
+import kotlinx.serialization.encodeToByteArray
 
 class SessionTranscriptTest : FreeSpec({
 
     "Local presentation with NFC Handover" {
-        val expectedEncodedSessionTranscript ="""
+        val expectedEncodedSessionTranscript = """
             83                                        # array(3)
                d8 18                                  #   encoded cbor data item, tag(24)
                   58 58                               #     bytes(88)
@@ -144,8 +146,8 @@ class SessionTranscriptTest : FreeSpec({
                   636e6663010301ffff0402010000     #     "cnfc\x01\x03\x01\xff\xff\x04\x02\x01\x00\x00"
         """.decodeFromAnnotatedCbor()
 
-        val eReaderCoseKey = CoseKey.deserialize(coseEncodedEReaderKey)
-        val nfcHandover = NFCHandover.deserialize(coseEncodedNFCHandover)
+        val eReaderCoseKey = CoseKey.deserialize(coseEncodedEReaderKey).getOrThrow()
+        val nfcHandover = vckCborSerializer.decodeFromByteArray<NFCHandover>(coseEncodedNFCHandover)
 
         val encodedDeviceEngagement = """
             a2                                           # map(2)
@@ -180,17 +182,18 @@ class SessionTranscriptTest : FreeSpec({
 
         val sessionTranscript = SessionTranscript.forNfc(
             deviceEngagementBytes = encodedDeviceEngagement,
-            eReaderKeyBytes = eReaderCoseKey.getOrThrow().serialize(),
-            nfcHandover = nfcHandover.getOrThrow()
+            eReaderKeyBytes = vckCborSerializer.encodeToByteArray(eReaderCoseKey),
+            nfcHandover = nfcHandover
         )
 
         sessionTranscript.oid4VPHandover shouldBe null
         sessionTranscript.nfcHandover shouldNotBe null
-        sessionTranscript.serialize() shouldBe expectedEncodedSessionTranscript
+
+        vckCborSerializer.encodeToByteArray(sessionTranscript) shouldBe expectedEncodedSessionTranscript
     }
 
     "Local presentation with QR Handover" {
-        val expectedEncodedSessionTranscript ="""
+        val expectedEncodedSessionTranscript = """
             83                                        # array(3)
                d8 18                                  #   encoded cbor data item, tag(24)
                   58 58                               #     bytes(88)
@@ -270,7 +273,7 @@ class SessionTranscriptTest : FreeSpec({
                   3e1b070fb57135b8fa46907c2bd07e4c #     ">\x1b\x07\x0f\xb5q5\xb8\xfaF\x90|+\xd0~L"
         """.decodeFromAnnotatedCbor()
 
-        val eReaderCoseKey = CoseKey.deserialize(coseEncodedEReaderKey)
+        val eReaderCoseKey = CoseKey.deserialize(coseEncodedEReaderKey).getOrThrow()
 
         val encodedDeviceEngagement = """
             a2                                           # map(2)
@@ -305,12 +308,12 @@ class SessionTranscriptTest : FreeSpec({
 
         val sessionTranscript = SessionTranscript.forQr(
             deviceEngagementBytes = encodedDeviceEngagement,
-            eReaderKeyBytes = eReaderCoseKey.getOrThrow().serialize()
+            eReaderKeyBytes = eReaderCoseKey.serialize()
         )
 
         sessionTranscript.oid4VPHandover shouldBe null
         sessionTranscript.nfcHandover shouldBe null
-        sessionTranscript.serialize() shouldBe expectedEncodedSessionTranscript
+        vckCborSerializer.encodeToByteArray(sessionTranscript) shouldBe expectedEncodedSessionTranscript
     }
 
     "oid4vp" {
@@ -346,7 +349,7 @@ class SessionTranscriptTest : FreeSpec({
 
         sessionTranscript.oid4VPHandover shouldNotBe null
         sessionTranscript.nfcHandover shouldBe null
-        sessionTranscript.serialize() shouldBe expectedEncodedSessionTranscript
+        vckCborSerializer.encodeToByteArray(sessionTranscript) shouldBe expectedEncodedSessionTranscript
     }
 
 })

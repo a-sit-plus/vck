@@ -4,8 +4,10 @@ import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.iso.sha256
+import at.asitplus.wallet.lib.iso.vckCborSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToByteArray
 
 /**
  * Stores all credentials that a subject has received
@@ -102,7 +104,7 @@ interface SubjectCredentialStore {
                 ?: sdJwt.subject
                 ?: sdJwt.credentialStatus?.statusList?.let { it.uri.string + it.index.toString() }
                 ?: throw IllegalArgumentException("Credential does not have a jwtId")
-            is Iso -> issuerSigned.serialize().sha256().toHexString()
+            is Iso -> vckCborSerializer.encodeToByteArray(issuerSigned).sha256().toHexString()
         }
 
     }

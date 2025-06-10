@@ -1,10 +1,7 @@
 package at.asitplus.wallet.lib.iso
 
-import at.asitplus.KmmResult.Companion.wrap
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromByteArray
-import kotlinx.serialization.encodeToByteArray
 
 /**
  * Convenience class to prevent
@@ -13,16 +10,7 @@ import kotlinx.serialization.encodeToByteArray
 @Serializable(with = NamespacedDeviceNameSpacesSerializer::class)
 data class DeviceNameSpaces(
     val entries: Map<String, @Contextual DeviceSignedItemList>,
-) {
-
-    fun serialize() = vckCborSerializer.encodeToByteArray(this)
-
-    companion object {
-        fun deserialize(it: ByteArray) = kotlin.runCatching {
-            vckCborSerializer.decodeFromByteArray<DeviceNameSpaces>(it)
-        }.wrap()
-    }
-}
+)
 
 /**
  * Convenience class with a custom serializer ([DeviceSignedItemListSerializer]) to prevent

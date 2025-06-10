@@ -45,5 +45,8 @@ data class ValueDigest(
                 vckCborSerializer.encodeToByteArray(ByteArraySerializer(), value.serialize(namespace))
                     .wrapInCborTag(24).sha256()
             )
+
+        private fun IssuerSignedItem.serialize(namespace: String): ByteArray =
+            vckCborSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementIdentifier), this)
     }
 }

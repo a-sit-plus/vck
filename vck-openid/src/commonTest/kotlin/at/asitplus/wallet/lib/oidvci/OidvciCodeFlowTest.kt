@@ -9,6 +9,7 @@ import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.wallet.lib.iso.vckCborSerializer
 import at.asitplus.wallet.lib.oauth2.ClientAuthRequest
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
@@ -28,6 +29,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import kotlinx.serialization.decodeFromByteArray
 
 class OidvciCodeFlowTest : FreeSpec({
 
@@ -421,7 +423,8 @@ class OidvciCodeFlowTest : FreeSpec({
         ).getOrThrow()
         val serializedCredential = credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
 
-        val issuerSigned = IssuerSigned.deserialize(serializedCredential.decodeToByteArray(Base64())).getOrThrow()
+        val issuerSigned =
+            vckCborSerializer.decodeFromByteArray<IssuerSigned>(serializedCredential.decodeToByteArray(Base64()))
 
         val namespaces = issuerSigned.namespaces
             .shouldNotBeNull()

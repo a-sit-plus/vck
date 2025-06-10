@@ -42,5 +42,8 @@ data class IssuerSignedList(
                     vckCborSerializer.encodeToByteArray(item.serialize(namespace)).wrapInCborTag(24)
                 )
             })
+
+        private fun IssuerSignedItem.serialize(namespace: String): ByteArray =
+            vckCborSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementIdentifier), this)
     }
 }

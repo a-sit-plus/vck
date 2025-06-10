@@ -62,6 +62,9 @@ open class IssuerSignedListSerializer(private val namespace: String) : KSerializ
         }
     }
 
+    private fun IssuerSignedItem.serialize(namespace: String): ByteArray =
+        vckCborSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementIdentifier), this)
+
     override fun deserialize(decoder: Decoder): IssuerSignedList {
         val entries = mutableListOf<ByteStringWrapper<IssuerSignedItem>>()
         decoder.decodeStructure(descriptor) {
@@ -73,9 +76,10 @@ open class IssuerSignedListSerializer(private val namespace: String) : KSerializ
                 val readBytes = decoder.decodeSerializableValue(ByteArraySerializer())
                 val item = Cbor.decodeFromByteArray<CborObject>(readBytes) as CborMap
                 val elementIdItem = item.first { (it.key as CborText).value == PROP_ELEMENT_ID }
-                val elementID = (elementIdItem.value as CborText).value
+                val elementId = (elementIdItem.value as CborText).value
                 entries += ByteStringWrapper(
-                    IssuerSignedItem.deserialize(item.cbor, namespace, elementID).getOrThrow(), item.cbor
+                    vckCborSerializer.decodeFromByteArray(IssuerSignedItemSerializer(namespace, elementId), item.cbor),
+                    item.cbor
                 )
             }
         }

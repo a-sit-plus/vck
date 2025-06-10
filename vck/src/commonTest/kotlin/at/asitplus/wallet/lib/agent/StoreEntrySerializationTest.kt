@@ -4,6 +4,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.CborCredentialSerializer
 import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.wallet.lib.iso.vckCborSerializer
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -12,6 +13,7 @@ import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.builtins.ByteArraySerializer
+import kotlinx.serialization.decodeFromByteArray
 
 class StoreEntrySerializationTest : FreeSpec({
 
@@ -356,8 +358,8 @@ class StoreEntrySerializationTest : FreeSpec({
         """.trimIndent()
 
         val credentialsInput = input.decodeToByteArray(Base64())
-            .let { IssuerSigned.deserialize(it) }.getOrNull()
-            ?.let { Holder.StoreCredentialInput.Iso(it, ConstantIndex.AtomicAttribute2023) }
+            .let { vckCborSerializer.decodeFromByteArray<IssuerSigned>(it) }
+            .let { Holder.StoreCredentialInput.Iso(it, ConstantIndex.AtomicAttribute2023) }
             .shouldNotBeNull()
 
         val entry = holder.storeCredential(credentialsInput).getOrThrow()

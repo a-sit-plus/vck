@@ -7,6 +7,7 @@ import at.asitplus.openid.sha256
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.contentEqualsIfArray
 import at.asitplus.signum.indispensable.cosef.CoseKey
+import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
@@ -36,6 +37,7 @@ import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.serialization.builtins.ByteArraySerializer
+import kotlinx.serialization.encodeToByteArray
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -434,7 +436,7 @@ class Validator(
     suspend fun verifyIsoCred(it: IssuerSigned, issuerKey: CoseKey?): VerifyCredentialResult {
         Napier.d("Verifying ISO Cred $it")
         if (!mdocInputValidator(it, issuerKey).isSuccess) {
-            return InvalidStructure(it.serialize().encodeToString(Base16(strict = true)))
+            return InvalidStructure(vckCborSerializer.encodeToByteArray(it).encodeToString(Base16Strict))
         }
         return SuccessIso(it)
     }

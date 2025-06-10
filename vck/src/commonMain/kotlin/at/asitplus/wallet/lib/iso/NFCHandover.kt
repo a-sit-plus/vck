@@ -13,9 +13,8 @@ data class NFCHandover(
     @ByteString
     val handoverSelect: ByteArray?,
     @ByteString
-    val handoverRequest: ByteArray?
+    val handoverRequest: ByteArray?,
 ) {
-    fun serialize() = vckCborSerializer.encodeToByteArray(this)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -39,12 +38,6 @@ data class NFCHandover(
         var result = handoverSelect?.contentHashCode() ?: 0
         result = 31 * result + (handoverRequest?.contentHashCode() ?: 0)
         return result
-    }
-
-    companion object {
-        fun deserialize(it: ByteArray) = runCatching {
-            vckCborSerializer.decodeFromByteArray<NFCHandover>(it)
-        }.wrap()
     }
 
 }

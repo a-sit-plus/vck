@@ -46,7 +46,10 @@ Release 5.7.0:
    - `AuthenticationSuccess`: contains a `redirectUri` (same behaviour as in 5.6.x)
    - `AuthenticationForward`: contains the `authenticationResponseResult` for responses via the Digital Credentials API
  - Update AGP to 8.6.1 for composite builds with Valera
- - Move ISO data classes `DeviceRequest`, `DocRequest`, `ItemsRequest`, `ItemsRequestList`, `ItemsRequestListSerializer`, and `SigleItemsRequest` to `openid-data-classes`. Package changes from `at.asitplus.wallet.lib.iso` to `at.asitplus.iso`. The `serialize` and `deserialize` methods have been removed from these classes. Use your preferred serializer directly to serialize/deserialize these classes.
+ - Refactoring of ISO data classes:
+   - Move data classes from `vck` to `openid-data-classes`
+   - Remove `serialize()` and `deserialize()` methods, please use the preferred serializer directly (e.g. `vckCborSerializer`)
+   - List of classes moved: `DeviceRequest`, `DocRequest`, `ItemsRequest`, `ItemsRequestList`, `ItemsRequestListSerializer`, `SingleItemsRequest`
  - Make `OAuth2Exception` serializable
  - Add data class `LocalDateOrInstant` to be used by credentials
   

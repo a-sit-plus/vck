@@ -12,6 +12,7 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.decodeFromByteArray
 
 class Iso18013SpecTest : FreeSpec({
 
@@ -263,10 +264,9 @@ class Iso18013SpecTest : FreeSpec({
             85aa53f129134775d733754d7cb7a413766aeff13cb2e6c6465766963655369676e6564a26a6e616d6553706163
             6573d81841a06a64657669636541757468a1696465766963654d61638443a10105a0f65820e99521a85ad7891b
             806a07f8b5388a332d92c189a7bf293ee1f543405ae6824d6673746174757300
-        """.trimIndent().replace("\n", "").uppercase()
+        """.trimIndent().replace("\n", "").uppercase().decodeToByteArray(Base16(true))
 
-        val deviceResponse = DeviceResponse.deserialize(input.decodeToByteArray(Base16(true)))
-            .getOrThrow().shouldNotBeNull()
+        val deviceResponse = vckCborSerializer.decodeFromByteArray<DeviceResponse>(input)
 
         deviceResponse.version shouldBe "1.0"
         val document = deviceResponse.documents?.get(0)

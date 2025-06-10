@@ -1,10 +1,10 @@
 package at.asitplus.wallet.lib.iso
 
-import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlin.io.encoding.Base64
-import kotlin.io.encoding.ExperimentalEncodingApi
+import kotlinx.serialization.encodeToByteArray
 
 @ConsistentCopyVisibility
 @Serializable
@@ -15,17 +15,11 @@ data class DCAPIResponse private constructor(
      * base64-url-without-padding string
      */
     @SerialName("response")
-    val response: String
+    val response: String,
 ) {
-    fun serialize() = vckJsonSerializer.encodeToString(this)
-
     companion object {
-        @OptIn(ExperimentalEncodingApi::class)
         fun createIsoMdocResponse(response: EncryptedResponse): DCAPIResponse =
-            DCAPIResponse(
-                Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT_OPTIONAL)
-                    .encode(response.serialize())
-            )
+            DCAPIResponse(vckCborSerializer.encodeToByteArray(response).encodeToString(Base64UrlStrict))
 
         fun createOid4vpResponse(response: String): DCAPIResponse =
             DCAPIResponse(response)

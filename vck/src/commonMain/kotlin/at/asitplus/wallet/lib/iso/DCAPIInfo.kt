@@ -1,14 +1,11 @@
 package at.asitplus.wallet.lib.iso
 
-import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.iso.EncryptionInfo
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.CborArray
-import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
-import kotlin.io.encoding.Base64
-import kotlin.io.encoding.Base64.PaddingOption
-import kotlin.io.encoding.ExperimentalEncodingApi
 
 /**
  * Part of ISO 18013-7 Annex C
@@ -23,21 +20,13 @@ data class DCAPIInfo(
     /** Serialized origin of the request as defined in
      * https://html.spec.whatwg.org/multipage/browsers.html#ascii-serialisation-of-an-origin
      */
-    val serializedOrigin: String
+    val serializedOrigin: String,
 ) {
-    fun serialize() = vckCborSerializer.encodeToByteArray(this)
-
     companion object {
-        fun deserialize(it: ByteArray) = runCatching {
-            vckCborSerializer.decodeFromByteArray<DCAPIInfo>(it)
-        }.wrap()
-
-        @OptIn(ExperimentalEncodingApi::class)
         fun create(encryptionInfo: EncryptionInfo, origin: String): DCAPIInfo =
             DCAPIInfo(
-                base64EncryptionInfo = Base64.UrlSafe.withPadding(
-                    PaddingOption.ABSENT_OPTIONAL
-                ).encode(vckCborSerializer.encodeToByteArray(encryptionInfo)),
+                base64EncryptionInfo = vckCborSerializer.encodeToByteArray(encryptionInfo)
+                    .encodeToString(Base64UrlStrict),
                 serializedOrigin = origin
             )
     }

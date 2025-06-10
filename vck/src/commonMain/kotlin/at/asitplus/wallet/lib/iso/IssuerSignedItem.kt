@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.iso
 
-import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.signum.indispensable.contentEqualsIfArray
 import at.asitplus.signum.indispensable.contentHashCodeIfArray
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
@@ -22,9 +21,6 @@ data class IssuerSignedItem(
     @SerialName(PROP_ELEMENT_VALUE)
     val elementValue: Any,
 ) {
-
-    fun serialize(namespace: String) =
-        vckCborSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementIdentifier), this)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -54,10 +50,6 @@ data class IssuerSignedItem(
             " elementValue=${elementValue.toCustomString()})"
 
     companion object {
-        fun deserialize(it: ByteArray, namespace: String, elementIdentifier: String) = kotlin.runCatching {
-            vckCborSerializer.decodeFromByteArray(IssuerSignedItemSerializer(namespace, elementIdentifier), it)
-        }.wrap()
-
         internal const val PROP_DIGEST_ID = "digestID"
         internal const val PROP_RANDOM = "random"
         internal const val PROP_ELEMENT_ID = "elementIdentifier"

@@ -24,6 +24,7 @@ import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
+import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
@@ -554,7 +555,7 @@ open class OpenId4VpVerifier(
             val apuNested = ((input as? ResponseParametersFrom.JwsSigned)?.parent as? ResponseParametersFrom.JweForJws)
                 ?.jweDecrypted?.header?.agreementPartyUInfo
             val deviceResponse = relatedPresentation.jsonPrimitive.content.decodeToByteArray(Base64UrlStrict)
-                .let { DeviceResponse.deserialize(it).getOrThrow() }
+                .let { vckCborSerializer.decodeFromByteArray<DeviceResponse>(it) }
 
             val mdocGeneratedNonce = apuDirect?.decodeToString()
                 ?: apuNested?.decodeToString()
@@ -604,8 +605,8 @@ open class OpenId4VpVerifier(
         if (clientId != null && responseUrl != null) {
             val deviceAuthentication =
                 document.calcDeviceAuthentication(expectedNonce, mdocGeneratedNonce, clientId, responseUrl)
-            val expectedPayload = coseCompliantSerializer
-                .encodeToByteArray(deviceAuthentication.serialize())
+            val expectedPayload = vckCborSerializer
+                .encodeToByteArray(vckCborSerializer.encodeToByteArray(deviceAuthentication))
                 .wrapInCborTag(24)
                 .also { Napier.d("Device authentication for verification is ${it.encodeToString(Base16())}") }
             verifyCoseSignature(deviceSignature, walletKey, byteArrayOf(), expectedPayload).onFailure {
@@ -644,8 +645,8 @@ open class OpenId4VpVerifier(
         val responseUriToHash = ResponseUriToHash(responseUri = responseUrl, mdocGeneratedNonce = mdocGeneratedNonce)
         val sessionTranscript = SessionTranscript.forOpenId(
             OID4VPHandover(
-                clientIdHash = clientIdToHash.serialize().sha256(),
-                responseUriHash = responseUriToHash.serialize().sha256(),
+                clientIdHash = vckCborSerializer.encodeToByteArray(clientIdToHash).sha256(),
+                responseUriHash = vckCborSerializer.encodeToByteArray(responseUriToHash).sha256(),
                 nonce = challenge
             ),
         )

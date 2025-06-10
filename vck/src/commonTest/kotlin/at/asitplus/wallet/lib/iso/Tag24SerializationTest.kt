@@ -4,6 +4,7 @@ import at.asitplus.catching
 import at.asitplus.iso.DocRequest
 import at.asitplus.iso.ItemsRequest
 import at.asitplus.signum.indispensable.CryptoSignature
+import at.asitplus.signum.indispensable.asn1.KnownOIDs.serialized
 import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseEllipticCurve
 import at.asitplus.signum.indispensable.cosef.CoseHeader
@@ -11,6 +12,7 @@ import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.CoseKeyParams
 import at.asitplus.signum.indispensable.cosef.CoseKeyType
 import at.asitplus.signum.indispensable.cosef.CoseSigned
+import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapperSerializer
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider
@@ -115,7 +117,7 @@ class Tag24SerializationTest : FreeSpec({
         val numberOfClaims = namespaces.entries.fold(0) { acc, entry ->
             acc + entry.value.entries.size
         }
-        val serialized = issuedCredential.issuerSigned.serialize().encodeToString(Base16(true))
+        val serialized = vckCborSerializer.encodeToByteArray(issuedCredential.issuerSigned).encodeToString(Base16Strict)
         withClue(serialized) {
             // add 1 for MSO in IssuerAuth
             "D818".toRegex().findAll(serialized).toList().shouldHaveAtLeastSize(numberOfClaims + 1)

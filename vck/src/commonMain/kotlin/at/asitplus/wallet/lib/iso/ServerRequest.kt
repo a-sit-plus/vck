@@ -1,10 +1,7 @@
 package at.asitplus.wallet.lib.iso
 
-import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for Server retrieval mdoc request (8.3.2.2.2.1)
@@ -18,8 +15,6 @@ data class ServerRequest(
     @SerialName("docRequests")
     val docRequests: Array<ServerItemsRequest>,
 ) {
-
-    fun serialize() = vckJsonSerializer.encodeToString(this)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -37,10 +32,5 @@ data class ServerRequest(
         return result
     }
 
-    companion object {
-        fun deserialize(it: String) = kotlin.runCatching {
-            vckJsonSerializer.decodeFromString<ServerRequest>(it)
-        }.wrap()
-    }
 }
 

@@ -1,13 +1,10 @@
 package at.asitplus.wallet.lib.iso
 
-import at.asitplus.KmmResult.Companion.wrap
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.ByteString
 import kotlinx.serialization.cbor.CborArray
 import kotlinx.serialization.cbor.CborTag.CBOR_ENCODED_DATA
 import kotlinx.serialization.cbor.ValueTags
-import kotlinx.serialization.decodeFromByteArray
-import kotlinx.serialization.encodeToByteArray
 
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Session transcript and cipher suite (9.1.5.1) and
@@ -41,7 +38,6 @@ data class SessionTranscript private constructor(
         check(nrOfHandovers == 1 || (deviceEngagementBytesOid == null && nrOfHandovers == 0)) { "Exactly one handover element must be set (or null for QR Handover)" }
     }
 
-    fun serialize() = vckCborSerializer.encodeToByteArray(this)
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
@@ -71,9 +67,6 @@ data class SessionTranscript private constructor(
     }
 
     companion object {
-        fun deserialize(it: ByteArray) = runCatching {
-            vckCborSerializer.decodeFromByteArray<SessionTranscript>(it)
-        }.wrap()
 
         fun forNfc(
             deviceEngagementBytes: ByteArray,
@@ -103,7 +96,7 @@ data class SessionTranscript private constructor(
 
         fun forQr(
             deviceEngagementBytes: ByteArray,
-            eReaderKeyBytes: ByteArray
+            eReaderKeyBytes: ByteArray,
         ): SessionTranscript = SessionTranscript(
             deviceEngagementBytes = deviceEngagementBytes,
             eReaderKeyBytes = eReaderKeyBytes,

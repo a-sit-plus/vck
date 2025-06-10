@@ -30,10 +30,12 @@ import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import at.asitplus.wallet.lib.data.VcDataModelConstants
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.iso.vckCborSerializer
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
+import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.JsonContentPolymorphicSerializer
 import kotlinx.serialization.json.JsonElement
@@ -212,7 +214,7 @@ suspend fun Issuer.IssuedCredential.toCredentialResponseSingleCredential(
 )
 
 private fun Issuer.IssuedCredential.Iso.toBase64UrlStrict(): String =
-    issuerSigned.serialize().encodeToString(Base64UrlStrict)
+    vckCborSerializer.encodeToByteArray(issuerSigned).encodeToString(Base64UrlStrict)
 
 @Serializable
 sealed class OAuth2Exception(

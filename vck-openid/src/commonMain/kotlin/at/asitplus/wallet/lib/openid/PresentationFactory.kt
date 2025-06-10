@@ -57,12 +57,14 @@ internal class PresentationFactory(
         clientMetadata: RelyingPartyMetadata?,
         jsonWebKeys: Collection<JsonWebKey>?,
         credentialPresentation: CredentialPresentation,
-        dcApiRequest: Oid4vpDCAPIRequest?
+        dcApiRequest: Oid4vpDCAPIRequest?,
     ): KmmResult<PresentationResponseParameters> = catching {
         request.verifyResponseType()
 
-        val requestsDcApiEncryption = (request as? AuthenticationRequestParameters)?.responseMode == OpenIdConstants.ResponseMode.DcApiJwt // TODO enable this check in draft28 branch && clientMetadata?.encryptionSupported() == true
-        val responseWillBeEncrypted = jsonWebKeys != null && (clientMetadata?.requestsEncryption() == true || requestsDcApiEncryption)
+        val requestsDcApiEncryption =
+            (request as? AuthenticationRequestParameters)?.responseMode == OpenIdConstants.ResponseMode.DcApiJwt // TODO enable this check in draft28 branch && clientMetadata?.encryptionSupported() == true
+        val responseWillBeEncrypted =
+            jsonWebKeys != null && (clientMetadata?.requestsEncryption() == true || requestsDcApiEncryption)
         val clientId = request.clientId
         val responseUrl = request.responseUrl
         val transactionData = request.parseTransactionData()
@@ -120,7 +122,7 @@ internal class PresentationFactory(
         docType: String,
         dcApiRequest: Oid4vpDCAPIRequest?,
         jsonWebKeys: Collection<JsonWebKey>?,
-        responseWillBeEncrypted: Boolean
+        responseWillBeEncrypted: Boolean,
     ): CoseSigned<ByteArray> {
         val sessionTranscript =
             if (dcApiRequest != null) {
@@ -191,8 +193,8 @@ internal class PresentationFactory(
         )
         return SessionTranscript.forOpenId(
             OID4VPHandover(
-                clientIdHash = clientIdToHash.serialize().sha256(),
-                responseUriHash = responseUriToHash.serialize().sha256(),
+                clientIdHash = vckCborSerializer.encodeToByteArray(clientIdToHash).sha256(),
+                responseUriHash = vckCborSerializer.encodeToByteArray(responseUriToHash).sha256(),
                 nonce = nonce
             ),
         )
@@ -202,7 +204,7 @@ internal class PresentationFactory(
         dcApiRequest: Oid4vpDCAPIRequest,
         nonce: String,
         jsonWebKeys: Collection<JsonWebKey>?,
-        responseWillBeEncrypted: Boolean
+        responseWillBeEncrypted: Boolean,
     ): SessionTranscript {
         val jwkThumbprint = if (responseWillBeEncrypted && !jsonWebKeys.isNullOrEmpty()) {
             jsonWebKeys.firstOrNull { it.publicKeyUse == "enc" || it.type == JwkType.EC }?.jwkThumbprint
@@ -215,7 +217,7 @@ internal class PresentationFactory(
         return SessionTranscript.forDcApi(
             DCAPIHandover(
                 type = "OpenID4VPDCAPIHandover",
-                hash = openID4VPDCAPIHandoverInfo.serialize().sha256()
+                hash = vckCborSerializer.encodeToByteArray(openID4VPDCAPIHandoverInfo).sha256()
             )
         )
     }

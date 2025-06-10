@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.cbor
 
 import at.asitplus.signum.indispensable.CryptoSignature
+import kotlinx.serialization.encodeToByteArray
 import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseSigned
@@ -14,6 +15,7 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlin.random.Random
 import kotlin.random.nextUInt
+import kotlinx.serialization.decodeFromByteArray
 
 class DeviceSignedItemSerializationTest : FreeSpec({
 
@@ -26,10 +28,10 @@ class DeviceSignedItemSerializationTest : FreeSpec({
         )
         val deviceNameSpaces = DeviceNameSpaces(mapOf(namespace to DeviceSignedItemList(listOf(item))))
 
-        val serialized = deviceNameSpaces.serialize()
+        val serialized = vckCborSerializer.encodeToByteArray(deviceNameSpaces)
         serialized.encodeToString(Base16(true)).shouldNotContain("D903EC")
 
-        val parsed = DeviceNameSpaces.deserialize(serialized).getOrThrow()
+        val parsed = vckCborSerializer.decodeFromByteArray<DeviceNameSpaces>(serialized)
 
         parsed shouldBe deviceNameSpaces
     }
@@ -75,11 +77,9 @@ class DeviceSignedItemSerializationTest : FreeSpec({
                 deviceAuth
             )
         )
-        val serialized = doc.serialize()
+        val serialized = vckCborSerializer.encodeToByteArray(doc)
         serialized.encodeToString(Base16(true)).shouldNotContain("D903EC")
 
-        val parsed = Document.deserialize(serialized).getOrThrow()
-
-        parsed shouldBe doc
+        vckCborSerializer.decodeFromByteArray<Document>(serialized) shouldBe doc
     }
 })
