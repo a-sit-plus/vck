@@ -1,5 +1,6 @@
-package at.asitplus.wallet.lib.iso
+package at.asitplus.dcapi
 
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.SerialName
@@ -19,7 +20,7 @@ data class DCAPIResponse private constructor(
 ) {
     companion object {
         fun createIsoMdocResponse(response: EncryptedResponse): DCAPIResponse =
-            DCAPIResponse(vckCborSerializer.encodeToByteArray(response).encodeToString(Base64UrlStrict))
+            DCAPIResponse(coseCompliantSerializer.encodeToByteArray(response).encodeToString(Base64UrlStrict))
 
         fun createOid4vpResponse(response: String): DCAPIResponse =
             DCAPIResponse(response)

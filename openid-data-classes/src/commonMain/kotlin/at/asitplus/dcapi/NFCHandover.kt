@@ -1,11 +1,8 @@
-package at.asitplus.wallet.lib.iso
+package at.asitplus.dcapi
 
-import at.asitplus.KmmResult.Companion.wrap
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.ByteString
 import kotlinx.serialization.cbor.CborArray
-import kotlinx.serialization.decodeFromByteArray
-import kotlinx.serialization.encodeToByteArray
 
 @Serializable
 @CborArray

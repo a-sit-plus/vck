@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import kotlinx.serialization.encodeToByteArray
 
 /**
@@ -39,11 +40,11 @@ data class IssuerSignedList(
             IssuerSignedList(items.map { item ->
                 ByteStringWrapper(
                     item,
-                    vckCborSerializer.encodeToByteArray(item.serialize(namespace)).wrapInCborTag(24)
+                    coseCompliantSerializer.encodeToByteArray(item.serialize(namespace)).wrapInCborTag(24)
                 )
             })
 
         private fun IssuerSignedItem.serialize(namespace: String): ByteArray =
-            vckCborSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementIdentifier), this)
+            coseCompliantSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementIdentifier), this)
     }
 }

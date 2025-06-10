@@ -24,6 +24,11 @@ import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
+import at.asitplus.iso.ClientIdToHash
+import at.asitplus.dcapi.DCAPIHandover
+import at.asitplus.dcapi.OID4VPHandover
+import at.asitplus.dcapi.OpenID4VPDCAPIHandoverInfo
+import at.asitplus.iso.ResponseUriToHash
 import at.asitplus.signum.indispensable.josef.JwkType
 import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.SignJwtFun

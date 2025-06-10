@@ -1,5 +1,8 @@
 package at.asitplus.wallet.lib.iso
 
+import at.asitplus.dcapi.DCAPIHandover
+import at.asitplus.dcapi.NFCHandover
+import at.asitplus.dcapi.OID4VPHandover
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.ByteString
 import kotlinx.serialization.cbor.CborArray

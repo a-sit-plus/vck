@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.cbor
 
+import at.asitplus.iso.DeviceKeyInfo
+import at.asitplus.iso.ValidityInfo
 import at.asitplus.signum.indispensable.cosef.*
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert

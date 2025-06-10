@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.iso
+package at.asitplus.iso
 
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import kotlinx.serialization.SerialName

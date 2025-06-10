@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.iso
 
+import at.asitplus.dcapi.NFCHandover
+import at.asitplus.dcapi.OID4VPHandover
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe

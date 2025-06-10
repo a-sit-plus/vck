@@ -1,8 +1,11 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.catching
+import at.asitplus.iso.DeviceAuth
+import at.asitplus.iso.DeviceKeyInfo
 import at.asitplus.iso.DocRequest
 import at.asitplus.iso.ItemsRequest
+import at.asitplus.iso.ValidityInfo
 import at.asitplus.signum.indispensable.CryptoSignature
 import at.asitplus.signum.indispensable.asn1.KnownOIDs.serialized
 import at.asitplus.signum.indispensable.cosef.CoseAlgorithm

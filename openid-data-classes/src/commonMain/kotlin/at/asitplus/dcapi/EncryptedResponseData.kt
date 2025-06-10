@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.iso
+package at.asitplus.dcapi
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.iso
 
+import at.asitplus.iso.ValidityInfo
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain

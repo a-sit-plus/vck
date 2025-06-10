@@ -8,7 +8,7 @@ import kotlinx.serialization.cbor.ValueTags
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: mdoc authentication (9.1.3.4).
  *
- * Serialized as a byte string, wrapped in CBOR Tag 24, used as detached payload for [DeviceAuth.deviceSignature].
+ * Serialized as a byte string, wrapped in CBOR Tag 24, used as detached payload for [at.asitplus.iso.DeviceAuth.deviceSignature].
  */
 @Serializable
 @CborArray

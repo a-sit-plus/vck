@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.iso
+package at.asitplus.dcapi
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.ByteString
@@ -10,10 +10,10 @@ import kotlinx.serialization.cbor.CborArray
 @Serializable
 @CborArray
 data class OID4VPHandover(
-    /** The SHA-256 hash of [ClientIdToHash] */
+    /** The SHA-256 hash of [at.asitplus.iso.ClientIdToHash] */
     @ByteString
     val clientIdHash: ByteArray,
-    /** The SHA-256 hash of [ResponseUriToHash] */
+    /** The SHA-256 hash of [at.asitplus.iso.ResponseUriToHash] */
     @ByteString
     val responseUriHash: ByteArray,
     /** `nonce` from the authorization request */

@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.iso
+package at.asitplus.dcapi
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.CborArray

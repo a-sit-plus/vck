@@ -35,7 +35,7 @@ Release 5.7.0:
    - Remove `Verifier.VerifyCredentialResult.Revoked`
  - Add constructor parameter `Validator.acceptedTokenStatuses` to allow library client to define token statuses deemed valid
  - Remove `Holder.StoredCredential` in favor of `SubjectCredentialStore.StoreEntry`
- - Add support for Digital Credentials API as defined in OID4VP draft 28 and ISO 18013-7 Annex C
+ - Add support for Digital Credentials API as defined in OID4VP draft 28 and ISO 18013-7 Annex C:
    - Implement `DCAPIRequest` for requests received via the Digital Credentials API, with implementations for OID4VP (`Oid4vpDCAPIRequest`), ISO 18013-7 Annex C (`IsoMdocRequest`) and a non-standardised preview protocol (`PreviewDCAPIRequest`)
    - New property of type `Oid4vpDCAPIRequest` for requests originating from the Digital Credentials API in `AuthorizationResponsePreparationState`
    - New parameter of type `Oid4vpDCAPIRequest` for requests originating from the Digital Credentials API in `OpenId4VpHolder.parseAuthenticationRequestParameters`, `RequestParameters.extractAudience` `PresentationFactory.createPresentation` `PresentationFactory.calcDeviceSignature` `RequestParser.parseRequestParameters` `RequestParser.extractRequestObject` `RequestParser.parseRequestObjectJws` `RequestParser.matchRequestParameterCases` `HolderAgent.getValidCredentialsByPriority`
@@ -49,7 +49,7 @@ Release 5.7.0:
  - Refactoring of ISO data classes:
    - Move data classes from `vck` to `openid-data-classes`
    - Remove `serialize()` and `deserialize()` methods, please use the preferred serializer directly (e.g. `vckCborSerializer`)
-   - List of classes moved: `DeviceRequest`, `DocRequest`, `ItemsRequest`, `ItemsRequestList`, `ItemsRequestListSerializer`, `SingleItemsRequest`
+   - List of classes moved: `ClientIdToHash`, `DeviceAuth`, `DeviceKeyInfo`, `DeviceRequest`, `DocRequest`, `ItemsRequest`, `ItemsRequestList`, `ItemsRequestListSerializer`, `KeyAuthorization`, `ResponseUriToHash`, `ServerItemsRequest`, `ServerRequest`, `ServerResponse` `SingleItemsRequest`, `ValidityInfo`
  - Make `OAuth2Exception` serializable
  - Add data class `LocalDateOrInstant` to be used by credentials
   

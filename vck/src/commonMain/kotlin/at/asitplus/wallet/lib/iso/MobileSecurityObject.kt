@@ -3,6 +3,8 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.iso.DeviceKeyInfo
+import at.asitplus.iso.ValidityInfo
 import at.asitplus.wallet.lib.data.Status
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName

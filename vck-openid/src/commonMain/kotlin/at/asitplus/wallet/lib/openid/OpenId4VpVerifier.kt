@@ -2,7 +2,10 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.dcapi.OID4VPHandover
 import at.asitplus.dif.*
+import at.asitplus.iso.ClientIdToHash
+import at.asitplus.iso.ResponseUriToHash
 import at.asitplus.jsonpath.JsonPath
 import at.asitplus.openid.*
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier

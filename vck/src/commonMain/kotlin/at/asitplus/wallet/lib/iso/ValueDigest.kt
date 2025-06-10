@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.iso
 
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.builtins.ByteArraySerializer
@@ -42,11 +43,11 @@ data class ValueDigest(
             ValueDigest(
                 value.digestId,
                 // Ensure wrapping it in the whole "bytes" cbor structure, afterward wrapping it with D818
-                vckCborSerializer.encodeToByteArray(ByteArraySerializer(), value.serialize(namespace))
+                coseCompliantSerializer.encodeToByteArray(ByteArraySerializer(), value.serialize(namespace))
                     .wrapInCborTag(24).sha256()
             )
 
         private fun IssuerSignedItem.serialize(namespace: String): ByteArray =
-            vckCborSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementIdentifier), this)
+            coseCompliantSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementIdentifier), this)
     }
 }
