@@ -45,7 +45,7 @@ Release 5.7.0:
  - Return member of interface `AuthenticationResult` instead of `AuthenticationSuccess` as authorization response in `OpenId4VpWallet`. Can either be
    - `AuthenticationSuccess`: contains a `redirectUri` (same behaviour as in 5.6.x)
    - `AuthenticationForward`: contains the `authenticationResponseResult` for responses via the Digital Credentials API
- - Update AGP to 8.6.0 for composite builds with Valera
+ - Update AGP to 8.6.1 for composite builds with Valera
  - Move ISO data classes `DeviceRequest`, `DocRequest`, `ItemsRequest`, `ItemsRequestList`, `ItemsRequestListSerializer`, and `SigleItemsRequest` to `openid-data-classes`. Package changes from `at.asitplus.wallet.lib.iso` to `at.asitplus.iso`. The `serialize` and `deserialize` methods have been removed from these classes. Use your preferred serializer directly to serialize/deserialize these classes.
  - Make `OAuth2Exception` serializable
  - Add data class `LocalDateOrInstant` to be used by credentials
