@@ -3,9 +3,11 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.wallet.lib.iso.sha256
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToByteArray
 
 /**
  * Stores all credentials that a subject has received
@@ -100,9 +102,8 @@ interface SubjectCredentialStore {
             is Vc -> vc.jwtId
             is SdJwt -> sdJwt.jwtId
                 ?: sdJwt.subject
-                ?: sdJwt.credentialStatus?.statusList?.let { it.uri.string + it.index.toString() }
                 ?: sdJwt.serialize()
-            is Iso -> issuerSigned.serialize().sha256().toHexString()
+            is Iso -> coseCompliantSerializer.encodeToByteArray(issuerSigned).sha256().toHexString()
         }
 
     }

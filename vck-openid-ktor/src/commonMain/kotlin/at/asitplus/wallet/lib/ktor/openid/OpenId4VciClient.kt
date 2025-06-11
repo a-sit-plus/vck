@@ -18,6 +18,7 @@ import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.wallet.lib.jws.JwsHeaderJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -40,6 +41,7 @@ import io.ktor.util.*
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromByteArray
 import kotlin.time.Duration.Companion.minutes
 
 
@@ -452,7 +454,7 @@ class OpenId4VciClient(
         ConstantIndex.CredentialRepresentation.PLAIN_JWT -> Vc(this, credentialScheme)
         ConstantIndex.CredentialRepresentation.SD_JWT -> SdJwt(this, credentialScheme)
         ConstantIndex.CredentialRepresentation.ISO_MDOC ->
-            runCatching { Iso(IssuerSigned.deserialize(decodeToByteArray(Base64())).getOrThrow(), credentialScheme) }
+            runCatching { Iso(coseCompliantSerializer.decodeFromByteArray<IssuerSigned>(decodeToByteArray(Base64())), credentialScheme) }
                 .getOrElse { throw Exception("Invalid credential format: $this", it) }
     }
 

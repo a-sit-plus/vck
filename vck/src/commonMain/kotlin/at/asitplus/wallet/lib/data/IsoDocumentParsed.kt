@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.data
 
 import at.asitplus.wallet.lib.agent.validation.CredentialFreshnessSummary
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
-import at.asitplus.wallet.lib.iso.IssuerSignedItem
+import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.iso.MobileSecurityObject
 
 /**

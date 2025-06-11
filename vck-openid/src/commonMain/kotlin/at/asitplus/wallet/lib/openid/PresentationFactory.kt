@@ -24,6 +24,15 @@ import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
+import at.asitplus.iso.ClientIdToHash
+import at.asitplus.dcapi.DCAPIHandover
+import at.asitplus.dcapi.OID4VPHandover
+import at.asitplus.dcapi.OpenID4VPDCAPIHandoverInfo
+import at.asitplus.iso.DeviceAuthentication
+import at.asitplus.iso.DeviceNameSpaces
+import at.asitplus.iso.ResponseUriToHash
+import at.asitplus.iso.SessionTranscript
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JwkType
 import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.SignJwtFun
@@ -57,12 +66,14 @@ internal class PresentationFactory(
         clientMetadata: RelyingPartyMetadata?,
         jsonWebKeys: Collection<JsonWebKey>?,
         credentialPresentation: CredentialPresentation,
-        dcApiRequest: Oid4vpDCAPIRequest?
+        dcApiRequest: Oid4vpDCAPIRequest?,
     ): KmmResult<PresentationResponseParameters> = catching {
         request.verifyResponseType()
 
-        val requestsDcApiEncryption = (request as? AuthenticationRequestParameters)?.responseMode == OpenIdConstants.ResponseMode.DcApiJwt // TODO enable this check in draft28 branch && clientMetadata?.encryptionSupported() == true
-        val responseWillBeEncrypted = jsonWebKeys != null && (clientMetadata?.requestsEncryption() == true || requestsDcApiEncryption)
+        val requestsDcApiEncryption =
+            (request as? AuthenticationRequestParameters)?.responseMode == OpenIdConstants.ResponseMode.DcApiJwt // TODO enable this check in draft28 branch && clientMetadata?.encryptionSupported() == true
+        val responseWillBeEncrypted =
+            jsonWebKeys != null && (clientMetadata?.requestsEncryption() == true || requestsDcApiEncryption)
         val clientId = request.clientId
         val responseUrl = request.responseUrl
         val transactionData = request.parseTransactionData()
@@ -107,7 +118,7 @@ internal class PresentationFactory(
     }
 
     /**
-     * Performs calculation of the [at.asitplus.wallet.lib.iso.SessionTranscript] and [at.asitplus.wallet.lib.iso.DeviceAuthentication],
+     * Performs calculation of the [at.asitplus.iso.SessionTranscript] and [at.asitplus.iso.DeviceAuthentication],
      * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024, with the [mdocGeneratedNonce] provided if set,
      * or a fallback mechanism used otherwise
      */
@@ -120,7 +131,7 @@ internal class PresentationFactory(
         docType: String,
         dcApiRequest: Oid4vpDCAPIRequest?,
         jsonWebKeys: Collection<JsonWebKey>?,
-        responseWillBeEncrypted: Boolean
+        responseWillBeEncrypted: Boolean,
     ): CoseSigned<ByteArray> {
         val sessionTranscript =
             if (dcApiRequest != null) {
@@ -191,8 +202,8 @@ internal class PresentationFactory(
         )
         return SessionTranscript.forOpenId(
             OID4VPHandover(
-                clientIdHash = clientIdToHash.serialize().sha256(),
-                responseUriHash = responseUriToHash.serialize().sha256(),
+                clientIdHash = coseCompliantSerializer.encodeToByteArray(clientIdToHash).sha256(),
+                responseUriHash = coseCompliantSerializer.encodeToByteArray(responseUriToHash).sha256(),
                 nonce = nonce
             ),
         )
@@ -202,7 +213,7 @@ internal class PresentationFactory(
         dcApiRequest: Oid4vpDCAPIRequest,
         nonce: String,
         jsonWebKeys: Collection<JsonWebKey>?,
-        responseWillBeEncrypted: Boolean
+        responseWillBeEncrypted: Boolean,
     ): SessionTranscript {
         val jwkThumbprint = if (responseWillBeEncrypted && !jsonWebKeys.isNullOrEmpty()) {
             jsonWebKeys.firstOrNull { it.publicKeyUse == "enc" || it.type == JwkType.EC }?.jwkThumbprint
@@ -215,7 +226,7 @@ internal class PresentationFactory(
         return SessionTranscript.forDcApi(
             DCAPIHandover(
                 type = "OpenID4VPDCAPIHandover",
-                hash = openID4VPDCAPIHandoverInfo.serialize().sha256()
+                hash = coseCompliantSerializer.encodeToByteArray(openID4VPDCAPIHandoverInfo).sha256()
             )
         )
     }

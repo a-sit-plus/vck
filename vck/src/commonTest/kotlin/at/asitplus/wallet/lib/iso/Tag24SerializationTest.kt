@@ -1,8 +1,20 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.catching
+import at.asitplus.iso.DeviceAuth
+import at.asitplus.iso.DeviceKeyInfo
+import at.asitplus.iso.DeviceNameSpaces
+import at.asitplus.iso.DeviceSigned
+import at.asitplus.iso.DeviceSignedItem
+import at.asitplus.iso.DeviceSignedItemList
 import at.asitplus.iso.DocRequest
+import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.iso.ItemsRequest
+import at.asitplus.wallet.lib.iso.MobileSecurityObject
+import at.asitplus.iso.ValidityInfo
+import at.asitplus.iso.ValueDigest
+import at.asitplus.iso.ValueDigestList
 import at.asitplus.signum.indispensable.CryptoSignature
 import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseEllipticCurve
@@ -11,8 +23,10 @@ import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.CoseKeyParams
 import at.asitplus.signum.indispensable.cosef.CoseKeyType
 import at.asitplus.signum.indispensable.cosef.CoseSigned
+import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapperSerializer
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.Issuer
@@ -68,10 +82,10 @@ class Tag24SerializationTest : FreeSpec({
             )
         )
 
-        val serialized = vckCborSerializer.encodeToByteArray(input)
+        val serialized = coseCompliantSerializer.encodeToByteArray(input)
 
         serialized.encodeToString(Base16(true)).shouldContainOnlyOnce("D818")
-        vckCborSerializer.decodeFromByteArray<DeviceSigned>(serialized) shouldBe input
+        coseCompliantSerializer.decodeFromByteArray<DeviceSigned>(serialized) shouldBe input
     }
 
     "DocRequest" {
@@ -79,10 +93,10 @@ class Tag24SerializationTest : FreeSpec({
             itemsRequest = ByteStringWrapper(ItemsRequest("docType", mapOf(), null)),
         )
 
-        val serialized = vckCborSerializer.encodeToByteArray(input)
+        val serialized = coseCompliantSerializer.encodeToByteArray(input)
 
         serialized.encodeToString(Base16(true)).shouldContainOnlyOnce("D818")
-        vckCborSerializer.decodeFromByteArray<DocRequest>(serialized) shouldBe input
+        coseCompliantSerializer.decodeFromByteArray<DocRequest>(serialized) shouldBe input
     }
 
     "IssuerSigned" {
@@ -93,10 +107,10 @@ class Tag24SerializationTest : FreeSpec({
             issuerAuth = issuerAuth()
         )
 
-        val serialized = vckCborSerializer.encodeToByteArray(input)
+        val serialized = coseCompliantSerializer.encodeToByteArray(input)
 
         serialized.encodeToString(Base16(true)).shouldContainOnlyOnce("D818")
-        vckCborSerializer.decodeFromByteArray<IssuerSigned>(serialized) shouldBe input
+        coseCompliantSerializer.decodeFromByteArray<IssuerSigned>(serialized) shouldBe input
     }
 
     "IssuerSigned from IssuerAgent" {
@@ -115,7 +129,7 @@ class Tag24SerializationTest : FreeSpec({
         val numberOfClaims = namespaces.entries.fold(0) { acc, entry ->
             acc + entry.value.entries.size
         }
-        val serialized = issuedCredential.issuerSigned.serialize().encodeToString(Base16(true))
+        val serialized = coseCompliantSerializer.encodeToByteArray(issuedCredential.issuerSigned).encodeToString(Base16Strict)
         withClue(serialized) {
             // add 1 for MSO in IssuerAuth
             "D818".toRegex().findAll(serialized).toList().shouldHaveAtLeastSize(numberOfClaims + 1)
@@ -141,11 +155,11 @@ class Tag24SerializationTest : FreeSpec({
             payloadSerializer = MobileSecurityObject.serializer(),
         )
 
-        val serialized = vckCborSerializer.encodeToByteArray(input)
+        val serialized = coseCompliantSerializer.encodeToByteArray(input)
 
         serialized.encodeToString(Base16(true)).shouldContainOnlyOnce("D818")
         serializedMso.encodeToString(Base16(true)).shouldStartWith("D818")
-        vckCborSerializer.decodeFromByteArray<CoseSigned<MobileSecurityObject>>(serialized) shouldBe input
+        coseCompliantSerializer.decodeFromByteArray<CoseSigned<MobileSecurityObject>>(serialized) shouldBe input
         MobileSecurityObject.deserializeFromIssuerAuth(serializedMso).getOrThrow() shouldBe mso
     }
 
@@ -161,7 +175,7 @@ class Tag24SerializationTest : FreeSpec({
  *
  * See ISO/IEC 18013-5:2021, 9.1.2.4 Signing method and structure for MSO
  */
-fun MobileSecurityObject.serializeForIssuerAuth() = vckCborSerializer.encodeToByteArray(
+fun MobileSecurityObject.serializeForIssuerAuth() = coseCompliantSerializer.encodeToByteArray(
     ByteStringWrapperSerializer(MobileSecurityObject.serializer()), ByteStringWrapper(this)
 ).wrapInCborTag(24)
 
@@ -175,7 +189,7 @@ fun MobileSecurityObject.serializeForIssuerAuth() = vckCborSerializer.encodeToBy
  * See ISO/IEC 18013-5:2021, 9.1.2.4 Signing method and structure for MSO
  */
 private fun MobileSecurityObject.Companion.deserializeFromIssuerAuth(it: ByteArray) = catching {
-    vckCborSerializer.decodeFromByteArray(
+    coseCompliantSerializer.decodeFromByteArray(
         ByteStringWrapperSerializer(serializer()),
         it.stripCborTag(24)
     ).value
