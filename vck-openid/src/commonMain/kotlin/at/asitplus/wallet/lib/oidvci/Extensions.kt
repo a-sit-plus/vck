@@ -5,6 +5,7 @@ import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_COSE_KEY
 import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_JWK
 import at.asitplus.openid.OpenIdConstants.Errors.ACCESS_DENIED
 import at.asitplus.openid.OpenIdConstants.Errors.CREDENTIAL_REQUEST_DENIED
+import at.asitplus.openid.OpenIdConstants.Errors.INVALID_AUTHDETAILS
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_CLIENT
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_CODE
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_DPOP_PROOF
@@ -307,6 +308,12 @@ sealed class OAuth2Exception(
         @Transient val description: String? = null,
         @Transient override val cause: Throwable? = null
     ) : OAuth2Exception(REGISTRATION_VALUE_NOT_SUPPORTED, description)
+
+    @Serializable
+    class InvalidAuthorizationDetails(
+        @Transient val description: String? = null,
+        @Transient override val cause: Throwable? = null
+    ) : OAuth2Exception(INVALID_AUTHDETAILS, description)
 }
 
 object OAuth2ExceptionSerializer : JsonContentPolymorphicSerializer<OAuth2Exception>(OAuth2Exception::class) {
