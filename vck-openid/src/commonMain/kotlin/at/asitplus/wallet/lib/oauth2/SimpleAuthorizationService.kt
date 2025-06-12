@@ -298,12 +298,8 @@ class SimpleAuthorizationService(
             // the actual credential offer is irrelevant, because we're always offering all credentials
         }
 
-        if (request.authorizationDetails != null) {
-            val filtered = strategy.filterAuthorizationDetails(request.authorizationDetails!!)
-            if (filtered.isEmpty()) {
-                Napier.w("authorize: authorization details not valid: ${request.authorizationDetails}")
-                throw InvalidRequest("No matching authorization details")
-            }
+        request.authorizationDetails?.let {
+            strategy.validateAuthorizationDetails(it)
         }
     }
 
@@ -339,16 +335,11 @@ class SimpleAuthorizationService(
         )
 
         val token = if (request.authorizationDetails != null) {
-            if (clientAuthRequest.authnDetails == null)
-                throw InvalidRequest("No authn details for issued code: ${clientAuthRequest.issuedCode}")
-
-            val filtered = strategy.filterAuthorizationDetails(request.authorizationDetails!!)
-
-            strategy.matchAuthorizationDetails(clientAuthRequest, filtered)
+            val authDetails = strategy.matchAuthorizationDetails(clientAuthRequest, request)
             tokenService.generation.buildToken(
                 httpRequest = httpRequest,
                 userInfo = clientAuthRequest.userInfo,
-                authorizationDetails = filtered,
+                authorizationDetails = authDetails,
                 scope = null
             )
         } else if (request.scope != null) {
@@ -364,8 +355,10 @@ class SimpleAuthorizationService(
                 authorizationDetails = null,
                 scope = request.scope
             )
-        } else if (clientAuthRequest.authnDetails != null) {
-            val filtered = strategy.filterAuthorizationDetails(
+        }
+        //TODO remove?
+        else if (clientAuthRequest.authnDetails != null) {
+            val filtered = strategy.validateAuthorizationDetails(
                 clientAuthRequest.authnDetails
             ).also {
                 if (it.isEmpty())

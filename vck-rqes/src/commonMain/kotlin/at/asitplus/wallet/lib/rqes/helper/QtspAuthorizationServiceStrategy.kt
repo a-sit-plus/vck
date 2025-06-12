@@ -2,42 +2,38 @@ package at.asitplus.wallet.lib.rqes.helper
 
 import CscAuthorizationDetails
 import at.asitplus.openid.AuthorizationDetails
-import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.wallet.lib.oauth2.AuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oauth2.ClientAuthRequest
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
-import io.github.aakira.napier.Napier
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 
 /**
- * Extends [CredentialAuthorizationServiceStrategy] by allowing [CscAuthorizationDetails].
+ * Implements Authorization for QTSP as necessary for Use case 5
  */
-class RqesAuthorizationServiceStrategy(
+class QtspAuthorizationServiceStrategy(
     private val authorizationServiceStrategy: CredentialAuthorizationServiceStrategy
 ) : AuthorizationServiceStrategy by authorizationServiceStrategy {
 
-
-    //TODO wsl reject falls etwas anderes als CSC drin is
+    //QTSP can be assumed to only know CSC related [AuthorizationDetails] and rejects all others
     override fun validateAuthorizationDetails(authorizationDetails: Collection<AuthorizationDetails>): Set<AuthorizationDetails> =
-        separateAuthDetails(authorizationDetails).let { (openIdAuthDetails, cscAuthDetails) ->
-            authorizationServiceStrategy.validateAuthorizationDetails(openIdAuthDetails) + cscAuthDetails
+        authorizationDetails.filterIsInstance<CscAuthorizationDetails>().toSet().apply {
+            if (this.size != authorizationDetails.size)
+                throw OAuth2Exception.InvalidAuthorizationDetails("Request may only contain CSC specific authorization details")
         }
 
-    //TODO wsl reject wenn nicht 1:1 matched
+    //Reject if Authorization Details do not match 1:1
     override fun matchAuthorizationDetails(
         authRequest: ClientAuthRequest,
         tokenRequest: TokenRequestParameters
-    ) = separateAuthDetails(filteredAuthorizationDetails).let { (openIdAuthDetails, cscAuthDetails) ->
-        authorizationServiceStrategy.matchAuthorizationDetails(clientRequest, openIdAuthDetails.toSet())
-        cscAuthDetails.forEach { filter ->
-            if (clientRequest.authnDetails!!.all { filter != it })
-                throw InvalidRequest("Authorization details not from auth code: $filter")
-        }
-    }
-
-    private fun separateAuthDetails(authDetails: Collection<AuthorizationDetails>): Pair<Collection<OpenIdAuthorizationDetails>, Collection<CscAuthorizationDetails>> =
-        (authDetails.filterIsInstance<OpenIdAuthorizationDetails>() to authDetails.filterIsInstance<CscAuthorizationDetails>()).also { (openIdAuth, cscAuth) ->
-            if (openIdAuth.size + cscAuth.size != authDetails.size) Napier.w { "Not all authorization detail entries could be classified (they will be ignored!)" }
-        }
+    ): Set<AuthorizationDetails> =
+        tokenRequest.authorizationDetails.apply {
+            val authCscDetails = authRequest.authnDetails?.let { validateAuthorizationDetails(it) } ?: emptySet()
+            val tokenCscDetails = tokenRequest.authorizationDetails?.let { validateAuthorizationDetails(it) } ?: emptySet()
+            //Matching irrespective of order
+            if (!authCscDetails.containsAll(tokenCscDetails))
+                throw OAuth2Exception.InvalidAuthorizationDetails("Authorization details do not match")
+            if (!tokenCscDetails.containsAll(authCscDetails))
+                throw OAuth2Exception.InvalidAuthorizationDetails("Authorization details do not match")
+        } ?: emptySet()
 }
