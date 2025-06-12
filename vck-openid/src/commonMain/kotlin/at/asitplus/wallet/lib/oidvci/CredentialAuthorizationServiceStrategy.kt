@@ -2,10 +2,12 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OpenIdAuthorizationDetails
+import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oauth2.AuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oauth2.ClientAuthRequest
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidAuthorizationDetails
+import io.ktor.util.reflect.*
 
 /**
  * Provide authentication and authorization for credential issuance.
@@ -34,35 +36,50 @@ class CredentialAuthorizationServiceStrategy(
             else null
         }.joinToString(" ")
 
-    override fun filterAuthorizationDetails(authorizationDetails: Collection<AuthorizationDetails>) =
-        authorizationDetails
-            .filterIsInstance<OpenIdAuthorizationDetails>()
-            .mapNotNull {
-                when {
-                    it.credentialConfigurationId != null -> it.filterCredentialConfigurationId()
-                    it.format != null -> it.filterFormat()
-                    else -> null
-                }
-            }
-            .toSet()
+    override fun validateAuthorizationDetails(authorizationDetails: Collection<AuthorizationDetails>) =
+        authorizationDetails.apply {
+            if (this.isEmpty())
+                throw InvalidAuthorizationDetails("Token request for credential must contain authorization details")
+        }.map { it.validateAndTransform() }.toSet()
 
+    /**
+     * For credential issuing authorization details need to be present and need to match at least semantically
+     */
     override fun matchAuthorizationDetails(
-        clientRequest: ClientAuthRequest,
-        filteredAuthorizationDetails: Set<AuthorizationDetails>
-    ): Unit = filteredAuthorizationDetails.filterIsInstance<OpenIdAuthorizationDetails>().let {
-        require(it.isNotEmpty()) { "Request does not contain OAuth authorization details: $clientRequest" }
-        it.forEach { filter ->
-            if (clientRequest.authnDetails!!.all { authDetails -> !filter.matches(authDetails) })
-                throw InvalidRequest("Authorization details not from auth code: $filter")
+        authRequest: ClientAuthRequest,
+        tokenRequest: TokenRequestParameters,
+    ) = tokenRequest.authorizationDetails.let {
+        if (it.isNullOrEmpty())
+            throw InvalidAuthorizationDetails("Token request for credential must contain authorization details")
+
+        validateAuthorizationDetails(it).onEach { filter ->
+            if (!filter.instanceOf(OpenIdAuthorizationDetails::class))
+                throw InvalidAuthorizationDetails("Authorization Details for credential issuance must be OpenId Authorization Details")
+            if (authRequest.authnDetails!!.all { authDetails ->
+                    !filter.matches(authDetails)
+                })
+                throw InvalidAuthorizationDetails("Authorization details not from auth code: $filter")
         }
     }
+
+    //TODO remove side effects from validate
+    //TODO remove side effects from all validation functions
+    private fun AuthorizationDetails.validateAndTransform() =
+        (this as? OpenIdAuthorizationDetails)?.let {
+            when {
+                credentialConfigurationId != null -> filterCredentialConfigurationId()
+                format != null -> filterFormat()
+                else -> null
+            } ?: throw InvalidAuthorizationDetails("$this is not a valid OpenId Authorization Detail")
+        } ?: throw InvalidAuthorizationDetails("Authorization Details for credential issuance must be OpenId Authorization Details")
+
 
     private fun OpenIdAuthorizationDetails.filterFormat(): OpenIdAuthorizationDetails? =
         supportedCredentialSchemes.entries.firstOrNull {
             it.value.format == format &&
-            it.value.docType == docType &&
-            it.value.sdJwtVcType == sdJwtVcType &&
-            it.value.credentialDefinition == credentialDefinition
+                    it.value.docType == docType &&
+                    it.value.sdJwtVcType == sdJwtVcType &&
+                    it.value.credentialDefinition == credentialDefinition
         }?.let { matchingCredential ->
             copy(credentialIdentifiers = setOf(matchingCredential.key))
         }
