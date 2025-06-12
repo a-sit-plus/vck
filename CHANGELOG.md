@@ -33,8 +33,7 @@ Release 5.7.0:
    - Remove `Validator.checkRevocationStatus` in favor of `Validator.checkCredentialFreshness`
    - Remove `Holder.StoredCredential.status`
    - Remove `Verifier.VerifyCredentialResult.Revoked`
- - Add constructor parameter `Validator.acceptedTokenStatuses` to allow library client to define token statuses deemed valid
- - Remove `Holder.StoredCredential` in favor of `SubjectCredentialStore.StoreEntry`
+   - Add constructor parameter `Validator.acceptedTokenStatuses` to allow library client to define token statuses deemed valid
  - Add support for Digital Credentials API as defined in OID4VP draft 28 and ISO 18013-7 Annex C:
    - Implement `DCAPIRequest` for requests received via the Digital Credentials API, with implementations for OID4VP (`Oid4vpDCAPIRequest`), ISO 18013-7 Annex C (`IsoMdocRequest`) and a non-standardised preview protocol (`PreviewDCAPIRequest`)
    - New property of type `Oid4vpDCAPIRequest` for requests originating from the Digital Credentials API in `AuthorizationResponsePreparationState`
@@ -45,13 +44,15 @@ Release 5.7.0:
  - Return member of interface `AuthenticationResult` instead of `AuthenticationSuccess` as authorization response in `OpenId4VpWallet`. Can either be
    - `AuthenticationSuccess`: contains a `redirectUri` (same behaviour as in 5.6.x)
    - `AuthenticationForward`: contains the `authenticationResponseResult` for responses via the Digital Credentials API
- - Update AGP to 8.6.1 for composite builds with Valera
  - Refactoring of ISO data classes:
    - Move data classes from `vck` to `openid-data-classes`
    - Remove `serialize()` and `deserialize()` methods, please use the preferred serializer directly (e.g. `vckCborSerializer`)
    - List of classes moved: `ClientIdToHash`, `DeviceAuth`, `DeviceAuthentication`, `DeviceKeyInfo`, `DeviceRequest`, `DeviceSigned`, `DeviceSignedItemListSerializer`, `DeviceSignedList`, `DocRequest`, `ItemsRequest`,  `IssuerSignedItem`, `IssuerSignedItemSerializer`, `IsserSignedList`, `IssuerSignedListSerializer`, `ItemsRequestList`, `ItemsRequestListSerializer`, `KeyAuthorization`, `NamespacedDeviceNameSpacesSerializer`, `NamespacedIssuerSignedListSerializer`,  `ResponseUriToHash`, `ServerItemsRequest`, `ServerRequest`, `ServerResponse`, `SessionTranscript`, `SingleItemsRequest`, `ValidityInfo`, `ValueDigest`, `ValueDigestList`, `ValueDigestListSerializer`
- - Make `OAuth2Exception` serializable
- - Add data class `LocalDateOrInstant` to be used by credentials
+ - Additional:
+   - Remove `Holder.StoredCredential` in favor of `SubjectCredentialStore.StoreEntry`
+   - Update AGP to 8.6.1 for composite builds with Valera
+   - Make `OAuth2Exception` serializable
+   - Add data class `LocalDateOrInstant` to be used by credentials
   
 
 Release 5.6.6:
