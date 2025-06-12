@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.rqes.helper
 import CscAuthorizationDetails
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OpenIdAuthorizationDetails
+import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.wallet.lib.oauth2.AuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oauth2.ClientAuthRequest
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
@@ -16,15 +17,17 @@ class RqesAuthorizationServiceStrategy(
     private val authorizationServiceStrategy: CredentialAuthorizationServiceStrategy
 ) : AuthorizationServiceStrategy by authorizationServiceStrategy {
 
-    //We do not need to filter CscAuthDetails
-    override fun filterAuthorizationDetails(authorizationDetails: Collection<AuthorizationDetails>): Set<AuthorizationDetails> =
+
+    //TODO wsl reject falls etwas anderes als CSC drin is
+    override fun validateAuthorizationDetails(authorizationDetails: Collection<AuthorizationDetails>): Set<AuthorizationDetails> =
         separateAuthDetails(authorizationDetails).let { (openIdAuthDetails, cscAuthDetails) ->
-            authorizationServiceStrategy.filterAuthorizationDetails(openIdAuthDetails) + cscAuthDetails
+            authorizationServiceStrategy.validateAuthorizationDetails(openIdAuthDetails) + cscAuthDetails
         }
 
+    //TODO wsl reject wenn nicht 1:1 matched
     override fun matchAuthorizationDetails(
-        clientRequest: ClientAuthRequest,
-        filteredAuthorizationDetails: Set<AuthorizationDetails>
+        authRequest: ClientAuthRequest,
+        tokenRequest: TokenRequestParameters
     ) = separateAuthDetails(filteredAuthorizationDetails).let { (openIdAuthDetails, cscAuthDetails) ->
         authorizationServiceStrategy.matchAuthorizationDetails(clientRequest, openIdAuthDetails.toSet())
         cscAuthDetails.forEach { filter ->

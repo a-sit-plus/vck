@@ -381,6 +381,9 @@ object OpenIdConstants {
         /** Invalid proofs in OpenID4VCI: `invalid_proof`. */
         const val INVALID_PROOF = "invalid_proof"
 
+        /** RFC9396 Invalid Authorization Details */
+        const val INVALID_AUTHDETAILS = "invalid_authorization_details"
+
         /** Unsupported credential type in OpenID4VCI: `unsupported_credential_type`. */
         const val UNSUPPORTED_CREDENTIAL_TYPE = "unsupported_credential_type"
 
