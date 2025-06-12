@@ -12,6 +12,9 @@ typealias DeviceKeyInfo = at.asitplus.iso.DeviceKeyInfo
 @Deprecated("Moved", ReplaceWith("at.asitplus.iso.DeviceRequest"))
 typealias DeviceRequest = at.asitplus.iso.DeviceRequest
 
+@Deprecated("Moved", ReplaceWith("at.asitplus.iso.NFCHandover"))
+typealias NFCHandover = at.asitplus.dcapi.NFCHandover
+
 @Deprecated("Moved", ReplaceWith("at.asitplus.iso.DocRequest"))
 typealias DocRequest = at.asitplus.iso.DocRequest
 

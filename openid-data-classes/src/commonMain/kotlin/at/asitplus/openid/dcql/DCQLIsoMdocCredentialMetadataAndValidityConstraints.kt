@@ -20,7 +20,7 @@ data class DCQLIsoMdocCredentialMetadataAndValidityConstraints(
     }
 
     fun validate(actualDoctypeValue: String?): KmmResult<Unit> = catching {
-        if(doctypeValue != null && actualDoctypeValue != doctypeValue) {
+        if (doctypeValue != null && actualDoctypeValue != doctypeValue) {
             throw IllegalArgumentException("Incompatible MDOC document type.")
         }
     }
