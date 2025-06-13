@@ -6,6 +6,7 @@ import at.asitplus.data.NonEmptyList
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.openid.CredentialFormatEnum
+import io.github.aakira.napier.Napier
 import kotlinx.serialization.Serializable
 
 @Serializable(with = DCQLCredentialQuerySerializer::class)
@@ -148,6 +149,8 @@ sealed interface DCQLCredentialQuery {
                         credentialStructureExtractor = credentialClaimStructureExtractor,
                     ).getOrThrow()
                 }
+            }.onFailure {
+                Napier.w("Failed to execute claims query", it)
             }.getOrNull()
         }
         DCQLCredentialQueryMatchingResult.ClaimsQueryResults(result)

@@ -44,8 +44,8 @@ interface DCQLClaimsQuery {
                         credentialStructureExtractor(it) as DCQLCredentialClaimStructure.JsonBasedStructure
                     }
                 ).getOrThrow().also {
-                    if(it.nodeList.isEmpty()) {
-                        throw IllegalStateException("Credential does not satisfy claims query.")
+                    if (it.nodeList.isEmpty()) {
+                        throw IllegalStateException("Credential does not satisfy claims query: $this")
                     }
                 }
             }
@@ -60,7 +60,7 @@ interface DCQLClaimsQuery {
                 ).getOrThrow()
             }
 
-            else -> throw IllegalStateException("Unsupported claim query type")
+            else -> throw IllegalStateException("Unsupported claim query type: $this")
         }
     }
 }
