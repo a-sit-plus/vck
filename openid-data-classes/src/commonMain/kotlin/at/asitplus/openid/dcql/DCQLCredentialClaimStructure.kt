@@ -5,9 +5,12 @@ import kotlin.jvm.JvmInline
 
 sealed interface DCQLCredentialClaimStructure {
     @JvmInline
-    value class JsonBasedStructure(val jsonElement: JsonElement) : DCQLCredentialClaimStructure
+    value class JsonBasedStructure(
+        val jsonElement: JsonElement,
+    ) : DCQLCredentialClaimStructure
 
     @JvmInline
-    value class IsoMdocStructure(val namespaceClaimValueMap: Map<String, Map<String, Any?>>) :
-        DCQLCredentialClaimStructure
+    value class IsoMdocStructure(
+        val namespaceClaimValueMap: Map<String, Map<String, Any?>>,
+    ) : DCQLCredentialClaimStructure
 }
