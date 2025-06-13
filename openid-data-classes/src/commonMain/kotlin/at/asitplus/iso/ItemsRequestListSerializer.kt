@@ -42,7 +42,7 @@ object ItemsRequestListSerializer : KSerializer<ItemsRequestList> {
             var value: Boolean
             while (true) {
                 val index = decodeElementIndex(descriptor)
-                if (index == CompositeDecoder.Companion.DECODE_DONE) {
+                if (index == CompositeDecoder.DECODE_DONE) {
                     break
                 } else if (index % 2 == 0) {
                     key = decodeStringElement(descriptor, index)
