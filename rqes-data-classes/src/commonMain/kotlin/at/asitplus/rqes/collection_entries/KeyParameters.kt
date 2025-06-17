@@ -3,11 +3,9 @@ package at.asitplus.rqes.collection_entries
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.rqes.CredentialInfo
+import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-
-@Deprecated("Renamed", ReplaceWith("KeyParameters"))
-typealias CscKeyParameters = KeyParameters
 
 /**
  * CSC-API v2.0.0.2
@@ -27,7 +25,7 @@ data class KeyParameters(
      * The list of OIDs of the supported key algorithms
      */
     @SerialName("algo")
-    val algo: Set<ObjectIdentifier>,
+    val algo: Set<@Serializable(with = ObjectIdentifierStringSerializer::class) ObjectIdentifier>,
 
     /**
      * REQUIRED.
@@ -42,6 +40,7 @@ data class KeyParameters(
      * [algo] is based on ECDSA.
      */
     @SerialName("curve")
+    @Serializable(with = ObjectIdentifierStringSerializer::class)
     val curve: ObjectIdentifier? = null,
 ) {
     init {

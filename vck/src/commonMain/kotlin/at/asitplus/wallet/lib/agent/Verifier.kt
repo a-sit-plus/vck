@@ -5,7 +5,9 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.jwkId
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
+import at.asitplus.wallet.lib.agent.validation.CredentialFreshnessSummary
 import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.iso.DeviceResponse
 import at.asitplus.wallet.lib.iso.Document
 import at.asitplus.wallet.lib.iso.IssuerSigned
@@ -46,7 +48,7 @@ interface Verifier {
     suspend fun verifyPresentationIsoMdoc(
         input: DeviceResponse,
         challenge: String,
-        verifyDocument: (MobileSecurityObject, Document) -> Boolean,
+        verifyDocument: suspend (MobileSecurityObject, Document) -> Boolean,
     ): VerifyPresentationResult
 
     sealed class VerifyPresentationResult {
@@ -56,8 +58,20 @@ interface Verifier {
             val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
             val reconstructedJsonObject: JsonObject,
             val disclosures: Collection<SelectiveDisclosureItem>,
-            val isRevoked: Boolean,
-        ) : VerifyPresentationResult()
+            val freshnessSummary: CredentialFreshnessSummary.SdJwt,
+        ) : VerifyPresentationResult() {
+            @Deprecated("Replaced with more expressive freshness information", ReplaceWith("""freshnessSummary.let { when(it.tokenStatusValidationResult) {
+                is TokenStatusValidationResult.Rejected -> null
+                is TokenStatusValidationResult.Invalid -> true
+                is TokenStatusValidationResult.Valid -> false
+            }}"""))
+            val isRevoked: Boolean?
+                get() = when(freshnessSummary.tokenStatusValidationResult) {
+                    is TokenStatusValidationResult.Rejected -> null
+                    is TokenStatusValidationResult.Invalid -> true
+                    is TokenStatusValidationResult.Valid -> false
+                }
+        }
 
         data class SuccessIso(val documents: List<IsoDocumentParsed>) : VerifyPresentationResult()
         data class InvalidStructure(val input: String) : VerifyPresentationResult()
@@ -74,11 +88,9 @@ interface Verifier {
             val reconstructedJsonObject: JsonObject,
             /** Map of serialized disclosure item (as [String]) to parsed item (as [SelectiveDisclosureItem]) */
             val disclosures: Map<String, SelectiveDisclosureItem>,
-            val isRevoked: Boolean,
         ) : VerifyCredentialResult()
 
         data class SuccessIso(val issuerSigned: IssuerSigned) : VerifyCredentialResult()
-        data class Revoked(val input: String, val jws: VerifiableCredentialJws) : VerifyCredentialResult()
         data class InvalidStructure(val input: String) : VerifyCredentialResult()
         data class ValidationError(val cause: Throwable) : VerifyCredentialResult() {
             constructor(message: String) : this(Throwable(message))

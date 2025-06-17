@@ -1,5 +1,59 @@
 # Changelog
 
+Release 5.7.0:
+ - Remote Qualified Electronic Signatures:
+   - Remove code elements deprecated in `5.6.0`
+ - JWS and COSE handling:
+   - Remove code elements deprecated in `5.6.0`
+ - OpenID for Verifiable Credential Issuance:
+   - Expose `oauth2Client` in `WalletService`
+   - Remove code elements deprecated in `5.6.3` in `OpenId4VciClient` 
+   - Update `transaction_data_hashes` according to result from <https://github.com/openid/OpenID4VP/pull/621>
+ - Holder:
+   - Replace `keyPair` with `keyMaterial`
+ - Functions:
+   - Replace type aliases with functional interfaces (providing named parameters in implementations)
+   - Make cryptographic verification functions suspending
+ - Fully integrated crypto functionality based on Signum 3.16.2. This carries over breaking changes:
+   - All debug-only kotlinx.serialization for cryptographic datatypes like certificates, public keys, etc. was removed
+   - This finally cleans up the RSAorHMAC
+     - `SignatureAlgorithm.RSAorHMAC` is now properly split into `SignatureAlgorithm` and `MessageAuthenticationCode`. Both implement `DataIntegrityAlgorithm`.
+     - This split also affects `JwsAlgorithm`, which now has subtypes: `Signature` and `MAC`. Hence, `JwsAlgorithm.ES256` -> `JwsAlgorithm.Signature.ES256`
+ - Separate credential timeliness validation from content semantics validation
+   - Change `Validator` constructor to include configuration of the credential timeliness validator
+   - Change `Validator.verifyVcJws` to not perform timeliness validation
+   - Change `Validator.verifySdJwt` to not perform timeliness validation
+   - Replace property`isRevoked` with property `freshnessSummary` in:
+     - `Verifier.VerifyPresentationResult.SuccessSdJwt` 
+     - `IsoDocumentParsed`
+     - `AuthnResponseResult.SuccessSdJwt`
+   - Change type of `VerifiablePresentationParsed.verifiableCredentials` and `revokedVerifiableCredentials` to `Collection<VcJwsVerificationResultWrapper>`
+   - Rename `VerifiablePresentationParsed.verifiableCredentials` to `VerifiablePresentationParsed.freshVerifiableCredentials`
+   - Rename `VerifiablePresentationParsed.revokedVerifiableCredentials` to `VerifiablePresentationParsed.notVerifiablyFreshVerifiableCredentials`
+   - Remove `Validator.checkRevocationStatus` in favor of `Validator.checkCredentialFreshness`
+   - Remove `Holder.StoredCredential.status`
+   - Remove `Verifier.VerifyCredentialResult.Revoked`
+   - Add constructor parameter `Validator.acceptedTokenStatuses` to allow library client to define token statuses deemed valid
+ - Add support for Digital Credentials API as defined in OID4VP draft 28 and ISO 18013-7 Annex C:
+   - Implement `DCAPIRequest` for requests received via the Digital Credentials API, with implementations for OID4VP (`Oid4vpDCAPIRequest`), ISO 18013-7 Annex C (`IsoMdocRequest`) and a non-standardised preview protocol (`PreviewDCAPIRequest`)
+   - New property of type `Oid4vpDCAPIRequest` for requests originating from the Digital Credentials API in `AuthorizationResponsePreparationState`
+   - New parameter of type `Oid4vpDCAPIRequest` for requests originating from the Digital Credentials API in `OpenId4VpHolder.parseAuthenticationRequestParameters`, `RequestParameters.extractAudience` `PresentationFactory.createPresentation` `PresentationFactory.calcDeviceSignature` `RequestParser.parseRequestParameters` `RequestParser.extractRequestObject` `RequestParser.parseRequestObjectJws` `RequestParser.matchRequestParameterCases` `HolderAgent.getValidCredentialsByPriority`
+   - New optional parameter `filterById` of type `String` in `Holder.matchInputDescriptorsAgainstCredentialStore`, `HolderAgent.getValidCredentialsByPriority` `HolderAgent.matchInputDescriptorsAgainstCredentialStore` `HolderAgent.matchDCQLQueryAgainstCredentialStore` to filter credentials by id
+   - New method `SubjectCredentialStore.getDcApiId` to generate an id of type `String` for a credential
+   - New optional property of type `DCAPIHandover` for `SessionTranscript`
+ - Return member of interface `AuthenticationResult` instead of `AuthenticationSuccess` as authorization response in `OpenId4VpWallet`. Can either be
+   - `AuthenticationSuccess`: contains a `redirectUri` (same behaviour as in 5.6.x)
+   - `AuthenticationForward`: contains the `authenticationResponseResult` for responses via the Digital Credentials API
+ - Refactoring of ISO data classes:
+   - Move data classes from `vck` to `openid-data-classes`
+   - Remove `serialize()` and `deserialize()` methods, please use the preferred serializer directly (e.g. `vckCborSerializer`)
+   - List of classes moved: `ClientIdToHash`, `DeviceAuth`, `DeviceAuthentication`, `DeviceKeyInfo`, `DeviceRequest`, `DeviceSigned`, `DeviceSignedItemListSerializer`, `DeviceSignedList`, `DocRequest`, `ItemsRequest`,  `IssuerSignedItem`, `IssuerSignedItemSerializer`, `IsserSignedList`, `IssuerSignedListSerializer`, `ItemsRequestList`, `ItemsRequestListSerializer`, `KeyAuthorization`, `NamespacedDeviceNameSpacesSerializer`, `NamespacedIssuerSignedListSerializer`,  `ResponseUriToHash`, `ServerItemsRequest`, `ServerRequest`, `ServerResponse`, `SessionTranscript`, `SingleItemsRequest`, `ValidityInfo`, `ValueDigest`, `ValueDigestList`, `ValueDigestListSerializer`
+ - Additional:
+   - Remove `Holder.StoredCredential` in favor of `SubjectCredentialStore.StoreEntry`
+   - Update AGP to 8.6.1 for composite builds with Valera
+   - Make `OAuth2Exception` serializable
+   - Add data class `LocalDateOrInstant` to be used by credentials
+  
 Release 5.6.6:
  - OpenID for Verifiable Presentations:
    - Fix applying presentation exchange filters to credentials (`array` and `object` filters)

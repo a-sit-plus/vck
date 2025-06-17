@@ -2,16 +2,12 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
-import at.asitplus.wallet.lib.cbor.VerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
 import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.third_party.kotlin.ifFalse
-import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
-import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 
@@ -20,11 +16,7 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
  * Does verify the cryptographic authenticity of the data.
  */
 class StatusListTokenIntegrityValidator(
-    @Deprecated("Use verifyJwsSignatureObject instead")
-    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
-    @Deprecated("Use verifyCoseSignature instead")
-    private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(),
     private val verifyCoseSignature: VerifyCoseSignatureFun<StatusListTokenPayload> = VerifyCoseSignature(),
 ) {
     /**
@@ -60,7 +52,7 @@ class StatusListTokenIntegrityValidator(
     /**
      * Validate the integrity of a status list cwt
      */
-    fun validateStatusListCwtIntegrity(statusListToken: StatusListToken.StatusListCwt): KmmResult<StatusListTokenPayload> =
+    suspend fun validateStatusListCwtIntegrity(statusListToken: StatusListToken.StatusListCwt): KmmResult<StatusListTokenPayload> =
         catching {
             val coseStatus = statusListToken.value
             verifyCoseSignature(coseStatus, byteArrayOf(), null).isSuccess.ifFalse {

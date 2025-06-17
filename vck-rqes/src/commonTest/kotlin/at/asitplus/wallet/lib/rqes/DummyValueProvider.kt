@@ -8,6 +8,7 @@ import at.asitplus.rqes.collection_entries.KeyParameters
 import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import com.benasher44.uuid.bytes
@@ -55,7 +56,7 @@ class DummyValueProvider {
         status = if (isValid) KeyParameters.KeyStatusOptions.ENABLED else KeyParameters.KeyStatusOptions.entries.random(),
         algo = setOf(oid),
         len = digest.outputLength.bits,
-        curve = if (isEc) algorithm.toJwsAlgorithm().getOrThrow().ecCurve!!.oid else null
+        curve = if (isEc) (algorithm.toJwsAlgorithm().getOrThrow() as JwsAlgorithm.Signature.EC).ecCurve.oid else null
     )
 
     fun buildDocumentDigests(): List<OAuthDocumentDigest> = (1..Random.nextInt(10)).map {

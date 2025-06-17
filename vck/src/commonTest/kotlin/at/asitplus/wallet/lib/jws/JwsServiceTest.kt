@@ -71,7 +71,7 @@ class JwsServiceTest : FreeSpec({
         val signer = SignJwt<String>(keyMaterial, JwsHeaderJwksUrl(jku))
         val signed = signer(null, randomPayload, String.serializer()).getOrThrow()
         val validKey = keyMaterial.jsonWebKey
-        val jwkSetRetriever: JwkSetRetrieverFunction = { JsonWebKeySet(keys = listOf(validKey)) }
+        val jwkSetRetriever = JwkSetRetrieverFunction { JsonWebKeySet(keys = listOf(validKey)) }
         verifierJwsService = VerifyJwsObject(jwkSetRetriever = jwkSetRetriever)
         verifierJwsService(signed) shouldBe true
     }
@@ -81,7 +81,7 @@ class JwsServiceTest : FreeSpec({
         val signer = SignJwt<String>(keyMaterial, JwsHeaderJwksUrl(jku))
         val signed = signer(null, randomPayload, String.serializer()).getOrThrow()
         val invalidKey = EphemeralKeyWithoutCert().jsonWebKey
-        val jwkSetRetriever: JwkSetRetrieverFunction = { JsonWebKeySet(keys = listOf(invalidKey)) }
+        val jwkSetRetriever = JwkSetRetrieverFunction { JsonWebKeySet(keys = listOf(invalidKey)) }
         verifierJwsService = VerifyJwsObject(jwkSetRetriever = jwkSetRetriever)
         verifierJwsService(signed) shouldBe false
     }
@@ -98,7 +98,7 @@ class JwsServiceTest : FreeSpec({
         val signer = SignJwt<String>(keyMaterial, JwsHeaderNone())
         val signed = signer(null, randomPayload, String.serializer()).getOrThrow()
 
-        val publicKeyLookup: PublicJsonWebKeyLookup = { setOf(keyMaterial.jsonWebKey) }
+        val publicKeyLookup = PublicJsonWebKeyLookup { setOf(keyMaterial.jsonWebKey) }
         verifierJwsService = VerifyJwsObject(publicKeyLookup = publicKeyLookup)
         verifierJwsService(signed) shouldBe true
     }

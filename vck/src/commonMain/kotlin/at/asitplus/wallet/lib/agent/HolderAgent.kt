@@ -11,59 +11,35 @@ import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
-import at.asitplus.wallet.lib.cbor.CoseService
-import at.asitplus.wallet.lib.cbor.DefaultCoseService
-import at.asitplus.wallet.lib.data.CredentialPresentation
-import at.asitplus.wallet.lib.data.CredentialPresentationRequest
-import at.asitplus.wallet.lib.data.CredentialToJsonConverter
-import at.asitplus.wallet.lib.data.KeyBindingJws
-import at.asitplus.wallet.lib.data.VerifiablePresentationJws
+import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.dif.PresentationExchangeInputEvaluator
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.third_party.at.asitplus.oidc.dcql.toDefaultSubmission
-import at.asitplus.wallet.lib.jws.SignJwt
-import at.asitplus.wallet.lib.jws.SignJwtFun
-import at.asitplus.wallet.lib.jws.DefaultJwsService
-import at.asitplus.wallet.lib.jws.JwsHeaderKeyId
-import at.asitplus.wallet.lib.jws.JwsHeaderNone
-import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.jws.SdJwtSigned
+import at.asitplus.wallet.lib.jws.*
 import at.asitplus.wallet.lib.procedures.dcql.DCQLQueryAdapter
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
-
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.joinAll
 
 /**
  * An agent that only implements [Holder], i.e. it can receive credentials from other agents
  * and present credentials to other agents.
  */
 class HolderAgent(
-    private val validator: Validator = Validator(),
+    override val keyMaterial: KeyMaterial,
     private val subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
-    @Deprecated("Use signVerifiablePresentation, signKeyBinding instead")
-    private val jwsService: JwsService,
-    @Deprecated("unused")
-    private val coseService: CoseService,
-    override val keyPair: KeyMaterial,
-    private val signVerifiablePresentation: SignJwtFun<VerifiablePresentationJws> = SignJwt(keyPair, JwsHeaderKeyId()),
-    private val signKeyBinding: SignJwtFun<KeyBindingJws> = SignJwt(keyPair, JwsHeaderNone()),
+    private val validator: Validator = Validator(),
+    private val signVerifiablePresentation: SignJwtFun<VerifiablePresentationJws> = SignJwt(
+        keyMaterial,
+        JwsHeaderKeyId(),
+    ),
+    private val signKeyBinding: SignJwtFun<KeyBindingJws> = SignJwt(keyMaterial, JwsHeaderNone()),
     private val verifiablePresentationFactory: VerifiablePresentationFactory =
-        VerifiablePresentationFactory(keyPair.identifier, signVerifiablePresentation, signKeyBinding),
+        VerifiablePresentationFactory(keyMaterial.identifier, signVerifiablePresentation, signKeyBinding),
     private val difInputEvaluator: PresentationExchangeInputEvaluator = PresentationExchangeInputEvaluator,
 ) : Holder {
-
-    constructor(
-        keyMaterial: KeyMaterial,
-        subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
-        validator: Validator = Validator(),
-    ) : this(
-        validator = validator,
-        subjectCredentialStore = subjectCredentialStore,
-        jwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
-        coseService = DefaultCoseService(DefaultCryptoService(keyMaterial)),
-        keyPair = keyMaterial
-    )
 
     /**
      * Stores the verifiable credential in [credential] if it parses and validates,
@@ -72,7 +48,7 @@ class HolderAgent(
     override suspend fun storeCredential(credential: Holder.StoreCredentialInput) = catching {
         when (credential) {
             is Holder.StoreCredentialInput.Vc -> {
-                val validated = validator.verifyVcJws(credential.vcJws, keyPair.publicKey)
+                val validated = validator.verifyVcJws(credential.vcJws, keyMaterial.publicKey)
                 if (validated !is Verifier.VerifyCredentialResult.SuccessJwt) {
                     val error = (validated as? Verifier.VerifyCredentialResult.ValidationError)?.cause
                         ?: Throwable("Invalid VC JWS")
@@ -82,11 +58,11 @@ class HolderAgent(
                     validated.jws,
                     credential.vcJws,
                     credential.scheme,
-                ).toStoredCredential()
+                )
             }
 
             is Holder.StoreCredentialInput.SdJwt -> {
-                val validated = validator.verifySdJwt(SdJwtSigned.parse(credential.vcSdJwt)!!, keyPair.publicKey)
+                val validated = validator.verifySdJwt(SdJwtSigned.parse(credential.vcSdJwt)!!, keyMaterial.publicKey)
                 if (validated !is Verifier.VerifyCredentialResult.SuccessSdJwt) {
                     val error = (validated as? Verifier.VerifyCredentialResult.ValidationError)?.cause
                         ?: Throwable("Invalid SD-JWT")
@@ -97,7 +73,7 @@ class HolderAgent(
                     credential.vcSdJwt,
                     validated.disclosures,
                     credential.scheme,
-                ).toStoredCredential()
+                )
             }
 
             is Holder.StoreCredentialInput.Iso -> {
@@ -113,7 +89,6 @@ class HolderAgent(
                     throw VerificationError(error)
                 }
                 subjectCredentialStore.storeCredential(validated.issuerSigned, credential.scheme)
-                    .toStoredCredential()
             }
         }
     }
@@ -122,45 +97,21 @@ class HolderAgent(
     /**
      * Gets a list of all stored credentials, with a revocation status.
      */
-    override suspend fun getCredentials(): Collection<Holder.StoredCredential>? {
-        val credentials = subjectCredentialStore.getCredentials().getOrNull()
-            ?: return null.also { Napier.w("Got no credentials from subjectCredentialStore") }
-        return credentials.map { it.toStoredCredential() }
-    }
-
-    private suspend fun StoreEntry.toStoredCredential() = when (this) {
-        is StoreEntry.Iso -> Holder.StoredCredential.Iso(
-            this,
-            // this coerces errors on resolving token status to an invalid token status
-            validator.checkRevocationStatus(issuerSigned)?.let {
-                it.getOrNull() ?: TokenStatus.Invalid
-            },
-        )
-
-        is StoreEntry.Vc -> Holder.StoredCredential.Vc(
-            this,
-            // this coerces errors on resolving token status to an invalid token status
-            validator.checkRevocationStatus(vc)?.let {
-                it.getOrNull() ?: TokenStatus.Invalid
-            },
-        )
-
-        is StoreEntry.SdJwt -> Holder.StoredCredential.SdJwt(
-            this,
-            // this coerces errors on resolving token status to an invalid token status
-            validator.checkRevocationStatus(sdJwt)?.let {
-                it.getOrNull() ?: TokenStatus.Invalid
-            },
-        )
+    override suspend fun getCredentials(): Collection<SubjectCredentialStore.StoreEntry>? {
+        return subjectCredentialStore.getCredentials().getOrNull()
+            ?: null.also { Napier.w("Got no credentials from subjectCredentialStore") }
     }
 
     /**
-     * Gets a list of all valid stored credentials sorted by preference
+     * Gets a list of all valid stored credentials sorted by preference, possibly filtered by
+     * [filterById]
      */
-    private suspend fun getValidCredentialsByPriority() = getCredentials()
-        ?.filter { it.status?.isInvalid != true }
-        ?.map { it.storeEntry }
-        ?.sortedBy {
+    private suspend fun getValidCredentialsByPriority(filterById: String? = null): List<StoreEntry>? {
+        val availableCredentials = getCredentials() ?: return null
+
+        val presortedCredentials = availableCredentials.filter {
+            filterById == null || it.getDcApiId() == filterById
+        }.sortedBy {
             // prefer iso credentials and sd jwt credentials over plain vc credentials
             // -> they support selective disclosure!
             when (it) {
@@ -170,18 +121,42 @@ class HolderAgent(
             }
         }
 
+        val withRevocationStatusQueryIssued = presortedCredentials.map {
+            it to coroutineScope {
+                async {
+                    validator.checkCredentialFreshness(it)
+                }
+            }
+        }
+        withRevocationStatusQueryIssued.map {
+            it.second
+        }.joinAll()
+        val withRevocationStatusAvailable = withRevocationStatusQueryIssued.map {
+            it.first to it.second.await()
+        }
+        return withRevocationStatusAvailable.sortedBy {
+            if (it.second.isFresh) {
+                0
+            } else {
+                1
+            }
+        }.map {
+            it.first
+        }
+    }
+
     override suspend fun createDefaultPresentation(
         request: PresentationRequestParameters,
         credentialPresentationRequest: CredentialPresentationRequest,
     ): KmmResult<PresentationResponseParameters> = when (credentialPresentationRequest) {
         is CredentialPresentationRequest.PresentationExchangeRequest -> createPresentation(
             request = request,
-            credentialPresentation = credentialPresentationRequest.toCredentialPresentation()
+            credentialPresentation = credentialPresentationRequest.toCredentialPresentation(),
         )
 
         is CredentialPresentationRequest.DCQLRequest -> createPresentation(
             request = request,
-            credentialPresentation = credentialPresentationRequest.toCredentialPresentation()
+            credentialPresentation = credentialPresentationRequest.toCredentialPresentation(),
         )
     }
 
@@ -304,10 +279,11 @@ class HolderAgent(
         inputDescriptors: Collection<InputDescriptor>,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: PathAuthorizationValidator?,
+        filterById: String?
     ) = catching {
         findInputDescriptorMatches(
             inputDescriptors = inputDescriptors,
-            credentials = getValidCredentialsByPriority()
+            credentials = getValidCredentialsByPriority(filterById = filterById)
                 ?: throw PresentationException("Credentials could not be retrieved from the store"),
             fallbackFormatHolder = fallbackFormatHolder,
             pathAuthorizationValidator = pathAuthorizationValidator,
@@ -360,9 +336,12 @@ class HolderAgent(
         pathAuthorizationValidator = pathAuthorizationValidator,
     )
 
-    override suspend fun matchDCQLQueryAgainstCredentialStore(dcqlQuery: DCQLQuery): KmmResult<DCQLQueryResult<StoreEntry>> {
+    override suspend fun matchDCQLQueryAgainstCredentialStore(
+        dcqlQuery: DCQLQuery,
+        filterById: String?
+    ): KmmResult<DCQLQueryResult<StoreEntry>> {
         return DCQLQueryAdapter(dcqlQuery).select(
-            credentials = getValidCredentialsByPriority()
+            credentials = getValidCredentialsByPriority(filterById)
                 ?: throw PresentationException("Credentials could not be retrieved from the store"),
         )
     }

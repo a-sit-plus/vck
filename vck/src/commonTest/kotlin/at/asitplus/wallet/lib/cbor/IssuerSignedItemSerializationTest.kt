@@ -1,11 +1,30 @@
 package at.asitplus.wallet.lib.cbor
 
+import at.asitplus.iso.CborCredentialSerializer
+import at.asitplus.iso.DeviceAuth
+import at.asitplus.iso.DeviceKeyInfo
+import at.asitplus.iso.DeviceNameSpaces
+import at.asitplus.wallet.lib.iso.DeviceResponse
+import at.asitplus.iso.DeviceSigned
+import at.asitplus.wallet.lib.iso.Document
+import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.iso.IssuerSignedItem
+import at.asitplus.iso.IssuerSignedItemSerializer
+import at.asitplus.wallet.lib.iso.MobileSecurityObject
+import at.asitplus.iso.ValidityInfo
+import at.asitplus.iso.ValueDigest
+import at.asitplus.iso.ValueDigestList
 import at.asitplus.signum.indispensable.CryptoSignature
 import at.asitplus.signum.indispensable.cosef.*
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.wallet.lib.data.LocalDateOrInstant
+import at.asitplus.wallet.lib.data.LocalDateOrInstantSerializer
 import at.asitplus.wallet.lib.iso.*
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -18,10 +37,12 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.builtins.ByteArraySerializer
+import kotlinx.serialization.decodeFromByteArray
+import kotlinx.serialization.encodeToByteArray
 import kotlin.random.Random
 import kotlin.random.nextUInt
 
-@OptIn(ExperimentalSerializationApi::class)
+@OptIn(ExperimentalSerializationApi::class, ExperimentalStdlibApi::class)
 class IssuerSignedItemSerializationTest : FreeSpec({
 
     lateinit var elementId: String
@@ -39,11 +60,11 @@ class IssuerSignedItemSerializationTest : FreeSpec({
             elementIdentifier = elementId,
             elementValue = uuid4().toString(),
         )
-        val serialized = item.serialize(namespace)
+        val serialized =
+            coseCompliantSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementId), item)
         serialized.encodeToString(Base16()).shouldNotContain("D903EC")
-        val parsed = IssuerSignedItem.deserialize(serialized, "", elementId).getOrThrow()
 
-        parsed shouldBe item
+        coseCompliantSerializer.decodeFromByteArray(IssuerSignedItemSerializer("", elementId), serialized) shouldBe item
     }
 
     "serialization with Instant" {
@@ -55,17 +76,20 @@ class IssuerSignedItemSerializationTest : FreeSpec({
             elementValue = Clock.System.now(),
         )
 
-        val serialized = item.serialize(namespace).also {
-            it.encodeToString(Base16()).shouldContain(
-                "elementValue".toHex()
-                        + "C0" // tag(0)
-                        + "78" // text(..)
-            )
-        }
+        val serialized =
+            coseCompliantSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementId), item)
+            .also {
+                it.encodeToString(Base16()).shouldContain(
+                    "elementValue".toHex()
+                            + "C0" // tag(0)
+                            + "78" // text(..)
+                )
+            }
 
-        IssuerSignedItem.deserialize(serialized, namespace, elementId).getOrThrow().also {
-            it shouldBe item
-        }
+        coseCompliantSerializer.decodeFromByteArray(
+            IssuerSignedItemSerializer(namespace, elementId),
+            serialized
+        ) shouldBe item
     }
 
     "serialization with LocalDate" {
@@ -77,17 +101,20 @@ class IssuerSignedItemSerializationTest : FreeSpec({
             elementValue = LocalDate.fromEpochDays(Random.nextInt(32768))
         )
 
-        val serialized = item.serialize(namespace).also {
-            it.encodeToString(Base16()).shouldContain(
-                "elementValue".toHex()
-                        + "D903EC" // tag(1004)
-                        + "6A" // text(10)
-            )
-        }
+        val serialized =
+            coseCompliantSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementId), item)
+            .also {
+                it.encodeToString(Base16()).shouldContain(
+                    "elementValue".toHex()
+                            + "D903EC" // tag(1004)
+                            + "6A" // text(10)
+                )
+            }
 
-        IssuerSignedItem.deserialize(serialized, namespace, elementId).getOrThrow().also {
-            it shouldBe item
-        }
+        coseCompliantSerializer.decodeFromByteArray(
+            IssuerSignedItemSerializer(namespace, elementId),
+            serialized
+        ) shouldBe item
     }
 
     "document serialization with ByteArray" {
@@ -99,7 +126,7 @@ class IssuerSignedItemSerializationTest : FreeSpec({
             elementIdentifier = elementId,
             elementValue = Random.nextBytes(32),
         )
-        val protectedHeader = CoseHeader(algorithm = CoseAlgorithm.RS256)
+        val protectedHeader = CoseHeader(algorithm = CoseAlgorithm.Signature.RS256)
         val mso = MobileSecurityObject(
             version = "1.0",
             digestAlgorithm = "SHA-256",
@@ -121,7 +148,7 @@ class IssuerSignedItemSerializationTest : FreeSpec({
             protectedHeader,
             null,
             mso,
-            CryptoSignature.RSAorHMAC(byteArrayOf()),
+            CryptoSignature.RSA(byteArrayOf()),
             MobileSecurityObject.serializer()
         )
         val doc = Document(
@@ -135,12 +162,13 @@ class IssuerSignedItemSerializationTest : FreeSpec({
                 DeviceAuth()
             )
         )
-        val serialized = doc.serialize().also {
+        val serialized = coseCompliantSerializer.encodeToByteArray(doc).also {
             it.encodeToString(Base16()).also {
-                println(it)
                 it.shouldNotContain("D903EC")
-                val itemBytes = vckCborSerializer
-                    .encodeToByteArray(ByteArraySerializer(), item.serialize(namespace))
+                val itemSerialized = coseCompliantSerializer.encodeToByteArray(
+                    IssuerSignedItemSerializer(namespace, item.elementIdentifier), item
+                )
+                val itemBytes = coseCompliantSerializer.encodeToByteArray(ByteArraySerializer(), itemSerialized)
                 it.shouldContain( // inside the document
                     "nameSpaces".toHex()
                             + "A1" // map(1)
@@ -163,9 +191,70 @@ class IssuerSignedItemSerializationTest : FreeSpec({
             }
         }
 
-        Document.deserialize(serialized).getOrThrow().also {
-            it shouldBe doc
-        }
+        coseCompliantSerializer.decodeFromByteArray<Document>(serialized) shouldBe doc
+    }
+
+    // Contains LocalDates instead of Instants, as we expected, so we'll handle this with LocalDateOrInstantSerializer
+    "deserialize DeviceResponse from EUDI Ref Impl" {
+        CborCredentialSerializer.register(
+            serializerMap = mapOf(
+                "expiry_date" to LocalDateOrInstantSerializer,
+                "birth_date" to LocalDateOrInstantSerializer
+            ),
+            isoNamespace = "eu.europa.ec.eudi.pid.1"
+        )
+        val input = """
+            o2d2ZXJzaW9uYzEuMGlkb2N1bWVudHOBo2dkb2NUeXBld2V1LmV1cm9wYS5lYy5ldWRpLnBpZC4xbGlzc3VlclNpZ25lZKJqbmFtZVNwYWNl
+            c6F3ZXUuZXVyb3BhLmVjLmV1ZGkucGlkLjGI2BhYbKRmcmFuZG9tWCAYEd2zTYDimiBjUeC_955trB4a2hZlPCQF5NPKX9uGB2hkaWdlc3RJ
+            RAhsZWxlbWVudFZhbHVl2QPsajE5NjUtMDEtMDFxZWxlbWVudElkZW50aWZpZXJqYmlydGhfZGF0ZdgYWG2kZnJhbmRvbVggkqce2jGkon0M
+            48b7qIKlc0tcztcoBvVLbO1fSnniZXloZGlnZXN0SUQEbGVsZW1lbnRWYWx1ZdkD7GoyMDI1LTA4LTI1cWVsZW1lbnRJZGVudGlmaWVya2V4
+            cGlyeV9kYXRl2BhYZqRmcmFuZG9tWCD1d1Oi7UwmN5EPBRcMhTe9BEv1wWu6EEbof8u_6tDbyWhkaWdlc3RJRAJsZWxlbWVudFZhbHVlZkdh
+            cmNpYXFlbGVtZW50SWRlbnRpZmllcmtmYW1pbHlfbmFtZdgYWGWkZnJhbmRvbVggjBx-y1fceuQod-KSt9varklC4YV45dsoqJPIzyEceEpo
+            ZGlnZXN0SUQDbGVsZW1lbnRWYWx1ZWZqYXZpZXJxZWxlbWVudElkZW50aWZpZXJqZ2l2ZW5fbmFtZdgYWHWkZnJhbmRvbVggXSfcSWd04t-Y
+            pALvhp00pGQrHk948yhJl1mLW1AuM2VoZGlnZXN0SUQBbGVsZW1lbnRWYWx1ZW9UZXN0IFBJRCBpc3N1ZXJxZWxlbWVudElkZW50aWZpZXJx
+            aXNzdWluZ19hdXRob3JpdHnYGFhvpGZyYW5kb21YIEXxSYm4G04mADNQRuGixci-Fv1JA6cfpQvGZLLz9B6taGRpZ2VzdElEB2xlbGVtZW50
+            VmFsdWXZA-xqMjAyNS0wNS0yN3FlbGVtZW50SWRlbnRpZmllcm1pc3N1YW5jZV9kYXRl2BhYZqRmcmFuZG9tWCAWvlEqzjYIda5q8KADpkfm
+            AUOAKGt8Iq1R5X7_blAHE2hkaWdlc3RJRABsZWxlbWVudFZhbHVlYkVVcWVsZW1lbnRJZGVudGlmaWVyb2lzc3VpbmdfY291bnRyedgYWGOk
+            ZnJhbmRvbVggxfPLvhC9UFMZyEKtSh5ERT6r78nUZW2KoCf4qLASZNZoZGlnZXN0SUQGbGVsZW1lbnRWYWx1ZYFiRVVxZWxlbWVudElkZW50
+            aWZpZXJrbmF0aW9uYWxpdHlqaXNzdWVyQXV0aIRDoQEmoRghWQLeMIIC2jCCAoCgAwIBAgIUf2vrQ0pb13kmYuW1dsLV85EnOAswCgYIKoZI
+            zj0EAwIwVzEZMBcGA1UEAwwQUElEIElzc3VlciBDQSAwMjEtMCsGA1UECgwkRVVESSBXYWxsZXQgUmVmZXJlbmNlIEltcGxlbWVudGF0aW9u
+            MQswCQYDVQQGEwJFVTAeFw0yNTA0MTAxNDM0MTFaFw0yNjA3MDQxNDM0MTBaMFIxFDASBgNVBAMMC1BJRCBEUyAtIDAxMS0wKwYDVQQKDCRF
+            VURJIFdhbGxldCBSZWZlcmVuY2UgSW1wbGVtZW50YXRpb24xCzAJBgNVBAYTAkVVMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEbtpdDGfZ
+            r2pafe15Qo02ImcCSgmB30OdgaaO8_TFpUtR3MbVStda2Mz17DRVFtadtqHKSSSad7ke42LemkjamqOCAS0wggEpMB8GA1UdIwQYMBaAFEJQ
+            UL4QuBDwnURcjb-rEAjuJ9xJMBsGA1UdEQQUMBKCEGlzc3Vlci5ldWRpdy5kZXYwFgYDVR0lAQH_BAwwCgYIK4ECAgAAAQIwQwYDVR0fBDww
+            OjA4oDagNIYyaHR0cHM6Ly9wcmVwcm9kLnBraS5ldWRpdy5kZXYvY3JsL3BpZF9DQV9FVV8wMi5jcmwwHQYDVR0OBBYEFFABcwEd7yXSDl5I
+            yCs7OJHEnJnxMA4GA1UdDwEB_wQEAwIHgDBdBgNVHRIEVjBUhlJodHRwczovL2dpdGh1Yi5jb20vZXUtZGlnaXRhbC1pZGVudGl0eS13YWxs
+            ZXQvYXJjaGl0ZWN0dXJlLWFuZC1yZWZlcmVuY2UtZnJhbWV3b3JrMAoGCCqGSM49BAMCA0gAMEUCICqWEEilBF9oPJ4bBZQw2Ekz1hU8-aOZ
+            WpHT2w__0IWNAiEAyOM2_D2-WFvlrOP2gQmLhWxkClDagbhvElQCjPIqSwVZA4_YGFkDiqdmc3RhdHVzomtzdGF0dXNfbGlzdKJjaWR4GRMR
+            Y3VyaXhqaHR0cHM6Ly9pc3N1ZXIuZXVkaXcuZGV2L3Rva2VuX3N0YXR1c19saXN0L0VVL2V1LmV1cm9wYS5lYy5ldWRpLnBpZC4xL2JiMTEz
+            N2UwLWZlMWUtNDRkYi05Mjg1LWRlN2VkOGMyZDEwZW9pZGVudGlmaWVyX2xpc3SiYmlkZDQ4ODFjdXJpeGhodHRwczovL2lzc3Vlci5ldWRp
+            dy5kZXYvaWRlbnRpZmllcl9saXN0L0VVL2V1LmV1cm9wYS5lYy5ldWRpLnBpZC4xL2JiMTEzN2UwLWZlMWUtNDRkYi05Mjg1LWRlN2VkOGMy
+            ZDEwZWdkb2NUeXBld2V1LmV1cm9wYS5lYy5ldWRpLnBpZC4xZ3ZlcnNpb25jMS4wbHZhbGlkaXR5SW5mb6Nmc2lnbmVkwHQyMDI1LTA1LTI3
+            VDA4OjEzOjIxWml2YWxpZEZyb23AdDIwMjUtMDUtMjdUMDg6MTM6MjFaanZhbGlkVW50aWzAdDIwMjUtMDgtMjVUMDA6MDA6MDBabHZhbHVl
+            RGlnZXN0c6F3ZXUuZXVyb3BhLmVjLmV1ZGkucGlkLjGpAFggwG5NkzwZiLZMD62mdmwvFjv7aTQt1We8iyH-fMbWO8sBWCCKAOnJaNlolxsK
+            x-Qi-LoeU9vjl9vdGG7g4vhyyQUHWAJYIL9LlzaBrcdI9jzH2wCEuEXf8qQV6su28rwucz6iw7YHA1ggQkJUF8m34q1KQ2z9mD5hA9K3DNVl
+            b5i7oVwOCFl3oIAEWCAtkHp9sgW3gUwiKyfN_rd87NPLEtH2nuoRGW8KzTQUWgVYIADp4Ty9opglXbQUQ30H7FFqC216q9s3IF3GgU7ywmEg
+            Blggz-gl9y3r34GxowWRe6CzenwZ3hV3OsFnmMfIy83xxIAHWCC95VWgMCakOg_pmBX4VMLw1FVbejAMYo4WHMVminYe4QhYILvkcUWw01Er
+            IDrvKdqJ7gxOqALLL6hTKI3N-ibW0yfGbWRldmljZUtleUluZm-haWRldmljZUtleaQBAiABIVggUVFDZDIPLJLjMcpeZbYgU4ahAGglIGcu
+            Je34Rk_gV-IiWCA4P6VbgKeKQMl3WGFaaHFXMpcgQlzQF_eW9Yuk1ho0im9kaWdlc3RBbGdvcml0aG1nU0hBLTI1NlhAi-IYBBTdONaATnXY
+            4jcS9Wg32A72OZ9zRKBHrzd2MFq9Gk1HPBQFkL5n3SWtb9-nPeJZAfk_nScMkpcYY844r2xkZXZpY2VTaWduZWSiam5hbWVTcGFjZXPYGEGg
+            amRldmljZUF1dGihb2RldmljZVNpZ25hdHVyZYRDoQEmoPZYQAdF3jbal7_uvhXIxuKV9ZE_9Dja-3dkzH5OUFJ5fug7CfxtYIWyQXmBb-0s
+            VeJakU_LiF4mJwXG4JRLiu3htGtmc3RhdHVzAA
+        """.trimIndent()
+
+        input.decodeToByteArray(Base64UrlStrict)
+            .let { coseCompliantSerializer.decodeFromByteArray<DeviceResponse>(it) }
+            .apply {
+                documents.shouldNotBeNull().first().apply {
+                    issuerSigned.namespaces.shouldNotBeNull().values.first().apply {
+                        entries.shouldHaveSize(8)
+                        entries.first { it.value.elementIdentifier == "expiry_date" }
+                            .value.elementValue shouldBe LocalDateOrInstant.LocalDate(LocalDate.parse("2025-08-25"))
+                        entries.first { it.value.elementIdentifier == "birth_date" }
+                            .value.elementValue shouldBe LocalDateOrInstant.LocalDate(LocalDate.parse("1965-01-01"))
+                    }
+                }
+            }
     }
 
     "deserialize IssuerSigned from EUDI Ref Impl" {
@@ -217,8 +306,7 @@ class IssuerSignedItemSerializationTest : FreeSpec({
             656E744964656E7469666965727169737375696E675F617574686F72697479
         """.trimIndent().replace("\n", "")
 
-        val parsed = IssuerSigned.deserialize(input.decodeToByteArray(Base16()))
-            .getOrThrow()
+        val parsed = coseCompliantSerializer.decodeFromByteArray<IssuerSigned>(input.decodeToByteArray(Base16()))
 
         val namespaces = parsed.namespaces
             .shouldNotBeNull()

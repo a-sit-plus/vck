@@ -60,11 +60,13 @@ data class SdJwtSigned(
 
     companion object {
         fun parse(input: String): SdJwtSigned? {
-            if (!input.contains("~"))
+            if (!input.contains("~")) {
                 return null.also { Napier.w("Could not parse SD-JWT: $input") }
+            }
             val stringList = input.replace("[^A-Za-z0-9-_.~]".toRegex(), "").split("~")
-            if (stringList.isEmpty())
+            if (stringList.isEmpty()) {
                 return null.also { Napier.w("Could not parse SD-JWT: $input") }
+            }
             val jws = JwsSigned.deserialize<JsonElement>(JsonElement.serializer(), stringList.first(), vckJsonSerializer).getOrNull()
                 ?: return null.also { Napier.w("Could not parse JWS from SD-JWT: $input") }
             val stringListWithoutJws = stringList.drop(1)

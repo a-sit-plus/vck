@@ -18,9 +18,8 @@ class ClientAuthenticationService(
     /** Enforce client authentication as defined in OpenID4VC HAIP, i.e. with wallet attestations */
     private val enforceClientAuthentication: Boolean = false,
     /** Used to verify client attestation JWTs */
-    @Deprecated("Use verifyJwsSignatureObject, verifyJwsSignatureWithCnf instead")
-    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
+    /** Used to verify client attestation JWTs */
     private val verifyJwsSignatureWithCnf: VerifyJwsSignatureWithCnfFun = VerifyJwsSignatureWithCnf(),
     /** Callback to verify the client attestation JWT against a set of trusted roots */
     private val verifyClientAttestationJwt: (suspend (JwsSigned<JsonWebToken>) -> Boolean) = { true },

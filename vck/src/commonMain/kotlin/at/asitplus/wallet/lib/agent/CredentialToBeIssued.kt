@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialSubject
-import at.asitplus.wallet.lib.iso.IssuerSignedItem
+import at.asitplus.iso.IssuerSignedItem
 import kotlinx.datetime.Instant
 
 sealed class CredentialToBeIssued {

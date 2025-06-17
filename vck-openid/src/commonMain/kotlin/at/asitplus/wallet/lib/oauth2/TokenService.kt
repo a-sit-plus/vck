@@ -1,16 +1,10 @@
 package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsHeaderJwk
-import at.asitplus.wallet.lib.jws.JwsHeaderJwk.invoke
 import at.asitplus.wallet.lib.jws.SignJwt
-import at.asitplus.wallet.lib.jws.SignJwt.invoke
-import at.asitplus.wallet.lib.jws.SignJwtFun
-import at.asitplus.wallet.lib.oauth2.OpenId4VciAccessToken
 import at.asitplus.wallet.lib.oidvci.DefaultNonceService
 import at.asitplus.wallet.lib.oidvci.NonceService
 
@@ -26,7 +20,7 @@ data class TokenService(
             nonceService: NonceService = DefaultNonceService(),
             keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
             issueRefreshTokens: Boolean = false,
-            verificationAlgorithms: Collection<JwsAlgorithm> = setOf(JwsAlgorithm.ES256), // per OID4VC HAIP
+            verificationAlgorithms: Collection<JwsAlgorithm.Signature> = setOf(JwsAlgorithm.Signature.ES256), // per OID4VC HAIP
         ) = TokenService(
             generation = JwtTokenGenerationService(
                 nonceService = nonceService,

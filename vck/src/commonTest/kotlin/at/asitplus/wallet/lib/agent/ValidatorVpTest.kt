@@ -8,10 +8,11 @@ import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
-import at.asitplus.wallet.lib.jws.SignJwt
-import at.asitplus.wallet.lib.jws.SignJwtFun
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderKeyId
+import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.SignJwtFun
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -106,8 +107,8 @@ class ValidatorVpTest : FreeSpec({
         val holderCredentials = holder.getCredentials()
         holderCredentials.shouldNotBeNull()
         val holderVcSerialized = holderCredentials
-            .filterIsInstance<Holder.StoredCredential.Vc>()
-            .map { it.storeEntry.vcSerialized }
+            .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
+            .map { it.vcSerialized }
             .map { it.reversed() }
         val vp = holder.createVcPresentation(
             holderVcSerialized,
@@ -117,8 +118,8 @@ class ValidatorVpTest : FreeSpec({
 
         verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge).also {
             it.shouldBeInstanceOf<VerifyPresentationResult.Success>()
-            it.vp.verifiableCredentials.shouldBeEmpty()
-            it.vp.revokedVerifiableCredentials.shouldBeEmpty()
+            it.vp.freshVerifiableCredentials.shouldBeEmpty()
+            it.vp.notVerifiablyFreshVerifiableCredentials.shouldBeEmpty()
             it.vp.invalidVerifiableCredentials.shouldBe(holderVcSerialized)
         }
     }
@@ -168,7 +169,7 @@ class ValidatorVpTest : FreeSpec({
 
         verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge).also {
             it.shouldBeInstanceOf<VerifyPresentationResult.Success>()
-            it.vp.verifiableCredentials.shouldBeEmpty()
+            it.vp.freshVerifiableCredentials.shouldBeEmpty()
         }
         holderCredentialStore.getCredentials().getOrThrow()
             .shouldHaveSize(1)
@@ -178,14 +179,16 @@ class ValidatorVpTest : FreeSpec({
         val credentials = holderCredentialStore.getCredentials().getOrThrow()
         val validCredentials = credentials
             .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
-            .filter { validator.checkRevocationStatus(it.vc)?.getOrNull() != TokenStatus.Invalid }
+            .filter {
+                validator.checkRevocationStatus(it.vc) !is TokenStatusValidationResult.Invalid
+            }
             .map { it.vcSerialized }
         (validCredentials.isEmpty()) shouldBe false
 
         val vp = VerifiablePresentation(validCredentials)
         val vpSerialized = vp.toJws(
             challenge = challenge,
-            issuerId = holder.keyPair.identifier,
+            issuerId = holder.keyMaterial.identifier,
             audienceId = verifierId,
         )
         val vpJws = holderSignVp(
@@ -206,7 +209,7 @@ class ValidatorVpTest : FreeSpec({
         val vpSerialized = VerifiablePresentationJws(
             vp = vp,
             challenge = challenge,
-            issuer = holder.keyPair.identifier,
+            issuer = holder.keyMaterial.identifier,
             audience = verifierId,
             jwtId = "wrong_jwtId",
         )
@@ -232,7 +235,7 @@ class ValidatorVpTest : FreeSpec({
 
         val vpSerialized = vp.toJws(
             challenge = challenge,
-            issuerId = holder.keyPair.identifier,
+            issuerId = holder.keyMaterial.identifier,
             audienceId = verifierId,
         )
         val vpJws = holderSignVp(

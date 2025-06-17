@@ -13,15 +13,12 @@ import at.asitplus.rqes.SignDocRequestParameters
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
+import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import kotlinx.serialization.json.JsonObject
-
-@Deprecated("Renamed", ReplaceWith("DocumentDigest"))
-typealias CscDocumentDigest = DocumentDigest
-
 
 /**
  * CSC-API v2.0.0.2
@@ -46,6 +43,7 @@ data class DocumentDigest(
      * as strong or stronger than SHA256 SHALL be used
      */
     @SerialName("hashAlgorithmOID")
+    @Serializable(with = ObjectIdentifierStringSerializer::class)
     val hashAlgorithmOid: ObjectIdentifier? = null,
 
     /**
@@ -64,6 +62,7 @@ data class DocumentDigest(
      * The OID of the algorithm to use for signing
      */
     @SerialName("signAlgo")
+    @Serializable(with = ObjectIdentifierStringSerializer::class)
     val signAlgoOid: ObjectIdentifier,
 
     /**

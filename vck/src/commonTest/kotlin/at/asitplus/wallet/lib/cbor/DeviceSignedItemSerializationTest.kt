@@ -1,9 +1,20 @@
 package at.asitplus.wallet.lib.cbor
 
+import at.asitplus.iso.CborCredentialSerializer
+import at.asitplus.iso.DeviceNameSpaces
+import at.asitplus.iso.DeviceSigned
+import at.asitplus.iso.DeviceSignedItem
+import at.asitplus.iso.DeviceSignedItemList
+import at.asitplus.wallet.lib.iso.Document
+import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.iso.IssuerSignedItem
+import at.asitplus.wallet.lib.iso.MobileSecurityObject
 import at.asitplus.signum.indispensable.CryptoSignature
+import kotlinx.serialization.encodeToByteArray
 import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseSigned
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.wallet.lib.iso.*
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
@@ -14,6 +25,7 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlin.random.Random
 import kotlin.random.nextUInt
+import kotlinx.serialization.decodeFromByteArray
 
 class DeviceSignedItemSerializationTest : FreeSpec({
 
@@ -26,10 +38,10 @@ class DeviceSignedItemSerializationTest : FreeSpec({
         )
         val deviceNameSpaces = DeviceNameSpaces(mapOf(namespace to DeviceSignedItemList(listOf(item))))
 
-        val serialized = deviceNameSpaces.serialize()
+        val serialized = coseCompliantSerializer.encodeToByteArray(deviceNameSpaces)
         serialized.encodeToString(Base16(true)).shouldNotContain("D903EC")
 
-        val parsed = DeviceNameSpaces.deserialize(serialized).getOrThrow()
+        val parsed = coseCompliantSerializer.decodeFromByteArray<DeviceNameSpaces>(serialized)
 
         parsed shouldBe deviceNameSpaces
     }
@@ -48,19 +60,19 @@ class DeviceSignedItemSerializationTest : FreeSpec({
             key = elementId,
             value = Random.nextBytes(32),
         )
-        val protectedHeader = CoseHeader(algorithm = CoseAlgorithm.RS256)
+        val protectedHeader = CoseHeader(algorithm = CoseAlgorithm.Signature.RS256)
         val issuerAuth = CoseSigned.create(
             protectedHeader,
             null,
             null,
-            CryptoSignature.RSAorHMAC(byteArrayOf()),
+            CryptoSignature.RSA(byteArrayOf()),
             MobileSecurityObject.serializer()
         )
         val deviceAuth = CoseSigned.create(
             protectedHeader,
             null,
             null,
-            CryptoSignature.RSAorHMAC(byteArrayOf()),
+            CryptoSignature.RSA(byteArrayOf()),
             ByteArraySerializer()
         )
 
@@ -75,11 +87,9 @@ class DeviceSignedItemSerializationTest : FreeSpec({
                 deviceAuth
             )
         )
-        val serialized = doc.serialize()
+        val serialized = coseCompliantSerializer.encodeToByteArray(doc)
         serialized.encodeToString(Base16(true)).shouldNotContain("D903EC")
 
-        val parsed = Document.deserialize(serialized).getOrThrow()
-
-        parsed shouldBe doc
+        coseCompliantSerializer.decodeFromByteArray<Document>(serialized) shouldBe doc
     }
 })

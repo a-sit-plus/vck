@@ -100,13 +100,13 @@ As discovered in [#226](https://github.com/a-sit-plus/vck/issues/226), using the
 
 The actual credentials are provided as discrete artefacts and are maintained separately [over here](https://github.com/a-sit-plus/credentials-collection).
 It is fine to add credentials **and** VC-K to as project dependencies, e. g., to use a version of VC-K that is more recent than the one a certain credentials depends on.
+
 ## Limitations
 
  - Several parts of the W3C VC Data Model have not been fully implemented, i.e. everything around resolving cryptographic key material.
  - Anything related to ledgers (e.g. resolving DID documents) is out of scope.
  - JSON-LD is not supported for W3C credentials.
  - Trust relationships are mostly up to clients using this library.
- - The `PlatformCryptoShim` for iOS should not be used in production as it does not implement encryption, decryption, key agreement and message digests correctly. Track the progress for [Signum milestone 1](https://github.com/a-sit-plus/signum/milestone/1) for an update on this issue.
 
 ## Dataflow for OID4VCI
 

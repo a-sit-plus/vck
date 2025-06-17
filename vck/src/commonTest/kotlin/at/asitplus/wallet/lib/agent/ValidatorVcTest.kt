@@ -9,11 +9,12 @@ import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
-import at.asitplus.wallet.lib.jws.SignJwt
-import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderKeyId
+import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.SignJwtFun
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
@@ -96,9 +97,11 @@ class ValidatorVcTest : FreeSpec() {
             ) shouldBe true
 
             validator.verifyVcJws(credential.vcJws, verifierKeyMaterial.publicKey)
-                .shouldBeInstanceOf<VerifyCredentialResult.Revoked>()
+                .shouldBeInstanceOf<VerifyCredentialResult.SuccessJwt>()
 
-            validator.checkRevocationStatus(value.jws)!!.getOrNull() shouldBe TokenStatus.Invalid
+            validator.checkRevocationStatus(value.jws)
+                .shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
+                .tokenStatus shouldBe TokenStatus.Invalid
         }
 
         "wrong subject keyId is not be valid" {
@@ -172,7 +175,7 @@ class ValidatorVcTest : FreeSpec() {
                     .let { signJws(it) }
                     .let {
                         validator.verifyVcJws(it, verifierKeyMaterial.publicKey)
-                            .shouldBeInstanceOf<VerifyCredentialResult.ValidationError>()
+                            .shouldBeInstanceOf<VerifyCredentialResult.InvalidStructure>()
                     }
             }
         }
@@ -228,7 +231,7 @@ class ValidatorVcTest : FreeSpec() {
                     .let { signJws(it) }
                     .let {
                         validator.verifyVcJws(it, verifierKeyMaterial.publicKey)
-                            .shouldBeInstanceOf<VerifyCredentialResult.ValidationError>()
+                            .shouldBeInstanceOf<VerifyCredentialResult.InvalidStructure>()
                     }
             }
         }
@@ -307,8 +310,10 @@ class ValidatorVcTest : FreeSpec() {
                     .let { wrapVcInJws(it) }
                     .let { signJws(it) }
                     .let {
-                        validator.verifyVcJws(it, verifierKeyMaterial.publicKey)
-                            .shouldBeInstanceOf<VerifyCredentialResult.InvalidStructure>()
+                        val validationResult = validator.verifyVcJws(it, verifierKeyMaterial.publicKey)
+                            .shouldBeInstanceOf<VerifyCredentialResult.SuccessJwt>()
+
+                        validator.checkCredentialTimeliness(validationResult.jws).isTimely shouldBe false
                     }
             }
         }
@@ -390,14 +395,14 @@ class ValidatorVcTest : FreeSpec() {
 
     private suspend fun wrapVcInJwsWrongKey(vcJws: VerifiableCredentialJws): String {
         val jwsHeader = JwsHeader(
-            algorithm = JwsAlgorithm.ES256,
+            algorithm = JwsAlgorithm.Signature.ES256,
             keyId = verifierKeyMaterial.identifier,
             type = JwsContentTypeConstants.JWT
         )
         val signatureInput = jwsHeader.serialize().encodeToByteArray().encodeToString(Base64UrlStrict) +
                 "." + vcJws.serialize().encodeToByteArray().encodeToString(Base64UrlStrict)
         val signatureInputBytes = signatureInput.encodeToByteArray()
-        val signature = DefaultCryptoService(issuerKeyMaterial).sign(signatureInputBytes).signature
+        val signature = issuerKeyMaterial.sign(signatureInputBytes).signature
         return JwsSigned(jwsHeader, vcJws, signature, signatureInputBytes).serialize()
     }
 

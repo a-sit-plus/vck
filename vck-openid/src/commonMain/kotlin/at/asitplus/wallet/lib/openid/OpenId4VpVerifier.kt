@@ -2,7 +2,15 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.dcapi.OID4VPHandover
 import at.asitplus.dif.*
+import at.asitplus.iso.ClientIdToHash
+import at.asitplus.iso.DeviceAuthentication
+import at.asitplus.wallet.lib.iso.DeviceResponse
+import at.asitplus.wallet.lib.iso.Document
+import at.asitplus.wallet.lib.iso.MobileSecurityObject
+import at.asitplus.iso.ResponseUriToHash
+import at.asitplus.iso.SessionTranscript
 import at.asitplus.jsonpath.JsonPath
 import at.asitplus.openid.*
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
@@ -11,8 +19,6 @@ import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
-import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
-import at.asitplus.wallet.lib.cbor.VerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
@@ -26,6 +32,7 @@ import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
+import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
@@ -45,17 +52,11 @@ open class OpenId4VpVerifier(
     private val clientIdScheme: ClientIdScheme,
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
-    @Deprecated("Use signAuthnRequest, decryptJwe instead")
-    private val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
     private val decryptJwe: DecryptJweFun = DecryptJwe(keyMaterial),
     private val signAuthnRequest: SignJwtFun<AuthenticationRequestParameters> =
-        SignJwt(keyMaterial, JwsHeaderClientIdScheme(clientIdScheme)()),
-    @Deprecated("Use verifyJwsSignatureObject instead")
-    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
+        SignJwt(keyMaterial, JwsHeaderClientIdScheme(clientIdScheme)),
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
-    private val supportedAlgorithms: List<JwsAlgorithm> = listOf(JwsAlgorithm.ES256),
-    @Deprecated("Use verifyCoseSignature instead")
-    private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(),
+    private val supportedAlgorithms: List<JwsAlgorithm> = listOf(JwsAlgorithm.Signature.ES256),
     private val verifyCoseSignature: VerifyCoseSignatureWithKeyFun<ByteArray> = VerifyCoseSignatureWithKey(),
     timeLeewaySeconds: Long = 300L,
     private val clock: Clock = Clock.System,
@@ -72,7 +73,7 @@ open class OpenId4VpVerifier(
     private val responseParser = ResponseParser(decryptJwe, verifyJwsObject)
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
     private val supportedSignatureVerificationAlgorithm =
-        (supportedAlgorithms.firstOrNull { it == JwsAlgorithm.ES256 }?.identifier
+        (supportedAlgorithms.firstOrNull { it == JwsAlgorithm.Signature.ES256 }?.identifier
             ?: supportedAlgorithms.first().identifier)
     private val containerJwt = FormatContainerJwt(algorithmStrings = supportedAlgorithmStrings)
     private val containerSdJwt = FormatContainerSdJwt(
@@ -562,7 +563,7 @@ open class OpenId4VpVerifier(
             val apuNested = ((input as? ResponseParametersFrom.JwsSigned)?.parent as? ResponseParametersFrom.JweForJws)
                 ?.jweDecrypted?.header?.agreementPartyUInfo
             val deviceResponse = relatedPresentation.jsonPrimitive.content.decodeToByteArray(Base64UrlStrict)
-                .let { DeviceResponse.deserialize(it).getOrThrow() }
+                .let { coseCompliantSerializer.decodeFromByteArray<DeviceResponse>(it) }
 
             val mdocGeneratedNonce = apuDirect?.decodeToString()
                 ?: apuNested?.decodeToString()
@@ -592,7 +593,7 @@ open class OpenId4VpVerifier(
     }
 
     /**
-     * Performs verification of the [at.asitplus.wallet.lib.iso.SessionTranscript] and [at.asitplus.wallet.lib.iso.DeviceAuthentication],
+     * Performs verification of the [at.asitplus.iso.SessionTranscript] and [at.asitplus.iso.DeviceAuthentication],
      * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024, if required (i.e. response is encrypted)
      */
     @Throws(IllegalArgumentException::class)
@@ -601,7 +602,7 @@ open class OpenId4VpVerifier(
         clientId: String?,
         responseUrl: String?,
         expectedNonce: String,
-    ): (MobileSecurityObject, Document) -> Boolean = { mso, document ->
+    ): suspend (MobileSecurityObject, Document) -> Boolean = { mso, document ->
         Napier.d("verifyDocument: mdocGeneratedNonce='$mdocGeneratedNonce', clientId='$clientId', responseUrl='$responseUrl', expectedNonce='$expectedNonce'")
         val deviceSignature = document.deviceSigned.deviceAuth.deviceSignature ?: run {
             Napier.w("DeviceSignature is null: ${document.deviceSigned.deviceAuth}")
@@ -613,7 +614,7 @@ open class OpenId4VpVerifier(
             val deviceAuthentication =
                 document.calcDeviceAuthentication(expectedNonce, mdocGeneratedNonce, clientId, responseUrl)
             val expectedPayload = coseCompliantSerializer
-                .encodeToByteArray(deviceAuthentication.serialize())
+                .encodeToByteArray(coseCompliantSerializer.encodeToByteArray(deviceAuthentication))
                 .wrapInCborTag(24)
                 .also { Napier.d("Device authentication for verification is ${it.encodeToString(Base16())}") }
             verifyCoseSignature(deviceSignature, walletKey, byteArrayOf(), expectedPayload).onFailure {
@@ -639,7 +640,7 @@ open class OpenId4VpVerifier(
     }
 
     /**
-     * Performs calculation of the [at.asitplus.wallet.lib.iso.SessionTranscript] and [at.asitplus.wallet.lib.iso.DeviceAuthentication],
+     * Performs calculation of the [at.asitplus.iso.SessionTranscript] and [at.asitplus.iso.DeviceAuthentication],
      * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024
      */
     private fun Document.calcDeviceAuthentication(
@@ -652,8 +653,8 @@ open class OpenId4VpVerifier(
         val responseUriToHash = ResponseUriToHash(responseUri = responseUrl, mdocGeneratedNonce = mdocGeneratedNonce)
         val sessionTranscript = SessionTranscript.forOpenId(
             OID4VPHandover(
-                clientIdHash = clientIdToHash.serialize().sha256(),
-                responseUriHash = responseUriToHash.serialize().sha256(),
+                clientIdHash = coseCompliantSerializer.encodeToByteArray(clientIdToHash).sha256(),
+                responseUriHash = coseCompliantSerializer.encodeToByteArray(responseUriToHash).sha256(),
                 nonce = challenge
             ),
         )
@@ -684,10 +685,9 @@ open class OpenId4VpVerifier(
             reconstructed = reconstructedJsonObject,
             disclosures = disclosures,
             state = state,
-            isRevoked = isRevoked
+            freshnessSummary = freshnessSummary,
         ).also { Napier.i("VP success: $this") }
     }
-
 }
 
 private val PresentationSubmissionDescriptor.cumulativeJsonPath: String
@@ -702,8 +702,11 @@ private val PresentationSubmissionDescriptor.cumulativeJsonPath: String
     }
 
 
-class JwsHeaderClientIdScheme(val clientIdScheme: ClientIdScheme) {
-    operator fun invoke(): JwsHeaderIdentifierFun = { it, keyMaterial ->
+class JwsHeaderClientIdScheme(val clientIdScheme: ClientIdScheme) : JwsHeaderIdentifierFun {
+    override suspend operator fun invoke(
+        it: JwsHeader,
+        keyMaterial: KeyMaterial,
+    ) = run {
         val attestationJwt = (clientIdScheme as? ClientIdScheme.VerifierAttestation)?.attestationJwt?.serialize()
         (clientIdScheme as? ClientIdScheme.CertificateSanDns)?.chain?.let { x5c ->
             it.copy(certificateChain = x5c, attestationJwt = attestationJwt)

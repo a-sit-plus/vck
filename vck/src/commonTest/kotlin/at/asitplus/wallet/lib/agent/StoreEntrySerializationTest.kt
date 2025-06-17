@@ -1,9 +1,10 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.iso.CborCredentialSerializer
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.iso.CborCredentialSerializer
 import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -12,7 +13,7 @@ import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.builtins.ByteArraySerializer
-import kotlinx.serialization.encodeToString
+import kotlinx.serialization.decodeFromByteArray
 
 class StoreEntrySerializationTest : FreeSpec({
 
@@ -41,8 +42,7 @@ class StoreEntrySerializationTest : FreeSpec({
             .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
         val entry = holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
-            .shouldBeInstanceOf<Holder.StoredCredential.Vc>()
-            .storeEntry
+            .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Vc>()
 
         val serialized = vckJsonSerializer.encodeToString(entry)
 
@@ -61,8 +61,7 @@ class StoreEntrySerializationTest : FreeSpec({
             .shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>()
 
         val entry = holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
-            .shouldBeInstanceOf<Holder.StoredCredential.SdJwt>()
-            .storeEntry
+            .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.SdJwt>()
 
         val serialized = vckJsonSerializer.encodeToString(entry)
 
@@ -87,8 +86,7 @@ class StoreEntrySerializationTest : FreeSpec({
             .shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
 
         val entry = holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
-            .shouldBeInstanceOf<Holder.StoredCredential.Iso>()
-            .storeEntry
+            .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Iso>()
 
         val serialized = vckJsonSerializer.encodeToString(entry)
 
@@ -360,13 +358,12 @@ class StoreEntrySerializationTest : FreeSpec({
         """.trimIndent()
 
         val credentialsInput = input.decodeToByteArray(Base64())
-            .let { IssuerSigned.deserialize(it) }.getOrNull()
-            ?.let { Holder.StoreCredentialInput.Iso(it, ConstantIndex.AtomicAttribute2023) }
+            .let { coseCompliantSerializer.decodeFromByteArray<IssuerSigned>(it) }
+            .let { Holder.StoreCredentialInput.Iso(it, ConstantIndex.AtomicAttribute2023) }
             .shouldNotBeNull()
 
         val entry = holder.storeCredential(credentialsInput).getOrThrow()
-            .shouldBeInstanceOf<Holder.StoredCredential.Iso>()
-            .storeEntry
+            .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Iso>()
 
         val serialized = vckJsonSerializer.encodeToString(entry)
 

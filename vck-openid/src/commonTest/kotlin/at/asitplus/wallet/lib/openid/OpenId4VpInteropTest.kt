@@ -14,7 +14,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMIL
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
@@ -130,7 +129,7 @@ class OpenId4VpInteropTest : FreeSpec({
         parameters.shouldBeInstanceOf<RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>>()
 
         val jar = parameters.jwsSigned
-        jar.header.algorithm shouldBe JwsAlgorithm.ES256
+        jar.header.algorithm shouldBe JwsAlgorithm.Signature.ES256
         jar.header.type shouldBe "oauth-authz-req+jwt"
 
         jar.payload.issuer shouldBe verifierIssuerUrl
@@ -160,7 +159,7 @@ class OpenId4VpInteropTest : FreeSpec({
             val sdJwt = SdJwtSigned.parse(vpToken).shouldNotBeNull()
             sdJwt.keyBindingJws.shouldNotBeNull().also {
                 it.header.also {
-                    it.algorithm shouldBe JwsAlgorithm.ES256
+                    it.algorithm shouldBe JwsAlgorithm.Signature.ES256
                     it.type shouldBe "kb+jwt"
                 }
                 it.payload.also {
@@ -175,7 +174,7 @@ class OpenId4VpInteropTest : FreeSpec({
                     it.keyId shouldBe issuerKeyId
                 else
                     it.jsonWebKey.shouldNotBeNull()
-                it.algorithm shouldBe JwsAlgorithm.ES256
+                it.algorithm shouldBe JwsAlgorithm.Signature.ES256
                 it.type shouldBe "vc+sd-jwt"
             }
             sdJwt.getPayloadAsVerifiableCredentialSdJwt().getOrThrow().also {
@@ -224,7 +223,7 @@ class OpenId4VpInteropTest : FreeSpec({
             vckJsonSerializer
         ).getOrThrow()
 
-        jar.header.algorithm shouldBe JwsAlgorithm.ES256
+        jar.header.algorithm shouldBe JwsAlgorithm.Signature.ES256
         jar.header.type shouldBe " oauth-authz-req+jwt " // that's a typo in the document ...
 
         jar.payload.issuer shouldBe "https://bdr.de/jwk"

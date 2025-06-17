@@ -1,5 +1,23 @@
 package at.asitplus.wallet.lib.iso
 
+import at.asitplus.iso.DeviceAuth
+import at.asitplus.iso.DeviceKeyInfo
+import at.asitplus.iso.DeviceNameSpaces
+import at.asitplus.iso.DeviceRequest
+import at.asitplus.wallet.lib.iso.DeviceResponse
+import at.asitplus.iso.DeviceSigned
+import at.asitplus.iso.DocRequest
+import at.asitplus.wallet.lib.iso.Document
+import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.iso.IssuerSignedItem
+import at.asitplus.iso.IssuerSignedList
+import at.asitplus.iso.ItemsRequest
+import at.asitplus.iso.ItemsRequestList
+import at.asitplus.wallet.lib.iso.MobileSecurityObject
+import at.asitplus.iso.SingleItemsRequest
+import at.asitplus.iso.ValidityInfo
+import at.asitplus.iso.ValueDigest
+import at.asitplus.iso.ValueDigestList
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.CoseSigned
@@ -174,12 +192,17 @@ class Verifier {
                         )
                     )
                 ),
-                readerAuth = signCose(null, CoseHeader(), null, ByteArraySerializer()).getOrThrow()
+                readerAuth = signCose(
+                    protectedHeader = null,
+                    unprotectedHeader = CoseHeader(),
+                    payload = null,
+                    serializer = ByteArraySerializer()
+                ).getOrThrow()
             )
         )
     )
 
-    fun verifyResponse(deviceResponse: DeviceResponse, issuerKey: CoseKey) {
+    suspend fun verifyResponse(deviceResponse: DeviceResponse, issuerKey: CoseKey) {
         val documents = deviceResponse.documents.shouldNotBeNull()
         val doc = documents.first()
         doc.docType shouldBe ConstantIndex.AtomicAttribute2023.isoDocType

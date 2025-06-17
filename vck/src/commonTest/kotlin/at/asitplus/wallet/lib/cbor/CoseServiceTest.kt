@@ -1,9 +1,13 @@
 package at.asitplus.wallet.lib.cbor
 
+import at.asitplus.iso.DeviceKeyInfo
+import at.asitplus.wallet.lib.iso.MobileSecurityObject
+import at.asitplus.iso.ValidityInfo
+import at.asitplus.iso.ValueDigest
+import at.asitplus.iso.ValueDigestList
 import at.asitplus.signum.indispensable.cosef.*
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.iso.*
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -44,10 +48,10 @@ class CoseServiceTest : FreeSpec({
         val parameterSerializer = ByteArraySerializer()
         val payloadToUse = "This is the content: ".encodeToByteArray() + randomPayload
         val signed = signCose(
-            CoseHeader(algorithm = CoseAlgorithm.ES256),
-            null,
-            payloadToUse,
-            parameterSerializer
+            protectedHeader = CoseHeader(algorithm = CoseAlgorithm.Signature.ES256),
+            unprotectedHeader = null,
+            payload = payloadToUse,
+            serializer = parameterSerializer
         ).getOrThrow()
 
         signed.payload shouldBe payloadToUse
@@ -65,10 +69,10 @@ class CoseServiceTest : FreeSpec({
     "signed object with random bytes can be verified" {
         val parameterSerializer = ByteArraySerializer()
         val signed = signCose(
-            null,
-            CoseHeader(algorithm = CoseAlgorithm.ES256),
-            randomPayload,
-            parameterSerializer,
+            protectedHeader = null,
+            unprotectedHeader = CoseHeader(algorithm = CoseAlgorithm.Signature.ES256),
+            payload = randomPayload,
+            serializer = parameterSerializer,
         ).getOrThrow()
 
         signed.payload shouldBe randomPayload
@@ -100,10 +104,10 @@ class CoseServiceTest : FreeSpec({
             validityInfo = ValidityInfo(Clock.System.now(), Clock.System.now(), Clock.System.now())
         )
         val signed = signCoseMso(
-            CoseHeader(algorithm = CoseAlgorithm.ES256),
-            null,
-            mso,
-            parameterSerializer
+            protectedHeader = CoseHeader(algorithm = CoseAlgorithm.Signature.ES256),
+            unprotectedHeader = null,
+            payload = mso,
+            serializer = parameterSerializer
         ).getOrThrow()
 
         signed.payload shouldBe mso
@@ -117,12 +121,7 @@ class CoseServiceTest : FreeSpec({
 
     "signed object with null payload can be verified" {
         val parameterSerializer = NothingSerializer()
-        val signed = signCoseNothing(
-            null,
-            null,
-            null,
-            parameterSerializer
-        ).getOrThrow()
+        val signed = signCoseNothing(null, null, null, parameterSerializer).getOrThrow()
 
         signed.payload shouldBe null
         signed.signature.shouldNotBeNull()
@@ -141,7 +140,12 @@ class CoseServiceTest : FreeSpec({
 
     "signed object with random bytes, transported detached, can be verified" {
         val parameterSerializer = ByteArraySerializer()
-        val signed = signCoseDetached(null, null, randomPayload, parameterSerializer).getOrThrow()
+        val signed = signCoseDetached(
+            protectedHeader = null,
+            unprotectedHeader = null,
+            payload = randomPayload,
+            serializer = parameterSerializer
+        ).getOrThrow()
 
         signed.payload shouldBe null
         signed.signature.shouldNotBeNull()

@@ -1,10 +1,7 @@
 package at.asitplus.wallet.lib.iso
 
-import at.asitplus.KmmResult.Companion.wrap
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromByteArray
-import kotlinx.serialization.encodeToByteArray
 
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for mdoc request (8.3.2.1.2.1)
@@ -20,7 +17,6 @@ data class DeviceResponse(
     @SerialName("status")
     val status: UInt,
 ) {
-    fun serialize() = vckCborSerializer.encodeToByteArray(this)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -46,11 +42,5 @@ data class DeviceResponse(
         result = 31 * result + (documentErrors?.contentHashCode() ?: 0)
         result = 31 * result + status.hashCode()
         return result
-    }
-
-    companion object {
-        fun deserialize(it: ByteArray) = kotlin.runCatching {
-            vckCborSerializer.decodeFromByteArray<DeviceResponse>(it)
-        }.wrap()
     }
 }

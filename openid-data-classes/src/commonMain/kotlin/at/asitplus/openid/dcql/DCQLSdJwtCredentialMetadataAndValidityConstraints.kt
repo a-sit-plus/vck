@@ -24,7 +24,7 @@ data class DCQLSdJwtCredentialMetadataAndValidityConstraints(
 
     fun validate(actualCredentialType: String?): KmmResult<Unit> = catching {
         if (vctValues != null && actualCredentialType !in vctValues) {
-            throw IllegalArgumentException("Incompatible MDOC document type.")
+            throw IllegalArgumentException("Incompatible SD-JWT document type")
         }
     }
 }

@@ -1,7 +1,10 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.RequestParameters
-import at.asitplus.signum.indispensable.josef.*
+import at.asitplus.signum.indispensable.josef.ConfirmationClaim
+import at.asitplus.signum.indispensable.josef.JsonWebKey
+import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -72,8 +75,8 @@ class VerifierAttestationTest : FreeSpec({
 
         val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
             .shouldBeInstanceOf<AuthnResponseResult.Success>()
-        result.vp.verifiableCredentials.shouldNotBeEmpty()
-        result.vp.verifiableCredentials.forEach {
+        result.vp.freshVerifiableCredentials.shouldNotBeEmpty()
+        result.vp.freshVerifiableCredentials.map { it.vcJws }.forEach {
             it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
         }
     }
@@ -124,20 +127,18 @@ private suspend fun buildAttestationJwt(
 ).getOrThrow()
 
 private fun attestationJwtVerifier(trustedKey: JsonWebKey) =
-    object : RequestObjectJwsVerifier {
-        override suspend fun invoke(jws: JwsSigned<RequestParameters>): Boolean {
-            val attestationJwt = jws.header.attestationJwt?.let {
-                JwsSigned.Companion.deserialize<JsonWebToken>(
-                    JsonWebToken.Companion.serializer(), it
-                ).getOrThrow()
-            }
-                ?: return false
-            val verifyJwsSignatureWithKey = VerifyJwsSignatureWithKey()
-            if (!verifyJwsSignatureWithKey(attestationJwt, trustedKey))
-                return false
-            val verifierPublicKey = attestationJwt.payload.confirmationClaim?.jsonWebKey
-                ?: return false
-            return verifyJwsSignatureWithKey(jws, verifierPublicKey)
-        }
+    RequestObjectJwsVerifier { jws: JwsSigned<RequestParameters> ->
+        val attestationJwt = jws.header.attestationJwt?.let {
+            JwsSigned.Companion.deserialize<JsonWebToken>(
+                JsonWebToken.Companion.serializer(), it
+            ).getOrThrow()
+        } ?: return@RequestObjectJwsVerifier false
+        val verifyJwsSignatureWithKey = VerifyJwsSignatureWithKey()
+        if (!verifyJwsSignatureWithKey(attestationJwt, trustedKey))
+            return@RequestObjectJwsVerifier false
+        val verifierPublicKey = attestationJwt.payload.confirmationClaim?.jsonWebKey
+            ?: return@RequestObjectJwsVerifier false
+        verifyJwsSignatureWithKey(jws, verifierPublicKey)
     }
+
 

@@ -9,6 +9,7 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.AuthorizationResponsePreparationState
@@ -55,7 +56,11 @@ class OpenId4VpWallet(
     holderAgent: HolderAgent,
 ) {
 
-    data class AuthenticationSuccess(val redirectUri: String? = null)
+    sealed interface AuthenticationResult
+
+    data class AuthenticationSuccess(val redirectUri: String? = null) : AuthenticationResult
+    data class AuthenticationForward(val authenticationResponseResult: AuthenticationResponseResult.DcApi) : AuthenticationResult
+
 
     private val client: HttpClient = HttpClient(engine) {
         followRedirects = false
@@ -90,11 +95,14 @@ class OpenId4VpWallet(
         requestObjectJwsVerifier = { _ -> true }, // unsure about this one?
     )
 
-    suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> =
-        openId4VpHolder.parseAuthenticationRequestParameters(input)
+    suspend fun parseAuthenticationRequestParameters(
+        input: String,
+        dcApiRequest: Oid4vpDCAPIRequest? = null
+    ): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> =
+        openId4VpHolder.parseAuthenticationRequestParameters(input, dcApiRequest)
 
     suspend fun startAuthorizationResponsePreparation(
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        request: RequestParametersFrom<AuthenticationRequestParameters>
     ): KmmResult<AuthorizationResponsePreparationState> =
         openId4VpHolder.startAuthorizationResponsePreparation(request)
 
@@ -117,6 +125,7 @@ class OpenId4VpWallet(
             when (it) {
                 is AuthenticationResponseResult.Post -> postResponse(it)
                 is AuthenticationResponseResult.Redirect -> redirectResponse(it)
+                is AuthenticationResponseResult.DcApi -> throw UnsupportedOperationException("Returning a URL not supported for DC API")
             }
         }
     }
@@ -126,12 +135,14 @@ class OpenId4VpWallet(
      * In case the result shall be POSTed to the verifier, we call [client] to do that,
      * and return the `redirect_uri` of that POST (which the Wallet may open in a browser).
      * In case the result shall be sent as a redirect to the verifier, we return that URL.
+     * In case the result shall be returned via the Digital Credentials API, an [AuthenticationForward]
+     * will be returned with the result to be forwarded.
      */
-    suspend fun finalizeAuthorizationResponseReturningUrl(
+    suspend fun finalizeAuthorizationResponse(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         clientMetadata: RelyingPartyMetadata?,
         credentialPresentation: CredentialPresentation,
-    ): KmmResult<AuthenticationSuccess> = catching {
+    ): KmmResult<AuthenticationResult> = catching {
         Napier.i("startPresentation: $request")
         openId4VpHolder.finalizeAuthorizationResponse(
             request = request,
@@ -141,6 +152,7 @@ class OpenId4VpWallet(
             when (it) {
                 is AuthenticationResponseResult.Post -> postResponse(it)
                 is AuthenticationResponseResult.Redirect -> redirectResponse(it)
+                is AuthenticationResponseResult.DcApi -> AuthenticationForward(it)
             }
         }
     }

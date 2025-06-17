@@ -11,7 +11,6 @@ import at.asitplus.openid.dcql.DCQLQueryResult
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.iso.IssuerSigned
 
 /**
@@ -24,7 +23,11 @@ interface Holder {
     /**
      * The public key for this agent, i.e. the "holder key" that the credentials get bound to.
      */
+    val keyMaterial: KeyMaterial
+
+    @Deprecated("Use keyMaterial instead", ReplaceWith("keyMaterial"))
     val keyPair: KeyMaterial
+        get() = keyMaterial
 
     sealed class StoreCredentialInput {
         data class Vc(
@@ -47,38 +50,12 @@ interface Holder {
      * Stores the verifiable credential in [credential] if it parses and validates,
      * and returns it for future reference.
      */
-    suspend fun storeCredential(credential: StoreCredentialInput): KmmResult<StoredCredential>
+    suspend fun storeCredential(credential: StoreCredentialInput): KmmResult<SubjectCredentialStore.StoreEntry>
 
     /**
      * Gets a list of all stored credentials, with a revocation status.
      */
-    suspend fun getCredentials(): Collection<StoredCredential>?
-
-    sealed class StoredCredential(
-        open val storeEntry: SubjectCredentialStore.StoreEntry,
-        val status: TokenStatus?,
-    ) {
-        class Vc(
-            override val storeEntry: SubjectCredentialStore.StoreEntry.Vc,
-            status: TokenStatus?
-        ) : StoredCredential(
-            storeEntry = storeEntry, status = status
-        )
-
-        class SdJwt(
-            override val storeEntry: SubjectCredentialStore.StoreEntry.SdJwt,
-            status: TokenStatus?
-        ) : StoredCredential(
-            storeEntry = storeEntry, status = status
-        )
-
-        class Iso(
-            override val storeEntry: SubjectCredentialStore.StoreEntry.Iso,
-            status: TokenStatus?,
-        ) : StoredCredential(
-            storeEntry = storeEntry, status = status
-        )
-    }
+    suspend fun getCredentials(): Collection<SubjectCredentialStore.StoreEntry>?
 
     /**
      * Creates [PresentationResponseParameters] as specified using the parameter [credentialPresentation]
@@ -109,11 +86,13 @@ interface Holder {
      *  This will mostly resolve to be the same `clientMetadata.vpFormats`.
      * @param pathAuthorizationValidator Provides the user of this library with a way to enforce
      *  authorization rules on attribute credentials that are to be disclosed.
+     * @param filterById filter the list of possible credentials by the provided ID
      */
     suspend fun matchInputDescriptorsAgainstCredentialStore(
         inputDescriptors: Collection<InputDescriptor>,
         fallbackFormatHolder: FormatHolder? = null,
         pathAuthorizationValidator: PathAuthorizationValidator? = null,
+        filterById: String? = null
     ): KmmResult<Map<String, InputDescriptorMatches>>
 
     /**
@@ -135,7 +114,12 @@ interface Holder {
     /**
      * Creates a mapping from the dcql credential query identifiers of the dcql query to matching
      * credentials and the claims credential set queries to be satisfied.
+     *
+     * @param filterById filter the list of possible credentials by the provided ID
      */
-    suspend fun matchDCQLQueryAgainstCredentialStore(dcqlQuery: DCQLQuery): KmmResult<DCQLQueryResult<SubjectCredentialStore.StoreEntry>>
+    suspend fun matchDCQLQueryAgainstCredentialStore(
+        dcqlQuery: DCQLQuery,
+        filterById: String? = null
+    ): KmmResult<DCQLQueryResult<SubjectCredentialStore.StoreEntry>>
 }
 

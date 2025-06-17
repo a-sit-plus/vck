@@ -2,6 +2,12 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.iso.DeviceAuth
+import at.asitplus.iso.DeviceNameSpaces
+import at.asitplus.wallet.lib.iso.DeviceResponse
+import at.asitplus.iso.DeviceSigned
+import at.asitplus.wallet.lib.iso.Document
+import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult
@@ -161,7 +167,8 @@ class VerifiablePresentationFactory(
                 }
             }
 
-            val docType = credential.scheme?.isoDocType!!
+            val docType = credential.scheme?.isoDocType
+                ?: throw PresentationException("Scheme not known or not registered")
             val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
             val (deviceSignature, _) = request.calcIsoDeviceSignature(docType, deviceNameSpaceBytes)
                 ?: throw PresentationException("calcIsoDeviceSignature not implemented")
