@@ -10,6 +10,7 @@ import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
+import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.AuthorizationResponsePreparationState
@@ -21,6 +22,7 @@ import io.ktor.client.call.body
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.plugins.DefaultRequest
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.forms.FormDataContent
 import io.ktor.client.request.forms.submitForm
 import io.ktor.client.request.get
@@ -83,12 +85,20 @@ class OpenId4VpWallet(
                         formParameters = parameters {
                             data.requestObjectParameters?.encodeToParameters()?.forEach { append(it.key, it.value) }
                         }
-                    ).bodyAsText()
+                    ) {
+                        data.headers.forEach {
+                            headers[it.key] = it.value
+                        }
+                    }.bodyAsText()
                 } else {
                     client.get(URLBuilder(data.url).apply {
                         data.requestObjectParameters?.encodeToParameters()
                             ?.forEach { parameters.append(it.key, it.value) }
-                    }.build()).bodyAsText()
+                    }.build()) {
+                        data.headers.forEach {
+                            headers[it.key] = it.value
+                        }
+                    }.bodyAsText()
                 }
             }
         },
