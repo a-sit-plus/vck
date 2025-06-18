@@ -1,7 +1,10 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.openid.OAuth2AuthorizationServerMetadata
+import at.asitplus.KmmResult
+import at.asitplus.openid.*
+import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.TokenVerificationService
+import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 
 /**
  * Used in OID4VCI by [CredentialIssuer] to obtain user data when issuing credentials using OID4VCI.
