@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.rqes
+package at.asitplus.wallet.lib.rqes.helper
 
 import at.asitplus.openid.SignatureQualifier
 import at.asitplus.rqes.CredentialInfo
