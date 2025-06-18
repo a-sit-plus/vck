@@ -21,6 +21,8 @@ interface AuthorizationServiceStrategy {
      *  + contains fields of the wrong type for the authorization details type,
      *  + contains fields with invalid values for the authorization details type
      *  + is missing required fields for the authorization details type.
+     *
+     *  @return Set of potentially transformed [AuthorizationDetails] (function may have side effects)
      */
     @Throws(OAuth2Exception.InvalidAuthorizationDetails::class)
     fun validateAuthorizationDetails(authorizationDetails: Collection<AuthorizationDetails>): Set<AuthorizationDetails>
@@ -30,7 +32,7 @@ interface AuthorizationServiceStrategy {
      * implied by `AuthorizationDetails` in `ClientAuthRequest`.
      *
      * For credential requests semantic matching is used.
-     * @return AuthorizationDetails from tokenRequest
+     * @return Set of potentially transformed [AuthorizationDetails] from tokenRequest (function may have side effects)
      */
     @Throws(OAuth2Exception.InvalidAuthorizationDetails::class)
     fun matchAuthorizationDetails(
