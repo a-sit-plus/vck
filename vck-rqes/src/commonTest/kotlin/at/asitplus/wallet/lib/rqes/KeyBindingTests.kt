@@ -17,6 +17,7 @@ import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.openid.*
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.CreationOptions.Query
+import at.asitplus.wallet.lib.rqes.helper.DummyCredentialDataProvider
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec

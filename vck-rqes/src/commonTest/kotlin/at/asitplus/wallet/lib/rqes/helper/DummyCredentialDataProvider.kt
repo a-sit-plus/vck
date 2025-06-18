@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.rqes
+package at.asitplus.wallet.lib.rqes.helper
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
@@ -7,7 +7,6 @@ import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.data.ConstantIndex
-import io.ktor.util.*
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlin.time.Duration.Companion.minutes

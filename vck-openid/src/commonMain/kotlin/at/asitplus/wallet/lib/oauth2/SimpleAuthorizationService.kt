@@ -7,10 +7,7 @@ import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.oidvci.*
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidCode
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidGrant
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidScope
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.RequestParser
 import com.benasher44.uuid.uuid4
@@ -85,7 +82,7 @@ class SimpleAuthorizationService(
         /** Not necessary to load the authn request referenced by `request_uri`. */
         buildRequestObjectParameters = { null }
     ),
-) : OAuth2AuthorizationServerAdapter {
+) : OAuth2AuthorizationServerAdapter, AuthorizationServiceInterface {
 
     override val tokenVerificationService: TokenVerificationService
         get() = tokenService.verification
@@ -165,14 +162,14 @@ class SimpleAuthorizationService(
      * @param clientAttestation value of the header `OAuth-Client-Attestation`
      * @param clientAttestationPop value of the header `OAuth-Client-Attestation-PoP`
      */
-    suspend fun par(
+    override suspend fun par(
         input: String,
-        clientAttestation: String? = null,
-        clientAttestationPop: String? = null,
+        clientAttestation: String?,
+        clientAttestationPop: String?,
     ) = catching {
         requestParser.parseRequestParameters(input).getOrThrow()
             .let { it.parameters as? AuthenticationRequestParameters }
-            ?.let { par(it, clientAttestation, clientAttestationPop) }
+            ?.let { par(it, clientAttestation, clientAttestationPop).getOrThrow() }
             ?: throw InvalidRequest("Could not parse request parameters from $input")
                 .also { Napier.w("par: could not parse request parameters from $input") }
     }
@@ -187,10 +184,10 @@ class SimpleAuthorizationService(
      * @param clientAttestation value of the header `OAuth-Client-Attestation`
      * @param clientAttestationPop value of the header `OAuth-Client-Attestation-PoP`
      */
-    suspend fun par(
+    override suspend fun par(
         request: AuthenticationRequestParameters,
-        clientAttestation: String? = null,
-        clientAttestationPop: String? = null,
+        clientAttestation: String?,
+        clientAttestationPop: String?,
     ) = catching {
         Napier.i("pushedAuthorization called with $request")
 
@@ -218,10 +215,10 @@ class SimpleAuthorizationService(
      * @return URL build from client's `redirect_uri` with a `code` query parameter containing a fresh authorization
      * code from [codeService].
      */
-    suspend fun authorize(input: String) = catching {
+    override suspend fun authorize(input: String) = catching {
         requestParser.parseRequestParameters(input).getOrThrow()
             .let { it.parameters as? AuthenticationRequestParameters }
-            ?.let { authorize(it) }
+            ?.let { authorize(it).getOrThrow() }
             ?: throw InvalidRequest("Could not parse request parameters from $input")
                 .also { Napier.w("authorize: could not parse request parameters from $input") }
     }
@@ -232,7 +229,7 @@ class SimpleAuthorizationService(
      * @return URL build from client's `redirect_uri` with a `code` query parameter containing a fresh authorization
      * code from [codeService].
      */
-    suspend fun authorize(input: AuthenticationRequestParameters) = catching {
+    override suspend fun authorize(input: AuthenticationRequestParameters) = catching {
         Napier.i("authorize called with $input")
 
         val request = if (input.requestUri != null) {
@@ -312,9 +309,9 @@ class SimpleAuthorizationService(
      *
      * @return [KmmResult] may contain a [OAuth2Exception]
      */
-    suspend fun token(
+    override suspend fun token(
         request: TokenRequestParameters,
-        httpRequest: RequestInfo? = null,
+        httpRequest: RequestInfo?,
     ): KmmResult<TokenResponseParameters> = catching {
         Napier.i("token called with $request")
 
