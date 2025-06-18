@@ -62,8 +62,6 @@ class CredentialAuthorizationServiceStrategy(
         }
     }
 
-    //TODO remove side effects from validate
-    //TODO remove side effects from all validation functions
     private fun AuthorizationDetails.validateAndTransform() =
         (this as? OpenIdAuthorizationDetails)?.let {
             when {
