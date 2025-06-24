@@ -82,7 +82,7 @@ class SimpleAuthorizationService(
         /** Not necessary to load the authn request referenced by `request_uri`. */
         buildRequestObjectParameters = { null }
     ),
-) : OAuth2AuthorizationServerAdapter, AuthorizationServiceInterface {
+) : OAuth2AuthorizationServerAdapter, AuthorizationService {
 
     override val tokenVerificationService: TokenVerificationService
         get() = tokenService.verification

@@ -8,7 +8,7 @@ import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 
-interface AuthorizationServiceInterface {
+interface AuthorizationService {
 
     /**
      * Pushed authorization request endpoint as defined in [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html).
