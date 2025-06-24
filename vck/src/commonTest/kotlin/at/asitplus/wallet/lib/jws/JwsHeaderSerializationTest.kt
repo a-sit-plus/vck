@@ -14,7 +14,6 @@ import at.asitplus.signum.indispensable.pki.RelativeDistinguishedName
 import at.asitplus.signum.indispensable.pki.TbsCertificate
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.ecmath.times
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import com.benasher44.uuid.uuid4
 import com.ionspin.kotlin.bignum.integer.BigInteger
 import com.ionspin.kotlin.bignum.integer.Sign
@@ -45,8 +44,8 @@ class JwsHeaderSerializationTest : FreeSpec({
 
         val serialized = header.serialize()
 
-        serialized shouldContain """"${first.encodeToDer().encodeToString(Base64UrlStrict)}""""
-        serialized shouldContain """"${second.encodeToDer().encodeToString(Base64UrlStrict)}""""
+        serialized shouldContain """"${first.encodeToDer().encodeToString(Base64Strict)}""""
+        serialized shouldContain """"${second.encodeToDer().encodeToString(Base64Strict)}""""
         serialized shouldContain """"$kid""""
     }
 
