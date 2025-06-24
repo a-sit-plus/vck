@@ -8,6 +8,7 @@ import at.asitplus.wallet.lib.oidvci.OAuth2AuthorizationServerAdapter
 import at.asitplus.wallet.lib.oidvci.OAuth2DataProvider
 
 /**
+ * Potential UC5:
  * Simple wrapper for [SimpleAuthorizationService] which uses [QtspAuthorizationServiceStrategy]
  */
 class SimpleQtspAuthorizationService private constructor(

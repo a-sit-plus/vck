@@ -9,7 +9,7 @@ import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 
 /**
- * Implements Authorization for QTSP as necessary for Use case 5
+ * Implements Authorization for QTSP as necessary for Potential Use case 5
  */
 class QtspAuthorizationServiceStrategy(
     private val authorizationServiceStrategy: CredentialAuthorizationServiceStrategy
