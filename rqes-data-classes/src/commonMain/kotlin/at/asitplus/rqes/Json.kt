@@ -1,6 +1,5 @@
 package at.asitplus.rqes
 
-import CscAuthorizationDetails
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.InputDescriptor
 import at.asitplus.openid.*
