@@ -1,23 +1,20 @@
 package at.asitplus.wallet.lib.rqes
 
-import CscAuthorizationDetails
 import at.asitplus.catching
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.SignatureQualifier
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.rqes.CredentialInfo
+import at.asitplus.rqes.CscAuthorizationDetails
 import at.asitplus.rqes.QtspSignatureRequest
 import at.asitplus.rqes.SignHashRequestParameters
-import at.asitplus.rqes.collection_entries.AuthParameters
 import at.asitplus.rqes.collection_entries.CertificateParameters
 import at.asitplus.rqes.collection_entries.DocumentDigest
 import at.asitplus.rqes.collection_entries.KeyParameters
 import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm.entries
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.OAuth2Client

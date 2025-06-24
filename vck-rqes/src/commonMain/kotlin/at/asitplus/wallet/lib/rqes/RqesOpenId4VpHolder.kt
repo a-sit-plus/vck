@@ -1,9 +1,9 @@
 package at.asitplus.wallet.lib.rqes
 
-import CscAuthorizationDetails
 import at.asitplus.catching
 import at.asitplus.openid.*
 import at.asitplus.rqes.CredentialInfo
+import at.asitplus.rqes.CscAuthorizationDetails
 import at.asitplus.rqes.QtspSignatureRequest
 import at.asitplus.rqes.SignHashRequestParameters
 import at.asitplus.rqes.collection_entries.*
