@@ -1,12 +1,9 @@
 package at.asitplus.wallet.lib.iso
 
+import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.supreme.hash.digest
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.KSerializer
 import kotlinx.serialization.cbor.Cbor
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.encoding.CompositeDecoder
-import kotlinx.serialization.encoding.CompositeEncoder
-import okio.ByteString.Companion.toByteString
 
 @OptIn(ExperimentalSerializationApi::class)
 @Deprecated("No added value", ReplaceWith("at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer"))
@@ -31,4 +28,4 @@ fun ByteArray.stripCborTag(tag: Byte): ByteArray {
 @Deprecated("Moved", ReplaceWith("at.asitplus.iso.cborSerializer.ByteArray.wrapInCborTag"))
 fun ByteArray.wrapInCborTag(tag: Byte) = byteArrayOf(0xd8.toByte()) + byteArrayOf(tag) + this
 
-fun ByteArray.sha256(): ByteArray = toByteString().sha256().toByteArray()
+fun ByteArray.sha256(): ByteArray = Digest.SHA256.digest(this)
