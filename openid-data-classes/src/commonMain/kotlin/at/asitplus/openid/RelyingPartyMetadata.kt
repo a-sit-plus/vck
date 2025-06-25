@@ -9,7 +9,6 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import kotlinx.serialization.encodeToString
 
 @Serializable
 data class RelyingPartyMetadata(
@@ -180,7 +179,7 @@ data class RelyingPartyMetadata(
      */
     @Transient
     val authorizationEncryptedResponseEncoding: JweEncryption? = authorizationEncryptedResponseEncodingString
-        ?.let { s -> JweEncryption.entries.firstOrNull { it.text == s } }
+        ?.let { s -> JweEncryption.entries.firstOrNull { it.identifier == s } }
 
     /**
      * OIDC Registration: OPTIONAL. JWE enc algorithm REQUIRED for encrypting the ID Token issued to this Client.
@@ -189,6 +188,6 @@ data class RelyingPartyMetadata(
      */
     @Transient
     val idTokenEncryptedResponseEncoding: JweEncryption? = idTokenEncryptedResponseEncodingString
-        ?.let { s -> JweEncryption.entries.firstOrNull { it.text == s } }
+        ?.let { s -> JweEncryption.entries.firstOrNull { it.identifier == s } }
 }
 

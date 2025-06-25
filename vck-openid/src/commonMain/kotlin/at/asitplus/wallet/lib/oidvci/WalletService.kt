@@ -234,7 +234,7 @@ class WalletService(
             CredentialResponseEncryption(
                 jsonWebKey = decryptionKeyMaterial.jsonWebKey,
                 jweAlgorithm = supportedJweAlgorithm,
-                jweEncryptionString = supportedJweEncryptionAlgorithm.text,
+                jweEncryptionString = supportedJweEncryptionAlgorithm.identifier,
             )
         } else null
 
