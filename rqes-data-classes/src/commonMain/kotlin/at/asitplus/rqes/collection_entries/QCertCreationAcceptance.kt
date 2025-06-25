@@ -80,11 +80,10 @@ data class QCertCreationAcceptance(
 
 ) : TransactionData {
 
+    @Suppress("DEPRECATION")
     override fun toBase64UrlJsonString(): JsonPrimitive =
         rdcJsonSerializer.parseToJsonElement(
-            rdcJsonSerializer.encodeToString(
-                DeprecatedBase64URLTransactionDataSerializer, this
-            )
+            rdcJsonSerializer.encodeToString(DeprecatedBase64URLTransactionDataSerializer, this)
         ) as JsonPrimitive
 
     override fun equals(other: Any?): Boolean {

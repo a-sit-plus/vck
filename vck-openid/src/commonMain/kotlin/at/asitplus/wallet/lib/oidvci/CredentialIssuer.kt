@@ -123,7 +123,7 @@ class CredentialIssuer(
             batchCredentialIssuance = BatchCredentialIssuanceMetadata(1),
             credentialResponseEncryption = SupportedAlgorithmsContainer(
                 supportedAlgorithmsStrings = supportedJweAlgorithms.map { it.identifier }.toSet(),
-                supportedEncryptionAlgorithmsStrings = supportedJweEncryptionAlgorithms.map { it.text }.toSet(),
+                supportedEncryptionAlgorithmsStrings = supportedJweEncryptionAlgorithms.map { it.identifier }.toSet(),
                 encryptionRequired = requireEncryption,
             )
         )

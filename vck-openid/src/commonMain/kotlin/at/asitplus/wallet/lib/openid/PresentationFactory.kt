@@ -21,7 +21,6 @@ import at.asitplus.wallet.lib.cbor.SignCoseFun
 import at.asitplus.wallet.lib.agent.PresentationRequestParameters.Flow
 import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
 import at.asitplus.wallet.lib.data.CredentialPresentation
-import at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
 import at.asitplus.iso.ClientIdToHash
@@ -32,9 +31,10 @@ import at.asitplus.iso.DeviceAuthentication
 import at.asitplus.iso.DeviceNameSpaces
 import at.asitplus.iso.ResponseUriToHash
 import at.asitplus.iso.SessionTranscript
-import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.iso.sha256
+import at.asitplus.iso.wrapInCborTag
 import at.asitplus.signum.indispensable.josef.JwkType
-import at.asitplus.wallet.lib.iso.*
+import at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
@@ -323,6 +323,7 @@ internal class PresentationFactory(
  * The two standards are not compatible
  * For interoperability if both are present we prefer OpenID over UC5
  */
+@Suppress("DEPRECATION")
 internal fun RequestParameters.parseTransactionData(): Pair<Flow, List<TransactionDataBase64Url>>? {
     val jsonRequest =
         vckJsonSerializer.encodeToJsonElement(PolymorphicSerializer(RequestParameters::class), this)

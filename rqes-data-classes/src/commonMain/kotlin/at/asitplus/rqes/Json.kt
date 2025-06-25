@@ -58,6 +58,7 @@ private val authorizationDetailsModule = SerializersModule {
     }
 }
 
+@Suppress("DEPRECATION")
 private val transactionDataModule = SerializersModule {
     polymorphic(TransactionData::class) {
         subclass(QesAuthorization::class, QesAuthorization.serializer())
