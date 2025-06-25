@@ -10,6 +10,12 @@ import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.iso.IssuerSignedItem
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
+import at.asitplus.wallet.lib.data.LocalDateOrInstant
 import at.asitplus.wallet.mdl.DrivingPrivilege
 import at.asitplus.wallet.mdl.DrivingPrivilegeCode
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
@@ -34,31 +40,23 @@ object DummyCredentialDataProvider {
         if (credentialScheme == ConstantIndex.AtomicAttribute2023) {
             val subjectId = subjectPublicKey.didEncoded
             val claims = listOfNotNull(
-                optionalClaim(claimNames, ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME, "Susanne"),
-                optionalClaim(claimNames, ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME, "Meier"),
-                optionalClaim(
-                    claimNames,
-                    ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH,
-                    LocalDate.parse("1990-01-01")
-                ),
-                optionalClaim(
-                    claimNames,
-                    ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT,
-                    Random.Default.nextBytes(32)
-                ),
+                optionalClaim(claimNames, CLAIM_GIVEN_NAME, "Susanne"),
+                optionalClaim(claimNames, CLAIM_FAMILY_NAME, "Meier"),
+                optionalClaim(claimNames, CLAIM_DATE_OF_BIRTH, LocalDate.parse("1990-01-01")),
+                optionalClaim(claimNames, CLAIM_PORTRAIT, Random.Default.nextBytes(32)),
             )
             when (representation) {
-                ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialToBeIssued.VcSd(
+                SD_JWT -> CredentialToBeIssued.VcSd(
                     claims = claims,
                     expiration = expiration,
                     scheme = credentialScheme,
                     subjectPublicKey = subjectPublicKey,
                 )
 
-                ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
+                PLAIN_JWT -> CredentialToBeIssued.VcJwt(
                     subject = AtomicAttribute2023(
                         subjectId,
-                        ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME,
+                        CLAIM_GIVEN_NAME,
                         "Susanne"
                     ),
                     expiration = expiration,
@@ -66,7 +64,7 @@ object DummyCredentialDataProvider {
                     subjectPublicKey = subjectPublicKey,
                 )
 
-                ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
+                ISO_MDOC -> CredentialToBeIssued.Iso(
                     issuerSignedItems = claims.mapIndexed { index, claim ->
                         issuerSignedItem(claim.name, claim.value, index.toUInt())
                     },
@@ -125,9 +123,11 @@ object DummyCredentialDataProvider {
             val birthDate = LocalDate.parse("1970-01-01")
             val issuingCountry = "AT"
             val nationality = "FR"
+            val issuanceDate = LocalDateOrInstant.LocalDate(LocalDate.parse("2023-01-01"))
+            val expirationDate = LocalDateOrInstant.LocalDate(LocalDate.parse("2027-01-01"))
             val claims = when (representation) {
 
-                ConstantIndex.CredentialRepresentation.SD_JWT -> with(EuPidScheme.SdJwtAttributes) {
+                SD_JWT -> with(EuPidScheme.SdJwtAttributes) {
                     listOfNotNull(
                         optionalClaim(claimNames, FAMILY_NAME, familyName),
                         optionalClaim(claimNames, FAMILY_NAME_BIRTH, familyName),
@@ -136,14 +136,14 @@ object DummyCredentialDataProvider {
                         optionalClaim(claimNames, BIRTH_DATE, birthDate),
                         optionalClaim(claimNames, AGE_EQUAL_OR_OVER_18, true),
                         optionalClaim(claimNames, NATIONALITIES, listOf(nationality)),
-                        optionalClaim(claimNames, ISSUANCE_DATE, issuance),
-                        optionalClaim(claimNames, EXPIRY_DATE, expiration),
+                        optionalClaim(claimNames, ISSUANCE_DATE, issuanceDate),
+                        optionalClaim(claimNames, EXPIRY_DATE, expirationDate),
                         optionalClaim(claimNames, ISSUING_COUNTRY, issuingCountry),
                         optionalClaim(claimNames, ISSUING_AUTHORITY, issuingCountry),
                     )
                 }
 
-                ConstantIndex.CredentialRepresentation.ISO_MDOC -> with(EuPidScheme.Attributes) {
+                ISO_MDOC -> with(EuPidScheme.Attributes) {
                     listOfNotNull(
                         optionalClaim(claimNames, FAMILY_NAME, familyName),
                         optionalClaim(claimNames, FAMILY_NAME_BIRTH, familyName),
@@ -152,8 +152,8 @@ object DummyCredentialDataProvider {
                         optionalClaim(claimNames, BIRTH_DATE, birthDate),
                         optionalClaim(claimNames, AGE_OVER_18, true),
                         optionalClaim(claimNames, NATIONALITY, nationality),
-                        optionalClaim(claimNames, ISSUANCE_DATE, issuance),
-                        optionalClaim(claimNames, EXPIRY_DATE, expiration),
+                        optionalClaim(claimNames, ISSUANCE_DATE, issuanceDate),
+                        optionalClaim(claimNames, EXPIRY_DATE, expirationDate),
                         optionalClaim(claimNames, ISSUING_COUNTRY, issuingCountry),
                         optionalClaim(claimNames, ISSUING_AUTHORITY, issuingCountry),
                     )
@@ -162,7 +162,7 @@ object DummyCredentialDataProvider {
                 else -> null
             }
             when (representation) {
-                ConstantIndex.CredentialRepresentation.SD_JWT ->
+                SD_JWT ->
                     CredentialToBeIssued.VcSd(
                         claims = claims!!,
                         expiration = expiration,
@@ -170,15 +170,15 @@ object DummyCredentialDataProvider {
                         subjectPublicKey = subjectPublicKey,
                     )
 
-                ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
+                PLAIN_JWT -> CredentialToBeIssued.VcJwt(
                     subject = EuPidCredential(
                         id = subjectId,
                         familyName = familyName,
                         givenName = givenName,
                         birthDate = birthDate,
                         ageOver18 = true,
-                        issuanceDate = issuance,
-                        expiryDate = expiration,
+                        issuanceDate = issuanceDate,
+                        expiryDate = expirationDate,
                         issuingCountry = issuingCountry,
                         issuingAuthority = issuingCountry,
                     ),
@@ -187,7 +187,7 @@ object DummyCredentialDataProvider {
                     subjectPublicKey = subjectPublicKey,
                 )
 
-                ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
+                ISO_MDOC -> CredentialToBeIssued.Iso(
                     issuerSignedItems = claims!!.mapIndexed { index, claim ->
                         issuerSignedItem(claim.name, claim.value, index.toUInt())
                     },

@@ -17,6 +17,10 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMIL
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT
 import at.asitplus.iso.IssuerSignedItem
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.LocalDateOrInstant
 import at.asitplus.wallet.lib.oidvci.CredentialIssuerDataProvider
 import at.asitplus.wallet.lib.oidvci.OAuth2DataProvider
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
@@ -81,21 +85,21 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialIssuerDataProvider {
             },
         )
         return when (representation) {
-            ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialToBeIssued.VcSd(
+            SD_JWT -> CredentialToBeIssued.VcSd(
                 claims,
                 expiration,
                 ConstantIndex.AtomicAttribute2023,
                 subjectPublicKey
             )
 
-            ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
+            PLAIN_JWT -> CredentialToBeIssued.VcJwt(
                 AtomicAttribute2023(subjectId, GIVEN_NAME, givenName ?: "no value"),
                 expiration,
                 ConstantIndex.AtomicAttribute2023,
                 subjectPublicKey
             )
 
-            ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
+            ISO_MDOC -> CredentialToBeIssued.Iso(
                 claims.mapIndexed { index, claim ->
                     issuerSignedItem(claim.name, claim.value, index.toUInt())
                 },
@@ -144,31 +148,33 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialIssuerDataProvider {
         val subjectId = subjectPublicKey.didEncoded
         val birthDate = LocalDate.parse(userInfo.userInfo.birthDate ?: "1970-01-01")
         val issuingCountry = "AT"
+        val issuanceDate = LocalDateOrInstant.LocalDate(LocalDate.parse("2023-01-01"))
+        val expirationDate = LocalDateOrInstant.LocalDate(LocalDate.parse("2027-01-01"))
         val claims = listOfNotNull(
             optionalClaim(claimNames, EuPidScheme.Attributes.FAMILY_NAME, familyName),
             optionalClaim(claimNames, EuPidScheme.Attributes.GIVEN_NAME, givenName),
             optionalClaim(claimNames, EuPidScheme.Attributes.BIRTH_DATE, birthDate),
-            optionalClaim(claimNames, EuPidScheme.Attributes.ISSUANCE_DATE, issuance),
-            optionalClaim(claimNames, EuPidScheme.Attributes.EXPIRY_DATE, expiration),
+            optionalClaim(claimNames, EuPidScheme.Attributes.ISSUANCE_DATE, issuanceDate),
+            optionalClaim(claimNames, EuPidScheme.Attributes.EXPIRY_DATE, expirationDate),
             optionalClaim(claimNames, EuPidScheme.Attributes.ISSUING_COUNTRY, issuingCountry),
             optionalClaim(claimNames, EuPidScheme.Attributes.ISSUING_AUTHORITY, issuingCountry),
         )
         return when (representation) {
-            ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialToBeIssued.VcSd(
+            SD_JWT -> CredentialToBeIssued.VcSd(
                 claims,
                 expiration,
                 EuPidScheme,
                 subjectPublicKey,
             )
 
-            ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
+            PLAIN_JWT -> CredentialToBeIssued.VcJwt(
                 EuPidCredential(
                     id = subjectId,
                     familyName = familyName,
                     givenName = givenName,
                     birthDate = birthDate,
-                    issuanceDate = issuance,
-                    expiryDate = expiration,
+                    issuanceDate = issuanceDate,
+                    expiryDate = expirationDate,
                     issuingCountry = issuingCountry,
                     issuingAuthority = issuingCountry,
                 ),
@@ -177,7 +183,7 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialIssuerDataProvider {
                 subjectPublicKey,
             )
 
-            ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
+            ISO_MDOC -> CredentialToBeIssued.Iso(
                 claims.mapIndexed { index, claim ->
                     issuerSignedItem(claim.name, claim.value, index.toUInt())
                 },
