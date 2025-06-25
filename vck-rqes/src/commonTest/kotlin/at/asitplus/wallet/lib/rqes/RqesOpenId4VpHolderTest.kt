@@ -18,6 +18,7 @@ import at.asitplus.signum.indispensable.X509SignatureAlgorithm.entries
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
+import at.asitplus.wallet.lib.rqes.helper.DummyValueProvider
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow

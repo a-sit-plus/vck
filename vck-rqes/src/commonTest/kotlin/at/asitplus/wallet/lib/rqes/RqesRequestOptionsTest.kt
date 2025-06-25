@@ -17,6 +17,7 @@ import at.asitplus.wallet.lib.data.toTransactionData
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.openid.*
+import at.asitplus.wallet.lib.rqes.helper.DummyCredentialDataProvider
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec

@@ -103,7 +103,7 @@ class JwtTokenVerificationService(
             Napier.w("validateDpopJwt: No dpop proof in header")
             throw InvalidDpopProof("no dpop proof")
         }
-        val jwt = parseAndValidate(request.dpop)
+        val jwt = parseAndValidate(request!!.dpop!!)
         if (dpopTokenJwt.payload.confirmationClaim == null ||
             jwt.header.jsonWebKey == null ||
             jwt.header.jsonWebKey!!.jwkThumbprintPlain != dpopTokenJwt.payload.confirmationClaim!!.jsonWebKeyThumbprint
