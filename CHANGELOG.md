@@ -3,6 +3,7 @@
 Release 5.7.1:
  - Signum 3.16.3/Supreme 0.8.3 to fix certificate encoding in JWS header
  - Remove okio dependency and use Supreme digest calculation instead
+ - Set correct header when retrieving authn requests
 
 Release 5.7.0:
  - Remote Qualified Electronic Signatures:
