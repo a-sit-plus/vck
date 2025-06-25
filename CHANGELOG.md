@@ -1,7 +1,8 @@
 # Changelog
 
 Release 5.8.0:
- - tbd
+ - Signum 3.16.3/Supreme 0.8.3 to fix certificate encoding in JWS header
+ - Remove okio dependency and use Supreme digest calculation instead
 
 Release 5.7.0:
  - Remote Qualified Electronic Signatures:

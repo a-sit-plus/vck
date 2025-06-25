@@ -1,14 +1,12 @@
 package at.asitplus.openid
 
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import io.ktor.util.*
+import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.supreme.hash.digest
 import io.ktor.utils.io.charsets.*
 import io.ktor.utils.io.core.*
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.ContextualSerializer
 import kotlinx.serialization.PolymorphicSerializer
 import kotlinx.serialization.json.JsonPrimitive
-import okio.ByteString.Companion.toByteString
 
 
 /**
@@ -21,8 +19,8 @@ import okio.ByteString.Companion.toByteString
 typealias TransactionDataBase64Url = JsonPrimitive
 
 fun TransactionDataBase64Url.sha256(): ByteArray =
-    this.content.toByteArray(Charsets.UTF_8).toByteString().sha256().toByteArray()
- 
+    Digest.SHA256.digest(this.content.toByteArray(Charsets.UTF_8))
+
 /**
  * OID4VP Draft 24: OPTIONAL. Array of strings, where each string is a base64url encoded JSON object that contains a typed parameter
  * set with details about the transaction that the Verifier is requesting the End-User to authorize.

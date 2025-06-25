@@ -28,7 +28,6 @@ inline fun Project.commonApiDependencies(): List<String> {
     project.AspVersions.versions["signum"] = VcLibVersions.signum
     project.AspVersions.versions["supreme"] = VcLibVersions.supreme
     project.AspVersions.versions["jsonpath"] = VcLibVersions.jsonpath
-    project.AspVersions.versions["okio"] = signumVersionCatalog.findVersion("okio").get().toString()
 
 
     return listOf(
@@ -36,7 +35,6 @@ inline fun Project.commonApiDependencies(): List<String> {
         addDependency("at.asitplus.signum:supreme", "supreme"),
         addDependency("at.asitplus.signum:indispensable-cosef", "signum"),
         addDependency("at.asitplus.signum:indispensable-josef", "signum"),
-        addDependency("com.squareup.okio:okio", "okio"),
         addDependency("at.asitplus:jsonpath4k", "jsonpath"),
     )
 }
