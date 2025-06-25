@@ -1,10 +1,11 @@
 package at.asitplus.iso
 
+import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.supreme.hash.digest
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.CompositeDecoder
 import kotlinx.serialization.encoding.CompositeEncoder
-import okio.ByteString.Companion.toByteString
 
 object CborCredentialSerializer {
 
@@ -71,7 +72,7 @@ fun ByteArray.stripCborTag(tag: Byte): ByteArray {
 
 fun ByteArray.wrapInCborTag(tag: Byte) = byteArrayOf(0xd8.toByte()) + byteArrayOf(tag) + this
 
-fun ByteArray.sha256(): ByteArray = toByteString().sha256().toByteArray()
+fun ByteArray.sha256(): ByteArray = Digest.SHA256.digest(this)
 
 
 private typealias ItemValueEncoder

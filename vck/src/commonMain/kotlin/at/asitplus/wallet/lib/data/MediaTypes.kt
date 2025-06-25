@@ -4,6 +4,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.MediaTypes as TokenStatus
 
 
 data object MediaTypes {
+    const val AUTHZ_REQ_JWT = "application/oauth-authz-req+jwt";
     const val STATUSLIST_JWT = TokenStatusRfcMediaTypes.STATUSLIST_JWT
     data object Application {
         const val STATUSLIST_JWT = TokenStatusRfcMediaTypes.Application.STATUSLIST_JWT

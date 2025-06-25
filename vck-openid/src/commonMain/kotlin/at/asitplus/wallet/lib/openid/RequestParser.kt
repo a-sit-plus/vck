@@ -7,6 +7,7 @@ import at.asitplus.openid.*
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
+import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
@@ -105,6 +106,7 @@ class RequestParser(
     ): RemoteResourceRetrieverInput = RemoteResourceRetrieverInput(
         url = uri,
         method = requestUriMethod.toHttpMethod(),
+        headers = mapOf(HttpHeaders.Accept to MediaTypes.AUTHZ_REQ_JWT),
         requestObjectParameters = buildRequestObjectParameters.invoke()
     )
 
