@@ -14,6 +14,8 @@ import at.asitplus.wallet.lib.iso.MobileSecurityObject
 import at.asitplus.iso.ValidityInfo
 import at.asitplus.iso.ValueDigest
 import at.asitplus.iso.ValueDigestList
+import at.asitplus.iso.sha256
+import at.asitplus.iso.wrapInCborTag
 import at.asitplus.signum.indispensable.CryptoSignature
 import at.asitplus.signum.indispensable.cosef.*
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
@@ -21,7 +23,6 @@ import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.data.LocalDateOrInstant
 import at.asitplus.wallet.lib.data.LocalDateOrInstantSerializer
-import at.asitplus.wallet.lib.iso.*
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldHaveSize
@@ -179,8 +180,7 @@ class IssuerSignedItemSerializationTest : FreeSpec({
                             + itemBytes.encodeToString(Base16())
                 )
                 // important here is wrapping in D818 before hashing it!
-                val itemHash = itemBytes
-                    .wrapInCborTag(24).sha256()
+                val itemHash = itemBytes.wrapInCborTag(24).sha256()
                 it.shouldContain( // inside the mso
                     namespace.toHex()
                             + "A1" // map(1)
