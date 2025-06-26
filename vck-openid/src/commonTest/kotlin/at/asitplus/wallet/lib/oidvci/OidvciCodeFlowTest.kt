@@ -47,7 +47,7 @@ class OidvciCodeFlowTest : FreeSpec({
             authorizationService = authorizationService,
             issuer = IssuerAgent(),
             credentialSchemes = setOf(AtomicAttribute2023, MobileDrivingLicenceScheme),
-            credentialProvider = DummyOAuth2IssuerCredentialDataProvider,
+            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
         )
         client = WalletService()
         state = uuid4().toString()
@@ -191,7 +191,7 @@ class OidvciCodeFlowTest : FreeSpec({
             authorizationService = authorizationService,
             issuer = IssuerAgent(),
             credentialSchemes = setOf(AtomicAttribute2023),
-            credentialProvider = DummyOAuth2IssuerCredentialDataProvider
+            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider
         )
         val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
         val scope = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata)?.scope.shouldNotBeNull()

@@ -58,7 +58,7 @@ class OidvciEncryptionTest : FunSpec({
             authorizationService = authorizationService,
             issuer = IssuerAgent(),
             credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023),
-            credentialProvider = DummyOAuth2IssuerCredentialDataProvider,
+            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             requireEncryption = true, // this is important, to require encryption
         )
         state = uuid4().toString()
