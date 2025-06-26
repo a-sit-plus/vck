@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.dif.FormatContainerJwt
 import at.asitplus.dif.FormatContainerSdJwt
 import at.asitplus.jsonpath.JsonPath
-import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
@@ -54,7 +53,8 @@ class OpenId4VpComplexSdJwtProtocolTest : FreeSpec({
                     ),
                     Clock.System.now().plus(5.minutes),
                     AtomicAttribute2023,
-                    holderKeyMaterial.publicKey
+                    holderKeyMaterial.publicKey,
+                    DummyOAuth2DataProvider.user,
                 )
             ).getOrThrow().toStoreCredentialInput()
         )

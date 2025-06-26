@@ -14,10 +14,10 @@ Release 5.8.0:
    - Extract interface `StatusListIssuer` out of `Issuer` to separate credential issuing and status list management
    - Extract interface `IssueCredentialFun` to be used in `CredentialIssuer` for OID4VCI
    - Rework interface `IssuerCredentialStore`, deprecating methods `storeGetNewIndex` and class `IssuerCredentialStore.Credential`
-   - In `Issuer.IssuedCredential` add the typed credentials as properties
+   - In `Issuer.IssuedCredential` add the typed credentials as properties, add property `userInfo`
    - In `StatusListIssuer` deprecate methods `revokeCredentials()` and `revokeCredentialsWithId()`, callers should use `revokeCredential()`
    - In `CredentialIssuer` deprecate constructor parameter `credentialProvider`, replace with `credentialDataProvider`
-   - Extend `CredentialToBeIssued` to contain properties `expiration`, `scheme`, `subjectPublicKey`
+   - Extend `CredentialToBeIssued` to contain properties `expiration`, `scheme`, `subjectPublicKey`, `userInfo`
 
 Release 5.7.1:
  - Signum 3.16.3/Supreme 0.8.3 to fix certificate encoding in JWS header

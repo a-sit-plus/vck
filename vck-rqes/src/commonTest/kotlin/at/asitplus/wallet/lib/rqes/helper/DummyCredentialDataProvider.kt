@@ -2,6 +2,8 @@ package at.asitplus.wallet.lib.rqes.helper
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.openid.OidcUserInfo
+import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
@@ -55,6 +57,7 @@ object DummyCredentialDataProvider {
                         expiration = expiration,
                         scheme = credentialScheme,
                         subjectPublicKey = subjectPublicKey,
+                        userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
                     )
                 else -> throw NotImplementedError()
             }
