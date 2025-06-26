@@ -31,6 +31,7 @@ import kotlin.random.Random
 class AgentSdJwtTest : FreeSpec({
 
     lateinit var issuer: Issuer
+    lateinit var statusListIssuer: StatusListIssuer
     lateinit var holder: Holder
     lateinit var verifier: Verifier
     lateinit var issuerCredentialStore: IssuerCredentialStore
@@ -43,11 +44,11 @@ class AgentSdJwtTest : FreeSpec({
         val validator = Validator(
             resolveStatusListToken = {
                 if (Random.nextBoolean()) StatusListToken.StatusListJwt(
-                    issuer.issueStatusListJwt(),
+                    statusListIssuer.issueStatusListJwt(),
                     resolvedAt = Clock.System.now()
                 ) else {
                     StatusListToken.StatusListCwt(
-                        issuer.issueStatusListCwt(),
+                        statusListIssuer.issueStatusListCwt(),
                         resolvedAt = Clock.System.now(),
                     )
                 }
@@ -59,7 +60,7 @@ class AgentSdJwtTest : FreeSpec({
             EphemeralKeyWithoutCert(),
             validator = validator,
             issuerCredentialStore = issuerCredentialStore,
-        )
+        ).also { statusListIssuer = it }
         holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
         holder = HolderAgent(
             holderKeyMaterial,
@@ -162,7 +163,7 @@ class AgentSdJwtTest : FreeSpec({
             val listOfJwtId = holderCredentialStore.getCredentials().getOrThrow()
                 .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
                 .associate { it.sdJwt.jwtId!! to it.sdJwt.notBefore!! }
-            issuer.revokeCredentialsWithId(listOfJwtId) shouldBe true
+            statusListIssuer.revokeCredentialsWithId(listOfJwtId) shouldBe true
             val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
             verified.freshnessSummary.tokenStatusValidationResult.shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
@@ -260,7 +261,7 @@ class AgentSdJwtTest : FreeSpec({
             val listOfJwtId = holderCredentialStore.getCredentials().getOrThrow()
                 .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
                 .associate { it.sdJwt.jwtId!! to it.sdJwt.notBefore!! }
-            issuer.revokeCredentialsWithId(listOfJwtId) shouldBe true
+            statusListIssuer.revokeCredentialsWithId(listOfJwtId) shouldBe true
             val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
             verified.freshnessSummary.tokenStatusValidationResult.shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()

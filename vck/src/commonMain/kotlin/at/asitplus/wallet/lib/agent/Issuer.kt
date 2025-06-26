@@ -2,17 +2,9 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.signum.indispensable.SignatureAlgorithm
-import at.asitplus.signum.indispensable.cosef.CoseSigned
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.StatusListToken
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.ReferencedTokenIssuer
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.StatusIssuer
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.StatusProvider
 import at.asitplus.wallet.lib.iso.IssuerSigned
-import kotlinx.datetime.Instant
 
 
 /**
@@ -20,9 +12,7 @@ import kotlinx.datetime.Instant
  *
  * It can issue Verifiable Credentials, revoke credentials and build a revocation list.
  */
-interface Issuer : ReferencedTokenIssuer<CredentialToBeIssued, KmmResult<Issuer.IssuedCredential>>,
-    StatusIssuer<JwsSigned<StatusListTokenPayload>, CoseSigned<StatusListTokenPayload>>,
-    StatusProvider<StatusListToken> {
+interface Issuer : ReferencedTokenIssuer<CredentialToBeIssued, KmmResult<Issuer.IssuedCredential>> {
 
     /**
      * A credential issued by an [Issuer], in a specific format
@@ -53,6 +43,8 @@ interface Issuer : ReferencedTokenIssuer<CredentialToBeIssued, KmmResult<Issuer.
         ) : IssuedCredential()
     }
 
+    override suspend fun issueToken(tokenRequest: CredentialToBeIssued) =
+        issueCredential(credential = tokenRequest)
 
     /**
      * The public key for this agent, i.e. the public part of the key that signs issued credentials.
@@ -70,25 +62,7 @@ interface Issuer : ReferencedTokenIssuer<CredentialToBeIssued, KmmResult<Issuer.
      * according to the representation, i.e. it essentially signs the credential with the issuer key.
      */
     suspend fun issueCredential(credential: CredentialToBeIssued): KmmResult<IssuedCredential>
-    override suspend fun issueToken(tokenRequest: CredentialToBeIssued) =
-        issueCredential(credential = tokenRequest)
 
-    /**
-     * Returns a status list as defined in [TokenListStatus](https://www.ietf.org/archive/id/draft-ietf-oauth-status-list-06.html)
-     */
-    fun buildStatusList(timePeriod: Int? = null): StatusList?
-
-    /**
-     * Revokes all verifiable credentials from [credentialsToRevoke] list that parse and validate.
-     * It returns true if all revocations was successful.
-     */
-    suspend fun revokeCredentials(credentialsToRevoke: List<String>): Boolean
-
-    /**
-     * Revokes all verifiable credentials with ids and issuance date from [credentialIdsToRevoke]
-     * It returns true if all revocations was successful.
-     */
-    fun revokeCredentialsWithId(credentialIdsToRevoke: Map<String, Instant>): Boolean
 }
 
 fun Issuer.IssuedCredential.toStoreCredentialInput() = when (this) {

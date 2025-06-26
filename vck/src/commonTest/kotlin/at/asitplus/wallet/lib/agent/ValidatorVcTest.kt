@@ -30,6 +30,7 @@ import kotlin.time.Duration.Companion.seconds
 class ValidatorVcTest : FreeSpec() {
 
     private lateinit var issuer: Issuer
+    private lateinit var statusListIssuer: StatusListIssuer
     private lateinit var issuerCredentialStore: IssuerCredentialStore
     private lateinit var issuerSignVc: SignJwtFun<VerifiableCredentialJws>
     private lateinit var issuerKeyMaterial: KeyMaterial
@@ -43,11 +44,11 @@ class ValidatorVcTest : FreeSpec() {
             validator = Validator(
                 resolveStatusListToken = {
                     if (Random.nextBoolean()) StatusListToken.StatusListJwt(
-                        issuer.issueStatusListJwt(),
+                        statusListIssuer.issueStatusListJwt(),
                         resolvedAt = Clock.System.now(),
                     ) else {
                         StatusListToken.StatusListCwt(
-                            issuer.issueStatusListCwt(),
+                            statusListIssuer.issueStatusListCwt(),
                             resolvedAt = Clock.System.now(),
                         )
                     }
@@ -59,7 +60,7 @@ class ValidatorVcTest : FreeSpec() {
                 issuerKeyMaterial,
                 validator = validator,
                 issuerCredentialStore = issuerCredentialStore,
-            )
+            ).also { statusListIssuer = it }
             issuerSignVc = SignJwt(issuerKeyMaterial, JwsHeaderKeyId())
             verifierKeyMaterial = EphemeralKeyWithoutCert()
         }
