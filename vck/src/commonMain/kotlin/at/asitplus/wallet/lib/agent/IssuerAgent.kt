@@ -99,23 +99,14 @@ class IssuerAgent(
     ): Issuer.IssuedCredential {
         val expirationDate = credential.expiration
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
-        val statusListIndex = issuerCredentialStore.storeGetNextIndex(
-            credential = IssuerCredentialStore.Credential.Iso(
-                credential.issuerSignedItems,
-                credential.scheme,
-            ),
-            subjectPublicKey = credential.subjectPublicKey,
-            issuanceDate = issuanceDate,
-            expirationDate = expirationDate,
-            timePeriod = timePeriod,
-        ) ?: throw IllegalArgumentException("No statusListIndex from issuerCredentialStore")
-        val deviceKeyInfo = DeviceKeyInfo(credential.subjectPublicKey.toCoseKey().getOrElse { ex ->
-            Napier.w("Could not transform SubjectPublicKey to COSE Key", ex)
-            throw IllegalArgumentException("SubjectPublicKey transformation failed", ex)
-        })
+        val reference = issuerCredentialStore.createStatusListIndex(credential, timePeriod).getOrThrow()
+        val coseKey = credential.subjectPublicKey.toCoseKey()
+            .onFailure { Napier.w("issueMdoc error", it) }
+            .getOrThrow()
+        val deviceKeyInfo = DeviceKeyInfo(coseKey)
         val credentialStatus = Status(
             statusList = StatusListInfo(
-                index = statusListIndex.toULong(),
+                index = reference.statusListIndex,
                 uri = UniformResourceIdentifier(getRevocationListUrlFor(timePeriod)),
             ),
         )
@@ -145,7 +136,9 @@ class IssuerAgent(
                 serializer = MobileSecurityObject.serializer(),
             ).getOrThrow(),
         )
-        return Issuer.IssuedCredential.Iso(issuerSigned, credential.scheme)
+        return Issuer.IssuedCredential.Iso(issuerSigned, credential.scheme).also {
+            issuerCredentialStore.updateStoredCredential(reference, it).getOrThrow()
+        }
     }
 
     private suspend fun issueVc(
@@ -155,21 +148,10 @@ class IssuerAgent(
         val vcId = "urn:uuid:${uuid4()}"
         val expirationDate = credential.expiration
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
-        val statusListIndex = issuerCredentialStore.storeGetNextIndex(
-            credential = IssuerCredentialStore.Credential.VcJwt(
-                vcId,
-                credential.subject,
-                credential.scheme
-            ),
-            subjectPublicKey = credential.subjectPublicKey,
-            issuanceDate = issuanceDate,
-            expirationDate = expirationDate,
-            timePeriod = timePeriod
-        ) ?: throw IllegalArgumentException("No statusListIndex from issuerCredentialStore")
-
+        val reference = issuerCredentialStore.createStatusListIndex(credential, timePeriod).getOrThrow()
         val credentialStatus = Status(
             statusList = StatusListInfo(
-                index = statusListIndex.toULong(),
+                index = reference.statusListIndex,
                 uri = UniformResourceIdentifier(getRevocationListUrlFor(timePeriod)),
             )
         )
@@ -187,12 +169,13 @@ class IssuerAgent(
             JwsContentTypeConstants.JWT,
             vc.toJws(),
             VerifiableCredentialJws.serializer(),
-        ).getOrElse {
+        ).onFailure {
             Napier.w("issueVc error", it)
-            throw RuntimeException("Signing failed", it)
-        }.serialize()
+        }.getOrThrow().serialize()
 
-        return Issuer.IssuedCredential.VcJwt(vcInJws, credential.scheme)
+        return Issuer.IssuedCredential.VcJwt(vcInJws, credential.scheme).also {
+            issuerCredentialStore.updateStoredCredential(reference, it).getOrThrow()
+        }
     }
 
     private suspend fun issueVcSd(
@@ -203,25 +186,13 @@ class IssuerAgent(
         val expirationDate = credential.expiration
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
         val subjectId = credential.subjectPublicKey.didEncoded
-        val statusListIndex = issuerCredentialStore.storeGetNextIndex(
-            credential = IssuerCredentialStore.Credential.VcSd(
-                vcId,
-                credential.claims,
-                credential.scheme
-            ),
-            subjectPublicKey = credential.subjectPublicKey,
-            issuanceDate = issuanceDate,
-            expirationDate = expirationDate,
-            timePeriod = timePeriod
-        ) ?: throw IllegalArgumentException("No statusListIndex from issuerCredentialStore")
-
+        val reference = issuerCredentialStore.createStatusListIndex(credential, timePeriod).getOrThrow()
         val credentialStatus = Status(
             statusList = StatusListInfo(
-                index = statusListIndex.toULong(),
+                index = reference.statusListIndex,
                 uri = UniformResourceIdentifier(getRevocationListUrlFor(timePeriod)),
-            ),
+            )
         )
-
         val (sdJwt, disclosures) = credential.claims.toSdJsonObject()
         val cnf = ConfirmationClaim(jsonWebKey = credential.subjectPublicKey.toJsonWebKey())
         val vcSdJwt = VerifiableCredentialSdJwt(
@@ -251,13 +222,14 @@ class IssuerAgent(
             JwsContentTypeConstants.SD_JWT,
             entireObject,
             JsonObject.serializer(),
-        ).getOrElse {
-            Napier.w("Could not wrap credential in SD-JWT", it)
-            throw RuntimeException("Signing failed", it)
-        }
+        ).onFailure {
+            Napier.w("issueVcSd error", it)
+        }.getOrThrow()
         val vcInSdJwt = (listOf(jws.serialize()) + disclosures).joinToString("~", postfix = "~")
         Napier.i("issueVcSd: $vcInSdJwt")
-        return Issuer.IssuedCredential.VcSdJwt(vcInSdJwt, credential.scheme)
+        return Issuer.IssuedCredential.VcSdJwt(vcInSdJwt, credential.scheme).also {
+            issuerCredentialStore.updateStoredCredential(reference, it).getOrThrow()
+        }
     }
 
     private fun getRevocationListUrlFor(timePeriod: Int) = statusListBaseUrl.let {

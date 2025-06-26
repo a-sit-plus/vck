@@ -159,9 +159,9 @@ class ValidatorVpTest : FreeSpec({
             .map { it.vc }
             .forEach {
                 issuerCredentialStore.setStatus(
-                    it.vc.id,
-                    TokenStatus.Invalid,
-                    FixedTimePeriodProvider.timePeriod
+                    timePeriod = FixedTimePeriodProvider.timePeriod,
+                    index = it.vc.credentialStatus!!.statusList.index,
+                    status = TokenStatus.Invalid,
                 ) shouldBe true
             }
 

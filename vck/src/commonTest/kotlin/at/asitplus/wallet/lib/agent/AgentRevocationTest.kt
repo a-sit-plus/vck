@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.wallet.lib.agent.FixedTimePeriodProvider.timePeriod
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -27,7 +28,7 @@ class AgentRevocationTest : FreeSpec({
     lateinit var verifierKeyMaterial: KeyMaterial
     lateinit var issuer: Issuer
     lateinit var statusListIssuer: StatusListIssuer
-    lateinit var expectedRevokedIndexes: List<Long>
+    lateinit var expectedRevokedIndexes: List<ULong>
 
     beforeEach {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
@@ -58,7 +59,7 @@ class AgentRevocationTest : FreeSpec({
                 ).getOrElse {
                     fail("no issued credentials")
                 }
-                issuerCredentialStore.revokeCredentialsWithIndexes(listOf(0))
+                issuerCredentialStore.revokeCredentialsWithIndexes(listOf(0U))
 
                 val statusListAggregation = statusListIssuer.provideStatusListAggregation()
                 statusListAggregation.statusLists.size should { it >= 1 }
@@ -75,7 +76,7 @@ class AgentRevocationTest : FreeSpec({
             ).getOrElse {
                 fail("no issued credentials")
             }
-            issuerCredentialStore.revokeCredentialsWithIndexes(listOf(0))
+            issuerCredentialStore.revokeCredentialsWithIndexes(listOf(0U))
 
             val timestamp = Clock.System.now()
             val issuedToken = statusListIssuer.issueStatusListJwt(timestamp)
@@ -97,7 +98,7 @@ class AgentRevocationTest : FreeSpec({
             ).getOrElse {
                 fail("no issued credentials")
             }
-            issuerCredentialStore.revokeCredentialsWithIndexes(listOf(0))
+            issuerCredentialStore.revokeCredentialsWithIndexes(listOf(0U))
 
             val timestamp = Clock.System.now()
             val issuedToken = statusListIssuer.issueStatusListJwt(timestamp)
@@ -144,17 +145,17 @@ class AgentRevocationTest : FreeSpec({
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         issuer = IssuerAgent(issuerCredentialStore = issuerCredentialStore)
         statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
-        expectedRevokedIndexes = listOf(1, 2, 4, 6, 7, 9, 10, 12, 13, 14)
+        expectedRevokedIndexes = listOf(1U, 2U, 4U, 6U, 7U, 9U, 10U, 12U, 13U, 14U)
         issuerCredentialStore.revokeCredentialsWithIndexes(expectedRevokedIndexes)
 
-        val revocationList = statusListIssuer.buildStatusList(FixedTimePeriodProvider.timePeriod)
+        val revocationList = statusListIssuer.buildStatusList(timePeriod)
         revocationList.shouldNotBeNull()
 
         verifyStatusList(revocationList, expectedRevokedIndexes)
     }
 
     "decoding a known value works" {
-        expectedRevokedIndexes = listOf(1, 2, 4, 6, 7, 9, 10, 12, 13, 14)
+        expectedRevokedIndexes = listOf(1U, 2U, 4U, 6U, 7U, 9U, 10U, 12U, 13U, 14U)
 
         val revocationList =
             Json.decodeFromString<StatusList>("""{"lst": "eJy7VgYAAiQBTQ==", "bits": 1}""")
@@ -164,7 +165,7 @@ class AgentRevocationTest : FreeSpec({
 })
 
 
-private fun verifyStatusList(statusList: StatusList, expectedRevokedIndexes: List<Long>) {
+private fun verifyStatusList(statusList: StatusList, expectedRevokedIndexes: List<ULong>) {
     val expectedRevocationStatuses = MutableList(expectedRevokedIndexes.max().toInt() + 1) {
         TokenStatus.Valid
     }
@@ -176,55 +177,45 @@ private fun verifyStatusList(statusList: StatusList, expectedRevokedIndexes: Lis
     }
 }
 
-private suspend fun IssuerCredentialStore.revokeCredentialsWithIndexes(revokedIndexes: List<Long>) {
+private suspend fun IssuerCredentialStore.revokeCredentialsWithIndexes(revokedIndexes: List<ULong>) {
     val cred = AtomicAttribute2023("sub", "name", "value", "text")
     val issuanceDate = Clock.System.now()
     val expirationDate = issuanceDate + 60.seconds
     for (i in 1..16) {
-        val vcId = uuid4().toString()
-        val revListIndex = storeGetNextIndex(
-            credential = IssuerCredentialStore.Credential.VcJwt(
-                vcId, cred, ConstantIndex.AtomicAttribute2023
+        val revListIndex = createStatusListIndex(
+            CredentialToBeIssued.VcJwt(
+                subject = cred,
+                expiration = expirationDate,
+                scheme = ConstantIndex.AtomicAttribute2023,
+                subjectPublicKey = EphemeralKeyWithoutCert().publicKey
             ),
-            subjectPublicKey = EphemeralKeyWithoutCert().publicKey,
-            issuanceDate = issuanceDate,
-            expirationDate = expirationDate,
-            timePeriod = FixedTimePeriodProvider.timePeriod
-        )!!
+            timePeriod
+        ).getOrThrow().statusListIndex
         if (revokedIndexes.contains(revListIndex)) {
-            setStatus(
-                vcId,
-                status = TokenStatus.Invalid,
-                FixedTimePeriodProvider.timePeriod,
-            )
+            setStatus(timePeriod, revListIndex, TokenStatus.Invalid)
         }
     }
 }
 
-private suspend fun IssuerCredentialStore.revokeRandomCredentials(): MutableList<Long> {
-    val expectedRevocationList = mutableListOf<Long>()
+private suspend fun IssuerCredentialStore.revokeRandomCredentials(): List<ULong> {
+    val expectedRevocationList = mutableListOf<ULong>()
     val cred = AtomicAttribute2023("sub", "name", "value", "text")
     val issuanceDate = Clock.System.now()
     val expirationDate = issuanceDate + 60.seconds
     for (i in 1..256) {
-        val vcId = uuid4().toString()
-        val revListIndex = storeGetNextIndex(
-            credential = IssuerCredentialStore.Credential.VcJwt(
-                vcId, cred, ConstantIndex.AtomicAttribute2023
+        val revListIndex = createStatusListIndex(
+            CredentialToBeIssued.VcJwt(
+                subject = cred,
+                expiration = expirationDate,
+                scheme = ConstantIndex.AtomicAttribute2023,
+                subjectPublicKey = EphemeralKeyWithoutCert().publicKey
             ),
-            subjectPublicKey = EphemeralKeyWithoutCert().publicKey,
-            issuanceDate = issuanceDate,
-            expirationDate = expirationDate,
-            timePeriod = FixedTimePeriodProvider.timePeriod
-        )!!
+            timePeriod
+        ).getOrThrow().statusListIndex
         if (Random.nextBoolean()) {
             expectedRevocationList += revListIndex
-            setStatus(
-                vcId,
-                status = TokenStatus.Invalid,
-                FixedTimePeriodProvider.timePeriod,
-            )
+            setStatus(timePeriod, revListIndex, TokenStatus.Invalid)
         }
     }
-    return expectedRevocationList
+    return expectedRevocationList.toList()
 }

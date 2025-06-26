@@ -89,13 +89,9 @@ class ValidatorMdocTest : FreeSpec() {
             val value = validator.verifyIsoCred(credential.issuerSigned, issuerKey)
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessIso>()
             issuerCredentialStore.setStatus(
-                credential.issuerSigned.namespaces!!.get(ConstantIndex.AtomicAttribute2023.isoNamespace)!!.entries.map {
-                    it.value
-                } .sortedBy {
-                    it.digestId
-                }.toString().encodeToByteArray().sha256().encodeToString(Base16(strict = true)),
+                timePeriod = FixedTimePeriodProvider.timePeriod,
+                index = credential.issuerSigned.issuerAuth.payload!!.status!!.statusList.index,
                 status = TokenStatus.Invalid,
-                FixedTimePeriodProvider.timePeriod,
             ) shouldBe true
             validator.checkRevocationStatus(value.issuerSigned)
                 .shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
