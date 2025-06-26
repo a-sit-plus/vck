@@ -9,6 +9,7 @@ import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.iso.sha256
@@ -75,7 +76,7 @@ class AgentSdJwtTest : FreeSpec({
                 DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.SD_JWT,
+                    SD_JWT,
                 ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         ).getOrThrow()
@@ -301,7 +302,7 @@ suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): S
             DummyCredentialDataProvider.getCredential(
                 holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.SD_JWT,
+                SD_JWT,
             ).getOrThrow()
         ).getOrThrow().toStoreCredentialInput()
     )

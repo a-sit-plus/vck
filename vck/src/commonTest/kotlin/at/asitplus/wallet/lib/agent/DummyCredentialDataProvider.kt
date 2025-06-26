@@ -23,12 +23,9 @@ object DummyCredentialDataProvider {
         subjectPublicKey: CryptoPublicKey,
         credentialScheme: ConstantIndex.CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation,
-        claimNames: Collection<String>? = null,
     ): KmmResult<CredentialToBeIssued> = catching {
         val expiration = Clock.System.now() + defaultLifetime
-        val claims = claimNames?.map {
-            ClaimToBeIssued(it, "${it}_DUMMY_VALUE")
-        } ?: listOf(
+        val claims = listOf(
             ClaimToBeIssued(CLAIM_GIVEN_NAME, "Susanne"),
             ClaimToBeIssued(CLAIM_FAMILY_NAME, "Meier"),
             ClaimToBeIssued(CLAIM_DATE_OF_BIRTH, LocalDate.parse("1990-01-01")),
