@@ -9,6 +9,7 @@ import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.github.aakira.napier.Napier
+import kotlinx.coroutines.NonCancellable.key
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
@@ -54,11 +55,30 @@ data class SdJwtSigned(
     fun getPayloadAsJsonObject(): KmmResult<JsonObject> =
         runCatching { jws.payload as JsonObject }.wrap()
 
+    fun serialize() = keyBindingJws?.let {
+        serializePresentation(jws, rawDisclosures.toSet(), it)
+    } ?: run {
+        (listOf(jws.serialize()) + rawDisclosures).joinToString("~", postfix = "~")
+    }
+
     override fun toString(): String {
-        return "SdJwtSigned(jws=${jws.serialize()}, rawDisclosures=$rawDisclosures, keyBindingJws=${keyBindingJws?.serialize()}, hashInput='$hashInput')"
+        return "SdJwtSigned(jws=${jws.serialize()}, " +
+                "rawDisclosures=$rawDisclosures, " +
+                "keyBindingJws=${keyBindingJws?.serialize()}, " +
+                "hashInput='$hashInput')"
     }
 
     companion object {
+        fun issued(
+            jws: JwsSigned<JsonElement>,
+            disclosures: List<String>,
+        ) = SdJwtSigned(
+            jws = jws,
+            rawDisclosures = disclosures,
+            keyBindingJws = null,
+            hashInput = (listOf(jws.serialize()) + disclosures).joinToString("~", postfix = "~")
+        )
+
         fun parse(input: String): SdJwtSigned? {
             if (!input.contains("~")) {
                 return null.also { Napier.w("Could not parse SD-JWT: $input") }
@@ -67,15 +87,19 @@ data class SdJwtSigned(
             if (stringList.isEmpty()) {
                 return null.also { Napier.w("Could not parse SD-JWT: $input") }
             }
-            val jws = JwsSigned.deserialize<JsonElement>(JsonElement.serializer(), stringList.first(), vckJsonSerializer).getOrNull()
-                ?: return null.also { Napier.w("Could not parse JWS from SD-JWT: $input") }
+            val jws =
+                JwsSigned.deserialize<JsonElement>(JsonElement.serializer(), stringList.first(), vckJsonSerializer)
+                    .getOrNull()
+                    ?: return null.also { Napier.w("Could not parse JWS from SD-JWT: $input") }
             val stringListWithoutJws = stringList.drop(1)
             val rawDisclosures = stringListWithoutJws
                 .filterNot { it.contains(".") }
                 .filterNot { it.isEmpty() }
             val keyBindingString = stringList.drop(1 + rawDisclosures.size).firstOrNull()
             val keyBindingJws = keyBindingString
-                ?.let { JwsSigned.deserialize<KeyBindingJws>(KeyBindingJws.serializer(), it, vckJsonSerializer).getOrNull() }
+                ?.let {
+                    JwsSigned.deserialize<KeyBindingJws>(KeyBindingJws.serializer(), it, vckJsonSerializer).getOrNull()
+                }
             val hashInput = input.substringBeforeLast("~") + "~"
             return SdJwtSigned(jws, rawDisclosures, keyBindingJws, hashInput)
         }
@@ -83,12 +107,12 @@ data class SdJwtSigned(
         fun serializePresentation(
             jwsFromIssuer: JwsSigned<*>,
             filteredDisclosures: Set<String>,
-            keyBinding: JwsSigned<KeyBindingJws>
+            keyBinding: JwsSigned<KeyBindingJws>,
         ) = (listOf(jwsFromIssuer.serialize()) + filteredDisclosures + keyBinding.serialize()).joinToString("~")
 
         fun sdHashInput(
             validSdJwtCredential: SubjectCredentialStore.StoreEntry.SdJwt,
-            filteredDisclosures: Set<String>
+            filteredDisclosures: Set<String>,
         ) = (listOf(validSdJwtCredential.vcSerialized.substringBefore("~")) + filteredDisclosures)
             .joinToString("~", postfix = "~")
     }

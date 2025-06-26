@@ -44,6 +44,7 @@ class SdJwtVerificationTest : FreeSpec({
         val sdJwtValidator = SdJwtValidator(sdJwtSigned)
         val reconstructed = sdJwtValidator.reconstructedJsonObject.shouldNotBeNull()
         sdJwtValidator.validDisclosures.shouldNotBeEmpty()
+        sdJwtSigned.serialize() shouldBe input
 
         val expected = """
             {
@@ -100,6 +101,7 @@ class SdJwtVerificationTest : FreeSpec({
         val sdJwtValidator = SdJwtValidator(sdJwtSigned)
         val reconstructed = sdJwtValidator.reconstructedJsonObject.shouldNotBeNull()
         sdJwtValidator.validDisclosures.shouldNotBeEmpty()
+        sdJwtSigned.serialize() shouldBe input
 
         val expected = """
             {
@@ -199,6 +201,7 @@ class SdJwtVerificationTest : FreeSpec({
         val sdJwtValidator = SdJwtValidator(sdJwtSigned)
         val reconstructed = sdJwtValidator.reconstructedJsonObject.shouldNotBeNull()
         sdJwtValidator.validDisclosures.shouldNotBeEmpty()
+        sdJwtSigned.serialize() shouldBe input
 
         val expected = """
             {
