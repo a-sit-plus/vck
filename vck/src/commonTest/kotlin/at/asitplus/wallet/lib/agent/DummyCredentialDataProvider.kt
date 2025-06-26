@@ -10,6 +10,8 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMIL
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT
 import at.asitplus.iso.IssuerSignedItem
+import at.asitplus.openid.OidcUserInfo
+import at.asitplus.openid.OidcUserInfoExtended
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlin.random.Random
@@ -38,6 +40,7 @@ object DummyCredentialDataProvider {
                 expiration = expiration,
                 scheme = credentialScheme,
                 subjectPublicKey = subjectPublicKey,
+                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
             )
 
             ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
@@ -45,6 +48,7 @@ object DummyCredentialDataProvider {
                 expiration = expiration,
                 scheme = credentialScheme,
                 subjectPublicKey = subjectPublicKey,
+                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
             )
 
             ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
@@ -54,6 +58,7 @@ object DummyCredentialDataProvider {
                 expiration = expiration,
                 scheme = credentialScheme,
                 subjectPublicKey = subjectPublicKey,
+                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
             )
         }
     }

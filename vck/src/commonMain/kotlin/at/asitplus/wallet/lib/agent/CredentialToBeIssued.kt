@@ -4,18 +4,21 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialSubject
 import at.asitplus.iso.IssuerSignedItem
+import at.asitplus.openid.OidcUserInfoExtended
 import kotlinx.datetime.Instant
 
 sealed class CredentialToBeIssued {
     abstract val expiration: Instant
     abstract val scheme: ConstantIndex.CredentialScheme
     abstract val subjectPublicKey: CryptoPublicKey
+    abstract val userInfo: OidcUserInfoExtended
 
     data class VcJwt(
         val subject: CredentialSubject,
         override val expiration: Instant,
         override val scheme: ConstantIndex.CredentialScheme,
         override val subjectPublicKey: CryptoPublicKey,
+        override val userInfo: OidcUserInfoExtended,
     ) : CredentialToBeIssued()
 
     data class VcSd(
@@ -23,6 +26,7 @@ sealed class CredentialToBeIssued {
         override val expiration: Instant,
         override val scheme: ConstantIndex.CredentialScheme,
         override val subjectPublicKey: CryptoPublicKey,
+        override val userInfo: OidcUserInfoExtended,
     ) : CredentialToBeIssued()
 
     data class Iso(
@@ -30,6 +34,7 @@ sealed class CredentialToBeIssued {
         override val expiration: Instant,
         override val scheme: ConstantIndex.CredentialScheme,
         override val subjectPublicKey: CryptoPublicKey,
+        override val userInfo: OidcUserInfoExtended,
     ) : CredentialToBeIssued()
 }
 

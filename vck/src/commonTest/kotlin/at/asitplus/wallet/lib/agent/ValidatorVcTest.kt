@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.openid.OidcUserInfo
+import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsHeader
@@ -348,7 +350,13 @@ class ValidatorVcTest : FreeSpec() {
         val vcId = "urn:uuid:${uuid4()}"
         val exp = expirationDate ?: (Clock.System.now() + 60.seconds)
         val statusListIndex = issuerCredentialStore.createStatusListIndex(
-            CredentialToBeIssued.VcJwt(sub, exp, ConstantIndex.AtomicAttribute2023, issuerKeyMaterial.publicKey),
+            CredentialToBeIssued.VcJwt(
+                subject = sub,
+                expiration = exp,
+                scheme = ConstantIndex.AtomicAttribute2023,
+                subjectPublicKey = issuerKeyMaterial.publicKey,
+                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+            ),
             FixedTimePeriodProvider.timePeriod
         ).getOrThrow().statusListIndex
         val credentialStatus = Status(

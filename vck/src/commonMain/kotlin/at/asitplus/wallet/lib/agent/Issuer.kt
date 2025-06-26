@@ -1,6 +1,8 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.openid.OidcUserInfoExtended
+import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -23,8 +25,9 @@ interface Issuer : ReferencedTokenIssuer<CredentialToBeIssued, KmmResult<Issuer.
      * A credential issued by an [Issuer], in a specific format
      */
     sealed class IssuedCredential {
-        // TODO add the userInfo
         abstract val scheme: ConstantIndex.CredentialScheme
+        abstract val subjectPublicKey: CryptoPublicKey
+        abstract val userInfo: OidcUserInfoExtended
 
         /**
          * Issued credential in W3C Verifiable Credentials JWT representation
@@ -35,6 +38,8 @@ interface Issuer : ReferencedTokenIssuer<CredentialToBeIssued, KmmResult<Issuer.
             @Deprecated("Use signedVcJws instead", ReplaceWith("signedVcJws"))
             val vcJws: String,
             override val scheme: ConstantIndex.CredentialScheme,
+            override val subjectPublicKey: CryptoPublicKey,
+            override val userInfo: OidcUserInfoExtended,
         ) : IssuedCredential()
 
         /**
@@ -46,6 +51,8 @@ interface Issuer : ReferencedTokenIssuer<CredentialToBeIssued, KmmResult<Issuer.
             @Deprecated("Use signedSdJwtVc instead", ReplaceWith("signedSdJwtVc"))
             val vcSdJwt: String,
             override val scheme: ConstantIndex.CredentialScheme,
+            override val subjectPublicKey: CryptoPublicKey,
+            override val userInfo: OidcUserInfoExtended,
         ) : IssuedCredential()
 
         /**
@@ -54,6 +61,8 @@ interface Issuer : ReferencedTokenIssuer<CredentialToBeIssued, KmmResult<Issuer.
         data class Iso(
             val issuerSigned: IssuerSigned,
             override val scheme: ConstantIndex.CredentialScheme,
+            override val subjectPublicKey: CryptoPublicKey,
+            override val userInfo: OidcUserInfoExtended,
         ) : IssuedCredential()
     }
 

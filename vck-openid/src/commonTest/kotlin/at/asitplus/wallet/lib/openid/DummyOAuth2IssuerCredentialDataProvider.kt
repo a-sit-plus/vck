@@ -83,14 +83,16 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialDataProviderFun {
                 claims,
                 expiration,
                 ConstantIndex.AtomicAttribute2023,
-                subjectPublicKey
+                subjectPublicKey,
+                DummyOAuth2DataProvider.user,
             )
 
             ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
                 AtomicAttribute2023(subjectId, GIVEN_NAME, givenName ?: "no value"),
                 expiration,
                 ConstantIndex.AtomicAttribute2023,
-                subjectPublicKey
+                subjectPublicKey,
+                DummyOAuth2DataProvider.user,
             )
 
             ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
@@ -99,7 +101,8 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialDataProviderFun {
                 },
                 expiration,
                 ConstantIndex.AtomicAttribute2023,
-                subjectPublicKey
+                subjectPublicKey,
+                DummyOAuth2DataProvider.user,
             )
         }
     }
@@ -120,7 +123,13 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialDataProviderFun {
             issuerSignedItem(ISSUE_DATE, "2023-01-01", digestId++),
             issuerSignedItem(EXPIRY_DATE, "2033-01-01", digestId++),
         )
-        return CredentialToBeIssued.Iso(issuerSignedItems, expiration, MobileDrivingLicenceScheme, subjectPublicKey)
+        return CredentialToBeIssued.Iso(
+            issuerSignedItems,
+            expiration,
+            MobileDrivingLicenceScheme,
+            subjectPublicKey,
+            DummyOAuth2DataProvider.user,
+        )
     }
 
     private fun getEuPid(
@@ -150,6 +159,7 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialDataProviderFun {
                 expiration,
                 EuPidScheme,
                 subjectPublicKey,
+                DummyOAuth2DataProvider.user,
             )
 
             ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
@@ -166,6 +176,7 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialDataProviderFun {
                 expiration,
                 EuPidScheme,
                 subjectPublicKey,
+                DummyOAuth2DataProvider.user,
             )
 
             ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
@@ -175,6 +186,7 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialDataProviderFun {
                 expiration,
                 EuPidScheme,
                 subjectPublicKey,
+                DummyOAuth2DataProvider.user,
             )
         }
     }

@@ -26,6 +26,8 @@ import at.asitplus.wallet.lib.data.CredentialPresentation.DCQLPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.iso.IssuerSignedItem
+import at.asitplus.openid.OidcUserInfo
+import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.wallet.lib.openid.*
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessIso
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessSdJwt
@@ -277,14 +279,16 @@ class OpenId4VpWalletTest : FunSpec() {
             claims = attributes.map { it.toClaimToBeIssued() },
             expiration = Clock.System.now().plus(1.minutes),
             scheme = scheme,
-            subjectPublicKey = keyMaterial.publicKey
+            subjectPublicKey = keyMaterial.publicKey,
+            userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
         )
 
         ISO_MDOC -> CredentialToBeIssued.Iso(
             issuerSignedItems = attributes.map { it.toIssuerSignedItem() },
             expiration = Clock.System.now().plus(1.minutes),
             scheme = scheme,
-            subjectPublicKey = keyMaterial.publicKey
+            subjectPublicKey = keyMaterial.publicKey,
+            userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
         )
 
         else -> TODO()

@@ -135,6 +135,8 @@ private suspend fun issueVcSd(
         sdJwtVc = vcSdJwt,
         signedSdJwtVc = sdJwtSigned,
         vcSdJwt = sdJwtSigned.serialize(),
-        scheme = credential.scheme
+        scheme = credential.scheme,
+        subjectPublicKey = credential.subjectPublicKey,
+        userInfo = credential.userInfo,
     )
 }

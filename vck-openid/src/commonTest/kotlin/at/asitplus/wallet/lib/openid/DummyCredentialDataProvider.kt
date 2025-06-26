@@ -44,6 +44,7 @@ object DummyCredentialDataProvider {
                     expiration = expiration,
                     scheme = credentialScheme,
                     subjectPublicKey = subjectPublicKey,
+                    userInfo = DummyOAuth2DataProvider.user,
                 )
 
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
@@ -55,6 +56,7 @@ object DummyCredentialDataProvider {
                     expiration = expiration,
                     scheme = credentialScheme,
                     subjectPublicKey = subjectPublicKey,
+                    userInfo = DummyOAuth2DataProvider.user,
                 )
 
                 ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
@@ -64,6 +66,7 @@ object DummyCredentialDataProvider {
                     expiration = expiration,
                     scheme = credentialScheme,
                     subjectPublicKey = subjectPublicKey,
+                    userInfo = DummyOAuth2DataProvider.user,
                 )
             }
         } else if (credentialScheme == MobileDrivingLicenceScheme) {
@@ -96,6 +99,7 @@ object DummyCredentialDataProvider {
                 expiration = expiration,
                 scheme = credentialScheme,
                 subjectPublicKey = subjectPublicKey,
+                userInfo = DummyOAuth2DataProvider.user,
             )
         } else if (credentialScheme == EuPidScheme) {
             val subjectId = subjectPublicKey.didEncoded
@@ -147,6 +151,7 @@ object DummyCredentialDataProvider {
                         expiration = expiration,
                         scheme = credentialScheme,
                         subjectPublicKey = subjectPublicKey,
+                        userInfo = DummyOAuth2DataProvider.user,
                     )
 
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
@@ -164,6 +169,7 @@ object DummyCredentialDataProvider {
                     expiration = expiration,
                     scheme = credentialScheme,
                     subjectPublicKey = subjectPublicKey,
+                    userInfo = DummyOAuth2DataProvider.user,
                 )
 
                 ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
@@ -173,6 +179,7 @@ object DummyCredentialDataProvider {
                     expiration = expiration,
                     scheme = credentialScheme,
                     subjectPublicKey = subjectPublicKey,
+                    userInfo = DummyOAuth2DataProvider.user,
                 )
             }
         } else {

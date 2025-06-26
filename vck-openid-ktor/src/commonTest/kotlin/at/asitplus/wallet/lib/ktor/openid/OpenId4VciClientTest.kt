@@ -208,21 +208,18 @@ class OpenId4VciClientTest : FunSpec() {
                             attributes.map { ClaimToBeIssued(it.key, it.value) },
                             Clock.System.now(),
                             credentialScheme,
-                            subjectPublicKey
+                            subjectPublicKey,
+                            OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
                         )
 
                         ISO_MDOC -> Iso(
                             attributes.map {
-                                IssuerSignedItem(
-                                    digestId++,
-                                    Random.nextBytes(32),
-                                    it.key,
-                                    it.value
-                                )
+                                IssuerSignedItem(digestId++, Random.nextBytes(32), it.key, it.value)
                             },
                             Clock.System.now(),
                             credentialScheme,
-                            subjectPublicKey
+                            subjectPublicKey,
+                            OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
                         )
                     }
                 }

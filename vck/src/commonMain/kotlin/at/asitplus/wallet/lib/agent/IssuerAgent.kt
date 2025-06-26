@@ -137,7 +137,12 @@ class IssuerAgent(
             ).getOrThrow(),
         )
         Napier.i("issueMdoc: $issuerSigned")
-        return Issuer.IssuedCredential.Iso(issuerSigned, credential.scheme).also {
+        return Issuer.IssuedCredential.Iso(
+            issuerSigned = issuerSigned,
+            scheme = credential.scheme,
+            subjectPublicKey = credential.subjectPublicKey,
+            userInfo = credential.userInfo
+        ).also {
             issuerCredentialStore.updateStoredCredential(reference, it).getOrThrow()
         }
     }
@@ -178,7 +183,9 @@ class IssuerAgent(
             vc = vc,
             signedVcJws = vcInJws,
             vcJws = vcInJws.serialize(),
-            scheme = credential.scheme
+            scheme = credential.scheme,
+            subjectPublicKey = credential.subjectPublicKey,
+            userInfo = credential.userInfo,
         ).also {
             issuerCredentialStore.updateStoredCredential(reference, it).getOrThrow()
         }
@@ -237,7 +244,9 @@ class IssuerAgent(
             sdJwtVc = vcSdJwt,
             signedSdJwtVc = sdJwtSigned,
             vcSdJwt = sdJwtSigned.serialize(),
-            scheme = credential.scheme
+            scheme = credential.scheme,
+            subjectPublicKey = credential.subjectPublicKey,
+            userInfo = credential.userInfo,
         ).also {
             issuerCredentialStore.updateStoredCredential(reference, it).getOrThrow()
         }
