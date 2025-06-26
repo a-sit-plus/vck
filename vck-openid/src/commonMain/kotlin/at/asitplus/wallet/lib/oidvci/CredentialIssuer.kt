@@ -7,17 +7,12 @@ import at.asitplus.openid.OpenIdConstants.KEY_ATTESTATION_JWT_TYPE
 import at.asitplus.openid.OpenIdConstants.PROOF_JWT_TYPE
 import at.asitplus.openid.OpenIdConstants.ProofType
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.josef.JsonWebKeySet
-import at.asitplus.signum.indispensable.josef.JsonWebToken
-import at.asitplus.signum.indispensable.josef.JweAlgorithm
-import at.asitplus.signum.indispensable.josef.JweEncryption
-import at.asitplus.signum.indispensable.josef.JweHeader
-import at.asitplus.signum.indispensable.josef.JwsAlgorithm
-import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
+import at.asitplus.signum.indispensable.SignatureAlgorithm
+import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
 import at.asitplus.wallet.lib.jws.EncryptJwe
@@ -25,12 +20,7 @@ import at.asitplus.wallet.lib.jws.EncryptJweFun
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.oauth2.RequestInfo
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.CredentialRequestDenied
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidNonce
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidProof
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.UnsupportedCredentialType
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Clock.System
@@ -48,7 +38,14 @@ class CredentialIssuer(
     /** Used to get the user data, and access tokens. */
     private val authorizationService: OAuth2AuthorizationServerAdapter,
     /** Used to actually issue the credential. */
+    @Deprecated("Use issuerAdapter, keyMaterial, cryptoAlgorithms")
     private val issuer: Issuer,
+    /** Used to actually issue the credential, with data provided from [credentialProvider]. */
+    private val issueCredential: IssueCredentialFun = IssueCredential(issuer),
+    /** Supported crypto algorithms from [issueCredential] */
+    private val cryptoAlgorithms: Set<SignatureAlgorithm> = issuer.cryptoAlgorithms,
+    /** Key material used by [issueCredential] */
+    private val keyMaterial: Set<KeyMaterial> = setOf(issuer.keyMaterial),
     /** List of supported schemes. */
     private val credentialSchemes: Set<CredentialScheme>,
     /** Used in several fields in [IssuerMetadata], to provide endpoint URLs to clients. */
@@ -63,7 +60,7 @@ class CredentialIssuer(
      * to that URI (which starts with [publicContext]) to [nonce].
      */
     private val nonceEndpointPath: String = "/nonce",
-    /** Used during issuance, when issuing credentials (using [issuer]) with data from [OidcUserInfoExtended]. */
+    /** Used during issuance, when issuing credentials (using [issueCredential]) with data from [OidcUserInfoExtended]. */
     private val credentialProvider: CredentialIssuerDataProvider,
     /** Used to verify signature of proof elements in credential requests. */
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
@@ -88,7 +85,7 @@ class CredentialIssuer(
     private val supportedJweEncryptionAlgorithms: Set<JweEncryption> = setOf(JweEncryption.A256GCM),
 ) {
     private val supportedCredentialConfigurations = credentialSchemes
-        .flatMap { it.toSupportedCredentialFormat(issuer.cryptoAlgorithms).entries }
+        .flatMap { it.toSupportedCredentialFormat(cryptoAlgorithms).entries }
         .associate {
             it.key to if (requireKeyAttestation) {
                 it.value.withSupportedProofTypes(
@@ -137,7 +134,7 @@ class CredentialIssuer(
     val jwtVcMetadata: JwtVcIssuerMetadata by lazy {
         JwtVcIssuerMetadata(
             issuer = publicContext,
-            jsonWebKeySet = JsonWebKeySet(setOf(issuer.keyMaterial.jsonWebKey))
+            jsonWebKeySet = JsonWebKeySet(keyMaterial.map { it.jsonWebKey }.toSet())
         )
     }
 
@@ -191,7 +188,7 @@ class CredentialIssuer(
                 throw CredentialRequestDenied("No credential from provider", it)
                     .also { Napier.w("credential: did not get any credential from credentialProvider", it) }
             }
-            issuer.issueCredential(
+            issueCredential(
                 credential = credentialToBeIssued
             ).getOrElse {
                 throw CredentialRequestDenied("No credential from issuer", it)
