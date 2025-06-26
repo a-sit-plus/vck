@@ -4,6 +4,9 @@ import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
@@ -56,7 +59,7 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
                         credentials = setOf(
                             RequestOptionsCredential(
                                 ConstantIndex.AtomicAttribute2023,
-                                ConstantIndex.CredentialRepresentation.PLAIN_JWT
+                                PLAIN_JWT
                             )
                         )
                     )
@@ -79,7 +82,7 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
                         credentials = setOf(
                             RequestOptionsCredential(
                                 ConstantIndex.AtomicAttribute2023,
-                                ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                                PLAIN_JWT,
                             )
                         )
                     )
@@ -116,7 +119,7 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
                             credentials = setOf(
                                 RequestOptionsCredential(
                                     ConstantIndex.AtomicAttribute2023,
-                                    ConstantIndex.CredentialRepresentation.SD_JWT
+                                    SD_JWT
                                 )
                             )
                         )
@@ -146,7 +149,7 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
                             credentials = setOf(
                                 RequestOptionsCredential(
                                     ConstantIndex.AtomicAttribute2023,
-                                    ConstantIndex.CredentialRepresentation.SD_JWT
+                                    SD_JWT
                                 )
                             )
                         ),
@@ -177,7 +180,7 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
                             credentials = setOf(
                                 RequestOptionsCredential(
                                     ConstantIndex.AtomicAttribute2023,
-                                    ConstantIndex.CredentialRepresentation.SD_JWT
+                                    SD_JWT
                                 )
                             ),
                             presentationMechanism = PresentationMechanismEnum.DCQL,
@@ -210,7 +213,7 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
                             credentials = setOf(
                                 RequestOptionsCredential(
                                     ConstantIndex.AtomicAttribute2023,
-                                    ConstantIndex.CredentialRepresentation.SD_JWT
+                                    SD_JWT
                                 )
                             ),
                             presentationMechanism = PresentationMechanismEnum.DCQL
@@ -248,7 +251,7 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
                             credentials = setOf(
                                 RequestOptionsCredential(
                                     ConstantIndex.AtomicAttribute2023,
-                                    ConstantIndex.CredentialRepresentation.ISO_MDOC
+                                    ISO_MDOC
                                 )
                             )
                         ),
@@ -278,7 +281,7 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
                         credentials = setOf(
                             RequestOptionsCredential(
                                 ConstantIndex.AtomicAttribute2023,
-                                ConstantIndex.CredentialRepresentation.ISO_MDOC
+                                ISO_MDOC
                             )
                         )
                     ),
@@ -307,7 +310,7 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
                             credentials = setOf(
                                 RequestOptionsCredential(
                                     ConstantIndex.AtomicAttribute2023,
-                                    ConstantIndex.CredentialRepresentation.ISO_MDOC
+                                    ISO_MDOC
                                 )
                             ),
                             presentationMechanism = PresentationMechanismEnum.DCQL,
@@ -339,7 +342,7 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
                             credentials = setOf(
                                 RequestOptionsCredential(
                                     ConstantIndex.AtomicAttribute2023,
-                                    ConstantIndex.CredentialRepresentation.ISO_MDOC
+                                    ISO_MDOC
                                 )
                             ),
                             presentationMechanism = PresentationMechanismEnum.DCQL
@@ -367,10 +370,10 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
                 credentials = setOf(
                     RequestOptionsCredential(
                         ConstantIndex.AtomicAttribute2023,
-                        ConstantIndex.CredentialRepresentation.PLAIN_JWT
+                        PLAIN_JWT
                     ),
                     RequestOptionsCredential(
-                        MobileDrivingLicenceScheme, ConstantIndex.CredentialRepresentation.ISO_MDOC
+                        MobileDrivingLicenceScheme, ISO_MDOC
                     )
                 )
             ),
@@ -391,12 +394,12 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
             credentials = setOf(
                 RequestOptionsCredential(
                     credentialScheme = ConstantIndex.AtomicAttribute2023,
-                    representation = ConstantIndex.CredentialRepresentation.SD_JWT,
+                    representation = SD_JWT,
                     requestedAttributes = setOf(ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH),
                 ),
                 RequestOptionsCredential(
                     credentialScheme = EuPidScheme,
-                    representation = ConstantIndex.CredentialRepresentation.SD_JWT,
+                    representation = SD_JWT,
                     requestedAttributes = setOf(
                         EuPidScheme.Attributes.FAMILY_NAME,
                         EuPidScheme.Attributes.GIVEN_NAME
@@ -442,7 +445,7 @@ private suspend fun Holder.storeJwtCredential(
             DummyCredentialDataProvider.getCredential(
                 holderKeyMaterial.publicKey,
                 credentialScheme,
-                ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                PLAIN_JWT,
             ).getOrThrow()
         ).getOrThrow().toStoreCredentialInput()
     )
@@ -457,7 +460,7 @@ private suspend fun Holder.storeSdJwtCredential(
             DummyCredentialDataProvider.getCredential(
                 holderKeyMaterial.publicKey,
                 credentialScheme,
-                ConstantIndex.CredentialRepresentation.SD_JWT,
+                SD_JWT,
             ).getOrThrow()
         ).getOrThrow().toStoreCredentialInput()
     )
@@ -471,7 +474,7 @@ private suspend fun Holder.storeIsoCredential(
         DummyCredentialDataProvider.getCredential(
             holderKeyMaterial.publicKey,
             credentialScheme,
-            ConstantIndex.CredentialRepresentation.ISO_MDOC,
+            ISO_MDOC,
         ).getOrThrow()
     ).getOrThrow().toStoreCredentialInput()
 )

@@ -6,6 +6,7 @@ import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.StatusListAgent
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.iso.sha256
@@ -55,7 +56,7 @@ class ValidatorMdocTest : FreeSpec() {
                 DummyCredentialDataProvider.getCredential(
                     verifierKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                    ISO_MDOC,
                 ).getOrThrow()
             ).getOrThrow()
             credential.shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
@@ -75,7 +76,7 @@ class ValidatorMdocTest : FreeSpec() {
                 DummyCredentialDataProvider.getCredential(
                     verifierKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                    ISO_MDOC,
                 ).getOrThrow()
             ).getOrThrow()
             credential.shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()

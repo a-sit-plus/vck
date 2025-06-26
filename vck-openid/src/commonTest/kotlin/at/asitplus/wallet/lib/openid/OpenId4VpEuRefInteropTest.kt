@@ -53,7 +53,6 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
                     holderKeyMaterial.publicKey,
                     EuPidScheme,
                     ConstantIndex.CredentialRepresentation.SD_JWT,
-                    EuPidScheme.requiredClaimNames
                 ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         )
@@ -63,10 +62,6 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.SD_JWT,
-                    listOf(
-                        CLAIM_FAMILY_NAME,
-                        CLAIM_GIVEN_NAME
-                    )
                 ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         )

@@ -19,12 +19,10 @@ object DummyCredentialDataProvider {
         subjectPublicKey: CryptoPublicKey,
         credentialScheme: ConstantIndex.CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation,
-        claimNames: Collection<String>? = null,
     ): KmmResult<CredentialToBeIssued> = catching {
         val issuance = Clock.System.now()
         val expiration = issuance + defaultLifetime
         if (credentialScheme == EuPidScheme) {
-            val subjectId = subjectPublicKey.didEncoded
             val familyName = "Musterfrau"
             val givenName = "Maria"
             val birthDate = LocalDate.parse("1970-01-01")
@@ -34,18 +32,17 @@ object DummyCredentialDataProvider {
 
                 ConstantIndex.CredentialRepresentation.SD_JWT -> with(EuPidScheme.SdJwtAttributes) {
                     listOfNotNull(
-                        optionalClaim(claimNames, FAMILY_NAME, familyName),
-                        optionalClaim(claimNames, FAMILY_NAME_BIRTH, familyName),
-                        optionalClaim(claimNames, GIVEN_NAME, givenName),
-                        optionalClaim(claimNames, GIVEN_NAME_BIRTH, givenName),
-                        optionalClaim(claimNames, BIRTH_DATE, birthDate),
-                        optionalClaim(claimNames, EuPidScheme.Attributes.BIRTH_DATE, birthDate), //incorrect encoding in german test vector?
-                        optionalClaim(claimNames, AGE_EQUAL_OR_OVER_18, true),
-                        optionalClaim(claimNames, NATIONALITIES, listOf(nationality)),
-                        optionalClaim(claimNames, ISSUANCE_DATE, issuance),
-                        optionalClaim(claimNames, EXPIRY_DATE, expiration),
-                        optionalClaim(claimNames, ISSUING_COUNTRY, issuingCountry),
-                        optionalClaim(claimNames, ISSUING_AUTHORITY, issuingCountry),
+                        ClaimToBeIssued(FAMILY_NAME, familyName),
+                        ClaimToBeIssued(FAMILY_NAME_BIRTH, familyName),
+                        ClaimToBeIssued(GIVEN_NAME, givenName),
+                        ClaimToBeIssued(GIVEN_NAME_BIRTH, givenName),
+                        ClaimToBeIssued(BIRTH_DATE, birthDate),
+                        ClaimToBeIssued(AGE_EQUAL_OR_OVER_18, true),
+                        ClaimToBeIssued(NATIONALITIES, listOf(nationality)),
+                        ClaimToBeIssued(ISSUANCE_DATE, issuance),
+                        ClaimToBeIssued(EXPIRY_DATE, expiration),
+                        ClaimToBeIssued(ISSUING_COUNTRY, issuingCountry),
+                        ClaimToBeIssued(ISSUING_AUTHORITY, issuingCountry),
                     )
                 }
 
@@ -65,11 +62,5 @@ object DummyCredentialDataProvider {
             throw NotImplementedError()
         }
     }
-
-    private fun Collection<String>?.isNullOrContains(s: String) =
-        this == null || contains(s)
-
-    private fun optionalClaim(claimNames: Collection<String>?, name: String, value: Any) =
-        if (claimNames.isNullOrContains(name)) ClaimToBeIssued(name, value) else null
 
 }

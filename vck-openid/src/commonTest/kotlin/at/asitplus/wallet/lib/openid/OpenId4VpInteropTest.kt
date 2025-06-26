@@ -63,7 +63,6 @@ class OpenId4VpInteropTest : FreeSpec({
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.SD_JWT,
-                    listOf(CLAIM_FAMILY_NAME, CLAIM_GIVEN_NAME)
                 ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         )

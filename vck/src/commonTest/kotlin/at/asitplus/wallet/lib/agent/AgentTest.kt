@@ -10,6 +10,7 @@ import at.asitplus.openid.dcql.DCQLCredentialQueryInstance
 import at.asitplus.openid.dcql.DCQLCredentialQueryList
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.StatusListToken
@@ -87,7 +88,7 @@ class AgentTest : FreeSpec({
                     DummyCredentialDataProvider.getCredential(
                         holderKeyMaterial.publicKey,
                         ConstantIndex.AtomicAttribute2023,
-                        ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                        PLAIN_JWT,
                     ).getOrThrow()
                 ).getOrThrow().toStoreCredentialInput()
             ).getOrThrow()
@@ -112,7 +113,7 @@ class AgentTest : FreeSpec({
                     DummyCredentialDataProvider.getCredential(
                         holderKeyMaterial.publicKey,
                         ConstantIndex.AtomicAttribute2023,
-                        ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                        PLAIN_JWT,
                     ).getOrThrow()
                 ).getOrThrow().toStoreCredentialInput()
             ).getOrThrow()
@@ -145,7 +146,7 @@ class AgentTest : FreeSpec({
                     DummyCredentialDataProvider.getCredential(
                         holderKeyMaterial.publicKey,
                         ConstantIndex.AtomicAttribute2023,
-                        ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                        PLAIN_JWT,
                     ).getOrThrow()
                 ).getOrThrow()
                     .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
@@ -168,7 +169,7 @@ class AgentTest : FreeSpec({
                     DummyCredentialDataProvider.getCredential(
                         holderKeyMaterial.publicKey,
                         ConstantIndex.AtomicAttribute2023,
-                        ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                        PLAIN_JWT,
                     ).getOrThrow()
                 ).getOrThrow()
                     .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
@@ -206,7 +207,7 @@ class AgentTest : FreeSpec({
                 DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                    PLAIN_JWT,
                 ).getOrThrow()
             ).getOrThrow()
             holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
@@ -234,7 +235,7 @@ class AgentTest : FreeSpec({
                 DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                    PLAIN_JWT,
                 ).getOrThrow()
             ).getOrThrow()
             holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
@@ -252,7 +253,7 @@ class AgentTest : FreeSpec({
                 DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                    PLAIN_JWT,
                 ).getOrThrow()
             ).getOrThrow()
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
@@ -282,7 +283,7 @@ class AgentTest : FreeSpec({
                     DummyCredentialDataProvider.getCredential(
                         holderKeyMaterial.publicKey,
                         ConstantIndex.AtomicAttribute2023,
-                        ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                        PLAIN_JWT,
                     ).getOrThrow()
                 ).getOrThrow().toStoreCredentialInput()
             ).getOrThrow()
@@ -305,7 +306,7 @@ class AgentTest : FreeSpec({
                     DummyCredentialDataProvider.getCredential(
                         holderKeyMaterial.publicKey,
                         ConstantIndex.AtomicAttribute2023,
-                        ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                        PLAIN_JWT,
                     ).getOrThrow()
                 ).getOrThrow().toStoreCredentialInput()
             ).getOrThrow()
@@ -338,7 +339,7 @@ class AgentTest : FreeSpec({
                 DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                    PLAIN_JWT,
                 ).getOrThrow()
             ).getOrThrow()
             holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
@@ -364,7 +365,7 @@ class AgentTest : FreeSpec({
                 DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                    PLAIN_JWT,
                 ).getOrThrow()
             ).getOrThrow()
             holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
@@ -381,7 +382,7 @@ class AgentTest : FreeSpec({
                 DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                    PLAIN_JWT,
                 ).getOrThrow()
             ).getOrThrow()
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()

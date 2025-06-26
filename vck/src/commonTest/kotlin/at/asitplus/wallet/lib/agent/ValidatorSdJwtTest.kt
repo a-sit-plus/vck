@@ -4,6 +4,7 @@ import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -78,7 +79,7 @@ class ValidatorSdJwtTest : FreeSpec() {
     private fun buildCredentialData(): CredentialToBeIssued.VcSd = DummyCredentialDataProvider.getCredential(
         holderKeyMaterial.publicKey,
         ConstantIndex.AtomicAttribute2023,
-        ConstantIndex.CredentialRepresentation.SD_JWT,
+        SD_JWT,
     ).getOrThrow().shouldBeInstanceOf<CredentialToBeIssued.VcSd>()
 }
 

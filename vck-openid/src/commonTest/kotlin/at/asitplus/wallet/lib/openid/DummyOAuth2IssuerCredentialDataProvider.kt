@@ -185,12 +185,6 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialDataProviderFun {
         }
     }
 
-    private fun Collection<String>?.isNullOrContains(s: String) =
-        this == null || contains(s)
-
-    private fun optionalClaim(claimNames: Collection<String>?, name: String, value: Any) =
-        if (claimNames.isNullOrContains(name)) ClaimToBeIssued(name, value) else null
-
     private fun issuerSignedItem(name: String, value: Any, digestId: UInt) = IssuerSignedItem(
         digestId = digestId,
         random = Random.nextBytes(16),

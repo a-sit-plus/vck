@@ -4,6 +4,7 @@ import at.asitplus.wallet.lib.agent.FixedTimePeriodProvider.timePeriod
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
@@ -54,7 +55,7 @@ class AgentRevocationTest : FreeSpec({
                     DummyCredentialDataProvider.getCredential(
                         verifierKeyMaterial.publicKey,
                         ConstantIndex.AtomicAttribute2023,
-                        ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                        PLAIN_JWT,
                     ).getOrThrow()
                 ).getOrElse {
                     fail("no issued credentials")
@@ -71,7 +72,7 @@ class AgentRevocationTest : FreeSpec({
                 DummyCredentialDataProvider.getCredential(
                     verifierKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                    PLAIN_JWT,
                 ).getOrThrow()
             ).getOrElse {
                 fail("no issued credentials")
@@ -93,7 +94,7 @@ class AgentRevocationTest : FreeSpec({
                 DummyCredentialDataProvider.getCredential(
                     verifierKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                    PLAIN_JWT,
                 ).getOrThrow()
             ).getOrElse {
                 fail("no issued credentials")
@@ -127,7 +128,7 @@ class AgentRevocationTest : FreeSpec({
             DummyCredentialDataProvider.getCredential(
                 verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                PLAIN_JWT,
             ).getOrThrow()
         ).getOrElse {
             fail("no issued credentials")
