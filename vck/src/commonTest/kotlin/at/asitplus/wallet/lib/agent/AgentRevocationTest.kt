@@ -182,7 +182,7 @@ private suspend fun IssuerCredentialStore.revokeCredentialsWithIndexes(revokedIn
     val issuanceDate = Clock.System.now()
     val expirationDate = issuanceDate + 60.seconds
     for (i in 1..16) {
-        val revListIndex = createStatusListIndex(
+        val reference = createStatusListIndex(
             CredentialToBeIssued.VcJwt(
                 subject = cred,
                 expiration = expirationDate,
@@ -190,7 +190,8 @@ private suspend fun IssuerCredentialStore.revokeCredentialsWithIndexes(revokedIn
                 subjectPublicKey = EphemeralKeyWithoutCert().publicKey
             ),
             timePeriod
-        ).getOrThrow().statusListIndex
+        ).getOrThrow()
+        val revListIndex = reference.statusListIndex
         if (revokedIndexes.contains(revListIndex)) {
             setStatus(timePeriod, revListIndex, TokenStatus.Invalid)
         }

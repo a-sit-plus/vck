@@ -173,7 +173,7 @@ class IssuerAgent(
             Napier.w("issueVc error", it)
         }.getOrThrow().serialize()
 
-        return Issuer.IssuedCredential.VcJwt(vcInJws, credential.scheme).also {
+        return Issuer.IssuedCredential.VcJwt(vc, vcInJws, credential.scheme).also {
             issuerCredentialStore.updateStoredCredential(reference, it).getOrThrow()
         }
     }
@@ -227,7 +227,11 @@ class IssuerAgent(
         }.getOrThrow()
         val vcInSdJwt = (listOf(jws.serialize()) + disclosures).joinToString("~", postfix = "~")
         Napier.i("issueVcSd: $vcInSdJwt")
-        return Issuer.IssuedCredential.VcSdJwt(vcInSdJwt, credential.scheme).also {
+        return Issuer.IssuedCredential.VcSdJwt(
+            vcSdJwt,
+            vcInSdJwt,
+            credential.scheme
+        ).also {
             issuerCredentialStore.updateStoredCredential(reference, it).getOrThrow()
         }
     }

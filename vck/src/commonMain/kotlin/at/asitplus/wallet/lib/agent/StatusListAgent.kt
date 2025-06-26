@@ -96,34 +96,25 @@ class StatusListAgent(
         issuerCredentialStore.getStatusListView(timePeriod ?: timePeriodProvider.getCurrentTimePeriod(clock))
 
     /**
-     * Revokes all verifiable credentials from [credentialsToRevoke] list that parse and validate.
-     * It returns true if all revocations was successful.
+     * Sets the status of one specific credential to [at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus.Invalid].
+     * Returns true if this credential has been revoked.
      */
-    // TODO remove this
-    override suspend fun revokeCredentials(credentialsToRevoke: List<String>): Boolean =
-        credentialsToRevoke.map {
-            validator.verifyVcJws(it, null)
-        }.filterIsInstance<Verifier.VerifyCredentialResult.SuccessJwt>().all {
-            issuerCredentialStore.setStatus(
-                vcId = it.jws.vc.id,
-                status = TokenStatus.Invalid,
-                timePeriod = timePeriodProvider.getTimePeriodFor(it.jws.vc.issuanceDate)
-            )
-        }
+    override fun revokeCredential(timePeriod: Int, statusListIndex: ULong): Boolean =
+        issuerCredentialStore.setStatus(timePeriod, statusListIndex, TokenStatus.Invalid)
+
+    /**
+     * Revokes all verifiable credentials from [credentialsToRevoke] list that parse and validate.
+     * It returns true if all revocations were successful.
+     */
+    @Deprecated("Use `revokeCredential` instead")
+    override suspend fun revokeCredentials(credentialsToRevoke: List<String>): Boolean = false
 
     /**
      * Revokes all verifiable credentials with ids from [credentialIdsToRevoke]
-     * It returns true if all revocations was successful.
+     * It returns true if all revocations were successful.
      */
-    // TODO remove this
-    override fun revokeCredentialsWithId(credentialIdsToRevoke: Map<String, Instant>): Boolean =
-        credentialIdsToRevoke.all {
-            issuerCredentialStore.setStatus(
-                vcId = it.key,
-                status = TokenStatus.Invalid,
-                timePeriod = timePeriodProvider.getTimePeriodFor(it.value),
-            )
-        }
+    @Deprecated("Use `revokeCredential` instead")
+    override fun revokeCredentialsWithId(credentialIdsToRevoke: Map<String, Instant>): Boolean = false
 
     override suspend fun provideStatusListToken(
         acceptedContentTypes: List<StatusListTokenMediaType>,
