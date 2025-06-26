@@ -10,6 +10,8 @@ Release 5.8.0:
  - Refactor `SimpleAuthorizationService` and 
    - Add `SimpleQtspAuthorizationService` class
    - Remove `AuthorizationDetail` matching and validation from class to interface function
+ - Code organization:
+   - Extract interface `StatusListIssuer` out of `Issuer` to separate credential issuing and status list management
 
 Release 5.7.1:
  - Signum 3.16.3/Supreme 0.8.3 to fix certificate encoding in JWS header

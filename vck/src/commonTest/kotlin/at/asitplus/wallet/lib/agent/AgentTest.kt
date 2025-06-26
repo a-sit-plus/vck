@@ -26,7 +26,9 @@ import kotlin.random.Random
 
 
 class AgentTest : FreeSpec({
+
     lateinit var issuer: Issuer
+    lateinit var statusListIssuer: StatusListIssuer
     lateinit var holder: Holder
     lateinit var verifier: Verifier
     lateinit var holderKeyMaterial: KeyMaterial
@@ -40,11 +42,11 @@ class AgentTest : FreeSpec({
         validator = Validator(
             resolveStatusListToken = {
                 if (Random.nextBoolean()) StatusListToken.StatusListJwt(
-                    issuer.issueStatusListJwt(),
+                    statusListIssuer.issueStatusListJwt(),
                     resolvedAt = Clock.System.now()
                 ) else {
                     StatusListToken.StatusListCwt(
-                        issuer.issueStatusListCwt(),
+                        statusListIssuer.issueStatusListCwt(),
                         resolvedAt = Clock.System.now()
                     )
                 }
@@ -58,7 +60,7 @@ class AgentTest : FreeSpec({
             EphemeralKeyWithoutCert(),
             validator = validator,
             issuerCredentialStore = issuerCredentialStore,
-        )
+        ).also { statusListIssuer = it }
 
         holderKeyMaterial = EphemeralKeyWithoutCert()
         verifierId = "urn:${uuid4()}"
@@ -175,7 +177,7 @@ class AgentTest : FreeSpec({
                     holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
                 storedCredentials.shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Vc>()
 
-                issuer.revokeCredentials(listOf(credentials.vcJws)) shouldBe true
+                statusListIssuer.revokeCredentials(listOf(credentials.vcJws)) shouldBe true
 
                 val holderCredentials = holder.getCredentials()
                 holderCredentials.shouldNotBeNull()
@@ -247,7 +249,7 @@ class AgentTest : FreeSpec({
                 ).getOrThrow()
             ).getOrThrow()
             credentialsToRevoke.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
-            issuer.revokeCredentials(listOf(credentialsToRevoke.vcJws)) shouldBe true
+            statusListIssuer.revokeCredentials(listOf(credentialsToRevoke.vcJws)) shouldBe true
 
             verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
@@ -372,7 +374,7 @@ class AgentTest : FreeSpec({
                 ).getOrThrow()
             ).getOrThrow()
             credentialsToRevoke.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
-            issuer.revokeCredentials(listOf(credentialsToRevoke.vcJws)) shouldBe true
+            statusListIssuer.revokeCredentials(listOf(credentialsToRevoke.vcJws)) shouldBe true
 
             verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()

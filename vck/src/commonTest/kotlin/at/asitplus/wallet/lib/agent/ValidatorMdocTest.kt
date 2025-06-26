@@ -20,6 +20,7 @@ import kotlin.random.Random
 class ValidatorMdocTest : FreeSpec() {
 
     private lateinit var issuer: Issuer
+    private lateinit var statusListIssuer: StatusListIssuer
     private lateinit var issuerCredentialStore: IssuerCredentialStore
     private lateinit var issuerKeyMaterial: KeyMaterial
     private lateinit var verifierKeyMaterial: KeyMaterial
@@ -30,11 +31,11 @@ class ValidatorMdocTest : FreeSpec() {
             validator = Validator(
                 resolveStatusListToken = {
                     if (Random.nextBoolean()) StatusListToken.StatusListJwt(
-                        issuer.issueStatusListJwt(),
+                        statusListIssuer.issueStatusListJwt(),
                         resolvedAt = Clock.System.now(),
                     ) else {
                         StatusListToken.StatusListCwt(
-                            issuer.issueStatusListCwt(),
+                            statusListIssuer.issueStatusListCwt(),
                             resolvedAt = Clock.System.now(),
                         )
                     }
@@ -46,7 +47,7 @@ class ValidatorMdocTest : FreeSpec() {
                 issuerKeyMaterial,
                 validator = validator,
                 issuerCredentialStore = issuerCredentialStore,
-            )
+            ).also { statusListIssuer = it }
             verifierKeyMaterial = EphemeralKeyWithoutCert()
         }
 

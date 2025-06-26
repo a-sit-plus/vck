@@ -24,21 +24,21 @@ import kotlin.time.Duration.Companion.seconds
 class AgentRevocationTest : FreeSpec({
 
     lateinit var issuerCredentialStore: IssuerCredentialStore
-    lateinit var verifier: Verifier
     lateinit var verifierKeyMaterial: KeyMaterial
     lateinit var issuer: Issuer
+    lateinit var statusListIssuer: StatusListIssuer
     lateinit var expectedRevokedIndexes: List<Long>
 
     beforeEach {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         issuer = IssuerAgent(EphemeralKeyWithoutCert(), issuerCredentialStore = issuerCredentialStore)
+            .also { statusListIssuer = it }
         verifierKeyMaterial = EphemeralKeyWithoutCert()
-        verifier = VerifierAgent(identifier = "urn:${uuid4()}")
         expectedRevokedIndexes = issuerCredentialStore.revokeRandomCredentials()
     }
 
     "revocation list should contain indices of revoked credential" {
-        val statusListJwt = issuer.issueStatusListJwt()
+        val statusListJwt = statusListIssuer.issueStatusListJwt()
         statusListJwt.shouldNotBeNull()
 
         val statusList = statusListJwt.payload.statusList
@@ -60,10 +60,8 @@ class AgentRevocationTest : FreeSpec({
                 }
                 issuerCredentialStore.revokeCredentialsWithIndexes(listOf(0))
 
-                val statusListAggregation = issuer.provideStatusListAggregation()
-                statusListAggregation.statusLists.size should {
-                    it >= 1
-                }
+                val statusListAggregation = statusListIssuer.provideStatusListAggregation()
+                statusListAggregation.statusLists.size should { it >= 1 }
             }
         }
 
@@ -80,8 +78,8 @@ class AgentRevocationTest : FreeSpec({
             issuerCredentialStore.revokeCredentialsWithIndexes(listOf(0))
 
             val timestamp = Clock.System.now()
-            val issuedToken = issuer.issueStatusListJwt(timestamp)
-            val (type, providedToken) = issuer.provideStatusListToken(
+            val issuedToken = statusListIssuer.issueStatusListJwt(timestamp)
+            val (type, providedToken) = statusListIssuer.provideStatusListToken(
                 acceptedContentTypes = listOf(StatusListTokenMediaType.Jwt),
                 time = timestamp,
             )
@@ -102,8 +100,8 @@ class AgentRevocationTest : FreeSpec({
             issuerCredentialStore.revokeCredentialsWithIndexes(listOf(0))
 
             val timestamp = Clock.System.now()
-            val issuedToken = issuer.issueStatusListJwt(timestamp)
-            val (type, providedToken) = issuer.provideStatusListToken(
+            val issuedToken = statusListIssuer.issueStatusListJwt(timestamp)
+            val (type, providedToken) = statusListIssuer.provideStatusListToken(
                 acceptedContentTypes = listOf(StatusListTokenMediaType.Cwt),
                 time = timestamp,
             )
@@ -113,11 +111,11 @@ class AgentRevocationTest : FreeSpec({
     }
 
     "revocation credential should be valid" {
-        issuer.issueStatusListJwt().also {
+        statusListIssuer.issueStatusListJwt().also {
             it.shouldNotBeNull()
             VerifyJwsObject().invoke(it) shouldBe true
         }
-        issuer.issueStatusListCwt().also {
+        statusListIssuer.issueStatusListCwt().also {
             it.shouldNotBeNull()
             VerifyCoseSignature<StatusListTokenPayload>().invoke(it, byteArrayOf(), null).isSuccess shouldBe true
         }
@@ -145,10 +143,11 @@ class AgentRevocationTest : FreeSpec({
     "encoding to a known value works" {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         issuer = IssuerAgent(EphemeralKeyWithoutCert(), issuerCredentialStore = issuerCredentialStore)
+            .also { statusListIssuer = it }
         expectedRevokedIndexes = listOf(1, 2, 4, 6, 7, 9, 10, 12, 13, 14)
         issuerCredentialStore.revokeCredentialsWithIndexes(expectedRevokedIndexes)
 
-        val revocationList = issuer.buildStatusList(FixedTimePeriodProvider.timePeriod)
+        val revocationList = statusListIssuer.buildStatusList(FixedTimePeriodProvider.timePeriod)
         revocationList.shouldNotBeNull()
 
         verifyStatusList(revocationList, expectedRevokedIndexes)
