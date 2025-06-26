@@ -7,25 +7,29 @@ import at.asitplus.iso.IssuerSignedItem
 import kotlinx.datetime.Instant
 
 sealed class CredentialToBeIssued {
+    abstract val expiration: Instant
+    abstract val scheme: ConstantIndex.CredentialScheme
+    abstract val subjectPublicKey: CryptoPublicKey
+
     data class VcJwt(
         val subject: CredentialSubject,
-        val expiration: Instant,
-        val scheme: ConstantIndex.CredentialScheme,
-        val subjectPublicKey: CryptoPublicKey,
+        override val expiration: Instant,
+        override val scheme: ConstantIndex.CredentialScheme,
+        override val subjectPublicKey: CryptoPublicKey,
     ) : CredentialToBeIssued()
 
     data class VcSd(
         val claims: Collection<ClaimToBeIssued>,
-        val expiration: Instant,
-        val scheme: ConstantIndex.CredentialScheme,
-        val subjectPublicKey: CryptoPublicKey,
+        override val expiration: Instant,
+        override val scheme: ConstantIndex.CredentialScheme,
+        override val subjectPublicKey: CryptoPublicKey,
     ) : CredentialToBeIssued()
 
     data class Iso(
         val issuerSignedItems: List<IssuerSignedItem>,
-        val expiration: Instant,
-        val scheme: ConstantIndex.CredentialScheme,
-        val subjectPublicKey: CryptoPublicKey,
+        override val expiration: Instant,
+        override val scheme: ConstantIndex.CredentialScheme,
+        override val subjectPublicKey: CryptoPublicKey,
     ) : CredentialToBeIssued()
 }
 

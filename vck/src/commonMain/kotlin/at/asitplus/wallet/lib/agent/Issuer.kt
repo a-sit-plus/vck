@@ -2,11 +2,14 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.signum.indispensable.SignatureAlgorithm
+import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiableCredential
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.ReferencedTokenIssuer
 import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.wallet.lib.jws.SdJwtSigned
 
 
 /**
@@ -28,6 +31,8 @@ interface Issuer : ReferencedTokenIssuer<CredentialToBeIssued, KmmResult<Issuer.
          */
         data class VcJwt(
             val vc: VerifiableCredential,
+            val signedVcJws: JwsSigned<VerifiableCredentialJws>,
+            @Deprecated("Use signedVcJws instead", ReplaceWith("signedVcJws"))
             val vcJws: String,
             override val scheme: ConstantIndex.CredentialScheme,
         ) : IssuedCredential()
@@ -36,7 +41,9 @@ interface Issuer : ReferencedTokenIssuer<CredentialToBeIssued, KmmResult<Issuer.
          * Issued credential in SD-JWT representation
          */
         data class VcSdJwt(
-            val sdJwt: VerifiableCredentialSdJwt,
+            val sdJwtVc: VerifiableCredentialSdJwt,
+            val signedSdJwtVc: SdJwtSigned,
+            @Deprecated("Use signedSdJwtVc instead", ReplaceWith("signedSdJwtVc"))
             val vcSdJwt: String,
             override val scheme: ConstantIndex.CredentialScheme,
         ) : IssuedCredential()
@@ -74,6 +81,6 @@ interface Issuer : ReferencedTokenIssuer<CredentialToBeIssued, KmmResult<Issuer.
 
 fun Issuer.IssuedCredential.toStoreCredentialInput() = when (this) {
     is Issuer.IssuedCredential.Iso -> Holder.StoreCredentialInput.Iso(issuerSigned, scheme)
-    is Issuer.IssuedCredential.VcSdJwt -> Holder.StoreCredentialInput.SdJwt(vcSdJwt, scheme)
-    is Issuer.IssuedCredential.VcJwt -> Holder.StoreCredentialInput.Vc(vcJws, scheme)
+    is Issuer.IssuedCredential.VcSdJwt -> Holder.StoreCredentialInput.SdJwt(signedSdJwtVc, signedSdJwtVc.serialize(), scheme)
+    is Issuer.IssuedCredential.VcJwt -> Holder.StoreCredentialInput.Vc(signedVcJws, signedVcJws.serialize(), scheme)
 }

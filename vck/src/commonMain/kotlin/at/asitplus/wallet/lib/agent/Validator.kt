@@ -383,9 +383,10 @@ class Validator(
     private fun ByteStringWrapper<IssuerSignedItem>.verify(mdlItems: ValueDigestList?): Boolean {
         val issuerHash = mdlItems?.entries?.firstOrNull { it.key == value.digestId }
             ?: return false
-        val verifierHash =
-            coseCompliantSerializer.encodeToByteArray(ByteArraySerializer(), serialized).wrapInCborTag(24)
-                .sha256()
+        val verifierHash = coseCompliantSerializer
+            .encodeToByteArray(ByteArraySerializer(), serialized)
+            .wrapInCborTag(24)
+            .sha256()
         if (!verifierHash.contentEquals(issuerHash.value)) {
             Napier.w("Could not verify hash of value for ${value.elementIdentifier}")
             return false
@@ -397,7 +398,18 @@ class Validator(
      * Validates the content of a JWS, expected to contain a Verifiable Credential.
      *
      * @param input JWS in compact representation
-     * @param publicKey Optionally the local key, to verify VC was issued to correct subject
+     * @param publicKey Optionally, the local key, to verify VC was issued to the correct subject
+     */
+    suspend fun verifyVcJws(
+        input: JwsSigned<VerifiableCredentialJws>,
+        publicKey: CryptoPublicKey?,
+    ) = verifyVcJws(input.serialize(), publicKey)
+
+    /**
+     * Validates the content of a JWS, expected to contain a Verifiable Credential.
+     *
+     * @param input JWS in compact representation
+     * @param publicKey Optionally, the local key, to verify VC was issued to the correct subject
      */
     suspend fun verifyVcJws(
         input: String,

@@ -136,6 +136,7 @@ class IssuerAgent(
                 serializer = MobileSecurityObject.serializer(),
             ).getOrThrow(),
         )
+        Napier.i("issueMdoc: $issuerSigned")
         return Issuer.IssuedCredential.Iso(issuerSigned, credential.scheme).also {
             issuerCredentialStore.updateStoredCredential(reference, it).getOrThrow()
         }
@@ -166,14 +167,19 @@ class IssuerAgent(
         )
 
         val vcInJws = signIssuedVc(
-            JwsContentTypeConstants.JWT,
-            vc.toJws(),
-            VerifiableCredentialJws.serializer(),
+            type = JwsContentTypeConstants.JWT,
+            payload = vc.toJws(),
+            serializer = VerifiableCredentialJws.serializer(),
         ).onFailure {
             Napier.w("issueVc error", it)
-        }.getOrThrow().serialize()
-
-        return Issuer.IssuedCredential.VcJwt(vc, vcInJws, credential.scheme).also {
+        }.getOrThrow()
+        Napier.i("issueVc: $vcInJws")
+        return Issuer.IssuedCredential.VcJwt(
+            vc = vc,
+            signedVcJws = vcInJws,
+            vcJws = vcInJws.serialize(),
+            scheme = credential.scheme
+        ).also {
             issuerCredentialStore.updateStoredCredential(reference, it).getOrThrow()
         }
     }
@@ -225,12 +231,13 @@ class IssuerAgent(
         ).onFailure {
             Napier.w("issueVcSd error", it)
         }.getOrThrow()
-        val vcInSdJwt = (listOf(jws.serialize()) + disclosures).joinToString("~", postfix = "~")
-        Napier.i("issueVcSd: $vcInSdJwt")
+        val sdJwtSigned = SdJwtSigned.issued(jws, disclosures.toList())
+        Napier.i("issueVcSd: $sdJwtSigned")
         return Issuer.IssuedCredential.VcSdJwt(
-            vcSdJwt,
-            vcInSdJwt,
-            credential.scheme
+            sdJwtVc = vcSdJwt,
+            signedSdJwtVc = sdJwtSigned,
+            vcSdJwt = sdJwtSigned.serialize(),
+            scheme = credential.scheme
         ).also {
             issuerCredentialStore.updateStoredCredential(reference, it).getOrThrow()
         }

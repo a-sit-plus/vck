@@ -48,7 +48,7 @@ class HolderAgent(
     override suspend fun storeCredential(credential: Holder.StoreCredentialInput) = catching {
         when (credential) {
             is Holder.StoreCredentialInput.Vc -> {
-                val validated = validator.verifyVcJws(credential.vcJws, keyMaterial.publicKey)
+                val validated = validator.verifyVcJws(credential.signedVcJws, keyMaterial.publicKey)
                 if (validated !is Verifier.VerifyCredentialResult.SuccessJwt) {
                     val error = (validated as? Verifier.VerifyCredentialResult.ValidationError)?.cause
                         ?: Throwable("Invalid VC JWS")
@@ -62,7 +62,7 @@ class HolderAgent(
             }
 
             is Holder.StoreCredentialInput.SdJwt -> {
-                val validated = validator.verifySdJwt(SdJwtSigned.parse(credential.vcSdJwt)!!, keyMaterial.publicKey)
+                val validated = validator.verifySdJwt(credential.signedSdJwtVc, keyMaterial.publicKey)
                 if (validated !is Verifier.VerifyCredentialResult.SuccessSdJwt) {
                     val error = (validated as? Verifier.VerifyCredentialResult.ValidationError)?.cause
                         ?: Throwable("Invalid SD-JWT")

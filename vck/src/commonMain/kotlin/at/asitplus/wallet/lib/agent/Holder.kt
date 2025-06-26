@@ -8,10 +8,13 @@ import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLQueryResult
+import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.wallet.lib.jws.SdJwtSigned
 
 /**
  * Summarizes operations for a Holder in the sense of the [W3C VC Data Model](https://w3c.github.io/vc-data-model/).
@@ -25,17 +28,17 @@ interface Holder {
      */
     val keyMaterial: KeyMaterial
 
-    @Deprecated("Use keyMaterial instead", ReplaceWith("keyMaterial"))
-    val keyPair: KeyMaterial
-        get() = keyMaterial
-
     sealed class StoreCredentialInput {
         data class Vc(
+            val signedVcJws: JwsSigned<VerifiableCredentialJws>,
+            @Deprecated("Use signedVcJws instead", ReplaceWith("signedVcJws"))
             val vcJws: String,
             val scheme: ConstantIndex.CredentialScheme,
         ) : StoreCredentialInput()
 
         data class SdJwt(
+            val signedSdJwtVc: SdJwtSigned,
+            @Deprecated("Use signedSdJwtVc instead", ReplaceWith("signedSdJwtVc"))
             val vcSdJwt: String,
             val scheme: ConstantIndex.CredentialScheme,
         ) : StoreCredentialInput()

@@ -19,8 +19,11 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.jws.JwsHeaderJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
+import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oauth2.OAuth2Client.AuthorizationForToken
@@ -451,11 +454,24 @@ class OpenId4VciClient(
         credentialRepresentation: ConstantIndex.CredentialRepresentation,
         credentialScheme: ConstantIndex.CredentialScheme,
     ): Holder.StoreCredentialInput = when (credentialRepresentation) {
-        ConstantIndex.CredentialRepresentation.PLAIN_JWT -> Vc(this, credentialScheme)
-        ConstantIndex.CredentialRepresentation.SD_JWT -> SdJwt(this, credentialScheme)
-        ConstantIndex.CredentialRepresentation.ISO_MDOC ->
-            runCatching { Iso(coseCompliantSerializer.decodeFromByteArray<IssuerSigned>(decodeToByteArray(Base64())), credentialScheme) }
-                .getOrElse { throw Exception("Invalid credential format: $this", it) }
+        ConstantIndex.CredentialRepresentation.PLAIN_JWT -> Vc(
+            signedVcJws = JwsSigned.deserialize(VerifiableCredentialJws.serializer(), this).getOrThrow(),
+            vcJws = this,
+            scheme = credentialScheme
+        )
+
+        ConstantIndex.CredentialRepresentation.SD_JWT -> SdJwt(
+            signedSdJwtVc = SdJwtSigned.parse(this)!!,
+            vcSdJwt = this,
+            scheme = credentialScheme
+        )
+
+        ConstantIndex.CredentialRepresentation.ISO_MDOC -> runCatching {
+            Iso(
+                issuerSigned = coseCompliantSerializer.decodeFromByteArray<IssuerSigned>(decodeToByteArray(Base64())),
+                scheme = credentialScheme
+            )
+        }.getOrElse { throw Exception("Invalid credential format: $this", it) }
     }
 
     /**
@@ -487,7 +503,8 @@ class OpenId4VciClient(
         )
         val authorizationEndpointUrl = oauthMetadata.authorizationEndpoint
             ?: throw Exception("no authorizationEndpoint in $oauthMetadata")
-        val wrapAsJar = oauthMetadata.requestObjectSigningAlgorithmsSupported?.contains(JwsAlgorithm.Signature.ES256) == true
+        val wrapAsJar =
+            oauthMetadata.requestObjectSigningAlgorithmsSupported?.contains(JwsAlgorithm.Signature.ES256) == true
         val authRequest = oid4vciService.oauth2Client.createAuthRequest(
             state = state,
             authorizationDetails = if (scope == null) authorizationDetails else null,

@@ -209,8 +209,8 @@ suspend fun Issuer.IssuedCredential.toCredentialResponseSingleCredential(
 ): CredentialResponseSingleCredential = CredentialResponseSingleCredential(
     when (this) {
         is Issuer.IssuedCredential.Iso -> JsonPrimitive(transformer(toBase64UrlStrict()))
-        is Issuer.IssuedCredential.VcJwt -> JsonPrimitive(transformer(vcJws))
-        is Issuer.IssuedCredential.VcSdJwt -> JsonPrimitive(transformer(vcSdJwt))
+        is Issuer.IssuedCredential.VcJwt -> JsonPrimitive(transformer(signedVcJws.serialize()))
+        is Issuer.IssuedCredential.VcSdJwt -> JsonPrimitive(transformer(signedSdJwtVc.serialize()))
     }
 )
 

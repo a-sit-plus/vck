@@ -73,7 +73,7 @@ class ValidatorVcTest : FreeSpec() {
             ).getOrThrow()
             credential.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-            validator.verifyVcJws(credential.vcJws, verifierKeyMaterial.publicKey)
+            validator.verifyVcJws(credential.signedVcJws, verifierKeyMaterial.publicKey)
                 .shouldBeInstanceOf<VerifyCredentialResult.SuccessJwt>()
         }
 
@@ -87,7 +87,7 @@ class ValidatorVcTest : FreeSpec() {
             ).getOrThrow()
             credential.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-            val value = validator.verifyVcJws(credential.vcJws, verifierKeyMaterial.publicKey)
+            val value = validator.verifyVcJws(credential.signedVcJws, verifierKeyMaterial.publicKey)
                 .shouldBeInstanceOf<VerifyCredentialResult.SuccessJwt>()
             issuerCredentialStore.setStatus(
                 timePeriod = FixedTimePeriodProvider.timePeriod,
@@ -95,7 +95,7 @@ class ValidatorVcTest : FreeSpec() {
                 status = TokenStatus.Invalid,
             ) shouldBe true
 
-            validator.verifyVcJws(credential.vcJws, verifierKeyMaterial.publicKey)
+            validator.verifyVcJws(credential.signedVcJws, verifierKeyMaterial.publicKey)
                 .shouldBeInstanceOf<VerifyCredentialResult.SuccessJwt>()
 
             validator.checkRevocationStatus(value.jws)
@@ -113,7 +113,7 @@ class ValidatorVcTest : FreeSpec() {
             ).getOrThrow()
             credential.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-            validator.verifyVcJws(credential.vcJws, verifierKeyMaterial.publicKey)
+            validator.verifyVcJws(credential.signedVcJws, verifierKeyMaterial.publicKey)
                 .shouldBeInstanceOf<VerifyCredentialResult.ValidationError>()
         }
 
@@ -127,8 +127,10 @@ class ValidatorVcTest : FreeSpec() {
             ).getOrThrow()
             credential.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-            validator.verifyVcJws(credential.vcJws.replaceFirstChar { "f" }, verifierKeyMaterial.publicKey)
-                .shouldBeInstanceOf<VerifyCredentialResult.InvalidStructure>()
+            validator.verifyVcJws(
+                credential.signedVcJws.serialize().replaceFirstChar { "f" },
+                verifierKeyMaterial.publicKey
+            ).shouldBeInstanceOf<VerifyCredentialResult.InvalidStructure>()
         }
 
         "Manually created and valid credential is valid" {
@@ -351,7 +353,7 @@ class ValidatorVcTest : FreeSpec() {
         ).getOrThrow().statusListIndex
         val credentialStatus = Status(
             statusList = StatusListInfo(
-                index = statusListIndex.toULong(),
+                index = statusListIndex,
                 uri = UniformResourceIdentifier(revocationListUrl),
             )
         )

@@ -17,6 +17,7 @@ Release 5.8.0:
    - In `Issuer.IssuedCredential` add the typed credentials as properties
    - In `StatusListIssuer` deprecate methods `revokeCredentials()` and `revokeCredentialsWithId()`, callers should use `revokeCredential()`
    - In `CredentialIssuer` deprecate constructor parameter `credentialProvider`, replace with `credentialDataProvider`
+   - Extend `CredentialToBeIssued` to contain properties `expiration`, `scheme`, `subjectPublicKey`
 
 Release 5.7.1:
  - Signum 3.16.3/Supreme 0.8.3 to fix certificate encoding in JWS header
