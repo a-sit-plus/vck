@@ -34,7 +34,7 @@ class OidvciOfferCodeTest : FreeSpec({
             authorizationService = authorizationService,
             issuer = IssuerAgent(),
             credentialSchemes = setOf(AtomicAttribute2023, MobileDrivingLicenceScheme),
-            credentialProvider = DummyOAuth2IssuerCredentialDataProvider
+            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider
         )
         client = WalletService()
         state = uuid4().toString()

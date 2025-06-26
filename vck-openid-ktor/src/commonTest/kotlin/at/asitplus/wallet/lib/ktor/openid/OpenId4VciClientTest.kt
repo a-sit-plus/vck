@@ -34,6 +34,7 @@ import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.TokenService
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
+import at.asitplus.wallet.lib.oidvci.CredentialDataProviderFun
 import at.asitplus.wallet.lib.oidvci.CredentialIssuer
 import at.asitplus.wallet.lib.oidvci.CredentialIssuerDataProvider
 import at.asitplus.wallet.lib.oidvci.DefaultNonceService
@@ -195,8 +196,8 @@ class OpenId4VciClientTest : FunSpec() {
         attributes: Map<String, String>,
     ) {
         val dataProvider = OAuth2DataProvider { _, _ -> dummyUser() }
-        val credentialProvider =
-            CredentialIssuerDataProvider { _, subjectPublicKey: CryptoPublicKey, credentialScheme, representation, _ ->
+        val credentialDataProvider =
+            CredentialDataProviderFun { _, subjectPublicKey: CryptoPublicKey, credentialScheme, representation ->
                 catching {
                     require(credentialScheme == scheme)
                     require(representation == representation)
@@ -253,7 +254,7 @@ class OpenId4VciClientTest : FunSpec() {
             authorizationService = authorizationService,
             issuer = IssuerAgent(EphemeralKeyWithSelfSignedCert()),
             credentialSchemes = credentialSchemes,
-            credentialProvider = credentialProvider,
+            credentialDataProvider = credentialDataProvider,
             publicContext = publicContext,
             credentialEndpointPath = credentialEndpointPath,
             nonceEndpointPath = nonceEndpointPath,
