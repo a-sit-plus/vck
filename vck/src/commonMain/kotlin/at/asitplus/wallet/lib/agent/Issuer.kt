@@ -3,6 +3,8 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.VerifiableCredential
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.ReferencedTokenIssuer
 import at.asitplus.wallet.lib.iso.IssuerSigned
 
@@ -18,13 +20,14 @@ interface Issuer : ReferencedTokenIssuer<CredentialToBeIssued, KmmResult<Issuer.
      * A credential issued by an [Issuer], in a specific format
      */
     sealed class IssuedCredential {
-        // TODO add the typed credential and the userInfo
+        // TODO add the userInfo
         abstract val scheme: ConstantIndex.CredentialScheme
 
         /**
          * Issued credential in W3C Verifiable Credentials JWT representation
          */
         data class VcJwt(
+            val vc: VerifiableCredential,
             val vcJws: String,
             override val scheme: ConstantIndex.CredentialScheme,
         ) : IssuedCredential()
@@ -33,6 +36,7 @@ interface Issuer : ReferencedTokenIssuer<CredentialToBeIssued, KmmResult<Issuer.
          * Issued credential in SD-JWT representation
          */
         data class VcSdJwt(
+            val sdJwt: VerifiableCredentialSdJwt,
             val vcSdJwt: String,
             override val scheme: ConstantIndex.CredentialScheme,
         ) : IssuedCredential()

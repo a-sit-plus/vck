@@ -97,12 +97,13 @@ class AgentTest : FreeSpec({
             val presentationParameters = holder.createPresentation(
                 request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
                 credentialPresentation = singularPresentationDefinition,
-            ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
+            ).getOrThrow()
+                .shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
 
             val vp = presentationParameters.presentationResults.first()
                 .shouldBeInstanceOf<CreatePresentationResult.Signed>()
-            val verified = verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
-            verified.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
+            verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
         }
 
         "wrong keyId in presentation leads to error" {
@@ -122,12 +123,13 @@ class AgentTest : FreeSpec({
                     audience = issuer.keyMaterial.identifier
                 ),
                 credentialPresentation = singularPresentationDefinition,
-            ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
+            ).getOrThrow()
+                .shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
 
             val vp = presentationParameters.presentationResults.first()
                 .shouldBeInstanceOf<CreatePresentationResult.Signed>()
-            val result = verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
-            result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
+            verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
         }
 
         "getting credentials that have been stored by the holder" - {
@@ -146,41 +148,46 @@ class AgentTest : FreeSpec({
                         ConstantIndex.CredentialRepresentation.PLAIN_JWT,
                     ).getOrThrow()
                 ).getOrThrow()
-                credentials.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
+                    .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-                val storedCredentials = holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
-                storedCredentials.shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Vc>()
+                val storedCredential = holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
+                    .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Vc>()
 
                 holderCredentialStore.getCredentials().getOrThrow().shouldHaveSize(1)
-                val holderCredentials = holder.getCredentials()
-                holderCredentials.shouldNotBeNull()
-                holderCredentials.shouldHaveSize(1)
-                holderCredentials.forEach {
-                    validator.checkRevocationStatus(it).shouldBeInstanceOf<TokenStatusValidationResult.Valid>()
-                }
+                holder.getCredentials()
+                    .shouldNotBeNull()
+                    .shouldHaveSize(1)
+                    .forEach {
+                        validator.checkRevocationStatus(it)
+                            .shouldBeInstanceOf<TokenStatusValidationResult.Valid>()
+                    }
             }
 
             "when the issuer has revoked them" {
-                val credentials = issuer.issueCredential(
+                val credential = issuer.issueCredential(
                     DummyCredentialDataProvider.getCredential(
                         holderKeyMaterial.publicKey,
                         ConstantIndex.AtomicAttribute2023,
                         ConstantIndex.CredentialRepresentation.PLAIN_JWT,
                     ).getOrThrow()
                 ).getOrThrow()
-                credentials.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
+                    .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-                val storedCredentials =
-                    holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
-                storedCredentials.shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Vc>()
+                val storedCredential = holder.storeCredential(credential.toStoreCredentialInput())
+                    .getOrThrow()
+                    .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Vc>()
 
-                statusListIssuer.revokeCredentials(listOf(credentials.vcJws)) shouldBe true
+                statusListIssuer.revokeCredential(
+                    FixedTimePeriodProvider.timePeriod,
+                    credential.vc.credentialStatus!!.statusList.index
+                ) shouldBe true
 
-                val holderCredentials = holder.getCredentials()
-                holderCredentials.shouldNotBeNull()
-                holderCredentials.forEach {
-                    validator.checkRevocationStatus(it).shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
-                }
+                holder.getCredentials()
+                    .shouldNotBeNull()
+                    .forEach {
+                        validator.checkRevocationStatus(it)
+                            .shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
+                    }
             }
         }
 
@@ -206,18 +213,20 @@ class AgentTest : FreeSpec({
             val presentationParameters = holder.createPresentation(
                 request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
                 credentialPresentation = singularPresentationDefinition,
-            ).getOrNull().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
+            ).getOrNull()
+                .shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
 
             val vp = presentationParameters.presentationResults.firstOrNull()
                 .shouldNotBeNull()
                 .shouldBeInstanceOf<CreatePresentationResult.Signed>()
 
-            verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge).also {
-                it.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
-                it.vp.notVerifiablyFreshVerifiableCredentials.shouldBeEmpty()
-                it.vp.invalidVerifiableCredentials.shouldBeEmpty()
-                it.vp.freshVerifiableCredentials shouldHaveSize 1
-            }
+            verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
+                .also {
+                    it.vp.notVerifiablyFreshVerifiableCredentials.shouldBeEmpty()
+                    it.vp.invalidVerifiableCredentials.shouldBeEmpty()
+                    it.vp.freshVerifiableCredentials shouldHaveSize 1
+                }
         }
 
         "valid presentation is valid -- some other attributes revoked" {
@@ -232,21 +241,25 @@ class AgentTest : FreeSpec({
             val presentationParameters = holder.createPresentation(
                 request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
                 credentialPresentation = singularPresentationDefinition,
-            ).getOrNull().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
+            ).getOrNull()
+                .shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
 
             val vp = presentationParameters.presentationResults.firstOrNull()
                 .shouldNotBeNull()
                 .shouldBeInstanceOf<CreatePresentationResult.Signed>()
 
-            val credentialsToRevoke = issuer.issueCredential(
+            val credentialToRevoke = issuer.issueCredential(
                 DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT,
                 ).getOrThrow()
             ).getOrThrow()
-            credentialsToRevoke.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
-            statusListIssuer.revokeCredentials(listOf(credentialsToRevoke.vcJws)) shouldBe true
+                .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
+            statusListIssuer.revokeCredential(
+                FixedTimePeriodProvider.timePeriod,
+                credentialToRevoke.vc.credentialStatus!!.statusList.index
+            ) shouldBe true
 
             verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
@@ -282,8 +295,8 @@ class AgentTest : FreeSpec({
             ).getOrThrow() as PresentationResponseParameters.DCQLParameters
             val vp = presentationParameters.verifiablePresentations.values.first()
                 .shouldBeInstanceOf<CreatePresentationResult.Signed>()
-            val verified = verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
-            verified.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
+            verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
         }
 
         "wrong keyId in presentation leads to error" {
@@ -306,8 +319,8 @@ class AgentTest : FreeSpec({
             ).getOrThrow() as PresentationResponseParameters.DCQLParameters
             val vp = presentationParameters.verifiablePresentations.values.first()
                 .shouldBeInstanceOf<CreatePresentationResult.Signed>()
-            val result = verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
-            result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
+            verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
         }
 
         "building presentation without necessary credentials" {
@@ -335,14 +348,15 @@ class AgentTest : FreeSpec({
             ).getOrNull() as PresentationResponseParameters.DCQLParameters?
             presentationParameters.shouldNotBeNull()
             val vp = presentationParameters.verifiablePresentations.values.firstOrNull()
-            vp.shouldNotBeNull()
-            vp.shouldBeInstanceOf<CreatePresentationResult.Signed>()
+                .shouldNotBeNull()
+                .shouldBeInstanceOf<CreatePresentationResult.Signed>()
 
-            verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge).also {
-                it.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
-                it.vp.notVerifiablyFreshVerifiableCredentials.shouldBeEmpty()
-                it.vp.freshVerifiableCredentials shouldHaveSize 1
-            }
+            verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
+                .also {
+                    it.vp.notVerifiablyFreshVerifiableCredentials.shouldBeEmpty()
+                    it.vp.freshVerifiableCredentials shouldHaveSize 1
+                }
         }
 
         "valid presentation is valid -- some other attributes revoked" {
@@ -360,18 +374,22 @@ class AgentTest : FreeSpec({
             ).getOrNull() as PresentationResponseParameters.DCQLParameters?
             presentationParameters.shouldNotBeNull()
             val vp = presentationParameters.verifiablePresentations.values.firstOrNull()
-            vp.shouldNotBeNull()
-            vp.shouldBeInstanceOf<CreatePresentationResult.Signed>()
+                .shouldNotBeNull()
+                .shouldBeInstanceOf<CreatePresentationResult.Signed>()
 
-            val credentialsToRevoke = issuer.issueCredential(
+            val credentialToRevoke = issuer.issueCredential(
                 DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT,
                 ).getOrThrow()
             ).getOrThrow()
-            credentialsToRevoke.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
-            statusListIssuer.revokeCredentials(listOf(credentialsToRevoke.vcJws)) shouldBe true
+                .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
+
+            statusListIssuer.revokeCredential(
+                FixedTimePeriodProvider.timePeriod,
+                credentialToRevoke.vc.credentialStatus!!.statusList.index
+            ) shouldBe true
 
             verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()

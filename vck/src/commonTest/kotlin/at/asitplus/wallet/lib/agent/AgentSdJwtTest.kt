@@ -157,13 +157,18 @@ class AgentSdJwtTest : FreeSpec({
             val vp = presentationParameters.presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            val listOfJwtId = holderCredentialStore.getCredentials().getOrThrow()
+            holderCredentialStore.getCredentials().getOrThrow()
                 .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
-                .associate { it.sdJwt.jwtId!! to it.sdJwt.notBefore!! }
-            statusListIssuer.revokeCredentialsWithId(listOfJwtId) shouldBe true
-            val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .forEach {
+                    statusListIssuer.revokeCredential(
+                        FixedTimePeriodProvider.timePeriod,
+                        it.sdJwt.credentialStatus!!.statusList.index
+                    ) shouldBe true
+                }
+            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-            verified.freshnessSummary.tokenStatusValidationResult.shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
+                .freshnessSummary.tokenStatusValidationResult
+                .shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
         }
     }
 
@@ -255,13 +260,18 @@ class AgentSdJwtTest : FreeSpec({
             val vp = presentationParameters.verifiablePresentations.values.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            val listOfJwtId = holderCredentialStore.getCredentials().getOrThrow()
+            holderCredentialStore.getCredentials().getOrThrow()
                 .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
-                .associate { it.sdJwt.jwtId!! to it.sdJwt.notBefore!! }
-            statusListIssuer.revokeCredentialsWithId(listOfJwtId) shouldBe true
-            val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .forEach {
+                    statusListIssuer.revokeCredential(
+                        FixedTimePeriodProvider.timePeriod,
+                        it.sdJwt.credentialStatus!!.statusList.index,
+                    ) shouldBe true
+                }
+            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-            verified.freshnessSummary.tokenStatusValidationResult.shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
+                .freshnessSummary.tokenStatusValidationResult
+                .shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
         }
     }
 })

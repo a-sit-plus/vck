@@ -128,5 +128,5 @@ private suspend fun issueVcSd(
     }
     val vcInSdJwt = (listOf(jws.serialize()) + disclosures).joinToString("~", postfix = "~")
     Napier.i("issueVcSd: $vcInSdJwt")
-    return Issuer.IssuedCredential.VcSdJwt(vcInSdJwt, credential.scheme)
+    return Issuer.IssuedCredential.VcSdJwt(vcSdJwt, vcInSdJwt, credential.scheme)
 }

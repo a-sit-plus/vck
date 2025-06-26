@@ -24,14 +24,22 @@ interface StatusListIssuer :
     fun buildStatusList(timePeriod: Int? = null): StatusList?
 
     /**
-     * Revokes all verifiable credentials from [credentialsToRevoke] list that parse and validate.
-     * It returns true if all revocations was successful.
+     * Sets the status of one specific credential to [at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus.Invalid].
+     * Returns true if this credential has been revoked.
      */
+    fun revokeCredential(timePeriod: Int, statusListIndex: ULong): Boolean
+
+    /**
+     * Revokes all verifiable credentials from [credentialsToRevoke] list that parse and validate.
+     * It returns true if all revocations were successful.
+     */
+    @Deprecated("Use `revokeCredential` instead")
     suspend fun revokeCredentials(credentialsToRevoke: List<String>): Boolean
 
     /**
      * Revokes all verifiable credentials with ids and issuance date from [credentialIdsToRevoke]
-     * It returns true if all revocations was successful.
+     * It returns true if all revocations were successful.
      */
+    @Deprecated("Use `revokeCredential` instead")
     fun revokeCredentialsWithId(credentialIdsToRevoke: Map<String, Instant>): Boolean
 }
