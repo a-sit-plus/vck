@@ -18,12 +18,15 @@ interface Issuer : ReferencedTokenIssuer<CredentialToBeIssued, KmmResult<Issuer.
      * A credential issued by an [Issuer], in a specific format
      */
     sealed class IssuedCredential {
+        // TODO add the typed credential and the userInfo
+        abstract val scheme: ConstantIndex.CredentialScheme
+
         /**
          * Issued credential in W3C Verifiable Credentials JWT representation
          */
         data class VcJwt(
             val vcJws: String,
-            val scheme: ConstantIndex.CredentialScheme,
+            override val scheme: ConstantIndex.CredentialScheme,
         ) : IssuedCredential()
 
         /**
@@ -31,7 +34,7 @@ interface Issuer : ReferencedTokenIssuer<CredentialToBeIssued, KmmResult<Issuer.
          */
         data class VcSdJwt(
             val vcSdJwt: String,
-            val scheme: ConstantIndex.CredentialScheme,
+            override val scheme: ConstantIndex.CredentialScheme,
         ) : IssuedCredential()
 
         /**
@@ -39,7 +42,7 @@ interface Issuer : ReferencedTokenIssuer<CredentialToBeIssued, KmmResult<Issuer.
          */
         data class Iso(
             val issuerSigned: IssuerSigned,
-            val scheme: ConstantIndex.CredentialScheme,
+            override val scheme: ConstantIndex.CredentialScheme,
         ) : IssuedCredential()
     }
 

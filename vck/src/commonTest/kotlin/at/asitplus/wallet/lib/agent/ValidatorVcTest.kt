@@ -89,9 +89,9 @@ class ValidatorVcTest : FreeSpec() {
             val value = validator.verifyVcJws(credential.vcJws, verifierKeyMaterial.publicKey)
                 .shouldBeInstanceOf<VerifyCredentialResult.SuccessJwt>()
             issuerCredentialStore.setStatus(
-                value.jws.vc.id,
+                timePeriod = FixedTimePeriodProvider.timePeriod,
+                index = value.jws.vc.credentialStatus!!.statusList.index,
                 status = TokenStatus.Invalid,
-                FixedTimePeriodProvider.timePeriod,
             ) shouldBe true
 
             validator.verifyVcJws(credential.vcJws, verifierKeyMaterial.publicKey)
@@ -344,13 +344,10 @@ class ValidatorVcTest : FreeSpec() {
         sub as AtomicAttribute2023
         val vcId = "urn:uuid:${uuid4()}"
         val exp = expirationDate ?: (Clock.System.now() + 60.seconds)
-        val statusListIndex = issuerCredentialStore.storeGetNextIndex(
-            credential = IssuerCredentialStore.Credential.VcJwt(vcId, sub, ConstantIndex.AtomicAttribute2023),
-            subjectPublicKey = issuerKeyMaterial.publicKey,
-            issuanceDate = issuanceDate,
-            expirationDate = exp,
-            timePeriod = FixedTimePeriodProvider.timePeriod
-        )!!
+        val statusListIndex = issuerCredentialStore.createStatusListIndex(
+            CredentialToBeIssued.VcJwt(sub, exp, ConstantIndex.AtomicAttribute2023, issuerKeyMaterial.publicKey),
+            FixedTimePeriodProvider.timePeriod
+        ).getOrThrow().statusListIndex
         val credentialStatus = Status(
             statusList = StatusListInfo(
                 index = statusListIndex.toULong(),

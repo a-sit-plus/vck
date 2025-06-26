@@ -4,6 +4,7 @@ import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
+import at.asitplus.wallet.lib.agent.FixedTimePeriodProvider.timePeriod
 import at.asitplus.wallet.lib.cbor.CoseHeaderCertificate
 import at.asitplus.wallet.lib.cbor.CoseHeaderKeyId
 import at.asitplus.wallet.lib.cbor.SignCose
@@ -98,6 +99,7 @@ class StatusListAgent(
      * Revokes all verifiable credentials from [credentialsToRevoke] list that parse and validate.
      * It returns true if all revocations was successful.
      */
+    // TODO remove this
     override suspend fun revokeCredentials(credentialsToRevoke: List<String>): Boolean =
         credentialsToRevoke.map {
             validator.verifyVcJws(it, null)
@@ -113,6 +115,7 @@ class StatusListAgent(
      * Revokes all verifiable credentials with ids from [credentialIdsToRevoke]
      * It returns true if all revocations was successful.
      */
+    // TODO remove this
     override fun revokeCredentialsWithId(credentialIdsToRevoke: Map<String, Instant>): Boolean =
         credentialIdsToRevoke.all {
             issuerCredentialStore.setStatus(
