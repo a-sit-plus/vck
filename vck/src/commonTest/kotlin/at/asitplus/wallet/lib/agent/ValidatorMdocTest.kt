@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.wallet.lib.agent.StatusListAgent
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.StatusListToken
@@ -14,12 +15,14 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
+import kotlin.also
 import kotlin.random.Random
 
 
 class ValidatorMdocTest : FreeSpec() {
 
     private lateinit var issuer: Issuer
+    private lateinit var statusListIssuer: StatusListIssuer
     private lateinit var issuerCredentialStore: IssuerCredentialStore
     private lateinit var issuerKeyMaterial: KeyMaterial
     private lateinit var verifierKeyMaterial: KeyMaterial
@@ -30,11 +33,11 @@ class ValidatorMdocTest : FreeSpec() {
             validator = Validator(
                 resolveStatusListToken = {
                     if (Random.nextBoolean()) StatusListToken.StatusListJwt(
-                        issuer.issueStatusListJwt(),
+                        statusListIssuer.issueStatusListJwt(),
                         resolvedAt = Clock.System.now(),
                     ) else {
                         StatusListToken.StatusListCwt(
-                            issuer.issueStatusListCwt(),
+                            statusListIssuer.issueStatusListCwt(),
                             resolvedAt = Clock.System.now(),
                         )
                     }
@@ -42,11 +45,8 @@ class ValidatorMdocTest : FreeSpec() {
             )
             issuerCredentialStore = InMemoryIssuerCredentialStore()
             issuerKeyMaterial = EphemeralKeyWithSelfSignedCert()
-            issuer = IssuerAgent(
-                issuerKeyMaterial,
-                validator = validator,
-                issuerCredentialStore = issuerCredentialStore,
-            )
+            issuer = IssuerAgent(issuerKeyMaterial, issuerCredentialStore = issuerCredentialStore)
+            statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
             verifierKeyMaterial = EphemeralKeyWithoutCert()
         }
 
@@ -97,7 +97,8 @@ class ValidatorMdocTest : FreeSpec() {
                 status = TokenStatus.Invalid,
                 FixedTimePeriodProvider.timePeriod,
             ) shouldBe true
-            validator.checkRevocationStatus(value.issuerSigned).shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
+            validator.checkRevocationStatus(value.issuerSigned)
+                .shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
         }
     }
 }

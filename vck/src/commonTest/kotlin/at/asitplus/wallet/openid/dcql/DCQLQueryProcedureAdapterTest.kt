@@ -14,11 +14,7 @@ class DCQLQueryProcedureAdapterTest : FreeSpec({
         val validator = Validator()
         val issuerCredentialStore = InMemoryIssuerCredentialStore()
         val holderCredentialStore = InMemorySubjectCredentialStore()
-        val issuer = IssuerAgent(
-            EphemeralKeyWithoutCert(),
-            validator = validator,
-            issuerCredentialStore = issuerCredentialStore,
-        )
+        val issuer = IssuerAgent(issuerCredentialStore = issuerCredentialStore)
 
         val holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
         val holder = HolderAgent(

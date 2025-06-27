@@ -36,6 +36,7 @@ class ValidatorVpTest : FreeSpec({
 
     lateinit var validator: Validator
     lateinit var issuer: Issuer
+    lateinit var statusListIssuer: StatusListIssuer
     lateinit var issuerCredentialStore: IssuerCredentialStore
     lateinit var holder: HolderAgent
     lateinit var holderCredentialStore: SubjectCredentialStore
@@ -49,22 +50,19 @@ class ValidatorVpTest : FreeSpec({
         validator = Validator(
             resolveStatusListToken = {
                 if (Random.nextBoolean()) StatusListToken.StatusListJwt(
-                    issuer.issueStatusListJwt(),
+                    statusListIssuer.issueStatusListJwt(),
                     resolvedAt = Clock.System.now()
                 ) else {
                     StatusListToken.StatusListCwt(
-                        issuer.issueStatusListCwt(),
+                        statusListIssuer.issueStatusListCwt(),
                         resolvedAt = Clock.System.now()
                     )
                 }
             },
         )
         issuerCredentialStore = InMemoryIssuerCredentialStore()
-        issuer = IssuerAgent(
-            EphemeralKeyWithoutCert(),
-            validator = validator,
-            issuerCredentialStore = issuerCredentialStore,
-        )
+        issuer = IssuerAgent(issuerCredentialStore = issuerCredentialStore)
+        statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
         holderCredentialStore = InMemorySubjectCredentialStore()
         holderKeyMaterial = EphemeralKeyWithoutCert()
         holder = HolderAgent(
