@@ -56,9 +56,7 @@ class OidvciEncryptionTest : FunSpec({
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
-            issuer = IssuerAgent(),
             credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023),
-            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             requireEncryption = true, // this is important, to require encryption
         )
         state = uuid4().toString()
@@ -81,7 +79,12 @@ class OidvciEncryptionTest : FunSpec({
         val clientNonce = issuer.nonce().getOrThrow().clientNonce
 
         client.createCredentialRequest(token, issuer.metadata, credentialFormat, clientNonce).getOrThrow().forEach {
-            val credential = issuer.credential(token.toHttpHeaderValue(), it).getOrThrow()
+            val credential = issuer.credential(
+                token.toHttpHeaderValue(),
+                it,
+                credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+                issueCredential = { IssuerAgent().issueCredential(it) }
+            ).getOrThrow()
             val serializedCredential = credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
             val jwe = JweEncrypted.Companion.deserialize(serializedCredential).getOrThrow()

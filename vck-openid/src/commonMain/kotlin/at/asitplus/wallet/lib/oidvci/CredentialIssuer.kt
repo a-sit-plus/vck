@@ -12,6 +12,7 @@ import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
+import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
@@ -39,15 +40,13 @@ class CredentialIssuer(
     /** Used to get the user data, and access tokens. */
     private val authorizationService: OAuth2AuthorizationServerAdapter,
     /** Used to actually issue the credential. */
-    @Deprecated("Use issuerAdapter, keyMaterial, cryptoAlgorithms")
-    private val issuer: Issuer,
-    /** Used to actually issue the credential, with data provided from [credentialDataProvider]. */
-    private val issueCredential: IssueCredentialFun = IssueCredential(issuer),
-    /** Supported crypto algorithms from [issueCredential] */
-    private val cryptoAlgorithms: Set<SignatureAlgorithm> = issuer.cryptoAlgorithms,
-    /** Key material used by [issueCredential] */
+    @Deprecated("Use `issueCredential` in method `credential, `keyMaterial`, `cryptoAlgorithms`")
+    private val issuer: Issuer = IssuerAgent(),
+    /** Key material used to sign credentials in [credential]. */
     private val keyMaterial: Set<KeyMaterial> = setOf(issuer.keyMaterial),
-    /** List of supported schemes. */
+    /** Supported crypto algorithms of the key material used to sign credential in [credential]. */
+    private val cryptoAlgorithms: Set<SignatureAlgorithm> = keyMaterial.map { it.signatureAlgorithm }.toSet(),
+    /** List of supported credential schemes. */
     private val credentialSchemes: Set<CredentialScheme>,
     /** Used in several fields in [IssuerMetadata], to provide endpoint URLs to clients. */
     internal val publicContext: String = "https://wallet.a-sit.at/credential-issuer",
@@ -61,13 +60,11 @@ class CredentialIssuer(
      * to that URI (which starts with [publicContext]) to [nonce].
      */
     private val nonceEndpointPath: String = "/nonce",
-    @Deprecated("Use `credentialDataProvider` instead")
-    private val credentialProvider: CredentialIssuerDataProvider? = null,
-    /** Extract data from the authenticated user and prepares it for [issueCredential]. */
-    private val credentialDataProvider: CredentialDataProviderFun =
-        credentialProvider?.let { CredentialIssuerDataProviderAdapter(it) } ?: TODO(),
+    @Deprecated("Use `credentialDataProvider` in method `credential` instead")
+    private val credentialProvider: CredentialIssuerDataProvider = FallbackCredentialIssuerDataProvider(),
     /** Used to verify the signature of proof elements in credential requests. */
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
+    /** Supported signing algorithms, which may be used from clients in proofs to request credentials. */
     private val supportedAlgorithms: Collection<JwsAlgorithm.Signature> = listOf(JwsAlgorithm.Signature.ES256),
     /** Clock used to verify timestamps in proof elements in credential requests. */
     private val clock: Clock = System,
@@ -167,22 +164,56 @@ class CredentialIssuer(
      * @param params Parameters the client sent JSON-serialized in the HTTP body
      * @param request information about the HTTP request the client has made, to validate authentication
      */
+    @Deprecated("Use `credential` with parameters `credentialDataProvider`, `issueCredential` instead")
     suspend fun credential(
         authorizationHeader: String,
         params: CredentialRequestParameters,
+        request: RequestInfo? = null,
+    ): KmmResult<CredentialResponseParameters> = credential(
+        authorizationHeader = authorizationHeader,
+        params = params,
+        credentialDataProvider = CredentialIssuerDataProviderAdapter(credentialProvider),
+        issueCredential = { issuer.issueCredential(it) },
+        request = request,
+    )
+
+    /**
+     * Verifies the [authorizationHeader] to contain a token from [authorizationService],
+     * verifies the proof sent by the client (must contain a nonce sent from [authorizationService]),
+     * and issues credentials to the client.
+     *
+     * Callers need to send the result JSON-serialized back to the client.
+     * HTTP status code MUST be 202.
+     *
+     * @param authorizationHeader value of HTTP header `Authorization` sent by the client, with all prefixes
+     * @param params Parameters the client sent JSON-serialized in the HTTP body
+     * @param request information about the HTTP request the client has made, to validate authentication
+     * @param issueCredential Used to actually issue the credential, with data provided from [credentialDataProvider]
+     * @param credentialDataProvider Extract data from the authenticated user and prepares it for [issueCredential]
+     */
+    suspend fun credential(
+        authorizationHeader: String,
+        params: CredentialRequestParameters,
+        credentialDataProvider: CredentialDataProviderFun,
+        issueCredential: IssueCredentialFun,
         request: RequestInfo? = null,
     ): KmmResult<CredentialResponseParameters> = catching {
         validateProofExtractSubjectPublicKeys(params).map { subjectPublicKey ->
             issueCredential(
                 credentialDataProvider(
-                    userInfo = loadUserInfo(
-                        authorizationHeader = authorizationHeader,
-                        credentialIdentifier = params.credentialIdentifier,
-                        credentialConfigurationId = params.credentialConfigurationId,
-                        request = request
-                    ),
-                    subjectPublicKey = subjectPublicKey,
-                    credentialRepresentation = params.extractCredentialRepresentation()
+                    with(params.extractCredentialRepresentation()) {
+                        CredentialDataProviderInput(
+                            userInfo = loadUserInfo(
+                                authorizationHeader = authorizationHeader,
+                                credentialIdentifier = params.credentialIdentifier,
+                                credentialConfigurationId = params.credentialConfigurationId,
+                                request = request
+                            ),
+                            subjectPublicKey = subjectPublicKey,
+                            credentialScheme = first,
+                            credentialRepresentation = second,
+                        )
+                    }
                 ).getOrElse {
                     throw CredentialRequestDenied("No credential from provider", it)
                 }
@@ -360,4 +391,20 @@ fun interface CredentialIssuerDataProvider {
         representation: ConstantIndex.CredentialRepresentation,
         claimNames: Collection<String>?,
     ): KmmResult<CredentialToBeIssued>
+}
+
+/** Fallback for deprecated constructor parameter, which should never be called, because when clients
+ * migrate away from deprecated code, it's never used from our code,
+ * when not, clients did set a correct implementation and that one is used. */
+private class FallbackCredentialIssuerDataProvider : CredentialIssuerDataProvider {
+    override fun getCredential(
+        userInfo: OidcUserInfoExtended,
+        subjectPublicKey: CryptoPublicKey,
+        credentialScheme: CredentialScheme,
+        representation: ConstantIndex.CredentialRepresentation,
+        claimNames: Collection<String>?,
+    ): KmmResult<CredentialToBeIssued> = catching {
+        TODO()
+    }
+
 }

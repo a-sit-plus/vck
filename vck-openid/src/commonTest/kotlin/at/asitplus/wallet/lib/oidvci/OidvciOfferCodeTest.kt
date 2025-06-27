@@ -32,9 +32,7 @@ class OidvciOfferCodeTest : FreeSpec({
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
-            issuer = IssuerAgent(),
             credentialSchemes = setOf(AtomicAttribute2023, MobileDrivingLicenceScheme),
-            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider
         )
         client = WalletService()
         state = uuid4().toString()
@@ -101,7 +99,9 @@ class OidvciOfferCodeTest : FreeSpec({
 
         val credential = issuer.credential(
             authorizationHeader = token.toHttpHeaderValue(),
-            params = credentialRequest.first()
+            params = credentialRequest.first(),
+            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+            issueCredential = { IssuerAgent().issueCredential(it) }
         ).getOrThrow()
         credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
     }
@@ -145,7 +145,9 @@ class OidvciOfferCodeTest : FreeSpec({
 
         val credential = issuer.credential(
             authorizationHeader = token.toHttpHeaderValue(),
-            params = credentialRequest.first()
+            params = credentialRequest.first(),
+            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+            issueCredential = { IssuerAgent().issueCredential(it) }
         ).getOrThrow()
         credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
     }

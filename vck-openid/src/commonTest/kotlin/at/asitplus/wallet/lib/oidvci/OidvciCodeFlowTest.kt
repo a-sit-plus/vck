@@ -45,9 +45,7 @@ class OidvciCodeFlowTest : FreeSpec({
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
-            issuer = IssuerAgent(),
             credentialSchemes = setOf(AtomicAttribute2023, MobileDrivingLicenceScheme),
-            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
         )
         client = WalletService()
         state = uuid4().toString()
@@ -111,7 +109,9 @@ class OidvciCodeFlowTest : FreeSpec({
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
                 clientNonce = clientNonce,
-            ).getOrThrow().first()
+            ).getOrThrow().first(),
+            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+            issueCredential = { IssuerAgent().issueCredential(it) }
         ).getOrThrow()
         val serializedCredential = credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
 
@@ -142,7 +142,9 @@ class OidvciCodeFlowTest : FreeSpec({
                     metadata = issuer.metadata,
                     credentialFormat = it.key,
                     clientNonce = clientNonce,
-                ).getOrThrow().first()
+                ).getOrThrow().first(),
+                credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+                issueCredential = { IssuerAgent().issueCredential(it) }
             ).getOrThrow().credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
         }
     }
@@ -168,8 +170,12 @@ class OidvciCodeFlowTest : FreeSpec({
         )
 
         val credentials: Collection<CredentialResponseSingleCredential> =
-            issuer.credential(token.toHttpHeaderValue(), credentialRequest)
-                .getOrThrow()
+            issuer.credential(
+                token.toHttpHeaderValue(),
+                credentialRequest,
+                credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+                issueCredential = { IssuerAgent().issueCredential(it) }
+            ).getOrThrow()
                 .credentials.shouldNotBeEmpty().shouldHaveSize(2)
         // subject identifies the key of the client, here the keys of different proofs, so they should be unique
         credentials.map {
@@ -189,9 +195,7 @@ class OidvciCodeFlowTest : FreeSpec({
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
-            issuer = IssuerAgent(),
             credentialSchemes = setOf(AtomicAttribute2023),
-            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider
         )
         val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
         val scope = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata)?.scope.shouldNotBeNull()
@@ -215,7 +219,9 @@ class OidvciCodeFlowTest : FreeSpec({
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
                 clientNonce = clientNonce,
-            ).getOrThrow().first()
+            ).getOrThrow().first(),
+            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+            issueCredential = { IssuerAgent().issueCredential(it) }
         ).getOrThrow()
         val serializedCredential = credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
 
@@ -236,7 +242,9 @@ class OidvciCodeFlowTest : FreeSpec({
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
                 clientNonce = clientNonce,
-            ).getOrThrow().first()
+            ).getOrThrow().first(),
+            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+            issueCredential = { IssuerAgent().issueCredential(it) }
         ).getOrThrow()
         val serializedCredential = credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
 
@@ -289,7 +297,9 @@ class OidvciCodeFlowTest : FreeSpec({
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
                 clientNonce = clientNonce,
-            ).getOrThrow().first()
+            ).getOrThrow().first(),
+            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+            issueCredential = { IssuerAgent().issueCredential(it) }
         ).getOrThrow()
         val serializedCredential = credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
 
@@ -315,7 +325,9 @@ class OidvciCodeFlowTest : FreeSpec({
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
                 clientNonce = clientNonce,
-            ).getOrThrow().first()
+            ).getOrThrow().first(),
+            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+            issueCredential = { IssuerAgent().issueCredential(it) }
         ).getOrThrow()
         val serializedCredential = credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
 
@@ -370,7 +382,9 @@ class OidvciCodeFlowTest : FreeSpec({
                     // (which should be credential_configuration_id in credential request)
                     credentialIdentifier = AtomicAttribute2023.toCredentialIdentifier(SD_JWT),
                     credentialConfigurationId = null,
-                )
+                ),
+                credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+                issueCredential = { IssuerAgent().issueCredential(it) }
             ).getOrThrow()
         }
     }
@@ -400,7 +414,9 @@ class OidvciCodeFlowTest : FreeSpec({
                     // authorization details (which should be credential_identifier in credential request)
                     credentialConfigurationId = scope,
                     credentialIdentifier = null
-                )
+                ),
+                credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+                issueCredential = { IssuerAgent().issueCredential(it) }
             ).getOrThrow()
         }
     }
@@ -419,7 +435,9 @@ class OidvciCodeFlowTest : FreeSpec({
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
                 clientNonce = clientNonce,
-            ).getOrThrow().first()
+            ).getOrThrow().first(),
+            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+            issueCredential = { IssuerAgent().issueCredential(it) }
         ).getOrThrow()
         val serializedCredential = credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
 

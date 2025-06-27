@@ -23,6 +23,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
 import at.asitplus.wallet.lib.data.LocalDateOrInstant
 import at.asitplus.wallet.lib.oidvci.CredentialDataProviderFun
+import at.asitplus.wallet.lib.oidvci.CredentialDataProviderInput
 import at.asitplus.wallet.lib.oidvci.OAuth2DataProvider
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.EXPIRY_DATE
@@ -45,14 +46,17 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialDataProviderFun {
     private val defaultLifetime = 1.minutes
 
     override suspend fun invoke(
-        userInfo: OidcUserInfoExtended,
-        subjectPublicKey: CryptoPublicKey,
-        credentialRepresentation: Pair<CredentialScheme, ConstantIndex.CredentialRepresentation>,
+        input: CredentialDataProviderInput,
     ): KmmResult<CredentialToBeIssued> = catching {
-        when (credentialRepresentation.first) {
-            ConstantIndex.AtomicAttribute2023 -> getAtomic(userInfo, subjectPublicKey, credentialRepresentation.second)
-            MobileDrivingLicenceScheme -> getMdl(userInfo, subjectPublicKey)
-            EuPidScheme -> getEuPid(userInfo, subjectPublicKey, credentialRepresentation.second)
+        when (input.credentialScheme) {
+            ConstantIndex.AtomicAttribute2023 -> getAtomic(
+                input.userInfo,
+                input.subjectPublicKey,
+                input.credentialRepresentation
+            )
+
+            MobileDrivingLicenceScheme -> getMdl(input.userInfo, input.subjectPublicKey)
+            EuPidScheme -> getEuPid(input.userInfo, input.subjectPublicKey, input.credentialRepresentation)
             else -> throw NotImplementedError()
         }
     }

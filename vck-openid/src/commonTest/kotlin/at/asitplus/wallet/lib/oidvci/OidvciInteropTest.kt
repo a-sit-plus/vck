@@ -21,26 +21,6 @@ import io.kotest.matchers.shouldBe
 
 class OidvciInteropTest : FunSpec({
 
-    lateinit var authorizationService: SimpleAuthorizationService
-    lateinit var issuer: CredentialIssuer
-    lateinit var client: WalletService
-    lateinit var state: String
-
-    beforeEach {
-        authorizationService = SimpleAuthorizationService(
-            strategy = CredentialAuthorizationServiceStrategy(setOf(AtomicAttribute2023, MobileDrivingLicenceScheme)),
-            dataProvider = DummyOAuth2DataProvider,
-        )
-        issuer = CredentialIssuer(
-            authorizationService = authorizationService,
-            issuer = IssuerAgent(),
-            credentialSchemes = setOf(AtomicAttribute2023, MobileDrivingLicenceScheme),
-            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider
-        )
-        client = WalletService()
-        state = uuid4().toString()
-    }
-
     test("Parse EUDIW URL") {
         val url =
             "openid-credential-offer://?credential_offer=%7B%22credential_issuer%22%3A%22https%3A%2F%2Flocalhost%2Fpid-issuer%22%2C%22credential_configuration_ids%22%3A%5B%22eu.europa.ec.eudi.pid_vc_sd_jwt%22%5D%2C%22grants%22%3A%7B%22authorization_code%22%3A%7B%22authorization_server%22%3A%22https%3A%2F%2Flocalhost%2Fidp%2Frealms%2Fpid-issuer-realm%22%7D%7D%7D"
