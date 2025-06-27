@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.openid.OidcUserInfo
+import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsHeader
@@ -7,6 +9,7 @@ import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.supreme.signature
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
 import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
@@ -67,12 +70,12 @@ class ValidatorVcTest : FreeSpec() {
                 DummyCredentialDataProvider.getCredential(
                     verifierKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                    PLAIN_JWT,
                 ).getOrThrow()
             ).getOrThrow()
             credential.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-            validator.verifyVcJws(credential.vcJws, verifierKeyMaterial.publicKey)
+            validator.verifyVcJws(credential.signedVcJws, verifierKeyMaterial.publicKey)
                 .shouldBeInstanceOf<VerifyCredentialResult.SuccessJwt>()
         }
 
@@ -81,20 +84,20 @@ class ValidatorVcTest : FreeSpec() {
                 DummyCredentialDataProvider.getCredential(
                     verifierKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                    PLAIN_JWT,
                 ).getOrThrow()
             ).getOrThrow()
             credential.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-            val value = validator.verifyVcJws(credential.vcJws, verifierKeyMaterial.publicKey)
+            val value = validator.verifyVcJws(credential.signedVcJws, verifierKeyMaterial.publicKey)
                 .shouldBeInstanceOf<VerifyCredentialResult.SuccessJwt>()
             issuerCredentialStore.setStatus(
-                value.jws.vc.id,
+                timePeriod = FixedTimePeriodProvider.timePeriod,
+                index = value.jws.vc.credentialStatus!!.statusList.index,
                 status = TokenStatus.Invalid,
-                FixedTimePeriodProvider.timePeriod,
             ) shouldBe true
 
-            validator.verifyVcJws(credential.vcJws, verifierKeyMaterial.publicKey)
+            validator.verifyVcJws(credential.signedVcJws, verifierKeyMaterial.publicKey)
                 .shouldBeInstanceOf<VerifyCredentialResult.SuccessJwt>()
 
             validator.checkRevocationStatus(value.jws)
@@ -107,12 +110,12 @@ class ValidatorVcTest : FreeSpec() {
                 DummyCredentialDataProvider.getCredential(
                     EphemeralKeyWithoutCert().publicKey,
                     ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                    PLAIN_JWT,
                 ).getOrThrow()
             ).getOrThrow()
             credential.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-            validator.verifyVcJws(credential.vcJws, verifierKeyMaterial.publicKey)
+            validator.verifyVcJws(credential.signedVcJws, verifierKeyMaterial.publicKey)
                 .shouldBeInstanceOf<VerifyCredentialResult.ValidationError>()
         }
 
@@ -121,20 +124,22 @@ class ValidatorVcTest : FreeSpec() {
                 DummyCredentialDataProvider.getCredential(
                     verifierKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                    PLAIN_JWT,
                 ).getOrThrow()
             ).getOrThrow()
             credential.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-            validator.verifyVcJws(credential.vcJws.replaceFirstChar { "f" }, verifierKeyMaterial.publicKey)
-                .shouldBeInstanceOf<VerifyCredentialResult.InvalidStructure>()
+            validator.verifyVcJws(
+                credential.signedVcJws.serialize().replaceFirstChar { "f" },
+                verifierKeyMaterial.publicKey
+            ).shouldBeInstanceOf<VerifyCredentialResult.InvalidStructure>()
         }
 
         "Manually created and valid credential is valid" {
             DummyCredentialDataProvider.getCredential(
                 verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.PLAIN_JWT
+                PLAIN_JWT
             ).getOrThrow().let {
                 issueCredential(it)
                     .let { wrapVcInJws(it) }
@@ -150,7 +155,7 @@ class ValidatorVcTest : FreeSpec() {
             DummyCredentialDataProvider.getCredential(
                 verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.PLAIN_JWT
+                PLAIN_JWT
             ).getOrThrow().let {
                 issueCredential(it)
                     .let { wrapVcInJws(it) }
@@ -166,7 +171,7 @@ class ValidatorVcTest : FreeSpec() {
             DummyCredentialDataProvider.getCredential(
                 verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.PLAIN_JWT
+                PLAIN_JWT
             ).getOrThrow().let {
                 issueCredential(it)
                     .let { wrapVcInJws(it, subject = "vc.id") }
@@ -182,7 +187,7 @@ class ValidatorVcTest : FreeSpec() {
             DummyCredentialDataProvider.getCredential(
                 verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.PLAIN_JWT
+                PLAIN_JWT
             ).getOrThrow().let {
                 issueCredential(it)
                     .let { wrapVcInJws(it, issuer = "vc.issuer") }
@@ -197,7 +202,7 @@ class ValidatorVcTest : FreeSpec() {
             DummyCredentialDataProvider.getCredential(
                 verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.PLAIN_JWT
+                PLAIN_JWT
             ).getOrThrow().let {
                 issueCredential(it)
                     .let { wrapVcInJws(it, jwtId = "vc.jwtId") }
@@ -213,7 +218,7 @@ class ValidatorVcTest : FreeSpec() {
             DummyCredentialDataProvider.getCredential(
                 verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.PLAIN_JWT
+                PLAIN_JWT
             ).getOrThrow().let {
                 issueCredential(it, expirationDate = Clock.System.now() - 1.hours)
                     .let {
@@ -238,7 +243,7 @@ class ValidatorVcTest : FreeSpec() {
             DummyCredentialDataProvider.getCredential(
                 verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.PLAIN_JWT
+                PLAIN_JWT
             ).getOrThrow().let {
                 issueCredential(it, expirationDate = null)
                     .let { wrapVcInJws(it) }
@@ -254,7 +259,7 @@ class ValidatorVcTest : FreeSpec() {
             DummyCredentialDataProvider.getCredential(
                 verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.PLAIN_JWT
+                PLAIN_JWT
             ).getOrThrow().let {
                 issueCredential(it, expirationDate = Clock.System.now() + 1.hours)
                     .let { wrapVcInJws(it, expirationDate = Clock.System.now() - 1.hours) }
@@ -270,7 +275,7 @@ class ValidatorVcTest : FreeSpec() {
             DummyCredentialDataProvider.getCredential(
                 verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.PLAIN_JWT
+                PLAIN_JWT
             ).getOrThrow().let {
                 it.let { issueCredential(it, expirationDate = Clock.System.now() + 1.hours) }
                     .let { wrapVcInJws(it, expirationDate = Clock.System.now() + 2.hours) }
@@ -286,7 +291,7 @@ class ValidatorVcTest : FreeSpec() {
             DummyCredentialDataProvider.getCredential(
                 verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.PLAIN_JWT
+                PLAIN_JWT
             ).getOrThrow().let {
                 it.let { issueCredential(it) }
                     .let { wrapVcInJws(it, issuanceDate = Clock.System.now() + 2.hours) }
@@ -302,7 +307,7 @@ class ValidatorVcTest : FreeSpec() {
             DummyCredentialDataProvider.getCredential(
                 verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.PLAIN_JWT
+                PLAIN_JWT
             ).getOrThrow().let {
                 issueCredential(it, issuanceDate = Clock.System.now() + 1.hours)
                     .let { wrapVcInJws(it) }
@@ -320,7 +325,7 @@ class ValidatorVcTest : FreeSpec() {
             DummyCredentialDataProvider.getCredential(
                 verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.PLAIN_JWT
+                PLAIN_JWT
             ).getOrThrow().let {
                 issueCredential(it, issuanceDate = Clock.System.now() - 1.hours)
                     .let { wrapVcInJws(it, issuanceDate = Clock.System.now()) }
@@ -344,16 +349,19 @@ class ValidatorVcTest : FreeSpec() {
         sub as AtomicAttribute2023
         val vcId = "urn:uuid:${uuid4()}"
         val exp = expirationDate ?: (Clock.System.now() + 60.seconds)
-        val statusListIndex = issuerCredentialStore.storeGetNextIndex(
-            credential = IssuerCredentialStore.Credential.VcJwt(vcId, sub, ConstantIndex.AtomicAttribute2023),
-            subjectPublicKey = issuerKeyMaterial.publicKey,
-            issuanceDate = issuanceDate,
-            expirationDate = exp,
-            timePeriod = FixedTimePeriodProvider.timePeriod
-        )!!
+        val statusListIndex = issuerCredentialStore.createStatusListIndex(
+            CredentialToBeIssued.VcJwt(
+                subject = sub,
+                expiration = exp,
+                scheme = ConstantIndex.AtomicAttribute2023,
+                subjectPublicKey = issuerKeyMaterial.publicKey,
+                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+            ),
+            FixedTimePeriodProvider.timePeriod
+        ).getOrThrow().statusListIndex
         val credentialStatus = Status(
             statusList = StatusListInfo(
-                index = statusListIndex.toULong(),
+                index = statusListIndex,
                 uri = UniformResourceIdentifier(revocationListUrl),
             )
         )

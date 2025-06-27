@@ -4,6 +4,7 @@ import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -15,6 +16,7 @@ import at.asitplus.wallet.lib.jws.SignJwtFun
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.JsonObject
@@ -40,7 +42,7 @@ class ValidatorSdJwtTest : FreeSpec() {
             val credential = issuer.issueCredential(buildCredentialData()).getOrThrow()
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>()
 
-            validator.verifySdJwt(SdJwtSigned.parse(credential.vcSdJwt)!!, holderKeyMaterial.publicKey)
+            validator.verifySdJwt(credential.signedSdJwtVc, holderKeyMaterial.publicKey)
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessSdJwt>()
         }
 
@@ -48,7 +50,7 @@ class ValidatorSdJwtTest : FreeSpec() {
             val credential = issuer.issueCredential(buildCredentialData()).getOrThrow()
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>()
 
-            validator.verifySdJwt(SdJwtSigned.parse(credential.vcSdJwt)!!, EphemeralKeyWithoutCert().publicKey)
+            validator.verifySdJwt(credential.signedSdJwtVc, EphemeralKeyWithoutCert().publicKey)
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.ValidationError>()
         }
 
@@ -59,7 +61,7 @@ class ValidatorSdJwtTest : FreeSpec() {
                 buildCnf = false,
             ).shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>()
 
-            validator.verifySdJwt(SdJwtSigned.parse(credential.vcSdJwt)!!, holderKeyMaterial.publicKey)
+            validator.verifySdJwt(credential.signedSdJwtVc, holderKeyMaterial.publicKey)
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.ValidationError>()
         }
 
@@ -70,7 +72,7 @@ class ValidatorSdJwtTest : FreeSpec() {
                 scrambleSubject = true,
             ).shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>()
 
-            validator.verifySdJwt(SdJwtSigned.parse(credential.vcSdJwt)!!, holderKeyMaterial.publicKey)
+            validator.verifySdJwt(credential.signedSdJwtVc, holderKeyMaterial.publicKey)
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessSdJwt>()
         }
     }
@@ -78,7 +80,7 @@ class ValidatorSdJwtTest : FreeSpec() {
     private fun buildCredentialData(): CredentialToBeIssued.VcSd = DummyCredentialDataProvider.getCredential(
         holderKeyMaterial.publicKey,
         ConstantIndex.AtomicAttribute2023,
-        ConstantIndex.CredentialRepresentation.SD_JWT,
+        SD_JWT,
     ).getOrThrow().shouldBeInstanceOf<CredentialToBeIssued.VcSd>()
 }
 
@@ -126,7 +128,15 @@ private suspend fun issueVcSd(
         Napier.w("Could not wrap credential in SD-JWT", it)
         throw RuntimeException("Signing failed", it)
     }
+    val sdJwtSigned = SdJwtSigned.issued(jws, disclosures.toList())
     val vcInSdJwt = (listOf(jws.serialize()) + disclosures).joinToString("~", postfix = "~")
-    Napier.i("issueVcSd: $vcInSdJwt")
-    return Issuer.IssuedCredential.VcSdJwt(vcInSdJwt, credential.scheme)
+    vcInSdJwt shouldBe sdJwtSigned.serialize()
+    return Issuer.IssuedCredential.VcSdJwt(
+        sdJwtVc = vcSdJwt,
+        signedSdJwtVc = sdJwtSigned,
+        vcSdJwt = sdJwtSigned.serialize(),
+        scheme = credential.scheme,
+        subjectPublicKey = credential.subjectPublicKey,
+        userInfo = credential.userInfo,
+    )
 }

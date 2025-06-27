@@ -66,7 +66,7 @@ class OidvciAttestationTest : FunSpec({
             authorizationService = authorizationService,
             issuer = IssuerAgent(),
             credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme),
-            credentialProvider = DummyOAuth2IssuerCredentialDataProvider,
+            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             verifyAttestationProof = { true },
             requireKeyAttestation = true, // this is important, to require key attestation
         )
@@ -103,7 +103,7 @@ class OidvciAttestationTest : FunSpec({
             authorizationService = authorizationService,
             issuer = IssuerAgent(),
             credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme),
-            credentialProvider = DummyOAuth2IssuerCredentialDataProvider,
+            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             verifyAttestationProof = { false }, // do not accept key attestation
             requireKeyAttestation = true, // this is important, to require key attestation
         )

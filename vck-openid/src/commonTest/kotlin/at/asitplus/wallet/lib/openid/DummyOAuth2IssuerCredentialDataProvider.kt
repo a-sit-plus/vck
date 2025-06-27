@@ -17,7 +17,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMIL
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT
 import at.asitplus.iso.IssuerSignedItem
-import at.asitplus.wallet.lib.oidvci.CredentialIssuerDataProvider
+import at.asitplus.wallet.lib.oidvci.CredentialDataProviderFun
 import at.asitplus.wallet.lib.oidvci.OAuth2DataProvider
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.EXPIRY_DATE
@@ -34,22 +34,21 @@ import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes
 
 
-object DummyOAuth2IssuerCredentialDataProvider : CredentialIssuerDataProvider {
+object DummyOAuth2IssuerCredentialDataProvider : CredentialDataProviderFun {
 
     private val clock: Clock = Clock.System
     private val defaultLifetime = 1.minutes
 
-    override fun getCredential(
+    override suspend fun invoke(
         userInfo: OidcUserInfoExtended,
         subjectPublicKey: CryptoPublicKey,
         credentialScheme: ConstantIndex.CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation,
-        claimNames: Collection<String>?
     ): KmmResult<CredentialToBeIssued> = catching {
         when (credentialScheme) {
-            ConstantIndex.AtomicAttribute2023 -> getAtomic(userInfo, subjectPublicKey, representation, claimNames)
-            MobileDrivingLicenceScheme -> getMdl(userInfo, subjectPublicKey, claimNames)
-            EuPidScheme -> getEupId(userInfo, subjectPublicKey, representation, claimNames)
+            ConstantIndex.AtomicAttribute2023 -> getAtomic(userInfo, subjectPublicKey, representation)
+            MobileDrivingLicenceScheme -> getMdl(userInfo, subjectPublicKey)
+            EuPidScheme -> getEuPid(userInfo, subjectPublicKey, representation)
             else -> throw NotImplementedError()
         }
     }
@@ -59,7 +58,6 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialIssuerDataProvider {
         userInfo: OidcUserInfoExtended,
         subjectPublicKey: CryptoPublicKey,
         representation: ConstantIndex.CredentialRepresentation,
-        claimNames: Collection<String>?
     ): CredentialToBeIssued {
         val issuance = clock.now()
         val expiration = issuance + defaultLifetime
@@ -68,16 +66,16 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialIssuerDataProvider {
         val subjectId = subjectPublicKey.didEncoded
         val claims = listOfNotNull(
             givenName?.let {
-                optionalClaim(claimNames, CLAIM_GIVEN_NAME, it)
+                ClaimToBeIssued(CLAIM_GIVEN_NAME, it)
             },
             familyName?.let {
-                optionalClaim(claimNames, CLAIM_FAMILY_NAME, it)
+                ClaimToBeIssued(CLAIM_FAMILY_NAME, it)
             },
             userInfo.userInfo.birthDate?.let {
-                optionalClaim(claimNames, CLAIM_DATE_OF_BIRTH, LocalDate.parse(it))
+                ClaimToBeIssued(CLAIM_DATE_OF_BIRTH, LocalDate.parse(it))
             },
             userInfo.userInfo.picture?.let {
-                optionalClaim(claimNames, CLAIM_PORTRAIT, it.decodeToByteArray(Base64()))
+                ClaimToBeIssued(CLAIM_PORTRAIT, it.decodeToByteArray(Base64()))
             },
         )
         return when (representation) {
@@ -85,14 +83,16 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialIssuerDataProvider {
                 claims,
                 expiration,
                 ConstantIndex.AtomicAttribute2023,
-                subjectPublicKey
+                subjectPublicKey,
+                DummyOAuth2DataProvider.user,
             )
 
             ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
                 AtomicAttribute2023(subjectId, GIVEN_NAME, givenName ?: "no value"),
                 expiration,
                 ConstantIndex.AtomicAttribute2023,
-                subjectPublicKey
+                subjectPublicKey,
+                DummyOAuth2DataProvider.user,
             )
 
             ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
@@ -101,7 +101,8 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialIssuerDataProvider {
                 },
                 expiration,
                 ConstantIndex.AtomicAttribute2023,
-                subjectPublicKey
+                subjectPublicKey,
+                DummyOAuth2DataProvider.user,
             )
         }
     }
@@ -109,7 +110,6 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialIssuerDataProvider {
     private fun getMdl(
         userInfo: OidcUserInfoExtended,
         subjectPublicKey: CryptoPublicKey,
-        claimNames: Collection<String>?
     ): CredentialToBeIssued.Iso {
         val issuance = clock.now()
         val expiration = issuance + defaultLifetime
@@ -117,25 +117,25 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialIssuerDataProvider {
         val givenName = userInfo.userInfo.givenName
         var digestId = 0U
         val issuerSignedItems = listOfNotNull(
-            if (claimNames.isNullOrContains(FAMILY_NAME) && familyName != null)
-                issuerSignedItem(FAMILY_NAME, familyName, digestId++) else null,
-            if (claimNames.isNullOrContains(GIVEN_NAME) && givenName != null)
-                issuerSignedItem(GIVEN_NAME, givenName, digestId++) else null,
-            if (claimNames.isNullOrContains(DOCUMENT_NUMBER))
-                issuerSignedItem(DOCUMENT_NUMBER, "123456789", digestId++) else null,
-            if (claimNames.isNullOrContains(ISSUE_DATE))
-                issuerSignedItem(ISSUE_DATE, "2023-01-01", digestId++) else null,
-            if (claimNames.isNullOrContains(EXPIRY_DATE))
-                issuerSignedItem(EXPIRY_DATE, "2033-01-01", digestId++) else null,
+            if (familyName != null) issuerSignedItem(FAMILY_NAME, familyName, digestId++) else null,
+            if (givenName != null) issuerSignedItem(GIVEN_NAME, givenName, digestId++) else null,
+            issuerSignedItem(DOCUMENT_NUMBER, "123456789", digestId++),
+            issuerSignedItem(ISSUE_DATE, "2023-01-01", digestId++),
+            issuerSignedItem(EXPIRY_DATE, "2033-01-01", digestId++),
         )
-        return CredentialToBeIssued.Iso(issuerSignedItems, expiration, MobileDrivingLicenceScheme, subjectPublicKey)
+        return CredentialToBeIssued.Iso(
+            issuerSignedItems,
+            expiration,
+            MobileDrivingLicenceScheme,
+            subjectPublicKey,
+            DummyOAuth2DataProvider.user,
+        )
     }
 
-    private fun getEupId(
+    private fun getEuPid(
         userInfo: OidcUserInfoExtended,
         subjectPublicKey: CryptoPublicKey,
         representation: ConstantIndex.CredentialRepresentation,
-        claimNames: Collection<String>?
     ): CredentialToBeIssued {
         val issuance = clock.now()
         val expiration = issuance + defaultLifetime
@@ -145,13 +145,13 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialIssuerDataProvider {
         val birthDate = LocalDate.parse(userInfo.userInfo.birthDate ?: "1970-01-01")
         val issuingCountry = "AT"
         val claims = listOfNotNull(
-            optionalClaim(claimNames, EuPidScheme.Attributes.FAMILY_NAME, familyName),
-            optionalClaim(claimNames, EuPidScheme.Attributes.GIVEN_NAME, givenName),
-            optionalClaim(claimNames, EuPidScheme.Attributes.BIRTH_DATE, birthDate),
-            optionalClaim(claimNames, EuPidScheme.Attributes.ISSUANCE_DATE, issuance),
-            optionalClaim(claimNames, EuPidScheme.Attributes.EXPIRY_DATE, expiration),
-            optionalClaim(claimNames, EuPidScheme.Attributes.ISSUING_COUNTRY, issuingCountry),
-            optionalClaim(claimNames, EuPidScheme.Attributes.ISSUING_AUTHORITY, issuingCountry),
+            ClaimToBeIssued(EuPidScheme.Attributes.FAMILY_NAME, familyName),
+            ClaimToBeIssued(EuPidScheme.Attributes.GIVEN_NAME, givenName),
+            ClaimToBeIssued(EuPidScheme.Attributes.BIRTH_DATE, birthDate),
+            ClaimToBeIssued(EuPidScheme.Attributes.ISSUANCE_DATE, issuance),
+            ClaimToBeIssued(EuPidScheme.Attributes.EXPIRY_DATE, expiration),
+            ClaimToBeIssued(EuPidScheme.Attributes.ISSUING_COUNTRY, issuingCountry),
+            ClaimToBeIssued(EuPidScheme.Attributes.ISSUING_AUTHORITY, issuingCountry),
         )
         return when (representation) {
             ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialToBeIssued.VcSd(
@@ -159,6 +159,7 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialIssuerDataProvider {
                 expiration,
                 EuPidScheme,
                 subjectPublicKey,
+                DummyOAuth2DataProvider.user,
             )
 
             ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
@@ -175,6 +176,7 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialIssuerDataProvider {
                 expiration,
                 EuPidScheme,
                 subjectPublicKey,
+                DummyOAuth2DataProvider.user,
             )
 
             ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
@@ -184,15 +186,10 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialIssuerDataProvider {
                 expiration,
                 EuPidScheme,
                 subjectPublicKey,
+                DummyOAuth2DataProvider.user,
             )
         }
     }
-
-    private fun Collection<String>?.isNullOrContains(s: String) =
-        this == null || contains(s)
-
-    private fun optionalClaim(claimNames: Collection<String>?, name: String, value: Any) =
-        if (claimNames.isNullOrContains(name)) ClaimToBeIssued(name, value) else null
 
     private fun issuerSignedItem(name: String, value: Any, digestId: UInt) = IssuerSignedItem(
         digestId = digestId,

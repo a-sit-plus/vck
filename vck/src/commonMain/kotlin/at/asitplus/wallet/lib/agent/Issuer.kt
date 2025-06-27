@@ -1,10 +1,17 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.openid.OidcUserInfoExtended
+import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.SignatureAlgorithm
+import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.VerifiableCredential
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.ReferencedTokenIssuer
 import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.wallet.lib.jws.SdJwtSigned
 
 
 /**
@@ -18,20 +25,34 @@ interface Issuer : ReferencedTokenIssuer<CredentialToBeIssued, KmmResult<Issuer.
      * A credential issued by an [Issuer], in a specific format
      */
     sealed class IssuedCredential {
+        abstract val scheme: ConstantIndex.CredentialScheme
+        abstract val subjectPublicKey: CryptoPublicKey
+        abstract val userInfo: OidcUserInfoExtended
+
         /**
          * Issued credential in W3C Verifiable Credentials JWT representation
          */
         data class VcJwt(
+            val vc: VerifiableCredential,
+            val signedVcJws: JwsSigned<VerifiableCredentialJws>,
+            @Deprecated("Use signedVcJws instead", ReplaceWith("signedVcJws"))
             val vcJws: String,
-            val scheme: ConstantIndex.CredentialScheme,
+            override val scheme: ConstantIndex.CredentialScheme,
+            override val subjectPublicKey: CryptoPublicKey,
+            override val userInfo: OidcUserInfoExtended,
         ) : IssuedCredential()
 
         /**
          * Issued credential in SD-JWT representation
          */
         data class VcSdJwt(
+            val sdJwtVc: VerifiableCredentialSdJwt,
+            val signedSdJwtVc: SdJwtSigned,
+            @Deprecated("Use signedSdJwtVc instead", ReplaceWith("signedSdJwtVc"))
             val vcSdJwt: String,
-            val scheme: ConstantIndex.CredentialScheme,
+            override val scheme: ConstantIndex.CredentialScheme,
+            override val subjectPublicKey: CryptoPublicKey,
+            override val userInfo: OidcUserInfoExtended,
         ) : IssuedCredential()
 
         /**
@@ -39,7 +60,9 @@ interface Issuer : ReferencedTokenIssuer<CredentialToBeIssued, KmmResult<Issuer.
          */
         data class Iso(
             val issuerSigned: IssuerSigned,
-            val scheme: ConstantIndex.CredentialScheme,
+            override val scheme: ConstantIndex.CredentialScheme,
+            override val subjectPublicKey: CryptoPublicKey,
+            override val userInfo: OidcUserInfoExtended,
         ) : IssuedCredential()
     }
 
@@ -67,6 +90,6 @@ interface Issuer : ReferencedTokenIssuer<CredentialToBeIssued, KmmResult<Issuer.
 
 fun Issuer.IssuedCredential.toStoreCredentialInput() = when (this) {
     is Issuer.IssuedCredential.Iso -> Holder.StoreCredentialInput.Iso(issuerSigned, scheme)
-    is Issuer.IssuedCredential.VcSdJwt -> Holder.StoreCredentialInput.SdJwt(vcSdJwt, scheme)
-    is Issuer.IssuedCredential.VcJwt -> Holder.StoreCredentialInput.Vc(vcJws, scheme)
+    is Issuer.IssuedCredential.VcSdJwt -> Holder.StoreCredentialInput.SdJwt(signedSdJwtVc, signedSdJwtVc.serialize(), scheme)
+    is Issuer.IssuedCredential.VcJwt -> Holder.StoreCredentialInput.Vc(signedVcJws, signedVcJws.serialize(), scheme)
 }

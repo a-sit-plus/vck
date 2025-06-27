@@ -4,6 +4,9 @@ import at.asitplus.jsonpath.JsonPath
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider
 import com.benasher44.uuid.uuid4
@@ -34,7 +37,7 @@ class CredentialJsonInteropTest : FreeSpec({
                 DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT
+                    PLAIN_JWT
                 ).getOrThrow(),
             ).getOrThrow().toStoreCredentialInput()
         )
@@ -56,17 +59,16 @@ class CredentialJsonInteropTest : FreeSpec({
                 DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.SD_JWT,
-                    AtomicAttribute2023.claimNames
+                    SD_JWT,
                 ).getOrThrow(),
             ).getOrThrow().toStoreCredentialInput()
         )
 
         val credential =
             CredentialToJsonConverter.toJsonElement(subjectCredentialStore.getCredentials().getOrThrow()[0])
-        credential.getByJsonPath("\$['given_name']").content shouldNotBe null
-        credential.getByJsonPath("\$['family_name']").content shouldNotBe null
-        credential.getByJsonPath("\$['date_of_birth']").content shouldNotBe null
+        credential.getByJsonPath("\$['${AtomicAttribute2023.CLAIM_GIVEN_NAME}']").content shouldNotBe null
+        credential.getByJsonPath("\$['${AtomicAttribute2023.CLAIM_FAMILY_NAME}']").content shouldNotBe null
+        credential.getByJsonPath("\$['${AtomicAttribute2023.CLAIM_DATE_OF_BIRTH}']").content shouldNotBe null
     }
 
     "ISO credential path resolving" {
@@ -75,17 +77,16 @@ class CredentialJsonInteropTest : FreeSpec({
                 DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                    AtomicAttribute2023.claimNames
+                    ISO_MDOC,
                 ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         )
 
         val credential =
             CredentialToJsonConverter.toJsonElement(subjectCredentialStore.getCredentials().getOrThrow()[0])
-        credential.getByJsonPath("\$['${AtomicAttribute2023.isoNamespace}']['given_name']").content shouldNotBe null
-        credential.getByJsonPath("\$['${AtomicAttribute2023.isoNamespace}']['family_name']").content shouldNotBe null
-        credential.getByJsonPath("\$['${AtomicAttribute2023.isoNamespace}']['date_of_birth']").content shouldNotBe null
+        credential.getByJsonPath("\$['${AtomicAttribute2023.isoNamespace}']['${AtomicAttribute2023.CLAIM_GIVEN_NAME}']").content shouldNotBe null
+        credential.getByJsonPath("\$['${AtomicAttribute2023.isoNamespace}']['${AtomicAttribute2023.CLAIM_FAMILY_NAME}']").content shouldNotBe null
+        credential.getByJsonPath("\$['${AtomicAttribute2023.isoNamespace}']['${AtomicAttribute2023.CLAIM_DATE_OF_BIRTH}']").content shouldNotBe null
     }
 
     "Simple JSONPaths" {

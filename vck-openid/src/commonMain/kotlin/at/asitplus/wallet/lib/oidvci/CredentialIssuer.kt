@@ -7,17 +7,12 @@ import at.asitplus.openid.OpenIdConstants.KEY_ATTESTATION_JWT_TYPE
 import at.asitplus.openid.OpenIdConstants.PROOF_JWT_TYPE
 import at.asitplus.openid.OpenIdConstants.ProofType
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.josef.JsonWebKeySet
-import at.asitplus.signum.indispensable.josef.JsonWebToken
-import at.asitplus.signum.indispensable.josef.JweAlgorithm
-import at.asitplus.signum.indispensable.josef.JweEncryption
-import at.asitplus.signum.indispensable.josef.JweHeader
-import at.asitplus.signum.indispensable.josef.JwsAlgorithm
-import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
+import at.asitplus.signum.indispensable.SignatureAlgorithm
+import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
 import at.asitplus.wallet.lib.jws.EncryptJwe
@@ -25,15 +20,11 @@ import at.asitplus.wallet.lib.jws.EncryptJweFun
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.oauth2.RequestInfo
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.CredentialRequestDenied
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidNonce
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidProof
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.UnsupportedCredentialType
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Clock.System
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
@@ -48,7 +39,14 @@ class CredentialIssuer(
     /** Used to get the user data, and access tokens. */
     private val authorizationService: OAuth2AuthorizationServerAdapter,
     /** Used to actually issue the credential. */
+    @Deprecated("Use issuerAdapter, keyMaterial, cryptoAlgorithms")
     private val issuer: Issuer,
+    /** Used to actually issue the credential, with data provided from [credentialDataProvider]. */
+    private val issueCredential: IssueCredentialFun = IssueCredential(issuer),
+    /** Supported crypto algorithms from [issueCredential] */
+    private val cryptoAlgorithms: Set<SignatureAlgorithm> = issuer.cryptoAlgorithms,
+    /** Key material used by [issueCredential] */
+    private val keyMaterial: Set<KeyMaterial> = setOf(issuer.keyMaterial),
     /** List of supported schemes. */
     private val credentialSchemes: Set<CredentialScheme>,
     /** Used in several fields in [IssuerMetadata], to provide endpoint URLs to clients. */
@@ -63,9 +61,12 @@ class CredentialIssuer(
      * to that URI (which starts with [publicContext]) to [nonce].
      */
     private val nonceEndpointPath: String = "/nonce",
-    /** Used during issuance, when issuing credentials (using [issuer]) with data from [OidcUserInfoExtended]. */
-    private val credentialProvider: CredentialIssuerDataProvider,
-    /** Used to verify signature of proof elements in credential requests. */
+    @Deprecated("Use `credentialDataProvider` instead")
+    private val credentialProvider: CredentialIssuerDataProvider? = null,
+    /** Extract data from the authenticated user and prepares it for [issueCredential]. */
+    private val credentialDataProvider: CredentialDataProviderFun =
+        credentialProvider?.let { CredentialIssuerDataProviderAdapter(it) } ?: TODO(),
+    /** Used to verify the signature of proof elements in credential requests. */
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
     private val supportedAlgorithms: Collection<JwsAlgorithm.Signature> = listOf(JwsAlgorithm.Signature.ES256),
     /** Clock used to verify timestamps in proof elements in credential requests. */
@@ -88,7 +89,7 @@ class CredentialIssuer(
     private val supportedJweEncryptionAlgorithms: Set<JweEncryption> = setOf(JweEncryption.A256GCM),
 ) {
     private val supportedCredentialConfigurations = credentialSchemes
-        .flatMap { it.toSupportedCredentialFormat(issuer.cryptoAlgorithms).entries }
+        .flatMap { it.toSupportedCredentialFormat(cryptoAlgorithms).entries }
         .associate {
             it.key to if (requireKeyAttestation) {
                 it.value.withSupportedProofTypes(
@@ -137,7 +138,7 @@ class CredentialIssuer(
     val jwtVcMetadata: JwtVcIssuerMetadata by lazy {
         JwtVcIssuerMetadata(
             issuer = publicContext,
-            jsonWebKeySet = JsonWebKeySet(setOf(issuer.keyMaterial.jsonWebKey))
+            jsonWebKeySet = JsonWebKeySet(keyMaterial.map { it.jsonWebKey }.toSet())
         )
     }
 
@@ -172,8 +173,12 @@ class CredentialIssuer(
         params: CredentialRequestParameters,
         request: RequestInfo? = null,
     ): KmmResult<CredentialResponseParameters> = catching {
-        val userInfo =
-            getUserInfo(authorizationHeader, params.credentialIdentifier, params.credentialConfigurationId, request)
+        val userInfo = loadUserInfo(
+            authorizationHeader = authorizationHeader,
+            credentialIdentifier = params.credentialIdentifier,
+            credentialConfigurationId = params.credentialConfigurationId,
+            request = request
+        )
 
         val (credentialScheme, representation) = params.credentialIdentifier?.let { decodeFromCredentialIdentifier(it) }
             ?: params.credentialConfigurationId?.let { extractFromCredentialConfigurationId(it) }
@@ -181,28 +186,28 @@ class CredentialIssuer(
                 .also { Napier.w("credential: client did request unknown credential scheme: $params") }
 
         val issuedCredentials = validateProofExtractSubjectPublicKeys(params).map { subjectPublicKey ->
-            val credentialToBeIssued = credentialProvider.getCredential(
+            val credentialToBeIssued = credentialDataProvider(
                 userInfo = userInfo,
                 subjectPublicKey = subjectPublicKey,
                 credentialScheme = credentialScheme,
                 representation = representation.toRepresentation(),
-                claimNames = null // OID4VCI: Always issue all claims that are available
             ).getOrElse {
+                Napier.w("credential: did not get any credential from credentialProvider", it)
                 throw CredentialRequestDenied("No credential from provider", it)
-                    .also { Napier.w("credential: did not get any credential from credentialProvider", it) }
             }
-            issuer.issueCredential(
+            issueCredential(
                 credential = credentialToBeIssued
             ).getOrElse {
+                Napier.w("credential: issuer did not issue credential", it)
                 throw CredentialRequestDenied("No credential from issuer", it)
-                    .also { Napier.w("credential: issuer did not issue credential", it) }
             }
         }
         issuedCredentials.toCredentialResponseParameters(params.encrypter())
             .also { Napier.i("credential returns $it") }
     }
 
-    private suspend fun getUserInfo(
+    @Throws(InvalidToken::class, CancellationException::class)
+    private suspend fun loadUserInfo(
         authorizationHeader: String,
         credentialIdentifier: String?,
         credentialConfigurationId: String?,
@@ -218,12 +223,12 @@ class CredentialIssuer(
                 .filterIsInstance<OpenIdAuthorizationDetails>()
                 .flatMap { it.credentialIdentifiers ?: setOf() }
             if (!validCredentialIdentifiers.contains(credentialIdentifier))
-                throw InvalidToken("credential_identifier expected to be in ${validCredentialIdentifiers}, but got $credentialIdentifier")
+                throw InvalidToken("credential_identifier $credentialIdentifier expected to be in $validCredentialIdentifiers")
         } else if (credentialConfigurationId != null) {
             if (result.scope == null)
                 throw InvalidToken("no scope stored for header $authorizationHeader")
             if (!result.scope.contains(credentialConfigurationId))
-                throw InvalidToken("credential_configuration_id expected to be ${result.scope}, but got $credentialConfigurationId")
+                throw InvalidToken("credential_configuration_id $credentialConfigurationId expected to be ${result.scope}")
         } else {
             throw InvalidToken("neither credential_identifier nor credential_configuration_id set")
         }
@@ -342,6 +347,7 @@ class CredentialIssuer(
         }
 }
 
+@Deprecated("Use `CredentialDataProviderFun` instead")
 fun interface CredentialIssuerDataProvider {
 
     /**

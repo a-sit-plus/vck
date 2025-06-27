@@ -9,6 +9,7 @@ import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.iso.sha256
@@ -75,7 +76,7 @@ class AgentSdJwtTest : FreeSpec({
                 DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.SD_JWT,
+                    SD_JWT,
                 ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         ).getOrThrow()
@@ -157,13 +158,18 @@ class AgentSdJwtTest : FreeSpec({
             val vp = presentationParameters.presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            val listOfJwtId = holderCredentialStore.getCredentials().getOrThrow()
+            holderCredentialStore.getCredentials().getOrThrow()
                 .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
-                .associate { it.sdJwt.jwtId!! to it.sdJwt.notBefore!! }
-            statusListIssuer.revokeCredentialsWithId(listOfJwtId) shouldBe true
-            val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .forEach {
+                    statusListIssuer.revokeCredential(
+                        FixedTimePeriodProvider.timePeriod,
+                        it.sdJwt.credentialStatus!!.statusList.index
+                    ) shouldBe true
+                }
+            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-            verified.freshnessSummary.tokenStatusValidationResult.shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
+                .freshnessSummary.tokenStatusValidationResult
+                .shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
         }
     }
 
@@ -255,13 +261,18 @@ class AgentSdJwtTest : FreeSpec({
             val vp = presentationParameters.verifiablePresentations.values.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            val listOfJwtId = holderCredentialStore.getCredentials().getOrThrow()
+            holderCredentialStore.getCredentials().getOrThrow()
                 .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
-                .associate { it.sdJwt.jwtId!! to it.sdJwt.notBefore!! }
-            statusListIssuer.revokeCredentialsWithId(listOfJwtId) shouldBe true
-            val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .forEach {
+                    statusListIssuer.revokeCredential(
+                        FixedTimePeriodProvider.timePeriod,
+                        it.sdJwt.credentialStatus!!.statusList.index,
+                    ) shouldBe true
+                }
+            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-            verified.freshnessSummary.tokenStatusValidationResult.shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
+                .freshnessSummary.tokenStatusValidationResult
+                .shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
         }
     }
 })
@@ -291,7 +302,7 @@ suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): S
             DummyCredentialDataProvider.getCredential(
                 holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.SD_JWT,
+                SD_JWT,
             ).getOrThrow()
         ).getOrThrow().toStoreCredentialInput()
     )

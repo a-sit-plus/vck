@@ -18,7 +18,9 @@ data class StatusListView(
     fun isNotEmpty() = !isEmpty()
 
     operator fun get(index: UInt) = get(index.toULong())
-    operator fun get(index: ULong) = getOrNull(index) ?: throw IndexOutOfBoundsException()
+    operator fun get(index: ULong) = getOrNull(index)
+        ?: throw IndexOutOfBoundsException("Index $index is out of bounds, size ${uncompressed.size.toULong() * Byte.SIZE_BITS.toULong() / statusBitSize.value}")
+
     fun getOrNull(index: ULong): TokenStatus? {
         val tokenStatusesPerByte = Byte.SIZE_BITS.toULong() / statusBitSize.value
 
@@ -29,7 +31,7 @@ data class StatusListView(
         }.toInt()
         val byte = uncompressed.getOrNull(byteIndex) ?: return null
 
-        val statusMask = when(statusBitSize) {
+        val statusMask = when (statusBitSize) {
             TokenStatusBitSize.ONE -> 0b1u
             TokenStatusBitSize.TWO -> 0b11u
             TokenStatusBitSize.FOUR -> 0xfu
@@ -85,7 +87,7 @@ data class StatusListView(
             }
 
             val usedBitSize = statusBitSize ?: requiredBitSize
-            if(usedBitSize.value < requiredBitSize.value) {
+            if (usedBitSize.value < requiredBitSize.value) {
                 throw IllegalArgumentException("Argument `tokenStatuses` contains entries that do not fit into the size specified in `statusBitSize`.")
             }
 
