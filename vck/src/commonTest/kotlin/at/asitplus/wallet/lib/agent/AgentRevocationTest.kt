@@ -31,8 +31,8 @@ class AgentRevocationTest : FreeSpec({
 
     beforeEach {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
-        issuer = IssuerAgent(EphemeralKeyWithoutCert(), issuerCredentialStore = issuerCredentialStore)
-            .also { statusListIssuer = it }
+        issuer = IssuerAgent(issuerCredentialStore = issuerCredentialStore)
+        statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
         verifierKeyMaterial = EphemeralKeyWithoutCert()
         expectedRevokedIndexes = issuerCredentialStore.revokeRandomCredentials()
     }
@@ -142,8 +142,8 @@ class AgentRevocationTest : FreeSpec({
 
     "encoding to a known value works" {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
-        issuer = IssuerAgent(EphemeralKeyWithoutCert(), issuerCredentialStore = issuerCredentialStore)
-            .also { statusListIssuer = it }
+        issuer = IssuerAgent(issuerCredentialStore = issuerCredentialStore)
+        statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
         expectedRevokedIndexes = listOf(1, 2, 4, 6, 7, 9, 10, 12, 13, 14)
         issuerCredentialStore.revokeCredentialsWithIndexes(expectedRevokedIndexes)
 

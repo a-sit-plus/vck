@@ -56,11 +56,8 @@ class ValidatorVcTest : FreeSpec() {
             )
             issuerCredentialStore = InMemoryIssuerCredentialStore()
             issuerKeyMaterial = EphemeralKeyWithoutCert()
-            issuer = IssuerAgent(
-                issuerKeyMaterial,
-                validator = validator,
-                issuerCredentialStore = issuerCredentialStore,
-            ).also { statusListIssuer = it }
+            issuer = IssuerAgent(issuerKeyMaterial, issuerCredentialStore = issuerCredentialStore)
+            statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
             issuerSignVc = SignJwt(issuerKeyMaterial, JwsHeaderKeyId())
             verifierKeyMaterial = EphemeralKeyWithoutCert()
         }
