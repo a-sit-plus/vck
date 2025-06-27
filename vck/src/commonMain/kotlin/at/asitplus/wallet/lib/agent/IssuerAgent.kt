@@ -39,15 +39,15 @@ import kotlin.time.Duration.Companion.hours
  */
 class IssuerAgent(
     override val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-    @Deprecated("Removed, see StatusListAgent")
+    @Deprecated("Removed, see `StatusListAgent`")
     private val validator: Validator = Validator(),
     private val issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
     private val statusListBaseUrl: String = "https://wallet.a-sit.at/backend/credentials/status",
-    @Deprecated("Removed, see StatusListAgent")
+    @Deprecated("Removed, see `StatusListAgent`")
     private val statusListAggregationUrl: String? = null,
-    @Deprecated("Removed, see StatusListAgent")
+    @Deprecated("Removed, see `StatusListAgent`")
     private val zlibService: ZlibService = DefaultZlibService(),
-    @Deprecated("Removed, see StatusListAgent")
+    @Deprecated("Removed, see `StatusListAgent`")
     private val revocationListLifetime: Duration = 48.hours,
     private val clock: Clock = Clock.System,
     override val cryptoAlgorithms: Set<SignatureAlgorithm> = setOf(keyMaterial.signatureAlgorithm),
@@ -56,14 +56,15 @@ class IssuerAgent(
     private val identifier: String = keyMaterial.identifier,
     private val signIssuedSdJwt: SignJwtFun<JsonObject> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     private val signIssuedVc: SignJwtFun<VerifiableCredentialJws> = SignJwt(keyMaterial, JwsHeaderKeyId()),
-    @Deprecated("Removed, see StatusListAgent")
+    @Deprecated("Removed, see `StatusListAgent`")
     private val signStatusListJwt: SignJwtFun<StatusListTokenPayload> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     private val signMobileSecurityObject: SignCoseFun<MobileSecurityObject> =
         SignCose(keyMaterial, CoseHeaderNone(), CoseHeaderCertificate()),
-    @Deprecated("Removed, see StatusListAgent")
+    @Deprecated("Removed, see `StatusListAgent`")
     private val signStatusListCwt: SignCoseFun<StatusListTokenPayload> =
         SignCose(keyMaterial, CoseHeaderKeyId(), CoseHeaderCertificate()),
 ) : Issuer,
+    // TODO Remove > 5.8.0
     StatusListIssuer by StatusListAgent(
         keyMaterial = keyMaterial,
         validator = validator,
