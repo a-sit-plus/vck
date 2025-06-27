@@ -3,9 +3,6 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.*
-import at.asitplus.openid.OpenIdConstants.KEY_ATTESTATION_JWT_TYPE
-import at.asitplus.openid.OpenIdConstants.PROOF_JWT_TYPE
-import at.asitplus.openid.OpenIdConstants.ProofType
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.*
@@ -63,18 +60,19 @@ class CredentialIssuer(
     @Deprecated("Use `credentialDataProvider` in method `credential` instead")
     private val credentialProvider: CredentialIssuerDataProvider = FallbackCredentialIssuerDataProvider(),
     /** Used to verify the signature of proof elements in credential requests. */
+    @Deprecated("Use `proofValidator` instead")
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
-    /** Supported signing algorithms, which may be used from clients in proofs to request credentials. */
+    @Deprecated("Use `proofValidator` instead")
     private val supportedAlgorithms: Collection<JwsAlgorithm.Signature> = listOf(JwsAlgorithm.Signature.ES256),
-    /** Clock used to verify timestamps in proof elements in credential requests. */
+    @Deprecated("Use `proofValidator` instead")
     private val clock: Clock = System,
-    /** Time leeway for verification of timestamps in proof elements in credential requests. */
+    @Deprecated("Use `proofValidator` instead")
     private val timeLeeway: Duration = 5.minutes,
-    /** Callback to verify a received [KeyAttestationJwt] proof in credential requests. */
+    @Deprecated("Use `proofValidator` instead")
     private val verifyAttestationProof: (JwsSigned<KeyAttestationJwt>) -> Boolean = { true },
     /** Turn on to require key attestation support in the [metadata]. */
     private val requireKeyAttestation: Boolean = false,
-    /** Used to provide challenge to clients to include in proof of possession of key material. */
+    @Deprecated("Use `proofValidator` instead")
     private val clientNonceService: NonceService = DefaultNonceService(),
     /** Used to optionally encrypt the credential response, if requested by the client. */
     private val encryptCredentialRequest: EncryptJweFun = EncryptJwe(EphemeralKeyWithoutCert()),
@@ -84,27 +82,21 @@ class CredentialIssuer(
     private val supportedJweAlgorithms: Set<JweAlgorithm> = setOf(JweAlgorithm.ECDH_ES),
     /** Algorithms to indicate support for credential response encryption. */
     private val supportedJweEncryptionAlgorithms: Set<JweEncryption> = setOf(JweEncryption.A256GCM),
+    /** Used to verify proof of posession of key material in credential requests. */
+    private val proofValidator: ProofValidator = ProofValidator(
+        publicContext = publicContext,
+        verifyJwsObject = verifyJwsObject,
+        supportedAlgorithms = supportedAlgorithms,
+        clock = clock,
+        timeLeeway = timeLeeway,
+        verifyAttestationProof = verifyAttestationProof,
+        requireKeyAttestation = requireKeyAttestation,
+        clientNonceService = clientNonceService,
+    ),
 ) {
     private val supportedCredentialConfigurations = credentialSchemes
         .flatMap { it.toSupportedCredentialFormat(cryptoAlgorithms).entries }
-        .associate {
-            it.key to if (requireKeyAttestation) {
-                it.value.withSupportedProofTypes(
-                    supportedProofTypes = mapOf(
-                        ProofType.JWT.stringRepresentation to CredentialRequestProofSupported(
-                            supportedSigningAlgorithms = supportedAlgorithms.map { it.identifier },
-                            keyAttestationRequired = KeyAttestationRequired()
-                        ),
-                        ProofType.ATTESTATION.stringRepresentation to CredentialRequestProofSupported(
-                            supportedSigningAlgorithms = supportedAlgorithms.map { it.identifier },
-                            keyAttestationRequired = KeyAttestationRequired()
-                        )
-                    )
-                )
-            } else {
-                it.value
-            }
-        }
+        .associate { proofValidator.associateWithProofTypes(it) }
 
     /**
      * Serve this result JSON-serialized under `/.well-known/openid-credential-issuer`
@@ -146,11 +138,7 @@ class CredentialIssuer(
      *
      * MUST be delivered with `Cache-Control: no-store` as HTTP header.
      */
-    suspend fun nonce() = catching {
-        ClientNonceResponse(
-            clientNonce = clientNonceService.provideNonce()
-        )
-    }
+    suspend fun nonce() = proofValidator.nonce()
 
     /**
      * Verifies the [authorizationHeader] to contain a token from [authorizationService],
@@ -164,6 +152,7 @@ class CredentialIssuer(
      * @param params Parameters the client sent JSON-serialized in the HTTP body
      * @param request information about the HTTP request the client has made, to validate authentication
      */
+    @Suppress("DEPRECATION")
     @Deprecated("Use `credential` with parameters `credentialDataProvider`, `issueCredential` instead")
     suspend fun credential(
         authorizationHeader: String,
@@ -198,7 +187,7 @@ class CredentialIssuer(
         issueCredential: IssueCredentialFun,
         request: RequestInfo? = null,
     ): KmmResult<CredentialResponseParameters> = catching {
-        validateProofExtractSubjectPublicKeys(params).map { subjectPublicKey ->
+        proofValidator.validateProofExtractSubjectPublicKeys(params).map { subjectPublicKey ->
             issueCredential(
                 credentialDataProvider(
                     with(params.extractCredentialRepresentation()) {
@@ -277,91 +266,6 @@ class CredentialIssuer(
             }
         } else {
             it
-        }
-    }
-
-    private suspend fun validateProofExtractSubjectPublicKeys(params: CredentialRequestParameters): Collection<CryptoPublicKey> =
-        params.proof?.validateProof()
-            ?: params.proofs?.validateProof()
-            ?: throw InvalidRequest("invalid proof")
-                .also { Napier.w("credential: client did not provide proof of possession in $params") }
-
-    private suspend fun CredentialRequestProof.validateProof() = when (proofType) {
-        ProofType.JWT -> jwtParsed?.validateJwtProof()
-        ProofType.ATTESTATION -> attestationParsed?.validateAttestationProof()
-        else -> null
-    }
-
-    private suspend fun CredentialRequestProofContainer.validateProof() = when (proofType) {
-        ProofType.JWT -> jwtParsed?.flatMap { it.validateJwtProof() }
-        ProofType.ATTESTATION -> attestationParsed?.flatMap { it.validateAttestationProof() }
-        else -> jwtParsed?.flatMap { it.validateJwtProof() }
-            ?: attestationParsed?.flatMap { it.validateAttestationProof() }
-    }
-
-    private suspend fun JwsSigned<JsonWebToken>.validateJwtProof(): Collection<CryptoPublicKey> {
-        if (header.type != PROOF_JWT_TYPE) {
-            Napier.w("validateJwtProof: invalid typ: $header")
-            throw InvalidProof("invalid typ: ${header.type}")
-        }
-
-        if (payload.nonce == null || !clientNonceService.verifyNonce(payload.nonce!!)) {
-            Napier.w("validateJwtProof: invalid nonce: ${payload.nonce}")
-            throw InvalidNonce("invalid nonce: ${payload.nonce}")
-        }
-
-        if (payload.audience == null || payload.audience != publicContext) {
-            Napier.w("validateJwtProof: invalid audience: ${payload.audience}")
-            throw InvalidProof("invalid audience: ${payload.audience}")
-        }
-
-        if (!verifyJwsObject(this)) {
-            Napier.w("validateJwtProof: invalid signature: $this")
-            throw InvalidProof("invalid signature: $this")
-        }
-        // OID4VCI 8.2.1.1: The Credential Issuer SHOULD issue a Credential for each cryptographic public key specified
-        // in the attested_keys claim within the key_attestation parameter.
-        val additionalKeys = header.keyAttestationParsed?.validateAttestationProof() ?: listOf()
-
-        val headerPublicKey = header.publicKey ?: run {
-            Napier.w("validateJwtProof: No valid key in header: $header")
-            throw InvalidProof("could not extract public key")
-        }
-
-        return additionalKeys + headerPublicKey
-    }
-
-    /**
-     * OID4VCI 8.2.1.3: The Credential Issuer SHOULD issue a Credential for each cryptographic public key specified
-     * in the `attested_keys` claim.
-     */
-    private suspend fun JwsSigned<KeyAttestationJwt>.validateAttestationProof(): Collection<CryptoPublicKey> {
-        if (header.type != KEY_ATTESTATION_JWT_TYPE) {
-            Napier.w("validateAttestationProof: invalid typ: $header")
-            throw InvalidProof("invalid typ: ${header.type}")
-        }
-        if (payload.nonce == null || !clientNonceService.verifyNonce(payload.nonce!!)) {
-            Napier.w("validateAttestationProof: invalid nonce: ${payload.nonce}")
-            throw InvalidNonce("invalid nonce: ${payload.nonce}")
-        }
-        if (payload.issuedAt > (clock.now() + timeLeeway)) {
-            Napier.w("validateAttestationProof: issuedAt in future: ${payload.issuedAt}")
-            throw InvalidProof("issuedAt in future: ${payload.issuedAt}")
-        }
-
-        if (payload.expiration != null && payload.expiration!! < (clock.now() - timeLeeway)) {
-            Napier.w("validateAttestationProof: expiration in past: ${payload.expiration}")
-            throw InvalidProof("expiration in past: ${payload.expiration}")
-        }
-
-        if (!verifyAttestationProof.invoke(this)) {
-            Napier.w("validateAttestationProof: Key attestation not verified by callback: $this")
-            throw InvalidProof("key attestation not verified: $this")
-        }
-        return payload.attestedKeys.mapNotNull {
-            it.toCryptoPublicKey()
-                .onFailure { Napier.w("validateAttestationProof: Could not convert to public key", it) }
-                .getOrNull()
         }
     }
 

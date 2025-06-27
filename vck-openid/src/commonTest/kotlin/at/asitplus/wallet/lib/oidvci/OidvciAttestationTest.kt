@@ -65,8 +65,10 @@ class OidvciAttestationTest : FunSpec({
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
             credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme),
-            verifyAttestationProof = { true },
-            requireKeyAttestation = true, // this is important, to require key attestation
+            proofValidator = ProofValidator(
+                verifyAttestationProof = { true },
+                requireKeyAttestation = true, // this is important, to require key attestation
+            )
         )
         state = uuid4().toString()
     }
@@ -105,8 +107,10 @@ class OidvciAttestationTest : FunSpec({
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
             credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme),
-            verifyAttestationProof = { false }, // do not accept key attestation
-            requireKeyAttestation = true, // this is important, to require key attestation
+            proofValidator = ProofValidator(
+                verifyAttestationProof = { false }, // do not accept key attestation
+                requireKeyAttestation = true, // this is important, to require key attestation
+            )
         )
         client = buildClientWithKeyAttestation()
 
