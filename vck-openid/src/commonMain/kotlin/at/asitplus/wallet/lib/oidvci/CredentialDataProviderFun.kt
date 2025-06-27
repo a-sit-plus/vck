@@ -18,8 +18,7 @@ fun interface CredentialDataProviderFun {
     suspend operator fun invoke(
         userInfo: OidcUserInfoExtended,
         subjectPublicKey: CryptoPublicKey,
-        credentialScheme: CredentialScheme,
-        representation: ConstantIndex.CredentialRepresentation,
+        credentialRepresentation: Pair<CredentialScheme, ConstantIndex.CredentialRepresentation>,
     ): KmmResult<CredentialToBeIssued>
 }
 
@@ -29,9 +28,14 @@ class CredentialIssuerDataProviderAdapter(
     override suspend fun invoke(
         userInfo: OidcUserInfoExtended,
         subjectPublicKey: CryptoPublicKey,
-        credentialScheme: CredentialScheme,
-        representation: ConstantIndex.CredentialRepresentation,
+        credentialRepresentation: Pair<CredentialScheme, ConstantIndex.CredentialRepresentation>,
     ): KmmResult<CredentialToBeIssued> =
-        credentialDataProvider.getCredential(userInfo, subjectPublicKey, credentialScheme, representation, null)
+        credentialDataProvider.getCredential(
+            userInfo,
+            subjectPublicKey,
+            credentialRepresentation.first,
+            credentialRepresentation.second,
+            null
+        )
 
 }

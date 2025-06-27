@@ -197,17 +197,17 @@ class OpenId4VciClientTest : FunSpec() {
     ) {
         val dataProvider = OAuth2DataProvider { _, _ -> dummyUser() }
         val credentialDataProvider =
-            CredentialDataProviderFun { _, subjectPublicKey: CryptoPublicKey, credentialScheme, representation ->
+            CredentialDataProviderFun { _, subjectPublicKey: CryptoPublicKey, credentialRep ->
                 catching {
-                    require(credentialScheme == scheme)
-                    require(representation == representation)
+                    require(credentialRep.first == scheme)
+                    require(credentialRep.second == representation)
                     var digestId = 0u
                     when (representation) {
                         PLAIN_JWT -> TODO()
                         SD_JWT -> VcSd(
                             attributes.map { ClaimToBeIssued(it.key, it.value) },
                             Clock.System.now(),
-                            credentialScheme,
+                            credentialRep.first,
                             subjectPublicKey,
                             OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
                         )
@@ -217,7 +217,7 @@ class OpenId4VciClientTest : FunSpec() {
                                 IssuerSignedItem(digestId++, Random.nextBytes(32), it.key, it.value)
                             },
                             Clock.System.now(),
-                            credentialScheme,
+                            credentialRep.first,
                             subjectPublicKey,
                             OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
                         )

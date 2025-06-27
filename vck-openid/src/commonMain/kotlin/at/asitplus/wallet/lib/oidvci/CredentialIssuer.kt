@@ -167,44 +167,37 @@ class CredentialIssuer(
      * @param params Parameters the client sent JSON-serialized in the HTTP body
      * @param request information about the HTTP request the client has made, to validate authentication
      */
-    @Suppress("DEPRECATION")
     suspend fun credential(
         authorizationHeader: String,
         params: CredentialRequestParameters,
         request: RequestInfo? = null,
     ): KmmResult<CredentialResponseParameters> = catching {
-        val userInfo = loadUserInfo(
-            authorizationHeader = authorizationHeader,
-            credentialIdentifier = params.credentialIdentifier,
-            credentialConfigurationId = params.credentialConfigurationId,
-            request = request
-        )
-
-        val (credentialScheme, representation) = params.credentialIdentifier?.let { decodeFromCredentialIdentifier(it) }
-            ?: params.credentialConfigurationId?.let { extractFromCredentialConfigurationId(it) }
-            ?: throw UnsupportedCredentialType("credential scheme not known")
-                .also { Napier.w("credential: client did request unknown credential scheme: $params") }
-
-        val issuedCredentials = validateProofExtractSubjectPublicKeys(params).map { subjectPublicKey ->
-            val credentialToBeIssued = credentialDataProvider(
-                userInfo = userInfo,
-                subjectPublicKey = subjectPublicKey,
-                credentialScheme = credentialScheme,
-                representation = representation.toRepresentation(),
-            ).getOrElse {
-                Napier.w("credential: did not get any credential from credentialProvider", it)
-                throw CredentialRequestDenied("No credential from provider", it)
-            }
+        validateProofExtractSubjectPublicKeys(params).map { subjectPublicKey ->
             issueCredential(
-                credential = credentialToBeIssued
+                credentialDataProvider(
+                    userInfo = loadUserInfo(
+                        authorizationHeader = authorizationHeader,
+                        credentialIdentifier = params.credentialIdentifier,
+                        credentialConfigurationId = params.credentialConfigurationId,
+                        request = request
+                    ),
+                    subjectPublicKey = subjectPublicKey,
+                    credentialRepresentation = params.extractCredentialRepresentation()
+                ).getOrElse {
+                    throw CredentialRequestDenied("No credential from provider", it)
+                }
             ).getOrElse {
-                Napier.w("credential: issuer did not issue credential", it)
                 throw CredentialRequestDenied("No credential from issuer", it)
             }
-        }
-        issuedCredentials.toCredentialResponseParameters(params.encrypter())
+        }.toCredentialResponseParameters(params.encrypter())
             .also { Napier.i("credential returns $it") }
     }
+
+    private fun CredentialRequestParameters.extractCredentialRepresentation()
+            : Pair<CredentialScheme, ConstantIndex.CredentialRepresentation> =
+        (credentialIdentifier?.let { decodeFromCredentialIdentifier(it) }
+            ?: credentialConfigurationId?.let { extractFromCredentialConfigurationId(it) }
+            ?: throw UnsupportedCredentialType("credential scheme not known from ${this}"))
 
     @Throws(InvalidToken::class, CancellationException::class)
     private suspend fun loadUserInfo(
@@ -341,7 +334,9 @@ class CredentialIssuer(
         }
     }
 
-    private fun extractFromCredentialConfigurationId(credentialConfigurationId: String): Pair<CredentialScheme, CredentialFormatEnum>? =
+    private fun extractFromCredentialConfigurationId(
+        credentialConfigurationId: String,
+    ): Pair<CredentialScheme, ConstantIndex.CredentialRepresentation>? =
         supportedCredentialConfigurations[credentialConfigurationId]?.let {
             decodeFromCredentialIdentifier(credentialConfigurationId)
         }
