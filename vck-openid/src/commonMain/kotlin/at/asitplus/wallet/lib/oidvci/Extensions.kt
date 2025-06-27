@@ -25,6 +25,7 @@ import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.data.AttributeIndex
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsIso
@@ -140,7 +141,7 @@ private fun encodeToCredentialIdentifier(type: String, format: CredentialFormatE
  * e.g. from `AtomicAttribute2023#jwt_vc_json` to
  * [at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023] and [CredentialFormatEnum.JWT_VC]
  */
-fun decodeFromCredentialIdentifier(input: String): Pair<CredentialScheme, CredentialFormatEnum>? {
+fun decodeFromCredentialIdentifier(input: String): Pair<CredentialScheme, CredentialRepresentation>? {
     if (input.contains("#")) {
         val vcTypeOrSdJwtType = input.substringBeforeLast("#")
         val credentialScheme = AttributeIndex.resolveSdJwtAttributeType(vcTypeOrSdJwtType)
@@ -150,10 +151,10 @@ fun decodeFromCredentialIdentifier(input: String): Pair<CredentialScheme, Creden
             ?: return null
         val format = CredentialFormatEnum.parse(input.substringAfterLast("#"))
             ?: return null
-        return Pair(credentialScheme, format)
+        return Pair(credentialScheme, format.toRepresentation())
     } else {
         return AttributeIndex.resolveIsoNamespace(input)
-            ?.let { Pair(it, CredentialFormatEnum.MSO_MDOC) }
+            ?.let { Pair(it, CredentialRepresentation.ISO_MDOC) }
     }
 }
 

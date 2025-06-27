@@ -20,6 +20,7 @@ import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
 import at.asitplus.wallet.lib.data.LocalDateOrInstant
 import at.asitplus.wallet.lib.oidvci.CredentialDataProviderFun
 import at.asitplus.wallet.lib.oidvci.OAuth2DataProvider
@@ -46,13 +47,12 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialDataProviderFun {
     override suspend fun invoke(
         userInfo: OidcUserInfoExtended,
         subjectPublicKey: CryptoPublicKey,
-        credentialScheme: ConstantIndex.CredentialScheme,
-        representation: ConstantIndex.CredentialRepresentation,
+        credentialRepresentation: Pair<CredentialScheme, ConstantIndex.CredentialRepresentation>,
     ): KmmResult<CredentialToBeIssued> = catching {
-        when (credentialScheme) {
-            ConstantIndex.AtomicAttribute2023 -> getAtomic(userInfo, subjectPublicKey, representation)
+        when (credentialRepresentation.first) {
+            ConstantIndex.AtomicAttribute2023 -> getAtomic(userInfo, subjectPublicKey, credentialRepresentation.second)
             MobileDrivingLicenceScheme -> getMdl(userInfo, subjectPublicKey)
-            EuPidScheme -> getEuPid(userInfo, subjectPublicKey, representation)
+            EuPidScheme -> getEuPid(userInfo, subjectPublicKey, credentialRepresentation.second)
             else -> throw NotImplementedError()
         }
     }
