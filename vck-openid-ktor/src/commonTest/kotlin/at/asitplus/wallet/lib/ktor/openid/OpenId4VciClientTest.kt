@@ -1,42 +1,48 @@
 package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.catching
-import at.asitplus.openid.*
+import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.ClientNonceResponse
+import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.CredentialRequestParameters
+import at.asitplus.openid.CredentialResponseParameters
+import at.asitplus.openid.IssuerMetadata
+import at.asitplus.openid.OAuth2AuthorizationServerMetadata
+import at.asitplus.openid.OidcUserInfo
+import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.TokenRequestParameters
-import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.eupid.EuPidScheme
-import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued.Iso
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued.VcSd
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.Validator
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
-import at.asitplus.wallet.lib.data.*
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oauth2.ClientAuthenticationService
-import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oauth2.RequestInfo
+import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oauth2.TokenService
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.CredentialDataProviderFun
 import at.asitplus.wallet.lib.oidvci.CredentialIssuer
-import at.asitplus.wallet.lib.oidvci.CredentialIssuerDataProvider
 import at.asitplus.wallet.lib.oidvci.DefaultNonceService
 import at.asitplus.wallet.lib.oidvci.OAuth2DataProvider
 import at.asitplus.wallet.lib.oidvci.WalletService
@@ -50,20 +56,11 @@ import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
-import io.ktor.client.engine.mock.respond
-import io.ktor.client.engine.mock.respondError
-import io.ktor.client.engine.mock.respondRedirect
-import io.ktor.client.engine.mock.toByteArray
+import io.ktor.client.*
+import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
-import io.ktor.client.request.get
-import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.fullPath
-import io.ktor.http.headersOf
-import io.ktor.util.toMap
+import io.ktor.http.*
+import io.ktor.util.*
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.jsonPrimitive
@@ -196,34 +193,33 @@ class OpenId4VciClientTest : FunSpec() {
         attributes: Map<String, String>,
     ) {
         val dataProvider = OAuth2DataProvider { _, _ -> dummyUser() }
-        val credentialDataProvider =
-            CredentialDataProviderFun { _, subjectPublicKey: CryptoPublicKey, credentialRep ->
-                catching {
-                    require(credentialRep.first == scheme)
-                    require(credentialRep.second == representation)
-                    var digestId = 0u
-                    when (representation) {
-                        PLAIN_JWT -> TODO()
-                        SD_JWT -> VcSd(
-                            attributes.map { ClaimToBeIssued(it.key, it.value) },
-                            Clock.System.now(),
-                            credentialRep.first,
-                            subjectPublicKey,
-                            OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
-                        )
+        val credentialDataProvider = CredentialDataProviderFun {
+            catching {
+                require(it.credentialScheme == scheme)
+                require(it.credentialRepresentation == representation)
+                var digestId = 0u
+                when (representation) {
+                    PLAIN_JWT -> TODO()
+                    SD_JWT -> VcSd(
+                        attributes.map { ClaimToBeIssued(it.key, it.value) },
+                        Clock.System.now(),
+                        it.credentialScheme,
+                        it.subjectPublicKey,
+                        OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+                    )
 
-                        ISO_MDOC -> Iso(
-                            attributes.map {
-                                IssuerSignedItem(digestId++, Random.nextBytes(32), it.key, it.value)
-                            },
-                            Clock.System.now(),
-                            credentialRep.first,
-                            subjectPublicKey,
-                            OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
-                        )
-                    }
+                    ISO_MDOC -> Iso(
+                        attributes.map {
+                            IssuerSignedItem(digestId++, Random.nextBytes(32), it.key, it.value)
+                        },
+                        Clock.System.now(),
+                        it.credentialScheme,
+                        it.subjectPublicKey,
+                        OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+                    )
                 }
             }
+        }
         val credentialSchemes = setOf(EuPidScheme)
         val authorizationEndpointPath = "/authorize"
         val tokenEndpointPath = "/token"
@@ -247,11 +243,10 @@ class OpenId4VciClientTest : FunSpec() {
                 issueRefreshTokens = true
             ),
         )
+        val issuer = IssuerAgent(EphemeralKeyWithSelfSignedCert())
         credentialIssuer = CredentialIssuer(
             authorizationService = authorizationService,
-            issuer = IssuerAgent(EphemeralKeyWithSelfSignedCert()),
             credentialSchemes = credentialSchemes,
-            credentialDataProvider = credentialDataProvider,
             publicContext = publicContext,
             credentialEndpointPath = credentialEndpointPath,
             nonceEndpointPath = nonceEndpointPath,
@@ -321,7 +316,13 @@ class OpenId4VciClientTest : FunSpec() {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val authn = request.headers[HttpHeaders.Authorization].shouldNotBeNull()
                     val params = CredentialRequestParameters.deserialize(requestBody).getOrThrow()
-                    val result = credentialIssuer.credential(authn, params, request.toRequestInfo()).getOrThrow()
+                    val result = credentialIssuer.credential(
+                        authorizationHeader = authn,
+                        params = params,
+                        issueCredential = { issuer.issueCredential(it) },
+                        credentialDataProvider = credentialDataProvider,
+                        request = request.toRequestInfo(),
+                    ).getOrThrow()
                     respond(
                         vckJsonSerializer.encodeToString<CredentialResponseParameters>(result),
                         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
