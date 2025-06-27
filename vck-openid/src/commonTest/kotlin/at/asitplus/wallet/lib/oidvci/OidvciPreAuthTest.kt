@@ -33,9 +33,7 @@ class OidvciPreAuthTest : FreeSpec({
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
-            issuer = IssuerAgent(),
             credentialSchemes = setOf(AtomicAttribute2023, MobileDrivingLicenceScheme),
-            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider
         )
         client = WalletService()
         state = uuid4().toString()
@@ -78,7 +76,9 @@ class OidvciPreAuthTest : FreeSpec({
 
         val credential = issuer.credential(
             authorizationHeader = token.toHttpHeaderValue(),
-            params = credentialRequest.first()
+            params = credentialRequest.first(),
+            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+            issueCredential = { IssuerAgent().issueCredential(it) }
         ).getOrThrow()
         credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
     }
@@ -107,8 +107,12 @@ class OidvciPreAuthTest : FreeSpec({
                 clientNonce = clientNonce,
             ).getOrThrow()
 
-            issuer.credential(token.toHttpHeaderValue(), credentialRequest.first())
-                .getOrThrow()
+            issuer.credential(
+                token.toHttpHeaderValue(),
+                credentialRequest.first(),
+                credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+                issueCredential = { IssuerAgent().issueCredential(it) }
+            ).getOrThrow()
                 .credentials.shouldNotBeEmpty().first()
                 .credentialString.shouldNotBeNull()
         }
@@ -142,8 +146,12 @@ class OidvciPreAuthTest : FreeSpec({
             clientNonce = clientNonce,
         ).getOrThrow()
 
-        issuer.credential(token.toHttpHeaderValue(), credentialRequest.first())
-            .getOrThrow()
+        issuer.credential(
+            token.toHttpHeaderValue(),
+            credentialRequest.first(),
+            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+            issueCredential = { IssuerAgent().issueCredential(it) }
+        ).getOrThrow()
             .credentials.shouldNotBeEmpty().first()
             .credentialString.shouldNotBeNull()
     }
@@ -175,8 +183,12 @@ class OidvciPreAuthTest : FreeSpec({
             )
         )
 
-        val credentials = issuer.credential(token.toHttpHeaderValue(), credentialRequest)
-            .getOrThrow()
+        val credentials = issuer.credential(
+            token.toHttpHeaderValue(),
+            credentialRequest,
+            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+            issueCredential = { IssuerAgent().issueCredential(it) }
+        ).getOrThrow()
             .credentials.shouldNotBeEmpty()
             .shouldHaveSize(2)
         // subject identifies the key of the client, here the keys of different proofs, so they should be unique

@@ -64,9 +64,7 @@ class OidvciAttestationTest : FunSpec({
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
-            issuer = IssuerAgent(),
             credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme),
-            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             verifyAttestationProof = { true },
             requireKeyAttestation = true, // this is important, to require key attestation
         )
@@ -85,7 +83,12 @@ class OidvciAttestationTest : FunSpec({
         val token = getToken(scope)
         val clientNonce = issuer.nonce().getOrThrow().clientNonce
         client.createCredentialRequest(token, issuer.metadata, credentialFormat, clientNonce).getOrThrow().forEach {
-            val credential = issuer.credential(token.toHttpHeaderValue(), it).getOrThrow()
+            val credential = issuer.credential(
+                token.toHttpHeaderValue(),
+                it,
+                credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+                issueCredential = { IssuerAgent().issueCredential(it) }
+            ).getOrThrow()
             val serializedCredential = credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
 
@@ -101,9 +104,7 @@ class OidvciAttestationTest : FunSpec({
     test("use key attestation for proof, issuer does not verify it") {
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
-            issuer = IssuerAgent(),
             credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme),
-            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             verifyAttestationProof = { false }, // do not accept key attestation
             requireKeyAttestation = true, // this is important, to require key attestation
         )
@@ -119,7 +120,12 @@ class OidvciAttestationTest : FunSpec({
         val clientNonce = issuer.nonce().getOrThrow().clientNonce
         client.createCredentialRequest(token, issuer.metadata, credentialFormat, clientNonce).getOrThrow().forEach {
             shouldThrow<OAuth2Exception> {
-                issuer.credential(token.toHttpHeaderValue(), it).getOrThrow()
+                issuer.credential(
+                    token.toHttpHeaderValue(),
+                    it,
+                    credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+                    issueCredential = { IssuerAgent().issueCredential(it) }
+                ).getOrThrow()
             }
         }
     }

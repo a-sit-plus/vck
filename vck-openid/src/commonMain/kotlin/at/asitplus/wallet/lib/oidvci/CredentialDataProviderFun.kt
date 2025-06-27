@@ -7,31 +7,38 @@ import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
 
-
+/**
+ * Provides the actual data of the user as a credential that shall be issued
+ */
 fun interface CredentialDataProviderFun {
     /**
-     * Gets called with the user authorized in [userInfo],
-     * a resolved [credentialScheme],
-     * the holder key in [subjectPublicKey],
-     * and the requested credential's representation in [representation].
+     * Gets called with the user authorized, a resolved credential scheme, the holder key,
+     * and the requested representation, see [CredentialDataProviderInput].
      */
     suspend operator fun invoke(
-        userInfo: OidcUserInfoExtended,
-        subjectPublicKey: CryptoPublicKey,
-        credentialScheme: CredentialScheme,
-        representation: ConstantIndex.CredentialRepresentation,
+        input: CredentialDataProviderInput,
     ): KmmResult<CredentialToBeIssued>
 }
+
+data class CredentialDataProviderInput(
+    val userInfo: OidcUserInfoExtended,
+    val subjectPublicKey: CryptoPublicKey,
+    val credentialScheme: CredentialScheme,
+    val credentialRepresentation: ConstantIndex.CredentialRepresentation,
+)
 
 class CredentialIssuerDataProviderAdapter(
     val credentialDataProvider: CredentialIssuerDataProvider,
 ) : CredentialDataProviderFun {
     override suspend fun invoke(
-        userInfo: OidcUserInfoExtended,
-        subjectPublicKey: CryptoPublicKey,
-        credentialScheme: CredentialScheme,
-        representation: ConstantIndex.CredentialRepresentation,
+        input: CredentialDataProviderInput,
     ): KmmResult<CredentialToBeIssued> =
-        credentialDataProvider.getCredential(userInfo, subjectPublicKey, credentialScheme, representation, null)
+        credentialDataProvider.getCredential(
+            input.userInfo,
+            input.subjectPublicKey,
+            input.credentialScheme,
+            input.credentialRepresentation,
+            null
+        )
 
 }
