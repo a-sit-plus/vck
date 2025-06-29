@@ -24,6 +24,8 @@ import java.util.regex.Pattern
 val Project.signumVersionCatalog: VersionCatalog
     get() = extensions.getByType<VersionCatalogsExtension>().named("signum")
 
+val Project.VcLibVersions get()= VcLibVersions(this)
+
 inline fun Project.commonApiDependencies(): List<String> {
     project.AspVersions.versions["signum"] = VcLibVersions.signum
     project.AspVersions.versions["supreme"] = VcLibVersions.supreme
@@ -44,11 +46,13 @@ inline fun KotlinDependencyHandler.commonImplementationAndApiDependencies() {
     commonImplementationDependencies()
 }
 
+
+
 inline fun KotlinDependencyHandler.commonImplementationDependencies() {
     implementation(project.ktor("http"))
     implementation(project.napier())
     implementation(project.ktor("utils"))
-    implementation("net.orandja.obor:obor:${VcLibVersions.obor}")
+    implementation("net.orandja.obor:obor:${project.VcLibVersions.obor}")
 }
 
 /**

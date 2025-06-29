@@ -1,3 +1,5 @@
+import org.tomlj.Toml
+import org.tomlj.TomlParseResult
 import java.io.FileInputStream
 import java.util.*
 
@@ -35,6 +37,32 @@ include(":vck-openid")
 include(":vck-rqes")
 include(":vck-openid-ktor")
 
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.tomlj:tomlj:1.1.1")
+    }
+}
+
+
+val versionCatalogSource: TomlParseResult by lazy {
+
+        Toml.parse(FileInputStream(rootProject.projectDir.absolutePath + ("/gradle/libs.versions.toml")))
+
+}
+
+/**
+ * Gets the version for the dependencies managed by shorthands. Can be overridden by `gradle/libs.versions.toml`
+ */
+internal fun versionOf(dependency: String) =
+    versionCatalogSource.getTable("versions")?.getString(dependency) as String
+
+
+
+
 dependencyResolutionManagement {
     repositories {
         maven("https://s01.oss.sonatype.org/content/repositories/snapshots") //Signum snapshot
@@ -43,15 +71,7 @@ dependencyResolutionManagement {
     }
 
     versionCatalogs {
-        val versions = Properties().apply {
-            kotlin.runCatching {
-                FileInputStream(rootProject.projectDir.absolutePath + ("/conventions-vclib/src/main/resources/vcLibVersions.properties")).use {
-                    load(it)
-                }
-            }
-        }
 
-        fun versionOf(dependency: String) = versions[dependency] as String
 
         create("signum") {
             from("at.asitplus.signum:indispensable-versionCatalog:${versionOf("signum")}")
