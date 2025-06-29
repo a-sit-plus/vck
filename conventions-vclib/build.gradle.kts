@@ -8,10 +8,20 @@ plugins {
 }
 group = "at.asitplus.gradle"
 
+private val versions = Properties().apply {
+    kotlin.runCatching {
+        FileInputStream(project.file("src/main/resources/vcLibVersions.properties")).use { load(it) }
+    }
+}
+
+val agp = versions["agp"]
+
 dependencies {
+    implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.21")
+    api("org.jetbrains.kotlin:kotlin-serialization:2.1.21")
     api("at.asitplus.gradle:k2")
     api("com.squareup:kotlinpoet:1.16.0")
-    api("com.android.library:com.android.library.gradle.plugin:8.6.1")
+    api("com.android.library:com.android.library.gradle.plugin:$agp")
     api("de.mannodermaus.gradle.plugins:android-junit5:1.11.0.0")
 
 }
