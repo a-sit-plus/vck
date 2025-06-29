@@ -14,13 +14,11 @@ private val versions = Properties().apply {
     }
 }
 
-val kotlinVersion = versions["kotlin"]
 val agp = versions["agp"]
 
 dependencies {
-    api("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
-    api("org.jetbrains.kotlin:kotlin-serialization:$kotlinVersion")
-    api("io.kotest:kotest-framework-multiplatform-plugin-gradle:6.0.0.M1")
+    implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.21")
+    api("org.jetbrains.kotlin:kotlin-serialization:2.1.21")
     api("at.asitplus.gradle:k2")
     api("com.squareup:kotlinpoet:1.16.0")
     api("com.android.library:com.android.library.gradle.plugin:$agp")
