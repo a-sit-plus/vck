@@ -1,12 +1,22 @@
-import java.util.*
+import org.gradle.api.Project
+import org.tomlj.Toml
+import org.tomlj.TomlParseResult
 
-object VcLibVersions {
+class VcLibVersions(private val project: Project) {
 
-    private val versions by lazy {
-        javaClass.classLoader!!.getResourceAsStream("vcLibVersions.properties").use { Properties().apply { load(it) } }
+    val versionCatalog: TomlParseResult by lazy {
+        Toml.parse(
+            project.rootProject.layout.projectDirectory.dir("gradle")
+                .file("libs.versions.toml").asFile.inputStream()
+        )
     }
 
-    private fun versionOf(dependency: String) = versions[dependency] as String
+    /**
+     * Gets the version for the dependencies managed by shorthands. Can be overridden by `gradle/libs.versions.toml`
+     */
+    private fun versionOf(dependency: String) =
+        versionCatalog.getTable("versions")?.getString(dependency) as String
+
 
     val uuid get() = versionOf("uuid")
     val signum get() = versionOf("signum")
@@ -16,14 +26,18 @@ object VcLibVersions {
     val eupidcredential get() = versionOf("eupid")
     val mdl get() = versionOf("mdl")
 
-    object Jvm {
-        val json get() = versionOf("jvm.json")
-        val `authlete-cbor` get() = versionOf("jvm.cbor")
+    val Jvm = JvmVersions()
+
+    inner class JvmVersions {
+        val json get() = versionOf("jvmJson")
+        val `authlete-cbor` get() = versionOf("jvmCbor")
     }
 
-    object Android {
-        val testRunner get() = versionOf("android.testRunner")
-        val testCore get() = versionOf("android.testCore")
-        val junit get() = versionOf("android.junit")
+    val Android = AndroidVersions()
+
+    inner class AndroidVersions {
+        val testRunner get() = versionOf("androidTestRunner")
+        val testCore get() = versionOf("androidTestCore")
+        val junit get() = versionOf("androidJunit")
     }
 }

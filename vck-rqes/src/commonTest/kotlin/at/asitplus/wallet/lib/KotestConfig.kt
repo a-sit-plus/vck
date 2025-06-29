@@ -1,4 +1,3 @@
-package at.asitplus.wallet.lib
 
 import at.asitplus.wallet.lib.rqes.Initializer.initRqesModule
 import io.github.aakira.napier.DebugAntilog

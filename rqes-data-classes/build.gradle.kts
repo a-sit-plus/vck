@@ -1,3 +1,4 @@
+import at.asitplus.gradle.VcLibVersions
 import at.asitplus.gradle.exportXCFramework
 import at.asitplus.gradle.ktor
 import at.asitplus.gradle.napier
