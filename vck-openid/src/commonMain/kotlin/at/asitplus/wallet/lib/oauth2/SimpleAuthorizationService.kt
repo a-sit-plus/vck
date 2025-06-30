@@ -197,8 +197,7 @@ class SimpleAuthorizationService(
         }
 
         clientAuthenticationService.authenticateClient(clientAttestation, clientAttestationPop, request.clientId)
-        val actualRequest = requestParser.extractActualRequest(request).getOrThrow()
-        validateAuthnRequest(actualRequest)
+        val actualRequest = requestParser.extractActualRequest(request).getOrThrow().validate()
 
         val requestUri = "urn:ietf:params:oauth:request_uri:${uuid4()}".also {
             requestUriToPushedAuthorizationRequest.put(it, actualRequest)
@@ -233,18 +232,18 @@ class SimpleAuthorizationService(
         Napier.i("authorize called with $input")
 
         val request = if (input.requestUri != null) {
-            val par = requestUriToPushedAuthorizationRequest.remove(input.requestUri!!)
-                ?: throw InvalidRequest("request_uri set, but not found")
-                    .also { Napier.w("authorize: client sent invalid request_uri: ${input.requestUri}") }
-            if (par.clientId != input.clientId) {
-                throw InvalidRequest("client_id not matching from par")
-                    .also { Napier.w("authorize: invalid client_id: ${input.clientId} vs par ${par.clientId}") }
+            requestUriToPushedAuthorizationRequest.remove(input.requestUri!!)?.apply {
+                if (clientId != input.clientId) {
+                    Napier.w("authorize: invalid client_id: ${input.clientId} vs par ${clientId}")
+                    throw InvalidRequest("client_id not matching from par")
+                }
+            } ?: run {
+                Napier.w("authorize: client sent invalid request_uri: ${input.requestUri}")
+                throw InvalidRequest("request_uri set, but not found")
             }
-            par
         } else {
             requestParser.extractActualRequest(input).getOrThrow()
-        }
-        validateAuthnRequest(request)
+        }.validate()
 
         val code = codeService.provideCode().also { code ->
             val userInfo = dataProvider.loadUserInfo(request, code)
@@ -274,30 +273,39 @@ class SimpleAuthorizationService(
             .also { Napier.i("authorize returns $it") }
     }
 
-    private suspend fun validateAuthnRequest(request: AuthenticationRequestParameters) {
-        if (request.redirectUrl == null)
+    /**
+     * Validates basic requirements to [AuthenticationRequestParameters]:
+     *  * [AuthenticationRequestParameters.redirectUrl] needs to be set
+     *  * [AuthenticationRequestParameters.issuerState] needs to conform to our internal state
+     *  * [AuthenticationRequestParameters.scope] is validated by [strategy]
+     *  * [AuthenticationRequestParameters.authorizationDetails] are validated by [strategy]
+     */
+    private suspend fun AuthenticationRequestParameters.validate(): AuthenticationRequestParameters {
+        if (redirectUrl == null) {
+            Napier.w("authorize: client did not set redirect_uri in $this")
             throw InvalidRequest("redirect_uri not set")
-                .also { Napier.w("authorize: client did not set redirect_uri in $request") }
+                .also { Napier.w("authorize: client did not set redirect_uri in $this") }
 
-        if (request.scope != null) {
-            strategy.filterScope(request.scope!!)
-                ?: throw InvalidScope("No matching scope in ${request.scope}")
-                    .also { Napier.w("authorize: scope ${request.scope} does not contain a valid credential id") }
+        if (scope != null) {
+            strategy.filterScope(scope!!)
+                ?: throw InvalidScope("No matching scope in $scope")
+                    .also { Napier.w("authorize: scope $scope does not contain a valid credential id") }
         }
 
-        if (request.issuerState != null) {
-            if (!codeService.verifyAndRemove(request.issuerState!!)
-                || issuerStateToCredentialOffer.remove(request.issuerState!!) == null
+        if (issuerState != null) {
+            if (!codeService.verifyAndRemove(issuerState!!)
+                || issuerStateToCredentialOffer.remove(issuerState!!) == null
             ) {
-                throw InvalidGrant("issuer_state invalid: ${request.issuerState}")
-                    .also { Napier.w("authorize: issuer_state invalid: ${request.issuerState}") }
+                throw InvalidGrant("issuer_state invalid: $issuerState")
+                    .also { Napier.w("authorize: issuer_state invalid: $issuerState") }
             }
             // the actual credential offer is irrelevant, because we're always offering all credentials
         }
 
-        request.authorizationDetails?.let {
+        authorizationDetails?.let {
             strategy.validateAuthorizationDetails(it)
         }
+        return this
     }
 
     /**
@@ -339,39 +347,26 @@ class SimpleAuthorizationService(
                 scope = null
             )
         } else if (request.scope != null) {
-            if (clientAuthRequest.scope == null)
-                throw InvalidRequest("Scope not from auth code: ${request.scope}, for code ${clientAuthRequest.issuedCode}")
-            request.scope!!.split(" ").forEach { singleScope ->
-                if (!clientAuthRequest.scope.contains(singleScope))
-                    throw InvalidRequest("Scope not from auth code: $singleScope")
-            }
             tokenService.generation.buildToken(
                 httpRequest = httpRequest,
                 userInfo = clientAuthRequest.userInfo,
                 authorizationDetails = null,
-                scope = request.scope
+                scope = request.validatedScope(clientAuthRequest)
             )
         } else if (clientAuthRequest.authnDetails != null) {
-            val filtered = strategy.validateAuthorizationDetails(
-                clientAuthRequest.authnDetails
-            ).also {
-                if (it.isEmpty())
-                    throw InvalidRequest("No valid authorization details in ${clientAuthRequest.authnDetails}")
-            }
             tokenService.generation.buildToken(
                 httpRequest = httpRequest,
                 userInfo = clientAuthRequest.userInfo,
-                authorizationDetails = filtered,
+                authorizationDetails = strategy.validateAuthorizationDetails(clientAuthRequest.authnDetails),
                 scope = null
             )
         } else if (clientAuthRequest.scope != null) {
-            val scope = strategy.filterScope(clientAuthRequest.scope)
-                ?: throw InvalidScope("No valid scope in ${clientAuthRequest.scope}")
             tokenService.generation.buildToken(
                 httpRequest = httpRequest,
                 userInfo = clientAuthRequest.userInfo,
                 authorizationDetails = null,
-                scope = scope
+                scope = strategy.filterScope(clientAuthRequest.scope)
+                    ?: throw InvalidScope("No valid scope in ${clientAuthRequest.scope}")
             )
         } else {
             Napier.w("token: request can not be parsed: $request")
@@ -394,6 +389,16 @@ class SimpleAuthorizationService(
             Napier.w("token: client did not provide correct code verifier: $codeVerifier for $code")
             throw InvalidGrant("code verifier invalid: $codeVerifier for $code")
         }
+    }
+
+    private fun TokenRequestParameters.validatedScope(clientAuthRequest: ClientAuthRequest): String? {
+        if (clientAuthRequest.scope == null)
+            throw InvalidRequest("Scope not from auth code: ${scope}, for code ${clientAuthRequest.issuedCode}")
+        scope?.split(" ")?.forEach { singleScope ->
+            if (!clientAuthRequest.scope.contains(singleScope))
+                throw InvalidRequest("Scope not from auth code: $singleScope")
+        }
+        return scope
     }
 
     private suspend fun TokenRequestParameters.loadClientAuthRequest(

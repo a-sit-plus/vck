@@ -38,10 +38,9 @@ class CredentialAuthorizationServiceStrategy(
 
     override fun validateAuthorizationDetails(
         authorizationDetails: Collection<AuthorizationDetails>,
-    ) = authorizationDetails.apply {
-        if (isEmpty())
-            throw InvalidAuthorizationDetails("Token request for credential must contain authorization details")
-    }.map { it.validateAndTransform() }.toSet()
+    ) = authorizationDetails.map { it.validateAndTransform() }.toSet().ifEmpty {
+        throw InvalidAuthorizationDetails("Token request for credential must contain authorization details")
+    }
 
     /**
      * For credential issuing authorization details need to be present and need to match at least semantically
@@ -65,6 +64,7 @@ class CredentialAuthorizationServiceStrategy(
             format != null -> filterFormat()
             else -> null
         } ?: throw InvalidAuthorizationDetails("Not a valid OpenIdAuthorizationDetail: $this")
+
         else -> throw InvalidAuthorizationDetails("Wrong type for issuance: $this")
     }
 
