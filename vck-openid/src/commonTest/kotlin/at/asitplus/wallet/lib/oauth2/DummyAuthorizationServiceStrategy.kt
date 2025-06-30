@@ -37,8 +37,8 @@ class DummyAuthorizationServiceStrategy(
         }
     } ?: emptySet()
 
-    private fun OpenIdAuthorizationDetails.requestedFromCode(clientAuthRequest: ClientAuthRequest): Boolean =
-        clientAuthRequest.authnDetails!!.filterIsInstance<OpenIdAuthorizationDetails>().any { matches(it) }
+    private fun OpenIdAuthorizationDetails.requestedFromCode(clientAuthnRequest: ClientAuthRequest): Boolean =
+        clientAuthnRequest.authnDetails!!.filterIsInstance<OpenIdAuthorizationDetails>().any { matches(it) }
 
     override fun filterScope(scope: String): String = scope
 
