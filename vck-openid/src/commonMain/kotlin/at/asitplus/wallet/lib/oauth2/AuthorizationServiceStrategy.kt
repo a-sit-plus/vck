@@ -12,12 +12,12 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 interface AuthorizationServiceStrategy {
 
     /**
-     * RFC9396. The AS MUST refuse to process any unknown authorization details type or authorization details not conforming to
-     * the respective type definition. The AS MUST abort processing and respond with an error
+     * RFC9396. The AS MUST refuse to process any unknown authorization details type or authorization details not
+     * conforming to the respective type definition. The AS MUST abort processing and respond with an error
      * invalid_authorization_details to the client if any of the following are true of the objects in the
-     * authorization_details structure:
+     * [authorizationDetails] structure:
      *  + contains an unknown authorization details type value,
-     *  + is an object of known type but containing unknown fields,
+     *  + is an object of a known type but containing unknown fields,
      *  + contains fields of the wrong type for the authorization details type,
      *  + contains fields with invalid values for the authorization details type
      *  + is missing required fields for the authorization details type.
@@ -28,16 +28,16 @@ interface AuthorizationServiceStrategy {
     fun validateAuthorizationDetails(authorizationDetails: Collection<AuthorizationDetails>): Set<AuthorizationDetails>
 
     /**
-     * RFC9396. (Ch. 6 paraphrased) Check if `AuthorizationDetails` in `TokenRequestParameters` have at most the same scope or are
-     * implied by `AuthorizationDetails` in `ClientAuthRequest`.
+     * RFC9396. (Ch. 6 paraphrased) Check if [TokenRequestParameters.authorizationDetails] in [tokenRequest] have at
+     * most the same scope or are implied by [ClientAuthRequest.authnDetails] in [authRequest].
      *
      * For credential requests semantic matching is used.
-     * @return Set of potentially transformed [AuthorizationDetails] from tokenRequest (function may have side effects)
+     * @return Set of potentially transformed [AuthorizationDetails] from [tokenRequest] (function may have side effects)
      */
     @Throws(OAuth2Exception.InvalidAuthorizationDetails::class)
     fun matchAuthorizationDetails(
         authRequest: ClientAuthRequest,
-        tokenRequest: TokenRequestParameters
+        tokenRequest: TokenRequestParameters,
     ): Set<AuthorizationDetails>
 
     /** Filter the requested scope in the access token request to ones valid for credential issuance */

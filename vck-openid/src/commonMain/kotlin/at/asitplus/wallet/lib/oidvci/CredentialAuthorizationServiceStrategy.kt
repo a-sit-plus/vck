@@ -7,7 +7,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oauth2.AuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oauth2.ClientAuthRequest
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidAuthorizationDetails
-import io.ktor.util.reflect.*
+
 
 /**
  * Provide authentication and authorization for credential issuance.
@@ -36,11 +36,12 @@ class CredentialAuthorizationServiceStrategy(
             else null
         }.joinToString(" ")
 
-    override fun validateAuthorizationDetails(authorizationDetails: Collection<AuthorizationDetails>) =
-        authorizationDetails.apply {
-            if (this.isEmpty())
-                throw InvalidAuthorizationDetails("Token request for credential must contain authorization details")
-        }.map { it.validateAndTransform() }.toSet()
+    override fun validateAuthorizationDetails(
+        authorizationDetails: Collection<AuthorizationDetails>,
+    ) = authorizationDetails.apply {
+        if (isEmpty())
+            throw InvalidAuthorizationDetails("Token request for credential must contain authorization details")
+    }.map { it.validateAndTransform() }.toSet()
 
     /**
      * For credential issuing authorization details need to be present and need to match at least semantically
@@ -53,24 +54,19 @@ class CredentialAuthorizationServiceStrategy(
             throw InvalidAuthorizationDetails("Token request for credential must contain authorization details")
 
         validateAuthorizationDetails(it).onEach { filter ->
-            if (!filter.instanceOf(OpenIdAuthorizationDetails::class))
-                throw InvalidAuthorizationDetails("Authorization Details for credential issuance must be OpenId Authorization Details")
-            if (authRequest.authnDetails!!.all { authDetails ->
-                    !filter.matches(authDetails)
-                })
+            if (authRequest.authnDetails!!.all { authDetails -> !filter.matches(authDetails) })
                 throw InvalidAuthorizationDetails("Authorization details not from auth code: $filter")
         }
     }
 
-    private fun AuthorizationDetails.validateAndTransform() =
-        (this as? OpenIdAuthorizationDetails)?.let {
-            when {
-                credentialConfigurationId != null -> filterCredentialConfigurationId()
-                format != null -> filterFormat()
-                else -> null
-            } ?: throw InvalidAuthorizationDetails("$this is not a valid OpenId Authorization Detail")
-        } ?: throw InvalidAuthorizationDetails("Authorization Details for credential issuance must be OpenId Authorization Details")
-
+    private fun AuthorizationDetails.validateAndTransform() = when (this) {
+        is OpenIdAuthorizationDetails -> when {
+            credentialConfigurationId != null -> filterCredentialConfigurationId()
+            format != null -> filterFormat()
+            else -> null
+        } ?: throw InvalidAuthorizationDetails("Not a valid OpenIdAuthorizationDetail: $this")
+        else -> throw InvalidAuthorizationDetails("Wrong type for issuance: $this")
+    }
 
     private fun OpenIdAuthorizationDetails.filterFormat(): OpenIdAuthorizationDetails? =
         supportedCredentialSchemes.entries.firstOrNull {

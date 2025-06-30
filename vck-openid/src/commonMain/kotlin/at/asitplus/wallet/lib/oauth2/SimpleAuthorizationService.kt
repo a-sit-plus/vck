@@ -332,11 +332,10 @@ class SimpleAuthorizationService(
         )
 
         val token = if (request.authorizationDetails != null) {
-            val authDetails = strategy.matchAuthorizationDetails(clientAuthRequest, request)
             tokenService.generation.buildToken(
                 httpRequest = httpRequest,
                 userInfo = clientAuthRequest.userInfo,
-                authorizationDetails = authDetails,
+                authorizationDetails = strategy.matchAuthorizationDetails(clientAuthRequest, request),
                 scope = null
             )
         } else if (request.scope != null) {
@@ -352,9 +351,7 @@ class SimpleAuthorizationService(
                 authorizationDetails = null,
                 scope = request.scope
             )
-        }
-        //TODO remove?
-        else if (clientAuthRequest.authnDetails != null) {
+        } else if (clientAuthRequest.authnDetails != null) {
             val filtered = strategy.validateAuthorizationDetails(
                 clientAuthRequest.authnDetails
             ).also {
