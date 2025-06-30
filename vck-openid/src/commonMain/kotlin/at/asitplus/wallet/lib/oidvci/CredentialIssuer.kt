@@ -251,22 +251,20 @@ class CredentialIssuer(
     }
 
     /** Encrypts the issued credential, if requested so by the client. */
-    private fun CredentialRequestParameters.encrypter(): (suspend (String) -> String) = { it: String ->
-        if (credentialResponseEncryption?.jweEncryption != null) {
-            with(credentialResponseEncryption!!) {
+    private fun CredentialRequestParameters.encrypter(): (suspend (String) -> String) = { input: String ->
+        credentialResponseEncryption?.let {
+            it.jweEncryption?.let { jweEncryption ->
                 encryptCredentialRequest(
-                    JweHeader(
-                        algorithm = jweAlgorithm,
+                    header = JweHeader(
+                        algorithm = it.jweAlgorithm,
                         encryption = jweEncryption,
-                        keyId = jsonWebKey.keyId,
+                        keyId = it.jsonWebKey.keyId,
                     ),
-                    it,
-                    jsonWebKey,
-                ).getOrNull()?.serialize() ?: it
-            }
-        } else {
-            it
-        }
+                    payload = input,
+                    recipientKey = it.jsonWebKey,
+                ).getOrThrow().serialize()
+            } ?: throw IllegalArgumentException("Unsupported encryption requested: ${it.jweEncryptionString}")
+        } ?: input
     }
 
     private fun extractFromCredentialConfigurationId(
