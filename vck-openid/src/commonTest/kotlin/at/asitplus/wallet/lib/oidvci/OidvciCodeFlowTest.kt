@@ -10,6 +10,7 @@ import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.wallet.lib.oauth2.AuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oauth2.ClientAuthRequest
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
@@ -21,11 +22,14 @@ import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
+import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.ints.shouldBeGreaterThan
+import io.kotest.matchers.maps.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldNotBeEmpty
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
@@ -33,14 +37,16 @@ import kotlinx.serialization.decodeFromByteArray
 
 class OidvciCodeFlowTest : FreeSpec({
 
+    lateinit var strategy: AuthorizationServiceStrategy
     lateinit var authorizationService: SimpleAuthorizationService
     lateinit var issuer: CredentialIssuer
     lateinit var client: WalletService
     lateinit var state: String
 
     beforeEach {
+        strategy = CredentialAuthorizationServiceStrategy(setOf(AtomicAttribute2023, MobileDrivingLicenceScheme))
         authorizationService = SimpleAuthorizationService(
-            strategy = CredentialAuthorizationServiceStrategy(setOf(AtomicAttribute2023, MobileDrivingLicenceScheme)),
+            strategy = strategy,
             dataProvider = DummyOAuth2DataProvider,
         )
         issuer = CredentialIssuer(
@@ -94,6 +100,28 @@ class OidvciCodeFlowTest : FreeSpec({
         override suspend fun put(key: String, value: ClientAuthRequest) = Unit
         override suspend fun get(key: String): ClientAuthRequest? = null
         override suspend fun remove(key: String): ClientAuthRequest? = null
+    }
+
+    "metadata validation" {
+        val issuerCredentialFormats = issuer.metadata.supportedCredentialConfigurations.shouldNotBeNull()
+        issuerCredentialFormats.shouldNotBeEmpty()
+        issuerCredentialFormats.forEach { it: Map.Entry<String, SupportedCredentialFormat> ->
+            it.key.shouldNotBeEmpty()
+            it.value.shouldNotBeNull().also {
+                it.format.shouldNotBeNull()
+                it.scope.shouldNotBeEmpty()
+                it.supportedSigningAlgorithms.shouldNotBeNull().shouldNotBeEmpty()
+                it.supportedProofTypes.shouldNotBeNull().shouldNotBeEmpty()
+                it.supportedBindingMethods.shouldNotBeNull().shouldNotBeEmpty()
+                if (it.format != CredentialFormatEnum.JWT_VC)
+                    it.claimDescription.shouldNotBeNull().shouldNotBeEmpty()
+            }
+        }
+        strategy.validAuthorizationDetails().shouldNotBeEmpty().forEach {
+            it.shouldBeInstanceOf<OpenIdAuthorizationDetails>()
+                .credentialConfigurationId.shouldNotBeEmpty()
+                .shouldBeIn(issuerCredentialFormats.keys)
+        }
     }
 
     "request one credential, using scope" {

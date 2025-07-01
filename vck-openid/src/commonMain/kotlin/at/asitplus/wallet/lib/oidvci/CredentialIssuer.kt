@@ -2,10 +2,25 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.openid.*
+import at.asitplus.openid.BatchCredentialIssuanceMetadata
+import at.asitplus.openid.CredentialRequestParameters
+import at.asitplus.openid.CredentialResponseParameters
+import at.asitplus.openid.IssuerMetadata
+import at.asitplus.openid.JwtVcIssuerMetadata
+import at.asitplus.openid.OidcUserInfoExtended
+import at.asitplus.openid.OpenIdAuthorizationDetails
+import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.SupportedAlgorithmsContainer
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.SignatureAlgorithm
-import at.asitplus.signum.indispensable.josef.*
+import at.asitplus.signum.indispensable.josef.JsonWebKeySet
+import at.asitplus.signum.indispensable.josef.JweAlgorithm
+import at.asitplus.signum.indispensable.josef.JweEncryption
+import at.asitplus.signum.indispensable.josef.JweHeader
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
+import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
+import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
@@ -18,6 +33,8 @@ import at.asitplus.wallet.lib.jws.EncryptJweFun
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.oauth2.RequestInfo
+import at.asitplus.wallet.lib.oidvci.CredentialSchemeMapping.decodeFromCredentialIdentifier
+import at.asitplus.wallet.lib.oidvci.CredentialSchemeMapping.toSupportedCredentialFormat
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
@@ -94,9 +111,13 @@ class CredentialIssuer(
         clientNonceService = clientNonceService,
     ),
 ) {
+    private val supportedSigningAlgorithms = cryptoAlgorithms
+        .mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }.toSet()
+
     private val supportedCredentialConfigurations = credentialSchemes
-        .flatMap { it.toSupportedCredentialFormat(cryptoAlgorithms).entries }
-        .associate { proofValidator.associateWithProofTypes(it) }
+        .flatMap { it.toSupportedCredentialFormat().entries }.associate {
+            it.key to proofValidator.addProofTypes(it.value.withSupportedSigningAlgorithms(supportedSigningAlgorithms))
+        }
 
     /**
      * Serve this result JSON-serialized under `/.well-known/openid-credential-issuer`

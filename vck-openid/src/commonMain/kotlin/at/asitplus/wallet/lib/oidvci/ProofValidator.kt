@@ -42,17 +42,18 @@ class ProofValidator(
     private val timeLeeway: Duration = 5.minutes,
     /** Callback to verify a received [at.asitplus.signum.indispensable.josef.KeyAttestationJwt] proof in credential requests. */
     private val verifyAttestationProof: (JwsSigned<KeyAttestationJwt>) -> Boolean = { true },
-    /** Turn on to require key attestation support in the [associateWithProofTypes]. */
+    /** Turn on to require key attestation support in the [addProofTypes]. */
     private val requireKeyAttestation: Boolean = false,
     /** Used to provide challenges to clients to include in proof of possession of key material. */
     private val clientNonceService: NonceService = DefaultNonceService(),
 ) {
-    /** Adds proof types in [SupportedCredentialFormat.supportedProofTypes] for each value in [entry]. */
-    fun associateWithProofTypes(
-        entry: Map.Entry<String, SupportedCredentialFormat>,
-    ): Pair<String, SupportedCredentialFormat> =
-        entry.key to if (requireKeyAttestation) {
-            entry.value.withSupportedProofTypes(
+
+    /** Adds proof types in [SupportedCredentialFormat.supportedProofTypes] to [entry]. */
+    fun addProofTypes(
+        entry: SupportedCredentialFormat,
+    ): SupportedCredentialFormat =
+        if (requireKeyAttestation) {
+            entry.withSupportedProofTypes(
                 supportedProofTypes = mapOf(
                     OpenIdConstants.ProofType.JWT.stringRepresentation to CredentialRequestProofSupported(
                         supportedSigningAlgorithms = supportedAlgorithms.map { it.identifier },
@@ -65,7 +66,7 @@ class ProofValidator(
                 )
             )
         } else {
-            entry.value.withSupportedProofTypes(
+            entry.withSupportedProofTypes(
                 supportedProofTypes = mapOf(
                     OpenIdConstants.ProofType.JWT.stringRepresentation to CredentialRequestProofSupported(
                         supportedSigningAlgorithms = supportedAlgorithms.map { it.identifier },

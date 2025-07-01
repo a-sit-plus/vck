@@ -118,6 +118,9 @@ data class SupportedCredentialFormat private constructor(
     fun withSupportedProofTypes(supportedProofTypes: Map<String, CredentialRequestProofSupported>) =
         copy(supportedProofTypes = supportedProofTypes)
 
+    fun withSupportedSigningAlgorithms(supportedSigningAlgorithms: Set<String>) =
+        copy(supportedSigningAlgorithms = supportedSigningAlgorithms)
+
     companion object {
 
         fun forIsoMdoc(
