@@ -22,6 +22,8 @@ Release 5.8.0:
    - Extract `ProofValidator` out of `CredentialIssuer`
    - Extract `CredentialSchemeMapping` out of various top-level methods
    - Remove all remaining `serialize()` and `deserialize()` methods in data classes
+   - In `SimpleAuthorizationService` deprecate constructor parameter `dataProvider`, use `authorize()` with `OAuth2LoadUserFun` instead
+   - In `AuthorizationService` deprecate `authorize()` methods, adding `authorize()` with `OAuth2LoadUserFun`
  - Credential schemes:
    - Provide fallback credential schemes, to be used when no matching scheme is registered with this library:
      - `SdJwtFallbackCredentialScheme`

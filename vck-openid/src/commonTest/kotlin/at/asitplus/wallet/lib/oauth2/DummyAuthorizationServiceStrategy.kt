@@ -1,11 +1,8 @@
 package at.asitplus.wallet.lib.oauth2
 
-import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthorizationDetails
-import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.TokenRequestParameters
-import at.asitplus.wallet.lib.oidvci.OAuth2DataProvider
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidAuthorizationDetails
 import at.asitplus.wallet.lib.oidvci.matches
 
@@ -46,9 +43,3 @@ class DummyAuthorizationServiceStrategy(
 
 }
 
-class DummyDataProvider(private val user: OidcUserInfoExtended) : OAuth2DataProvider {
-    override suspend fun loadUserInfo(
-        request: AuthenticationRequestParameters,
-        code: String,
-    ): OidcUserInfoExtended? = user
-}

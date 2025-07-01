@@ -1,6 +1,8 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.catching
+import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JwsSigned
@@ -17,7 +19,6 @@ import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
-import at.asitplus.wallet.lib.openid.DummyOAuth2DataProvider
 import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
@@ -42,7 +43,8 @@ class OidvciAttestationTest : FunSpec({
             scope = scope,
             resource = issuer.metadata.credentialIssuer
         )
-        val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
+        val authnResponse = authorizationService.authorize(authnRequest) { catching { dummyUser() } }
+            .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code
             .shouldNotBeNull()
@@ -60,7 +62,6 @@ class OidvciAttestationTest : FunSpec({
             strategy = CredentialAuthorizationServiceStrategy(
                 setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme)
             ),
-            dataProvider = DummyOAuth2DataProvider,
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
@@ -171,3 +172,5 @@ private fun buildClientWithKeyAttestation(): WalletService {
         }
     )
 }
+
+private fun dummyUser(): OidcUserInfoExtended = OidcUserInfoExtended.deserialize("{\"sub\": \"foo\"}").getOrThrow()

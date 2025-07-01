@@ -190,7 +190,7 @@ class JwtTokenVerificationService(
 class BearerTokenVerificationService(
     /** Used to verify nonces of tokens. */
     internal val nonceService: NonceService,
-    /** Needs to local token generation service, to load actual user data. */
+    /** Loads the actual user data with [BearerTokenGenerationService.getValidatedAccessToken]. */
     internal val tokenGenerationService: BearerTokenGenerationService,
 ) : TokenVerificationService {
 

@@ -2,12 +2,36 @@ package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.openid.*
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationResponseParameters
+import at.asitplus.openid.CredentialOffer
+import at.asitplus.openid.CredentialOfferGrants
+import at.asitplus.openid.CredentialOfferGrantsAuthCode
+import at.asitplus.openid.CredentialOfferGrantsPreAuthCode
+import at.asitplus.openid.CredentialOfferUrlParameters
+import at.asitplus.openid.OAuth2AuthorizationServerMetadata
+import at.asitplus.openid.OidcUserInfoExtended
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
+import at.asitplus.openid.PushedAuthenticationResponseParameters
+import at.asitplus.openid.TokenRequestParameters
+import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.iso.sha256
-import at.asitplus.wallet.lib.oidvci.*
+import at.asitplus.wallet.lib.oidvci.CodeService
+import at.asitplus.wallet.lib.oidvci.CredentialIssuer
+import at.asitplus.wallet.lib.oidvci.DefaultCodeService
+import at.asitplus.wallet.lib.oidvci.DefaultMapStore
+import at.asitplus.wallet.lib.oidvci.DefaultNonceService
+import at.asitplus.wallet.lib.oidvci.FallbackAdapter
+import at.asitplus.wallet.lib.oidvci.MapStore
+import at.asitplus.wallet.lib.oidvci.OAuth2AuthorizationServerAdapter
+import at.asitplus.wallet.lib.oidvci.OAuth2DataProvider
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
+import at.asitplus.wallet.lib.oidvci.OAuth2LoadUserFun
+import at.asitplus.wallet.lib.oidvci.OAuth2LoadUserFunInput
+import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.RequestParser
 import com.benasher44.uuid.uuid4
@@ -36,7 +60,8 @@ class SimpleAuthorizationService(
     /** Used to filter authorization details and scopes. */
     private val strategy: AuthorizationServiceStrategy,
     /** Used to load the actual user data during [authorize]. */
-    private val dataProvider: OAuth2DataProvider,
+    @Deprecated("Use callback from `OAuth2LoadUserFun` in `authorize` instead")
+    private val dataProvider: OAuth2DataProvider? = null,
     /** Used to create and verify authorization codes during issuing. */
     private val codeService: CodeService = DefaultCodeService(),
     /** Used in several fields in [OAuth2AuthorizationServerMetadata], to provide endpoint URLs to clients. */
@@ -60,20 +85,18 @@ class SimpleAuthorizationService(
     private val issuerStateToCredentialOffer: MapStore<String, CredentialOffer> = DefaultMapStore(),
     /** Associates issued codes with the auth request from the client. */
     private val codeToClientAuthRequest: MapStore<String, ClientAuthRequest> = DefaultMapStore(),
-    /** Associates issued refresh token with the auth request from the client. *Refresh tokens are usually long-lived!* */
+    /** Associates issued refresh tokens with the auth request from the client. *Refresh tokens are usually long-lived!* */
     private val refreshTokenToAuthRequest: MapStore<String, ClientAuthRequest> = DefaultMapStore(),
     /** Associates the issued request_uri to the auth request from the client. */
     private val requestUriToPushedAuthorizationRequest: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
     /** Service to create and validate access tokens. */
-    private val tokenService: TokenService = TokenService.bearer(
-        nonceService = DefaultNonceService(),
-    ),
+    private val tokenService: TokenService = TokenService.bearer(nonceService = DefaultNonceService()),
     /** Handles client authentication in [par] and [token]. */
     private val clientAuthenticationService: ClientAuthenticationService = ClientAuthenticationService(
         enforceClientAuthentication = false,
         verifyClientAttestationJwt = { true }
     ),
-    /** Used to parse requests from clients, e.g. when using JWT-Secured Authorization Requests (RFC 9101) */
+    /** Used to parse requests from clients, e.g., when using JWT-Secured Authorization Requests (RFC 9101) */
     private val requestParser: RequestParser = RequestParser(
         /** By default, do not retrieve authn requests referenced by `request_uri`. */
         remoteResourceRetriever = { null },
@@ -86,7 +109,6 @@ class SimpleAuthorizationService(
 
     override val tokenVerificationService: TokenVerificationService
         get() = tokenService.verification
-
 
     /**
      * Serve this result JSON-serialized under `/.well-known/openid-configuration`,
@@ -210,12 +232,8 @@ class SimpleAuthorizationService(
         )
     }
 
-    /**
-     * Builds the authentication response.
-     * Send this result as HTTP Header `Location` in a 302 response to the client.
-     * @return URL build from client's `redirect_uri` with a `code` query parameter containing a fresh authorization
-     * code from [codeService].
-     */
+    @Suppress("DEPRECATION")
+    @Deprecated("Use `authorize` with `loadUserFun` instead")
     override suspend fun authorize(input: String) = catching {
         requestParser.parseRequestParameters(input).getOrThrow()
             .let { it.parameters as? AuthenticationRequestParameters }
@@ -226,13 +244,23 @@ class SimpleAuthorizationService(
             }
     }
 
+    @Suppress("DEPRECATION")
+    @Deprecated("Use `authorize` with `loadUserFun` instead")
+    override suspend fun authorize(input: AuthenticationRequestParameters) =
+        authorize(input, FallbackAdapter(dataProvider))
+
     /**
      * Builds the authentication response.
      * Send this result as HTTP Header `Location` in a 302 response to the client.
+     * @param loadUserFun will be called when the request has been validated, and user data is associated with
+     *                    the authorization code.
      * @return URL build from client's `redirect_uri` with a `code` query parameter containing a fresh authorization
      * code from [codeService].
      */
-    override suspend fun authorize(input: AuthenticationRequestParameters) = catching {
+    override suspend fun authorize(
+        input: AuthenticationRequestParameters,
+        loadUserFun: OAuth2LoadUserFun,
+    ) = catching {
         Napier.i("authorize called with $input")
 
         val request = if (input.requestUri != null) {
@@ -250,11 +278,10 @@ class SimpleAuthorizationService(
         }.validate()
 
         val code = codeService.provideCode().also { code ->
-            val userInfo = dataProvider.loadUserInfo(request, code)
-                ?: run {
-                    Napier.w("authorize: could not load user info from $request")
-                    throw InvalidRequest("Could not load user info for request $request")
-                }
+            val userInfo = loadUserFun(OAuth2LoadUserFunInput(request, code)).getOrElse {
+                Napier.w("authorize: could not load user info from $request", it)
+                throw InvalidRequest("Could not load user info for request $request", it)
+            }
             codeToClientAuthRequest.put(
                 code,
                 ClientAuthRequest(

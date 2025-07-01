@@ -6,6 +6,7 @@ import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import at.asitplus.wallet.lib.oidvci.OAuth2LoadUserFun
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 
 interface AuthorizationService {
@@ -44,21 +45,23 @@ interface AuthorizationService {
         clientAttestationPop: String? = null,
     ): KmmResult<PushedAuthenticationResponseParameters>
 
-    /**
-     * Builds the authentication response.
-     * Send this result as HTTP Header `Location` in a 302 response to the client.
-     * @return [KmmResult] may contain a [OAuth2Exception]
-     */
+    @Deprecated("Use `authorize` with `loadUserFun` instead")
     suspend fun authorize(input: String):
             KmmResult<AuthenticationResponseResult.Redirect>
 
+    @Deprecated("Use `authorize` with `loadUserFun` instead")
+    suspend fun authorize(input: AuthenticationRequestParameters):
+            KmmResult<AuthenticationResponseResult.Redirect>
+
     /**
-     * Builds the authentication response.
+     * Builds the authentication response for this specific user from [loadUserFun].
      * Send this result as HTTP Header `Location` in a 302 response to the client.
      * @return [KmmResult] may contain a [OAuth2Exception]
      */
-    suspend fun authorize(input: AuthenticationRequestParameters):
-            KmmResult<AuthenticationResponseResult.Redirect>
+    suspend fun authorize(
+        input: AuthenticationRequestParameters,
+        loadUserFun: OAuth2LoadUserFun,
+    ): KmmResult<AuthenticationResponseResult.Redirect>
 
     /**
      * Verifies the authorization code sent by the client and issues an access token.

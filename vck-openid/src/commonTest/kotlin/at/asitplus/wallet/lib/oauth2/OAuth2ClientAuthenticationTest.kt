@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oauth2
 
+import at.asitplus.catching
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.PushedAuthenticationResponseParameters
@@ -41,7 +42,6 @@ class OAuth2ClientAuthenticationTest : FunSpec({
         user = OidcUserInfoExtended(OidcUserInfo(randomString()))
         server = SimpleAuthorizationService(
             strategy = DummyAuthorizationServiceStrategy(scope),
-            dataProvider = DummyDataProvider(user),
             clientAuthenticationService = ClientAuthenticationService(
                 enforceClientAuthentication = true,
             )
@@ -86,7 +86,9 @@ class OAuth2ClientAuthenticationTest : FunSpec({
             clientAttestationPop.serialize()
         ).getOrThrow()
             .shouldBeInstanceOf<PushedAuthenticationResponseParameters>()
-        val authnResponse = server.authorize(client.createAuthRequestAfterPar(parResponse)).getOrThrow()
+        val authnResponse = server
+            .authorize(client.createAuthRequestAfterPar(parResponse)) { catching { user } }
+            .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code
             .shouldNotBeNull()
@@ -126,7 +128,6 @@ class OAuth2ClientAuthenticationTest : FunSpec({
         )
         server = SimpleAuthorizationService(
             strategy = DummyAuthorizationServiceStrategy(scope),
-            dataProvider = DummyDataProvider(user),
             clientAuthenticationService = ClientAuthenticationService(
                 enforceClientAuthentication = true,
                 verifyClientAttestationJwt = { false }
@@ -159,7 +160,8 @@ class OAuth2ClientAuthenticationTest : FunSpec({
             state = state,
             scope = scope,
         )
-        val authnResponse = server.authorize(authnRequest).getOrThrow()
+        val authnResponse = server.authorize(authnRequest) { catching { user } }
+            .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code
             .shouldNotBeNull()
@@ -174,7 +176,8 @@ class OAuth2ClientAuthenticationTest : FunSpec({
             state = state,
             scope = scope,
         )
-        val authnResponse = server.authorize(authnRequest).getOrThrow()
+        val authnResponse = server.authorize(authnRequest) { catching { user } }
+            .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code
             .shouldNotBeNull()

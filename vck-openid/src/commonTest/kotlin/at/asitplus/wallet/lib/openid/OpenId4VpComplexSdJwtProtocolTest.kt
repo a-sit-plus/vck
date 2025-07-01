@@ -54,7 +54,7 @@ class OpenId4VpComplexSdJwtProtocolTest : FreeSpec({
                     Clock.System.now().plus(5.minutes),
                     AtomicAttribute2023,
                     holderKeyMaterial.publicKey,
-                    DummyOAuth2DataProvider.user,
+                    DummyUserProvider.user,
                 )
             ).getOrThrow().toStoreCredentialInput()
         )

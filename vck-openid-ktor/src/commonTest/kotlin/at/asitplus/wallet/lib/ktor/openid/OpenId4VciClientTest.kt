@@ -44,7 +44,6 @@ import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.CredentialDataProviderFun
 import at.asitplus.wallet.lib.oidvci.CredentialIssuer
 import at.asitplus.wallet.lib.oidvci.DefaultNonceService
-import at.asitplus.wallet.lib.oidvci.OAuth2DataProvider
 import at.asitplus.wallet.lib.oidvci.WalletService
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
@@ -192,7 +191,6 @@ class OpenId4VciClientTest : FunSpec() {
         representation: ConstantIndex.CredentialRepresentation,
         attributes: Map<String, String>,
     ) {
-        val dataProvider = OAuth2DataProvider { _, _ -> dummyUser() }
         val credentialDataProvider = CredentialDataProviderFun {
             catching {
                 require(it.credentialScheme == scheme)
@@ -229,7 +227,6 @@ class OpenId4VciClientTest : FunSpec() {
         val publicContext = "https://issuer.example.com"
         authorizationService = SimpleAuthorizationService(
             strategy = CredentialAuthorizationServiceStrategy(credentialSchemes),
-            dataProvider = dataProvider,
             publicContext = publicContext,
             authorizationEndpointPath = authorizationEndpointPath,
             tokenEndpointPath = tokenEndpointPath,
@@ -290,7 +287,7 @@ class OpenId4VciClientTest : FunSpec() {
                     val authnRequest: AuthenticationRequestParameters =
                         if (requestBody.isEmpty()) queryParameters.decodeFromUrlQuery<AuthenticationRequestParameters>()
                         else requestBody.decodeFromPostBody<AuthenticationRequestParameters>()
-                    val result = authorizationService.authorize(authnRequest).getOrThrow()
+                    val result = authorizationService.authorize(authnRequest) { catching { dummyUser() } }.getOrThrow()
                     respondRedirect(result.url)
                 }
 

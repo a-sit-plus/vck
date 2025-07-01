@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.CryptoPublicKey
@@ -24,7 +23,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
 import at.asitplus.wallet.lib.data.LocalDateOrInstant
 import at.asitplus.wallet.lib.oidvci.CredentialDataProviderFun
 import at.asitplus.wallet.lib.oidvci.CredentialDataProviderInput
-import at.asitplus.wallet.lib.oidvci.OAuth2DataProvider
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.EXPIRY_DATE
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.FAMILY_NAME
@@ -92,7 +90,7 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialDataProviderFun {
                 expiration,
                 ConstantIndex.AtomicAttribute2023,
                 subjectPublicKey,
-                DummyOAuth2DataProvider.user,
+                DummyUserProvider.user,
             )
 
             PLAIN_JWT -> CredentialToBeIssued.VcJwt(
@@ -100,7 +98,7 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialDataProviderFun {
                 expiration,
                 ConstantIndex.AtomicAttribute2023,
                 subjectPublicKey,
-                DummyOAuth2DataProvider.user,
+                DummyUserProvider.user,
             )
 
             ISO_MDOC -> CredentialToBeIssued.Iso(
@@ -110,7 +108,7 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialDataProviderFun {
                 expiration,
                 ConstantIndex.AtomicAttribute2023,
                 subjectPublicKey,
-                DummyOAuth2DataProvider.user,
+                DummyUserProvider.user,
             )
         }
     }
@@ -136,7 +134,7 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialDataProviderFun {
             expiration,
             MobileDrivingLicenceScheme,
             subjectPublicKey,
-            DummyOAuth2DataProvider.user,
+            DummyUserProvider.user,
         )
     }
 
@@ -169,7 +167,7 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialDataProviderFun {
                 expiration,
                 EuPidScheme,
                 subjectPublicKey,
-                DummyOAuth2DataProvider.user,
+                DummyUserProvider.user,
             )
 
             PLAIN_JWT -> CredentialToBeIssued.VcJwt(
@@ -186,7 +184,7 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialDataProviderFun {
                 expiration,
                 EuPidScheme,
                 subjectPublicKey,
-                DummyOAuth2DataProvider.user,
+                DummyUserProvider.user,
             )
 
             ISO_MDOC -> CredentialToBeIssued.Iso(
@@ -196,7 +194,7 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialDataProviderFun {
                 expiration,
                 EuPidScheme,
                 subjectPublicKey,
-                DummyOAuth2DataProvider.user,
+                DummyUserProvider.user,
             )
         }
     }
@@ -209,7 +207,7 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialDataProviderFun {
     )
 }
 
-object DummyOAuth2DataProvider : OAuth2DataProvider {
+object DummyUserProvider {
     val user = OidcUserInfoExtended.fromOidcUserInfo(
         OidcUserInfo(
             subject = "subject",
@@ -219,6 +217,4 @@ object DummyOAuth2DataProvider : OAuth2DataProvider {
             birthDate = "1990-01-01"
         )
     ).getOrThrow()
-
-    override suspend fun loadUserInfo(request: AuthenticationRequestParameters, code: String) = user
 }

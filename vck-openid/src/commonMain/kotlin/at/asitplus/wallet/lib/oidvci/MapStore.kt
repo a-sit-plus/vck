@@ -5,7 +5,8 @@ import kotlinx.coroutines.sync.withLock
 
 /**
  * Provides a simple map of keys of type [T] to values of type [U].
- * Mainly used in OID4VCI to hold state in the [SimpleAuthorizationService] and [WalletService].
+ * Mainly used in OID4VCI to hold state in [at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService]
+ * and [WalletService].
  * Can be implemented to provide replication across different instances of the enclosing application.
  */
 interface MapStore<T, U> {
@@ -29,7 +30,7 @@ interface MapStore<T, U> {
 
 
 /**
- * Holds map in memory, protected with a [Mutex],
+ * Holds simple [map] in memory, protected with a [Mutex],
  * to ensure a basic form of thread-safety.
  */
 class DefaultMapStore<T, U> : MapStore<T, U> {

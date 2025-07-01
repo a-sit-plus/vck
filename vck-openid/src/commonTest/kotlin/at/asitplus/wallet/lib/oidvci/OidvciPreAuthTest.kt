@@ -14,7 +14,7 @@ import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oidvci.CredentialSchemeMapping.toCredentialIdentifier
-import at.asitplus.wallet.lib.openid.DummyOAuth2DataProvider
+import at.asitplus.wallet.lib.openid.DummyUserProvider
 import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
@@ -34,7 +34,6 @@ class OidvciPreAuthTest : FreeSpec({
     beforeEach {
         authorizationService = SimpleAuthorizationService(
             strategy = CredentialAuthorizationServiceStrategy(setOf(AtomicAttribute2023, MobileDrivingLicenceScheme)),
-            dataProvider = DummyOAuth2DataProvider,
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
@@ -62,7 +61,7 @@ class OidvciPreAuthTest : FreeSpec({
 
     "process with pre-authorized code, credential offer, and authorization details for one credential" {
         val credentialOffer =
-            authorizationService.credentialOfferWithPreAuthnForUser(DummyOAuth2DataProvider.user, issuer.publicContext)
+            authorizationService.credentialOfferWithPreAuthnForUser(DummyUserProvider.user, issuer.publicContext)
         val credentialIdToRequest = AtomicAttribute2023.toCredentialIdentifier(PLAIN_JWT)
         val credentialFormat =
             issuer.metadata.supportedCredentialConfigurations!![credentialIdToRequest].shouldNotBeNull()
@@ -90,7 +89,7 @@ class OidvciPreAuthTest : FreeSpec({
 
     "process with pre-authorized code, credential offer, and authorization details for all credentials" {
         val credentialOffer =
-            authorizationService.credentialOfferWithPreAuthnForUser(DummyOAuth2DataProvider.user, issuer.publicContext)
+            authorizationService.credentialOfferWithPreAuthnForUser(DummyUserProvider.user, issuer.publicContext)
         val credentialIdsToRequest = credentialOffer.configurationIds
             .shouldHaveSize(5) // Atomic Attribute in 4 representations (JWT, ISO, dc+sd-jwt and vc+sd-jwt), mDL in ISO
             .toSet()
@@ -125,7 +124,7 @@ class OidvciPreAuthTest : FreeSpec({
 
     "process with pre-authorized code, credential offer, and scope" {
         val credentialOffer =
-            authorizationService.credentialOfferWithPreAuthnForUser(DummyOAuth2DataProvider.user, issuer.publicContext)
+            authorizationService.credentialOfferWithPreAuthnForUser(DummyUserProvider.user, issuer.publicContext)
         val credentialIdToRequest = AtomicAttribute2023.toCredentialIdentifier(PLAIN_JWT)
         // OID4VCI 5.1.2 Using scope Parameter to Request Issuance of a Credential
         val supportedCredentialFormat = issuer.metadata.supportedCredentialConfigurations?.get(credentialIdToRequest)
@@ -163,7 +162,7 @@ class OidvciPreAuthTest : FreeSpec({
 
     "two proofs over different keys lead to two credentials" {
         val credentialOffer =
-            authorizationService.credentialOfferWithPreAuthnForUser(DummyOAuth2DataProvider.user, issuer.publicContext)
+            authorizationService.credentialOfferWithPreAuthnForUser(DummyUserProvider.user, issuer.publicContext)
         val credentialIdToRequest = AtomicAttribute2023.toCredentialIdentifier(PLAIN_JWT)
 
         val token = getToken(credentialOffer, setOf(credentialIdToRequest))

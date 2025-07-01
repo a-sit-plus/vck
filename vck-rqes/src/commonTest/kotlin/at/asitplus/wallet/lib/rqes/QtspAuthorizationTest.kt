@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.rqes
 
+import at.asitplus.catching
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdAuthorizationDetails
@@ -19,12 +20,6 @@ import io.ktor.http.*
 class QtspAuthorizationTest : FreeSpec({
 
     val qtspAuthenticationService = SimpleQtspAuthorizationService(
-        dataProvider = object : OAuth2DataProvider {
-            override suspend fun loadUserInfo(
-                request: AuthenticationRequestParameters,
-                code: String,
-            ) = OidcUserInfoExtended.deserialize("{\"sub\": \"foo\"}").getOrThrow()
-        },
         acceptedCredentials = setOf(ConstantIndex.AtomicAttribute2023),
     )
     val dummyDataProvider = DummyValueProvider()
@@ -37,9 +32,8 @@ class QtspAuthorizationTest : FreeSpec({
             authorizationDetails = setOf(OpenIdAuthorizationDetails())
         )
         shouldThrow<OAuth2Exception.InvalidAuthorizationDetails> {
-            qtspAuthenticationService.authorize(
-                serviceAuthReq
-            ).getOrThrow()
+            qtspAuthenticationService.authorize(serviceAuthReq) { catching { dummyUser() } }
+                .getOrThrow()
         }
     }
 
@@ -48,7 +42,8 @@ class QtspAuthorizationTest : FreeSpec({
             documentDigests = dummyDataProvider.buildDocumentDigests(),
             hashAlgorithm = Digest.SHA256
         )
-        val redirectUrlParam = Url(qtspAuthenticationService.authorize(credentialAuthReq).getOrThrow().url).parameters
+        val redirectUrlParam = Url(qtspAuthenticationService.authorize(credentialAuthReq) { catching { dummyUser() } }
+            .getOrThrow().url).parameters
         val credentialTokenReq = walletService.createOAuth2TokenRequest(
             state = redirectUrlParam["state"] ?: throw Exception("No state in URL"),
             authorization = OAuth2Client.AuthorizationForToken.Code(
@@ -60,3 +55,5 @@ class QtspAuthorizationTest : FreeSpec({
     }
 
 })
+
+private fun dummyUser(): OidcUserInfoExtended = OidcUserInfoExtended.deserialize("{\"sub\": \"foo\"}").getOrThrow()
