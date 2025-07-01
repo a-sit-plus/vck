@@ -20,6 +20,13 @@ fun interface CredentialDataProviderFun {
     ): KmmResult<CredentialToBeIssued>
 }
 
+/**
+ * Input for [CredentialDataProviderFun] to resolve the actual data of the user:
+ * @param userInfo user authenticated for this operation
+ * @param subjectPublicKey the holder key that the credential shall be bound to
+ * @param credentialScheme requested credential scheme
+ * @param credentialRepresentation requested representation
+ */
 data class CredentialDataProviderInput(
     val userInfo: OidcUserInfoExtended,
     val subjectPublicKey: CryptoPublicKey,
@@ -27,6 +34,8 @@ data class CredentialDataProviderInput(
     val credentialRepresentation: ConstantIndex.CredentialRepresentation,
 )
 
+/** Adapter for deprecated code, to be removed > 5.8.0 */
+@Suppress("DEPRECATION")
 class CredentialIssuerDataProviderAdapter(
     val credentialDataProvider: CredentialIssuerDataProvider,
 ) : CredentialDataProviderFun {

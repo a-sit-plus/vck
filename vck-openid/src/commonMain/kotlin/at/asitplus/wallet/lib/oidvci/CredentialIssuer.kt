@@ -8,7 +8,6 @@ import at.asitplus.openid.CredentialResponseParameters
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.JwtVcIssuerMetadata
 import at.asitplus.openid.OidcUserInfoExtended
-import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.SupportedAlgorithmsContainer
 import at.asitplus.signum.indispensable.CryptoPublicKey
@@ -115,8 +114,11 @@ class CredentialIssuer(
         .mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }.toSet()
 
     private val supportedCredentialConfigurations = credentialSchemes
-        .flatMap { it.toSupportedCredentialFormat().entries }.associate {
-            it.key to proofValidator.addProofTypes(it.value.withSupportedSigningAlgorithms(supportedSigningAlgorithms))
+        .flatMap { it.toSupportedCredentialFormat().entries }
+        .associate {
+            it.key to it.value
+                .withSupportedSigningAlgorithms(supportedSigningAlgorithms)
+                .withSupportedProofTypes(proofValidator.validProofTypes())
         }
 
     /**
@@ -240,6 +242,13 @@ class CredentialIssuer(
             ?: credentialConfigurationId?.let { extractFromCredentialConfigurationId(it) }
             ?: throw UnsupportedCredentialType("credential scheme not known from ${this}"))
 
+    private fun extractFromCredentialConfigurationId(
+        credentialConfigurationId: String,
+    ): Pair<CredentialScheme, ConstantIndex.CredentialRepresentation>? =
+        supportedCredentialConfigurations[credentialConfigurationId]?.let {
+            decodeFromCredentialIdentifier(credentialConfigurationId)
+        }
+
     @Throws(InvalidToken::class, CancellationException::class)
     private suspend fun loadUserInfo(
         authorizationHeader: String,
@@ -247,27 +256,24 @@ class CredentialIssuer(
         credentialConfigurationId: String?,
         request: RequestInfo? = null,
     ): OidcUserInfoExtended {
-        val result = authorizationService.tokenVerificationService
+        val accessToken = authorizationService.tokenVerificationService
             .validateTokenExtractUser(authorizationHeader, request)
-
         if (credentialIdentifier != null) {
-            if (result.authorizationDetails == null)
+            if (accessToken.authorizationDetails == null)
                 throw InvalidToken("no authorization details stored for header $authorizationHeader")
-            val validCredentialIdentifiers = result.authorizationDetails
-                .filterIsInstance<OpenIdAuthorizationDetails>()
-                .flatMap { it.credentialIdentifiers ?: setOf() }
-            if (!validCredentialIdentifiers.contains(credentialIdentifier))
-                throw InvalidToken("credential_identifier $credentialIdentifier expected to be in $validCredentialIdentifiers")
+            if (!accessToken.validCredentialIdentifiers.contains(credentialIdentifier))
+                throw InvalidToken("credential_identifier $credentialIdentifier expected to be in $accessToken")
         } else if (credentialConfigurationId != null) {
-            if (result.scope == null)
+            if (accessToken.scope == null)
                 throw InvalidToken("no scope stored for header $authorizationHeader")
-            if (!result.scope.contains(credentialConfigurationId))
-                throw InvalidToken("credential_configuration_id $credentialConfigurationId expected to be ${result.scope}")
+            if (!accessToken.scope.contains(credentialConfigurationId))
+                throw InvalidToken("credential_configuration_id $credentialConfigurationId expected to be $accessToken")
         } else {
             throw InvalidToken("neither credential_identifier nor credential_configuration_id set")
         }
-
-        return result.userInfoExtended!!
+        val userInfo = accessToken.userInfoExtended
+            ?: throw InvalidToken("no user info stored for header $authorizationHeader")
+        return userInfo
             .also { Napier.v("getUserInfo returns $it") }
     }
 
@@ -288,12 +294,6 @@ class CredentialIssuer(
         } ?: input
     }
 
-    private fun extractFromCredentialConfigurationId(
-        credentialConfigurationId: String,
-    ): Pair<CredentialScheme, ConstantIndex.CredentialRepresentation>? =
-        supportedCredentialConfigurations[credentialConfigurationId]?.let {
-            decodeFromCredentialIdentifier(credentialConfigurationId)
-        }
 }
 
 @Deprecated("Use `CredentialDataProviderFun` instead")

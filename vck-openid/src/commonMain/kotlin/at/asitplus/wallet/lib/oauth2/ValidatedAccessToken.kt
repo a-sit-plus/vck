@@ -9,4 +9,9 @@ data class ValidatedAccessToken(
     val userInfoExtended: OidcUserInfoExtended? = null,
     val authorizationDetails: Set<AuthorizationDetails>? = null,
     val scope: String? = null,
-)
+) {
+    val validCredentialIdentifiers = authorizationDetails
+        ?.filterIsInstance<OpenIdAuthorizationDetails>()
+        ?.flatMap { it.credentialIdentifiers ?: setOf() }
+        ?: setOf()
+}

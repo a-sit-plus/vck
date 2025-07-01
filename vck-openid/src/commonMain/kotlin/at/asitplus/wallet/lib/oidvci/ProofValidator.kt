@@ -9,6 +9,7 @@ import at.asitplus.openid.CredentialRequestProofSupported
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.KeyAttestationRequired
 import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.OpenIdConstants.ProofType.*
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
@@ -42,38 +43,28 @@ class ProofValidator(
     private val timeLeeway: Duration = 5.minutes,
     /** Callback to verify a received [at.asitplus.signum.indispensable.josef.KeyAttestationJwt] proof in credential requests. */
     private val verifyAttestationProof: (JwsSigned<KeyAttestationJwt>) -> Boolean = { true },
-    /** Turn on to require key attestation support in the [addProofTypes]. */
+    /** Turn on to require key attestation support in the [validProofTypes]. */
     private val requireKeyAttestation: Boolean = false,
     /** Used to provide challenges to clients to include in proof of possession of key material. */
     private val clientNonceService: NonceService = DefaultNonceService(),
 ) {
 
-    /** Adds proof types in [SupportedCredentialFormat.supportedProofTypes] to [entry]. */
-    fun addProofTypes(
-        entry: SupportedCredentialFormat,
-    ): SupportedCredentialFormat =
-        if (requireKeyAttestation) {
-            entry.withSupportedProofTypes(
-                supportedProofTypes = mapOf(
-                    OpenIdConstants.ProofType.JWT.stringRepresentation to CredentialRequestProofSupported(
-                        supportedSigningAlgorithms = supportedAlgorithms.map { it.identifier },
-                        keyAttestationRequired = KeyAttestationRequired()
-                    ),
-                    OpenIdConstants.ProofType.ATTESTATION.stringRepresentation to CredentialRequestProofSupported(
-                        supportedSigningAlgorithms = supportedAlgorithms.map { it.identifier },
-                        keyAttestationRequired = KeyAttestationRequired()
-                    )
-                )
-            )
-        } else {
-            entry.withSupportedProofTypes(
-                supportedProofTypes = mapOf(
-                    OpenIdConstants.ProofType.JWT.stringRepresentation to CredentialRequestProofSupported(
-                        supportedSigningAlgorithms = supportedAlgorithms.map { it.identifier },
-                    )
-                )
-            )
-        }
+    /** Valid proof types for [SupportedCredentialFormat.supportedProofTypes]. */
+    fun validProofTypes(): Map<String, CredentialRequestProofSupported> = if (requireKeyAttestation) mapOf(
+        JWT.stringRepresentation to CredentialRequestProofSupported(
+            supportedSigningAlgorithms = supportedAlgorithms.map { it.identifier },
+            keyAttestationRequired = KeyAttestationRequired()
+        ),
+        ATTESTATION.stringRepresentation to CredentialRequestProofSupported(
+            supportedSigningAlgorithms = supportedAlgorithms.map { it.identifier },
+            keyAttestationRequired = KeyAttestationRequired()
+        )
+    ) else mapOf(
+        JWT.stringRepresentation to CredentialRequestProofSupported(
+            supportedSigningAlgorithms = supportedAlgorithms.map { it.identifier },
+        )
+    )
+
 
     /**
      * Provides a fresh nonce to the clients, for incorporating them into the credential proofs.
@@ -96,14 +87,14 @@ class ProofValidator(
             .also { Napier.w("credential: client did not provide proof of possession in $params") }
 
     private suspend fun CredentialRequestProof.validateProof() = when (proofType) {
-        OpenIdConstants.ProofType.JWT -> jwtParsed?.validateJwtProof()
-        OpenIdConstants.ProofType.ATTESTATION -> attestationParsed?.validateAttestationProof()
+        JWT -> jwtParsed?.validateJwtProof()
+        ATTESTATION -> attestationParsed?.validateAttestationProof()
         else -> null
     }
 
     private suspend fun CredentialRequestProofContainer.validateProof() = when (proofType) {
-        OpenIdConstants.ProofType.JWT -> jwtParsed?.flatMap { it.validateJwtProof() }
-        OpenIdConstants.ProofType.ATTESTATION -> attestationParsed?.flatMap { it.validateAttestationProof() }
+        JWT -> jwtParsed?.flatMap { it.validateJwtProof() }
+        ATTESTATION -> attestationParsed?.flatMap { it.validateAttestationProof() }
         else -> jwtParsed?.flatMap { it.validateJwtProof() }
             ?: attestationParsed?.flatMap { it.validateAttestationProof() }
     }
