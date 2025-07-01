@@ -1,6 +1,6 @@
-package at.asitplus.wallet.fallbackcredential
-
+package at.asitplus.wallet.fallbackCredential.sdJwtFallbackCredentialScheme
 import at.asitplus.wallet.lib.LibraryInitializer
+
 
 object Initializer {
 
@@ -17,6 +17,7 @@ object Initializer {
      */
     fun initWithVCK() {
         LibraryInitializer.registerExtensionLibrary(
-            credentialScheme = FallbackCredentialScheme)
+            credentialScheme = SdJwtFallbackCredentialScheme
+        )
     }
 }

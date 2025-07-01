@@ -17,11 +17,13 @@ import at.asitplus.wallet.lib.agent.Holder.StoreCredentialInput.*
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.fallbackcredential.FallbackCredentialScheme
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.fallbackCredential.isoMdocFallbackCredentialScheme.IsoMdocFallbackCredentialScheme
+import at.asitplus.wallet.fallbackCredential.sdJwtFallbackCredentialScheme.SdJwtFallbackCredentialScheme
+import at.asitplus.wallet.fallbackCredential.vcFallbackCredentialScheme.VcFallbackCredentialScheme
 import at.asitplus.wallet.lib.jws.JwsHeaderJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SdJwtSigned
@@ -132,9 +134,9 @@ class OpenId4VciClient(
     }
 
     private fun SupportedCredentialFormat.resolveCredentialScheme(): ConstantIndex.CredentialScheme? =
-        (credentialDefinition?.types?.firstNotNullOfOrNull { AttributeIndex.resolveAttributeType(it) ?: FallbackCredentialScheme(vcType = it) }
-            ?: sdJwtVcType?.let { AttributeIndex.resolveSdJwtAttributeType(it) ?: FallbackCredentialScheme(sdJwtType = it) }
-            ?: docType?.let { AttributeIndex.resolveIsoDoctype(it)?: FallbackCredentialScheme(isoDocType = it) })
+        (credentialDefinition?.types?.firstNotNullOfOrNull { AttributeIndex.resolveAttributeType(it) ?: VcFallbackCredentialScheme(vcType = it) }
+            ?: sdJwtVcType?.let { AttributeIndex.resolveSdJwtAttributeType(it) ?: SdJwtFallbackCredentialScheme(sdJwtType = it) }
+            ?: docType?.let { AttributeIndex.resolveIsoDoctype(it)?: IsoMdocFallbackCredentialScheme(isoDocType = it) })
 
     /**
      * Starts the issuing process at [credentialIssuerUrl].
