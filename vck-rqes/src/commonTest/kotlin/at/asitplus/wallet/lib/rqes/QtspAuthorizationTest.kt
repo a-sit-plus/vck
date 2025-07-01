@@ -11,7 +11,7 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.rqes.helper.DummyValueProvider
 import at.asitplus.wallet.lib.rqes.helper.SimpleQtspAuthorizationService
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.common.runBlocking
+import kotlinx.coroutines.runBlocking
 import io.kotest.core.spec.style.FreeSpec
 import io.ktor.http.*
 
