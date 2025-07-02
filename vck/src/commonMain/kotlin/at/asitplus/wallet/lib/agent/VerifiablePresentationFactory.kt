@@ -167,7 +167,7 @@ class VerifiablePresentationFactory(
                 }
             }
 
-            val docType = credential.scheme?.isoDocType
+            val docType = credential.scheme?.isoDocType ?: credential.isoDocType
                 ?: throw PresentationException("Scheme not known or not registered")
             val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
             val (deviceSignature, _) = request.calcIsoDeviceSignature(docType, deviceNameSpaceBytes)
