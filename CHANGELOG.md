@@ -31,6 +31,9 @@ Release 5.8.0:
      - `IsoMdocFallbackCredentialScheme`
    - Note that these schemes are not resolved automatically, and need to be used explicitly in client applications
 
+Release 5.7.2:
+ - Presentation Exchange: Fix validation of optional constraint fields
+
 Release 5.7.1:
  - Signum 3.16.3/Supreme 0.8.3 to fix certificate encoding in JWS header
  - Remove okio dependency and use Supreme digest calculation instead
