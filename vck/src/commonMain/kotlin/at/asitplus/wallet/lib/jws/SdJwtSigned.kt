@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.jws
 
 import at.asitplus.KmmResult
-import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.catching
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.data.KeyBindingJws
@@ -9,7 +9,6 @@ import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.github.aakira.napier.Napier
-import kotlinx.coroutines.NonCancellable.key
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
@@ -50,10 +49,10 @@ data class SdJwtSigned(
     }
 
     fun getPayloadAsVerifiableCredentialSdJwt(): KmmResult<VerifiableCredentialSdJwt> =
-        runCatching { vckJsonSerializer.decodeFromJsonElement<VerifiableCredentialSdJwt>(jws.payload) }.wrap()
+        catching { vckJsonSerializer.decodeFromJsonElement<VerifiableCredentialSdJwt>(jws.payload) }
 
     fun getPayloadAsJsonObject(): KmmResult<JsonObject> =
-        runCatching { jws.payload as JsonObject }.wrap()
+        catching { jws.payload as JsonObject }
 
     fun serialize() = keyBindingJws?.let {
         serializePresentation(jws, rawDisclosures.toSet(), it)

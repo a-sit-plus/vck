@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestParametersFrom
@@ -219,6 +220,6 @@ data class OpenId4VpSuccess(
 private suspend fun HttpResponse.extractRedirectUri(): String? =
     headers[HttpHeaders.Location]?.let {
         it.ifEmpty { null }
-    } ?: runCatching { body<OpenId4VpSuccess>() }.getOrNull()?.let {
+    } ?: catchingUnwrapped { body<OpenId4VpSuccess>() }.getOrNull()?.let {
         it.redirectUri.ifEmpty { null }
     }

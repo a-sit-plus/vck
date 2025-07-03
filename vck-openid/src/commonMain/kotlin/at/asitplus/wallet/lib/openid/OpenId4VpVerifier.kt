@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
 import at.asitplus.dcapi.OID4VPHandover
 import at.asitplus.dif.*
 import at.asitplus.iso.ClientIdToHash
@@ -334,7 +335,7 @@ open class OpenId4VpVerifier(
      * Validates an Authentication Response from the Wallet, where [input] is a map of POST parameters received.
      */
     suspend fun validateAuthnResponse(input: Map<String, String>): AuthnResponseResult =
-        runCatching {
+        catchingUnwrapped {
             ResponseParametersFrom.Post(input.decode<AuthenticationResponseParameters>())
         }.getOrElse {
             Napier.w("Could not parse authentication response: $input", it)
@@ -348,7 +349,7 @@ open class OpenId4VpVerifier(
      * - parameters encoded as a POST body, e.g. `id_token=...&vp_token=...`
      */
     suspend fun validateAuthnResponse(input: String): AuthnResponseResult =
-        runCatching {
+        catchingUnwrapped {
             responseParser.parseAuthnResponse(input)
         }.getOrElse {
             Napier.w("Could not parse authentication response: $input", it)
@@ -457,7 +458,7 @@ open class OpenId4VpVerifier(
             val validationResults = presentationSubmission.descriptorMap?.map { descriptor ->
                 val relatedPresentation = JsonPath(descriptor.cumulativeJsonPath)
                     .query(verifiablePresentation).first().value
-                val result = runCatching {
+                val result = catchingUnwrapped {
                     verifyPresentationResult(
                         descriptor.format,
                         relatedPresentation,

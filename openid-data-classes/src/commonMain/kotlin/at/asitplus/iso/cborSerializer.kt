@@ -1,5 +1,6 @@
 package at.asitplus.iso
 
+import at.asitplus.catchingUnwrapped
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.supreme.hash.digest
 import kotlinx.serialization.KSerializer
@@ -57,7 +58,7 @@ object CborCredentialSerializer {
         elementIdentifier: String,
         isoNamespace: String,
     ): Any? = decoderMap[isoNamespace]?.get(elementIdentifier)?.let {
-        runCatching { it.invoke(descriptor, index, compositeDecoder) }.getOrNull()
+        catchingUnwrapped { it.invoke(descriptor, index, compositeDecoder) }.getOrNull()
     }
 }
 

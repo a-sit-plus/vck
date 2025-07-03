@@ -1,9 +1,8 @@
 package at.asitplus.openid
 
-import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.catching
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 
 @Serializable
 data class AuthnRequestSingleClaim(
@@ -54,9 +53,9 @@ data class AuthnRequestSingleClaim(
     }
 
     companion object {
-        fun deserialize(it: String) = kotlin.runCatching {
+        fun deserialize(it: String) = catching {
             odcJsonSerializer.decodeFromString<AuthnRequestSingleClaim>(it)
-        }.wrap()
+        }
     }
 
 }

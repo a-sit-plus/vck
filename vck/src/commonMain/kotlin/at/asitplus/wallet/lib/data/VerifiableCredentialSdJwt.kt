@@ -1,13 +1,13 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.decodeFromJsonElement
 
 /**
  * SD-JWT representation of a [VerifiableCredential].
@@ -108,15 +108,15 @@ data class VerifiableCredentialSdJwt(
 
     val credentialStatus: Status?
         get() = statusElement?.let {
-            runCatching {
+            catchingUnwrapped {
                 vckJsonSerializer.decodeFromJsonElement<Status>(it)
             }.getOrNull()
         }
 
     companion object {
-        fun deserialize(it: String) = kotlin.runCatching {
+        fun deserialize(it: String) = catching {
             vckJsonSerializer.decodeFromString<VerifiableCredentialSdJwt>(it)
-        }.wrap()
+        }
     }
 
 }

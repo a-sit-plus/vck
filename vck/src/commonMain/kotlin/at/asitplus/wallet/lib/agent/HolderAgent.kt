@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
 import at.asitplus.dif.*
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.CredentialFormatEnum
@@ -80,7 +81,7 @@ class HolderAgent(
             is Holder.StoreCredentialInput.Iso -> {
                 val issuerKey: CoseKey? =
                     credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull()?.let {
-                        runCatching { X509Certificate.decodeFromDer(it) }.getOrNull()?.publicKey?.toCoseKey()
+                        catchingUnwrapped { X509Certificate.decodeFromDer(it) }.getOrNull()?.publicKey?.toCoseKey()
                             ?.getOrNull()
                     }
                 val validated = validator.verifyIsoCred(credential.issuerSigned, issuerKey)

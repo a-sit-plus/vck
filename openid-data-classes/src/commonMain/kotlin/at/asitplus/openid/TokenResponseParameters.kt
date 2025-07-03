@@ -1,7 +1,7 @@
 package at.asitplus.openid
 
 import at.asitplus.KmmResult
-import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.catching
 import io.ktor.http.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -101,6 +101,6 @@ data class TokenResponseParameters(
 
     companion object {
         fun deserialize(input: String): KmmResult<TokenResponseParameters> =
-            runCatching { odcJsonSerializer.decodeFromString<TokenResponseParameters>(input) }.wrap()
+            catching { odcJsonSerializer.decodeFromString<TokenResponseParameters>(input) }
     }
 }

@@ -1,10 +1,9 @@
 package at.asitplus.openid
 
 import at.asitplus.KmmResult
-import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.catching
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 
 @Serializable
 data class TokenRequestParameters(
@@ -104,6 +103,6 @@ data class TokenRequestParameters(
 
     companion object {
         fun deserialize(input: String): KmmResult<TokenRequestParameters> =
-            runCatching { odcJsonSerializer.decodeFromString<TokenRequestParameters>(input) }.wrap()
+            catching { odcJsonSerializer.decodeFromString<TokenRequestParameters>(input) }
     }
 }

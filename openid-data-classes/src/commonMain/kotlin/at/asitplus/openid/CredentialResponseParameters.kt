@@ -1,7 +1,8 @@
 package at.asitplus.openid
 
 import at.asitplus.KmmResult
-import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
@@ -50,7 +51,7 @@ data class CredentialResponseParameters(
 
     companion object {
         fun deserialize(input: String): KmmResult<CredentialResponseParameters> =
-            runCatching { odcJsonSerializer.decodeFromString<CredentialResponseParameters>(input) }.wrap()
+            catching { odcJsonSerializer.decodeFromString<CredentialResponseParameters>(input) }
     }
 
 }
@@ -66,6 +67,6 @@ data class CredentialResponseSingleCredential(
 ) {
     /** Currently, there is no other format defined to transport credentials */
     val credentialString: String? by lazy {
-        runCatching { credential.jsonPrimitive.content }.getOrNull()
+        catchingUnwrapped { credential.jsonPrimitive.content }.getOrNull()
     }
 }

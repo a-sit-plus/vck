@@ -1,14 +1,27 @@
 package at.asitplus.wallet.lib.data.dif
 
 import at.asitplus.KmmResult
-import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.dif.*
+import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
+import at.asitplus.dif.Constraint
+import at.asitplus.dif.ConstraintField
+import at.asitplus.dif.ConstraintFilter
+import at.asitplus.dif.FormatHolder
+import at.asitplus.dif.InputDescriptor
+import at.asitplus.dif.RequirementEnum
 import at.asitplus.jsonpath.JsonPath
 import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.CredentialFormatEnum
 import io.github.aakira.napier.Napier
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.longOrNull
 
 /**
  * Specification: https://identity.foundation/presentation-exchange/spec/v2.0.0/#input-evaluation
@@ -21,7 +34,7 @@ object PresentationExchangeInputEvaluator {
         credentialFormat: CredentialFormatEnum,
         credentialScheme: String?,
         pathAuthorizationValidator: (NormalizedJsonPath) -> Boolean,
-    ): KmmResult<Map<ConstraintField, NodeList>> = runCatching {
+    ): KmmResult<Map<ConstraintField, NodeList>> = catching {
         (inputDescriptor.format ?: fallbackFormatHolder)?.let { formatHolder ->
             @Suppress("DEPRECATION")
             val supportedFormats = listOf(
@@ -57,13 +70,13 @@ object PresentationExchangeInputEvaluator {
                 pathAuthorizationValidator = pathAuthorizationValidator,
             ).getOrThrow()
         } ?: mapOf()
-    }.wrap()
+    }
 
     fun evaluateInputDescriptorConstraint(
         constraint: Constraint,
         credentialClaimStructure: JsonElement,
         pathAuthorizationValidator: (NormalizedJsonPath) -> Boolean,
-    ): KmmResult<Map<ConstraintField, NodeList>> = runCatching {
+    ): KmmResult<Map<ConstraintField, NodeList>> = catching {
         val constraintFieldEvaluation = constraint.fields?.associateWith { field ->
             evaluateConstraintField(
                 field = field,
@@ -89,14 +102,14 @@ object PresentationExchangeInputEvaluator {
         constraintFieldEvaluation.mapValues {
             it.value.getOrThrow()
         }
-    }.wrap()
+    }
 
     // filter by constraints
     fun evaluateConstraintField(
         field: ConstraintField,
         credential: JsonElement,
         pathAuthorizationValidator: (NormalizedJsonPath) -> Boolean,
-    ): KmmResult<NodeList> = runCatching {
+    ): KmmResult<NodeList> = catching {
         val fieldQueryResult = matchConstraintFieldPaths(
             constraintField = field,
             credential = credential,
@@ -123,7 +136,7 @@ object PresentationExchangeInputEvaluator {
                 }
             }
         } ?: fieldQueryResult
-    }.wrap()
+    }
 
     // filter by constraints
     fun matchConstraintFieldPaths(
@@ -163,7 +176,7 @@ internal fun JsonElement.satisfiesConstraintFilter(filter: ConstraintFilter): Bo
     }
 
     filter.const?.let {
-        val isMatch = runCatching {
+        val isMatch = catchingUnwrapped {
             it == this
         }.getOrDefault(false)
         if (!isMatch) {
@@ -171,7 +184,7 @@ internal fun JsonElement.satisfiesConstraintFilter(filter: ConstraintFilter): Bo
         }
     }
     filter.pattern?.let {
-        val isMatch = runCatching {
+        val isMatch = catchingUnwrapped {
             Regex(it).matches((this as JsonPrimitive).content)
         }.getOrDefault(false)
         if (!isMatch) {
@@ -179,7 +192,7 @@ internal fun JsonElement.satisfiesConstraintFilter(filter: ConstraintFilter): Bo
         }
     }
     filter.enum?.let { enum ->
-        val isMatch = runCatching {
+        val isMatch = catchingUnwrapped {
             enum.any { value ->
                 value == (this as JsonPrimitive).content
             }

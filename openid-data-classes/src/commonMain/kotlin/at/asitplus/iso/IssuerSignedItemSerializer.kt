@@ -1,5 +1,6 @@
 package at.asitplus.iso
 
+import at.asitplus.catchingUnwrapped
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
@@ -133,10 +134,10 @@ open class IssuerSignedItemSerializer(private val namespace: String, private val
 
         // These are the ones that map to different CBOR data types, the rest don't, so if it is not registered, we'll
         // lose type information. No others must be added here, as they could consume data from the underlying bytes
-        runCatching { return decodeStringElement(descriptor, index) }
-        runCatching { return decodeLongElement(descriptor, index) }
-        runCatching { return decodeDoubleElement(descriptor, index) }
-        runCatching { return decodeBooleanElement(descriptor, index) }
+        catchingUnwrapped { return decodeStringElement(descriptor, index) }
+        catchingUnwrapped { return decodeLongElement(descriptor, index) }
+        catchingUnwrapped { return decodeDoubleElement(descriptor, index) }
+        catchingUnwrapped { return decodeBooleanElement(descriptor, index) }
 
         throw IllegalArgumentException("Could not decode value at $index")
     }

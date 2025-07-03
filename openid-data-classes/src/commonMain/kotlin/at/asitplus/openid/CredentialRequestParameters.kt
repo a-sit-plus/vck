@@ -1,7 +1,7 @@
 package at.asitplus.openid
 
 import at.asitplus.KmmResult
-import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.catching
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -62,7 +62,7 @@ data class CredentialRequestParameters(
 
     companion object {
         fun deserialize(input: String): KmmResult<CredentialRequestParameters> =
-            runCatching { odcJsonSerializer.decodeFromString<CredentialRequestParameters>(input) }.wrap()
+            catching { odcJsonSerializer.decodeFromString<CredentialRequestParameters>(input) }
     }
 
 }

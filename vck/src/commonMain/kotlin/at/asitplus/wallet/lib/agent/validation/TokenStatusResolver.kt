@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.agent.validation
 
 import at.asitplus.KmmResult
-import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.catching
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
@@ -28,7 +28,7 @@ fun StatusListTokenResolver.toTokenStatusResolver(
     verifyJwsObjectIntegrity: VerifyJwsObjectFun = VerifyJwsObject(),
     verifyCoseSignature: VerifyCoseSignatureFun<StatusListTokenPayload> = VerifyCoseSignature(),
 ) = TokenStatusResolver { status ->
-    runCatching {
+    catching {
         val token = this(status.statusList.uri)
 
         val payload = token.validate(
@@ -45,7 +45,7 @@ fun StatusListTokenResolver.toTokenStatusResolver(
             statusListInfo = status.statusList,
             zlibService = zlibService,
         ).getOrThrow()
-    }.wrap()
+    }
 }
 
 suspend operator fun TokenStatusResolver.invoke(issuerSigned: IssuerSigned) = invoke(CredentialWrapper.Mdoc(issuerSigned))

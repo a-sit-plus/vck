@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.agent
 
 
 import at.asitplus.KmmResult
-import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.CryptoSignature
@@ -18,8 +17,6 @@ import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.plus
-import kotlin.random.Random
-import kotlin.time.Duration.Companion.seconds
 
 suspend fun X509Certificate.Companion.generateSelfSignedCertificate(
     publicKey: CryptoPublicKey,

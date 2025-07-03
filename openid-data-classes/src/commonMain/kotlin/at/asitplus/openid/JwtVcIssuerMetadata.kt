@@ -1,11 +1,10 @@
 package at.asitplus.openid
 
 import at.asitplus.KmmResult
-import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.catching
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 
 /**
  * Metadata about the credential issuer in
@@ -40,6 +39,6 @@ data class JwtVcIssuerMetadata(
 
     companion object {
         fun deserialize(input: String): KmmResult<JwtVcIssuerMetadata> =
-            runCatching { odcJsonSerializer.decodeFromString<JwtVcIssuerMetadata>(input) }.wrap()
+            catching { odcJsonSerializer.decodeFromString<JwtVcIssuerMetadata>(input) }
     }
 }

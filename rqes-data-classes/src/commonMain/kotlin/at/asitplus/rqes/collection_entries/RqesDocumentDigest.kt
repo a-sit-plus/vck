@@ -1,9 +1,9 @@
 package at.asitplus.rqes.collection_entries
 
 import at.asitplus.KmmResult
-import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
+import at.asitplus.catching
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
+import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -204,7 +204,7 @@ data class RqesDocumentDigestEntry private constructor(
             documentLocationMethod: DocumentLocationMethod? = null,
             dtbsr: ByteArray? = null,
             dtbsrHashAlgorithmOID: ObjectIdentifier? = null,
-        ): KmmResult<RqesDocumentDigestEntry> = kotlin.runCatching {
+        ): KmmResult<RqesDocumentDigestEntry> = catching {
             RqesDocumentDigestEntry(
                 label = label,
                 hash = hash,
@@ -214,7 +214,7 @@ data class RqesDocumentDigestEntry private constructor(
                 dataToBeSignedRepresentation = dtbsr,
                 dtbsrHashAlgorithmOid = dtbsrHashAlgorithmOID,
             )
-        }.wrap()
+        }
     }
 }
 

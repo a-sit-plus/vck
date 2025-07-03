@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.ClientNonceResponse
@@ -494,7 +495,7 @@ class OpenId4VciClient(
             scheme = credentialScheme
         )
 
-        ConstantIndex.CredentialRepresentation.ISO_MDOC -> runCatching {
+        ConstantIndex.CredentialRepresentation.ISO_MDOC -> catchingUnwrapped {
             Iso(
                 issuerSigned = coseCompliantSerializer.decodeFromByteArray<IssuerSigned>(decodeToByteArray(Base64())),
                 scheme = credentialScheme

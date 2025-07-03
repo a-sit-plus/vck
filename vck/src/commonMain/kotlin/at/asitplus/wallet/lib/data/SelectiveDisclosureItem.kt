@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.catching
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
 import at.asitplus.wallet.lib.iso.sha256
@@ -8,7 +8,6 @@ import at.asitplus.wallet.lib.jws.SelectiveDisclosureItemSerializer
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonElement
 
 /**
@@ -59,9 +58,9 @@ data class SelectiveDisclosureItem(
             ")"
 
     companion object {
-        fun deserialize(it: String) = kotlin.runCatching {
+        fun deserialize(it: String) = catching {
             vckJsonSerializer.decodeFromString<SelectiveDisclosureItem>(it)
-        }.wrap()
+        }
 
         /**
          * Hashes a disclosure from [SelectiveDisclosureItem.toDisclosure] according to section 5.2.3 of

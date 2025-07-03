@@ -1,7 +1,7 @@
 package at.asitplus.rqes.collection_entries
 
 import at.asitplus.KmmResult
-import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.catching
 import at.asitplus.openid.SignatureQualifier
 import at.asitplus.openid.TransactionData
 import at.asitplus.rqes.rdcJsonSerializer
@@ -104,7 +104,7 @@ data class QesAuthorization(
             processID: String? = null,
             credentialIds: Set<String>? = null,
             transactionDataHashAlgorithms: Set<String>? = null,
-        ): KmmResult<TransactionData> = runCatching {
+        ): KmmResult<TransactionData> = catching {
             QesAuthorization(
                 signatureQualifier = signatureQualifier,
                 credentialID = credentialId,
@@ -113,6 +113,6 @@ data class QesAuthorization(
                 documentDigests = documentDigest,
                 processID = processID,
             )
-        }.wrap()
+        }
     }
 }

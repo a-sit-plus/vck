@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.data
 
+import at.asitplus.catchingUnwrapped
 import kotlinx.datetime.Instant
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -14,7 +15,7 @@ class NullableInstantLongSerializer : KSerializer<Instant?> {
         PrimitiveSerialDescriptor("NullableInstantLongSerializer", PrimitiveKind.LONG)
 
     override fun deserialize(decoder: Decoder): Instant? =
-        runCatching { Instant.fromEpochSeconds(decoder.decodeLong()) }.getOrNull()
+        catchingUnwrapped { Instant.fromEpochSeconds(decoder.decodeLong()) }.getOrNull()
 
     override fun serialize(encoder: Encoder, value: Instant?) {
         value?.let { encoder.encodeLong(it.epochSeconds) }

@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.catchingUnwrapped
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.agent.SdJwtCreator.NAME_SD
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
@@ -97,8 +98,8 @@ class SdJwtValidator(sdJwtSigned: SdJwtSigned) {
 
     private fun Map.Entry<String, JsonElement>.asSdArray(): List<JsonPrimitive>? =
         if (key == NAME_SD) {
-            kotlin.runCatching { value.jsonArray }.getOrNull()
-                ?.mapNotNull { runCatching { it.jsonPrimitive }.getOrNull() }
+            catchingUnwrapped { value.jsonArray }.getOrNull()
+                ?.mapNotNull { catchingUnwrapped { it.jsonPrimitive }.getOrNull() }
         } else {
             null
         }

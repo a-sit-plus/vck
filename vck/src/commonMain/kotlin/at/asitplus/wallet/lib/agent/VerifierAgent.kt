@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
@@ -26,7 +27,7 @@ class VerifierAgent(
         input: SdJwtSigned,
         challenge: String,
         transactionData: Pair<PresentationRequestParameters.Flow, List<TransactionDataBase64Url>>?,
-    ): VerifyPresentationResult = runCatching {
+    ): VerifyPresentationResult = catchingUnwrapped {
         validator.verifyVpSdJwt(input, challenge, identifier, transactionData)
     }.getOrElse {
         VerifyPresentationResult.ValidationError(it)
@@ -35,7 +36,7 @@ class VerifierAgent(
     override suspend fun verifyPresentationVcJwt(
         input: JwsSigned<VerifiablePresentationJws>,
         challenge: String,
-    ): VerifyPresentationResult = runCatching {
+    ): VerifyPresentationResult = catchingUnwrapped {
         validator.verifyVpJws(input, challenge, identifier)
     }.getOrElse {
         VerifyPresentationResult.ValidationError(it)
@@ -45,7 +46,7 @@ class VerifierAgent(
         input: DeviceResponse,
         challenge: String,
         verifyDocument: suspend (MobileSecurityObject, Document) -> Boolean,
-    ): VerifyPresentationResult = runCatching {
+    ): VerifyPresentationResult = catchingUnwrapped {
         validator.verifyDeviceResponse(input, verifyDocument)
     }.getOrElse {
         VerifyPresentationResult.ValidationError(it)

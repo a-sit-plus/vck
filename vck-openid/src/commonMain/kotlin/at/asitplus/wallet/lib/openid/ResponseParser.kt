@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.ResponseParametersFrom
 import at.asitplus.signum.indispensable.josef.JweDecrypted
@@ -32,7 +33,7 @@ class ResponseParser(
      */
     @Throws(IllegalArgumentException::class, CancellationException::class)
     suspend fun parseAuthnResponse(input: String): ResponseParametersFrom {
-        val paramsFrom = runCatching {
+        val paramsFrom = catchingUnwrapped {
             val url = Url(input)
             if (url.encodedFragment.isNotEmpty()) {
                 url.encodedFragment.decodeFromUrlQuery<AuthenticationResponseParameters>().let {

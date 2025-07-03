@@ -1,9 +1,8 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.catching
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 
 /**
  * JWS representation of a [VerifiablePresentation].
@@ -25,9 +24,9 @@ data class VerifiablePresentationJws(
     fun serialize() = vckJsonSerializer.encodeToString(this)
 
     companion object {
-        fun deserialize(it: String) = kotlin.runCatching {
+        fun deserialize(it: String) = catching {
             vckJsonSerializer.decodeFromString<VerifiablePresentationJws>(it)
-        }.wrap()
+        }
     }
 
 }

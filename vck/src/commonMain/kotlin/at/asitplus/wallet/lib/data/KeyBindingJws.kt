@@ -1,17 +1,14 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.openid.TransactionData
+import at.asitplus.catching
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.signum.indispensable.contentEqualsIfArray
 import at.asitplus.signum.indispensable.contentHashCodeIfArray
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
 import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
 import kotlinx.datetime.Instant
-import kotlinx.serialization.Contextual
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 
 /**
  * Key Binding JWT for SD-JWT, per spec [draft-ietf-oauth-selective-disclosure-jwt-08](https://datatracker.ietf.org/doc/draft-ietf-oauth-selective-disclosure-jwt/)
@@ -57,6 +54,7 @@ data class KeyBindingJws(
 ) {
 
     fun serialize() = vckJsonSerializer.encodeToString(this)
+
     @Suppress("DEPRECATION")
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -94,9 +92,9 @@ data class KeyBindingJws(
     }
 
     companion object {
-        fun deserialize(it: String) = kotlin.runCatching {
+        fun deserialize(it: String) = catching {
             vckJsonSerializer.decodeFromString<KeyBindingJws>(it)
-        }.wrap()
+        }
     }
 
 }

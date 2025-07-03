@@ -1,5 +1,6 @@
 package at.asitplus.openid
 
+import at.asitplus.catchingUnwrapped
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
@@ -84,7 +85,7 @@ data class OpenIdAuthorizationDetails(
 
     val claimDescription: Set<ClaimDescription>?
         get() = claims?.let {
-            runCatching {
+            catchingUnwrapped {
                 odcJsonSerializer.decodeFromJsonElement<Set<ClaimDescription>>(it)
             }.getOrNull()
         }

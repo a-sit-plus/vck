@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.catching
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JwsSigned
@@ -157,7 +157,7 @@ private fun buildClientWithKeyAttestation(): WalletService {
     val signKeyAttestation = SignJwt<KeyAttestationJwt>(keyMaterial, JwsHeaderJwk())
     return WalletService(
         loadKeyAttestation = {
-            runCatching {
+            catching {
                 signKeyAttestation(
                     OpenIdConstants.KEY_ATTESTATION_JWT_TYPE,
                     KeyAttestationJwt(
@@ -167,7 +167,7 @@ private fun buildClientWithKeyAttestation(): WalletService {
                     ),
                     KeyAttestationJwt.serializer(),
                 ).getOrThrow()
-            }.wrap()
+            }
         }
     )
 }

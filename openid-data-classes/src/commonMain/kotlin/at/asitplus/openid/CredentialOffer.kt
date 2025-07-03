@@ -1,10 +1,9 @@
 package at.asitplus.openid
 
 import at.asitplus.KmmResult
-import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.catching
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromJsonElement
 
@@ -40,9 +39,9 @@ data class CredentialOffer(
 
     companion object {
         fun deserialize(input: String): KmmResult<CredentialOffer> =
-            runCatching { odcJsonSerializer.decodeFromString<CredentialOffer>(input) }.wrap()
+            catching { odcJsonSerializer.decodeFromString<CredentialOffer>(input) }
 
         fun deserialize(input: JsonElement): KmmResult<CredentialOffer> =
-            runCatching { odcJsonSerializer.decodeFromJsonElement<CredentialOffer>(input) }.wrap()
+            catching { odcJsonSerializer.decodeFromJsonElement<CredentialOffer>(input) }
     }
 }

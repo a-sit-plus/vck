@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.cbor
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
 import at.asitplus.signum.indispensable.CryptoSignature
 import at.asitplus.signum.indispensable.cosef.*
 import at.asitplus.signum.indispensable.pki.X509Certificate
@@ -165,7 +166,7 @@ fun interface VerifyCoseSignatureFun<P> {
 class VerifyCoseSignature<P : Any>(
     val verifyCoseSignature: VerifyCoseSignatureWithKeyFun<P> = VerifyCoseSignatureWithKey<P>(),
     /** Need to implement if valid keys for CoseSigned are transported somehow out-of-band, e.g. provided by a trust store */
-    val publicKeyLookup: PublicCoseKeyLookup = PublicCoseKeyLookup { null }
+    val publicKeyLookup: PublicCoseKeyLookup = PublicCoseKeyLookup { null },
 ) : VerifyCoseSignatureFun<P> {
     override suspend operator fun invoke(
         coseSigned: CoseSigned<P>,
@@ -206,7 +207,7 @@ class VerifyCoseSignatureWithKey<P : Any>(
             .also { Napier.d("verifyCose input is ${it.encodeToString(Base16())}") }
         val algorithm = coseSigned.protectedHeader.algorithm
             ?: throw IllegalArgumentException("Algorithm not specified")
-        require(algorithm is CoseAlgorithm.Signature) {"CoseAlgorithm not supported: $algorithm"}
+        require(algorithm is CoseAlgorithm.Signature) { "CoseAlgorithm not supported: $algorithm" }
         val publicKey = signer.toCryptoPublicKey().getOrElse { ex ->
             throw IllegalArgumentException("Signer not convertible", ex)
                 .also { Napier.w("Could not convert signer to public key: $signer", ex) }
@@ -233,7 +234,7 @@ fun interface PublicCoseKeyLookup {
 val CoseHeader.publicKey: CoseKey?
     get() = kid?.let { CoseKey.fromDid(it.decodeToString()) }?.getOrNull()
         ?: certificateChain?.firstOrNull()?.let {
-            runCatching {
+            catchingUnwrapped {
                 X509Certificate.decodeFromDer(it)
             }.getOrNull()?.publicKey?.toCoseKey()?.getOrThrow()
         }

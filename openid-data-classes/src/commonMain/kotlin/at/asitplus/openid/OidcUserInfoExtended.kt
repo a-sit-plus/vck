@@ -1,7 +1,7 @@
 package at.asitplus.openid
 
 import at.asitplus.KmmResult
-import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.catching
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
@@ -21,22 +21,22 @@ data class OidcUserInfoExtended(
 
     companion object {
         fun deserialize(it: String): KmmResult<OidcUserInfoExtended> =
-            runCatching {
+            catching {
                 val jsonObject = odcJsonSerializer.decodeFromString<JsonObject>(it)
                 val userInfo = odcJsonSerializer.decodeFromJsonElement<OidcUserInfo>(jsonObject)
                 OidcUserInfoExtended(userInfo, jsonObject)
-            }.wrap()
+            }
 
         fun fromJsonObject(it: JsonObject): KmmResult<OidcUserInfoExtended> =
-            runCatching {
+            catching {
                 val userInfo = odcJsonSerializer.decodeFromJsonElement<OidcUserInfo>(it)
                 OidcUserInfoExtended(userInfo, it)
-            }.wrap()
+            }
 
         fun fromOidcUserInfo(userInfo: OidcUserInfo): KmmResult<OidcUserInfoExtended> =
-            runCatching {
+            catching {
                 OidcUserInfoExtended(userInfo, odcJsonSerializer.encodeToJsonElement(userInfo) as JsonObject)
-            }.wrap()
+            }
 
     }
 }

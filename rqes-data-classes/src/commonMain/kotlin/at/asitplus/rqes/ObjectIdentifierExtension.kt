@@ -1,5 +1,6 @@
 package at.asitplus.rqes
 
+import at.asitplus.catchingUnwrapped
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
@@ -10,7 +11,7 @@ import io.github.aakira.napier.Napier
 
 
 internal fun ObjectIdentifier.getSignAlgorithm(signAlgoParams: Asn1Element?): SignatureAlgorithm? =
-    runCatching {
+    catchingUnwrapped {
         X509SignatureAlgorithm.doDecode(Asn1.Sequence {
             +this@getSignAlgorithm
             +(signAlgoParams ?: Asn1.Null())

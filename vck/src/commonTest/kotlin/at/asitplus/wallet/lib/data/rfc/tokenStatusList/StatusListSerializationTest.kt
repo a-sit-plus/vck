@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
+import at.asitplus.catchingUnwrapped
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBitSize
 import io.kotest.assertions.throwables.shouldThrowAny
@@ -90,7 +91,7 @@ class StatusListSerializationTest : FreeSpec({
                 )
             ) { (jsonString, expectedStatusList) ->
                 val jsonObject = Json.decodeFromString<JsonObject>(jsonString)
-                val expectedBits = kotlin.runCatching {
+                val expectedBits = catchingUnwrapped {
                     TokenStatusBitSize.valueOf(jsonObject["bits"]!!.jsonPrimitive.long.toUInt())
                 }.getOrNull()
                 if (expectedBits == null) {
