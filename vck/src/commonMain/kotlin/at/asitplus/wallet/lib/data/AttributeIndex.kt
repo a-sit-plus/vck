@@ -1,5 +1,8 @@
 package at.asitplus.wallet.lib.data
 
+import at.asitplus.wallet.fallbackCredential.isoMdocFallbackCredentialScheme.IsoMdocFallbackCredentialScheme
+import at.asitplus.wallet.fallbackCredential.sdJwtFallbackCredentialScheme.SdJwtFallbackCredentialScheme
+import at.asitplus.wallet.fallbackCredential.vcFallbackCredentialScheme.VcFallbackCredentialScheme
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
 
@@ -27,12 +30,14 @@ object AttributeIndex {
      */
     fun resolveAttributeType(type: String): CredentialScheme? =
         schemeSet.firstOrNull { it.vcType == type }
+            ?: VcFallbackCredentialScheme(vcType = type)
 
     /**
      * Matches the passed [sdJwtType] against all known types from [ConstantIndex.CredentialScheme.sdJwtType].
      */
     fun resolveSdJwtAttributeType(sdJwtType: String): CredentialScheme? =
         schemeSet.firstOrNull { it.sdJwtType == sdJwtType }
+        ?: SdJwtFallbackCredentialScheme(sdJwtType = sdJwtType)
 
     /**
      * Matches the passed [namespace] against all known namespace from [ConstantIndex.CredentialScheme.isoNamespace].
@@ -51,6 +56,7 @@ object AttributeIndex {
     fun resolveIsoDoctype(docType: String): CredentialScheme? =
         schemeSet.filter { it.isoDocType != null }
             .firstOrNull { it.isoDocType!!.startsWith(docType) || docType.startsWith(it.isoDocType!!) }
+            ?: IsoMdocFallbackCredentialScheme(isoDocType = docType)
 
     /**
      * Compares the input to all [CredentialScheme] identifiers and on match

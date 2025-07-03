@@ -9,6 +9,7 @@ import at.asitplus.openid.OpenIdConstants.PARAMETER_PROMPT_LOGIN
 import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER
 import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -134,9 +135,9 @@ class OpenId4VciClient(
     }
 
     private fun SupportedCredentialFormat.resolveCredentialScheme(): ConstantIndex.CredentialScheme? =
-        (credentialDefinition?.types?.firstNotNullOfOrNull { AttributeIndex.resolveAttributeType(it) ?: VcFallbackCredentialScheme(vcType = it) }
-            ?: sdJwtVcType?.let { AttributeIndex.resolveSdJwtAttributeType(it) ?: SdJwtFallbackCredentialScheme(sdJwtType = it) }
-            ?: docType?.let { AttributeIndex.resolveIsoDoctype(it)?: IsoMdocFallbackCredentialScheme(isoDocType = it) })
+        (credentialDefinition?.types?.firstNotNullOfOrNull { AttributeIndex.resolveAttributeType(it) }
+            ?: sdJwtVcType?.let { AttributeIndex.resolveSdJwtAttributeType(it) }
+            ?: docType?.let { AttributeIndex.resolveIsoDoctype(it) })
 
     /**
      * Starts the issuing process at [credentialIssuerUrl].
