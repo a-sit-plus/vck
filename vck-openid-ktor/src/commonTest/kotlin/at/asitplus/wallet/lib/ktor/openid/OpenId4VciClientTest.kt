@@ -315,7 +315,7 @@ class OpenId4VciClientTest : FunSpec() {
                 request.url.fullPath.startsWith(credentialEndpointPath) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val authn = request.headers[HttpHeaders.Authorization].shouldNotBeNull()
-                    val params = CredentialRequestParameters.deserialize(requestBody).getOrThrow()
+                    val params = vckJsonSerializer.decodeFromString<CredentialRequestParameters>(requestBody)
                     val result = credentialIssuer.credential(
                         authorizationHeader = authn,
                         params = params,

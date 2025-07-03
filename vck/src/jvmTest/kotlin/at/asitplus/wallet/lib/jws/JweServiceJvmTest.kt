@@ -10,6 +10,7 @@ import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.nativeDigest
 import at.asitplus.signum.indispensable.toJcaPublicKey
 import at.asitplus.signum.HazardousMaterials
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
 import at.asitplus.signum.supreme.sign.EphemeralKey
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -59,7 +60,7 @@ class JweServiceJvmTest : FreeSpec({
                     val libJweHeader =
                         JWEHeader.Builder(JWEAlgorithm(jweAlgorithm.identifier), encryptionMethod.joseAlgorithm)
                             .type(JOSEObjectType("something"))
-                            .jwk(JWK.parse(keyMaterial.jsonWebKey.serialize()))
+                            .jwk(JWK.parse(joseCompliantSerializer.encodeToString(keyMaterial.jsonWebKey)))
                             .build()
                     val libJweObject = JWEObject(libJweHeader, Payload(randomPayload))
                         .apply { encrypt(jvmEncrypter) }

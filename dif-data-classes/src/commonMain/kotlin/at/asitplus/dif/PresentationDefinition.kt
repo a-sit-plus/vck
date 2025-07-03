@@ -1,11 +1,9 @@
 package at.asitplus.dif
 
-import at.asitplus.catching
 import com.benasher44.uuid.uuid4
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 
 /**
  * Data class for
@@ -33,13 +31,5 @@ data class PresentationDefinition(
         id = uuid4().toString(),
         inputDescriptors = listOf(inputDescriptor),
     )
-
-    fun serialize() = ddcJsonSerializer.encodeToString(this)
-
-    companion object {
-        fun deserialize(it: String) = catching {
-            ddcJsonSerializer.decodeFromString<PresentationDefinition>(it)
-        }
-    }
 }
 

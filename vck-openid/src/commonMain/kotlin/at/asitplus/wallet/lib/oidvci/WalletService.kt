@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ProofType
@@ -22,6 +23,7 @@ import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.ktor.util.*
 import kotlinx.datetime.Clock
+import kotlinx.serialization.json.decodeFromJsonElement
 
 /**
  * Client service to retrieve credentials using OID4VCI
@@ -55,7 +57,7 @@ class WalletService(
     /** Algorithm to decrypt credential response encryption, see [requestEncryption]. */
     private val supportedJweEncryptionAlgorithm: JweEncryption = JweEncryption.A256GCM,
     /** OAuth2 client to build authorization requests */
-    val oauth2Client: OAuth2Client = OAuth2Client(clientId, redirectUrl)
+    val oauth2Client: OAuth2Client = OAuth2Client(clientId, redirectUrl),
 ) {
 
     data class KeyAttestationInput(val clientNonce: String?, val supportedAlgorithms: Collection<String>?)
@@ -85,13 +87,13 @@ class WalletService(
             val params = Url(input).parameters.flattenEntries().toMap()
                 .decodeFromUrlQuery<CredentialOfferUrlParameters>()
             params.credentialOffer?.let {
-                CredentialOffer.deserialize(it).getOrThrow()
+                odcJsonSerializer.decodeFromJsonElement<CredentialOffer>(it)
             } ?: params.credentialOfferUrl?.let { uri ->
                 remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(uri))
                     ?.let { parseCredentialOffer(it).getOrNull() }
             }
-        }.getOrNull() ?: catching {
-            CredentialOffer.deserialize(input).getOrThrow()
+        }.getOrNull() ?: catchingUnwrapped {
+            odcJsonSerializer.decodeFromString<CredentialOffer>(input)
         }.getOrNull() ?: throw InvalidRequest("could not parse credential offer")
             .also { Napier.w("Could not parse credential offer from $input") }
     }

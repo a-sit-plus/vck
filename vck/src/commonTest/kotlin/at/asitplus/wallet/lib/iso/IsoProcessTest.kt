@@ -4,16 +4,12 @@ import at.asitplus.iso.DeviceAuth
 import at.asitplus.iso.DeviceKeyInfo
 import at.asitplus.iso.DeviceNameSpaces
 import at.asitplus.iso.DeviceRequest
-import at.asitplus.wallet.lib.iso.DeviceResponse
 import at.asitplus.iso.DeviceSigned
 import at.asitplus.iso.DocRequest
-import at.asitplus.wallet.lib.iso.Document
-import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.iso.IssuerSignedList
 import at.asitplus.iso.ItemsRequest
 import at.asitplus.iso.ItemsRequestList
-import at.asitplus.wallet.lib.iso.MobileSecurityObject
 import at.asitplus.iso.SingleItemsRequest
 import at.asitplus.iso.ValidityInfo
 import at.asitplus.iso.ValueDigest

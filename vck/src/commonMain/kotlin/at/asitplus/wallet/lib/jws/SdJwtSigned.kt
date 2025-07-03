@@ -54,6 +54,10 @@ data class SdJwtSigned(
     fun getPayloadAsJsonObject(): KmmResult<JsonObject> =
         catching { jws.payload as JsonObject }
 
+    /**
+     * Compact serialization: JWT in JWS compact serialization (Base64-URL with dots),
+     * disclosures and key binding appended, separated by a tilde.
+     */
     fun serialize() = keyBindingJws?.let {
         serializePresentation(jws, rawDisclosures.toSet(), it)
     } ?: run {
@@ -103,12 +107,20 @@ data class SdJwtSigned(
             return SdJwtSigned(jws, rawDisclosures, keyBindingJws, hashInput)
         }
 
+        /**
+         * Compact serialization: JWT in JWS compact serialization (Base64-URL with dots),
+         * disclosures and key binding appended, separated by a tilde.
+         */
         fun serializePresentation(
             jwsFromIssuer: JwsSigned<*>,
             filteredDisclosures: Set<String>,
             keyBinding: JwsSigned<KeyBindingJws>,
         ) = (listOf(jwsFromIssuer.serialize()) + filteredDisclosures + keyBinding.serialize()).joinToString("~")
 
+        /**
+         * Input for SD hash calculation: Compact serialization:
+         * JWT in JWS compact serialization (Base64-URL with dots), with disclosures appended, separated by a tilde.
+         */
         fun sdHashInput(
             validSdJwtCredential: SubjectCredentialStore.StoreEntry.SdJwt,
             filteredDisclosures: Set<String>,

@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.jws
 import at.asitplus.signum.indispensable.ECCurve
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwkType
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldBeNull
@@ -20,7 +21,7 @@ class JwkSerializationTest : FreeSpec({
             keyId = kid
         )
 
-        val serialized = jwk.serialize()
+        val serialized = joseCompliantSerializer.encodeToString(jwk)
 
         serialized shouldContain """"${curve.jwkName}""""
         serialized shouldContain """"$kid""""
@@ -31,7 +32,7 @@ class JwkSerializationTest : FreeSpec({
         val kid = uuid4().toString()
         val serialized = """{"kty": "EC", "crv": "${curve.jwkName}", "kid": "$kid"}"""
 
-        val parsed = JsonWebKey.deserialize(serialized).getOrThrow()
+        val parsed = joseCompliantSerializer.decodeFromString<JsonWebKey>(serialized)
 
         parsed.type shouldBe JwkType.EC
         parsed.curve shouldBe curve
@@ -42,7 +43,7 @@ class JwkSerializationTest : FreeSpec({
         val kid = uuid4().toString()
         val serialized = """{"kty": "EC", "crv": "P-111", "kid": "$kid"}"""
 
-        val parsed = JsonWebKey.deserialize(serialized).getOrThrow()
+        val parsed = joseCompliantSerializer.decodeFromString<JsonWebKey>(serialized)
 
         parsed.type shouldBe JwkType.EC
         parsed.curve.shouldBeNull()

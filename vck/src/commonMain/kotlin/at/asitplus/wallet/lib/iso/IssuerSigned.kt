@@ -55,7 +55,7 @@ data class IssuerSigned private constructor(
             issuerAuth: CoseSigned<MobileSecurityObject>,
         ): IssuerSigned = IssuerSigned(
             namespaces = namespacedItems.map { (namespace, value) ->
-                namespace to IssuerSignedList.Companion.fromIssuerSignedItems(value, namespace)
+                namespace to IssuerSignedList.fromIssuerSignedItems(value, namespace)
             }.toMap(),
             issuerAuth = issuerAuth,
         )

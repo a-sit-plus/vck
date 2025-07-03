@@ -3,8 +3,9 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.IssuerMetadata
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.maps.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -88,7 +89,7 @@ class DeserializationTest : FunSpec({
               }
         }
         """.trimIndent()
-        val deserialized = IssuerMetadata.deserialize(input).getOrThrow()
+        val deserialized = joseCompliantSerializer.decodeFromString<IssuerMetadata>(input)
 
         val credentials = deserialized.supportedCredentialConfigurations.shouldNotBeNull()
         credentials.shouldNotBeEmpty()
@@ -166,7 +167,7 @@ class DeserializationTest : FunSpec({
             }
         }
         """.trimIndent()
-        val deserialized = IssuerMetadata.deserialize(input).getOrThrow()
+        val deserialized = joseCompliantSerializer.decodeFromString<IssuerMetadata>(input)
 
         val credentials = deserialized.supportedCredentialConfigurations.shouldNotBeNull()
         credentials.shouldNotBeEmpty()
@@ -273,7 +274,7 @@ class DeserializationTest : FunSpec({
           }
         }
         """.trimIndent()
-        val deserialized = IssuerMetadata.deserialize(input).getOrThrow()
+        val deserialized = joseCompliantSerializer.decodeFromString<IssuerMetadata>(input)
 
         val credentials = deserialized.supportedCredentialConfigurations.shouldNotBeNull()
         credentials.shouldNotBeEmpty()
@@ -398,7 +399,8 @@ class DeserializationTest : FunSpec({
             }    
         """.trimIndent()
 
-        val deserialized = AuthenticationRequestParameters.deserialize(input).getOrThrow()
+        vckJsonSerializer.decodeFromString<AuthenticationRequestParameters>(input)
+            .shouldNotBeNull()
     }
 
 })

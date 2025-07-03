@@ -405,8 +405,10 @@ class ValidatorVcTest : FreeSpec() {
             keyId = verifierKeyMaterial.identifier,
             type = JwsContentTypeConstants.JWT
         )
-        val signatureInput = jwsHeader.serialize().encodeToByteArray().encodeToString(Base64UrlStrict) +
-                "." + vcJws.serialize().encodeToByteArray().encodeToString(Base64UrlStrict)
+
+        val signatureInput =
+            vckJsonSerializer.encodeToString(jwsHeader).encodeToByteArray().encodeToString(Base64UrlStrict) +
+                    "." + vckJsonSerializer.encodeToString(vcJws).encodeToByteArray().encodeToString(Base64UrlStrict)
         val signatureInputBytes = signatureInput.encodeToByteArray()
         val signature = issuerKeyMaterial.sign(signatureInputBytes).signature
         return JwsSigned(jwsHeader, vcJws, signature, signatureInputBytes).serialize()

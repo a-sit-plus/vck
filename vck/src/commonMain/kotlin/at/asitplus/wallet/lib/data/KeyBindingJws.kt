@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.catching
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.signum.indispensable.contentEqualsIfArray
 import at.asitplus.signum.indispensable.contentHashCodeIfArray
@@ -53,8 +52,6 @@ data class KeyBindingJws(
     val transactionDataHashesAlgorithm: String? = null,
 ) {
 
-    fun serialize() = vckJsonSerializer.encodeToString(this)
-
     @Suppress("DEPRECATION")
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -89,12 +86,6 @@ data class KeyBindingJws(
         result = 31 * result + (transactionDataHashes?.contentHashCodeIfArray() ?: 0)
         result = 31 * result + (transactionDataHashesAlgorithm?.hashCode() ?: 0)
         return result
-    }
-
-    companion object {
-        fun deserialize(it: String) = catching {
-            vckJsonSerializer.decodeFromString<KeyBindingJws>(it)
-        }
     }
 
 }

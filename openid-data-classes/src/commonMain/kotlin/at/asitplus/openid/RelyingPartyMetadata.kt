@@ -1,6 +1,5 @@
 package at.asitplus.openid
 
-import at.asitplus.catching
 import at.asitplus.dif.FormatHolder
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
@@ -123,14 +122,6 @@ data class RelyingPartyMetadata(
     @SerialName("client_id_scheme")
     val clientIdScheme: OpenIdConstants.ClientIdScheme? = OpenIdConstants.ClientIdScheme.PreRegistered,
 ) {
-
-    fun serialize() = odcJsonSerializer.encodeToString(this)
-
-    companion object {
-        fun deserialize(it: String) = catching {
-            odcJsonSerializer.decodeFromString<RelyingPartyMetadata>(it)
-        }
-    }
 
     /**
      * OID JARM: JWE (RFC7516) `alg` algorithm JWA (RFC7518). REQUIRED for encrypting authorization responses.

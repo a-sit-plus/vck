@@ -5,6 +5,7 @@ import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.signum.indispensable.CryptoSignature
 import at.asitplus.signum.indispensable.cosef.*
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.supreme.asKmmResult
 import at.asitplus.signum.supreme.sign.Verifier
@@ -16,6 +17,7 @@ import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.encodeToByteArray
 import kotlin.byteArrayOf
 
 /** How to identify the key material in a [CoseHeader] */
@@ -146,8 +148,9 @@ object CoseUtils {
             payload = payload,
             payloadSerializer = serializer
         ).let { signatureInput ->
-            Napier.d("COSE Signature input is ${signatureInput.serialize().encodeToString(Base16())}")
-            keyMaterial.sign(signatureInput.serialize()).asKmmResult().getOrElse {
+            val serialized = coseCompliantSerializer.encodeToByteArray(signatureInput)
+            Napier.d("COSE Signature input is ${serialized.encodeToString(Base16())}")
+            keyMaterial.sign(serialized).asKmmResult().getOrElse {
                 Napier.w("No signature from native code", it)
                 throw it
             }

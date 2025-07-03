@@ -1,6 +1,5 @@
 package at.asitplus.openid
 
-import at.asitplus.catching
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -23,14 +22,4 @@ data class AuthnRequestClaims(
      */
     @SerialName("userinfo")
     val userInfoMap: Map<String, AuthnRequestSingleClaim?>? = null,
-) {
-
-    fun serialize() = odcJsonSerializer.encodeToString(this)
-
-    companion object {
-        fun deserialize(it: String) = catching {
-            odcJsonSerializer.decodeFromString<AuthnRequestClaims>(it)
-        }
-    }
-
-}
+)

@@ -1,12 +1,19 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.eupid.EuPidScheme
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
@@ -276,18 +283,18 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
                     )
                     holderAgent.storeIsoCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
 
-                val authnRequest = verifierOid4vp.createAuthnRequest(
-                    requestOptions = OpenIdRequestOptions(
-                        credentials = setOf(
-                            RequestOptionsCredential(
-                                ConstantIndex.AtomicAttribute2023,
-                                ISO_MDOC
+                    val authnRequest = verifierOid4vp.createAuthnRequest(
+                        requestOptions = OpenIdRequestOptions(
+                            credentials = setOf(
+                                RequestOptionsCredential(
+                                    ConstantIndex.AtomicAttribute2023,
+                                    ISO_MDOC
+                                )
                             )
-                        )
-                    ),
-                )
-                val authnResponse = holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
-                    .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+                        ),
+                    )
+                    val authnResponse = holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
+                        .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
                     verifierOid4vp.validateAuthnResponse(authnResponse.url)
                         .shouldBeInstanceOf<AuthnResponseResult.SuccessIso>()
@@ -435,6 +442,8 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
         }
     }
 })
+
+private fun AuthenticationRequestParameters.serialize(): String = vckJsonSerializer.encodeToString(this)
 
 private suspend fun Holder.storeJwtCredential(
     holderKeyMaterial: KeyMaterial,

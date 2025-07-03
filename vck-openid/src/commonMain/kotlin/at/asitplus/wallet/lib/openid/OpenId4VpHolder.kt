@@ -27,6 +27,7 @@ import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.jws.EncryptJwe
 import at.asitplus.wallet.lib.jws.EncryptJweFun
 import at.asitplus.wallet.lib.jws.JwsHeaderJwk
@@ -57,7 +58,11 @@ class OpenId4VpHolder(
     private val supportedAlgorithms: Set<JwsAlgorithm> = setOfNotNull(JwsAlgorithm.Signature.ES256),
     private val signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> =
         SignCoseDetached(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
-    private val signDeviceAuthFallback: SignCoseFun<ByteArray> = SignCose(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
+    private val signDeviceAuthFallback: SignCoseFun<ByteArray> = SignCose(
+        keyMaterial,
+        CoseHeaderNone(),
+        CoseHeaderNone()
+    ),
     private val clock: Clock = Clock.System,
     private val clientId: String = "https://wallet.a-sit.at/",
     /**
@@ -131,7 +136,7 @@ class OpenId4VpHolder(
      */
     suspend fun parseAuthenticationRequestParameters(
         input: String,
-        dcApiRequest: DCAPIRequest? = null
+        dcApiRequest: DCAPIRequest? = null,
     ): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> =
         catching {
             @Suppress("UNCHECKED_CAST")
@@ -178,7 +183,7 @@ class OpenId4VpHolder(
      * Starts the authorization response building process from the RP's authentication request in [params]
      */
     suspend fun startAuthorizationResponsePreparation(
-        params: RequestParametersFrom<AuthenticationRequestParameters>
+        params: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<AuthorizationResponsePreparationState> = catching {
         val clientMetadata = params.parameters.loadClientMetadata()
         val presentationDefinition = params.parameters.loadCredentialRequest()
@@ -198,7 +203,7 @@ class OpenId4VpHolder(
     suspend fun finalizeAuthorizationResponse(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         clientMetadata: RelyingPartyMetadata?,
-        credentialPresentation: CredentialPresentation?
+        credentialPresentation: CredentialPresentation?,
     ): KmmResult<AuthenticationResponseResult> =
         finalizeAuthorizationResponseParameters(
             request,
@@ -224,7 +229,8 @@ class OpenId4VpHolder(
         val clientJsonWebKeySet = clientMetadata?.loadJsonWebKeySet()
         val dcApiRequest = request.extractDcApiRequest() as? Oid4vpDCAPIRequest?
         val audience = request.parameters.extractAudience(clientJsonWebKeySet, dcApiRequest)
-        val presentationFactory = PresentationFactory(supportedAlgorithms, signDeviceAuthDetached, signDeviceAuthFallback, signIdToken)
+        val presentationFactory =
+            PresentationFactory(supportedAlgorithms, signDeviceAuthDetached, signDeviceAuthFallback, signIdToken)
         val jsonWebKeys = clientJsonWebKeySet?.keys?.combine(certKey)
         val idToken =
             presentationFactory.createSignedIdToken(clock, keyMaterial.publicKey, request).getOrNull()?.serialize()
@@ -267,7 +273,7 @@ class OpenId4VpHolder(
     @Throws(OAuth2Exception::class)
     private fun RequestParameters.extractAudience(
         clientJsonWebKeySet: JsonWebKeySet?,
-        dcApiRequest: Oid4vpDCAPIRequest?
+        dcApiRequest: Oid4vpDCAPIRequest?,
     ) = dcApiRequest?.let { "origin:${it.callingOrigin}" }
         ?: clientId
         ?: issuer
@@ -280,7 +286,13 @@ class OpenId4VpHolder(
         jsonWebKeySet
             ?: jsonWebKeySetUrl?.let {
                 remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(it))
-                    ?.let { JsonWebKeySet.deserialize(it).getOrNull() }
+                    ?.let {
+                        catchingUnwrapped {
+                            joseCompliantSerializer.decodeFromString<JsonWebKeySet>(it)
+                        }.onFailure { ex ->
+                            Napier.w("Can't parse JsonWebKeySet from $jsonWebKeySetUrl", ex)
+                        }.getOrNull()
+                    }
             }
 
     private suspend fun AuthenticationRequestParameters.loadCredentialRequest(): CredentialPresentationRequest? =
@@ -303,7 +315,13 @@ class OpenId4VpHolder(
         clientMetadata
             ?: clientMetadataUri?.let {
                 remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(it))
-                    ?.let { RelyingPartyMetadata.deserialize(it).getOrNull() }
+                    ?.let {
+                        catchingUnwrapped {
+                            joseCompliantSerializer.decodeFromString<RelyingPartyMetadata>(it)
+                        }.onFailure { ex ->
+                            Napier.w("Can't parse RelyingPartyMetadata from $clientMetadataUri", ex)
+                        }.getOrNull()
+                    }
             }
 }
 

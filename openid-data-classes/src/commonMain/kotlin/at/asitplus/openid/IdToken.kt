@@ -1,6 +1,5 @@
 package at.asitplus.openid
 
-import at.asitplus.catching
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
 import kotlinx.datetime.Instant
@@ -81,14 +80,4 @@ data class IdToken(
      */
     @SerialName("sub_jwk")
     val subjectJwk: JsonWebKey? = null,
-) {
-
-    fun serialize() = odcJsonSerializer.encodeToString(this)
-
-    companion object {
-        fun deserialize(it: String) = catching {
-            odcJsonSerializer.decodeFromString<IdToken>(it)
-        }
-    }
-
-}
+)

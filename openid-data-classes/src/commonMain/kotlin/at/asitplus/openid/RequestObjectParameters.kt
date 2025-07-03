@@ -1,6 +1,5 @@
 package at.asitplus.openid
 
-import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -44,18 +43,10 @@ data class RequestObjectParameters(
     override val state: String? = null
     override val transactionData: List<TransactionDataBase64Url>? = null
 
-    fun serialize() = odcJsonSerializer.encodeToString(this)
-
     val walletMetadata: OAuth2AuthorizationServerMetadata?
         get() = walletMetadataString?.let {
             catchingUnwrapped {
                 odcJsonSerializer.decodeFromString<OAuth2AuthorizationServerMetadata>(it)
             }.getOrNull()
         }
-
-    companion object {
-        fun deserialize(it: String) = catching {
-            odcJsonSerializer.decodeFromString<RequestObjectParameters>(it)
-        }
-    }
 }

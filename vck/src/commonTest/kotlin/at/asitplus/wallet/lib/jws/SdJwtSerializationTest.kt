@@ -1,8 +1,10 @@
 package at.asitplus.wallet.lib.jws
 
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
@@ -26,7 +28,7 @@ class SdJwtSerializationTest : FreeSpec({
         val value = Random.nextBytes(16).encodeToString(Base64())
         val item = SelectiveDisclosureItem(salt, name, value)
 
-        val serialized = item.serialize()
+        val serialized = vckJsonSerializer.encodeToString<SelectiveDisclosureItem>(item)
 
         serialized shouldContain "["
         serialized shouldContain """"${salt.encodeToString(Base64UrlStrict)}""""
@@ -34,7 +36,7 @@ class SdJwtSerializationTest : FreeSpec({
         serialized shouldContain """"$value""""
         serialized shouldContain "]"
 
-        val deserialized = SelectiveDisclosureItem.deserialize(serialized).getOrThrow()
+        val deserialized = joseCompliantSerializer.decodeFromString<SelectiveDisclosureItem>(serialized)
         deserialized shouldBe item
     }
 
@@ -44,7 +46,7 @@ class SdJwtSerializationTest : FreeSpec({
         val value = Random.nextBytes(16)
         val item = SelectiveDisclosureItem(salt, name, value)
 
-        val serialized = item.serialize()
+        val serialized = vckJsonSerializer.encodeToString<SelectiveDisclosureItem>(item)
 
         serialized shouldContain "["
         serialized shouldContain """"${salt.encodeToString(Base64UrlStrict)}""""
@@ -52,7 +54,7 @@ class SdJwtSerializationTest : FreeSpec({
         serialized shouldContain """"${value.encodeToString(Base64UrlStrict)}""""
         serialized shouldContain "]"
 
-        val deserialized = SelectiveDisclosureItem.deserialize(serialized).getOrThrow()
+        val deserialized = joseCompliantSerializer.decodeFromString<SelectiveDisclosureItem>(serialized)
         deserialized shouldBe item
     }
 
@@ -62,14 +64,14 @@ class SdJwtSerializationTest : FreeSpec({
         val value = true
         val item = SelectiveDisclosureItem(salt, name, value)
 
-        val serialized = item.serialize()
+        val serialized = vckJsonSerializer.encodeToString<SelectiveDisclosureItem>(item)
 
         serialized shouldContain "["
         serialized shouldContain """$value"""
         serialized shouldNotContain """"$value""""
         serialized shouldContain "]"
 
-        val deserialized = SelectiveDisclosureItem.deserialize(serialized).getOrThrow()
+        val deserialized = joseCompliantSerializer.decodeFromString<SelectiveDisclosureItem>(serialized)
         deserialized shouldBe item
     }
 
@@ -79,14 +81,14 @@ class SdJwtSerializationTest : FreeSpec({
         val value = Random.nextLong()
         val item = SelectiveDisclosureItem(salt, name, value)
 
-        val serialized = item.serialize()
+        val serialized = vckJsonSerializer.encodeToString<SelectiveDisclosureItem>(item)
 
         serialized shouldContain "["
         serialized shouldContain """$value"""
         serialized shouldNotContain """"$value""""
         serialized shouldContain "]"
 
-        val deserialized = SelectiveDisclosureItem.deserialize(serialized).getOrThrow()
+        val deserialized = joseCompliantSerializer.decodeFromString<SelectiveDisclosureItem>(serialized)
         deserialized shouldBe item
     }
 
@@ -96,14 +98,14 @@ class SdJwtSerializationTest : FreeSpec({
         val value = Random.nextUInt()
         val item = SelectiveDisclosureItem(salt, name, value)
 
-        val serialized = item.serialize()
+        val serialized = vckJsonSerializer.encodeToString<SelectiveDisclosureItem>(item)
 
         serialized shouldContain "["
         serialized shouldContain """$value"""
         serialized shouldNotContain """"$value""""
         serialized shouldContain "]"
 
-        val deserialized = SelectiveDisclosureItem.deserialize(serialized).getOrThrow()
+        val deserialized = joseCompliantSerializer.decodeFromString<SelectiveDisclosureItem>(serialized)
         deserialized shouldBe item
     }
 
@@ -127,7 +129,7 @@ class SdJwtSerializationTest : FreeSpec({
         val value = listOf(Random.nextBytes(16))
         val item = SelectiveDisclosureItem(salt, name, value)
 
-        val serialized = item.serialize()
+        val serialized = vckJsonSerializer.encodeToString<SelectiveDisclosureItem>(item)
 
         serialized shouldContain "["
         serialized shouldContain """"${salt.encodeToString(Base64UrlStrict)}""""
@@ -135,7 +137,7 @@ class SdJwtSerializationTest : FreeSpec({
         serialized shouldContain """"${value.first().encodeToString(Base64UrlStrict)}""""
         serialized shouldContain "]"
 
-        val deserialized = SelectiveDisclosureItem.deserialize(serialized).getOrThrow()
+        val deserialized = joseCompliantSerializer.decodeFromString<SelectiveDisclosureItem>(serialized)
         deserialized shouldBe item
     }
 
@@ -145,7 +147,7 @@ class SdJwtSerializationTest : FreeSpec({
         val value = Random.nextBytes(16).encodeToString(Base64())
         val item = SelectiveDisclosureItem(salt, name, value)
 
-        val serialized = item.serialize()
+        val serialized = vckJsonSerializer.encodeToString<SelectiveDisclosureItem>(item)
 
         serialized shouldContain "["
         serialized shouldContain """"${salt.encodeToString(Base64UrlStrict)}""""
@@ -153,7 +155,7 @@ class SdJwtSerializationTest : FreeSpec({
         serialized shouldContain """"$value""""
         serialized shouldContain "]"
 
-        val deserialized = SelectiveDisclosureItem.deserialize(serialized).getOrThrow()
+        val deserialized = joseCompliantSerializer.decodeFromString<SelectiveDisclosureItem>(serialized)
         deserialized shouldBe item
     }
 
@@ -161,7 +163,7 @@ class SdJwtSerializationTest : FreeSpec({
         val input = "WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgIkZSIl0"
 
         val decoded = input.decodeToByteArray(Base64()).decodeToString()
-        val deserialized = SelectiveDisclosureItem.deserialize(decoded).getOrThrow()
+        val deserialized = joseCompliantSerializer.decodeFromString<SelectiveDisclosureItem>(decoded)
         deserialized.claimName.shouldBeNull()
         deserialized.claimValue.jsonPrimitive.content shouldBe "FR"
         deserialized.salt shouldBe "lklxF5jMYlGTPUovMNIvCA".decodeToByteArray(Base64UrlStrict)
@@ -175,7 +177,7 @@ class SdJwtSerializationTest : FreeSpec({
                 "2VWJTanR5YzVicWNXeUEtaThYTHZoVllZN1pUMHRiMCJdfV0"
 
         val decoded = input.decodeToByteArray(Base64()).decodeToString()
-        val deserialized = SelectiveDisclosureItem.deserialize(decoded).getOrThrow()
+        val deserialized = joseCompliantSerializer.decodeFromString<SelectiveDisclosureItem>(decoded)
         deserialized.claimName shouldBe "address"
         val nestedSd = deserialized.claimValue.jsonObject["_sd"]
             .shouldBeInstanceOf<JsonArray>()

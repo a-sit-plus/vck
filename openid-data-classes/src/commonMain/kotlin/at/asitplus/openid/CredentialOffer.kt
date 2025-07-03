@@ -1,11 +1,7 @@
 package at.asitplus.openid
 
-import at.asitplus.KmmResult
-import at.asitplus.catching
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.decodeFromJsonElement
 
 @Serializable
 data class CredentialOffer(
@@ -34,14 +30,4 @@ data class CredentialOffer(
      */
     @SerialName("grants")
     val grants: CredentialOfferGrants? = null,
-) {
-    fun serialize() = odcJsonSerializer.encodeToString(this)
-
-    companion object {
-        fun deserialize(input: String): KmmResult<CredentialOffer> =
-            catching { odcJsonSerializer.decodeFromString<CredentialOffer>(input) }
-
-        fun deserialize(input: JsonElement): KmmResult<CredentialOffer> =
-            catching { odcJsonSerializer.decodeFromJsonElement<CredentialOffer>(input) }
-    }
-}
+)

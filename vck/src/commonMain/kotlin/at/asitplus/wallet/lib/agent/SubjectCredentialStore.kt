@@ -30,7 +30,7 @@ interface SubjectCredentialStore {
         vc: VerifiableCredentialJws,
         vcSerialized: String,
         scheme: ConstantIndex.CredentialScheme,
-    ) : StoreEntry
+    ): StoreEntry
 
     /**
      * Implementations should store the passed credential in a secure way.
@@ -44,7 +44,7 @@ interface SubjectCredentialStore {
         vcSerialized: String,
         disclosures: Map<String, SelectiveDisclosureItem?>,
         scheme: ConstantIndex.CredentialScheme,
-    ) : StoreEntry
+    ): StoreEntry
 
     /**
      * Implementations should store the passed credential in a secure way.
@@ -55,7 +55,7 @@ interface SubjectCredentialStore {
     suspend fun storeCredential(
         issuerSigned: IssuerSigned,
         scheme: ConstantIndex.CredentialScheme,
-    ) : StoreEntry
+    ): StoreEntry
 
     /**
      * Return all stored credentials.
@@ -109,7 +109,8 @@ interface SubjectCredentialStore {
             override val schemaUri: String,
         ) : StoreEntry {
             override fun getFallbackScheme(): ConstantIndex.CredentialScheme? = catchingUnwrapped {
-                IsoMdocFallbackCredentialScheme(issuerSigned.issuerAuth.payload?.docType!!) }.getOrNull()
+                IsoMdocFallbackCredentialScheme(issuerSigned.issuerAuth.payload?.docType!!)
+            }.getOrNull()
         }
 
         @OptIn(ExperimentalStdlibApi::class)
@@ -118,7 +119,8 @@ interface SubjectCredentialStore {
             is Vc -> vc.jwtId
             is SdJwt -> sdJwt.jwtId
                 ?: sdJwt.subject
-                ?: sdJwt.serialize()
+                ?: vckJsonSerializer.encodeToString(sdJwt)
+
             is Iso -> coseCompliantSerializer.encodeToByteArray(issuerSigned).sha256().toHexString()
         }
 

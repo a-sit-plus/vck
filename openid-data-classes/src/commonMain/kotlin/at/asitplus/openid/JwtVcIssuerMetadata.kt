@@ -1,7 +1,5 @@
 package at.asitplus.openid
 
-import at.asitplus.KmmResult
-import at.asitplus.catching
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -34,11 +32,4 @@ data class JwtVcIssuerMetadata(
      */
     @SerialName("jwks_uri")
     val jsonWebKeySetUrl: String? = null,
-) {
-    fun serialize() = odcJsonSerializer.encodeToString(this)
-
-    companion object {
-        fun deserialize(input: String): KmmResult<JwtVcIssuerMetadata> =
-            catching { odcJsonSerializer.decodeFromString<JwtVcIssuerMetadata>(input) }
-    }
-}
+)

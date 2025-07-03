@@ -8,6 +8,7 @@ import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.nativeDigest
 import at.asitplus.signum.indispensable.toJcaPublicKey
 import at.asitplus.signum.HazardousMaterials
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
 import at.asitplus.signum.supreme.sign.EphemeralKey
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -120,7 +121,7 @@ class JwsServiceJvmTest : FreeSpec({
                 "Signed object from ext. library can be verified with int. library" {
                     val libHeader = JWSHeader.Builder(JWSAlgorithm(algo.name))
                         .type(JOSEObjectType("JWT"))
-                        .jwk(JWK.parse(ephemeralKey.publicKey.toJsonWebKey().serialize()))
+                        .jwk(JWK.parse(joseCompliantSerializer.encodeToString(ephemeralKey.publicKey.toJsonWebKey())))
                         .build()
                     val libObject = JWSObject(libHeader, Payload(randomPayload.content)).also {
                         it.sign(jvmSigner)

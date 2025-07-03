@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import kotlinx.datetime.Instant
@@ -104,19 +103,11 @@ data class VerifiableCredentialSdJwt(
     val confirmationClaim: ConfirmationClaim? = null,
 ) {
 
-    fun serialize() = vckJsonSerializer.encodeToString(this)
-
     val credentialStatus: Status?
         get() = statusElement?.let {
             catchingUnwrapped {
                 vckJsonSerializer.decodeFromJsonElement<Status>(it)
             }.getOrNull()
         }
-
-    companion object {
-        fun deserialize(it: String) = catching {
-            vckJsonSerializer.decodeFromString<VerifiableCredentialSdJwt>(it)
-        }
-    }
 
 }

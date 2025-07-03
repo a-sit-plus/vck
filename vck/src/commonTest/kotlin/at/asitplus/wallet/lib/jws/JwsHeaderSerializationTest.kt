@@ -14,6 +14,7 @@ import at.asitplus.signum.indispensable.pki.RelativeDistinguishedName
 import at.asitplus.signum.indispensable.pki.TbsCertificate
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.ecmath.times
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import com.benasher44.uuid.uuid4
 import com.ionspin.kotlin.bignum.integer.BigInteger
 import com.ionspin.kotlin.bignum.integer.Sign
@@ -42,7 +43,7 @@ class JwsHeaderSerializationTest : FreeSpec({
             certificateChain = listOf(first, second)
         )
 
-        val serialized = header.serialize()
+        val serialized = joseCompliantSerializer.encodeToString(header)
 
         serialized shouldContain """"${first.encodeToDer().encodeToString(Base64Strict)}""""
         serialized shouldContain """"${second.encodeToDer().encodeToString(Base64Strict)}""""

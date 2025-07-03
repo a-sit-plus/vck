@@ -21,6 +21,7 @@ Release 5.8.0:
    - In `CredentialIssuer` move constructor parameters for loading data and issuing credentials to method `credential()`
    - Extract `ProofValidator` out of `CredentialIssuer`
    - Extract `CredentialSchemeMapping` out of various top-level methods
+   - Remove all remaining `serialize()` and `deserialize()` methods in data classes
  - Credential schemes:
    - Provide fallback credential schemes, to be used when no matching scheme is registered with this library:
      - `SdJwtFallbackCredentialScheme`

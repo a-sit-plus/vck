@@ -1,13 +1,10 @@
 package at.asitplus.openid
 
-import at.asitplus.KmmResult
-import at.asitplus.catching
 import at.asitplus.signum.indispensable.josef.JsonWebAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import kotlinx.serialization.encodeToString
 
 /**
  * This implements [RFC8414](https://datatracker.ietf.org/doc/html/rfc8414)
@@ -362,12 +359,6 @@ data class OAuth2AuthorizationServerMetadata(
     @SerialName("code_challenge_methods_supported")
     val codeChallengeMethodsSupported: Set<String>? = null,
 ) {
-    fun serialize() = odcJsonSerializer.encodeToString(this)
-
-    companion object {
-        fun deserialize(input: String): KmmResult<OAuth2AuthorizationServerMetadata> =
-            catching { odcJsonSerializer.decodeFromString<OAuth2AuthorizationServerMetadata>(input) }
-    }
 
     /**
      * OIDC Discovery: REQUIRED. A JSON array containing a list of the JWS signing algorithms (`alg` values) supported

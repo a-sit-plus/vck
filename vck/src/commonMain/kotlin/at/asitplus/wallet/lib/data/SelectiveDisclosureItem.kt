@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.catching
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
 import at.asitplus.wallet.lib.iso.sha256
@@ -23,13 +22,12 @@ data class SelectiveDisclosureItem(
     constructor(salt: ByteArray, claimName: String?, claimValue: Any)
             : this(salt, claimName, claimValue.toJsonElement())
 
-    fun serialize() = vckJsonSerializer.encodeToString(this)
-
     /**
      * Creates a disclosure, as described in section 5.2 of
      * [draft-ietf-oauth-selective-disclosure-jwt-08](https://datatracker.ietf.org/doc/draft-ietf-oauth-selective-disclosure-jwt/)
      */
-    fun toDisclosure() = serialize().encodeToByteArray().encodeToString(Base64UrlStrict)
+    fun toDisclosure() = vckJsonSerializer.encodeToString<SelectiveDisclosureItem>(this)
+        .encodeToByteArray().encodeToString(Base64UrlStrict)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -58,10 +56,6 @@ data class SelectiveDisclosureItem(
             ")"
 
     companion object {
-        fun deserialize(it: String) = catching {
-            vckJsonSerializer.decodeFromString<SelectiveDisclosureItem>(it)
-        }
-
         /**
          * Hashes a disclosure from [SelectiveDisclosureItem.toDisclosure] according to section 5.2.3 of
          * [draft-ietf-oauth-selective-disclosure-jwt-08](https://datatracker.ietf.org/doc/draft-ietf-oauth-selective-disclosure-jwt/)

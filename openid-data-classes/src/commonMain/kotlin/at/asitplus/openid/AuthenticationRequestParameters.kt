@@ -1,6 +1,5 @@
 package at.asitplus.openid
 
-import at.asitplus.catching
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
@@ -410,7 +409,6 @@ data class AuthenticationRequestParameters(
         get() = clientIdScheme
             ?: clientId?.let { OpenIdConstants.ClientIdScheme.decodeFromClientId(it) }
 
-    fun serialize() = odcJsonSerializer.encodeToString(this)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -507,12 +505,6 @@ data class AuthenticationRequestParameters(
         result = 31 * result + (clientData?.hashCode() ?: 0)
         result = 31 * result + (transactionData?.hashCode() ?: 0)
         return result
-    }
-
-    companion object {
-        fun deserialize(it: String) = catching {
-            odcJsonSerializer.decodeFromString<AuthenticationRequestParameters>(it)
-        }
     }
 
 }

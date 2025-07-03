@@ -40,8 +40,8 @@ internal class AuthenticationResponseFactory(
     internal suspend fun responseDcApi(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
-        requestsEncryption: Boolean
-    ) : AuthenticationResponseResult.DcApi {
+        requestsEncryption: Boolean,
+    ): AuthenticationResponseResult.DcApi {
         val responseSerialized = buildJarm(request, response, requestsEncryption)
         val jarm = AuthenticationResponseParameters(
             response = responseSerialized,
@@ -117,7 +117,7 @@ internal class AuthenticationResponseFactory(
     private suspend fun buildJarm(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
-        requestsEncryption: Boolean = false
+        requestsEncryption: Boolean = false,
     ) = if (response.requestsEncryption()) {
         encrypt(request, response)
     } else if (response.requestsSignature()) {
@@ -129,7 +129,7 @@ internal class AuthenticationResponseFactory(
         if (request.parameters.responseMode !is DcApi) {
             throw InvalidRequest("Response must be either signed, encrypted or both.")
         }
-        response.params.serialize()
+        odcJsonSerializer.encodeToString(response.params)
     }
 
     private suspend fun sign(payload: AuthenticationResponseParameters): String =

@@ -12,6 +12,7 @@ import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweEncryption.*
 import at.asitplus.signum.indispensable.josef.JwsExtensions.prependWith4BytesSize
 import at.asitplus.signum.indispensable.josef.JwsSigned.Companion.prepareJwsSignatureInput
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.symmetric.*
 import at.asitplus.signum.supreme.agree.Ephemeral
 import at.asitplus.signum.supreme.agree.keyAgreement
@@ -185,8 +186,8 @@ object JweUtils {
         require(algorithm.requiresNonce())
         require(algorithm.isAuthenticated())
         val key = algorithm.keyFromIntermediate(intermediateKey)
-
-        val headerSerialized = jweHeader.serialize()
+        
+        val headerSerialized = joseCompliantSerializer.encodeToString(jweHeader)
         val aad = headerSerialized.encodeToByteArray()
         val aadForCipher = aad.encodeToByteArray(Base64UrlStrict)
         val bytes = payload.encodeToByteArray()

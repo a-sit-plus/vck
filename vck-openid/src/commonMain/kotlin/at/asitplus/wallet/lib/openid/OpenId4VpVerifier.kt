@@ -193,7 +193,7 @@ open class OpenId4VpVerifier(
                         .forEach { parameters.append(it.key, it.value) }
                 }.buildString().toCreatedRequest {
                     catching {
-                        createAuthnRequest(requestOptions, it).serialize()
+                        vckJsonSerializer.encodeToString(createAuthnRequest(requestOptions, it))
                     }
                 }
             }

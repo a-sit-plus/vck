@@ -5,6 +5,7 @@ import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.agent.SdJwtCreator.NAME_SD
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.json.*
@@ -116,7 +117,10 @@ class SdJwtValidator(sdJwtSigned: SdJwtSigned) {
         if (!it.isEmpty()) add(it)
     }
 
-    private fun String.toSdItem() =
-        SelectiveDisclosureItem.deserialize(decodeToByteArray(Base64UrlStrict).decodeToString()).getOrNull()
+    private fun String.toSdItem() = catchingUnwrapped {
+        vckJsonSerializer.decodeFromString<SelectiveDisclosureItem>(
+            decodeToByteArray(Base64UrlStrict).decodeToString()
+        )
+    }.getOrNull()
 
 }
