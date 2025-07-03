@@ -12,6 +12,7 @@ import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
 import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.dif.PresentationExchangeInputEvaluator
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.data.third_party.at.asitplus.oidc.dcql.toDefaultSubmission
@@ -329,7 +330,8 @@ class HolderAgent(
             is StoreEntry.Iso -> CredentialFormatEnum.MSO_MDOC
         },
         credentialScheme = when (credential) {
-            is StoreEntry.Vc -> credential.scheme?.vcType ?: credential.vc.vc.type.first()
+            is StoreEntry.Vc -> credential.scheme?.vcType ?: credential.vc.vc.type
+                .filter { it != VERIFIABLE_CREDENTIAL }.first()
             is StoreEntry.SdJwt -> credential.scheme?.sdJwtType ?: credential.sdJwt.verifiableCredentialType
             is StoreEntry.Iso -> credential.scheme?.isoDocType?: credential.issuerSigned.issuerAuth.payload?.docType
         },
