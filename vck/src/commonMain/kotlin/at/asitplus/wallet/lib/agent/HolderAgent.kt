@@ -329,9 +329,9 @@ class HolderAgent(
             is StoreEntry.Iso -> CredentialFormatEnum.MSO_MDOC
         },
         credentialScheme = when (credential) {
-            is StoreEntry.Vc -> credential.scheme?.vcType ?: credential.vcType
-            is StoreEntry.SdJwt -> credential.scheme?.sdJwtType ?: credential.sdJwtType
-            is StoreEntry.Iso -> credential.scheme?.isoDocType?: credential.isoDocType
+            is StoreEntry.Vc -> credential.scheme?.vcType ?: credential.vc.vc.type.first()
+            is StoreEntry.SdJwt -> credential.scheme?.sdJwtType ?: credential.sdJwt.verifiableCredentialType
+            is StoreEntry.Iso -> credential.scheme?.isoDocType?: credential.issuerSigned.issuerAuth.payload?.docType
         },
         pathAuthorizationValidator = pathAuthorizationValidator,
     )

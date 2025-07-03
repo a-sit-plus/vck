@@ -8,7 +8,6 @@ data class VcFallbackCredentialScheme(override val vcType: String? = null) : Con
     }
 
     override val schemaUri: String = "https://wallet.a-sit.at/schemas/1.0.0/unknown_vc.json"
-    override val isoNamespace: String? = null
     override val supportedRepresentations: Collection<ConstantIndex.CredentialRepresentation> = listOf(ConstantIndex.CredentialRepresentation.PLAIN_JWT)
     override val claimNames: Collection<String> = listOf()
 }

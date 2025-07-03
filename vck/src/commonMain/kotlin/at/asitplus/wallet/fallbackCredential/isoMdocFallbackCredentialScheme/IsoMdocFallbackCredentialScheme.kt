@@ -8,7 +8,7 @@ data class IsoMdocFallbackCredentialScheme(override val isoDocType: String? = nu
     }
 
     override val schemaUri: String = "https://wallet.a-sit.at/schemas/1.0.0/unknown_iso.json"
-    override val isoNamespace: String? = null
+    override val isoNamespace: String? = isoDocType
     override val supportedRepresentations: Collection<ConstantIndex.CredentialRepresentation> = listOf(ConstantIndex.CredentialRepresentation.ISO_MDOC)
     override val claimNames: Collection<String> = listOf()
 }
