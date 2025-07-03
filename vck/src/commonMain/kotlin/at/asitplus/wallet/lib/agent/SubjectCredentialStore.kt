@@ -73,8 +73,6 @@ interface SubjectCredentialStore {
             val vc: VerifiableCredentialJws,
             @SerialName("schema-uri")
             override val schemaUri: String,
-            @SerialName("vc-type")
-            val vcType: String? = null
         ) : StoreEntry
 
         @Serializable
@@ -88,8 +86,6 @@ interface SubjectCredentialStore {
             val disclosures: Map<String, SelectiveDisclosureItem?>,
             @SerialName("schema-uri")
             override val schemaUri: String,
-            @SerialName("sd-jwt-type")
-            val sdJwtType: String? = null
         ) : StoreEntry
 
         @Serializable
@@ -98,8 +94,6 @@ interface SubjectCredentialStore {
             val issuerSigned: IssuerSigned,
             @SerialName("schema-uri")
             override val schemaUri: String,
-            @SerialName("iso-doc-type")
-            val isoDocType: String? = null
         ) : StoreEntry
 
         @OptIn(ExperimentalStdlibApi::class)
