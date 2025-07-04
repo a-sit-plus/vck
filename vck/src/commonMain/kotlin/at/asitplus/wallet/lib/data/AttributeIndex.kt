@@ -47,6 +47,7 @@ object AttributeIndex {
     fun resolveIsoNamespace(namespace: String): CredentialScheme? =
         schemeSet.filter { it.isoNamespace != null }
             .firstOrNull { it.isoNamespace!!.startsWith(namespace) || namespace.startsWith(it.isoNamespace!!) }
+            ?: IsoMdocFallbackCredentialScheme(isoDocType = namespace)
 
     /**
      * Matches the passed [docType] against all known docTypes from [ConstantIndex.CredentialScheme.isoDocType].
