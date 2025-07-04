@@ -53,7 +53,7 @@ class CredentialAuthorizationServiceStrategy(
             throw InvalidAuthorizationDetails("Token request for credential must contain authorization details")
 
         validateAuthorizationDetails(it).onEach { filter ->
-            if (authRequest.authnDetails!!.all { authDetails -> !filter.matches(authDetails) })
+            if (authRequest.authnDetails?.all { authDetails -> !filter.matches(authDetails) } == true)
                 throw InvalidAuthorizationDetails("Authorization details not from auth code: $filter")
         }
     }
