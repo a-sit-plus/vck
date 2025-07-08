@@ -1,3 +1,4 @@
+@file:OptIn(ExperimentalUuidApi::class)
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.msg.SchemaReference
@@ -28,14 +29,15 @@ import at.asitplus.wallet.lib.oidc.IdToken
 import at.asitplus.wallet.lib.oidc.IdTokenType
 import at.asitplus.wallet.lib.oidc.JsonWebKeySet
 import at.asitplus.wallet.lib.oidc.RelyingPartyMetadata
-import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.URLBuilder
 import io.ktor.http.Url
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 
 /**
@@ -51,7 +53,7 @@ class OidcSiopProtocol(
     private val agentPublicKey: JsonWebKey,
     private val jwsService: JwsService,
     private val verifierJwsService: VerifierJwsService,
-    private val relyingPartyChallenge: String = uuid4().toString(),
+    private val relyingPartyChallenge: String = Uuid.random().toString(),
     private val walletUrl: String = "https://wallet.a-sit.at/mobile",
     private val relyingPartyUrl: String = "https://wallet.a-sit.at/verifier",
     timeLeewaySeconds: Long = 300L,
@@ -59,7 +61,7 @@ class OidcSiopProtocol(
 ) {
 
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
-    private var stateOfRelyingParty = uuid4().toString()
+    private var stateOfRelyingParty = Uuid.random().toString()
 
     companion object {
         fun newVerifierInstance(
@@ -67,7 +69,7 @@ class OidcSiopProtocol(
             cryptoService: CryptoService,
             verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
             jwsService: JwsService = DefaultJwsService(cryptoService),
-            relyingPartyChallenge: String = uuid4().toString(),
+            relyingPartyChallenge: String = Uuid.random().toString(),
             relyingPartyUrl: String = "https://wallet.a-sit.at/verifier",
             timeLeewaySeconds: Long = 300L,
             clock: Clock = Clock.System
@@ -122,13 +124,13 @@ class OidcSiopProtocol(
             clientMetadata = metadata,
             idTokenType = IdTokenType.ATTESTER_SIGNED,
             presentationDefinition = PresentationDefinition(
-                id = uuid4().toString(),
+                id = Uuid.random().toString(),
                 formats = FormatHolder(
                     jwtVp = FormatContainerJwt(algorithms = arrayOf("ES256"))
                 ),
                 inputDescriptors = arrayOf(
                     InputDescriptor(
-                        id = uuid4().toString(),
+                        id = Uuid.random().toString(),
                         format = FormatHolder(
                             jwtVp = FormatContainerJwt(algorithms = arrayOf("ES256"))
                         ),
@@ -212,15 +214,15 @@ class OidcSiopProtocol(
             ?: return null
                 .also { Napier.w("Could not sign id_token") }
         val presentationSubmission = PresentationSubmission(
-            id = uuid4().toString(),
-            definitionId = params.presentationDefinition?.id ?: uuid4().toString(),
+            id = Uuid.random().toString(),
+            definitionId = params.presentationDefinition?.id ?: Uuid.random().toString(),
             descriptorMap = params.presentationDefinition?.inputDescriptors?.map {
                 PresentationSubmissionDescriptor(
                     id = it.id,
                     format = ClaimFormatEnum.JWT_VP,
                     path = "$",
                     nestedPath = PresentationSubmissionDescriptor(
-                        id = uuid4().toString(),
+                        id = Uuid.random().toString(),
                         format = ClaimFormatEnum.JWT_VC,
                         path = "$.verifiableCredential[0]"
                     ),

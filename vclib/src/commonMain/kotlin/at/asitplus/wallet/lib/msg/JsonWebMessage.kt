@@ -2,13 +2,12 @@ package at.asitplus.wallet.lib.msg
 
 import at.asitplus.wallet.lib.data.NullableInstantLongSerializer
 import at.asitplus.wallet.lib.data.jsonSerializer
-import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 /**
  * From [DIDComm Messaging](https://identity.foundation/didcomm-messaging/spec/)
@@ -42,7 +41,7 @@ sealed class JsonWebMessage(
     protected constructor(type: String) : this(
         typ = "application/didcomm-plain+json",
         type = type,
-        id = uuid4().toString()
+        id = @OptIn(ExperimentalUuidApi::class) Uuid.random().toString()
     )
 
     protected constructor(
@@ -53,7 +52,7 @@ sealed class JsonWebMessage(
     ) : this(
         typ = "application/didcomm-plain+json",
         type = type,
-        id = uuid4().toString(),
+        id = @OptIn(ExperimentalUuidApi::class) Uuid.random().toString(),
         parentThreadId = parentThreadId,
         threadId = threadId,
         attachments = attachments,
@@ -66,7 +65,7 @@ sealed class JsonWebMessage(
     ) : this(
         typ = "application/didcomm-plain+json",
         type = type,
-        id = uuid4().toString(),
+        id = @OptIn(ExperimentalUuidApi::class) Uuid.random().toString(),
         parentThreadId = parentThreadId,
         threadId = threadId,
     )
@@ -74,7 +73,7 @@ sealed class JsonWebMessage(
     protected constructor(type: String, threadId: String, attachments: Array<JwmAttachment>) : this(
         typ = "application/didcomm-plain+json",
         type = type,
-        id = uuid4().toString(),
+        id = @OptIn(ExperimentalUuidApi::class) Uuid.random().toString(),
         threadId = threadId,
         attachments = attachments,
     )

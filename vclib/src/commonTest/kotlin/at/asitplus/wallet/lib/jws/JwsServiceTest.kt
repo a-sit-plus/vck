@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.jws
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.data.jsonSerializer
-import com.benasher44.uuid.uuid4
+import at.asitplus.wallet.lib.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -20,7 +20,7 @@ class JwsServiceTest : FreeSpec({
         cryptoService = DefaultCryptoService()
         jwsService = DefaultJwsService(cryptoService)
         verifierJwsService = DefaultVerifierJwsService()
-        randomPayload = uuid4().toString()
+        randomPayload = uuid4()
     }
 
     "signed object with bytes can be verified" {

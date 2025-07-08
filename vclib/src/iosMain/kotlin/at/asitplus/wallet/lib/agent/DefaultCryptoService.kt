@@ -11,6 +11,9 @@ import at.asitplus.wallet.lib.jws.JweEncryption
 import at.asitplus.wallet.lib.jws.JwkType
 import at.asitplus.wallet.lib.jws.JwsAlgorithm
 import at.asitplus.wallet.lib.jws.JwsExtensions.convertToAsn1Signature
+import at.asitplus.wallet.lib.jws.encodeBase64
+import io.matthewnelson.encoding.base64.Base64
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.MemScope

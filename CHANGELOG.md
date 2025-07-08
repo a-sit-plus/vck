@@ -1,5 +1,20 @@
 # Changelog
 
+Release 1.8.1-SNAPSHOT:
+* Dependency Updates
+  - kotlin 2.1.21
+  - kotest 6.0.0.M1
+  - serialization 1.8.1
+  - agp 8.9.2
+  - coroutines 1.10.2
+  - ktor 3.2.2
+  - nexus 1.3.0
+  - dokka 1.9.20
+  - datetime 0.7.1
+  - napier 2.7.1
+  - bouncycastle 1.81!!
+  - kmmresult 1.9.3
+
 Release 1.8.0:
  - Remove `JwsContentType`, replace with strings from `JwsContentTypeConstants`
  - Add `JsonWebToken` to use as payload in `JwsHeader` or others

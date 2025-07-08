@@ -4,7 +4,7 @@ import at.asitplus.wallet.lib.data.InstantLongSerializer
 import at.asitplus.wallet.lib.data.jsonSerializer
 import at.asitplus.wallet.lib.jws.JsonWebKey
 import io.github.aakira.napier.Napier
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString

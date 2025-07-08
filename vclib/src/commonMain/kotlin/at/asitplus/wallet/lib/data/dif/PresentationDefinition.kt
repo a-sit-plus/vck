@@ -1,12 +1,11 @@
 package at.asitplus.wallet.lib.data.dif
 
 import at.asitplus.wallet.lib.data.jsonSerializer
-import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 /**
  * Data class for
@@ -30,7 +29,7 @@ data class PresentationDefinition(
     constructor(
         inputDescriptors: Array<InputDescriptor>,
         formats: FormatHolder
-    ) : this(id = uuid4().toString(), inputDescriptors = inputDescriptors, formats = formats)
+    ) : this(id =@OptIn(ExperimentalUuidApi::class) Uuid.random().toString(), inputDescriptors = inputDescriptors, formats = formats)
 
     fun serialize() = jsonSerializer.encodeToString(this)
 

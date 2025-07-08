@@ -1,29 +1,32 @@
-package at.asitplus.wallet.lib.agent
+@file:OptIn(ExperimentalUuidApi::class)
 
+package at.asitplus.wallet.lib.agent
+import at.asitplus.wallet.lib.uuid4
 import at.asitplus.wallet.lib.data.AtomicAttributeCredential
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.CredentialStatus
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.jws.Base64UrlNoPad
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentType
 import at.asitplus.wallet.lib.jws.JwsHeader
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.JwsSigned
 import at.asitplus.wallet.lib.nameHack
-import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.core.spec.style.scopes.ContainerScope
 import io.kotest.datatest.withData
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.matthewnelson.component.base64.Base64
-import io.matthewnelson.component.base64.encodeBase64
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlin.time.Clock
+import kotlin.time.Instant
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.seconds
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 class ValidatorVcTest : FreeSpec() {
 
@@ -80,7 +83,8 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "wrong subject keyId is not be valid" {
-            issuer.issueCredentials(uuid4().toString(), AttributeIndex.genericAttributes)
+
+            issuer.issueCredentials(Uuid.random().toString(), AttributeIndex.genericAttributes)
                 .successful.map { it.vcJws }.forEach {
                     verifier.verifyVcJws(it)
                         .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
@@ -339,8 +343,8 @@ class ValidatorVcTest : FreeSpec() {
         )
         val jwsPayload = vcJws.serialize().encodeToByteArray()
         val signatureInput =
-            jwsHeader.serialize().encodeToByteArray().encodeBase64(Base64.UrlSafe(pad = false)) +
-                    "." + jwsPayload.encodeBase64(Base64.UrlSafe(pad = false))
+            jwsHeader.serialize().encodeToByteArray().encodeToString(Base64UrlNoPad) +
+                    "." + jwsPayload.encodeToString(Base64UrlNoPad)
         val signatureInputBytes = signatureInput.encodeToByteArray()
         val signature = issuerCryptoService.sign(signatureInputBytes)
             .getOrElse { return null }

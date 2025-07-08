@@ -5,8 +5,9 @@ import at.asitplus.wallet.lib.KmmBitSet
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.Success
 import at.asitplus.wallet.lib.data.AtomicAttributeCredential
 import at.asitplus.wallet.lib.data.AttributeIndex
+import at.asitplus.wallet.lib.jws.decodeBase64
 import at.asitplus.wallet.lib.toBitSet
-import com.benasher44.uuid.uuid4
+import at.asitplus.wallet.lib.uuid4
 import io.kotest.assertions.fail
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContain
@@ -14,7 +15,9 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.component.base64.decodeBase64ToArray
-import kotlinx.datetime.Clock
+import io.matthewnelson.encoding.base64.Base64
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
+import kotlin.time.Clock
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
@@ -111,7 +114,7 @@ class AgentRevocationTest : FreeSpec({
 })
 
 private fun decodeRevocationList(revocationList: String): KmmBitSet {
-    val decodedBase64 = revocationList.decodeBase64ToArray()
+    val decodedBase64 = revocationList.decodeBase64()
     decodedBase64.shouldNotBeNull()
     val decompress = DefaultZlibService().decompress(decodedBase64)
     decompress.shouldNotBeNull()
@@ -132,7 +135,7 @@ private fun IssuerCredentialStore.revokeCredentialsWithIndexes(revokedIndexes: L
     val issuanceDate = Clock.System.now()
     val expirationDate = issuanceDate + 60.seconds
     for (i in 1..16) {
-        val vcId = uuid4().toString()
+        val vcId = uuid4()
         val revListIndex = storeGetNextIndex(vcId, cred, issuanceDate, expirationDate, FixedTimePeriodProvider.timePeriod)!!
         if (revokedIndexes.contains(revListIndex)) {
             revoke(vcId, FixedTimePeriodProvider.timePeriod)
@@ -146,7 +149,7 @@ private fun IssuerCredentialStore.revokeRandomCredentials(): MutableList<Long> {
     val issuanceDate = Clock.System.now()
     val expirationDate = issuanceDate + 60.seconds
     for (i in 1..256) {
-        val vcId = uuid4().toString()
+        val vcId = uuid4()
         val revListIndex =
             storeGetNextIndex(vcId, cred, issuanceDate, expirationDate, FixedTimePeriodProvider.timePeriod)!!
         if (Random.nextBoolean()) {

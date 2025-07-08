@@ -6,7 +6,7 @@ import at.asitplus.wallet.lib.msg.JwmAttachment
 import at.asitplus.wallet.lib.msg.Presentation
 import at.asitplus.wallet.lib.msg.RequestCredential
 import at.asitplus.wallet.lib.msg.RequestCredentialBody
-import com.benasher44.uuid.uuid4
+import at.asitplus.wallet.lib.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -100,8 +100,8 @@ class PresentProofProtocolTest : FreeSpec({
         val parsed = verifierProtocol.parseMessage(
             RequestCredential(
                 body = RequestCredentialBody("foo", "goalCode", arrayOf()),
-                parentThreadId = uuid4().toString(),
-                attachment = JwmAttachment(id = uuid4().toString(), "mimeType", JwmAttachmentData())
+                parentThreadId = uuid4(),
+                attachment = JwmAttachment(id = uuid4(), "mimeType", JwmAttachmentData())
             ),
             holderCryptoService.keyId
         )

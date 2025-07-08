@@ -2,10 +2,10 @@ package at.asitplus.wallet.lib.msg
 
 import at.asitplus.wallet.lib.data.SchemaIndex
 import at.asitplus.wallet.lib.data.jsonSerializer
-import com.benasher44.uuid.uuid4
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 /**
  * From [ARIES RFC 0453](https://github.com/hyperledger/aries-rfcs/tree/main/features/0453-issue-credential-v2)
@@ -24,7 +24,7 @@ class RequestCredential : JsonWebMessage {
     ) : super(
         type = SchemaIndex.MSG_ISSUE_CRED_REQUEST,
         parentThreadId = parentThreadId,
-        threadId = uuid4().toString(),
+        threadId = @OptIn(ExperimentalUuidApi::class) Uuid.random().toString(),
         attachments = arrayOf(attachment)
     ) {
         this.body = body

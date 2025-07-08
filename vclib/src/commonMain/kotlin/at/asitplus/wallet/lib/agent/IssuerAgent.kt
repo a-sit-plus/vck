@@ -11,12 +11,15 @@ import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentType
 import at.asitplus.wallet.lib.jws.JwsService
-import com.benasher44.uuid.uuid4
+import at.asitplus.wallet.lib.jws.encodeBase64
 import io.github.aakira.napier.Napier
-import io.matthewnelson.component.base64.encodeBase64
-import kotlinx.datetime.Clock
+import io.matthewnelson.encoding.base64.Base64
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 /**
  * An agent that only implements [Issuer], i.e. it issues credentials for other agents.
@@ -101,7 +104,8 @@ class IssuerAgent constructor(
     override suspend fun issueCredential(
         credential: CredentialToBeIssued,
     ): Issuer.IssuedCredentialResult {
-        val vcId = "urn:uuid:${uuid4()}"
+        @OptIn(ExperimentalUuidApi::class)
+        val vcId = "urn:uuid:${Uuid.random()}"
         val issuanceDate = clock.now()
         val expirationDate = credential.expiration
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)

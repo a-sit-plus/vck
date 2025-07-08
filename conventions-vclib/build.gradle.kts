@@ -8,6 +8,8 @@ plugins {
 group = "at.asitplus.gradle"
 
 dependencies {
+    api("org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.21")
+    api("org.jetbrains.kotlin:kotlin-serialization:2.1.21")
     api("at.asitplus.gradle:k2")
 }
 

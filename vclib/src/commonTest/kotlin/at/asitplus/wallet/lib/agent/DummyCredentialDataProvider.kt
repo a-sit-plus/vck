@@ -5,7 +5,7 @@ import at.asitplus.wallet.lib.data.AtomicAttributeCredential
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.SchemaIndex
 import io.matthewnelson.component.encoding.base16.encodeBase16
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes
 
@@ -50,7 +50,8 @@ class DummyCredentialDataProvider(
         else -> null
     }
 
-    private fun randomId() = Random.nextBytes(32).encodeBase16()
+    @OptIn(ExperimentalStdlibApi::class)
+    private fun randomId() = Random.nextBytes(32).toHexString()
 
     companion object {
         const val ATTRIBUTE_WITH_ATTACHMENT = "picture"

@@ -18,8 +18,8 @@ inline fun Project.commonApiDependencies(): List<String> {
         kmmresult(),
         datetime(),
         addDependency("com.squareup.okio:okio", "okio"),
-        addDependency("io.matthewnelson.kotlin-components:encoding-base16", "encoding"),
-        addDependency("io.matthewnelson.kotlin-components:encoding-base64", "encoding"),
+        addDependency("io.matthewnelson.encoding:base16", "encoding"),
+        addDependency("io.matthewnelson.encoding:base64", "encoding"),
     )
 }
 
@@ -32,15 +32,13 @@ inline fun KotlinDependencyHandler.commonImplementationDependencies() {
     implementation(project.ktor("http"))
     implementation(project.napier())
     implementation(project.ktor("utils"))
-    project.AspVersions.versions["uuid"] = VcLibVersions.uuid
-    implementation(project.addDependency("com.benasher44:uuid", "uuid"))
 }
 
 fun Project.commonIosExports() = arrayOf(
     datetime(),
     kmmresult(),
-    "io.matthewnelson.kotlin-components:encoding-base16:${VcLibVersions.encoding}",
-    "io.matthewnelson.kotlin-components:encoding-base64:${VcLibVersions.encoding}",
+    "io.matthewnelson.encoding:base16:${VcLibVersions.encoding}",
+    "io.matthewnelson.encoding:base16:${VcLibVersions.encoding}",
 )
 
 

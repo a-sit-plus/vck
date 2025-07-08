@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.jws
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.data.jsonSerializer
-import com.benasher44.uuid.uuid4
+import at.asitplus.wallet.lib.uuid4
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWEAlgorithm
@@ -42,7 +42,7 @@ class JwsServiceJvmTest : FreeSpec({
         cryptoService = DefaultCryptoService(keyPair)
         jwsService = DefaultJwsService(cryptoService)
         verifierJwsService = DefaultVerifierJwsService()
-        randomPayload = uuid4().toString()
+        randomPayload = uuid4()
     }
 
     "signed object from ext. library can be verified" {

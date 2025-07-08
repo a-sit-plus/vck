@@ -23,9 +23,9 @@ import at.asitplus.wallet.lib.msg.Presentation
 import at.asitplus.wallet.lib.msg.PresentationBody
 import at.asitplus.wallet.lib.msg.RequestPresentation
 import at.asitplus.wallet.lib.msg.RequestPresentationBody
-import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
-import kotlinx.serialization.encodeToString
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 typealias PresentProofProtocolResult = Verifier.VerifyPresentationResult
 
@@ -68,7 +68,7 @@ class PresentProofProtocol(
             credentialScheme = credentialScheme,
             keyId = keyId,
             serviceEndpoint = serviceEndpoint,
-            challengeForPresentation = uuid4().toString(),
+            challengeForPresentation = @OptIn(ExperimentalUuidApi::class) Uuid.random().toString(),
         )
 
         /**
@@ -87,7 +87,7 @@ class PresentProofProtocol(
             credentialScheme = credentialScheme,
             keyId = keyId,
             serviceEndpoint = serviceEndpoint,
-            challengeForPresentation = uuid4().toString()
+            challengeForPresentation = @OptIn(ExperimentalUuidApi::class) Uuid.random().toString()
         )
     }
 

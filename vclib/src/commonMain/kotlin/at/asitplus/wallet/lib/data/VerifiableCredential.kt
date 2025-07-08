@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.data
 
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import kotlinx.serialization.Polymorphic
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

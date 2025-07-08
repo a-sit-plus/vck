@@ -1,7 +1,5 @@
 package at.asitplus.wallet.lib.jws
 
-import io.matthewnelson.component.base64.decodeBase64ToArray
-import io.matthewnelson.component.base64.encodeBase64
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
@@ -19,7 +17,7 @@ object ByteArrayBase64Serializer : KSerializer<ByteArray> {
     }
 
     override fun deserialize(decoder: Decoder): ByteArray {
-        return decoder.decodeString().decodeBase64ToArray() ?: byteArrayOf()
+        return decoder.decodeString().decodeBase64() ?: byteArrayOf()
     }
 
 }

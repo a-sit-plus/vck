@@ -1,7 +1,20 @@
 package at.asitplus.wallet.lib.jws
 
-import io.matthewnelson.component.base64.decodeBase64ToArray
-import io.matthewnelson.component.base64.encodeBase64
+import io.matthewnelson.encoding.base64.Base64
+import io.matthewnelson.encoding.base64.Base64ConfigBuilder
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+
+
+val Base64UrlNoPad = Base64(config = Base64ConfigBuilder().apply {
+    lineBreakInterval = 0
+    encodeToUrlSafe = true
+    isLenient = true
+    padEncoded = false
+}.build())
+val Base64 = Base64()
+fun ByteArray.encodeBase64() = encodeToString(Base64)
+fun String.decodeBase64() = decodeToByteArrayOrNull(Base64)
 
 object MultibaseHelper {
 
@@ -28,7 +41,7 @@ object MultibaseHelper {
 
     private fun multibaseDecode(it: String?) =
         if (it != null && it.startsWith("m")) {
-            it.removePrefix("m").decodeBase64ToArray()
+            it.removePrefix("m").decodeBase64()
         } else null
 
     // 0x1200 would be with compression, so we'll use 0x1290

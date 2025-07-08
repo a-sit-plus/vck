@@ -2,15 +2,15 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.data.AtomicAttributeCredential
 import at.asitplus.wallet.lib.data.ConstantIndex
-import com.benasher44.uuid.uuid4
-import io.kotest.common.runBlocking
+import at.asitplus.wallet.lib.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.datetime.Clock
+import kotlinx.coroutines.runBlocking
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
@@ -36,7 +36,7 @@ class PresentProofMessengerTest : FreeSpec() {
             holder = HolderAgent.newDefaultInstance(holderCryptoService)
             verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.keyId)
             issuer = IssuerAgent.newDefaultInstance(issuerCryptoService)
-            verifierChallenge = uuid4().toString()
+            verifierChallenge = uuid4()
             holderServiceEndpoint = "https://example.com/present-proof?${uuid4()}"
             val credentialSubject = randomCredential(holderCryptoService.keyId)
             runBlocking {
@@ -137,7 +137,7 @@ class PresentProofMessengerTest : FreeSpec() {
                 messageWrapper = MessageWrapper(verifierCryptoService),
                 challengeForPresentation = verifierChallenge,
                 // subject is not expected to provide an attribute with this name
-                requestedAttributeNames = listOf(uuid4().toString()),
+                requestedAttributeNames = listOf(uuid4()),
             )
 
             val oobInvitation = holderMessenger.startCreatingInvitation()
@@ -203,8 +203,8 @@ class PresentProofMessengerTest : FreeSpec() {
         IssuerCredentialDataProvider.CredentialToBeIssued(
             AtomicAttributeCredential(
                 subjectId,
-                uuid4().toString(),
-                uuid4().toString(),
+                uuid4(),
+                uuid4(),
                 "application/text"
             ),
             Clock.System.now() + attributeLifetime,

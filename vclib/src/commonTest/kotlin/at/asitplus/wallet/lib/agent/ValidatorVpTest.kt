@@ -6,7 +6,7 @@ import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentType
 import at.asitplus.wallet.lib.jws.JwsService
-import com.benasher44.uuid.uuid4
+import at.asitplus.wallet.lib.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
@@ -47,7 +47,7 @@ class ValidatorVpTest : FreeSpec({
         holderJwsService = DefaultJwsService(holderCryptoService)
         verifierCryptoService = DefaultCryptoService()
         verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.keyId)
-        challenge = uuid4().toString()
+        challenge = uuid4()
         runBlocking {
             holder.storeCredentials(
                 issuer.issueCredentials(holderCryptoService.keyId, AttributeIndex.genericAttributes)

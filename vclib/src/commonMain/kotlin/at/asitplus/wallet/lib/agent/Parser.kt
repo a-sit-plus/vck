@@ -4,7 +4,7 @@ import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.jws.JwsSigned
 import io.github.aakira.napier.Napier
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
