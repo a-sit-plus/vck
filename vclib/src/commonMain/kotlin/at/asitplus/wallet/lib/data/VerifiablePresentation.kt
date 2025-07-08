@@ -1,8 +1,9 @@
 package at.asitplus.wallet.lib.data
 
-import com.benasher44.uuid.uuid4
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 /**
  * A Verifiable Presentation (see [W3C VC Data Model](https://w3c.github.io/vc-data-model/)), containing one or more [VerifiableCredential]s.
@@ -18,7 +19,7 @@ data class VerifiablePresentation(
 ) {
 
     constructor(verifiableCredential: Array<String>) : this(
-        id = "urn:uuid:${uuid4()}",
+        id = @OptIn(ExperimentalUuidApi::class) "urn:uuid:${Uuid.random()}",
         type = "VerifiablePresentation",
         verifiableCredential = verifiableCredential
     )

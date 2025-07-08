@@ -1,9 +1,10 @@
 package at.asitplus.wallet.lib.data.dif
 
 import at.asitplus.wallet.lib.msg.SchemaReference
-import com.benasher44.uuid.uuid4
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 /**
  * Data class for
@@ -27,7 +28,7 @@ data class InputDescriptor(
     val constraints: Constraint? = null,
 ) {
     constructor(name: String, schema: SchemaReference, constraints: Constraint? = null) : this(
-        id = uuid4().toString(),
+        id = @OptIn(ExperimentalUuidApi::class) Uuid.random().toString(),
         name = name,
         schema = arrayOf(schema),
         constraints = constraints,

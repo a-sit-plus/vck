@@ -1,7 +1,8 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.data.ConstantIndex
-import com.benasher44.uuid.uuid4
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 
 class PresentProofMessenger private constructor(
@@ -10,7 +11,8 @@ class PresentProofMessenger private constructor(
     private val keyId: String,
     messageWrapper: MessageWrapper,
     private val serviceEndpoint: String? = null,
-    private val challengeForPresentation: String = uuid4().toString(),
+    @OptIn(ExperimentalUuidApi::class)
+    private val challengeForPresentation: String = Uuid.random().toString(),
     createProtocolWhenNotActive: Boolean = true,
     private val requestedAttributeNames: List<String>? = null,
     private val credentialScheme: ConstantIndex.CredentialScheme = ConstantIndex.Generic
@@ -61,7 +63,8 @@ class PresentProofMessenger private constructor(
             messageWrapper: MessageWrapper,
             credentialScheme: ConstantIndex.CredentialScheme = ConstantIndex.Generic,
             requestedAttributeNames: List<String>? = null,
-            challengeForPresentation: String = uuid4().toString()
+            @OptIn(ExperimentalUuidApi::class)
+            challengeForPresentation: String = Uuid.random().toString()
         ) = PresentProofMessenger(
             verifier = verifier,
             keyId = keyId,

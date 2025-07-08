@@ -1,6 +1,5 @@
 object VcLibVersions {
-    const val uuid = "0.8.1"
-    const val encoding = "1.2.3"
+    const val encoding = "2.4.0"
     const val okio = "3.10.2"
 
     object Jvm {

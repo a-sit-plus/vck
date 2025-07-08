@@ -7,10 +7,10 @@ import at.asitplus.wallet.lib.data.RevocationListSubject
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
-import io.matthewnelson.component.base64.decodeBase64ToArray
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsSigned
 import at.asitplus.wallet.lib.jws.VerifierJwsService
+import at.asitplus.wallet.lib.jws.decodeBase64
 import at.asitplus.wallet.lib.toBitSet
 import io.github.aakira.napier.Napier
 
@@ -70,7 +70,7 @@ class Validator(
             return false
                 .also { Napier.d("credentialSubject invalid") }
         val encodedList = parsedVc.jws.vc.credentialSubject.encodedList
-        this.revocationList = encodedList.decodeBase64ToArray()?.let {
+        this.revocationList = encodedList.decodeBase64()?.let {
             zlibService.decompress(it)?.toBitSet() ?: return false.also { Napier.d("Invalid ZLIB") }
         } ?: return false.also { Napier.d("Invalid Base64") }
         Napier.d("Revocation list is valid")

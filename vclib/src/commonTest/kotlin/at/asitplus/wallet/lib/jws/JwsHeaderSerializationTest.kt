@@ -1,14 +1,15 @@
+@file:OptIn(ExperimentalUuidApi::class)
+
 package at.asitplus.wallet.lib.jws
 
-import io.matthewnelson.component.base64.Base64
-import io.matthewnelson.component.base64.encodeBase64
-import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import kotlin.random.Random
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 class JwsHeaderSerializationTest : FreeSpec({
 
@@ -16,7 +17,7 @@ class JwsHeaderSerializationTest : FreeSpec({
         val first = Random.nextBytes(32)
         val second = Random.nextBytes(32)
         val algorithm = JwsAlgorithm.ES256
-        val kid = uuid4().toString()
+        val kid = Uuid.random().toString()
         val type = JwsContentType.JWT
         val header = JwsHeader(
             algorithm = algorithm,
@@ -27,8 +28,8 @@ class JwsHeaderSerializationTest : FreeSpec({
 
         val serialized = header.serialize()
 
-        serialized shouldContain """"${first.encodeBase64(Base64.Default)}""""
-        serialized shouldContain """"${second.encodeBase64(Base64.Default)}""""
+        serialized shouldContain """"${first.encodeBase64()}""""
+        serialized shouldContain """"${second.encodeBase64()}""""
         serialized shouldContain """"$kid""""
     }
 
@@ -36,7 +37,7 @@ class JwsHeaderSerializationTest : FreeSpec({
         val first = Random.nextBytes(32)
         val second = Random.nextBytes(32)
         val algorithm = JwsAlgorithm.ES256
-        val kid = uuid4().toString()
+        val kid = Uuid.random().toString()
         val type = JwsContentType.JWT
 
         val serialized =
