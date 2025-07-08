@@ -20,8 +20,13 @@ Release 5.8.0:
    - Extend `CredentialToBeIssued` to contain properties `expiration`, `scheme`, `subjectPublicKey`, `userInfo`
    - In `CredentialIssuer` move constructor parameters for loading data and issuing credentials to method `credential()`
    - Extract `ProofValidator` out of `CredentialIssuer`
-   - Provide fallback credential scheme when no matching scheme is registered
    - Extract `CredentialSchemeMapping` out of various top-level methods
+ - Credential schemes:
+   - Provide fallback credential schemes, to be used when no matching scheme is registered with this library:
+     - `SdJwtFallbackCredentialScheme`
+     - `VcFallbackCredentialScheme`
+     - `IsoMdocFallbackCredentialScheme`
+   - Note that these schemes are not resolved automatically, and need to be used explicitly in client applications
 
 Release 5.7.1:
  - Signum 3.16.3/Supreme 0.8.3 to fix certificate encoding in JWS header
