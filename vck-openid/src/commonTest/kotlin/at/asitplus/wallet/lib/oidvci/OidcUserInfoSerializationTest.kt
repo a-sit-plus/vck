@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.openid.OidcUserInfoExtended
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -15,12 +16,15 @@ class OidcUserInfoSerializationTest : FunSpec({
         }
         """.trimIndent()
 
-        val deserialized = OidcUserInfoExtended.deserialize(input).getOrThrow()
+        val user = OidcUserInfoExtended.deserialize(input).getOrThrow()
 
-        deserialized.userInfo.subject shouldBe "testvalue-sub"
-        deserialized.userInfo.name shouldBe "testvalue-name"
-        assertKeyHasValue(deserialized, "sub", "testvalue-sub")
-        assertKeyHasValue(deserialized, "name", "testvalue-name")
+        user.userInfo.subject shouldBe "testvalue-sub"
+        user.userInfo.name shouldBe "testvalue-name"
+        user.shouldHaveKey("sub").content shouldBe "testvalue-sub"
+        user.shouldHaveKey("name").content shouldBe "testvalue-name"
+
+        val serialized = joseCompliantSerializer.encodeToString(user)
+        joseCompliantSerializer.decodeFromString<OidcUserInfoExtended>(serialized) shouldBe user
     }
 
     test("Extended attributes") {
@@ -28,24 +32,28 @@ class OidcUserInfoSerializationTest : FunSpec({
         {
             "sub": "testvalue-sub",
             "name": "testvalue-name",
-            "foo": "testvalue-foo"
+            "foo": "testvalue-foo",
+            "${randomString()}": "${randomString()}"
         }
         """.trimIndent()
 
-        val deserialized = OidcUserInfoExtended.deserialize(input).getOrThrow()
+        val user = OidcUserInfoExtended.deserialize(input).getOrThrow()
 
-        deserialized.userInfo.subject shouldBe "testvalue-sub"
-        deserialized.userInfo.name shouldBe "testvalue-name"
-        assertKeyHasValue(deserialized, "sub", "testvalue-sub")
-        assertKeyHasValue(deserialized, "name", "testvalue-name")
-        assertKeyHasValue(deserialized, "foo", "testvalue-foo")
+        user.userInfo.subject shouldBe "testvalue-sub"
+        user.userInfo.name shouldBe "testvalue-name"
+        user.shouldHaveKey("sub").content shouldBe "testvalue-sub"
+        user.shouldHaveKey("name").content shouldBe "testvalue-name"
+        user.shouldHaveKey("foo").content shouldBe "testvalue-foo"
+
+        val serialized = joseCompliantSerializer.encodeToString(user)
+        joseCompliantSerializer.decodeFromString<OidcUserInfoExtended>(serialized) shouldBe user
     }
 
 })
 
-private fun assertKeyHasValue(deserialized: OidcUserInfoExtended, key: String, value: String) {
-    deserialized.jsonObject[key].apply {
+private fun OidcUserInfoExtended.shouldHaveKey(key: String): JsonPrimitive {
+    jsonObject[key].apply {
         shouldBeInstanceOf<JsonPrimitive>()
-        content shouldBe value
+        return this
     }
 }
