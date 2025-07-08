@@ -4,6 +4,10 @@ import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.wallet.fallbackCredential.isoMdocFallbackCredentialScheme.IsoMdocFallbackCredentialScheme
+import at.asitplus.wallet.fallbackCredential.sdJwtFallbackCredentialScheme.SdJwtFallbackCredentialScheme
+import at.asitplus.wallet.fallbackCredential.vcFallbackCredentialScheme.VcFallbackCredentialScheme
+import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.iso.sha256
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -63,7 +67,9 @@ interface SubjectCredentialStore {
     sealed interface StoreEntry {
         val schemaUri: String
         val scheme: ConstantIndex.CredentialScheme?
-            get() = AttributeIndex.resolveSchemaUri(schemaUri)
+            get() = AttributeIndex.resolveSchemaUri(schemaUri) ?: getFallbackScheme()
+
+        fun getFallbackScheme(): ConstantIndex.CredentialScheme?
 
         @Serializable
         data class Vc(
@@ -73,7 +79,11 @@ interface SubjectCredentialStore {
             val vc: VerifiableCredentialJws,
             @SerialName("schema-uri")
             override val schemaUri: String,
-        ) : StoreEntry
+        ) : StoreEntry {
+            override fun getFallbackScheme(): ConstantIndex.CredentialScheme? {
+                return VcFallbackCredentialScheme(vc.vc.type.first { it != VERIFIABLE_CREDENTIAL })
+            }
+        }
 
         @Serializable
         data class SdJwt(
@@ -86,7 +96,11 @@ interface SubjectCredentialStore {
             val disclosures: Map<String, SelectiveDisclosureItem?>,
             @SerialName("schema-uri")
             override val schemaUri: String,
-        ) : StoreEntry
+        ) : StoreEntry {
+            override fun getFallbackScheme(): ConstantIndex.CredentialScheme? {
+                return SdJwtFallbackCredentialScheme(sdJwt.verifiableCredentialType)
+            }
+        }
 
         @Serializable
         data class Iso(
@@ -94,7 +108,11 @@ interface SubjectCredentialStore {
             val issuerSigned: IssuerSigned,
             @SerialName("schema-uri")
             override val schemaUri: String,
-        ) : StoreEntry
+        ) : StoreEntry {
+            override fun getFallbackScheme(): ConstantIndex.CredentialScheme? {
+                return IsoMdocFallbackCredentialScheme(issuerSigned.issuerAuth.payload?.docType!!)
+            }
+        }
 
         @OptIn(ExperimentalStdlibApi::class)
         @Throws(IllegalArgumentException::class)
