@@ -1,8 +1,9 @@
 #versions identifiers must not have dots in them in this version catalog file
 [versions]
-kotest="6.0.0.M1"
-kotlin="2.1.21"
-agp="8.6.1"
+kotlin = "2.2.0"
+ksp = "2.0.2"
+agp = "8.10.0"
+kotest= "6.0.0.M5"
 signum="3.16.3"
 supreme="0.8.3"
 uuid="0.8.1"
