@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.catchingUnwrapped
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
@@ -80,9 +81,8 @@ interface SubjectCredentialStore {
             @SerialName("schema-uri")
             override val schemaUri: String,
         ) : StoreEntry {
-            override fun getFallbackScheme(): ConstantIndex.CredentialScheme? {
-                return VcFallbackCredentialScheme(vc.vc.type.first { it != VERIFIABLE_CREDENTIAL })
-            }
+            override fun getFallbackScheme(): ConstantIndex.CredentialScheme? =
+                VcFallbackCredentialScheme(vc.vc.type.first { it != VERIFIABLE_CREDENTIAL })
         }
 
         @Serializable
@@ -97,9 +97,8 @@ interface SubjectCredentialStore {
             @SerialName("schema-uri")
             override val schemaUri: String,
         ) : StoreEntry {
-            override fun getFallbackScheme(): ConstantIndex.CredentialScheme? {
-                return SdJwtFallbackCredentialScheme(sdJwt.verifiableCredentialType)
-            }
+            override fun getFallbackScheme(): ConstantIndex.CredentialScheme? =
+                SdJwtFallbackCredentialScheme(sdJwt.verifiableCredentialType)
         }
 
         @Serializable
@@ -109,9 +108,8 @@ interface SubjectCredentialStore {
             @SerialName("schema-uri")
             override val schemaUri: String,
         ) : StoreEntry {
-            override fun getFallbackScheme(): ConstantIndex.CredentialScheme? {
-                return IsoMdocFallbackCredentialScheme(issuerSigned.issuerAuth.payload?.docType!!)
-            }
+            override fun getFallbackScheme(): ConstantIndex.CredentialScheme? = catchingUnwrapped {
+                IsoMdocFallbackCredentialScheme(issuerSigned.issuerAuth.payload?.docType!!) }.getOrNull()
         }
 
         @OptIn(ExperimentalStdlibApi::class)
