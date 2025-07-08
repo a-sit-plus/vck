@@ -1,6 +1,5 @@
-package at.asitplus.wallet.fallbackCredential.vcFallbackCredentialScheme
+package at.asitplus.wallet.lib.data
 
-import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 
