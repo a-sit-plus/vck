@@ -19,7 +19,6 @@ import at.asitplus.wallet.lib.oidvci.WalletService.RequestOptions
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.DummyOAuth2DataProvider
 import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
-import at.asitplus.wallet.lib.openid.DummyUserProvider
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
