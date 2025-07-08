@@ -96,7 +96,6 @@ object CredentialSchemeMapping {
 
     // TODO use DC_SD_JWT >= 6.0.0
     @Suppress("DEPRECATION")
-    @Deprecated("Use extension method in CredentialSchemeMapping instead")
     fun CredentialScheme.toCredentialIdentifier(rep: CredentialRepresentation) = when (rep) {
         CredentialRepresentation.PLAIN_JWT -> encodeToCredentialIdentifier(vcType!!, CredentialFormatEnum.JWT_VC)
         CredentialRepresentation.SD_JWT -> encodeToCredentialIdentifier(sdJwtType!!, CredentialFormatEnum.VC_SD_JWT)
@@ -116,7 +115,9 @@ object CredentialSchemeMapping {
      * Reverse functionality of [encodeToCredentialIdentifier], which can also handle ISO namespaces,
      * i.e. decodes a single string into a credential scheme and format,
      * e.g. from `AtomicAttribute2023#jwt_vc_json` to
-     * [at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023] and [CredentialFormatEnum.JWT_VC]
+     * [at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023] and [CredentialFormatEnum.JWT_VC].
+     *
+     * @return null if this scheme is not registered
      */
     fun decodeFromCredentialIdentifier(input: String): Pair<CredentialScheme, CredentialRepresentation>? {
         if (input.contains("#")) {

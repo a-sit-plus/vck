@@ -30,14 +30,12 @@ object AttributeIndex {
      */
     fun resolveAttributeType(type: String): CredentialScheme? =
         schemeSet.firstOrNull { it.vcType == type }
-            ?: VcFallbackCredentialScheme(vcType = type)
 
     /**
      * Matches the passed [sdJwtType] against all known types from [ConstantIndex.CredentialScheme.sdJwtType].
      */
     fun resolveSdJwtAttributeType(sdJwtType: String): CredentialScheme? =
         schemeSet.firstOrNull { it.sdJwtType == sdJwtType }
-        ?: SdJwtFallbackCredentialScheme(sdJwtType = sdJwtType)
 
     /**
      * Matches the passed [namespace] against all known namespace from [ConstantIndex.CredentialScheme.isoNamespace].
@@ -47,7 +45,6 @@ object AttributeIndex {
     fun resolveIsoNamespace(namespace: String): CredentialScheme? =
         schemeSet.filter { it.isoNamespace != null }
             .firstOrNull { it.isoNamespace!!.startsWith(namespace) || namespace.startsWith(it.isoNamespace!!) }
-            ?: IsoMdocFallbackCredentialScheme(isoDocType = namespace)
 
     /**
      * Matches the passed [docType] against all known docTypes from [ConstantIndex.CredentialScheme.isoDocType].
@@ -57,12 +54,12 @@ object AttributeIndex {
     fun resolveIsoDoctype(docType: String): CredentialScheme? =
         schemeSet.filter { it.isoDocType != null }
             .firstOrNull { it.isoDocType!!.startsWith(docType) || docType.startsWith(it.isoDocType!!) }
-            ?: IsoMdocFallbackCredentialScheme(isoDocType = docType)
 
     /**
      * Compares the input to all [CredentialScheme] identifiers and on match
      * returns it plus its associated [CredentialRepresentation] if applicable.
      */
+    @Deprecated("To be removed, please use `resolveIsoNamespace`, or `resolveIsoDoctype`, or `resolveSdJwtAttributeType`, or `resolveAttributeType`")
     fun resolveCredential(input: String): Pair<CredentialScheme, CredentialRepresentation?>? =
         resolveAttributeType(input)?.let { it to CredentialRepresentation.PLAIN_JWT }
             ?: resolveSdJwtAttributeType(input)?.let { it to CredentialRepresentation.SD_JWT }
