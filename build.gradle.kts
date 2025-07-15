@@ -22,3 +22,14 @@ tasks.getByName("dokkaHtmlMultiModule") {
 val artifactVersion: String by extra
 group = "at.asitplus.wallet"
 version = artifactVersion
+
+afterEvaluate {
+    nexusPublishing {
+        repositories {
+            named("sonatype") {
+                nexusUrl.set(uri("https://ossrh-staging-api.central.sonatype.com/service/local/"))
+                snapshotRepositoryUrl.set(uri("https://central.sonatype.com/repository/maven-snapshots/"))
+            }
+        }
+    }
+}
