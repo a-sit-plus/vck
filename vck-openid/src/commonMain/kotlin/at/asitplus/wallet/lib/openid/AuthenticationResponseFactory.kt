@@ -161,20 +161,20 @@ internal class AuthenticationResponseFactory(
         signJarm(null, payload, AuthenticationResponseParameters.serializer())
             .map { it.serialize() }
             .getOrElse {
-                Napier.w("buildJarm error", it)
-                throw InvalidRequest("buildJarm error", it)
+                Napier.w("sign: error", it)
+                throw InvalidRequest("sign: error", it)
             }.also {
-                Napier.d("buildJarm: signed $payload")
+                Napier.d("sign: signed $payload")
             }
 
     private suspend fun signError(payload: OAuth2Error): String =
         signError(null, payload, OAuth2Error.serializer())
             .map { it.serialize() }
             .getOrElse {
-                Napier.w("buildJarm error", it)
-                throw InvalidRequest("buildJarm error", it)
+                Napier.w("signError: error", it)
+                throw InvalidRequest("signError: error", it)
             }.also {
-                Napier.d("buildJarm: signed $payload")
+                Napier.d("signError: signed $payload")
             }
 
     private suspend fun encrypt(
@@ -202,21 +202,21 @@ internal class AuthenticationResponseFactory(
 
             signature?.let { payload ->
                 encryptJarm(header, payload, recipientKey)
-                    .also { Napier.d("buildJarm: using $header to encrypt $payload") }
+                    .also { Napier.d("encrypt: using $header to encrypt $payload") }
             }
         } else {
             response.params?.let {
                 encryptJarm(header, vckJsonSerializer.encodeToString(response.params), recipientKey)
-                    .also { Napier.d("buildJarm: using $header to encrypt ${response.params}") }
+                    .also { Napier.d("encrypt: using $header to encrypt ${response.params}") }
             } ?: response.error?.let {
                 encryptJarm(header, vckJsonSerializer.encodeToString(response.error), recipientKey)
-                    .also { Napier.d("buildJarm: using $header to encrypt ${vckJsonSerializer.encodeToString(response.error)}") }
-            } ?: throw InvalidRequest("buildJarm: nothing to encrypt")
+                    .also { Napier.d("encrypt: using $header to encrypt ${vckJsonSerializer.encodeToString(response.error)}") }
+            } ?: throw InvalidRequest("encrypt: nothing to encrypt")
         }
         return jwe?.map { it.serialize() }?.getOrElse {
-            Napier.w("buildJarm error", it)
-            throw InvalidRequest("buildJarm error", it)
-        } ?: throw InvalidRequest("buildJarm: nothing to serialize")
+            Napier.w("encrypt error", it)
+            throw InvalidRequest("encrypt error", it)
+        } ?: throw InvalidRequest("encrypt: nothing to serialize")
     }
 
     @Throws(OAuth2Exception::class)
