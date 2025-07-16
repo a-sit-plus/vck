@@ -2,8 +2,19 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.dcapi.DCAPIHandover
+import at.asitplus.dcapi.OID4VPHandover
+import at.asitplus.dcapi.OpenID4VPDCAPIHandoverInfo
+import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
 import at.asitplus.dif.ClaimFormat
 import at.asitplus.dif.FormatHolder
+import at.asitplus.iso.ClientIdToHash
+import at.asitplus.iso.DeviceAuthentication
+import at.asitplus.iso.DeviceNameSpaces
+import at.asitplus.iso.ResponseUriToHash
+import at.asitplus.iso.SessionTranscript
+import at.asitplus.iso.sha256
+import at.asitplus.iso.wrapInCborTag
 import at.asitplus.jsonpath.JsonPath
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
@@ -13,28 +24,16 @@ import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
+import at.asitplus.signum.indispensable.josef.JwkType
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.*
-import at.asitplus.wallet.lib.cbor.SignCoseFun
 import at.asitplus.wallet.lib.agent.PresentationRequestParameters.Flow
 import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
+import at.asitplus.wallet.lib.cbor.SignCoseFun
 import at.asitplus.wallet.lib.data.CredentialPresentation
-import at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
-import at.asitplus.iso.ClientIdToHash
-import at.asitplus.dcapi.DCAPIHandover
-import at.asitplus.dcapi.OID4VPHandover
-import at.asitplus.dcapi.OpenID4VPDCAPIHandoverInfo
-import at.asitplus.iso.DeviceAuthentication
-import at.asitplus.iso.DeviceNameSpaces
-import at.asitplus.iso.ResponseUriToHash
-import at.asitplus.iso.SessionTranscript
-import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.signum.indispensable.josef.JwkType
-import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
@@ -334,7 +333,8 @@ internal fun RequestParameters.parseTransactionData(): Pair<Flow, List<Transacti
 
     //Do not change to map because keys are unordered!
     val oid4vpTransactionData: List<Pair<JsonPrimitive, TransactionData>> = rawTransactionData.map {
-        it to vckJsonSerializer.decodeFromJsonElement(DeprecatedBase64URLTransactionDataSerializer, it)
+        @Suppress("DEPRECATION")
+        it to vckJsonSerializer.decodeFromJsonElement(at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer, it)
     }.filter { it.second.credentialIds != null }
 
     return if (oid4vpTransactionData.isNotEmpty()) Flow.OID4VP to oid4vpTransactionData.map { it.first }

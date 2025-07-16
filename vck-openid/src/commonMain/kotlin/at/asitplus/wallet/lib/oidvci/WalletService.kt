@@ -58,7 +58,10 @@ class WalletService(
     val oauth2Client: OAuth2Client = OAuth2Client(clientId, redirectUrl)
 ) {
 
-    data class KeyAttestationInput(val clientNonce: String?, val supportedAlgorithms: Collection<String>?)
+    data class KeyAttestationInput(
+        val clientNonce: String?,
+        val supportedAlgorithms: Collection<String>?
+    )
 
 
     data class RequestOptions(
@@ -90,9 +93,13 @@ class WalletService(
                 remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(uri))
                     ?.let { parseCredentialOffer(it).getOrNull() }
             }
+        }.onFailure {
+            Napier.w("parseCredentialOffer failed", it)
         }.getOrNull() ?: catching {
             CredentialOffer.deserialize(input).getOrThrow()
-        }.getOrNull() ?: throw InvalidRequest("could not parse credential offer")
+        }.onFailure {
+            Napier.w("parseCredentialOffer failed", it)
+        }.getOrNull() ?: throw InvalidRequest("Could not parse credential offer")
             .also { Napier.w("Could not parse credential offer from $input") }
     }
 
@@ -234,7 +241,7 @@ class WalletService(
             CredentialResponseEncryption(
                 jsonWebKey = decryptionKeyMaterial.jsonWebKey,
                 jweAlgorithm = supportedJweAlgorithm,
-                jweEncryptionString = supportedJweEncryptionAlgorithm.text,
+                jweEncryptionString = supportedJweEncryptionAlgorithm.identifier,
             )
         } else null
 
@@ -245,10 +252,16 @@ class WalletService(
         clock: Clock = Clock.System,
     ): CredentialRequestProof =
         credentialFormat.supportedProofTypes?.get(ProofType.JWT.stringRepresentation)?.let {
-            createCredentialRequestProofJwt(clientNonce, metadata.credentialIssuer, clock, it.keyAttestationRequired())
-        } ?: credentialFormat.supportedProofTypes?.get(ProofType.ATTESTATION.stringRepresentation)?.let {
-            createCredentialRequestProofAttestation(clientNonce, it.supportedSigningAlgorithms)
-        } ?: createCredentialRequestProofJwt(clientNonce, metadata.credentialIssuer, clock)
+            createCredentialRequestProofJwt(
+                clientNonce,
+                metadata.credentialIssuer,
+                clock,
+                it.keyAttestationRequired()
+            )
+        } ?: credentialFormat.supportedProofTypes?.get(ProofType.ATTESTATION.stringRepresentation)
+            ?.let {
+                createCredentialRequestProofAttestation(clientNonce, it.supportedSigningAlgorithms)
+            } ?: createCredentialRequestProofJwt(clientNonce, metadata.credentialIssuer, clock)
 
     private fun CredentialRequestProofSupported.keyAttestationRequired(): Boolean =
         keyAttestationRequired != null
@@ -258,7 +271,12 @@ class WalletService(
         supportedSigningAlgorithms: Collection<String>?,
     ): CredentialRequestProof = CredentialRequestProof(
         proofType = ProofType.ATTESTATION,
-        attestation = this.loadKeyAttestation?.invoke(KeyAttestationInput(clientNonce, supportedSigningAlgorithms))
+        attestation = this.loadKeyAttestation?.invoke(
+            KeyAttestationInput(
+                clientNonce,
+                supportedSigningAlgorithms
+            )
+        )
             ?.getOrThrow()?.serialize()
             ?: throw IllegalArgumentException("Key attestation required, none provided")
     )
@@ -292,7 +310,8 @@ class WalletService(
     ): suspend (JwsHeader, KeyMaterial) -> JwsHeader =
         { it: JwsHeader, key: KeyMaterial ->
             val keyAttestation = if (addKeyAttestation) {
-                this.loadKeyAttestation?.invoke(KeyAttestationInput(clientNonce, null))?.getOrThrow()?.serialize()
+                this.loadKeyAttestation?.invoke(KeyAttestationInput(clientNonce, null))
+                    ?.getOrThrow()?.serialize()
                     ?: throw IllegalArgumentException("Key attestation required, none provided")
             } else null
             it.copy(jsonWebKey = key.jsonWebKey, keyAttestation = keyAttestation)

@@ -14,7 +14,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonElement
 
-@Suppress("Unused")
+@Suppress("Unused", "DEPRECATION")
 fun TransactionDataBase64Url.toTransactionData() =
     vckJsonSerializer.decodeFromJsonElement(DeprecatedBase64URLTransactionDataSerializer, this)
 

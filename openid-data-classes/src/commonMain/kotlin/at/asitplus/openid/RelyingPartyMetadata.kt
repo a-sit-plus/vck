@@ -180,7 +180,7 @@ data class RelyingPartyMetadata(
      */
     @Transient
     val authorizationEncryptedResponseEncoding: JweEncryption? = authorizationEncryptedResponseEncodingString
-        ?.let { s -> JweEncryption.entries.firstOrNull { it.text == s } }
+        ?.let { s -> JweEncryption.entries.firstOrNull { it.identifier == s } }
 
     /**
      * OIDC Registration: OPTIONAL. JWE enc algorithm REQUIRED for encrypting the ID Token issued to this Client.
@@ -189,6 +189,6 @@ data class RelyingPartyMetadata(
      */
     @Transient
     val idTokenEncryptedResponseEncoding: JweEncryption? = idTokenEncryptedResponseEncodingString
-        ?.let { s -> JweEncryption.entries.firstOrNull { it.text == s } }
+        ?.let { s -> JweEncryption.entries.firstOrNull { it.identifier == s } }
 }
 

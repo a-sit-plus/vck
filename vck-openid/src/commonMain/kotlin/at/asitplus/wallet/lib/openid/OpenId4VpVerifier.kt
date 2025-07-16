@@ -6,11 +6,10 @@ import at.asitplus.dcapi.OID4VPHandover
 import at.asitplus.dif.*
 import at.asitplus.iso.ClientIdToHash
 import at.asitplus.iso.DeviceAuthentication
-import at.asitplus.wallet.lib.iso.DeviceResponse
-import at.asitplus.wallet.lib.iso.Document
-import at.asitplus.wallet.lib.iso.MobileSecurityObject
 import at.asitplus.iso.ResponseUriToHash
 import at.asitplus.iso.SessionTranscript
+import at.asitplus.iso.sha256
+import at.asitplus.iso.wrapInCborTag
 import at.asitplus.jsonpath.JsonPath
 import at.asitplus.openid.*
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
@@ -23,7 +22,9 @@ import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.iso.*
+import at.asitplus.wallet.lib.iso.DeviceResponse
+import at.asitplus.wallet.lib.iso.Document
+import at.asitplus.wallet.lib.iso.MobileSecurityObject
 import at.asitplus.wallet.lib.jws.*
 import at.asitplus.wallet.lib.oidvci.*
 import io.github.aakira.napier.Napier
@@ -119,7 +120,7 @@ open class OpenId4VpVerifier(
         metadata.copy(
             authorizationSignedResponseAlgString = null,
             authorizationEncryptedResponseAlgString = supportedJweAlgorithm.identifier,
-            authorizationEncryptedResponseEncodingString = supportedJweEncryptionAlgorithm.text,
+            authorizationEncryptedResponseEncodingString = supportedJweEncryptionAlgorithm.identifier,
             jsonWebKeySet = metadata.jsonWebKeySet?.let {
                 JsonWebKeySet(it.keys.map { it.copy(publicKeyUse = "enc") })
             }

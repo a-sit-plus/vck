@@ -98,7 +98,8 @@ class SignJwt<P : Any>(
         ).let {
             headerModifier(it, keyMaterial)
         }
-        val plainSignatureInput = prepareJwsSignatureInput(header, payload, serializer, vckJsonSerializer)
+        val plainSignatureInput =
+            prepareJwsSignatureInput(header, payload, serializer, vckJsonSerializer)
         val signature = keyMaterial.sign(plainSignatureInput).asKmmResult().getOrThrow()
         JwsSigned(header, payload, signature, plainSignatureInput)
     }
@@ -192,7 +193,14 @@ object JweUtils {
         val bytes = payload.encodeToByteArray()
         val sealedBox = key.encrypt(data = bytes, authenticatedData = aadForCipher).getOrThrow()
 
-        return JweEncrypted(jweHeader, aad, null, sealedBox.nonce, sealedBox.encryptedData, sealedBox.authTag)
+        return JweEncrypted(
+            jweHeader,
+            aad,
+            null,
+            sealedBox.nonce,
+            sealedBox.encryptedData,
+            sealedBox.authTag
+        )
     }
 
 }
@@ -375,7 +383,8 @@ class VerifyJwsObject(
         header.publicKey?.let { setOf(it) }
             ?: header.jsonWebKeySetUrl?.let {
                 retrieveJwkFromKeySetUrl(it, header.keyId)?.let { setOf(it) }
-            } ?: publicKeyLookup(this)?.mapNotNull { jwk -> jwk.toCryptoPublicKey().getOrNull() }?.toSet()
+            } ?: publicKeyLookup(this)?.mapNotNull { jwk -> jwk.toCryptoPublicKey().getOrNull() }
+                ?.toSet()
             ?: setOf()
 
     /**
@@ -395,9 +404,10 @@ class VerifyJwsObject(
  * Derives the key, for use in content encryption in JWE,
  * per [RFC 7518](https://datatracker.ietf.org/doc/html/rfc7518#section-5.2.2.1)
  */
-private inline fun SymmetricEncryptionAlgorithm<AuthCapability.Authenticated<*>, NonceTrait.Required, *>.keyFromIntermediate(
+private fun SymmetricEncryptionAlgorithm<AuthCapability.Authenticated<*>, NonceTrait.Required, *>.keyFromIntermediate(
     jweKeyBytes: ByteArray,
 ): SymmetricKey<AuthCapability.Authenticated<*>, NonceTrait.Required, *> {
+    @Suppress("UNCHECKED_CAST")
     return ((if (hasDedicatedMac())
         keyFrom(
             jweKeyBytes.drop(jweKeyBytes.size / 2).toByteArray(),

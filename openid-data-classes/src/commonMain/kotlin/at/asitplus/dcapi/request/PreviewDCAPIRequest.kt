@@ -28,7 +28,7 @@ data class PreviewDCAPIRequest(
         require(callingOrigin != null || callingPackageName != null)
     }
 
-
+    @Suppress("DEPRECATION")
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false

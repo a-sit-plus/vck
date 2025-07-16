@@ -1,12 +1,10 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.wallet.lib.iso.DeviceResponse
-import at.asitplus.wallet.lib.iso.Document
-import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.iso.IssuerSignedItem
-import at.asitplus.wallet.lib.iso.MobileSecurityObject
 import at.asitplus.iso.ValueDigestList
+import at.asitplus.iso.sha256
+import at.asitplus.iso.wrapInCborTag
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.contentEquals
 import at.asitplus.openid.sha256
@@ -36,7 +34,10 @@ import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
-import at.asitplus.wallet.lib.iso.*
+import at.asitplus.wallet.lib.iso.DeviceResponse
+import at.asitplus.wallet.lib.iso.Document
+import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.wallet.lib.iso.MobileSecurityObject
 import at.asitplus.wallet.lib.jws.*
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base64.Base64
@@ -220,7 +221,7 @@ class Validator(
         val sdJwtResult = verifySdJwt(input, null)
         if (sdJwtResult !is SuccessSdJwt) {
             Napier.w("verifyVpSdJwt: Could not verify SD-JWT: $sdJwtResult")
-            val error = (sdJwtResult as? VerifyCredentialResult.ValidationError)?.cause
+            val error = (sdJwtResult as? ValidationError)?.cause
                 ?: Throwable("SD-JWT not verified")
             return VerifyPresentationResult.ValidationError(error)
         }
@@ -256,6 +257,7 @@ class Validator(
         }
         if (verifyTransactionData) {
             transactionData?.let { (flow, data) ->
+                @Suppress("DEPRECATION")
                 if (flow == PresentationRequestParameters.Flow.OID4VP) {
                     //TODO support more hash algorithms
                     if (keyBinding.transactionDataHashesAlgorithm != "sha-256") {

@@ -5,7 +5,6 @@ import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.openid.SignatureQualifier
 import at.asitplus.openid.TransactionData
 import at.asitplus.rqes.rdcJsonSerializer
-import at.asitplus.rqes.serializers.DeprecatedBase64URLTransactionDataSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonPrimitive
@@ -80,10 +79,11 @@ data class QesAuthorization(
 
 ) : TransactionData {
 
+    @Suppress("DEPRECATION")
     override fun toBase64UrlJsonString(): JsonPrimitive =
         rdcJsonSerializer.parseToJsonElement(
             rdcJsonSerializer.encodeToString(
-                DeprecatedBase64URLTransactionDataSerializer, this
+                at.asitplus.rqes.serializers.DeprecatedBase64URLTransactionDataSerializer, this
             )
         ) as JsonPrimitive
 

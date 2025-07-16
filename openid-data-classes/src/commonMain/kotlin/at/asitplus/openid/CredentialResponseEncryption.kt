@@ -27,5 +27,5 @@ data class CredentialResponseEncryption(
     val jweEncryptionString: String,
 ) {
     val jweEncryption: JweEncryption? =
-        JweEncryption.entries.firstOrNull { it.text == jweEncryptionString }
+        JweEncryption.entries.firstOrNull { it.identifier == jweEncryptionString }
 }
