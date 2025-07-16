@@ -22,18 +22,21 @@ interface IssuerCredentialStore {
         abstract val scheme: ConstantIndex.CredentialScheme
         abstract val vcId: String
 
+        @Suppress("DEPRECATION")
         data class VcJwt(
             override val vcId: String,
             val credentialSubject: CredentialSubject,
             override val scheme: ConstantIndex.CredentialScheme,
         ) : Credential()
 
+        @Suppress("DEPRECATION")
         data class VcSd(
             override val vcId: String,
             val claims: Collection<ClaimToBeIssued>,
             override val scheme: ConstantIndex.CredentialScheme,
         ) : Credential()
 
+        @Suppress("DEPRECATION")
         data class Iso(
             val issuerSignedItemList: List<IssuerSignedItem>,
             override val scheme: ConstantIndex.CredentialScheme,
@@ -54,6 +57,7 @@ interface IssuerCredentialStore {
      * Expected to return a new index to use as a `statusListIndex`.
      * Returns null if `vcId` is already registered
      */
+    @Suppress("DEPRECATION")
     @Deprecated("Use `createStatusListIndex` and `updateStoredCredential` instead")
     suspend fun storeGetNextIndex(
         credential: Credential,

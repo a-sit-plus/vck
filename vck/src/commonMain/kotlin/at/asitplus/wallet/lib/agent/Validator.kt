@@ -257,6 +257,7 @@ class Validator(
         }
         if (verifyTransactionData) {
             transactionData?.let { (flow, data) ->
+                @Suppress("DEPRECATION")
                 if (flow == PresentationRequestParameters.Flow.OID4VP) {
                     //TODO support more hash algorithms
                     if (keyBinding.transactionDataHashesAlgorithm != "sha-256") {

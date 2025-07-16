@@ -26,7 +26,6 @@ import at.asitplus.wallet.lib.oidvci.DefaultNonceService
 import at.asitplus.wallet.lib.oidvci.FallbackAdapter
 import at.asitplus.wallet.lib.oidvci.MapStore
 import at.asitplus.wallet.lib.oidvci.OAuth2AuthorizationServerAdapter
-import at.asitplus.wallet.lib.oidvci.OAuth2DataProvider
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import at.asitplus.wallet.lib.oidvci.OAuth2LoadUserFun
@@ -60,8 +59,8 @@ class SimpleAuthorizationService(
     /** Used to filter authorization details and scopes. */
     private val strategy: AuthorizationServiceStrategy,
     /** Used to load the actual user data during [authorize]. */
-    @Deprecated("Use callback from `OAuth2LoadUserFun` in `authorize` instead")
-    private val dataProvider: OAuth2DataProvider? = null,
+    @Suppress("DEPRECATION") @Deprecated("Use callback from `OAuth2LoadUserFun` in `authorize` instead")
+    private val dataProvider: at.asitplus.wallet.lib.oidvci.OAuth2DataProvider? = null,
     /** Used to create and verify authorization codes during issuing. */
     private val codeService: CodeService = DefaultCodeService(),
     /** Used in several fields in [OAuth2AuthorizationServerMetadata], to provide endpoint URLs to clients. */

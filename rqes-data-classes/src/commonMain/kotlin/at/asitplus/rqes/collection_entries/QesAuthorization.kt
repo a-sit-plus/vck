@@ -5,7 +5,6 @@ import at.asitplus.catching
 import at.asitplus.openid.SignatureQualifier
 import at.asitplus.openid.TransactionData
 import at.asitplus.rqes.rdcJsonSerializer
-import at.asitplus.rqes.serializers.DeprecatedBase64URLTransactionDataSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonPrimitive
@@ -76,14 +75,17 @@ data class QesAuthorization(
      * the `sha-256` hash algorithm.
      */
     @SerialName("transaction_data_hashes_alg")
-    override val transactionDataHashAlgorithms: Set<String>? = null
+    override val transactionDataHashAlgorithms: Set<String>? = null,
 
-) : TransactionData {
+    ) : TransactionData {
 
     @Suppress("DEPRECATION")
     override fun toBase64UrlJsonString(): JsonPrimitive =
         rdcJsonSerializer.parseToJsonElement(
-            rdcJsonSerializer.encodeToString(DeprecatedBase64URLTransactionDataSerializer, this)
+            rdcJsonSerializer.encodeToString(
+                at.asitplus.rqes.serializers.DeprecatedBase64URLTransactionDataSerializer,
+                this
+            )
         ) as JsonPrimitive
 
     /**

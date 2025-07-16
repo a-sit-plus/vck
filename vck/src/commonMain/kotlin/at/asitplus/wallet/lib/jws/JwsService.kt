@@ -7,13 +7,32 @@ import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.KeyAgreementPrivateValue
 import at.asitplus.signum.indispensable.asn1.encoding.encodeTo4Bytes
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.signum.indispensable.josef.*
+import at.asitplus.signum.indispensable.josef.ConfirmationClaim
+import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
-import at.asitplus.signum.indispensable.josef.JweEncryption.*
+import at.asitplus.signum.indispensable.josef.JweAlgorithm
+import at.asitplus.signum.indispensable.josef.JweDecrypted
+import at.asitplus.signum.indispensable.josef.JweEncrypted
+import at.asitplus.signum.indispensable.josef.JweEncryption
+import at.asitplus.signum.indispensable.josef.JweHeader
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsExtensions.prependWith4BytesSize
+import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.JwsSigned.Companion.prepareJwsSignatureInput
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.signum.indispensable.symmetric.*
+import at.asitplus.signum.indispensable.josef.toJsonWebKey
+import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
+import at.asitplus.signum.indispensable.symmetric.AuthCapability
+import at.asitplus.signum.indispensable.symmetric.NonceTrait
+import at.asitplus.signum.indispensable.symmetric.SymmetricEncryptionAlgorithm
+import at.asitplus.signum.indispensable.symmetric.SymmetricKey
+import at.asitplus.signum.indispensable.symmetric.authTag
+import at.asitplus.signum.indispensable.symmetric.hasDedicatedMac
+import at.asitplus.signum.indispensable.symmetric.isAuthenticated
+import at.asitplus.signum.indispensable.symmetric.keyFrom
+import at.asitplus.signum.indispensable.symmetric.nonce
+import at.asitplus.signum.indispensable.symmetric.requiresNonce
 import at.asitplus.signum.supreme.agree.Ephemeral
 import at.asitplus.signum.supreme.agree.keyAgreement
 import at.asitplus.signum.supreme.asKmmResult
@@ -21,7 +40,9 @@ import at.asitplus.signum.supreme.hash.digest
 import at.asitplus.signum.supreme.sign.Signer
 import at.asitplus.signum.supreme.symmetric.decrypt
 import at.asitplus.signum.supreme.symmetric.encrypt
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.VerifySignature
+import at.asitplus.wallet.lib.agent.VerifySignatureFun
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
@@ -186,7 +207,7 @@ object JweUtils {
         require(algorithm.requiresNonce())
         require(algorithm.isAuthenticated())
         val key = algorithm.keyFromIntermediate(intermediateKey)
-        
+
         val headerSerialized = joseCompliantSerializer.encodeToString(jweHeader)
         val aad = headerSerialized.encodeToByteArray()
         val aadForCipher = aad.encodeToByteArray(Base64UrlStrict)
@@ -396,14 +417,13 @@ class VerifyJwsObject(
  * Derives the key, for use in content encryption in JWE,
  * per [RFC 7518](https://datatracker.ietf.org/doc/html/rfc7518#section-5.2.2.1)
  */
-private inline fun SymmetricEncryptionAlgorithm<AuthCapability.Authenticated<*>, NonceTrait.Required, *>.keyFromIntermediate(
+@Suppress("UNCHECKED_CAST")
+private fun SymmetricEncryptionAlgorithm<AuthCapability.Authenticated<*>, NonceTrait.Required, *>.keyFromIntermediate(
     jweKeyBytes: ByteArray,
-): SymmetricKey<AuthCapability.Authenticated<*>, NonceTrait.Required, *> {
-    return ((if (hasDedicatedMac())
-        keyFrom(
-            jweKeyBytes.drop(jweKeyBytes.size / 2).toByteArray(),
-            jweKeyBytes.take(jweKeyBytes.size / 2).toByteArray()
-        ).getOrThrow()
-    else
-        keyFrom(jweKeyBytes).getOrThrow()) as SymmetricKey<AuthCapability.Authenticated<*>, NonceTrait.Required, *>)
-}
+): SymmetricKey<AuthCapability.Authenticated<*>, NonceTrait.Required, *> = ((if (hasDedicatedMac())
+    keyFrom(
+        jweKeyBytes.drop(jweKeyBytes.size / 2).toByteArray(),
+        jweKeyBytes.take(jweKeyBytes.size / 2).toByteArray()
+    ).getOrThrow()
+else
+    keyFrom(jweKeyBytes).getOrThrow()) as SymmetricKey<AuthCapability.Authenticated<*>, NonceTrait.Required, *>)

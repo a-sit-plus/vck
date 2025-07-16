@@ -2,10 +2,14 @@ package at.asitplus.rqes
 
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.InputDescriptor
-import at.asitplus.openid.*
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthorizationDetails
+import at.asitplus.openid.OpenIdAuthorizationDetails
+import at.asitplus.openid.RequestParameters
+import at.asitplus.openid.TransactionData
+import at.asitplus.openid.odcJsonSerializer
 import at.asitplus.rqes.collection_entries.QCertCreationAcceptance
 import at.asitplus.rqes.collection_entries.QesAuthorization
-import at.asitplus.rqes.serializers.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.rqes.serializers.InputDescriptorSerializer
 import at.asitplus.rqes.serializers.RequestParametersSerializer
 import kotlinx.serialization.json.Json
@@ -64,7 +68,7 @@ private val transactionDataModule = SerializersModule {
         subclass(QesAuthorization::class, QesAuthorization.serializer())
         subclass(QCertCreationAcceptance::class, QCertCreationAcceptance.serializer())
     }
-    contextual(DeprecatedBase64URLTransactionDataSerializer)
+    contextual(at.asitplus.rqes.serializers.DeprecatedBase64URLTransactionDataSerializer)
 }
 
 /**

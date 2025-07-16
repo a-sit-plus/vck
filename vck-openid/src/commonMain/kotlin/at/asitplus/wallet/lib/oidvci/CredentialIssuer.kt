@@ -73,7 +73,7 @@ class CredentialIssuer(
      * to that URI (which starts with [publicContext]) to [nonce].
      */
     private val nonceEndpointPath: String = "/nonce",
-    @Deprecated("Use `credentialDataProvider` in method `credential` instead")
+    @Suppress("DEPRECATION") @Deprecated("Use `credentialDataProvider` in method `credential` instead")
     private val credentialProvider: CredentialIssuerDataProvider = FallbackCredentialIssuerDataProvider(),
     /** Used to verify the signature of proof elements in credential requests. */
     @Deprecated("Use `proofValidator` instead")
@@ -319,6 +319,7 @@ fun interface CredentialIssuerDataProvider {
 /** Fallback for deprecated constructor parameter, which should never be called, because when clients
  * migrate away from deprecated code, it's never used from our code,
  * when not, clients did set a correct implementation and that one is used. */
+@Suppress("DEPRECATION")
 private class FallbackCredentialIssuerDataProvider : CredentialIssuerDataProvider {
     override fun getCredential(
         userInfo: OidcUserInfoExtended,

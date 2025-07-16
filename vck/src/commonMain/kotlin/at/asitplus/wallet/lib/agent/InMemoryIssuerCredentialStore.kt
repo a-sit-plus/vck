@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.wallet.lib.agent.IssuerCredentialStore.Credential.*
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListView
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
@@ -32,6 +31,8 @@ class InMemoryIssuerCredentialStore(
     /** Maps timePeriod to credentials */
     private val credentialMap = mutableMapOf<Int, MutableList<Credential>>()
 
+    @Suppress("DEPRECATION")
+    @Deprecated("Use `createStatusListIndex` and `updateStoredCredential` instead")
     override suspend fun storeGetNextIndex(
         credential: IssuerCredentialStore.Credential,
         subjectPublicKey: CryptoPublicKey,
@@ -42,14 +43,14 @@ class InMemoryIssuerCredentialStore(
         val list = credentialMap.getOrPut(timePeriod) { mutableListOf() }
         val newIndex: ULong = (list.maxOfOrNull { it.statusListIndex } ?: 0U) + 1U
         val vcId = when (credential) {
-            is Iso -> credential.issuerSignedItemList
+            is IssuerCredentialStore.Credential.Iso -> credential.issuerSignedItemList
                 .sortedBy { it.digestId }
                 .toString()
                 .encodeToByteArray().sha256()
                 .encodeToString(Base16(strict = true))
 
-            is VcJwt -> credential.vcId
-            is VcSd -> credential.vcId
+            is IssuerCredentialStore.Credential.VcJwt -> credential.vcId
+            is IssuerCredentialStore.Credential.VcSd -> credential.vcId
         }
         list += Credential(
             vcId = vcId,
@@ -115,6 +116,7 @@ class InMemoryIssuerCredentialStore(
         )
     }
 
+    @Deprecated("Use setStatus(timePeriod, index, status) instead")
     override fun setStatus(vcId: String, status: TokenStatus, timePeriod: Int): Boolean {
         if(status.value > tokenStatusBitSize.maxValue) {
             throw IllegalStateException("Credential store only accepts token statuses of bitlength `${tokenStatusBitSize.value}`.")

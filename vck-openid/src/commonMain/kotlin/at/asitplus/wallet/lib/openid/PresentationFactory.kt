@@ -34,7 +34,6 @@ import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.sha256
 import at.asitplus.iso.wrapInCborTag
 import at.asitplus.signum.indispensable.josef.JwkType
-import at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
@@ -335,7 +334,7 @@ internal fun RequestParameters.parseTransactionData(): Pair<Flow, List<Transacti
 
     //Do not change to map because keys are unordered!
     val oid4vpTransactionData: List<Pair<JsonPrimitive, TransactionData>> = rawTransactionData.map {
-        it to vckJsonSerializer.decodeFromJsonElement(DeprecatedBase64URLTransactionDataSerializer, it)
+        it to vckJsonSerializer.decodeFromJsonElement(at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer, it)
     }.filter { it.second.credentialIds != null }
 
     return if (oid4vpTransactionData.isNotEmpty()) Flow.OID4VP to oid4vpTransactionData.map { it.first }
