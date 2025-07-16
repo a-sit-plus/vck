@@ -1,8 +1,10 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
+import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBitSize
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.Serializable
 
 /**
@@ -53,6 +55,16 @@ data class StatusList(
         result = 31 * result + (aggregationUri?.hashCode() ?: 0)
         return result
     }
+
+    override fun toString(): String {
+        return "StatusList(" +
+                "aggregationUri=$aggregationUri, " +
+                "statusBitSize=$statusBitSize, " +
+                "compressed=${compressed.encodeToString(Base64Strict)}" +
+                ")"
+    }
+
+
 }
 
 

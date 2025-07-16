@@ -1,7 +1,9 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
+import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBitSize
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.experimental.and
 import kotlin.experimental.or
 
@@ -63,6 +65,14 @@ data class StatusListView(
         result = 31 * result + statusBitSize.hashCode()
         return result
     }
+
+    override fun toString(): String {
+        return "StatusListView(" +
+                "uncompressed=${uncompressed.encodeToString(Base64Strict)}, " +
+                "statusBitSize=$statusBitSize" +
+                ")"
+    }
+
 
     companion object {
         /**
