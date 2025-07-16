@@ -24,12 +24,4 @@ data class OAuth2Error(
 
     @SerialName("state")
     val state: String? = null
-) {
-    fun serialize() = odcJsonSerializer.encodeToString(this)
-
-    companion object {
-        fun deserialize(it: String) = kotlin.runCatching {
-            odcJsonSerializer.decodeFromString<OAuth2Error>(it)
-        }.wrap()
-    }
-}
+)
