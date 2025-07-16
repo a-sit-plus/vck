@@ -125,7 +125,9 @@ class OpenId4VpWallet(
         openId4VpHolder.createAuthnErrorResponse(error = error, request = request).getOrThrow().let {
             when (it) {
                 is AuthenticationResponseResult.Post -> postResponse(it)
-                else -> throw UnsupportedOperationException("Unsupported error response mode")
+                is AuthenticationResponseResult.Redirect -> redirectResponse(it)
+                is AuthenticationResponseResult.DcApi ->
+                    throw UnsupportedOperationException("Unsupported error response mode")
             }
         }
     }
