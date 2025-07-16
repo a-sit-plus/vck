@@ -71,6 +71,14 @@ data class VerifiableCredentialSdJwt(
     val verifiableCredentialType: String,
 
     /**
+     * The value MUST be an "integrity metadata" string as defined in Section 3 of
+     * [W3C.SRI](https://www.w3.org/TR/sri/). A Consumer of the respective documents MUST verify the integrity of the
+     * retrieved document as defined in Section 3.3.5 of [W3C.SRI](https://www.w3.org/TR/sri/).
+     */
+    @SerialName("vct#integrity")
+    val verifiableCredentialTypeIntegrity: String? = null,
+
+    /**
      * https://www.ietf.org/archive/id/draft-ietf-oauth-status-list-06.html#name-status-claim
      * OPTIONAL.
      * By including a "status" claim in a Referenced Token, the Issuer is referencing a mechanism

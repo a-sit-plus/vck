@@ -30,6 +30,7 @@ Release 5.8.0:
      - `VcFallbackCredentialScheme`
      - `IsoMdocFallbackCredentialScheme`
    - Note that these schemes are not resolved automatically, and need to be used explicitly in client applications
+ - Add data class for [SD-JWT VC Type metadata](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-10.html#name-sd-jwt-vc-type-metadata) in `SdJwtTypeMetadata`
 
 Release 5.7.2:
  - Presentation Exchange: Fix validation of optional constraint fields
