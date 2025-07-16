@@ -416,7 +416,7 @@ class HolderAgent(
             // find a matching path for each constraint field
             constraintFieldMatches.filter {
                 // only need to validate non-optional constraint fields
-                it.key.optional == true
+                it.key.optional != true
             }.forEach { constraintField ->
                 val allowedPaths = constraintField.value.map {
                     it.normalizedJsonPath.toString()

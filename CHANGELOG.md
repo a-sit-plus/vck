@@ -1,5 +1,8 @@
 # Changelog
 
+Release 5.7.2:
+ - Presentation Exchange: Fix validation of optional constraint fields
+
 Release 5.7.1:
  - Signum 3.16.3/Supreme 0.8.3 to fix certificate encoding in JWS header
  - Remove okio dependency and use Supreme digest calculation instead
