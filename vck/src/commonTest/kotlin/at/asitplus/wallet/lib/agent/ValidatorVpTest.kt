@@ -40,6 +40,7 @@ class ValidatorVpTest : FreeSpec({
     lateinit var statusListIssuer: StatusListIssuer
     lateinit var issuerCredentialStore: IssuerCredentialStore
     lateinit var holder: HolderAgent
+    lateinit var verifiablePresentationFactory: VerifiablePresentationFactory
     lateinit var holderCredentialStore: SubjectCredentialStore
     lateinit var holderSignVp: SignJwtFun<VerifiablePresentationJws>
     lateinit var holderKeyMaterial: KeyMaterial
@@ -71,6 +72,7 @@ class ValidatorVpTest : FreeSpec({
             holderCredentialStore,
             validator = validator,
         )
+        verifiablePresentationFactory = VerifiablePresentationFactory(holderKeyMaterial)
         holderSignVp = SignJwt(holderKeyMaterial, JwsHeaderKeyId())
         verifierId = "urn:${uuid4()}"
         verifier = VerifierAgent(
@@ -109,11 +111,11 @@ class ValidatorVpTest : FreeSpec({
             .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
             .map { it.vcSerialized }
             .map { it.reversed() }
-        val vp = holder.createVcPresentation(
+
+        val vp = verifiablePresentationFactory.createVcPresentation(
             holderVcSerialized,
             PresentationRequestParameters(nonce = challenge, audience = verifierId)
-        ).getOrThrow()
-            .shouldBeInstanceOf<CreatePresentationResult.Signed>()
+        ).shouldBeInstanceOf<CreatePresentationResult.Signed>()
 
         verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge).also {
             it.shouldBeInstanceOf<VerifyPresentationResult.Success>()

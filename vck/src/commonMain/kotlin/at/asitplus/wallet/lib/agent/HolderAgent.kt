@@ -47,7 +47,7 @@ class HolderAgent(
         SignJwt(keyMaterial, JwsHeaderKeyId()),
     private val signKeyBinding: SignJwtFun<KeyBindingJws> = SignJwt(keyMaterial, JwsHeaderNone()),
     private val verifiablePresentationFactory: VerifiablePresentationFactory =
-        VerifiablePresentationFactory(keyMaterial.identifier, signVerifiablePresentation, signKeyBinding),
+        VerifiablePresentationFactory(keyMaterial, signVerifiablePresentation, signKeyBinding),
     private val difInputEvaluator: PresentationExchangeInputEvaluator = PresentationExchangeInputEvaluator,
 ) : Holder {
 
@@ -272,16 +272,6 @@ class HolderAgent(
 
         PresentationResponseParameters.DCQLParameters(
             verifiablePresentations = verifiablePresentations,
-        )
-    }
-
-    suspend fun createVcPresentation(
-        validCredentials: List<String>,
-        request: PresentationRequestParameters,
-    ): KmmResult<CreatePresentationResult> = catching {
-        verifiablePresentationFactory.createVcPresentation(
-            validCredentials = validCredentials,
-            request = request,
         )
     }
 
