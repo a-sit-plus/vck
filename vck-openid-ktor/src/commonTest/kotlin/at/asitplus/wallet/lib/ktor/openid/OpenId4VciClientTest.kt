@@ -162,7 +162,7 @@ class OpenId4VciClientTest : FunSpec() {
             it.first().shouldBeInstanceOf<Holder.StoreCredentialInput.SdJwt>().also {
                 it.scheme shouldBe EuPidScheme
                 val sdJwt = Validator().verifySdJwt(
-                    SdJwtSigned.parse(it.vcSdJwt)!!,
+                    it.signedSdJwtVc,
                     credentialKeyMaterial.publicKey
                 )
                 sdJwt.shouldBeInstanceOf<VerifyCredentialResult.SuccessSdJwt>()

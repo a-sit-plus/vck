@@ -119,7 +119,7 @@ object SdJwtCreator {
     )
 
     /**
-     * See [registered JWT claims](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-08.html#section-3.2.2.2)
+     * See [registered JWT claims](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-10.html#section-3.2.2.2)
      */
     private val notDisclosableClaims = listOf(
         "iss", "nbf", "exp", "cnf", "vct", "status"
@@ -130,7 +130,8 @@ object SdJwtCreator {
     )
 
     /**
-     * Honors list of [registered JWT claims](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-08.html#section-3.2.2.2)
+     * Honors list of
+     * [registered JWT claims](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-10.html#section-3.2.2.2)
      * and prevents claims of that names to be selectively disclosed,
      * as well as [disallowedNames] which covers constants used in the SD-JWT VC itself.
      */

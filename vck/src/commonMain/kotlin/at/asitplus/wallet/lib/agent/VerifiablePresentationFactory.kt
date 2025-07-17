@@ -21,7 +21,10 @@ import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.jws.JwsHeaderKeyId
+import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SdJwtSigned
+import at.asitplus.wallet.lib.jws.SignJwt
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.JsonArray
@@ -30,9 +33,11 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 class VerifiablePresentationFactory(
-    private val identifier: String,
-    private val signVerifiablePresentation: SignJwtFun<VerifiablePresentationJws>,
-    private val signKeyBinding: SignJwtFun<KeyBindingJws>,
+    private val keyMaterial: KeyMaterial,
+    private val signVerifiablePresentation: SignJwtFun<VerifiablePresentationJws> =
+        SignJwt(keyMaterial, JwsHeaderKeyId()),
+    private val signKeyBinding: SignJwtFun<KeyBindingJws> =
+        SignJwt(keyMaterial, JwsHeaderNone()),
 ) {
 
     suspend fun createVerifiablePresentationForIsoCredentials(
@@ -108,7 +113,7 @@ class VerifiablePresentationFactory(
     }
 
     private fun DCQLCredentialQueryMatchingResult.toRequestedIsoClaims(
-        credential: SubjectCredentialStore.StoreEntry.Iso
+        credential: SubjectCredentialStore.StoreEntry.Iso,
     ) = when (this) {
         DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult -> credential.issuerSigned.namespaces!!.entries.flatMap { namespace ->
             namespace.value.entries.map {
@@ -168,7 +173,7 @@ class VerifiablePresentationFactory(
             }
 
             val docType = credential.scheme?.isoDocType ?: credential.issuerSigned.issuerAuth.payload?.docType
-                ?: throw PresentationException("Scheme not known or not registered")
+            ?: throw PresentationException("Scheme not known or not registered")
             val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
             val (deviceSignature, _) = request.calcIsoDeviceSignature(docType, deviceNameSpaceBytes)
                 ?: throw PresentationException("calcIsoDeviceSignature not implemented")
@@ -282,7 +287,7 @@ class VerifiablePresentationFactory(
     ) = CreatePresentationResult.Signed(
         signVerifiablePresentation(
             JwsContentTypeConstants.JWT,
-            VerifiablePresentation(validCredentials).toJws(request.nonce, identifier, request.audience),
+            VerifiablePresentation(validCredentials).toJws(request.nonce, keyMaterial.identifier, request.audience),
             VerifiablePresentationJws.serializer(),
         ).getOrElse {
             Napier.w("Could not create JWS for presentation", it)
