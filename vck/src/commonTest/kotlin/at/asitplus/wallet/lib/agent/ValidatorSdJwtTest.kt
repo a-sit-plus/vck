@@ -105,7 +105,7 @@ class ValidatorSdJwtTest : FreeSpec() {
                     } shouldBe typeMetadata
                 }
 
-            validator.verifySdJwt(SdJwtSigned.parse(credential.vcSdJwt)!!, holderKeyMaterial.publicKey)
+            validator.verifySdJwt(credential.signedSdJwtVc, holderKeyMaterial.publicKey)
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessSdJwt>().apply {
                     sdJwtSigned.jws.header.vcTypeMetadata.shouldNotBeNull().shouldBeSingleton().first().let {
                         it.decodeToByteArray(Base64UrlStrict).decodeToString().let {

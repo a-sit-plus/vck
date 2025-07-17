@@ -31,14 +31,12 @@ interface Holder {
     sealed class StoreCredentialInput {
         data class Vc(
             val signedVcJws: JwsSigned<VerifiableCredentialJws>,
-            @Deprecated("Use signedVcJws instead", ReplaceWith("signedVcJws"))
             val vcJws: String,
             val scheme: ConstantIndex.CredentialScheme,
         ) : StoreCredentialInput()
 
         data class SdJwt(
             val signedSdJwtVc: SdJwtSigned,
-            @Deprecated("Use signedSdJwtVc instead", ReplaceWith("signedSdJwtVc"))
             val vcSdJwt: String,
             val scheme: ConstantIndex.CredentialScheme,
         ) : StoreCredentialInput()
