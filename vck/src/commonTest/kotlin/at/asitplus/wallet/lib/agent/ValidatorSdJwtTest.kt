@@ -1,23 +1,31 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.SdJwtConstants
+import at.asitplus.wallet.lib.data.SdJwtTypeMetadata
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
+import at.asitplus.wallet.lib.jws.JwsHeaderModifierFun
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
+import io.kotest.matchers.collections.shouldBeSingleton
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -75,6 +83,38 @@ class ValidatorSdJwtTest : FreeSpec() {
             validator.verifySdJwt(credential.signedSdJwtVc, holderKeyMaterial.publicKey)
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessSdJwt>()
         }
+
+        "credentials are valid with vctm added" {
+            val typeMetadata = SdJwtTypeMetadata(
+                verifiableCredentialType = "https://www.w3.org/2018/credentials/v1"
+            )
+            val vctm = typeMetadata.let {
+                joseCompliantSerializer.encodeToString(it).encodeToByteArray().encodeToString(Base64UrlStrict)
+            }
+            val credentialDataWithVctm = buildCredentialData().let {
+                it.copy(modifyHeader = JwsHeaderModifierFun {
+                    it.copy(vcTypeMetadata = setOf(vctm))
+                })
+            }
+            val credential = issuer.issueCredential(credentialDataWithVctm).getOrThrow()
+                .shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>().also {
+                    it.signedSdJwtVc.jws.header.vcTypeMetadata.shouldNotBeNull().shouldBeSingleton().first().let {
+                        it.decodeToByteArray(Base64UrlStrict).decodeToString().let {
+                            joseCompliantSerializer.decodeFromString<SdJwtTypeMetadata>(it)
+                        }
+                    } shouldBe typeMetadata
+                }
+
+            validator.verifySdJwt(SdJwtSigned.parse(credential.vcSdJwt)!!, holderKeyMaterial.publicKey)
+                .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessSdJwt>().apply {
+                    sdJwtSigned.jws.header.vcTypeMetadata.shouldNotBeNull().shouldBeSingleton().first().let {
+                        it.decodeToByteArray(Base64UrlStrict).decodeToString().let {
+                            joseCompliantSerializer.decodeFromString<SdJwtTypeMetadata>(it)
+                        }
+                    } shouldBe typeMetadata
+                }
+        }
+
     }
 
     private fun buildCredentialData(): CredentialToBeIssued.VcSd = DummyCredentialDataProvider.getCredential(

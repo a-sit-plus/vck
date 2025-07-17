@@ -4,13 +4,23 @@ import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.CredentialFormatEnum
-import at.asitplus.openid.dcql.*
+import at.asitplus.openid.dcql.DCQLClaimsPathPointer
+import at.asitplus.openid.dcql.DCQLClaimsQueryList
+import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
+import at.asitplus.openid.dcql.DCQLCredentialQueryList
+import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
+import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest
+import at.asitplus.wallet.lib.data.KeyBindingJws
+import at.asitplus.wallet.lib.data.StatusListToken
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -86,19 +96,20 @@ class AgentSdJwtTest : FreeSpec({
         val credential = holderCredentialStore.getCredentials().getOrThrow()
             .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>().first()
         val sdJwt = createSdJwtPresentation(
-            signKeyBindingJws = SignJwt(holderKeyMaterial, { it, keyMaterial ->
-                it.copy(keyId = "definitely not matching")
+            signKeyBindingJws = SignJwt(holderKeyMaterial, { header, keyMaterial ->
+                header.copy(keyId = "definitely not matching")
             }),
             audienceId = verifierId,
             challenge = challenge,
             validSdJwtCredential = credential,
             claimName = CLAIM_GIVEN_NAME
         )
-        val verified = verifier.verifyPresentationSdJwt(sdJwt.sdJwt!!, challenge)
-            .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-
-        verified.reconstructedJsonObject.keys shouldContain CLAIM_GIVEN_NAME
-        verified.freshnessSummary.tokenStatusValidationResult.shouldNotBeInstanceOf<TokenStatusValidationResult.Invalid>()
+        verifier.verifyPresentationSdJwt(sdJwt.sdJwt!!, challenge)
+            .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
+                reconstructedJsonObject.keys shouldContain CLAIM_GIVEN_NAME
+                freshnessSummary.tokenStatusValidationResult
+                    .shouldNotBeInstanceOf<TokenStatusValidationResult.Invalid>()
+            }
     }
 
     "when using presentation exchange" - {
@@ -111,12 +122,13 @@ class AgentSdJwtTest : FreeSpec({
             val vp = presentationParameters.presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-
-            verified.reconstructedJsonObject[CLAIM_GIVEN_NAME]?.jsonPrimitive?.content shouldBe "Susanne"
-            verified.reconstructedJsonObject[CLAIM_DATE_OF_BIRTH]?.jsonPrimitive?.content shouldBe "1990-01-01"
-            verified.freshnessSummary.tokenStatusValidationResult.shouldNotBeInstanceOf<TokenStatusValidationResult.Invalid>()
+            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
+                    reconstructedJsonObject[CLAIM_GIVEN_NAME]?.jsonPrimitive?.content shouldBe "Susanne"
+                    reconstructedJsonObject[CLAIM_DATE_OF_BIRTH]?.jsonPrimitive?.content shouldBe "1990-01-01"
+                    freshnessSummary.tokenStatusValidationResult
+                        .shouldNotBeInstanceOf<TokenStatusValidationResult.Invalid>()
+                }
         }
 
         "wrong key binding jwt" {
@@ -192,12 +204,13 @@ class AgentSdJwtTest : FreeSpec({
             val vp = presentationParameters.verifiablePresentations.values.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-
-            verified.reconstructedJsonObject[CLAIM_GIVEN_NAME]?.jsonPrimitive?.content shouldBe "Susanne"
-            verified.reconstructedJsonObject[CLAIM_DATE_OF_BIRTH]?.jsonPrimitive?.content shouldBe "1990-01-01"
-            verified.freshnessSummary.tokenStatusValidationResult.shouldNotBeInstanceOf<TokenStatusValidationResult.Invalid>()
+            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
+                    reconstructedJsonObject[CLAIM_GIVEN_NAME]?.jsonPrimitive?.content shouldBe "Susanne"
+                    reconstructedJsonObject[CLAIM_DATE_OF_BIRTH]?.jsonPrimitive?.content shouldBe "1990-01-01"
+                    freshnessSummary.tokenStatusValidationResult
+                        .shouldNotBeInstanceOf<TokenStatusValidationResult.Invalid>()
+                }
         }
 
         "wrong key binding jwt" {
