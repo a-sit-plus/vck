@@ -30,6 +30,12 @@ Release 5.8.0:
      - `VcFallbackCredentialScheme`
      - `IsoMdocFallbackCredentialScheme`
    - Note that these schemes are not resolved automatically, and need to be used explicitly in client applications
+ - Respond to failed authentication request with error:
+   - In class `OpenId4VpWallet` add method `createAuthnErrorResponse`
+   - In data class `OAuth2Error` add member `state`
+   - In data class `AuthenticationResponse` add member `error`, make `params` optional
+   - In class `AuthenticationResponseFactory` add member `signError`
+   - In class `OpenId4VpHolder` add member `signError`, add method `createAuthnErrorResponse`
 
 Release 5.7.2:
  - Presentation Exchange: Fix validation of optional constraint fields
