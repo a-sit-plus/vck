@@ -15,7 +15,7 @@ import at.asitplus.wallet.lib.jws.encodeBase64
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 import kotlin.uuid.ExperimentalUuidApi

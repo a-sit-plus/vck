@@ -32,7 +32,7 @@ import at.asitplus.wallet.lib.oidc.RelyingPartyMetadata
 import io.github.aakira.napier.Napier
 import io.ktor.http.URLBuilder
 import io.ktor.http.Url
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration

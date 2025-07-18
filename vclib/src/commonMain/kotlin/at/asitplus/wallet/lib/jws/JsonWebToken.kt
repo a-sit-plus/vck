@@ -5,7 +5,7 @@ package at.asitplus.wallet.lib.jws
 import at.asitplus.wallet.lib.data.InstantLongSerializer
 import at.asitplus.wallet.lib.data.jsonSerializer
 import io.github.aakira.napier.Napier
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers

@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.data.CredentialSubject
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 
 class InMemoryIssuerCredentialStore : IssuerCredentialStore {

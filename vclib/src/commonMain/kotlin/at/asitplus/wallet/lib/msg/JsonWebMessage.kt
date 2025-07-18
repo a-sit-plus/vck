@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.msg
 import at.asitplus.wallet.lib.data.NullableInstantLongSerializer
 import at.asitplus.wallet.lib.data.jsonSerializer
 import io.github.aakira.napier.Napier
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlin.uuid.ExperimentalUuidApi

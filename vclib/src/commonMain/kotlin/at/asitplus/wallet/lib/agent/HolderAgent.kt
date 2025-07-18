@@ -6,7 +6,7 @@ import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentType
 import at.asitplus.wallet.lib.jws.JwsService
 import io.github.aakira.napier.Napier
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 
 
 /**

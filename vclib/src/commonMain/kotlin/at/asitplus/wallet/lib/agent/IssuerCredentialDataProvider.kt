@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.data.CredentialSubject
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 /**
  * Provides data for credentials to be issued.

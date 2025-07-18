@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.data
 
 import io.github.aakira.napier.Napier
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString

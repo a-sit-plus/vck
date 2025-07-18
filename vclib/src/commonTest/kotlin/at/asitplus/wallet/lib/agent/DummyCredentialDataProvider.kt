@@ -5,7 +5,7 @@ import at.asitplus.wallet.lib.data.AtomicAttributeCredential
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.SchemaIndex
 import io.matthewnelson.component.encoding.base16.encodeBase16
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes
 

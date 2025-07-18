@@ -10,7 +10,7 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
