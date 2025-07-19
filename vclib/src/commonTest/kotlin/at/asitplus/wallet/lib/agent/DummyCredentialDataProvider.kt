@@ -50,7 +50,8 @@ class DummyCredentialDataProvider(
         else -> null
     }
 
-    private fun randomId() = Random.nextBytes(32).encodeBase16()
+    @OptIn(ExperimentalStdlibApi::class)
+    private fun randomId() = Random.nextBytes(32).toHexString()
 
     companion object {
         const val ATTRIBUTE_WITH_ATTACHMENT = "picture"

@@ -4,7 +4,7 @@ import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.Companion.ATTRIB
 import at.asitplus.wallet.lib.data.AtomicAttributeCredential
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.SchemaIndex
-import com.benasher44.uuid.uuid4
+import at.asitplus.wallet.lib.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldNotBeEmpty

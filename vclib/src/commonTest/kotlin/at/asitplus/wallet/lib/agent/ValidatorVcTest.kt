@@ -1,6 +1,7 @@
 @file:OptIn(ExperimentalUuidApi::class)
 
 package at.asitplus.wallet.lib.agent
+import at.asitplus.wallet.lib.uuid4
 import at.asitplus.wallet.lib.data.AtomicAttributeCredential
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.CredentialStatus

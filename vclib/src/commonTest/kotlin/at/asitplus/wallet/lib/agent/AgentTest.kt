@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.Companion.ATTRIBUTE_WITH_ATTACHMENT
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.SchemaIndex
-import com.benasher44.uuid.uuid4
+import at.asitplus.wallet.lib.uuid4
 import io.kotest.assertions.fail
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -41,7 +41,7 @@ class AgentTest : FreeSpec({
             subjectCredentialStore = holderCredentialStore
         )
         verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.keyId)
-        challenge = uuid4().toString()
+        challenge = uuid4()
     }
 
     "simple walk-through success" {

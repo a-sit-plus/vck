@@ -5,8 +5,9 @@ import at.asitplus.wallet.lib.KmmBitSet
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.Success
 import at.asitplus.wallet.lib.data.AtomicAttributeCredential
 import at.asitplus.wallet.lib.data.AttributeIndex
+import at.asitplus.wallet.lib.jws.decodeBase64
 import at.asitplus.wallet.lib.toBitSet
-import com.benasher44.uuid.uuid4
+import at.asitplus.wallet.lib.uuid4
 import io.kotest.assertions.fail
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContain
@@ -134,7 +135,7 @@ private fun IssuerCredentialStore.revokeCredentialsWithIndexes(revokedIndexes: L
     val issuanceDate = Clock.System.now()
     val expirationDate = issuanceDate + 60.seconds
     for (i in 1..16) {
-        val vcId = uuid4().toString()
+        val vcId = uuid4()
         val revListIndex = storeGetNextIndex(vcId, cred, issuanceDate, expirationDate, FixedTimePeriodProvider.timePeriod)!!
         if (revokedIndexes.contains(revListIndex)) {
             revoke(vcId, FixedTimePeriodProvider.timePeriod)
@@ -148,7 +149,7 @@ private fun IssuerCredentialStore.revokeRandomCredentials(): MutableList<Long> {
     val issuanceDate = Clock.System.now()
     val expirationDate = issuanceDate + 60.seconds
     for (i in 1..256) {
-        val vcId = uuid4().toString()
+        val vcId = uuid4()
         val revListIndex =
             storeGetNextIndex(vcId, cred, issuanceDate, expirationDate, FixedTimePeriodProvider.timePeriod)!!
         if (Random.nextBoolean()) {

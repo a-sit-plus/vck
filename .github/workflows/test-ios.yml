@@ -1,0 +1,23 @@
+name: Test iOS
+on: [push]
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Run tests
+        run: ./gradlew iosSimulatorArm64Test
+      - name: Test Report
+        uses: dorny/test-reporter@v1
+        if: success() || failure()
+        with:
+          name: vck Tests
+          path: vclib/build/test-results/**/TEST*.xml
+          reporter: java-junit

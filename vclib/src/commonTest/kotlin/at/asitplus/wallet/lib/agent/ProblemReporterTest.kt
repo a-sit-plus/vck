@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.msg.*
 import at.asitplus.wallet.lib.nameHack
-import com.benasher44.uuid.uuid4
+import at.asitplus.wallet.lib.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.datatest.withData
 import io.kotest.matchers.shouldBe
@@ -18,7 +18,7 @@ class ProblemReporterTest : FreeSpec({
                     sorter = it,
                     scope = ProblemReportScope.MESSAGE,
                     descriptor = ProblemReportDescriptor.INTERNAL,
-                    details = uuid4().toString()
+                    details = uuid4()
                 ),
             )
             problemReporter.getProblemSorter(report) shouldBe it
@@ -39,7 +39,7 @@ class ProblemReporterTest : FreeSpec({
                     sorter = ProblemReportSorter.WARNING,
                     scope = it,
                     descriptor = ProblemReportDescriptor.INTERNAL,
-                    details = uuid4().toString()
+                    details = uuid4()
                 ),
             )
             problemReporter.getProblemScope(report) shouldBe it
@@ -60,7 +60,7 @@ class ProblemReporterTest : FreeSpec({
                     sorter = ProblemReportSorter.WARNING,
                     scope = ProblemReportScope.MESSAGE,
                     descriptor = it,
-                    details = uuid4().toString()
+                    details = uuid4()
                 ),
             )
             problemReporter.getProblemDescriptor(report) shouldBe it
@@ -74,7 +74,7 @@ class ProblemReporterTest : FreeSpec({
     }
 
     "explanationSimple" {
-        val comment = uuid4().toString()
+        val comment = uuid4()
         val problemReport = ProblemReport(
             body = ProblemReportBody(
                 code = "foo",
@@ -86,8 +86,8 @@ class ProblemReporterTest : FreeSpec({
     }
 
     "explanationPlaceholder" {
-        val arg1 = uuid4().toString()
-        val arg2 = uuid4().toString()
+        val arg1 = uuid4()
+        val arg2 = uuid4()
         val expectedComment = "Got $arg1, but expected $arg2"
         val comment = "Got {1}, but expected {2}"
         val problemReport = ProblemReport(
@@ -102,7 +102,7 @@ class ProblemReporterTest : FreeSpec({
     }
 
     "explanationTooManyPlaceholder" {
-        val arg1 = uuid4().toString()
+        val arg1 = uuid4()
         val expectedComment = "Got $arg1, but expected ?"
         val comment = "Got {1}, but expected {2}"
         val problemReport = ProblemReport(
