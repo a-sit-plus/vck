@@ -42,7 +42,7 @@ kotlin {
 
 exportXCFramework("VcLibKmm", transitiveExports = false, additionalExports = commonIosExports())
 
-val javadocJar = setupDokka(baseUrl = "https://github.com/a-sit-plus/kmm-vc-library/tree/backport/conventions")
+val javadocJar = setupDokka(baseUrl = "https://github.com/a-sit-plus/vck/tree/release-pupilid/")
 
 publishing {
     publications {
@@ -51,7 +51,7 @@ publishing {
             pom {
                 name.set("KmmVcLib")
                 description.set("Kotlin Multiplatform library implementing the W3C VC Data Model")
-                url.set("https://github.com/a-sit-plus/kmm-vc-library")
+                url.set("https://github.com/a-sit-plus/vck/tree/release-pupilid")
                 licenses {
                     license {
                         name.set("The Apache License, Version 2.0")
@@ -73,18 +73,13 @@ publishing {
                 scm {
                     connection.set("scm:git:git@github.com:a-sit-plus/kmm-vc-library.git")
                     developerConnection.set("scm:git:git@github.com:a-sit-plus/kmm-vc-library.git")
-                    url.set("https://github.com/a-sit-plus/kmm-vc-library")
+                    url.set("https://github.com/a-sit-plus/vck")
                 }
             }
         }
     }
     repositories {
         mavenLocal {
-            signing.isRequired = false
-        }
-        maven {
-            url = uri(layout.projectDirectory.dir("..").dir("repo"))
-            name = "local"
             signing.isRequired = false
         }
     }
