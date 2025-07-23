@@ -2,12 +2,12 @@ package at.asitplus.wallet.lib.data
 
 import at.asitplus.iso.sha256
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
-import at.asitplus.wallet.lib.jws.SelectiveDisclosureItemSerializer
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * Selective Disclosure item in SD-JWT format
@@ -19,14 +19,19 @@ data class SelectiveDisclosureItem(
     val claimValue: JsonElement,
 ) {
 
+    @Deprecated(
+        "Replaced with fromAnyValue",
+        ReplaceWith("SelectiveDisclosureItem.fromAnyValue(salt, claimName, claimValue)"),
+        DeprecationLevel.ERROR
+    )
     constructor(salt: ByteArray, claimName: String?, claimValue: Any)
-            : this(salt, claimName, claimValue.toJsonElement())
+            : this(salt, claimName, JsonPrimitive(claimValue.toString()))
 
     /**
      * Creates a disclosure, as described in section 5.2 of
      * [draft-ietf-oauth-selective-disclosure-jwt-08](https://datatracker.ietf.org/doc/draft-ietf-oauth-selective-disclosure-jwt/)
      */
-    fun toDisclosure() = vckJsonSerializer.encodeToString<SelectiveDisclosureItem>(this)
+    fun toDisclosure() = joseCompliantSerializer.encodeToString<SelectiveDisclosureItem>(this)
         .encodeToByteArray().encodeToString(Base64UrlStrict)
 
     override fun equals(other: Any?): Boolean {

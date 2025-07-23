@@ -14,6 +14,7 @@ Release 5.8.0:
    - Remove code elements deprecated in `5.7.0`
    - Remove all remaining `serialize()` and `deserialize()` methods in data classes
    - Move data classes for token status into artifact `openid-data-classes`, keeping the namespace
+   - Move data classes for VC and SD-JWT into artifact `openid-data-classes`, keeping the namespace
  - Refactoring of ISO data classes:
    - Move data classes from `vck` to `openid-data-classes`
    - List of classes moved: `MobileSecurityObject`, `Document`, `IssuerSigned`, `DeviceResponse`

@@ -3,11 +3,9 @@ package at.asitplus.wallet.lib.jws
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.wallet.lib.agent.SubjectCredentialStore
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.data.KeyBindingJws
-import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -15,10 +13,10 @@ import kotlinx.serialization.json.decodeFromJsonElement
 
 /**
  * Representation of a signed SD-JWT,
- * as issued by an [at.asitplus.wallet.lib.agent.Issuer] or presented by an [at.asitplus.wallet.lib.agent.Holder], i.e.
+ * as issued by an issuer or presented by a holder, i.e.
  * consisting of an JWS (with header, payload is [at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt] and signature)
- * and several disclosures ([SelectiveDisclosureItem]) separated by a `~`,
- * possibly ending with a [keyBindingJws], that is a JWS with payload [KeyBindingJws].
+ * and several disclosures ([at.asitplus.wallet.lib.data.SelectiveDisclosureItem]) separated by a `~`,
+ * possibly ending with a [keyBindingJws], that is a JWS with payload [at.asitplus.wallet.lib.data.KeyBindingJws].
  */
 data class SdJwtSigned(
     val jws: JwsSigned<JsonElement>,
@@ -49,7 +47,7 @@ data class SdJwtSigned(
     }
 
     fun getPayloadAsVerifiableCredentialSdJwt(): KmmResult<VerifiableCredentialSdJwt> =
-        catching { vckJsonSerializer.decodeFromJsonElement<VerifiableCredentialSdJwt>(jws.payload) }
+        catching { joseCompliantSerializer.decodeFromJsonElement<VerifiableCredentialSdJwt>(jws.payload) }
 
     fun getPayloadAsJsonObject(): KmmResult<JsonObject> =
         catching { jws.payload as JsonObject }
@@ -90,10 +88,12 @@ data class SdJwtSigned(
             if (stringList.isEmpty()) {
                 return null.also { Napier.w("Could not parse SD-JWT: $input") }
             }
-            val jws =
-                JwsSigned.deserialize<JsonElement>(JsonElement.serializer(), stringList.first(), vckJsonSerializer)
-                    .getOrNull()
-                    ?: return null.also { Napier.w("Could not parse JWS from SD-JWT: $input") }
+            val jws = JwsSigned.Companion.deserialize<JsonElement>(
+                deserializationStrategy = JsonElement.Companion.serializer(),
+                it = stringList.first(),
+                json = joseCompliantSerializer
+            ).getOrNull()
+                ?: return null.also { Napier.w("Could not parse JWS from SD-JWT: $input") }
             val stringListWithoutJws = stringList.drop(1)
             val rawDisclosures = stringListWithoutJws
                 .filterNot { it.contains(".") }
@@ -101,7 +101,11 @@ data class SdJwtSigned(
             val keyBindingString = stringList.drop(1 + rawDisclosures.size).firstOrNull()
             val keyBindingJws = keyBindingString
                 ?.let {
-                    JwsSigned.deserialize<KeyBindingJws>(KeyBindingJws.serializer(), it, vckJsonSerializer).getOrNull()
+                    JwsSigned.Companion.deserialize<KeyBindingJws>(
+                        deserializationStrategy = KeyBindingJws.serializer(),
+                        it = it,
+                        json = joseCompliantSerializer
+                    ).getOrNull()
                 }
             val hashInput = input.substringBeforeLast("~") + "~"
             return SdJwtSigned(jws, rawDisclosures, keyBindingJws, hashInput)
@@ -117,15 +121,6 @@ data class SdJwtSigned(
             keyBinding: JwsSigned<KeyBindingJws>,
         ) = (listOf(jwsFromIssuer.serialize()) + filteredDisclosures + keyBinding.serialize()).joinToString("~")
 
-        /**
-         * Input for SD hash calculation: Compact serialization:
-         * JWT in JWS compact serialization (Base64-URL with dots), with disclosures appended, separated by a tilde.
-         */
-        fun sdHashInput(
-            validSdJwtCredential: SubjectCredentialStore.StoreEntry.SdJwt,
-            filteredDisclosures: Set<String>,
-        ) = (listOf(validSdJwtCredential.vcSerialized.substringBefore("~")) + filteredDisclosures)
-            .joinToString("~", postfix = "~")
     }
 
 }

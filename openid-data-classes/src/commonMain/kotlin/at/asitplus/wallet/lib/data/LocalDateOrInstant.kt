@@ -72,7 +72,7 @@ object InstantDescriptor : SerialDescriptor {
     override fun getElementDescriptor(index: Int): SerialDescriptor = throw IllegalStateException()
 
     @ExperimentalSerializationApi
-    override fun getElementIndex(name: String): Int = CompositeDecoder.UNKNOWN_NAME
+    override fun getElementIndex(name: String): Int = CompositeDecoder.Companion.UNKNOWN_NAME
 
     @ExperimentalSerializationApi
     override fun getElementName(index: Int): String = throw IllegalStateException()
@@ -103,7 +103,7 @@ object LocalDateDescriptor : SerialDescriptor {
     override fun getElementDescriptor(index: Int): SerialDescriptor = throw IllegalStateException()
 
     @ExperimentalSerializationApi
-    override fun getElementIndex(name: String): Int = CompositeDecoder.UNKNOWN_NAME
+    override fun getElementIndex(name: String): Int = CompositeDecoder.Companion.UNKNOWN_NAME
 
     @ExperimentalSerializationApi
     override fun getElementName(index: Int): String = throw IllegalStateException()

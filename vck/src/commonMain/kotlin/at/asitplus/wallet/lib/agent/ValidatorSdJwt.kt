@@ -37,7 +37,7 @@ class ValidatorSdJwt(
     /** Structure / Integrity / Semantics validator. */
     private val sdJwtInputValidator: SdJwtInputValidator =
         SdJwtInputValidator(verifyJwsObject = verifyJwsObject),
-    private val validator: Validator = Validator()
+    private val validator: Validator = Validator(),
 ) {
 
     /**
@@ -66,12 +66,12 @@ class ValidatorSdJwt(
             return VerifyPresentationResult.ValidationError("No key binding JWT")
         }
         val vcSdJwt = sdJwtResult.verifiableCredentialSdJwt
-        if (vcSdJwt.confirmationClaim != null) {
-            if (!verifyJwsSignatureWithCnf(keyBindingSigned, vcSdJwt.confirmationClaim)) {
+        vcSdJwt.confirmationClaim?.let {
+            if (!verifyJwsSignatureWithCnf(keyBindingSigned, it)) {
                 Napier.w("verifyVpSdJwt: Key binding JWT not verified with keys from cnf")
                 return VerifyPresentationResult.ValidationError("Key binding JWT not verified (from cnf)")
             }
-        } else {
+        } ?: run {
             if (!verifyJwsObject(keyBindingSigned)) {
                 Napier.w("verifyVpSdJwt: Key binding JWT not verified")
                 return VerifyPresentationResult.ValidationError("Key binding JWT not verified")

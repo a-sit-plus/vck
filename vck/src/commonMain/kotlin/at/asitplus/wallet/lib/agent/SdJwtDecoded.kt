@@ -87,9 +87,10 @@ class SdJwtDecoded(sdJwtSigned: SdJwtSigned) {
 
     private fun JsonArrayBuilder.processSdItem(disclosure: JsonPrimitive) {
         disclosure.toValidatedItem()?.let { sdItem ->
-            when (sdItem.claimValue) {
-                is JsonObject -> add(sdItem.claimValue.reconstructValues())
-                else -> add(sdItem.claimValue)
+            val claimValue = sdItem.claimValue
+            when (claimValue) {
+                is JsonObject -> add(claimValue.reconstructValues())
+                else -> add(claimValue)
             }
         }
     }
