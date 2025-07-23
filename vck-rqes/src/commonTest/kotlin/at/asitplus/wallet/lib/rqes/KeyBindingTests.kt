@@ -278,7 +278,7 @@ class KeyBindingTests : FreeSpec({
                 stateToAuthnRequestStore = externalMapStore,
                 verifier = VerifierAgent(
                     identifier = clientIdScheme.clientId,
-                    validator = Validator(verifyTransactionData = false)
+                    validatorSdJwt = ValidatorSdJwt(verifyTransactionData = false)
                 )
             )
 
@@ -300,8 +300,8 @@ class KeyBindingTests : FreeSpec({
             ).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
-            val result = lenientVerifier.validateAuthnResponse(malignResponse.params)
-            result.shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
+            lenientVerifier.validateAuthnResponse(malignResponse.params)
+                .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
         }
 
         "Hash of transaction data is not changed during processing" {

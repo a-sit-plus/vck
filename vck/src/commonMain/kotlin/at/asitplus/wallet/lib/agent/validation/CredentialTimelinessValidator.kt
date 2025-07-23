@@ -12,6 +12,11 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 data class CredentialTimelinessValidator(
+    /**
+     * @param timeLeeway specifies tolerance for expiration and start of validity of credentials.
+     * A credential that expired at most `timeLeeway` ago is not yet considered expired.
+     * A credential that is valid in at most `timeLeeway` is already considered valid.
+     */
     private val timeLeeway: Duration = 300.seconds,
     private val clock: Clock = Clock.System,
     val vcJwsTimelinessValidator: VcJwsTimelinessValidator = VcJwsTimelinessValidator(),

@@ -35,6 +35,8 @@ Release 5.8.0:
    - Update signum to provide SD-JWT VC Type metadata in `vctm` in the header of a SD-JWT
  - Validation:
    - Remove internal class `Parser` and data classes `ParseVpResult` and `ParseVcResult`
+   - Extract `ValidatorMdoc`, `ValidatorSdJwt`, `ValidatorVcJws` from `Validator`
+   - In `HolderAgent` add constructor parameters for `validatorVcJws`, `validatorSdJwt`, `validatorMdoc`
 
 Release 5.7.2:
  - Presentation Exchange: Fix validation of optional constraint fields

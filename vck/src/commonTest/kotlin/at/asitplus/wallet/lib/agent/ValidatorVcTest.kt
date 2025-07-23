@@ -38,24 +38,26 @@ class ValidatorVcTest : FreeSpec() {
     private lateinit var issuerSignVc: SignJwtFun<VerifiableCredentialJws>
     private lateinit var issuerKeyMaterial: KeyMaterial
     private lateinit var verifierKeyMaterial: KeyMaterial
-    private lateinit var validator: Validator
+    private lateinit var validator: ValidatorVcJws
 
     private val revocationListUrl: String = "https://wallet.a-sit.at/backend/credentials/status/1"
 
     init {
         beforeEach {
-            validator = Validator(
-                resolveStatusListToken = {
-                    if (Random.nextBoolean()) StatusListToken.StatusListJwt(
-                        statusListIssuer.issueStatusListJwt(),
-                        resolvedAt = Clock.System.now(),
-                    ) else {
-                        StatusListToken.StatusListCwt(
-                            statusListIssuer.issueStatusListCwt(),
+            validator = ValidatorVcJws(
+                validator = Validator(
+                    resolveStatusListToken = {
+                        if (Random.nextBoolean()) StatusListToken.StatusListJwt(
+                            statusListIssuer.issueStatusListJwt(),
                             resolvedAt = Clock.System.now(),
-                        )
-                    }
-                },
+                        ) else {
+                            StatusListToken.StatusListCwt(
+                                statusListIssuer.issueStatusListCwt(),
+                                resolvedAt = Clock.System.now(),
+                            )
+                        }
+                    },
+                )
             )
             issuerCredentialStore = InMemoryIssuerCredentialStore()
             issuerKeyMaterial = EphemeralKeyWithoutCert()

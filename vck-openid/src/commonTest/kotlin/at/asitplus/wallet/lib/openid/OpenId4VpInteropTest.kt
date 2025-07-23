@@ -78,7 +78,7 @@ class OpenId4VpInteropTest : FreeSpec({
             keyMaterial = verifierKeyMaterial,
             verifier = VerifierAgent(
                 identifier = clientIdScheme.clientId,
-                validator = Validator(
+                validatorSdJwt = ValidatorSdJwt(
                     verifyJwsObject = VerifyJwsObject(
                         publicKeyLookup = {
                             setOf(

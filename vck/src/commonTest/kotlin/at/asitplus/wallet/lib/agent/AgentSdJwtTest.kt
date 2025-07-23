@@ -52,18 +52,20 @@ class AgentSdJwtTest : FreeSpec({
     lateinit var verifierId: String
 
     beforeEach {
-        val validator = Validator(
-            resolveStatusListToken = {
-                if (Random.nextBoolean()) StatusListToken.StatusListJwt(
-                    statusListIssuer.issueStatusListJwt(),
-                    resolvedAt = Clock.System.now()
-                ) else {
-                    StatusListToken.StatusListCwt(
-                        statusListIssuer.issueStatusListCwt(),
-                        resolvedAt = Clock.System.now(),
-                    )
-                }
-            },
+        val validator = ValidatorSdJwt(
+            validator = Validator(
+                resolveStatusListToken = {
+                    if (Random.nextBoolean()) StatusListToken.StatusListJwt(
+                        statusListIssuer.issueStatusListJwt(),
+                        resolvedAt = Clock.System.now()
+                    ) else {
+                        StatusListToken.StatusListCwt(
+                            statusListIssuer.issueStatusListCwt(),
+                            resolvedAt = Clock.System.now(),
+                        )
+                    }
+                },
+            )
         )
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         holderCredentialStore = InMemorySubjectCredentialStore()
@@ -73,12 +75,12 @@ class AgentSdJwtTest : FreeSpec({
         holder = HolderAgent(
             holderKeyMaterial,
             holderCredentialStore,
-            validator = validator,
+            validatorSdJwt = validator,
         )
         verifierId = "urn:${uuid4()}"
         verifier = VerifierAgent(
             identifier = verifierId,
-            validator = validator,
+            validatorSdJwt = validator,
         )
         challenge = uuid4().toString()
         holder.storeCredential(
