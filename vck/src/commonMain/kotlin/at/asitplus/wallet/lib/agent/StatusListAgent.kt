@@ -17,6 +17,7 @@ import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
+import at.asitplus.wallet.lib.toStatusList
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -84,17 +85,13 @@ class StatusListAgent(
      * Returns a status list, where the entry at "revocationListIndex" (of the credential) is INVALID if it is revoked
      */
     override fun buildStatusList(timePeriod: Int?): StatusList =
-        StatusList(
-            view = buildStatusListView(timePeriod),
-            aggregationUri = statusListAggregationUrl,
-            zlibService = zlibService,
-        )
+        buildStatusListView(timePeriod).toStatusList(zlibService, statusListAggregationUrl)
 
     private fun buildStatusListView(timePeriod: Int?): StatusListView =
         issuerCredentialStore.getStatusListView(timePeriod ?: timePeriodProvider.getCurrentTimePeriod(clock))
 
     /**
-     * Sets the status of one specific credential to [at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus.Invalid].
+     * Sets the status of one specific credential to [TokenStatus.Invalid].
      * Returns true if this credential has been revoked.
      */
     override fun revokeCredential(timePeriod: Int, statusListIndex: ULong): Boolean =
