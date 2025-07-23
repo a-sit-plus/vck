@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.data
 
 /**
- * Intermediate class used by [at.asitplus.wallet.lib.agent.Validator.verifyVpJws] when parsing a verifiable
+ * Intermediate class used by [at.asitplus.wallet.lib.agent.ValidatorVcJws.verifyVpJws] when parsing a verifiable
  * presentation, and also by [at.asitplus.wallet.lib.agent.VerifierAgent.verifyPresentationVcJwt].
  */
 data class VerifiablePresentationParsed(

@@ -8,7 +8,8 @@ import at.asitplus.wallet.lib.iso.MobileSecurityObject
 import io.github.aakira.napier.Napier
 
 class MdocInputValidator(
-    private val verifyCoseSignatureWithKey: VerifyCoseSignatureWithKeyFun<MobileSecurityObject> = VerifyCoseSignatureWithKey(),
+    private val verifyCoseSignatureWithKey: VerifyCoseSignatureWithKeyFun<MobileSecurityObject> =
+        VerifyCoseSignatureWithKey(),
 ) {
     suspend operator fun invoke(it: IssuerSigned, issuerKey: CoseKey?) = MdocInputValidationSummary(
         integrityValidationSummary = if (issuerKey == null) {

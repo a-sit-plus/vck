@@ -20,7 +20,11 @@ class VerifierAgent(
      * It may be a cryptographic identifier of the key, but can be anything, e.g. a URL.
      */
     private val identifier: String,
+    @Deprecated("Use [validatorVcJws], [validatorSdJwt], [validatorMdoc] instead")
     private val validator: Validator = Validator(),
+    private val validatorVcJws: ValidatorVcJws = ValidatorVcJws(validator = validator),
+    private val validatorSdJwt: ValidatorSdJwt = ValidatorSdJwt(validator = validator),
+    private val validatorMdoc: ValidatorMdoc = ValidatorMdoc(validator = validator),
 ) : Verifier {
 
     override suspend fun verifyPresentationSdJwt(
@@ -28,7 +32,7 @@ class VerifierAgent(
         challenge: String,
         transactionData: Pair<PresentationRequestParameters.Flow, List<TransactionDataBase64Url>>?,
     ): VerifyPresentationResult = catchingUnwrapped {
-        validator.verifyVpSdJwt(input, challenge, identifier, transactionData)
+        validatorSdJwt.verifyVpSdJwt(input, challenge, identifier, transactionData)
     }.getOrElse {
         VerifyPresentationResult.ValidationError(it)
     }
@@ -37,7 +41,7 @@ class VerifierAgent(
         input: JwsSigned<VerifiablePresentationJws>,
         challenge: String,
     ): VerifyPresentationResult = catchingUnwrapped {
-        validator.verifyVpJws(input, challenge, identifier)
+        validatorVcJws.verifyVpJws(input, challenge, identifier)
     }.getOrElse {
         VerifyPresentationResult.ValidationError(it)
     }
@@ -47,7 +51,7 @@ class VerifierAgent(
         challenge: String,
         verifyDocument: suspend (MobileSecurityObject, Document) -> Boolean,
     ): VerifyPresentationResult = catchingUnwrapped {
-        validator.verifyDeviceResponse(input, verifyDocument)
+        validatorMdoc.verifyDeviceResponse(input, verifyDocument)
     }.getOrElse {
         VerifyPresentationResult.ValidationError(it)
     }

@@ -4,20 +4,15 @@ import at.asitplus.catchingUnwrapped
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
-import at.asitplus.wallet.lib.agent.StatusListAgent
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
-import at.asitplus.wallet.lib.iso.sha256
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.matthewnelson.encoding.base16.Base16
-import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
-import kotlin.also
 import kotlin.random.Random
 
 
@@ -28,22 +23,24 @@ class ValidatorMdocTest : FreeSpec() {
     private lateinit var issuerCredentialStore: IssuerCredentialStore
     private lateinit var issuerKeyMaterial: KeyMaterial
     private lateinit var verifierKeyMaterial: KeyMaterial
-    private lateinit var validator: Validator
+    private lateinit var validator: ValidatorMdoc
 
     init {
         beforeEach {
-            validator = Validator(
-                resolveStatusListToken = {
-                    if (Random.nextBoolean()) StatusListToken.StatusListJwt(
-                        statusListIssuer.issueStatusListJwt(),
-                        resolvedAt = Clock.System.now(),
-                    ) else {
-                        StatusListToken.StatusListCwt(
-                            statusListIssuer.issueStatusListCwt(),
+            validator = ValidatorMdoc(
+                validator = Validator(
+                    resolveStatusListToken = {
+                        if (Random.nextBoolean()) StatusListToken.StatusListJwt(
+                            statusListIssuer.issueStatusListJwt(),
                             resolvedAt = Clock.System.now(),
-                        )
-                    }
-                },
+                        ) else {
+                            StatusListToken.StatusListCwt(
+                                statusListIssuer.issueStatusListCwt(),
+                                resolvedAt = Clock.System.now(),
+                            )
+                        }
+                    },
+                )
             )
             issuerCredentialStore = InMemoryIssuerCredentialStore()
             issuerKeyMaterial = EphemeralKeyWithSelfSignedCert()

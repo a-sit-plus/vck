@@ -43,6 +43,9 @@ class HolderAgent(
     override val keyMaterial: KeyMaterial,
     private val subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
     private val validator: Validator = Validator(),
+    private val validatorVcJws: ValidatorVcJws = ValidatorVcJws(validator = validator),
+    private val validatorSdJwt: ValidatorSdJwt = ValidatorSdJwt(validator = validator),
+    private val validatorMdoc: ValidatorMdoc = ValidatorMdoc(validator = validator),
     private val signVerifiablePresentation: SignJwtFun<VerifiablePresentationJws> =
         SignJwt(keyMaterial, JwsHeaderKeyId()),
     private val signKeyBinding: SignJwtFun<KeyBindingJws> = SignJwt(keyMaterial, JwsHeaderNone()),
@@ -58,7 +61,7 @@ class HolderAgent(
     override suspend fun storeCredential(credential: Holder.StoreCredentialInput) = catching {
         when (credential) {
             is Holder.StoreCredentialInput.Vc -> {
-                val validated = validator.verifyVcJws(credential.signedVcJws, keyMaterial.publicKey)
+                val validated = validatorVcJws.verifyVcJws(credential.signedVcJws, keyMaterial.publicKey)
                 if (validated !is Verifier.VerifyCredentialResult.SuccessJwt) {
                     val error = (validated as? Verifier.VerifyCredentialResult.ValidationError)?.cause
                         ?: Throwable("Invalid VC JWS")
@@ -72,7 +75,7 @@ class HolderAgent(
             }
 
             is Holder.StoreCredentialInput.SdJwt -> {
-                val validated = validator.verifySdJwt(credential.signedSdJwtVc, keyMaterial.publicKey)
+                val validated = validatorSdJwt.verifySdJwt(credential.signedSdJwtVc, keyMaterial.publicKey)
                 if (validated !is Verifier.VerifyCredentialResult.SuccessSdJwt) {
                     val error = (validated as? Verifier.VerifyCredentialResult.ValidationError)?.cause
                         ?: Throwable("Invalid SD-JWT")
@@ -92,7 +95,7 @@ class HolderAgent(
                         catchingUnwrapped { X509Certificate.decodeFromDer(it) }.getOrNull()?.publicKey?.toCoseKey()
                             ?.getOrNull()
                     }
-                val validated = validator.verifyIsoCred(credential.issuerSigned, issuerKey)
+                val validated = validatorMdoc.verifyIsoCred(credential.issuerSigned, issuerKey)
                 if (validated !is Verifier.VerifyCredentialResult.SuccessIso) {
                     val error = (validated as? Verifier.VerifyCredentialResult.ValidationError)?.cause
                         ?: Throwable("Invalid ISO MDOC")
@@ -107,7 +110,7 @@ class HolderAgent(
     /**
      * Gets a list of all stored credentials, with a revocation status.
      */
-    override suspend fun getCredentials(): Collection<SubjectCredentialStore.StoreEntry>? {
+    override suspend fun getCredentials(): Collection<StoreEntry>? {
         return subjectCredentialStore.getCredentials().getOrNull()
             ?: null.also { Napier.w("Got no credentials from subjectCredentialStore") }
     }

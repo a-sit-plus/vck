@@ -35,7 +35,7 @@ class ValidatorVpTest : FreeSpec({
         ),
     )
 
-    lateinit var validator: Validator
+    lateinit var validator: ValidatorVcJws
     lateinit var issuer: Issuer
     lateinit var statusListIssuer: StatusListIssuer
     lateinit var issuerCredentialStore: IssuerCredentialStore
@@ -49,18 +49,20 @@ class ValidatorVpTest : FreeSpec({
     lateinit var challenge: String
 
     beforeEach {
-        validator = Validator(
-            resolveStatusListToken = {
-                if (Random.nextBoolean()) StatusListToken.StatusListJwt(
-                    statusListIssuer.issueStatusListJwt(),
-                    resolvedAt = Clock.System.now()
-                ) else {
-                    StatusListToken.StatusListCwt(
-                        statusListIssuer.issueStatusListCwt(),
+        validator = ValidatorVcJws(
+            validator = Validator(
+                resolveStatusListToken = {
+                    if (Random.nextBoolean()) StatusListToken.StatusListJwt(
+                        statusListIssuer.issueStatusListJwt(),
                         resolvedAt = Clock.System.now()
-                    )
-                }
-            },
+                    ) else {
+                        StatusListToken.StatusListCwt(
+                            statusListIssuer.issueStatusListCwt(),
+                            resolvedAt = Clock.System.now()
+                        )
+                    }
+                },
+            )
         )
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         issuer = IssuerAgent(issuerCredentialStore = issuerCredentialStore)
@@ -70,14 +72,14 @@ class ValidatorVpTest : FreeSpec({
         holder = HolderAgent(
             holderKeyMaterial,
             holderCredentialStore,
-            validator = validator,
+            validatorVcJws = validator,
         )
         verifiablePresentationFactory = VerifiablePresentationFactory(holderKeyMaterial)
         holderSignVp = SignJwt(holderKeyMaterial, JwsHeaderKeyId())
         verifierId = "urn:${uuid4()}"
         verifier = VerifierAgent(
             identifier = verifierId,
-            validator = validator,
+            validatorVcJws = validator
         )
         challenge = uuid4().toString()
 

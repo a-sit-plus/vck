@@ -37,11 +37,11 @@ class ValidatorSdJwtTest : FreeSpec() {
 
     private lateinit var issuer: Issuer
     private lateinit var holderKeyMaterial: KeyMaterial
-    private lateinit var validator: Validator
+    private lateinit var validator: ValidatorSdJwt
 
     init {
         beforeEach {
-            validator = Validator()
+            validator = ValidatorSdJwt()
             issuer = IssuerAgent()
             holderKeyMaterial = EphemeralKeyWithoutCert()
         }

@@ -26,6 +26,7 @@ import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.Validator
+import at.asitplus.wallet.lib.agent.ValidatorSdJwt
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
@@ -161,12 +162,12 @@ class OpenId4VciClientTest : FunSpec() {
         success.credentials.shouldBeSingleton().also {
             it.first().shouldBeInstanceOf<Holder.StoreCredentialInput.SdJwt>().also {
                 it.scheme shouldBe EuPidScheme
-                val sdJwt = Validator().verifySdJwt(
-                    it.signedSdJwtVc,
-                    credentialKeyMaterial.publicKey
-                )
-                sdJwt.shouldBeInstanceOf<VerifyCredentialResult.SuccessSdJwt>()
-                sdJwt.disclosures.values.any { it.claimName == EuPidScheme.Attributes.FAMILY_NAME && it.claimValue.jsonPrimitive.content == expectedFamilyName }
+                ValidatorSdJwt().verifySdJwt(it.signedSdJwtVc, credentialKeyMaterial.publicKey)
+                    .shouldBeInstanceOf<VerifyCredentialResult.SuccessSdJwt>()
+                    .disclosures.values.any {
+                        it.claimName == EuPidScheme.Attributes.FAMILY_NAME &&
+                                it.claimValue.jsonPrimitive.content == expectedFamilyName
+                    }
                     .shouldBeTrue()
             }
         }
