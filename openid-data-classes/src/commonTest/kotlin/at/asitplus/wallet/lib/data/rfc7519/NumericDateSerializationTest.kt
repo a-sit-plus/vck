@@ -12,12 +12,12 @@ class NumericDateSerializationTest : FreeSpec({
         withData(
             data = mapOf(
                 "epoch" to 0,
-                "sometime in the future" to Instant.DISTANT_FUTURE.epochSeconds,
-                "sometime in the past" to Instant.DISTANT_PAST.epochSeconds,
+                "sometime in the future" to Instant.Companion.DISTANT_FUTURE.epochSeconds,
+                "sometime in the past" to Instant.Companion.DISTANT_PAST.epochSeconds,
             )
         ) {
-            val value = Json.decodeFromString<NumericDate>(it.toString())
-            value.instant shouldBe Instant.fromEpochSeconds(it)
+            val value = Json.Default.decodeFromString<NumericDate>(it.toString())
+            value.instant shouldBe Instant.Companion.fromEpochSeconds(it)
         }
     }
 })

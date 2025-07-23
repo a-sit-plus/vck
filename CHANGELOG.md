@@ -13,6 +13,7 @@ Release 5.8.0:
  - Code organization:
    - Remove code elements deprecated in `5.7.0`
    - Remove all remaining `serialize()` and `deserialize()` methods in data classes
+   - Move data classes for token status into artifact `openid-data-classes`
  - Issuer:
    - Extract interface `StatusListIssuer` out of `Issuer` to separate credential issuing and status list management
    - Extract interface `IssueCredentialFun` to be used in `CredentialIssuer` for OID4VCI

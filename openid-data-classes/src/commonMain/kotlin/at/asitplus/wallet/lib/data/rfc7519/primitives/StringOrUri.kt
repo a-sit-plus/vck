@@ -13,7 +13,8 @@ import kotlin.jvm.JvmInline
  *       canonicalizations applied.
  */
 @Serializable
-@JvmInline value class StringOrUri(val string: String) {
+@JvmInline
+value class StringOrUri(val string: String) {
     init {
         validate(string)
     }

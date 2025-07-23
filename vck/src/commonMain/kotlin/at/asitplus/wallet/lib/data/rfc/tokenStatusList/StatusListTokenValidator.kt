@@ -26,7 +26,7 @@ object StatusListTokenValidator {
         validateStatusListTokenIntegrity: suspend (StatusListToken) -> StatusListTokenPayload,
         statusListInfo: StatusListInfo,
         isInstantInThePast: (Instant) -> Boolean,
-    ): KmmResult<StatusListTokenPayload> = at.asitplus.catching {
+    ): KmmResult<StatusListTokenPayload> = catching {
         val payload = validateStatusListTokenIntegrity(statusListToken)
 
         validateStatusListTokenPayloadClaims(
@@ -61,7 +61,7 @@ object StatusListTokenValidator {
         statusListInfo: StatusListInfo,
         statusListTokenResolvedAt: Instant?,
         isInstantInThePast: (Instant) -> Boolean,
-    ): KmmResult<Unit> = at.asitplus.catching {
+    ): KmmResult<Unit> = catching {
         if (statusListTokenPayload.subject.string != statusListInfo.uri.string) {
             throw IllegalArgumentException("The subject claim of the Status List Token is not equal to the uri claim in the status_list object of the Referenced Token.")
         }
