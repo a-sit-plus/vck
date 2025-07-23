@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.data
 
 import at.asitplus.wallet.lib.agent.validation.CredentialFreshnessSummary
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.iso.MobileSecurityObject
 
@@ -14,16 +13,4 @@ data class IsoDocumentParsed(
     val validItems: List<IssuerSignedItem> = listOf(),
     val invalidItems: List<IssuerSignedItem> = listOf(),
     val freshnessSummary: CredentialFreshnessSummary.Mdoc,
-) {
-    @Deprecated("Replaced with more expressive freshness information", ReplaceWith("""freshnessSummary.let { when(it.tokenStatusValidationResult) {
-            is TokenStatusValidationResult.Rejected -> null
-            is TokenStatusValidationResult.Invalid -> true
-            is TokenStatusValidationResult.Valid -> false
-        }}"""))
-    val isRevoked: Boolean?
-        get() = when(freshnessSummary.tokenStatusValidationResult) {
-            is TokenStatusValidationResult.Rejected -> null
-            is TokenStatusValidationResult.Invalid -> true
-            is TokenStatusValidationResult.Valid -> false
-        }
-}
+)

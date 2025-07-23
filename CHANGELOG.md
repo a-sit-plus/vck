@@ -11,6 +11,9 @@ Release 5.8.0:
    - Add `SimpleQtspAuthorizationService` class
    - Remove `AuthorizationDetail` matching and validation from class to interface function
  - Code organization:
+   - Remove code elements deprecated in `5.7.0`
+   - Remove all remaining `serialize()` and `deserialize()` methods in data classes
+ - Issuer:
    - Extract interface `StatusListIssuer` out of `Issuer` to separate credential issuing and status list management
    - Extract interface `IssueCredentialFun` to be used in `CredentialIssuer` for OID4VCI
    - Rework interface `IssuerCredentialStore`, deprecating methods `storeGetNewIndex` and class `IssuerCredentialStore.Credential`
@@ -21,7 +24,6 @@ Release 5.8.0:
    - In `CredentialIssuer` move constructor parameters for loading data and issuing credentials to method `credential()`
    - Extract `ProofValidator` out of `CredentialIssuer`
    - Extract `CredentialSchemeMapping` out of various top-level methods
-   - Remove all remaining `serialize()` and `deserialize()` methods in data classes
    - In `SimpleAuthorizationService` deprecate constructor parameter `dataProvider`, use `authorize()` with `OAuth2LoadUserFun` instead
    - In `AuthorizationService` deprecate `authorize()` methods, adding `authorize()` with `OAuth2LoadUserFun`
  - Credential schemes:

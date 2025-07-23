@@ -1,11 +1,23 @@
 package at.asitplus.wallet.lib.oauth2
 
-import at.asitplus.openid.*
+import at.asitplus.iso.sha256
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthorizationDetails
+import at.asitplus.openid.CredentialOffer
+import at.asitplus.openid.CredentialOfferGrants
+import at.asitplus.openid.CredentialOfferGrantsAuthCode
+import at.asitplus.openid.CredentialOfferGrantsPreAuthCode
+import at.asitplus.openid.CredentialRequestProof
+import at.asitplus.openid.IssuerMetadata
+import at.asitplus.openid.OAuth2AuthorizationServerMetadata
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.CODE_CHALLENGE_METHOD_SHA256
 import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_CODE
+import at.asitplus.openid.PushedAuthenticationResponseParameters
+import at.asitplus.openid.TokenRequestParameters
+import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
-import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
