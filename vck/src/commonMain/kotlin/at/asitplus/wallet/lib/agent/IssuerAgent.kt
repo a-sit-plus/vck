@@ -83,7 +83,6 @@ class IssuerAgent(
     // TODO Remove > 5.8.0
     StatusListIssuer by StatusListAgent(
         keyMaterial = keyMaterial,
-        validator = validator,
         issuerCredentialStore = issuerCredentialStore,
         statusListBaseUrl = statusListBaseUrl,
         statusListAggregationUrl = statusListAggregationUrl,
