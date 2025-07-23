@@ -4,7 +4,6 @@ import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
-import at.asitplus.wallet.lib.agent.FixedTimePeriodProvider.timePeriod
 import at.asitplus.wallet.lib.cbor.CoseHeaderCertificate
 import at.asitplus.wallet.lib.cbor.CoseHeaderKeyId
 import at.asitplus.wallet.lib.cbor.SignCose
@@ -29,7 +28,6 @@ import kotlin.time.Duration.Companion.hours
  */
 class StatusListAgent(
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-    private val validator: Validator = Validator(),
     private val issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
     private val statusListBaseUrl: String = "https://wallet.a-sit.at/backend/credentials/status",
     private val statusListAggregationUrl: String? = null,
