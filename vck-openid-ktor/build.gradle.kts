@@ -17,8 +17,6 @@ group = "at.asitplus.wallet"
 version = artifactVersion
 
 
-setupAndroid()
-
 kotlin {
 
     jvm()
@@ -67,6 +65,8 @@ kotlin {
         }
     }
 }
+
+setupAndroid()
 
 exportXCFramework(
     "VckOpenIdKtorKmm",
@@ -124,11 +124,6 @@ publishing {
             signing.isRequired = false
         }
     }
-}
-
-repositories {
-    maven(url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
-    mavenCentral()
 }
 
 signing {

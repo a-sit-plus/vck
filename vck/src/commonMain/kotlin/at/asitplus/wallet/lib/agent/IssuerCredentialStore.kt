@@ -10,7 +10,7 @@ import at.asitplus.wallet.lib.data.CredentialSubject
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListView
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 /**
  * Stores all issued credentials, keeps track of the index for the revocation list

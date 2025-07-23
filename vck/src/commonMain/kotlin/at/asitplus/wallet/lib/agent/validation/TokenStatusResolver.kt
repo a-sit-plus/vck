@@ -16,7 +16,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenValidator
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 
 /**
  * Checks the status mechanisms in a given status claim to extract the token status.
@@ -40,7 +40,7 @@ class TokenStatusResolverImpl(
             verifyCoseSignature = verifyCoseSignature,
             statusListInfo = status.statusList,
             isInstantInThePast = {
-                it < kotlinx.datetime.Instant.fromEpochMilliseconds(clock.now().toEpochMilliseconds())
+                it < kotlin.time.Instant.fromEpochMilliseconds(clock.now().toEpochMilliseconds())
             },
         ).getOrThrow()
 
@@ -72,7 +72,7 @@ fun StatusListTokenResolver.toTokenStatusResolver(
             verifyCoseSignature = verifyCoseSignature,
             statusListInfo = status.statusList,
             isInstantInThePast = {
-                it < kotlinx.datetime.Instant.fromEpochMilliseconds(clock.now().toEpochMilliseconds())
+                it < kotlin.time.Instant.fromEpochMilliseconds(clock.now().toEpochMilliseconds())
             },
         ).getOrThrow()
 

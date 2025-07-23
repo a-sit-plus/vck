@@ -5,7 +5,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.PositiveDuration
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.PositiveDurationSecondsULongSerializer
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

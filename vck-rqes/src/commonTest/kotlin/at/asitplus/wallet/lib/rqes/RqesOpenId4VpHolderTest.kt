@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.rqes
 
-import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.SignatureQualifier
 import at.asitplus.openid.TokenRequestParameters
@@ -14,7 +14,7 @@ import at.asitplus.rqes.collection_entries.KeyParameters
 import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.indispensable.X509SignatureAlgorithm.entries
+import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
@@ -90,7 +90,7 @@ class RqesOpenId4VpHolderTest : FreeSpec({
 
         val validCert = dummyValueProvider.getSigningCredential(isValid = true)
         val validSigningAlgo =
-            validCert.keyParameters.algo.firstNotNullOf { oid -> catching { entries.first { it.oid == oid } }.getOrNull() }
+            validCert.keyParameters.algo.firstNotNullOf { oid -> catchingUnwrapped { X509SignatureAlgorithm.entries.first { it.oid == oid } }.getOrNull() }
         rqesWalletService.setSigningCredential(validCert)
 
         "CscAuthDetails respects SigningCredential" {
@@ -192,3 +192,10 @@ class RqesOpenId4VpHolderTest : FreeSpec({
         }
     }
 })
+
+val X509SignatureAlgorithm.digest: Digest
+    get() = when (this) {
+        is X509SignatureAlgorithm.ECDSA -> digest
+        is X509SignatureAlgorithm.RSAPSS -> digest
+        is X509SignatureAlgorithm.RSAPKCS1 -> digest
+    }

@@ -239,5 +239,5 @@ val CoseHeader.publicKey: CoseKey?
         ?: certificateChain?.firstOrNull()?.let {
             catchingUnwrapped {
                 X509Certificate.decodeFromDer(it)
-            }.getOrNull()?.publicKey?.toCoseKey()?.getOrThrow()
+            }.getOrNull()?.decodedPublicKey?.getOrNull()?.toCoseKey()?.getOrThrow()
         }

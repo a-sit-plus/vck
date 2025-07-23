@@ -46,7 +46,7 @@ import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.decodeFromByteArray

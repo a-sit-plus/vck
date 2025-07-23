@@ -9,7 +9,7 @@ import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import io.github.aakira.napier.Napier
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.serialization.json.buildJsonObject
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds

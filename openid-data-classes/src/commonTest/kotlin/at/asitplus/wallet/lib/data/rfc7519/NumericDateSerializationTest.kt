@@ -4,7 +4,7 @@ import at.asitplus.wallet.lib.data.rfc7519.primitives.NumericDate
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.datatest.withData
 import io.kotest.matchers.shouldBe
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.json.Json
 
 class NumericDateSerializationTest : FreeSpec({

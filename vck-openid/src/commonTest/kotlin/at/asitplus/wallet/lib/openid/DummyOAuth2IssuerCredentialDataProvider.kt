@@ -32,7 +32,7 @@ import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.LocalDate
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes

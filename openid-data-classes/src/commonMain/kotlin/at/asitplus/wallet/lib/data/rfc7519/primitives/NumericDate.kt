@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.data.rfc7519.primitives
 
 import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 

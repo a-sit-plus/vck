@@ -55,6 +55,22 @@ Release 5.8.0:
    - In data class `AuthenticationResponse` add member `error`, make `params` optional
    - In class `AuthenticationResponseFactory` add member `signError`
    - In class `OpenId4VpHolder` add member `signError`, add method `createAuthnErrorResponse`
+ - Dependency Updates:
+   - Kotlin 2.2.0
+   - Signum 3.17.0 / Supreme 0.9.0
+   - kotlinx.datetime 0.7.1.
+       * This moves Instant and Clock to stdlib
+       * (but introduces typealiases for easier migration)
+       * Also forces serialization 1.9.0
+   - Update to latest conventions plugin:
+       * Bouncy Castle 1.81!!
+       * Serialization 1.9.0
+       * Coroutines 1.10.2
+       * Ktor 3.2.2
+       * Kotest 6.0.0.M6
+ - Disable bogus ios X64 test tasks
+ - Help XCode to get its act together
+ - Add a manual test workflow to try different kotlin/ksp/kotest versions
 
 Release 5.7.2:
  - Presentation Exchange: Fix validation of optional constraint fields

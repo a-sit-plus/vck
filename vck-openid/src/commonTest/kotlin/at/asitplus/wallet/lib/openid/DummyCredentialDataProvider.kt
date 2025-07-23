@@ -20,7 +20,7 @@ import at.asitplus.wallet.mdl.DrivingPrivilege
 import at.asitplus.wallet.mdl.DrivingPrivilegeCode
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.LocalDate
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes

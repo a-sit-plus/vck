@@ -9,7 +9,7 @@ import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes

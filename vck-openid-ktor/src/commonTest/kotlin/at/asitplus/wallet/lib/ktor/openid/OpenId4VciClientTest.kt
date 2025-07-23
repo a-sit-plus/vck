@@ -25,7 +25,6 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.Validator
 import at.asitplus.wallet.lib.agent.ValidatorSdJwt
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -34,7 +33,6 @@ import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
-import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oauth2.ClientAuthenticationService
 import at.asitplus.wallet.lib.oauth2.RequestInfo
@@ -59,12 +57,15 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.client.*
 import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
-import io.ktor.http.*
-import io.ktor.util.*
-import kotlinx.coroutines.test.runTest
-import kotlinx.datetime.Clock
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.fullPath
+import io.ktor.http.headersOf
+import io.ktor.util.toMap
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
+import kotlin.time.Clock
 
 class OpenId4VciClientTest : FunSpec() {
 
@@ -86,72 +87,71 @@ class OpenId4VciClientTest : FunSpec() {
         }
 
         test("loadEuPidCredentialSdJwt") {
-            runTest {
-                val expectedFamilyName = uuid4().toString()
-                setup(
-                    scheme = EuPidScheme,
-                    representation = SD_JWT,
-                    attributes = mapOf(EuPidScheme.Attributes.FAMILY_NAME to expectedFamilyName),
-                )
 
-                // Load credential identifier infos from Issuing service
-                val credentialIdentifierInfos = client.loadCredentialMetadata("http://localhost").getOrThrow()
-                // just pick the first credential in SD-JWT that is available
-                val selectedCredential = credentialIdentifierInfos
-                    .first { it.supportedCredentialFormat.format == CredentialFormatEnum.DC_SD_JWT }
-                // client will call clientBrowser.openUrlExternally
-                client.startProvisioningWithAuthRequestReturningResult(
-                    credentialIssuerUrl = "http://localhost",
-                    credentialIdentifierInfo = selectedCredential,
-                ).getOrThrow().also {
-                    // Simulates the browser, handling authorization to get the authCode
-                    val httpClient = HttpClient(mockEngine) { followRedirects = false }
-                    val authCode = httpClient.get(it.url).headers[HttpHeaders.Location]
-                    client.resumeWithAuthCode(authCode!!, it.context).getOrThrow().also {
-                        refreshTokenStore = it.refreshToken!!
-                        verifySdJwtCredential(it, expectedFamilyName)
-                    }
-                }
+            val expectedFamilyName = uuid4().toString()
+            setup(
+                scheme = EuPidScheme,
+                representation = SD_JWT,
+                attributes = mapOf(EuPidScheme.Attributes.FAMILY_NAME to expectedFamilyName),
+            )
 
-                refreshTokenStore.shouldNotBeNull()
-                client.refreshCredentialReturningResult(refreshTokenStore).getOrThrow().also {
+            // Load credential identifier infos from Issuing service
+            val credentialIdentifierInfos = client.loadCredentialMetadata("http://localhost").getOrThrow()
+            // just pick the first credential in SD-JWT that is available
+            val selectedCredential = credentialIdentifierInfos
+                .first { it.supportedCredentialFormat.format == CredentialFormatEnum.DC_SD_JWT }
+            // client will call clientBrowser.openUrlExternally
+            client.startProvisioningWithAuthRequestReturningResult(
+                credentialIssuerUrl = "http://localhost",
+                credentialIdentifierInfo = selectedCredential,
+            ).getOrThrow().also {
+                // Simulates the browser, handling authorization to get the authCode
+                val httpClient = HttpClient(mockEngine) { followRedirects = false }
+                val authCode = httpClient.get(it.url).headers[HttpHeaders.Location]
+                client.resumeWithAuthCode(authCode!!, it.context).getOrThrow().also {
+                    refreshTokenStore = it.refreshToken!!
                     verifySdJwtCredential(it, expectedFamilyName)
                 }
             }
+
+            refreshTokenStore.shouldNotBeNull()
+            client.refreshCredentialReturningResult(refreshTokenStore).getOrThrow().also {
+                verifySdJwtCredential(it, expectedFamilyName)
+            }
+
         }
 
         test("loadEuPidCredentialIsoWithOffer") {
-            runTest {
-                val expectedGivenName = uuid4().toString()
-                setup(
-                    scheme = EuPidScheme,
-                    representation = ISO_MDOC,
-                    attributes = mapOf(
-                        EuPidScheme.Attributes.GIVEN_NAME to expectedGivenName
-                    )
+            val expectedGivenName = uuid4().toString()
+            setup(
+                scheme = EuPidScheme,
+                representation = ISO_MDOC,
+                attributes = mapOf(
+                    EuPidScheme.Attributes.GIVEN_NAME to expectedGivenName
                 )
+            )
 
-                // Load credential identifier infos from Issuing service
-                val credentialIdentifierInfos = client.loadCredentialMetadata("http://localhost").getOrThrow()
-                // just pick the first credential in MSO_MDOC that is available
-                val selectedCredential = credentialIdentifierInfos
-                    .first { it.supportedCredentialFormat.format == CredentialFormatEnum.MSO_MDOC }
+            // Load credential identifier infos from Issuing service
+            val credentialIdentifierInfos = client.loadCredentialMetadata("http://localhost").getOrThrow()
+            // just pick the first credential in MSO_MDOC that is available
+            val selectedCredential = credentialIdentifierInfos
+                .first { it.supportedCredentialFormat.format == CredentialFormatEnum.MSO_MDOC }
 
-                val offer = authorizationService.credentialOfferWithPreAuthnForUser(
-                    dummyUser(),
-                    credentialIssuer.metadata.credentialIssuer
-                )
-                client.loadCredentialWithOfferReturningResult(offer, selectedCredential, null).getOrThrow().also {
-                    it.shouldBeInstanceOf<CredentialIssuanceResult.Success>().also {
-                        refreshTokenStore = it.refreshToken!!
-                        verifyIsoMdocCredential(it, expectedGivenName)
-                    }
-                }
-                refreshTokenStore.shouldNotBeNull()
-                client.refreshCredentialReturningResult(refreshTokenStore).getOrThrow().also {
+            val offer = authorizationService.credentialOfferWithPreAuthnForUser(
+                dummyUser(),
+                credentialIssuer.metadata.credentialIssuer
+            )
+            client.loadCredentialWithOfferReturningResult(offer, selectedCredential, null).getOrThrow().also {
+                it.shouldBeInstanceOf<CredentialIssuanceResult.Success>().also {
+                    refreshTokenStore = it.refreshToken!!
                     verifyIsoMdocCredential(it, expectedGivenName)
                 }
             }
+            refreshTokenStore.shouldNotBeNull()
+            client.refreshCredentialReturningResult(refreshTokenStore).getOrThrow().also {
+                verifyIsoMdocCredential(it, expectedGivenName)
+            }
+
         }
     }
 

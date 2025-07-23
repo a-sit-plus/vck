@@ -36,8 +36,8 @@ import at.asitplus.wallet.lib.oidvci.CredentialSchemeMapping.decodeFromCredentia
 import at.asitplus.wallet.lib.oidvci.CredentialSchemeMapping.toSupportedCredentialFormat
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import io.github.aakira.napier.Napier
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Clock.System
+import kotlin.time.Clock
+import kotlin.time.Clock.System
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes

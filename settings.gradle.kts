@@ -9,7 +9,6 @@ pluginManagement {
         google()
         gradlePluginPortal()
         mavenCentral()
-        maven("https://s01.oss.sonatype.org/content/repositories/snapshots")
         maven {
             url = uri("https://raw.githubusercontent.com/a-sit-plus/gradle-conventions-plugin/mvn/repo")
             name = "aspConventions"
@@ -65,14 +64,11 @@ internal fun versionOf(dependency: String) =
 
 dependencyResolutionManagement {
     repositories {
-        maven("https://s01.oss.sonatype.org/content/repositories/snapshots") //Signum snapshot
         mavenLocal()
         mavenCentral()
     }
 
     versionCatalogs {
-
-
         create("signum") {
             from("at.asitplus.signum:indispensable-versionCatalog:${versionOf("signum")}")
         }
