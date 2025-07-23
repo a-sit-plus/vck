@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 import at.asitplus.catchingUnwrapped
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBitSize
+import at.asitplus.wallet.lib.toView
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.datatest.withData
@@ -11,7 +12,6 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.cbor.Cbor
 import kotlinx.serialization.decodeFromHexString
 import kotlinx.serialization.encodeToHexString
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -102,7 +102,7 @@ class StatusListSerializationTest : FreeSpec({
                     val statusList = Json.decodeFromString<StatusList>(jsonString)
 
                     expectedStatusList.forEachIndexed { index, it ->
-                        statusList.view[index.toULong()] shouldBe it
+                        statusList.toView()[index.toULong()] shouldBe it
                     }
 
                     Json.decodeFromString<StatusList>(Json.encodeToString(statusList)) shouldBe statusList
@@ -153,7 +153,7 @@ class StatusListSerializationTest : FreeSpec({
         ) { (cborString, expectedStatusList) ->
             val statusList = Cbor.decodeFromHexString<StatusList>(cborString)
             expectedStatusList.forEachIndexed { index, it ->
-                statusList.view[index.toULong()] shouldBe it
+                statusList.toView()[index.toULong()] shouldBe it
             }
 
             Cbor.decodeFromHexString<StatusList>(Cbor.encodeToHexString(statusList)) shouldBe statusList

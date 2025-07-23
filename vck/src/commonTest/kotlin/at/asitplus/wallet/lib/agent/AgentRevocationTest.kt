@@ -13,6 +13,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
+import at.asitplus.wallet.lib.toView
 import io.kotest.assertions.fail
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -175,7 +176,7 @@ private fun verifyStatusList(statusList: StatusList, expectedRevokedIndexes: Lis
         expectedRevocationStatuses[it.toInt()] = TokenStatus.Invalid
     }
     expectedRevocationStatuses.forEachIndexed { index, it ->
-        statusList.view[index.toULong()] shouldBe it
+        statusList.toView()[index.toULong()] shouldBe it
     }
 }
 

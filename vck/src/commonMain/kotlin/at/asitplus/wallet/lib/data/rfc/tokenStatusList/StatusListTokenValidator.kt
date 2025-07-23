@@ -2,9 +2,11 @@ package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.third_party.kotlin.ifTrue
+import at.asitplus.wallet.lib.toView
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Instant
 
@@ -68,7 +70,7 @@ object StatusListTokenValidator {
         }
         statusListTokenPayload.timeToLive?.let { ttl ->
             statusListTokenResolvedAt?.let { resolvedAt ->
-                if(isInstantInThePast(resolvedAt + ttl.duration)) {
+                if (isInstantInThePast(resolvedAt + ttl.duration)) {
                     throw IllegalStateException("The Status List Token is expired.")
                 }
             }
@@ -83,13 +85,13 @@ object StatusListTokenValidator {
      * Retrieve the status value of the index specified in the Referenced Token as described in
      * Section 4. Fail if the provided index is out of bound of the Status List
      */
-
     fun extractTokenStatus(
         statusList: StatusList,
         statusListInfo: StatusListInfo,
-        zlibService: ZlibService? = null,
+        zlibService: ZlibService = DefaultZlibService(),
     ): KmmResult<TokenStatus> = catching {
-        statusList.view.getOrNull(statusListInfo.index)
+        statusList.toView(zlibService).getOrNull(statusListInfo.index)
             ?: throw IndexOutOfBoundsException("The index specified in the status list info is out of bounds of the status list.")
     }
+
 }

@@ -1,8 +1,6 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
 import at.asitplus.signum.indispensable.io.Base64Strict
-import at.asitplus.wallet.lib.DefaultZlibService
-import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBitSize
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.Serializable
@@ -17,24 +15,6 @@ data class StatusList(
     val statusBitSize: TokenStatusBitSize,
     val aggregationUri: String?,
 ) {
-    constructor(
-        view: StatusListView,
-        aggregationUri: String?,
-        zlibService: ZlibService = DefaultZlibService(),
-    ) : this(
-        compressed = zlibService.compress(view.uncompressed)
-            ?: throw IllegalStateException("Member `uncompressed` must be compressible."),
-        statusBitSize = view.statusBitSize,
-        aggregationUri = aggregationUri,
-    )
-
-    val view: StatusListView by lazy {
-        StatusListView(
-            uncompressed = DefaultZlibService().decompress(compressed)
-                ?: throw IllegalStateException("Member `compressed` must be zlib-deflate-uncompressible."),
-            statusBitSize = statusBitSize,
-        )
-    }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
