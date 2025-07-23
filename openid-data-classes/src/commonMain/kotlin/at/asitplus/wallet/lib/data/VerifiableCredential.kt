@@ -1,11 +1,12 @@
 package at.asitplus.wallet.lib.data
 
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+
+import kotlin.time.Instant
 import kotlinx.serialization.Polymorphic
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.time.Clock
 import kotlin.time.Duration
 
 /**

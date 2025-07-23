@@ -8,10 +8,18 @@ import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants.ResponseMode
 import at.asitplus.openid.RelyingPartyMetadata
-import at.asitplus.openid.dcql.*
+import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.NameSegment
+import at.asitplus.openid.dcql.DCQLClaimsQueryList
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult.IsoMdocResult
+import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
+import at.asitplus.openid.dcql.DCQLCredentialQueryList
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.ClaimsQueryResults
+import at.asitplus.openid.dcql.DCQLCredentialSubmissionOption
+import at.asitplus.openid.dcql.DCQLIsoMdocClaimsQuery
+import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstraints
+import at.asitplus.openid.dcql.DCQLIsoMdocCredentialQuery
+import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -43,11 +51,11 @@ import io.ktor.util.*
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes
@@ -66,7 +74,7 @@ class OpenId4VpWalletTest : FunSpec() {
         }
 
         test("presentEuPidCredentialSdJwtDirectPost") {
-            runTest {
+            runBlocking {
                 val (wallet, url, mockEngine) = setup(
                     scheme = EuPidScheme,
                     representation = SD_JWT,
@@ -90,7 +98,7 @@ class OpenId4VpWalletTest : FunSpec() {
 
 
         test(" presentEuPidCredentialIsoQuery") {
-            runTest {
+            runBlocking {
                 val (wallet, url, mockEngine) = setup(
                     scheme = EuPidScheme,
                     representation = ISO_MDOC,
@@ -112,7 +120,7 @@ class OpenId4VpWalletTest : FunSpec() {
         }
 
         test("DC API") {
-            runTest {
+            runBlocking {
                 val wallet = setupWallet(HttpClient().engine)
 
                 val attributes = mapOf(
@@ -224,37 +232,35 @@ class OpenId4VpWalletTest : FunSpec() {
         }
 
         test("No matching credential test") {
-            runTest {
-                val scheme = EuPidScheme
-                val representation = ISO_MDOC
-                val attributes = mapOf(
-                    EuPidScheme.Attributes.GIVEN_NAME to randomString()
-                )
-                val responseMode = ResponseMode.Query
-                val clientId = uuid4().toString()
+            val scheme = EuPidScheme
+            val representation = ISO_MDOC
+            val attributes = mapOf(
+                EuPidScheme.Attributes.GIVEN_NAME to randomString()
+            )
+            val responseMode = ResponseMode.Query
+            val clientId = uuid4().toString()
 
-                val requestOptions = OpenIdRequestOptions(
-                    credentials = setOf(
-                        RequestOptionsCredential(
-                            credentialScheme = scheme,
-                            representation = representation,
-                            requestedAttributes = attributes.keys
-                        )
-                    ),
-                    responseMode = responseMode,
-                )
-                val (mockEngine, url) = setupRelyingPartyService(clientId, requestOptions) {
-                    it.verifyReceivedAttributes(attributes)
-                }
-                val wallet = setupWallet(mockEngine)
+            val requestOptions = OpenIdRequestOptions(
+                credentials = setOf(
+                    RequestOptionsCredential(
+                        credentialScheme = scheme,
+                        representation = representation,
+                        requestedAttributes = attributes.keys
+                    )
+                ),
+                responseMode = responseMode,
+            )
+            val (mockEngine, url) = setupRelyingPartyService(clientId, requestOptions) {
+                it.verifyReceivedAttributes(attributes)
+            }
+            val wallet = setupWallet(mockEngine)
 
-                val requestParametersFrom = wallet.parseAuthenticationRequestParameters(url).getOrThrow()
+            val requestParametersFrom = wallet.parseAuthenticationRequestParameters(url).getOrThrow()
 
-                val preparationState =
-                    wallet.startAuthorizationResponsePreparation(requestParametersFrom).getOrThrow()
-                shouldThrow<OAuth2Exception.AccessDenied> {
-                    wallet.getMatchingCredentials(preparationState, request = requestParametersFrom).getOrThrow()
-                }
+            val preparationState =
+                wallet.startAuthorizationResponsePreparation(requestParametersFrom).getOrThrow()
+            shouldThrow<OAuth2Exception.AccessDenied> {
+                wallet.getMatchingCredentials(preparationState, request = requestParametersFrom).getOrThrow()
             }
         }
     }

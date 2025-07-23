@@ -6,6 +6,7 @@ import at.asitplus.rqes.collection_entries.AuthParameters
 import at.asitplus.rqes.collection_entries.CertificateParameters
 import at.asitplus.rqes.collection_entries.KeyParameters
 import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
+import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
@@ -66,3 +67,10 @@ class DummyValueProvider {
         )
     }
 }
+
+val X509SignatureAlgorithm.digest: Digest
+    get() = when (this) {
+        is X509SignatureAlgorithm.ECDSA -> digest
+        is X509SignatureAlgorithm.RSAPSS -> digest
+        is X509SignatureAlgorithm.RSAPKCS1 -> digest
+    }

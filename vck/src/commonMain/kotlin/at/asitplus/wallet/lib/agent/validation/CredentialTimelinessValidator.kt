@@ -7,7 +7,7 @@ import at.asitplus.wallet.lib.agent.validation.sdJwt.SdJwtTimelinessValidator
 import at.asitplus.wallet.lib.agent.validation.vcJws.VcJwsTimelinessValidator
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 

@@ -11,7 +11,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenValidator
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 sealed interface StatusListToken {
     val resolvedAt: Instant?
