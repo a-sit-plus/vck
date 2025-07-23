@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.data
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.agent.SdJwtDecoded
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
+import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.LocalDate
@@ -93,3 +94,5 @@ object CredentialToJsonConverter {
     }
 }
 
+fun SelectiveDisclosureItem.Companion.fromAnyValue(salt: ByteArray, claimName: String?, claimValue: Any) =
+    SelectiveDisclosureItem(salt, claimName, claimValue.toJsonElement())

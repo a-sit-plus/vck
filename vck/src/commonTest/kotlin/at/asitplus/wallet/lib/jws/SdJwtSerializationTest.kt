@@ -4,6 +4,7 @@ import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
+import at.asitplus.wallet.lib.data.fromAnyValue
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldBeNull
@@ -26,7 +27,7 @@ class SdJwtSerializationTest : FreeSpec({
         val salt = Random.nextBytes(32)
         val name = Random.nextBytes(16).encodeToString(Base64())
         val value = Random.nextBytes(16).encodeToString(Base64())
-        val item = SelectiveDisclosureItem(salt, name, value)
+        val item = SelectiveDisclosureItem.fromAnyValue(salt, name, value)
 
         val serialized = vckJsonSerializer.encodeToString<SelectiveDisclosureItem>(item)
 
@@ -44,7 +45,7 @@ class SdJwtSerializationTest : FreeSpec({
         val salt = Random.nextBytes(32)
         val name = Random.nextBytes(16).encodeToString(Base64())
         val value = Random.nextBytes(16)
-        val item = SelectiveDisclosureItem(salt, name, value)
+        val item = SelectiveDisclosureItem.fromAnyValue(salt, name, value)
 
         val serialized = vckJsonSerializer.encodeToString<SelectiveDisclosureItem>(item)
 
@@ -62,7 +63,7 @@ class SdJwtSerializationTest : FreeSpec({
         val salt = Random.nextBytes(32)
         val name = Random.nextBytes(16).encodeToString(Base64())
         val value = true
-        val item = SelectiveDisclosureItem(salt, name, value)
+        val item = SelectiveDisclosureItem.fromAnyValue(salt, name, value)
 
         val serialized = vckJsonSerializer.encodeToString<SelectiveDisclosureItem>(item)
 
@@ -79,7 +80,7 @@ class SdJwtSerializationTest : FreeSpec({
         val salt = Random.nextBytes(32)
         val name = Random.nextBytes(16).encodeToString(Base64())
         val value = Random.nextLong()
-        val item = SelectiveDisclosureItem(salt, name, value)
+        val item = SelectiveDisclosureItem.fromAnyValue(salt, name, value)
 
         val serialized = vckJsonSerializer.encodeToString<SelectiveDisclosureItem>(item)
 
@@ -96,7 +97,7 @@ class SdJwtSerializationTest : FreeSpec({
         val salt = Random.nextBytes(32)
         val name = Random.nextBytes(16).encodeToString(Base64())
         val value = Random.nextUInt()
-        val item = SelectiveDisclosureItem(salt, name, value)
+        val item = SelectiveDisclosureItem.fromAnyValue(salt, name, value)
 
         val serialized = vckJsonSerializer.encodeToString<SelectiveDisclosureItem>(item)
 
@@ -113,7 +114,7 @@ class SdJwtSerializationTest : FreeSpec({
         val salt = "_26bc4LT-ac6q2KI6cBW5es".decodeToByteArray(Base64UrlStrict)
         val name = "family_name"
         val value = "Möbius"
-        val item = SelectiveDisclosureItem(salt, name, value)
+        val item = SelectiveDisclosureItem.fromAnyValue(salt, name, value)
 
         val disclosure = item.toDisclosure()
 
@@ -127,7 +128,7 @@ class SdJwtSerializationTest : FreeSpec({
         val salt = Random.nextBytes(32)
         val name = Random.nextBytes(16).encodeToString(Base64())
         val value = listOf(Random.nextBytes(16))
-        val item = SelectiveDisclosureItem(salt, name, value)
+        val item = SelectiveDisclosureItem.fromAnyValue(salt, name, value)
 
         val serialized = vckJsonSerializer.encodeToString<SelectiveDisclosureItem>(item)
 
@@ -145,7 +146,7 @@ class SdJwtSerializationTest : FreeSpec({
         val salt = Random.nextBytes(32)
         val name = null
         val value = Random.nextBytes(16).encodeToString(Base64())
-        val item = SelectiveDisclosureItem(salt, name, value)
+        val item = SelectiveDisclosureItem.fromAnyValue(salt, name, value)
 
         val serialized = vckJsonSerializer.encodeToString<SelectiveDisclosureItem>(item)
 

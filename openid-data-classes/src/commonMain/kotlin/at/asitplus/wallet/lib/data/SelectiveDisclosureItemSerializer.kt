@@ -1,7 +1,6 @@
-package at.asitplus.wallet.lib.jws
+package at.asitplus.wallet.lib.data
 
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.KSerializer
@@ -22,7 +21,7 @@ import kotlinx.serialization.json.jsonPrimitive
  */
 object SelectiveDisclosureItemSerializer : KSerializer<SelectiveDisclosureItem> {
 
-    private val listSerializer = ListSerializer(JsonElement.serializer())
+    private val listSerializer = ListSerializer(JsonElement.Companion.serializer())
 
     override val descriptor: SerialDescriptor = listSerializer.descriptor
 

@@ -5,6 +5,7 @@ import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
+import at.asitplus.wallet.lib.data.fromAnyValue
 import kotlinx.serialization.json.*
 import kotlin.random.Random
 
@@ -171,6 +172,6 @@ object SdJwtCreator {
         SelectiveDisclosureItem(Random.nextBytes(32), name, claimValue)
 
     private fun ClaimToBeIssued.toSdItem() =
-        SelectiveDisclosureItem(Random.nextBytes(32), name, value)
+        SelectiveDisclosureItem.fromAnyValue(Random.nextBytes(32), name, value)
 
 }
