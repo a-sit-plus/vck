@@ -1,8 +1,8 @@
 package at.asitplus.wallet.lib.data
 
+import at.asitplus.iso.sha256
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
-import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.SelectiveDisclosureItemSerializer
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString

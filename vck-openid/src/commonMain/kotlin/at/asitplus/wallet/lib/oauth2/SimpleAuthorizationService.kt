@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.iso.sha256
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.CredentialOffer
@@ -17,7 +18,6 @@ import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.oidvci.CodeService
 import at.asitplus.wallet.lib.oidvci.CredentialIssuer
 import at.asitplus.wallet.lib.oidvci.DefaultCodeService

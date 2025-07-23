@@ -14,6 +14,7 @@ import at.asitplus.iso.SingleItemsRequest
 import at.asitplus.iso.ValidityInfo
 import at.asitplus.iso.ValueDigest
 import at.asitplus.iso.ValueDigestList
+import at.asitplus.iso.sha256
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.CoseSigned
