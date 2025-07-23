@@ -36,6 +36,7 @@ import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_PRESENTATION
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.jws.*
@@ -62,23 +63,17 @@ class Validator(
     private val verifyCoseSignature: VerifyCoseSignatureFun<StatusListTokenPayload> = VerifyCoseSignature(),
     private val verifyCoseSignatureWithKey: VerifyCoseSignatureWithKeyFun<MobileSecurityObject> =
         VerifyCoseSignatureWithKey(verifySignature),
-    private val parser: Parser = Parser(),
-    /**
-     * Toggles whether transaction data should be verified if present
-     */
+    /** Toggles whether transaction data should be verified if present. */
     private val verifyTransactionData: Boolean = true,
-    /**
-     * Structure / Integrity / Semantics validator for each credential
-     */
-    private val vcJwsInputValidator: VcJwsInputValidator = VcJwsInputValidator(
-        verifyJwsObject = verifyJwsObject,
-    ),
-    private val sdJwtInputValidator: SdJwtInputValidator = SdJwtInputValidator(
-        verifyJwsObject = verifyJwsObject,
-    ),
-    private val mdocInputValidator: MdocInputValidator = MdocInputValidator(
-        verifyCoseSignatureWithKey = verifyCoseSignatureWithKey,
-    ),
+    /** Structure / Integrity / Semantics validator. */
+    private val vcJwsInputValidator: VcJwsInputValidator =
+        VcJwsInputValidator(verifyJwsObject = verifyJwsObject),
+    /** Structure / Integrity / Semantics validator. */
+    private val sdJwtInputValidator: SdJwtInputValidator =
+        SdJwtInputValidator(verifyJwsObject = verifyJwsObject),
+    /** Structure / Integrity / Semantics validator. */
+    private val mdocInputValidator: MdocInputValidator =
+        MdocInputValidator(verifyCoseSignatureWithKey = verifyCoseSignatureWithKey),
     /**
      * @param timeLeeway specifies tolerance for expiration and start of validity of credentials.
      * A credential that expired at most `timeLeeway` ago is not yet considered expired.
@@ -101,13 +96,10 @@ class Validator(
         KmmResult.success(TokenStatus.Valid)
     },
     private val acceptedTokenStatuses: Set<TokenStatus> = setOf(TokenStatus.Valid),
-    private val tokenStatusValidator: TokenStatusValidator = tokenStatusResolver.toTokenStatusValidator(
-        acceptedTokenStatuses
-    ),
-    private val credentialTimelinessValidator: CredentialTimelinessValidator = CredentialTimelinessValidator(
-        clock = clock,
-        timeLeeway = timeLeeway,
-    ),
+    private val tokenStatusValidator: TokenStatusValidator =
+        tokenStatusResolver.toTokenStatusValidator(acceptedTokenStatuses),
+    private val credentialTimelinessValidator: CredentialTimelinessValidator =
+        CredentialTimelinessValidator(clock = clock, timeLeeway = timeLeeway),
 ) {
     /**
      * Checks both the timeliness and the token status of the passed credentials
@@ -162,13 +154,8 @@ class Validator(
             Napier.w("VP: Signature invalid")
             throw IllegalArgumentException("signature")
         }
-        val parsedVp = parser.parseVpJws(input.payload, challenge, clientId)
-        if (parsedVp !is Parser.ParseVpResult.Success) {
-            Napier.d("VP: Could not parse content")
-            throw (parsedVp as? Parser.ParseVpResult.ValidationError)?.cause
-                ?: IllegalArgumentException("vp.content")
-        }
-        val vcValidationResults = parsedVp.jws.vp.verifiableCredential
+        val vpJws = input.payload.validate(challenge, clientId)
+        val vcValidationResults = vpJws.vp.verifiableCredential
             .map { it to verifyVcJws(it, null) }
 
         val invalidVcList = vcValidationResults.filter {
@@ -189,8 +176,8 @@ class Validator(
         }
 
         val vp = VerifiablePresentationParsed(
-            id = parsedVp.jws.vp.id,
-            type = parsedVp.jws.vp.type,
+            id = vpJws.vp.id,
+            type = vpJws.vp.type,
             freshVerifiableCredentials = verificationResultWithFreshnessSummary.filter {
                 it.freshnessSummary.isFresh
             },
@@ -202,6 +189,31 @@ class Validator(
         Napier.d("VP: Valid")
 
         return VerifyPresentationResult.Success(vp)
+    }
+
+    @Throws(IllegalArgumentException::class)
+    fun VerifiablePresentationJws.validate(
+        challenge: String,
+        clientId: String,
+    ): VerifiablePresentationJws {
+        if (this.challenge != challenge) {
+            Napier.w("nonce invalid")
+            throw IllegalArgumentException("nonce invalid")
+        }
+        if (clientId != audience) {
+            Napier.w("aud invalid: ${audience}, expected $clientId}")
+            throw IllegalArgumentException("aud invalid: $audience")
+        }
+        if (jwtId != vp.id) {
+            Napier.w("jti invalid: ${jwtId}, expected ${vp.id}")
+            throw IllegalArgumentException("jti invalid: $jwtId")
+        }
+        if (vp.type != VERIFIABLE_PRESENTATION) {
+            Napier.w("type invalid: ${vp.type}, expected $VERIFIABLE_PRESENTATION")
+            throw IllegalArgumentException("type invalid: ${vp.type}")
+        }
+        Napier.d("VP is valid")
+        return this
     }
 
     /**
@@ -221,7 +233,7 @@ class Validator(
         val sdJwtResult = verifySdJwt(input, null)
         if (sdJwtResult !is SuccessSdJwt) {
             Napier.w("verifyVpSdJwt: Could not verify SD-JWT: $sdJwtResult")
-            val error = (sdJwtResult as? VerifyCredentialResult.ValidationError)?.cause
+            val error = (sdJwtResult as? ValidationError)?.cause
                 ?: Throwable("SD-JWT not verified")
             return VerifyPresentationResult.ValidationError(error)
         }
