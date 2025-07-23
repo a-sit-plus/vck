@@ -37,6 +37,7 @@ Release 5.8.0:
    - Remove internal class `Parser` and data classes `ParseVpResult` and `ParseVcResult`
    - Extract `ValidatorMdoc`, `ValidatorSdJwt`, `ValidatorVcJws` from `Validator`
    - In `HolderAgent` add constructor parameters for `validatorVcJws`, `validatorSdJwt`, `validatorMdoc`
+   - In `Validator` deprecate constructor parameter `resolveStatusListToken`, clients shall use `tokenStatusResolver` instead
 
 Release 5.7.2:
  - Presentation Exchange: Fix validation of optional constraint fields

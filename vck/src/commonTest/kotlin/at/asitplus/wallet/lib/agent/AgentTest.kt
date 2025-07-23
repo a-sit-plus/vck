@@ -9,6 +9,7 @@ import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialQueryInstance
 import at.asitplus.openid.dcql.DCQLCredentialQueryList
 import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
@@ -41,17 +42,19 @@ class AgentTest : FreeSpec({
 
     beforeEach {
         validator = Validator(
-            resolveStatusListToken = {
-                if (Random.nextBoolean()) StatusListToken.StatusListJwt(
-                    statusListIssuer.issueStatusListJwt(),
-                    resolvedAt = Clock.System.now()
-                ) else {
-                    StatusListToken.StatusListCwt(
-                        statusListIssuer.issueStatusListCwt(),
+            tokenStatusResolver = TokenStatusResolverImpl(
+                resolveStatusListToken = {
+                    if (Random.nextBoolean()) StatusListToken.StatusListJwt(
+                        statusListIssuer.issueStatusListJwt(),
                         resolvedAt = Clock.System.now()
-                    )
-                }
-            },
+                    ) else {
+                        StatusListToken.StatusListCwt(
+                            statusListIssuer.issueStatusListCwt(),
+                            resolvedAt = Clock.System.now()
+                        )
+                    }
+                },
+            )
         )
 
         issuerCredentialStore = InMemoryIssuerCredentialStore()

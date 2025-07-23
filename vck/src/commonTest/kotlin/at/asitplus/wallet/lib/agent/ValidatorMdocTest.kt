@@ -4,6 +4,7 @@ import at.asitplus.catchingUnwrapped
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.StatusListToken
@@ -29,17 +30,19 @@ class ValidatorMdocTest : FreeSpec() {
         beforeEach {
             validator = ValidatorMdoc(
                 validator = Validator(
-                    resolveStatusListToken = {
-                        if (Random.nextBoolean()) StatusListToken.StatusListJwt(
-                            statusListIssuer.issueStatusListJwt(),
-                            resolvedAt = Clock.System.now(),
-                        ) else {
-                            StatusListToken.StatusListCwt(
-                                statusListIssuer.issueStatusListCwt(),
+                    tokenStatusResolver = TokenStatusResolverImpl(
+                        resolveStatusListToken = {
+                            if (Random.nextBoolean()) StatusListToken.StatusListJwt(
+                                statusListIssuer.issueStatusListJwt(),
                                 resolvedAt = Clock.System.now(),
-                            )
-                        }
-                    },
+                            ) else {
+                                StatusListToken.StatusListCwt(
+                                    statusListIssuer.issueStatusListCwt(),
+                                    resolvedAt = Clock.System.now(),
+                                )
+                            }
+                        },
+                    )
                 )
             )
             issuerCredentialStore = InMemoryIssuerCredentialStore()
