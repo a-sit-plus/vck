@@ -17,4 +17,3 @@ value class JwtStatusListClaim(val statusList: StatusList) {
         const val CLAIM_NAME = "status_list"
     }
 }
-

@@ -26,7 +26,7 @@ value class CwtSubjectClaim(val value: StringOrUri) {
 
     companion object {
         operator fun invoke(string: String) = CwtSubjectClaim(StringOrUri(string))
-        operator fun invoke(uri: UniformResourceIdentifier) = CwtSubjectClaim(StringOrUri(uri))
+        operator fun invoke(uri: UniformResourceIdentifier) = CwtSubjectClaim(StringOrUri.Companion(uri))
     }
 
     data object Specification {

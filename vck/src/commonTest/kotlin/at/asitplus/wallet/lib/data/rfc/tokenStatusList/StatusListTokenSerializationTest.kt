@@ -1,8 +1,5 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
-import at.asitplus.signum.internals.giveToCF
-import at.asitplus.wallet.lib.DefaultZlibService
-import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBitSize
 import at.asitplus.wallet.lib.toView
