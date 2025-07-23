@@ -1,9 +1,7 @@
-package at.asitplus.wallet.lib.iso
+package at.asitplus.iso
 
-import at.asitplus.iso.DeviceSigned
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlin.hashCode
 
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for mdoc request (8.3.2.1.2.1)

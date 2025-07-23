@@ -1,10 +1,10 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.wallet.lib.iso.DeviceResponse
-import at.asitplus.wallet.lib.iso.Document
-import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.iso.DeviceResponse
+import at.asitplus.iso.Document
+import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.IssuerSignedItem
-import at.asitplus.wallet.lib.iso.MobileSecurityObject
+import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.ValueDigestList
 import at.asitplus.iso.sha256
 import at.asitplus.iso.wrapInCborTag
@@ -15,12 +15,13 @@ import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
-import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.*
+import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.InvalidStructure
+import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.SuccessIso
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.agent.validation.mdoc.MdocInputValidator
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
-import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -53,12 +54,13 @@ class ValidatorMdoc(
             Napier.w("Status invalid: ${deviceResponse.status}")
             throw IllegalArgumentException("status")
         }
-        if (deviceResponse.documents == null) {
+        val documents = deviceResponse.documents
+        if (documents == null) {
             Napier.w("No documents: $deviceResponse")
             throw IllegalArgumentException("documents")
         }
         return VerifyPresentationResult.SuccessIso(
-            documents = deviceResponse.documents.map {
+            documents = documents.map {
                 verifyDocument(it, verifyDocumentCallback)
             }
         )

@@ -8,8 +8,10 @@ import at.asitplus.iso.DeviceSigned
 import at.asitplus.iso.DeviceSignedItem
 import at.asitplus.iso.DeviceSignedItemList
 import at.asitplus.iso.DocRequest
+import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.iso.ItemsRequest
+import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.ValidityInfo
 import at.asitplus.iso.ValueDigest
 import at.asitplus.iso.ValueDigestList

@@ -5,12 +5,11 @@ import at.asitplus.iso.DeviceNameSpaces
 import at.asitplus.iso.DeviceSigned
 import at.asitplus.iso.DeviceSignedItem
 import at.asitplus.iso.DeviceSignedItemList
-import at.asitplus.wallet.lib.iso.Document
-import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.iso.Document
+import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.IssuerSignedItem
-import at.asitplus.wallet.lib.iso.MobileSecurityObject
+import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.signum.indispensable.CryptoSignature
-import kotlinx.serialization.encodeToByteArray
 import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseSigned
@@ -22,9 +21,10 @@ import io.kotest.matchers.string.shouldNotContain
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.builtins.ByteArraySerializer
+import kotlinx.serialization.decodeFromByteArray
+import kotlinx.serialization.encodeToByteArray
 import kotlin.random.Random
 import kotlin.random.nextUInt
-import kotlinx.serialization.decodeFromByteArray
 
 class DeviceSignedItemSerializationTest : FreeSpec({
 

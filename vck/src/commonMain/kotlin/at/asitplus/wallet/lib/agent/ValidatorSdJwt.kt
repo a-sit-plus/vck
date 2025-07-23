@@ -7,11 +7,19 @@ import at.asitplus.openid.sha256
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.contentEqualsIfArray
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
-import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.*
+import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.SuccessSdJwt
+import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.ValidationError
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.agent.validation.sdJwt.SdJwtInputValidator
-import at.asitplus.wallet.lib.data.*
-import at.asitplus.wallet.lib.jws.*
+import at.asitplus.wallet.lib.data.KeyBindingJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
+import at.asitplus.wallet.lib.jws.SdJwtSigned
+import at.asitplus.wallet.lib.jws.VerifyJwsObject
+import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
+import at.asitplus.wallet.lib.jws.VerifyJwsSignature
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureFun
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnf
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnfFun
 import io.github.aakira.napier.Napier
 
 /**
