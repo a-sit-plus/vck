@@ -39,6 +39,7 @@ Release 5.8.0:
    - In `HolderAgent` add constructor parameters for `validatorVcJws`, `validatorSdJwt`, `validatorMdoc`
    - In `Validator` deprecate constructor parameter `resolveStatusListToken`, clients shall use `tokenStatusResolver` instead
    - In `Verifier` remove parameter `challenge` from `verifyPresentationIsoMdoc()`
+   - Rename `SdJwtValidator` to `SdJwtDecoded`
 
 Release 5.7.2:
  - Presentation Exchange: Fix validation of optional constraint fields

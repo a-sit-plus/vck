@@ -8,7 +8,16 @@ import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.SdJwtDecoded
+import at.asitplus.wallet.lib.agent.Validator
+import at.asitplus.wallet.lib.agent.ValidatorSdJwt
+import at.asitplus.wallet.lib.agent.VerifierAgent
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
@@ -266,9 +275,10 @@ class OpenId4VpInteropTest : FreeSpec({
             }
         }
 
-        val json = SdJwtValidator(sdJwt).reconstructedJsonObject.shouldNotBeNull()
-        json["given_name"]!!.jsonPrimitive.content shouldBe "John"
-        json["family_name"]!!.jsonPrimitive.content shouldBe "Doe"
+        SdJwtDecoded(sdJwt).reconstructedJsonObject.shouldNotBeNull().apply {
+            this["given_name"]!!.jsonPrimitive.content shouldBe "John"
+            this["family_name"]!!.jsonPrimitive.content shouldBe "Doe"
+        }
     }
 
 })
