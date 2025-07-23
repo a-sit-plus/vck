@@ -5,6 +5,7 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
+import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
@@ -51,17 +52,19 @@ class ValidatorVpTest : FreeSpec({
     beforeEach {
         validator = ValidatorVcJws(
             validator = Validator(
-                resolveStatusListToken = {
-                    if (Random.nextBoolean()) StatusListToken.StatusListJwt(
-                        statusListIssuer.issueStatusListJwt(),
-                        resolvedAt = Clock.System.now()
-                    ) else {
-                        StatusListToken.StatusListCwt(
-                            statusListIssuer.issueStatusListCwt(),
+                tokenStatusResolver = TokenStatusResolverImpl(
+                    resolveStatusListToken = {
+                        if (Random.nextBoolean()) StatusListToken.StatusListJwt(
+                            statusListIssuer.issueStatusListJwt(),
                             resolvedAt = Clock.System.now()
-                        )
-                    }
-                },
+                        ) else {
+                            StatusListToken.StatusListCwt(
+                                statusListIssuer.issueStatusListCwt(),
+                                resolvedAt = Clock.System.now()
+                            )
+                        }
+                    },
+                )
             )
         )
         issuerCredentialStore = InMemoryIssuerCredentialStore()

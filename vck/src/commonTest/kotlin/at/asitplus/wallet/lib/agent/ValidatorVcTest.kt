@@ -8,6 +8,7 @@ import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.supreme.signature
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
+import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
@@ -46,17 +47,19 @@ class ValidatorVcTest : FreeSpec() {
         beforeEach {
             validator = ValidatorVcJws(
                 validator = Validator(
-                    resolveStatusListToken = {
-                        if (Random.nextBoolean()) StatusListToken.StatusListJwt(
-                            statusListIssuer.issueStatusListJwt(),
-                            resolvedAt = Clock.System.now(),
-                        ) else {
-                            StatusListToken.StatusListCwt(
-                                statusListIssuer.issueStatusListCwt(),
+                    tokenStatusResolver = TokenStatusResolverImpl(
+                        resolveStatusListToken = {
+                            if (Random.nextBoolean()) StatusListToken.StatusListJwt(
+                                statusListIssuer.issueStatusListJwt(),
                                 resolvedAt = Clock.System.now(),
-                            )
-                        }
-                    },
+                            ) else {
+                                StatusListToken.StatusListCwt(
+                                    statusListIssuer.issueStatusListCwt(),
+                                    resolvedAt = Clock.System.now(),
+                                )
+                            }
+                        },
+                    )
                 )
             )
             issuerCredentialStore = InMemoryIssuerCredentialStore()

@@ -12,6 +12,7 @@ import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
@@ -21,6 +22,7 @@ import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -54,17 +56,19 @@ class AgentSdJwtTest : FreeSpec({
     beforeEach {
         val validator = ValidatorSdJwt(
             validator = Validator(
-                resolveStatusListToken = {
-                    if (Random.nextBoolean()) StatusListToken.StatusListJwt(
-                        statusListIssuer.issueStatusListJwt(),
-                        resolvedAt = Clock.System.now()
-                    ) else {
-                        StatusListToken.StatusListCwt(
-                            statusListIssuer.issueStatusListCwt(),
-                            resolvedAt = Clock.System.now(),
-                        )
-                    }
-                },
+                tokenStatusResolver = TokenStatusResolverImpl(
+                    resolveStatusListToken = {
+                        if (Random.nextBoolean()) StatusListToken.StatusListJwt(
+                            statusListIssuer.issueStatusListJwt(),
+                            resolvedAt = Clock.System.now()
+                        ) else {
+                            StatusListToken.StatusListCwt(
+                                statusListIssuer.issueStatusListCwt(),
+                                resolvedAt = Clock.System.now(),
+                            )
+                        }
+                    },
+                )
             )
         )
         issuerCredentialStore = InMemoryIssuerCredentialStore()
