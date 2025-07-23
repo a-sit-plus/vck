@@ -9,7 +9,8 @@ import at.asitplus.rqes.collection_entries.QCertCreationAcceptance
 import at.asitplus.rqes.collection_entries.QesAuthorization
 import at.asitplus.rqes.collection_entries.RqesDocumentDigestEntry
 import at.asitplus.rqes.serializers.Base64URLTransactionDataSerializer
-import at.asitplus.signum.indispensable.asn1.KnownOIDs.sha_256
+import at.asitplus.signum.indispensable.asn1.KnownOIDs
+import at.asitplus.signum.indispensable.asn1.sha_256
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -71,7 +72,7 @@ class TransactionDataInterop : FreeSpec({
     """.trimIndent().replace("\n", "").replace("\r", "").replace(" ", "")
 
     val transactionDataTest = QCertCreationAcceptance(
-        qcTermsConditionsUri = "abc", qcHash = "cde".decodeBase64Bytes(), qcHashAlgorithmOid = sha_256
+        qcTermsConditionsUri = "abc", qcHash = "cde".decodeBase64Bytes(), qcHashAlgorithmOid = KnownOIDs.sha_256
     )
 
     "Polymorphic Serialization is stable" {

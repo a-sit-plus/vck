@@ -8,7 +8,7 @@ import at.asitplus.wallet.lib.extensions.ifTrue
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.extensions.toView
 import io.github.aakira.napier.Napier
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 object StatusListTokenValidator {
     /**

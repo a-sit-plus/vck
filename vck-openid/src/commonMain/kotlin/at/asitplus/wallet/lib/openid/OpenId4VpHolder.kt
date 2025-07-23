@@ -40,7 +40,7 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 
 /**
  * Combines Verifiable Presentations with OpenId Connect.
@@ -225,7 +225,7 @@ class OpenId4VpHolder(
     ): KmmResult<AuthenticationResponse> = catching {
         @Suppress("UNCHECKED_CAST") val certKey =
             (request as? RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>)
-                ?.jwsSigned?.header?.certificateChain?.firstOrNull()?.publicKey?.toJsonWebKey()
+                ?.jwsSigned?.header?.certificateChain?.firstOrNull()?.decodedPublicKey?.getOrNull()?.toJsonWebKey()
         val clientJsonWebKeySet = clientMetadata?.loadJsonWebKeySet()
         val dcApiRequest = request.extractDcApiRequest() as? Oid4vpDCAPIRequest?
         val audience = request.parameters.extractAudience(clientJsonWebKeySet, dcApiRequest)

@@ -13,7 +13,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusVal
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlin.random.Random
 
 
@@ -64,7 +64,7 @@ class ValidatorMdocTest : FreeSpec() {
 
             val issuerKey: CoseKey? =
                 credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull()?.let {
-                    catchingUnwrapped { X509Certificate.decodeFromDer(it) }.getOrNull()?.publicKey?.toCoseKey()
+                    catchingUnwrapped { X509Certificate.decodeFromDer(it) }.getOrNull()?.decodedPublicKey?.getOrNull()?.toCoseKey()
                         ?.getOrNull()
                 }
 
@@ -84,7 +84,7 @@ class ValidatorMdocTest : FreeSpec() {
 
             val issuerKey: CoseKey? =
                 credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull()?.let {
-                    catchingUnwrapped { X509Certificate.decodeFromDer(it) }.getOrNull()?.publicKey?.toCoseKey()
+                    catchingUnwrapped { X509Certificate.decodeFromDer(it) }.getOrNull()?.decodedPublicKey?.getOrNull()?.toCoseKey()
                         ?.getOrNull()
                 }
 

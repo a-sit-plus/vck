@@ -21,7 +21,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 
 class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
-
+//TODO @n0900 mxing signature algorithms and enceprtion algorithms ist a bad idea
     val adaptedCscTestVectorSignHash1 = """
     {
         "credentialID":"GX0112348",

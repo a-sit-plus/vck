@@ -22,8 +22,8 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidDpopProof
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Clock.System
+import kotlin.time.Clock
+import kotlin.time.Clock.System
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 

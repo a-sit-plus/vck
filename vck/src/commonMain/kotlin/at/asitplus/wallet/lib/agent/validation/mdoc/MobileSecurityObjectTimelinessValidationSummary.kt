@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.agent.validation.mdoc
 import at.asitplus.wallet.lib.agent.validation.TimelinessIndicator
 import at.asitplus.wallet.lib.agent.validation.common.EntityExpiredError
 import at.asitplus.wallet.lib.agent.validation.common.EntityNotYetValidError
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 data class MobileSecurityObjectTimelinessValidationSummary(
     override val evaluationTime: Instant,

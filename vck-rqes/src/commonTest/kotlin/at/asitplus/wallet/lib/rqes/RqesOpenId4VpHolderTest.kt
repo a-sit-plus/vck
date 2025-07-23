@@ -14,7 +14,8 @@ import at.asitplus.rqes.collection_entries.KeyParameters
 import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.indispensable.X509SignatureAlgorithm.entries
+import at.asitplus.signum.indispensable.X509SignatureAlgorithm
+import at.asitplus.signum.indispensable.X509SignatureAlgorithm.Companion.entries
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
@@ -192,3 +193,9 @@ class RqesOpenId4VpHolderTest : FreeSpec({
         }
     }
 })
+
+private val X509SignatureAlgorithm.digest: Digest get() =when(this){
+    is X509SignatureAlgorithm.ECDSA -> digest
+    is X509SignatureAlgorithm.RSAPSS -> digest
+    is X509SignatureAlgorithm.RSAPKCS1 -> digest
+}

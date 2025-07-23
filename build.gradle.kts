@@ -29,6 +29,14 @@ tasks.getByName("dokkaHtmlMultiModule") {
 }
 
 subprojects {
+    repositories {
+        maven {
+            url = uri(layout.projectDirectory.dir("..").dir("repo"))
+            name = "local"
+        }
+    }
+
+
     // JVM runner
     tasks.withType<Test>().configureEach {
         useJUnitPlatform()
@@ -36,14 +44,14 @@ subprojects {
             "KotestConfig")
     }
 
-// JS runner(s)
+    // JS runner(s)
     tasks.withType<org.jetbrains.kotlin.gradle.targets.js.testing.KotlinJsTest>()
         .configureEach {
             environment("KOTEST_FRAMEWORK_CONFIG_FQN",
                 "KotestConfig")
         }
 
-// Native runner(s)
+    // Native runner(s)
     tasks.matching { it.name.endsWith("Test") && it is Exec }
         .configureEach {
             (this as Exec).environment("KOTEST_FRAMEWORK_CONFIG_FQN",

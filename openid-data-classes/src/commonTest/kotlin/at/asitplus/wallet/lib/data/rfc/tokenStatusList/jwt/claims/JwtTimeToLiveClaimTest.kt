@@ -3,8 +3,8 @@ package at.asitplus.wallet.lib.data.rfc.tokenStatusList.jwt.claims
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.datatest.withData
 import io.kotest.matchers.shouldBe
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import kotlin.time.Duration
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration

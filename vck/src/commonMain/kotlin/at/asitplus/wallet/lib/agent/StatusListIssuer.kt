@@ -7,7 +7,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.StatusIssuer
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.StatusProvider
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 /**
  * Summarizes operations for an Issuer in the sense of the [W3C VC Data Model](https://w3c.github.io/vc-data-model/).

@@ -27,7 +27,7 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.datetime.Clock.System
+import kotlin.time.Clock.System
 
 class OidvciAttestationTest : FunSpec({
 

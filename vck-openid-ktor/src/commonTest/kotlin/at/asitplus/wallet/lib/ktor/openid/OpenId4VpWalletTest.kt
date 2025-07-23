@@ -49,11 +49,11 @@ import io.ktor.util.*
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes
@@ -72,7 +72,7 @@ class OpenId4VpWalletTest : FunSpec() {
         }
 
         test("presentEuPidCredentialSdJwtDirectPost") {
-            runTest {
+            runBlocking {
                 val (wallet, url, mockEngine) = setup(
                     scheme = EuPidScheme,
                     representation = SD_JWT,
@@ -96,7 +96,7 @@ class OpenId4VpWalletTest : FunSpec() {
 
 
         test(" presentEuPidCredentialIsoQuery") {
-            runTest {
+            runBlocking {
                 val (wallet, url, mockEngine) = setup(
                     scheme = EuPidScheme,
                     representation = ISO_MDOC,
@@ -118,7 +118,7 @@ class OpenId4VpWalletTest : FunSpec() {
         }
 
         test("DC API") {
-            runTest {
+            runBlocking {
                 val wallet = setupWallet(HttpClient().engine)
 
                 val attributes = mapOf(
