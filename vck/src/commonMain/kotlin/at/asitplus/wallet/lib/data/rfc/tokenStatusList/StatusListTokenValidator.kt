@@ -4,9 +4,9 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
+import at.asitplus.wallet.lib.extensions.ifTrue
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.third_party.kotlin.ifTrue
-import at.asitplus.wallet.lib.toView
+import at.asitplus.wallet.lib.extensions.toView
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Instant
 

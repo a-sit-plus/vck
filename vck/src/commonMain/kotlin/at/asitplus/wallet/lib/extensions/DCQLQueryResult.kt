@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.data.third_party.at.asitplus.oidc.dcql
+package at.asitplus.wallet.lib.extensions
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
@@ -22,7 +22,7 @@ fun DCQLQueryResult<SubjectCredentialStore.StoreEntry>.toDefaultSubmission(): Km
                 Napier.d("Credential query with identifier is missing: $queryId")
                 throw IllegalStateException("Missing credential query result")
             }
-            
+
             queryId to matches.first()
         }
     }
