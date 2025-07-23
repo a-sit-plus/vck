@@ -14,7 +14,7 @@ import com.authlete.cose.*
 import com.authlete.cose.constants.COSEAlgorithms
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.withClue
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.test.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.base16.Base16

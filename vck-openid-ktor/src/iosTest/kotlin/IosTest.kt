@@ -1,4 +1,4 @@
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.test.FreeSpec
 import kotlin.experimental.ExperimentalNativeApi
 
 @OptIn(ExperimentalNativeApi::class)

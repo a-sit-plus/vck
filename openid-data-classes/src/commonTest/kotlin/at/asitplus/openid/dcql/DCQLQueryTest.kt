@@ -6,7 +6,7 @@ import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrowAny
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.test.FreeSpec
 import io.kotest.datatest.withData
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldHaveSize

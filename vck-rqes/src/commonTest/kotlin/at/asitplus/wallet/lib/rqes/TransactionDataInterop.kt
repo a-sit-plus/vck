@@ -14,7 +14,7 @@ import at.asitplus.signum.indispensable.asn1.sha_256
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.test.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain

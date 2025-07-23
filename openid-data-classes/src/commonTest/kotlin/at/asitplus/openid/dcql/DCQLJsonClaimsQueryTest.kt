@@ -2,7 +2,7 @@ package at.asitplus.openid.dcql
 
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.test.FreeSpec
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe

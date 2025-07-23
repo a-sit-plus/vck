@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.data.rfc8392.cwt.claims
 
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.test.FreeSpec
 import io.kotest.datatest.withData
 import io.kotest.matchers.shouldBe
 import kotlin.time.Clock

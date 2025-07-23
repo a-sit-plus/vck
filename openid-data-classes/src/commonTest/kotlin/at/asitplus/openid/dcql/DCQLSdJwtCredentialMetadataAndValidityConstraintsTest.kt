@@ -3,7 +3,7 @@ package at.asitplus.openid.dcql
 import at.asitplus.openid.CredentialFormatEnum
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrowAny
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.test.FreeSpec
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.json.Json

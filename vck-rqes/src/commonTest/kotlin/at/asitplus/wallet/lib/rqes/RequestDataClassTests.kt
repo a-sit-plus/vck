@@ -13,15 +13,14 @@ import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.io.Base64Strict
 import io.github.aakira.napier.Napier
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.test.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 
 class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
-//TODO @n0900 mxing signature algorithms and enceprtion algorithms ist a bad idea
+//TODO @n0900 mxing signature algorithms and encryption algorithms ist a bad idea
     val adaptedCscTestVectorSignHash1 = """
     {
         "credentialID":"GX0112348",

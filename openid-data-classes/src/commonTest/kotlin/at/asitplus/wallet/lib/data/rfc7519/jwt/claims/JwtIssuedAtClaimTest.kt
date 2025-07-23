@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.data.rfc7519.jwt.claims
 
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.test.FreeSpec
 import io.kotest.matchers.shouldBe
 
 class JwtIssuedAtClaimTest : FreeSpec({

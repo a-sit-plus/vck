@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib
 
 import at.asitplus.signum.supreme.SignatureResult
 import at.asitplus.wallet.lib.agent.KeyStoreMaterial
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.test.FreeSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf

@@ -4,7 +4,7 @@ import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.test.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.util.encodeBase64

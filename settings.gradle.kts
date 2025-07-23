@@ -28,11 +28,6 @@ if (System.getProperty("publishing.excludeIncludedBuilds") != "true") {
     }
 } else logger.lifecycle("Excluding Signum from this build")
 
-includeBuild("conventions-vclib/gradle-conventions-plugin/kmpotest") {
-    dependencySubstitution {
-        substitute(module(" at.asitplus.gradle:kmpotest")).using(project(":kmpotest"))
-    }}
-
 rootProject.name = "vc-k"
 include(":dif-data-classes")
 include(":openid-data-classes")

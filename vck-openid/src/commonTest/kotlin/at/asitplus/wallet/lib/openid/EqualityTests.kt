@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.test.FreeSpec
 import io.kotest.matchers.booleans.shouldBeTrue
 import kotlinx.serialization.SerialName
 import kotlin.random.Random
