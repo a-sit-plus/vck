@@ -1,10 +1,10 @@
 package at.asitplus.wallet.lib.agent.validation.mdoc
 
+import at.asitplus.iso.IssuerSigned
+import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
-import at.asitplus.wallet.lib.iso.IssuerSigned
-import at.asitplus.wallet.lib.iso.MobileSecurityObject
 import io.github.aakira.napier.Napier
 
 class MdocInputValidator(

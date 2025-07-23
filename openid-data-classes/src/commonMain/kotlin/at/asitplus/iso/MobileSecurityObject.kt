@@ -1,8 +1,5 @@
-package at.asitplus.wallet.lib.iso
+package at.asitplus.iso
 
-import at.asitplus.iso.DeviceKeyInfo
-import at.asitplus.iso.ValidityInfo
-import at.asitplus.iso.ValueDigestList
 import at.asitplus.wallet.lib.data.Status
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

@@ -1,8 +1,5 @@
-package at.asitplus.wallet.lib.iso
+package at.asitplus.iso
 
-import at.asitplus.iso.IssuerSignedItem
-import at.asitplus.iso.IssuerSignedList
-import at.asitplus.iso.NamespacedIssuerSignedListSerializer
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.SerialName

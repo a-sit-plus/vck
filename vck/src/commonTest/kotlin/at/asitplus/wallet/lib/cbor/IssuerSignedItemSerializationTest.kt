@@ -4,13 +4,13 @@ import at.asitplus.iso.CborCredentialSerializer
 import at.asitplus.iso.DeviceAuth
 import at.asitplus.iso.DeviceKeyInfo
 import at.asitplus.iso.DeviceNameSpaces
-import at.asitplus.wallet.lib.iso.DeviceResponse
+import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.DeviceSigned
-import at.asitplus.wallet.lib.iso.Document
-import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.iso.Document
+import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.iso.IssuerSignedItemSerializer
-import at.asitplus.wallet.lib.iso.MobileSecurityObject
+import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.ValidityInfo
 import at.asitplus.iso.ValueDigest
 import at.asitplus.iso.ValueDigestList
