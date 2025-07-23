@@ -46,9 +46,20 @@ class VerifierAgent(
         VerifyPresentationResult.ValidationError(it)
     }
 
+    @Deprecated("Use [verifyPresentationIsoMdoc] without `challenge` instead",
+        ReplaceWith("verifyPresentationIsoMdoc(input, verifyDocument)"))
     override suspend fun verifyPresentationIsoMdoc(
         input: DeviceResponse,
         challenge: String,
+        verifyDocument: suspend (MobileSecurityObject, Document) -> Boolean,
+    ): VerifyPresentationResult = catchingUnwrapped {
+        validatorMdoc.verifyDeviceResponse(input, verifyDocument)
+    }.getOrElse {
+        VerifyPresentationResult.ValidationError(it)
+    }
+
+    override suspend fun verifyPresentationIsoMdoc(
+        input: DeviceResponse,
         verifyDocument: suspend (MobileSecurityObject, Document) -> Boolean,
     ): VerifyPresentationResult = catchingUnwrapped {
         validatorMdoc.verifyDeviceResponse(input, verifyDocument)
