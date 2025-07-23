@@ -8,7 +8,19 @@ import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclos
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonArrayBuilder
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonObjectBuilder
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonPrimitive
+
+@Deprecated("Replace with [SdJwtDecoded]", ReplaceWith("SdJwtDecoded"))
+typealias SdJwtValidator = SdJwtDecoded
 
 /**
  * Decodes a [SdJwtSigned], by substituting all blinded disclosure values (inside `_sd` elements of the payload)
@@ -16,7 +28,7 @@ import kotlinx.serialization.json.*
  *
  * See [Selective Disclosure for JWTs (SD-JWT)](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-13.html)
  */
-class SdJwtValidator(sdJwtSigned: SdJwtSigned) {
+class SdJwtDecoded(sdJwtSigned: SdJwtSigned) {
 
     private val disclosures: Collection<String> = sdJwtSigned.rawDisclosures
     private val _validDisclosures = mutableMapOf<String, SelectiveDisclosureItem>()
