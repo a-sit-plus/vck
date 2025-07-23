@@ -1,0 +1,282 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "at.asitplus.wallet",
+    "module": "mobiledrivinglicence",
+    "version": "1.2.1-SNAPSHOT",
+    "attributes": {
+      "org.gradle.status": "integration"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.14.3"
+    }
+  },
+  "variants": [
+    {
+      "name": "metadataApiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.platform.type": "common"
+      },
+      "dependencies": [
+        {
+          "group": "at.asitplus.wallet",
+          "module": "vck",
+          "version": {
+            "requires": "5.8.0-SNAPSHOT"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.2.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "mobiledrivinglicence-metadata-1.2.1-SNAPSHOT.jar",
+          "url": "mobiledrivinglicence-1.2.1-SNAPSHOT.jar",
+          "size": 11672,
+          "sha512": "b85a9297bd9534a662fb54f3305e432a1fa7d0b1a43ee09be359fa0579882dd6711735115797000f337833bb7d8a9d12811180e308000c96014241f5dba4daa2",
+          "sha256": "dfb9a731e0252afa337a527c1c2b61c91e02210c0c098c02a841a595c75d9207",
+          "sha1": "f4ad243aace29eac94070b7cd6971c09f258f851",
+          "md5": "fc61f2a2b901609d87f8b8c77860d652"
+        }
+      ]
+    },
+    {
+      "name": "metadataSourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.platform.type": "common"
+      },
+      "files": [
+        {
+          "name": "mobiledrivinglicence-kotlin-1.2.1-SNAPSHOT-sources.jar",
+          "url": "mobiledrivinglicence-1.2.1-SNAPSHOT-sources.jar",
+          "size": 11163,
+          "sha512": "79120c38efc111b77b1bb07e0cf7632f0237995604d324372666ce6d753447d77f4993ea6fedb1aac901bb7386d22a47e78db8a6c682ae8828acbf56a497d4f6",
+          "sha256": "7d31851ad96b916916081394ff0468efc19a1b0a5ac95b4034fa47dce75600cf",
+          "sha1": "a18ddf800361478224bf3b6d358fa24456916452",
+          "md5": "ff0cc85d812c26118f46cec57ffcfd70"
+        }
+      ]
+    },
+    {
+      "name": "iosArm64ApiElements-published",
+      "attributes": {
+        "artifactType": "org.jetbrains.kotlin.klib",
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "ios_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../mobiledrivinglicence-iosarm64/1.2.1-SNAPSHOT/mobiledrivinglicence-iosarm64-1.2.1-SNAPSHOT.module",
+        "group": "at.asitplus.wallet",
+        "module": "mobiledrivinglicence-iosarm64",
+        "version": "1.2.1-SNAPSHOT"
+      }
+    },
+    {
+      "name": "iosArm64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "ios_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../mobiledrivinglicence-iosarm64/1.2.1-SNAPSHOT/mobiledrivinglicence-iosarm64-1.2.1-SNAPSHOT.module",
+        "group": "at.asitplus.wallet",
+        "module": "mobiledrivinglicence-iosarm64",
+        "version": "1.2.1-SNAPSHOT"
+      }
+    },
+    {
+      "name": "iosArm64MetadataElements-published",
+      "attributes": {
+        "artifactType": "org.jetbrains.kotlin.klib",
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "ios_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../mobiledrivinglicence-iosarm64/1.2.1-SNAPSHOT/mobiledrivinglicence-iosarm64-1.2.1-SNAPSHOT.module",
+        "group": "at.asitplus.wallet",
+        "module": "mobiledrivinglicence-iosarm64",
+        "version": "1.2.1-SNAPSHOT"
+      }
+    },
+    {
+      "name": "iosSimulatorArm64ApiElements-published",
+      "attributes": {
+        "artifactType": "org.jetbrains.kotlin.klib",
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "ios_simulator_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../mobiledrivinglicence-iossimulatorarm64/1.2.1-SNAPSHOT/mobiledrivinglicence-iossimulatorarm64-1.2.1-SNAPSHOT.module",
+        "group": "at.asitplus.wallet",
+        "module": "mobiledrivinglicence-iossimulatorarm64",
+        "version": "1.2.1-SNAPSHOT"
+      }
+    },
+    {
+      "name": "iosSimulatorArm64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "ios_simulator_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../mobiledrivinglicence-iossimulatorarm64/1.2.1-SNAPSHOT/mobiledrivinglicence-iossimulatorarm64-1.2.1-SNAPSHOT.module",
+        "group": "at.asitplus.wallet",
+        "module": "mobiledrivinglicence-iossimulatorarm64",
+        "version": "1.2.1-SNAPSHOT"
+      }
+    },
+    {
+      "name": "iosSimulatorArm64MetadataElements-published",
+      "attributes": {
+        "artifactType": "org.jetbrains.kotlin.klib",
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "ios_simulator_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../mobiledrivinglicence-iossimulatorarm64/1.2.1-SNAPSHOT/mobiledrivinglicence-iossimulatorarm64-1.2.1-SNAPSHOT.module",
+        "group": "at.asitplus.wallet",
+        "module": "mobiledrivinglicence-iossimulatorarm64",
+        "version": "1.2.1-SNAPSHOT"
+      }
+    },
+    {
+      "name": "iosX64ApiElements-published",
+      "attributes": {
+        "artifactType": "org.jetbrains.kotlin.klib",
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "ios_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../mobiledrivinglicence-iosx64/1.2.1-SNAPSHOT/mobiledrivinglicence-iosx64-1.2.1-SNAPSHOT.module",
+        "group": "at.asitplus.wallet",
+        "module": "mobiledrivinglicence-iosx64",
+        "version": "1.2.1-SNAPSHOT"
+      }
+    },
+    {
+      "name": "iosX64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "ios_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../mobiledrivinglicence-iosx64/1.2.1-SNAPSHOT/mobiledrivinglicence-iosx64-1.2.1-SNAPSHOT.module",
+        "group": "at.asitplus.wallet",
+        "module": "mobiledrivinglicence-iosx64",
+        "version": "1.2.1-SNAPSHOT"
+      }
+    },
+    {
+      "name": "iosX64MetadataElements-published",
+      "attributes": {
+        "artifactType": "org.jetbrains.kotlin.klib",
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "ios_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../mobiledrivinglicence-iosx64/1.2.1-SNAPSHOT/mobiledrivinglicence-iosx64-1.2.1-SNAPSHOT.module",
+        "group": "at.asitplus.wallet",
+        "module": "mobiledrivinglicence-iosx64",
+        "version": "1.2.1-SNAPSHOT"
+      }
+    },
+    {
+      "name": "jvmApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "available-at": {
+        "url": "../../mobiledrivinglicence-jvm/1.2.1-SNAPSHOT/mobiledrivinglicence-jvm-1.2.1-SNAPSHOT.module",
+        "group": "at.asitplus.wallet",
+        "module": "mobiledrivinglicence-jvm",
+        "version": "1.2.1-SNAPSHOT"
+      }
+    },
+    {
+      "name": "jvmRuntimeElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "available-at": {
+        "url": "../../mobiledrivinglicence-jvm/1.2.1-SNAPSHOT/mobiledrivinglicence-jvm-1.2.1-SNAPSHOT.module",
+        "group": "at.asitplus.wallet",
+        "module": "mobiledrivinglicence-jvm",
+        "version": "1.2.1-SNAPSHOT"
+      }
+    },
+    {
+      "name": "jvmSourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "available-at": {
+        "url": "../../mobiledrivinglicence-jvm/1.2.1-SNAPSHOT/mobiledrivinglicence-jvm-1.2.1-SNAPSHOT.module",
+        "group": "at.asitplus.wallet",
+        "module": "mobiledrivinglicence-jvm",
+        "version": "1.2.1-SNAPSHOT"
+      }
+    }
+  ]
+}

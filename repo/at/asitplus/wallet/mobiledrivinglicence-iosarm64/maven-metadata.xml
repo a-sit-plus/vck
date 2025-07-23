@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+  <groupId>at.asitplus.wallet</groupId>
+  <artifactId>mobiledrivinglicence-iosarm64</artifactId>
+  <versioning>
+    <latest>1.2.1-SNAPSHOT</latest>
+    <versions>
+      <version>1.2.1-SNAPSHOT</version>
+    </versions>
+    <lastUpdated>20250723180255</lastUpdated>
+  </versioning>
+</metadata>
