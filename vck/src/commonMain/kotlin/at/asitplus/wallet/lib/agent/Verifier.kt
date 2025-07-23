@@ -45,9 +45,20 @@ interface Verifier {
      * Verifies a presentation of some credentials in [ConstantIndex.CredentialRepresentation.ISO_MDOC] from a holder,
      * that shall include the [challenge] (sent by this verifier).
      */
+    @Deprecated("Use [verifyPresentationIsoMdoc] without `challenge` instead",
+        ReplaceWith("verifyPresentationIsoMdoc(input, verifyDocument)"))
     suspend fun verifyPresentationIsoMdoc(
         input: DeviceResponse,
         challenge: String,
+        verifyDocument: suspend (MobileSecurityObject, Document) -> Boolean,
+    ): VerifyPresentationResult
+
+    /**
+     * Verifies a presentation of some credentials in [ConstantIndex.CredentialRepresentation.ISO_MDOC] from a holder,
+     * with a challenge validated by the callback in [verifyDocument] (i.e. device authentication for OpenID4VP).
+     */
+    suspend fun verifyPresentationIsoMdoc(
+        input: DeviceResponse,
         verifyDocument: suspend (MobileSecurityObject, Document) -> Boolean,
     ): VerifyPresentationResult
 

@@ -572,7 +572,6 @@ open class OpenId4VpVerifier(
                 ?: ""
             val result = verifier.verifyPresentationIsoMdoc(
                 input = deviceResponse,
-                challenge = expectedNonce,
                 verifyDocument = verifyDocument(mdocGeneratedNonce, clientId, responseUrl, expectedNonce)
             )
             if (result is VerifyPresentationResult.ValidationError) {
@@ -583,7 +582,6 @@ open class OpenId4VpVerifier(
                     ?: ""
                 verifier.verifyPresentationIsoMdoc(
                     input = deviceResponse,
-                    challenge = expectedNonce,
                     verifyDocument = verifyDocument(mdocGeneratedNonce, clientId, responseUrl, expectedNonce)
                 )
             } else {
