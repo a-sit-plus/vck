@@ -47,6 +47,8 @@ Release 5.8.0:
    - In `Validator` deprecate constructor parameter `resolveStatusListToken`, clients shall use `tokenStatusResolver` instead
    - In `Verifier` remove parameter `challenge` from `verifyPresentationIsoMdoc()`
    - Rename `SdJwtValidator` to `SdJwtDecoded`
+   - In `VerifiablePresentationParsed` add the input data too, that is the `VerifiablePresentationJws`
+   - In `IsoDocumentParsed` add the input data too, that is the `Document`
 
 Release 5.7.2:
  - Presentation Exchange: Fix validation of optional constraint fields

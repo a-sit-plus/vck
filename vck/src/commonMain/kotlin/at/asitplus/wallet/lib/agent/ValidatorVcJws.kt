@@ -75,6 +75,7 @@ class ValidatorVcJws(
         }
 
         val vp = VerifiablePresentationParsed(
+            jws = input,
             id = vpJws.vp.id,
             type = vpJws.vp.type,
             freshVerifiableCredentials = verificationResultWithFreshnessSummary.filter {
