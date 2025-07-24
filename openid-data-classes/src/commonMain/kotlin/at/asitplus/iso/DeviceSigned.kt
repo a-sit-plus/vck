@@ -41,7 +41,7 @@ data class DeviceSigned(
 
         // Note: Can't be a secondary constructor, because it would have the same JVM signature as the primary one.
         /**
-         * Ensures the serialization of this structure in [at.asitplus.wallet.lib.iso.Document.deviceSigned]:
+         * Ensures the serialization of this structure in [Document.deviceSigned]:
          * ```
          * DeviceSigned = {
          *     "nameSpaces" : DeviceNameSpacesBytes ; Returned data elements

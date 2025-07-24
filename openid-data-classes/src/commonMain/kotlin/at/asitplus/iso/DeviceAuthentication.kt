@@ -16,7 +16,7 @@ data class DeviceAuthentication(
     /** Set to `DeviceAuthentication` */
     val type: String,
     val sessionTranscript: SessionTranscript,
-    /** Same as in [at.asitplus.wallet.lib.iso.Document.docType] */
+    /** Same as in [Document.docType] */
     val docType: String,
     /** Same as in [DeviceSigned.namespaces] */
     @ValueTags(24U)
