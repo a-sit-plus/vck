@@ -6,11 +6,13 @@ import at.asitplus.openid.IssuerMetadata
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.test.FreeSpec
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import inited
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.maps.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 
+private val init= inited
 class DeserializationTest : FreeSpec({
 
     "OID4VCI  A.1.1. VC Signed as a JWT, Not Using JSON-LD" {

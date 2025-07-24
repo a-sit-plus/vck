@@ -4,11 +4,13 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.wallet.lib.openid.RequestParser
 import at.asitplus.test.FreeSpec
+import inited
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 
 
+private val init= inited
 /**
  * Tests our OpenID4VP/SIOP implementation against POTENTIAL Piloting Definition Scope
  */

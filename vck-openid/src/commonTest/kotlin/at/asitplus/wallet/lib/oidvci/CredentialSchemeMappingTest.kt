@@ -9,10 +9,12 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.oidvci.CredentialSchemeMapping.decodeFromCredentialIdentifier
 import at.asitplus.wallet.lib.oidvci.CredentialSchemeMapping.toCredentialIdentifier
 import at.asitplus.wallet.lib.oidvci.CredentialSchemeMapping.toSupportedCredentialFormat
+import inited
 import io.kotest.matchers.maps.shouldContainKey
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 
+private val init= inited
 @Suppress("DEPRECATION")
 class CredentialSchemeMappingTest : FreeSpec({
 
@@ -42,7 +44,7 @@ class CredentialSchemeMappingTest : FreeSpec({
         decodeFromCredentialIdentifier(key).shouldBeNull()
     }
 
-    "unknown scheme in SD-JWT (old identifier)") {
+    "unknown scheme in SD-JWT (old identifier)" {
         val key = "${randomString()}#${CredentialFormatEnum.VC_SD_JWT.text}"
         decodeFromCredentialIdentifier(key).shouldBeNull()
     }

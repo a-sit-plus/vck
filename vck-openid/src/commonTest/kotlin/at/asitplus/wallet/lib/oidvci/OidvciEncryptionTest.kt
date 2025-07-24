@@ -23,11 +23,13 @@ import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.DummyUserProvider
 import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
 import com.benasher44.uuid.uuid4
+import inited
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 
+private val init= inited
 class OidvciEncryptionTest : FreeSpec({
 
     lateinit var authorizationService: SimpleAuthorizationService

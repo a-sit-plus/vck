@@ -15,10 +15,12 @@ import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import at.asitplus.test.FreeSpec
+import inited
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 
+private val init= inited
 class OidvciOfferCodeTest : FreeSpec({
 
     lateinit var authorizationService: SimpleAuthorizationService

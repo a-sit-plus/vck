@@ -7,6 +7,7 @@ import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_BEARER
 import at.asitplus.test.FreeSpec
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import inited
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.ktor.http.*
@@ -15,6 +16,7 @@ import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
 
+private val init= inited
 class SerializationTest : FreeSpec({
 
     fun createAuthorizationRequest() = AuthenticationRequestParameters(
