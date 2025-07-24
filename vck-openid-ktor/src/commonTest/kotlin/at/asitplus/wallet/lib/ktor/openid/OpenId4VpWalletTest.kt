@@ -226,6 +226,40 @@ class OpenId4VpWalletTest : FunSpec() {
                 }
             }
         }
+
+        test("Basic error response test") {
+            runTest {
+                val scheme = EuPidScheme
+                val representation = ISO_MDOC
+                val attributes = mapOf(
+                    EuPidScheme.Attributes.GIVEN_NAME to randomString()
+                )
+                val responseMode = ResponseMode.Query
+                val clientId = uuid4().toString()
+
+                val requestOptions = OpenIdRequestOptions(
+                    credentials = setOf(
+                        RequestOptionsCredential(
+                            credentialScheme = scheme,
+                            representation = representation,
+                            requestedAttributes = attributes.keys
+                        )
+                    ),
+                    responseMode = responseMode,
+                )
+                val (mockEngine, url) = setupRelyingPartyService(clientId, requestOptions) {
+                    it.verifyReceivedAttributes(attributes)
+                }
+                val wallet = setupWallet(mockEngine)
+
+                val requestParametersFrom = wallet.parseAuthenticationRequestParameters(url).getOrThrow()
+
+                val preparationState =
+                    wallet.startAuthorizationResponsePreparation(requestParametersFrom).getOrThrow()
+                val matching = wallet.getMatchingCredentials(preparationState)
+                Napier.e("$matching")
+            }
+        }
     }
 
     private fun randomString(): String = Random.nextBytes(32).encodeToString(Base16)
