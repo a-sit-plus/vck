@@ -58,6 +58,9 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
+import at.asitplus.dif.ConstraintField
+import at.asitplus.jsonpath.core.NodeList
+import at.asitplus.openid.dcql.DCQLQueryResult
 
 /**
  * Combines Verifiable Presentations with OpenId Connect.
@@ -305,6 +308,33 @@ class OpenId4VpHolder(
             resultContainer?.mdocGeneratedNonce
         )
     }
+
+    suspend fun getMatchingCredentials(preparationState: AuthorizationResponsePreparationState) =
+        catchingUnwrapped {
+            when (val it = preparationState.credentialPresentationRequest) {
+                is CredentialPresentationRequest.DCQLRequest -> {
+                    val dcqlQueryResult = holder.matchDCQLQueryAgainstCredentialStore(
+                        it.dcqlQuery,
+                        preparationState.oid4vpDCAPIRequest?.credentialId
+                    ).getOrThrow()
+                    DCQLMatchingResult(
+                        presentationRequest = it,
+                        dcqlQueryResult
+                    )
+                }
+
+                is CredentialPresentationRequest.PresentationExchangeRequest -> PresentationExchangeMatchingResult(
+                    presentationRequest = it,
+                    matchingInputDescriptorCredentials = holder.matchInputDescriptorsAgainstCredentialStore(
+                        inputDescriptors = it.presentationDefinition.inputDescriptors,
+                        fallbackFormatHolder = it.fallbackFormatHolder,
+                        filterById = preparationState.oid4vpDCAPIRequest?.credentialId
+                    ).getOrThrow()
+                )
+
+                null -> TODO()
+            }
+        }
 
 
     /*
