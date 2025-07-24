@@ -3,10 +3,11 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.test.FreeSpec
+import inited
 import io.kotest.matchers.booleans.shouldBeTrue
 import kotlinx.serialization.SerialName
 import kotlin.random.Random
-
+private val init= inited
 class EqualityTests : FreeSpec({
     lateinit var jwk1: JsonWebKey
     lateinit var jwk2: JsonWebKey

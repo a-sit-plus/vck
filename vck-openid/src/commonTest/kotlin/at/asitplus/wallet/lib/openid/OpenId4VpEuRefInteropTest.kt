@@ -25,13 +25,14 @@ import at.asitplus.wallet.lib.jws.JwsHeaderJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import com.benasher44.uuid.uuid4
 import at.asitplus.test.FreeSpec
+import inited
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlin.time.Instant
-
+private val init= inited
 /**
  * Tests our OpenId4VP implementation against EUDI Ref Impl.,
  * see [https://verifier.eudiw.dev/cbor-selectable/verifiable](https://verifier.eudiw.dev/cbor-selectable/verifiable)

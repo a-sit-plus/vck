@@ -28,6 +28,7 @@ tasks.getByName("dokkaHtmlMultiModule") {
     }
 }
 
+//TODO REMOVE ME ONCE mDL and eupid are updated
 subprojects {
     repositories {
         maven {
@@ -35,29 +36,6 @@ subprojects {
             name = "local"
         }
     }
-
-
-    // JVM runner
-    tasks.withType<Test>().configureEach {
-        useJUnitPlatform()
-        systemProperty("kotest.framework.config.fqn",
-            "KotestConfig")
-    }
-
-    // JS runner(s)
-    tasks.withType<org.jetbrains.kotlin.gradle.targets.js.testing.KotlinJsTest>()
-        .configureEach {
-            environment("KOTEST_FRAMEWORK_CONFIG_FQN",
-                "KotestConfig")
-        }
-
-    // Native runner(s)
-    tasks.matching { it.name.endsWith("Test") && it is Exec }
-        .configureEach {
-            (this as Exec).environment("KOTEST_FRAMEWORK_CONFIG_FQN",
-                "KotestConfig")
-        }
-
 }
 
 val artifactVersion: String by extra

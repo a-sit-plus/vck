@@ -8,6 +8,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import com.benasher44.uuid.uuid4
 import at.asitplus.test.FreeSpec
+import inited
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSize
@@ -18,7 +19,7 @@ import kotlin.time.Clock
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Duration.Companion.minutes
-
+private val init= inited
 class OpenId4VpComplexSdJwtProtocolTest : FreeSpec({
 
     lateinit var clientId: String

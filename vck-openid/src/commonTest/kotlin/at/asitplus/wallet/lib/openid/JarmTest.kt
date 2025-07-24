@@ -9,9 +9,10 @@ import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import com.benasher44.uuid.uuid4
 import at.asitplus.test.FreeSpec
+import inited
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-
+private val init= inited
 class JarmTest : FreeSpec({
     lateinit var clientId: String
     lateinit var holderKeyMaterial: KeyMaterial

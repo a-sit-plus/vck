@@ -28,6 +28,7 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
 import com.benasher44.uuid.uuid4
 import at.asitplus.test.FreeSpec
+import inited
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -36,7 +37,7 @@ import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 import kotlinx.serialization.json.jsonPrimitive
-
+private val init= inited
 /**
  * Tests our OpenID4VP/SIOP implementation against POTENTIAL Piloting Definition Scope
  */

@@ -15,9 +15,10 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import at.asitplus.test.FreeSpec
+import inited
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
-
+private val init= inited
 class OpenId4VpX509SanDnsTest : FreeSpec({
 
     lateinit var holderKeyMaterial: KeyMaterial

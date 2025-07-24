@@ -12,12 +12,13 @@ import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.GIVEN_NAME
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import at.asitplus.test.FreeSpec
+import inited
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.types.shouldBeInstanceOf
-
+private val init= inited
 class OpenId4VpIsoProtocolTest : FreeSpec({
 
     lateinit var clientId: String

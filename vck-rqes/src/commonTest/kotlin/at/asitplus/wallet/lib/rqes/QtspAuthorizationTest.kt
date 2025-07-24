@@ -14,9 +14,10 @@ import at.asitplus.wallet.lib.rqes.helper.SimpleQtspAuthorizationService
 import io.kotest.assertions.throwables.shouldThrow
 import kotlinx.coroutines.runBlocking
 import at.asitplus.test.FreeSpec
+import inited
 import io.ktor.http.*
 
-
+private val init= inited
 class QtspAuthorizationTest : FreeSpec({
 
     val qtspAuthenticationService = SimpleQtspAuthorizationService(

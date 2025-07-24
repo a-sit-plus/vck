@@ -34,6 +34,7 @@ import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessSdJwt
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.CreationOptions
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
+import inited
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -57,7 +58,7 @@ import kotlin.time.Clock
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes
-
+private val init= inited
 class OpenId4VpWalletTest : FunSpec() {
 
     lateinit var countdownLatch: Mutex

@@ -24,11 +24,12 @@ import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import at.asitplus.test.FreeSpec
+import inited
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-
+private val init= inited
 class RqesOpenId4VpHolderTest : FreeSpec({
 
     val dummyValueProvider = DummyValueProvider()

@@ -12,12 +12,13 @@ import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import at.asitplus.test.FreeSpec
+import inited
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-
+private val init= inited
 class CredentialJsonInteropTest : FreeSpec({
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var issuerAgent: Issuer

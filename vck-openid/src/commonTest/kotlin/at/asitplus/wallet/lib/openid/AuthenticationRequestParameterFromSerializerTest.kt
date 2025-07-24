@@ -10,11 +10,12 @@ import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import com.benasher44.uuid.uuid4
 import at.asitplus.test.FreeSpec
+import inited
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
-
+private val init= inited
 class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
 
     val clientId = "PRE-REGISTERED-CLIENT"

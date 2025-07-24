@@ -21,11 +21,12 @@ import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrowAny
 import at.asitplus.test.FreeSpec
+import inited
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.maps.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
-
+private val init= inited
 class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
 
     lateinit var clientId: String

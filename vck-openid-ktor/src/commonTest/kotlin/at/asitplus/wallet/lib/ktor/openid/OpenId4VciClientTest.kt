@@ -49,6 +49,7 @@ import at.asitplus.wallet.lib.oidvci.WalletService
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import com.benasher44.uuid.uuid4
+import inited
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.engine.runBlocking
@@ -70,7 +71,7 @@ import io.ktor.util.toMap
 import kotlin.time.Clock
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
-
+private val init= inited
 class OpenId4VciClientTest : FunSpec() {
 
     lateinit var credentialKeyMaterial: KeyMaterial

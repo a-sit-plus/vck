@@ -33,6 +33,7 @@ import at.asitplus.wallet.lib.rqes.helper.DummyCredentialDataProvider
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import at.asitplus.test.FreeSpec
+import inited
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldBeNull
@@ -43,7 +44,7 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
-
+private val init= inited
 class KeyBindingTests : FreeSpec({
 
     lateinit var holderKeyMaterial: KeyMaterial
