@@ -26,8 +26,8 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
-private val init= inited
 class OAuth2ClientAuthenticationTest : FreeSpec({
+val init= inited
 
     lateinit var scope: String
     lateinit var client: OAuth2Client

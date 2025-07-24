@@ -24,8 +24,8 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
-private val init= inited
 class OAuth2ClientDPoPTest : FreeSpec({
+ val init= inited
 
     lateinit var scope: String
     lateinit var client: OAuth2Client

@@ -24,8 +24,8 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.URLBuilder
 import io.ktor.http.Url
 import kotlin.collections.set
-private val init= inited
 class PreRegisteredClientTest : FreeSpec({
+val init= inited
 
     lateinit var clientId: String
     lateinit var walletUrl: String

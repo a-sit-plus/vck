@@ -30,11 +30,11 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-private val init= inited
 /**
  * Test vectors taken from "Transaction Data entries as defined in D3.1: UC Specification WP3"
  */
 class TransactionDataInterop : FreeSpec({
+val init= inited
 
     val presentationDefinitionAsJsonString = """
         {

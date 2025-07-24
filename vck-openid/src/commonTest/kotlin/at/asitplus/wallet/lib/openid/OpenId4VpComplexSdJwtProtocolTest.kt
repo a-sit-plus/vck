@@ -19,8 +19,8 @@ import kotlin.time.Clock
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Duration.Companion.minutes
-private val init= inited
 class OpenId4VpComplexSdJwtProtocolTest : FreeSpec({
+val init= inited
 
     lateinit var clientId: String
     lateinit var walletUrl: String

@@ -12,8 +12,8 @@ import io.kotest.matchers.maps.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 
-private val init= inited
 class DeserializationTest : FreeSpec({
+val init= inited
 
     "OID4VCI  A.1.1. VC Signed as a JWT, Not Using JSON-LD" {
         val input = """

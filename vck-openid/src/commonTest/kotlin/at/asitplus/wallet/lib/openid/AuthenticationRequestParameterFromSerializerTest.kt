@@ -15,8 +15,8 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
-private val init= inited
 class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
+val init= inited
 
     val clientId = "PRE-REGISTERED-CLIENT"
     val redirectUrl = "https://example.com/rp/${uuid4()}"

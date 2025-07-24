@@ -37,11 +37,11 @@ import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 import kotlinx.serialization.json.jsonPrimitive
-private val init= inited
 /**
  * Tests our OpenID4VP/SIOP implementation against POTENTIAL Piloting Definition Scope
  */
 class OpenId4VpInteropTest : FreeSpec({
+val init= inited
     lateinit var issuerKeyId: String
     lateinit var issuerClientId: String
     lateinit var holderKeyMaterial: KeyMaterial

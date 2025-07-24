@@ -24,8 +24,8 @@ import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.URLBuilder
 import io.ktor.http.Url
-private val init= inited
 class RedirectUriClientTest : FreeSpec({
+val init= inited
 
     lateinit var clientId: String
     lateinit var walletUrl: String

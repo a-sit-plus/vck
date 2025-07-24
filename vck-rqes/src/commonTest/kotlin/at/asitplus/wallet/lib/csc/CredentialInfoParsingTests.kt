@@ -15,8 +15,8 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldNotContain
-private val init= inited
 class CredentialInfoParsingTests : FreeSpec({
+val init= inited
 
 
     /**

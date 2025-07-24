@@ -71,8 +71,8 @@ import io.ktor.util.toMap
 import kotlin.time.Clock
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
-private val init= inited
 class OpenId4VciClientTest : FreeSpec() {
+val init= inited
 
     lateinit var credentialKeyMaterial: KeyMaterial
     lateinit var dpopKeyMaterial: KeyMaterial

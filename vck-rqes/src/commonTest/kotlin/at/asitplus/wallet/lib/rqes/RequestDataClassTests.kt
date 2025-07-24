@@ -19,8 +19,8 @@ import io.kotest.matchers.shouldBe
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
-private val init= inited
 class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
+val init= inited
 
     val adaptedCscTestVectorSignHash1 = """
     {

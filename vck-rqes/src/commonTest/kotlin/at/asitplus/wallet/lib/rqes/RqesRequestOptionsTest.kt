@@ -37,9 +37,9 @@ import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
-private val init= inited
 @Suppress("DEPRECATION")
 class RqesRequestOptionsTest : FreeSpec({
+val init= inited
 
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var holderAgent: Holder

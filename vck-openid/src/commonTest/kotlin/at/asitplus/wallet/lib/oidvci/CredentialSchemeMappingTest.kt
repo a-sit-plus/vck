@@ -14,9 +14,9 @@ import io.kotest.matchers.maps.shouldContainKey
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 
-private val init= inited
 @Suppress("DEPRECATION")
 class CredentialSchemeMappingTest : FreeSpec({
+val init= inited
 
     "AtomicAttribute in plain JWT" {
         val expectedKey = "${AtomicAttribute2023.vcType}#${CredentialFormatEnum.JWT_VC.text}"

@@ -18,8 +18,8 @@ import io.kotest.matchers.shouldNotBe
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-private val init= inited
 class CredentialJsonInteropTest : FreeSpec({
+val init= inited
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var issuerAgent: Issuer
     lateinit var subjectCredentialStore: SubjectCredentialStore

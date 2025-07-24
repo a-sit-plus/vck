@@ -30,8 +30,8 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlin.time.Clock.System
 
-private val init= inited
 class OidvciAttestationTest : FreeSpec({
+val init= inited
 
     lateinit var authorizationService: SimpleAuthorizationService
     lateinit var issuer: CredentialIssuer

@@ -20,8 +20,8 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-private val init= inited
 class OidvciOfferCodeTest : FreeSpec({
+val init= inited
 
     lateinit var authorizationService: SimpleAuthorizationService
     lateinit var issuer: CredentialIssuer

@@ -18,8 +18,8 @@ import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.types.shouldBeInstanceOf
-private val init= inited
 class OpenId4VpIsoProtocolTest : FreeSpec({
+val init= inited
 
     lateinit var clientId: String
     lateinit var walletUrl: String

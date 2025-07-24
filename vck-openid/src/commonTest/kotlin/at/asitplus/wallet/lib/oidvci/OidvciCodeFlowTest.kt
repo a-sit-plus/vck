@@ -45,8 +45,8 @@ import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.decodeFromByteArray
 
-private val init= inited
 class OidvciCodeFlowTest : FreeSpec({
+val init= inited
 
     lateinit var strategy: AuthorizationServiceStrategy
     lateinit var authorizationService: SimpleAuthorizationService

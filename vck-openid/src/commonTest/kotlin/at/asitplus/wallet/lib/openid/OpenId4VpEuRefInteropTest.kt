@@ -32,13 +32,13 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlin.time.Instant
-private val init= inited
 /**
  * Tests our OpenId4VP implementation against EUDI Ref Impl.,
  * see [https://verifier.eudiw.dev/cbor-selectable/verifiable](https://verifier.eudiw.dev/cbor-selectable/verifiable)
  */
 @Suppress("DEPRECATION")
 class OpenId4VpEuRefInteropTest : FreeSpec({
+val init= inited
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var holderAgent: Holder
     lateinit var holderOid4vp: OpenId4VpHolder

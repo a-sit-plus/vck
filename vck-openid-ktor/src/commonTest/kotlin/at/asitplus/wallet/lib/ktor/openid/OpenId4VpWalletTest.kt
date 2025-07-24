@@ -58,8 +58,8 @@ import kotlin.time.Clock
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes
-private val init= inited
 class OpenId4VpWalletTest : FreeSpec() {
+val init= inited
 
     lateinit var countdownLatch: Mutex
     lateinit var keyMaterial: KeyMaterial

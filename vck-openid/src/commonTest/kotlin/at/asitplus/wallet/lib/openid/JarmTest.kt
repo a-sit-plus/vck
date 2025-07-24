@@ -12,8 +12,8 @@ import at.asitplus.test.FreeSpec
 import inited
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-private val init= inited
 class JarmTest : FreeSpec({
+val init= inited
     lateinit var clientId: String
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var verifierKeyMaterial: KeyMaterial

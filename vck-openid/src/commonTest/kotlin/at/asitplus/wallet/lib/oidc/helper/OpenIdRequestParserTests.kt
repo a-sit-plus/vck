@@ -10,11 +10,11 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 
 
-private val init= inited
 /**
  * Tests our OpenID4VP/SIOP implementation against POTENTIAL Piloting Definition Scope
  */
 class OpenIdRequestParserTests : FreeSpec({
+val init= inited
     lateinit var requestParser: RequestParser
 
     beforeEach {

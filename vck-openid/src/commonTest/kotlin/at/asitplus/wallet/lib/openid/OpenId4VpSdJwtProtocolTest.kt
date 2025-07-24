@@ -11,8 +11,8 @@ import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
-private val init= inited
 class OpenId4VpSdJwtProtocolTest : FreeSpec({
+val init= inited
 
     lateinit var clientId: String
     lateinit var walletUrl: String

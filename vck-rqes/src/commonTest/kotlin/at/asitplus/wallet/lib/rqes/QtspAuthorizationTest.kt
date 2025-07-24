@@ -17,8 +17,8 @@ import at.asitplus.test.FreeSpec
 import inited
 import io.ktor.http.*
 
-private val init= inited
 class QtspAuthorizationTest : FreeSpec({
+val init= inited
 
     val qtspAuthenticationService = SimpleQtspAuthorizationService(
         acceptedCredentials = setOf(ConstantIndex.AtomicAttribute2023),

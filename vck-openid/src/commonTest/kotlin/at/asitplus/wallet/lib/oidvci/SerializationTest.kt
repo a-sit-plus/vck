@@ -16,8 +16,8 @@ import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
 
-private val init= inited
 class SerializationTest : FreeSpec({
+val init= inited
 
     fun createAuthorizationRequest() = AuthenticationRequestParameters(
         responseType = GRANT_TYPE_CODE,

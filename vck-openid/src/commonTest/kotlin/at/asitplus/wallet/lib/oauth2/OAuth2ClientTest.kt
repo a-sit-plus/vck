@@ -13,8 +13,8 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-private val init= inited
 class OAuth2ClientTest : FreeSpec({
+val init= inited
 
     lateinit var scope: String
     lateinit var client: OAuth2Client

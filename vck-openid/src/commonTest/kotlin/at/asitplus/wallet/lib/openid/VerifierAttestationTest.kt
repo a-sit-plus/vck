@@ -21,8 +21,8 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
-private val init= inited
 class VerifierAttestationTest : FreeSpec({
+val init= inited
 
     lateinit var clientId: String
     lateinit var redirectUrl: String

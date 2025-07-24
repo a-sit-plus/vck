@@ -44,9 +44,9 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
-private val init= inited
-class KeyBindingTests : FreeSpec({
 
+class KeyBindingTests : FreeSpec({
+     val init= inited
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var holderAgent: Holder
     lateinit var holderOid4vp: OpenId4VpHolder

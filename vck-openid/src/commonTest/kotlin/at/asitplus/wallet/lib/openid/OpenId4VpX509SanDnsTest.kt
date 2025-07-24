@@ -18,8 +18,8 @@ import at.asitplus.test.FreeSpec
 import inited
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
-private val init= inited
 class OpenId4VpX509SanDnsTest : FreeSpec({
+val init= inited
 
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var verifierKeyMaterial: KeyMaterial

@@ -25,8 +25,8 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-private val init= inited
 class OpenId4VpCombinedProtocolTest : FreeSpec({
+val init= inited
 
     lateinit var clientId: String
     lateinit var holderKeyMaterial: KeyMaterial

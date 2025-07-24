@@ -29,8 +29,8 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-private val init= inited
 class RqesOpenId4VpHolderTest : FreeSpec({
+val init= inited
 
     val dummyValueProvider = DummyValueProvider()
     val rqesWalletService = RqesOpenId4VpHolder(
