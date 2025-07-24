@@ -39,13 +39,15 @@ sealed class AuthnResponseResult {
         AuthnResponseResult()
 
     /**
-     * Successfully decoded and validated the response from the Wallet (W3C credential)
+     * Successfully decoded and validated the response from the Wallet (VC in JWT)
      */
-    data class Success(val vp: VerifiablePresentationParsed, val state: String?) :
-        AuthnResponseResult()
+    data class Success(
+        val vp: VerifiablePresentationParsed,
+        val state: String?,
+    ) : AuthnResponseResult()
 
     /**
-     * Successfully decoded and validated the response from the Wallet (W3C credential in SD-JWT)
+     * Successfully decoded and validated the response from the Wallet (SD-JWT VC)
      */
     data class SuccessSdJwt(
         val sdJwtSigned: SdJwtSigned,
@@ -57,8 +59,10 @@ sealed class AuthnResponseResult {
     ) : AuthnResponseResult()
 
     /**
-     * Successfully decoded and validated the response from the Wallet (ISO credential)
+     * Successfully decoded and validated the response from the Wallet (ISO mDoc credential)
      */
-    data class SuccessIso(val documents: Collection<IsoDocumentParsed>, val state: String?) :
-        AuthnResponseResult()
+    data class SuccessIso(
+        val documents: Collection<IsoDocumentParsed>,
+        val state: String?,
+    ) : AuthnResponseResult()
 }

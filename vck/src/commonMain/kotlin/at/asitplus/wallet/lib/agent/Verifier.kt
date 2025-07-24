@@ -50,8 +50,10 @@ interface Verifier {
      * Verifies a presentation of some credentials in [ConstantIndex.CredentialRepresentation.ISO_MDOC] from a holder,
      * that shall include the [challenge] (sent by this verifier).
      */
-    @Deprecated("Use [verifyPresentationIsoMdoc] without `challenge` instead",
-        ReplaceWith("verifyPresentationIsoMdoc(input, verifyDocument)"))
+    @Deprecated(
+        "Use [verifyPresentationIsoMdoc] without `challenge` instead",
+        ReplaceWith("verifyPresentationIsoMdoc(input, verifyDocument)")
+    )
     suspend fun verifyPresentationIsoMdoc(
         input: DeviceResponse,
         challenge: String,
@@ -68,7 +70,10 @@ interface Verifier {
     ): VerifyPresentationResult
 
     sealed class VerifyPresentationResult {
-        data class Success(val vp: VerifiablePresentationParsed) : VerifyPresentationResult()
+        data class Success(
+            val vp: VerifiablePresentationParsed,
+        ) : VerifyPresentationResult()
+
         data class SuccessSdJwt(
             val sdJwtSigned: SdJwtSigned,
             val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
@@ -77,15 +82,26 @@ interface Verifier {
             val freshnessSummary: CredentialFreshnessSummary.SdJwt,
         ) : VerifyPresentationResult()
 
-        data class SuccessIso(val documents: List<IsoDocumentParsed>) : VerifyPresentationResult()
-        data class InvalidStructure(val input: String) : VerifyPresentationResult()
-        data class ValidationError(val cause: Throwable) : VerifyPresentationResult() {
+        data class SuccessIso(
+            val documents: List<IsoDocumentParsed>,
+        ) : VerifyPresentationResult()
+
+        data class InvalidStructure(
+            val input: String,
+        ) : VerifyPresentationResult()
+
+        data class ValidationError(
+            val cause: Throwable,
+        ) : VerifyPresentationResult() {
             constructor(message: String) : this(Throwable(message))
         }
     }
 
     sealed class VerifyCredentialResult {
-        data class SuccessJwt(val jws: VerifiableCredentialJws) : VerifyCredentialResult()
+        data class SuccessJwt(
+            val jws: VerifiableCredentialJws,
+        ) : VerifyCredentialResult()
+
         data class SuccessSdJwt(
             val sdJwtSigned: SdJwtSigned,
             val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
@@ -94,9 +110,17 @@ interface Verifier {
             val disclosures: Map<String, SelectiveDisclosureItem>,
         ) : VerifyCredentialResult()
 
-        data class SuccessIso(val issuerSigned: IssuerSigned) : VerifyCredentialResult()
-        data class InvalidStructure(val input: String) : VerifyCredentialResult()
-        data class ValidationError(val cause: Throwable) : VerifyCredentialResult() {
+        data class SuccessIso(
+            val issuerSigned: IssuerSigned,
+        ) : VerifyCredentialResult()
+
+        data class InvalidStructure(
+            val input: String,
+        ) : VerifyCredentialResult()
+
+        data class ValidationError(
+            val cause: Throwable,
+        ) : VerifyCredentialResult() {
             constructor(message: String) : this(Throwable(message))
         }
     }

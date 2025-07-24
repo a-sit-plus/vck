@@ -71,14 +71,14 @@ class ValidatorMdoc(
      */
     @Throws(IllegalArgumentException::class, CancellationException::class)
     suspend fun verifyDocument(
-        doc: Document,
+        document: Document,
         verifyDocumentCallback: suspend (MobileSecurityObject, Document) -> Boolean,
     ): IsoDocumentParsed {
-        if (doc.errors != null) {
-            Napier.w("Document has errors: ${doc.errors}")
+        if (document.errors != null) {
+            Napier.w("Document has errors: ${document.errors}")
             throw IllegalArgumentException("errors")
         }
-        val issuerSigned = doc.issuerSigned
+        val issuerSigned = document.issuerSigned
         val issuerAuth = issuerSigned.issuerAuth
 
         val certificateHead = issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull() ?: run {
@@ -105,13 +105,13 @@ class ValidatorMdoc(
             throw IllegalArgumentException("mso")
         }
 
-        if (mso.docType != doc.docType) {
-            Napier.w("Invalid MSO docType '${mso.docType}' does not match Doc docType '${doc.docType}")
+        if (mso.docType != document.docType) {
+            Napier.w("Invalid MSO docType '${mso.docType}' does not match Doc docType '${document.docType}")
             throw IllegalArgumentException("mso.docType")
         }
 
-        if (!verifyDocumentCallback.invoke(mso, doc)) {
-            throw IllegalArgumentException("document callback failed: $doc")
+        if (!verifyDocumentCallback.invoke(mso, document)) {
+            throw IllegalArgumentException("document callback failed: $document")
         }
 
         val validItems = mutableListOf<IssuerSignedItem>()
@@ -126,6 +126,7 @@ class ValidatorMdoc(
             }
         }
         return IsoDocumentParsed(
+            document = document,
             mso = mso,
             validItems = validItems,
             invalidItems = invalidItems,
