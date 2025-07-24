@@ -11,6 +11,7 @@ import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.CredentialPresentation
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
@@ -209,6 +210,9 @@ class OpenId4VpWallet(
             }
         )
     }
+
+    suspend fun getMatchingCredentials(preparationState: AuthorizationResponsePreparationState) =
+        openId4VpHolder.getMatchingCredentials(preparationState)
 
     /**
      * Our implementation of ktor's [FormDataContent], but with [contentType] without charset appended,
