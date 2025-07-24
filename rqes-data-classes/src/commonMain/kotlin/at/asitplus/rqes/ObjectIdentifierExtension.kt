@@ -5,6 +5,7 @@ import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
+import at.asitplus.signum.indispensable.asn1.Asn1Null
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import io.github.aakira.napier.Napier
 
@@ -13,7 +14,10 @@ internal fun ObjectIdentifier.getSignAlgorithm(signAlgoParams: Asn1Element?): Si
     catchingUnwrapped {
         X509SignatureAlgorithm.entries.first { it.oid == this }
             .apply {
-                require(parameters == (signAlgoParams?.let { listOf(it) } ?: emptyList<Asn1Element>()))
+                //TODO @n0900 this is ugly, dodgy and not at all how it is supposed to e
+                require(parameters == (signAlgoParams?.let { listOf(it) }
+                    ?: if (this !is X509SignatureAlgorithm.ECDSA) listOf(Asn1Null)
+                    else emptyList<Asn1Element>()))
             }.algorithm.also {
                 require(
                     when (it) {
