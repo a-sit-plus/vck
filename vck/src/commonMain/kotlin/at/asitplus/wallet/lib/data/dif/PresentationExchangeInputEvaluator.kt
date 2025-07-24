@@ -89,11 +89,11 @@ object PresentationExchangeInputEvaluator {
         // TODO: subject_is_issuer, is_holder, same_subject (Relational Constraint Feature)
 
         if (constraintFieldEvaluation.values.any { it.isFailure }) {
+            val failures = constraintFieldEvaluation
+                .filter { it.value.isFailure }
             throw ConstraintFieldsEvaluationException(
-                message = "Input descriptor constraint fields could not be satisfied.",
-                constraintFieldExceptions = constraintFieldEvaluation.filter {
-                    it.value.isFailure
-                }.mapValues {
+                message = "Input descriptor constraint fields could not be satisfied: ${failures.keys.joinToString { it.path.joinToString() }}",
+                constraintFieldExceptions = failures.mapValues {
                     it.value.exceptionOrNull()!!
                 }
             )
@@ -215,7 +215,10 @@ class InvalidCredentialSchemeException(scheme: String?, expected: Collection<Str
 
 open class ConstraintEvaluationException(message: String) : InputEvaluationException(message)
 
-class ConstraintFieldsEvaluationException(message: String, val constraintFieldExceptions: Map<ConstraintField, Throwable>) :
+class ConstraintFieldsEvaluationException(
+    message: String,
+    val constraintFieldExceptions: Map<ConstraintField, Throwable>,
+) :
     ConstraintEvaluationException(message)
 
 open class ConstraintFieldEvaluationException(message: String) : InputEvaluationException(message)
