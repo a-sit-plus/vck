@@ -12,20 +12,18 @@ import io.github.aakira.napier.Napier
 
 internal fun ObjectIdentifier.getSignAlgorithm(signAlgoParams: Asn1Element?): SignatureAlgorithm? =
     catchingUnwrapped {
-        X509SignatureAlgorithm.entries.first { it.oid == this }
-            .apply {
-                //TODO @n0900 this is ugly, dodgy and not at all how it is supposed to e
-                require(parameters == (signAlgoParams?.let { listOf(it) }
-                    ?: if (this !is X509SignatureAlgorithm.ECDSA) listOf(Asn1Null)
-                    else emptyList<Asn1Element>()))
-            }.algorithm.also {
-                require(
-                    when (it) {
-                        is SignatureAlgorithm.ECDSA -> it.digest
-                        is SignatureAlgorithm.RSA -> it.digest
-                    } != Digest.SHA1
-                )
-            }
+        X509SignatureAlgorithm.entries.first {
+            it.oid == this && it.parameters == (signAlgoParams?.let { listOf(it) }
+                ?: if (it is X509SignatureAlgorithm.RSAPKCS1) listOf(Asn1Null) //bend towards X.509 sig alg
+                else emptyList<Asn1Element>())
+        }.algorithm.also {
+            require(
+                when (it) {
+                    is SignatureAlgorithm.ECDSA -> it.digest
+                    is SignatureAlgorithm.RSA -> it.digest
+                } != Digest.SHA1
+            )
+        }
     }.getOrElse {
         Napier.w { "Could not resolve $this" }
         null
