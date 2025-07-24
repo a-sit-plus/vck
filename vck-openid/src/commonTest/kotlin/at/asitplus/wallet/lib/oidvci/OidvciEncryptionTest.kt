@@ -7,6 +7,7 @@ import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.test.FreeSpec
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
@@ -23,12 +24,11 @@ import at.asitplus.wallet.lib.openid.DummyUserProvider
 import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrowAny
-import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-class OidvciEncryptionTest : FunSpec({
+class OidvciEncryptionTest : FreeSpec({
 
     lateinit var authorizationService: SimpleAuthorizationService
     lateinit var issuer: CredentialIssuer
@@ -74,7 +74,7 @@ class OidvciEncryptionTest : FunSpec({
         decryptJwe = DecryptJwe(decryptionKeyMaterial)
     }
 
-    test("issuer fails to encrypt") {
+    "issuer fails to encrypt" {
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
             credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023),
@@ -110,7 +110,7 @@ class OidvciEncryptionTest : FunSpec({
         }
     }
 
-    test("decrypt received credential") {
+    "decrypt received credential" {
         val requestOptions = WalletService.RequestOptions(
             ConstantIndex.AtomicAttribute2023,
             ConstantIndex.CredentialRepresentation.PLAIN_JWT

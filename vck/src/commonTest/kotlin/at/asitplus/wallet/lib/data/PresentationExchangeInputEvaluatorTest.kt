@@ -2,10 +2,10 @@ package at.asitplus.wallet.lib.data
 
 import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.ConstraintFilter
+import at.asitplus.test.FreeSpec
 import at.asitplus.wallet.lib.data.dif.PresentationExchangeInputEvaluator
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.matthewnelson.encoding.base16.Base16
@@ -15,7 +15,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 
-class PresentationExchangeInputEvaluatorTest : FunSpec({
+class PresentationExchangeInputEvaluatorTest : FreeSpec({
 
     lateinit var elementIdentifier: String
     lateinit var elementValue: String
@@ -41,7 +41,7 @@ class PresentationExchangeInputEvaluatorTest : FunSpec({
         }
     }
 
-    test("simple credential matches constraint field with string filter") {
+    "simple credential matches constraint field with string filter" {
         PresentationExchangeInputEvaluator.matchConstraintFieldPaths(
             constraintField = stringFilter(elementIdentifier),
             credential = simpleCredential,
@@ -51,7 +51,7 @@ class PresentationExchangeInputEvaluatorTest : FunSpec({
         }
     }
 
-    test("array credential does not match constraint field with string filter") {
+    "array credential does not match constraint field with string filter" {
         PresentationExchangeInputEvaluator.matchConstraintFieldPaths(
             constraintField = stringFilter(elementIdentifier),
             credential = arrayCredential,
@@ -61,7 +61,7 @@ class PresentationExchangeInputEvaluatorTest : FunSpec({
         }
     }
 
-    test("object credential does not match constraint field with string filter") {
+    "object credential does not match constraint field with string filter" {
         PresentationExchangeInputEvaluator.matchConstraintFieldPaths(
             constraintField = stringFilter(elementIdentifier),
             credential = objectCredential,
@@ -71,7 +71,7 @@ class PresentationExchangeInputEvaluatorTest : FunSpec({
         }
     }
 
-    test("simple credential matches constraint field with string filter and const") {
+    "simple credential matches constraint field with string filter and const" {
         PresentationExchangeInputEvaluator.matchConstraintFieldPaths(
             constraintField = stringConstFilter(elementIdentifier, elementValue),
             credential = simpleCredential,
@@ -81,7 +81,7 @@ class PresentationExchangeInputEvaluatorTest : FunSpec({
         }
     }
 
-    test("array credential does not match constraint field with string filter and const") {
+    "array credential does not match constraint field with string filter and const" {
         PresentationExchangeInputEvaluator.matchConstraintFieldPaths(
             constraintField = stringConstFilter(elementIdentifier, elementValue),
             credential = arrayCredential,
@@ -91,7 +91,7 @@ class PresentationExchangeInputEvaluatorTest : FunSpec({
         }
     }
 
-    test("object credential does not match constraint field with string filter and const") {
+    "object credential does not match constraint field with string filter and const" {
         PresentationExchangeInputEvaluator.matchConstraintFieldPaths(
             constraintField = stringConstFilter(elementIdentifier, elementValue),
             credential = objectCredential,
@@ -101,7 +101,7 @@ class PresentationExchangeInputEvaluatorTest : FunSpec({
         }
     }
 
-    test("simple credential matches constraint field with array filter") {
+    "simple credential matches constraint field with array filter" {
         PresentationExchangeInputEvaluator.matchConstraintFieldPaths(
             constraintField = arrayFilter(elementIdentifier),
             credential = simpleCredential,
@@ -111,7 +111,7 @@ class PresentationExchangeInputEvaluatorTest : FunSpec({
         }
     }
 
-    test("array credential matches constraint field with array filter") {
+    "array credential matches constraint field with array filter" {
         PresentationExchangeInputEvaluator.matchConstraintFieldPaths(
             constraintField = arrayFilter(elementIdentifier),
             credential = arrayCredential,
@@ -121,7 +121,7 @@ class PresentationExchangeInputEvaluatorTest : FunSpec({
         }
     }
 
-    test("object credential does not match constraint field with array filter") {
+    "object credential does not match constraint field with array filter" {
         PresentationExchangeInputEvaluator.matchConstraintFieldPaths(
             constraintField = arrayFilter(elementIdentifier),
             credential = objectCredential,
@@ -131,7 +131,7 @@ class PresentationExchangeInputEvaluatorTest : FunSpec({
         }
     }
 
-    test("simple credential matches constraint field with object filter") {
+    "simple credential matches constraint field with object filter" {
         PresentationExchangeInputEvaluator.matchConstraintFieldPaths(
             constraintField = objectFilter(elementIdentifier),
             credential = simpleCredential,
@@ -141,7 +141,7 @@ class PresentationExchangeInputEvaluatorTest : FunSpec({
         }
     }
 
-    test("array credential does not match constraint field with object filter") {
+    "array credential does not match constraint field with object filter" {
         PresentationExchangeInputEvaluator.matchConstraintFieldPaths(
             constraintField = objectFilter(elementIdentifier),
             credential = arrayCredential,
@@ -151,7 +151,7 @@ class PresentationExchangeInputEvaluatorTest : FunSpec({
         }
     }
 
-    test("object credential matches constraint field with object filter") {
+    "object credential matches constraint field with object filter" {
         PresentationExchangeInputEvaluator.matchConstraintFieldPaths(
             constraintField = objectFilter(elementIdentifier),
             credential = objectCredential,
@@ -161,7 +161,7 @@ class PresentationExchangeInputEvaluatorTest : FunSpec({
         }
     }
 
-    test("primitive credential matches constraint field with empty filter") {
+    "primitive credential matches constraint field with empty filter" {
         PresentationExchangeInputEvaluator.matchConstraintFieldPaths(
             constraintField = emptyFilter(elementIdentifier),
             credential = simpleCredential,
@@ -171,7 +171,7 @@ class PresentationExchangeInputEvaluatorTest : FunSpec({
         }
     }
 
-    test("array matches constraint field with empty filter") {
+    "array matches constraint field with empty filter" {
         PresentationExchangeInputEvaluator.matchConstraintFieldPaths(
             constraintField = emptyFilter(elementIdentifier),
             credential = arrayCredential,
@@ -181,7 +181,7 @@ class PresentationExchangeInputEvaluatorTest : FunSpec({
         }
     }
 
-    test("object matches constraint field with empty filter") {
+    "object matches constraint field with empty filter" {
         PresentationExchangeInputEvaluator.matchConstraintFieldPaths(
             constraintField = emptyFilter(elementIdentifier),
             credential = objectCredential,
@@ -191,7 +191,7 @@ class PresentationExchangeInputEvaluatorTest : FunSpec({
         }
     }
 
-    test("primitive credential matches constraint field with null filter") {
+    "primitive credential matches constraint field with null filter" {
         PresentationExchangeInputEvaluator.matchConstraintFieldPaths(
             constraintField = nullFilter(elementIdentifier),
             credential = simpleCredential,
@@ -201,7 +201,7 @@ class PresentationExchangeInputEvaluatorTest : FunSpec({
         }
     }
 
-    test("array credential matches constraint field with null filter") {
+    "array credential matches constraint field with null filter" {
         PresentationExchangeInputEvaluator.matchConstraintFieldPaths(
             constraintField = nullFilter(elementIdentifier),
             credential = arrayCredential,
@@ -211,7 +211,7 @@ class PresentationExchangeInputEvaluatorTest : FunSpec({
         }
     }
 
-    test("object credential matches constraint field with null filter") {
+    "object credential matches constraint field with null filter" {
         PresentationExchangeInputEvaluator.matchConstraintFieldPaths(
             constraintField = nullFilter(elementIdentifier),
             credential = objectCredential,

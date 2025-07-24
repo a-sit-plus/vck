@@ -6,16 +6,16 @@ import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import io.kotest.core.spec.style.FunSpec
+import at.asitplus.test.FreeSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 
-class OidvciInteropTest : FunSpec({
+class OidvciInteropTest : FreeSpec({
 
-    test("Parse EUDIW URL") {
+    "Parse EUDIW URL" {
         val url =
             "openid-credential-offer://?credential_offer=%7B%22credential_issuer%22%3A%22https%3A%2F%2Flocalhost%2Fpid-issuer%22%2C%22credential_configuration_ids%22%3A%5B%22eu.europa.ec.eudi.pid_vc_sd_jwt%22%5D%2C%22grants%22%3A%7B%22authorization_code%22%3A%7B%22authorization_server%22%3A%22https%3A%2F%2Flocalhost%2Fidp%2Frealms%2Fpid-issuer-realm%22%7D%7D%7D"
 
@@ -186,7 +186,7 @@ class OidvciInteropTest : FunSpec({
         // but is a single string
     }
 
-    test("parse EUDIW metadata") {
+    "parse EUDIW metadata" {
         val input = """
         {
             "issuer": "https://auth.eudiw.dev/realms/pid-issuer-realm",

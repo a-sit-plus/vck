@@ -16,6 +16,7 @@ import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
+import at.asitplus.test.FreeSpec
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued.Iso
@@ -51,7 +52,6 @@ import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import com.benasher44.uuid.uuid4
 import inited
 import io.github.aakira.napier.Napier
-import io.kotest.core.spec.style.FunSpec
 import io.kotest.engine.runBlocking
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldBeSingleton
@@ -72,7 +72,7 @@ import kotlin.time.Clock
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
 private val init= inited
-class OpenId4VciClientTest : FunSpec() {
+class OpenId4VciClientTest : FreeSpec() {
 
     lateinit var credentialKeyMaterial: KeyMaterial
     lateinit var dpopKeyMaterial: KeyMaterial
@@ -91,7 +91,7 @@ class OpenId4VciClientTest : FunSpec() {
             clientAuthKeyMaterial = EphemeralKeyWithoutCert()
         }
 
-        test("loadEuPidCredentialSdJwt") {
+        "loadEuPidCredentialSdJwt" {
             runBlocking {
                 val expectedFamilyName = uuid4().toString()
                 setup(
@@ -126,7 +126,7 @@ class OpenId4VciClientTest : FunSpec() {
             }
         }
 
-        test("loadEuPidCredentialIsoWithOffer") {
+        "loadEuPidCredentialIsoWithOffer" {
             runBlocking {
                 val expectedGivenName = uuid4().toString()
                 setup(

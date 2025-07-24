@@ -4,16 +4,16 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.test.FreeSpec
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.maps.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 
-class DeserializationTest : FunSpec({
+class DeserializationTest : FreeSpec({
 
-    test("OID4VCI  A.1.1. VC Signed as a JWT, Not Using JSON-LD") {
+    "OID4VCI  A.1.1. VC Signed as a JWT, Not Using JSON-LD" {
         val input = """
         {
             "credential_issuer": "test",
@@ -97,7 +97,7 @@ class DeserializationTest : FunSpec({
         credential.format shouldBe CredentialFormatEnum.JWT_VC
     }
 
-    test("OID4VCI  A.2. ISO mDL") {
+    "OID4VCI  A.2. ISO mDL" {
         val input = """
         {
             "credential_issuer": "test",
@@ -184,7 +184,7 @@ class DeserializationTest : FunSpec({
         claims.firstOrNull { it.path == listOf("org.iso.18013.5.1", "birth_date") }.shouldNotBeNull()
     }
 
-    test("OID4VCI  A.3. IETF SD-JWT VC") {
+    "OID4VCI  A.3. IETF SD-JWT VC" {
         val input = """
         {
             "credential_issuer": "test",
@@ -289,7 +289,7 @@ class DeserializationTest : FunSpec({
         claims.firstOrNull {it.path == listOf("address", "street_address") }.shouldNotBeNull()
     }
 
-    test("Idemia Interop Request") {
+    "Idemia Interop Request" {
         val input = """
         {
             "nonce": "iihlPsH0UbzC27dg7zHlli0aVZ/akpDNrafh86kgNRRfcrmL22TR8cZaPyyuFxlOT7U6qGlp400o482nJo7lgg==",

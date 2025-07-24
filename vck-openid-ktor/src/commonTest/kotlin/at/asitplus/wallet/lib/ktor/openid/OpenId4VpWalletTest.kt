@@ -28,6 +28,7 @@ import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
+import at.asitplus.test.FreeSpec
 import at.asitplus.wallet.lib.openid.*
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessIso
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessSdJwt
@@ -36,7 +37,6 @@ import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import inited
 import io.github.aakira.napier.Napier
-import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -59,7 +59,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes
 private val init= inited
-class OpenId4VpWalletTest : FunSpec() {
+class OpenId4VpWalletTest : FreeSpec() {
 
     lateinit var countdownLatch: Mutex
     lateinit var keyMaterial: KeyMaterial
@@ -72,7 +72,7 @@ class OpenId4VpWalletTest : FunSpec() {
             holderAgent = HolderAgent(keyMaterial)
         }
 
-        test("presentEuPidCredentialSdJwtDirectPost") {
+        "presentEuPidCredentialSdJwtDirectPost" {
             runBlocking {
                 val (wallet, url, mockEngine) = setup(
                     scheme = EuPidScheme,
@@ -96,7 +96,7 @@ class OpenId4VpWalletTest : FunSpec() {
         }
 
 
-        test(" presentEuPidCredentialIsoQuery") {
+        " presentEuPidCredentialIsoQuery" {
             runBlocking {
                 val (wallet, url, mockEngine) = setup(
                     scheme = EuPidScheme,
@@ -118,7 +118,7 @@ class OpenId4VpWalletTest : FunSpec() {
             }
         }
 
-        test("DC API") {
+        "DC API" {
             runBlocking {
                 val wallet = setupWallet(HttpClient().engine)
 
