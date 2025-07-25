@@ -409,8 +409,6 @@ data class AuthenticationRequestParameters(
         get() = clientIdScheme
             ?: clientId?.let { OpenIdConstants.ClientIdScheme.decodeFromClientId(it) }
 
-    fun serialize() = odcJsonSerializer.encodeToString(this)
-
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
