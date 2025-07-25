@@ -146,15 +146,16 @@ class OpenId4VpHolder(
      * [AuthenticationResponseResult].
      */
     suspend fun createAuthnResponse(input: String): KmmResult<AuthenticationResponseResult> = catching {
-        val parsedRequest = parseAuthenticationRequestParameters(input).getOrThrow()
-        createAuthnResponse(parsedRequest).getOrElse {
-            createAuthnErrorResponse(
-                OAuth2Error(
-                    error = INVALID_REQUEST,
-                    errorDescription = it.message,
-                    state = parsedRequest.parameters.state
-                ), request = parsedRequest
-            ).getOrThrow()
+        parseAuthenticationRequestParameters(input).getOrThrow().let { parsedRequest ->
+            createAuthnResponse(parsedRequest).getOrElse {
+                createAuthnErrorResponse(
+                    OAuth2Error(
+                        error = INVALID_REQUEST,
+                        errorDescription = it.message,
+                        state = parsedRequest.parameters.state
+                    ), request = parsedRequest
+                ).getOrThrow()
+            }
         }
     }
 
@@ -324,19 +325,19 @@ class OpenId4VpHolder(
                 }
 
                 is CredentialPresentationRequest.PresentationExchangeRequest -> {
-                    val matchingInputDescriptorCredentials = holder.matchInputDescriptorsAgainstCredentialStore(
+                    holder.matchInputDescriptorsAgainstCredentialStore(
                         inputDescriptors = it.presentationDefinition.inputDescriptors,
                         fallbackFormatHolder = it.fallbackFormatHolder,
                         filterById = preparationState.oid4vpDCAPIRequest?.credentialId
-                    ).getOrThrow()
-
-                    if (matchingInputDescriptorCredentials.values.find { it.size != 0 } == null) {
-                        throw OAuth2Exception.AccessDenied("No matching credential")
-                    } else {
-                        PresentationExchangeMatchingResult(
-                            presentationRequest = it,
-                            matchingInputDescriptorCredentials = matchingInputDescriptorCredentials
-                        )
+                    ).getOrThrow().let { matchInputDescriptors ->
+                        if (matchInputDescriptors.values.find { it.size != 0 } == null) {
+                            throw OAuth2Exception.AccessDenied("No matching credential")
+                        } else {
+                            PresentationExchangeMatchingResult(
+                                presentationRequest = it,
+                                matchingInputDescriptorCredentials = matchInputDescriptors
+                            )
+                        }
                     }
 
 

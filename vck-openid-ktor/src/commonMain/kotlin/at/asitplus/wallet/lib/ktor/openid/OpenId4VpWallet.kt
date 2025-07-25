@@ -69,7 +69,8 @@ class OpenId4VpWallet(
     sealed interface AuthenticationResult
 
     data class AuthenticationSuccess(val redirectUri: String? = null) : AuthenticationResult
-    data class AuthenticationForward(val authenticationResponseResult: AuthenticationResponseResult.DcApi) : AuthenticationResult
+    data class AuthenticationForward(val authenticationResponseResult: AuthenticationResponseResult.DcApi) :
+        AuthenticationResult
 
 
     private val client: HttpClient = HttpClient(engine) {
@@ -118,6 +119,7 @@ class OpenId4VpWallet(
         dcApiRequest: Oid4vpDCAPIRequest? = null
     ): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> =
         openId4VpHolder.parseAuthenticationRequestParameters(input, dcApiRequest)
+
     suspend fun createAuthnErrorResponse(
         error: OAuth2Error,
         request: RequestParametersFrom<AuthenticationRequestParameters>
@@ -176,7 +178,7 @@ class OpenId4VpWallet(
         credentialPresentation: CredentialPresentation,
     ): KmmResult<AuthenticationResult> = catching {
         Napier.i("startPresentation: $request")
-        val response = openId4VpHolder.finalizeAuthorizationResponse(
+        openId4VpHolder.finalizeAuthorizationResponse(
             request = request,
             clientMetadata = clientMetadata,
             credentialPresentation = credentialPresentation
@@ -189,11 +191,12 @@ class OpenId4VpWallet(
                 ), request = request
             )
             throw it
-        }
-        when (response) {
-            is AuthenticationResponseResult.Post -> postResponse(response)
-            is AuthenticationResponseResult.Redirect -> redirectResponse(response)
-            is AuthenticationResponseResult.DcApi -> AuthenticationForward(response)
+        }.let { response ->
+            when (response) {
+                is AuthenticationResponseResult.Post -> postResponse(response)
+                is AuthenticationResponseResult.Redirect -> redirectResponse(response)
+                is AuthenticationResponseResult.DcApi -> AuthenticationForward(response)
+            }
         }
     }
 
@@ -211,7 +214,10 @@ class OpenId4VpWallet(
         )
     }
 
-    suspend fun getMatchingCredentials(preparationState: AuthorizationResponsePreparationState, request: RequestParametersFrom<AuthenticationRequestParameters>) =
+    suspend fun getMatchingCredentials(
+        preparationState: AuthorizationResponsePreparationState,
+        request: RequestParametersFrom<AuthenticationRequestParameters>
+    ) =
         catchingUnwrapped {
             openId4VpHolder.getMatchingCredentials(preparationState).getOrElse {
                 createAuthnErrorResponse(
