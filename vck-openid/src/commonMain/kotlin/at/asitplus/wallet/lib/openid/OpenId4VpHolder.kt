@@ -323,14 +323,24 @@ class OpenId4VpHolder(
                     )
                 }
 
-                is CredentialPresentationRequest.PresentationExchangeRequest -> PresentationExchangeMatchingResult(
-                    presentationRequest = it,
-                    matchingInputDescriptorCredentials = holder.matchInputDescriptorsAgainstCredentialStore(
+                is CredentialPresentationRequest.PresentationExchangeRequest -> {
+                    val matchingInputDescriptorCredentials = holder.matchInputDescriptorsAgainstCredentialStore(
                         inputDescriptors = it.presentationDefinition.inputDescriptors,
                         fallbackFormatHolder = it.fallbackFormatHolder,
                         filterById = preparationState.oid4vpDCAPIRequest?.credentialId
                     ).getOrThrow()
-                )
+
+                    if (matchingInputDescriptorCredentials.values.find { it.size != 0 } == null) {
+                        throw OAuth2Exception.AccessDenied("No matching credential")
+                    } else {
+                        PresentationExchangeMatchingResult(
+                            presentationRequest = it,
+                            matchingInputDescriptorCredentials = matchingInputDescriptorCredentials
+                        )
+                    }
+
+
+                }
 
                 null -> TODO()
             }
