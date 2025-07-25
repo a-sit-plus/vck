@@ -211,8 +211,19 @@ class OpenId4VpWallet(
         )
     }
 
-    suspend fun getMatchingCredentials(preparationState: AuthorizationResponsePreparationState) =
-        openId4VpHolder.getMatchingCredentials(preparationState)
+    suspend fun getMatchingCredentials(preparationState: AuthorizationResponsePreparationState, request: RequestParametersFrom<AuthenticationRequestParameters>) =
+        catchingUnwrapped {
+            openId4VpHolder.getMatchingCredentials(preparationState).getOrElse {
+                createAuthnErrorResponse(
+                    error = OAuth2Error(
+                        error = INVALID_REQUEST,
+                        errorDescription = it.message,
+                        state = request.parameters.state
+                    ), request = request
+                )
+                throw it
+            }
+        }
 
     /**
      * Our implementation of ktor's [FormDataContent], but with [contentType] without charset appended,
