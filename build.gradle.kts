@@ -28,16 +28,6 @@ tasks.getByName("dokkaHtmlMultiModule") {
     }
 }
 
-//TODO REMOVE ME ONCE mDL and eupid are updated
-subprojects {
-    repositories {
-        maven {
-            url = uri(layout.projectDirectory.dir("..").dir("repo"))
-            name = "local"
-        }
-    }
-}
-
 val artifactVersion: String by extra
 group = "at.asitplus.wallet"
 version = artifactVersion
