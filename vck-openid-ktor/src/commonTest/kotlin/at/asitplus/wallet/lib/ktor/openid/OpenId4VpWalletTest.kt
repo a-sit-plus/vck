@@ -252,8 +252,9 @@ class OpenId4VpWalletTest : FunSpec() {
 
                 val preparationState =
                     wallet.startAuthorizationResponsePreparation(requestParametersFrom).getOrThrow()
-                val matching = wallet.getMatchingCredentials(preparationState)
-                Napier.e("$matching")
+                shouldThrow<OAuth2Exception.AccessDenied> {
+                    wallet.getMatchingCredentials(preparationState, request = requestParametersFrom).getOrThrow()
+                }
             }
         }
     }
