@@ -37,6 +37,12 @@ Release 5.8.0:
      - `VcFallbackCredentialScheme`
      - `IsoMdocFallbackCredentialScheme`
    - Note that these schemes are not resolved automatically, and need to be used explicitly in client applications
+ - Respond to failed authentication request with error:
+   - In class `OpenId4VpWallet` add method `createAuthnErrorResponse`
+   - In data class `OAuth2Error` add member `state`
+   - In data class `AuthenticationResponse` add member `error`, make `params` optional
+   - In class `AuthenticationResponseFactory` add member `signError`
+   - In class `OpenId4VpHolder` add member `signError`, add method `createAuthnErrorResponse`
  - SD-JWT:
    - Add data class for [SD-JWT VC Type metadata](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-10.html#name-sd-jwt-vc-type-metadata) in `SdJwtTypeMetadata`
    - Update signum to provide SD-JWT VC Type metadata in `vctm` in the header of a SD-JWT

@@ -5,19 +5,35 @@ import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.dcapi.request.DCAPIRequest
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.openid.*
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationResponseParameters
+import at.asitplus.openid.IdToken
+import at.asitplus.openid.IdTokenType
+import at.asitplus.openid.OAuth2AuthorizationServerMetadata
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_JWK
 import at.asitplus.openid.OpenIdConstants.ClientIdScheme
+import at.asitplus.openid.OpenIdConstants.Errors.INVALID_REQUEST
 import at.asitplus.openid.OpenIdConstants.PREFIX_DID_KEY
 import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
+import at.asitplus.openid.RelyingPartyMetadata
+import at.asitplus.openid.RequestObjectParameters
+import at.asitplus.openid.RequestParameters
+import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.openid.SupportedAlgorithmsContainer
+import at.asitplus.openid.VpFormatsSupported
+import at.asitplus.openid.extractDcApiRequest
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
@@ -36,11 +52,15 @@ import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.MapStore
+import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
+import at.asitplus.dif.ConstraintField
+import at.asitplus.jsonpath.core.NodeList
+import at.asitplus.openid.dcql.DCQLQueryResult
 
 /**
  * Combines Verifiable Presentations with OpenId Connect.
@@ -55,6 +75,7 @@ class OpenId4VpHolder(
     private val signIdToken: SignJwtFun<IdToken> = SignJwt(keyMaterial, JwsHeaderJwk()),
     private val signJarm: SignJwtFun<AuthenticationResponseParameters> = SignJwt(keyMaterial, JwsHeaderJwk()),
     private val encryptJarm: EncryptJweFun = EncryptJwe(keyMaterial),
+    private val signError: SignJwtFun<OAuth2Error> = SignJwt(keyMaterial, JwsHeaderJwk()),
     private val supportedAlgorithms: Set<JwsAlgorithm> = setOfNotNull(JwsAlgorithm.Signature.ES256),
     private val signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> =
         SignCoseDetached(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
@@ -82,7 +103,7 @@ class OpenId4VpHolder(
 
     private val supportedAlgorithmsStrings = supportedAlgorithms.map { it.identifier }.toSet()
     private val authorizationRequestValidator = AuthorizationRequestValidator(walletNonceMapStore)
-    private val authenticationResponseFactory = AuthenticationResponseFactory(signJarm, encryptJarm)
+    private val authenticationResponseFactory = AuthenticationResponseFactory(signJarm, signError, encryptJarm)
 
     val metadata: OAuth2AuthorizationServerMetadata by lazy {
         OAuth2AuthorizationServerMetadata(
@@ -124,10 +145,19 @@ class OpenId4VpHolder(
      * to create [AuthenticationResponseResult] that can be sent back to the Verifier, see
      * [AuthenticationResponseResult].
      */
-    suspend fun createAuthnResponse(input: String): KmmResult<AuthenticationResponseResult> =
-        catching {
-            createAuthnResponse(parseAuthenticationRequestParameters(input).getOrThrow()).getOrThrow()
+    suspend fun createAuthnResponse(input: String): KmmResult<AuthenticationResponseResult> = catching {
+        parseAuthenticationRequestParameters(input).getOrThrow().let { parsedRequest ->
+            createAuthnResponse(parsedRequest).getOrElse {
+                createAuthnErrorResponse(
+                    OAuth2Error(
+                        error = INVALID_REQUEST,
+                        errorDescription = it.message,
+                        state = parsedRequest.parameters.state
+                    ), request = parsedRequest
+                ).getOrThrow()
+            }
         }
+    }
 
     /**
      * Pass in the URL sent by the Verifier (containing the [at.asitplus.openid.AuthenticationRequestParameters] as query parameters),
@@ -143,6 +173,24 @@ class OpenId4VpHolder(
             requestParser.parseRequestParameters(input, dcApiRequest)
                 .getOrThrow() as RequestParametersFrom<AuthenticationRequestParameters>
         }
+
+    suspend fun createAuthnErrorResponse(
+        error: OAuth2Error,
+        request: RequestParametersFrom<AuthenticationRequestParameters>
+    ): KmmResult<AuthenticationResponseResult> = catching {
+        val clientMetadata = request.parameters.loadClientMetadata()
+        val jsonWebKeys = clientMetadata?.jsonWebKeySet?.keys
+        val response = AuthenticationResponse(
+            params = null,
+            clientMetadata = clientMetadata,
+            jsonWebKeys = jsonWebKeys,
+            mdocGeneratedNonce = null,
+            error = error
+        )
+
+        authenticationResponseFactory.createAuthenticationResponse(request, response)
+    }
+
 
     /**
      * Pass in the deserialized [AuthenticationRequestParameters], which were either encoded as query params,
@@ -261,6 +309,44 @@ class OpenId4VpHolder(
             resultContainer?.mdocGeneratedNonce
         )
     }
+
+    suspend fun getMatchingCredentials(
+        preparationState: AuthorizationResponsePreparationState) =
+        catchingUnwrapped {
+            when (val it = preparationState.credentialPresentationRequest) {
+                is CredentialPresentationRequest.DCQLRequest -> {
+                    val dcqlQueryResult = holder.matchDCQLQueryAgainstCredentialStore(
+                        it.dcqlQuery,
+                        preparationState.oid4vpDCAPIRequest?.credentialId
+                    ).getOrThrow()
+                    DCQLMatchingResult(
+                        presentationRequest = it,
+                        dcqlQueryResult
+                    )
+                }
+
+                is CredentialPresentationRequest.PresentationExchangeRequest -> {
+                    holder.matchInputDescriptorsAgainstCredentialStore(
+                        inputDescriptors = it.presentationDefinition.inputDescriptors,
+                        fallbackFormatHolder = it.fallbackFormatHolder,
+                        filterById = preparationState.oid4vpDCAPIRequest?.credentialId
+                    ).getOrThrow().let { matchInputDescriptors ->
+                        if (matchInputDescriptors.values.find { it.size != 0 } == null) {
+                            throw OAuth2Exception.AccessDenied("No matching credential")
+                        } else {
+                            PresentationExchangeMatchingResult(
+                                presentationRequest = it,
+                                matchingInputDescriptorCredentials = matchInputDescriptors
+                            )
+                        }
+                    }
+
+
+                }
+
+                null -> TODO()
+            }
+        }
 
 
     /*
