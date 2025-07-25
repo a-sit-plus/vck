@@ -310,7 +310,8 @@ class OpenId4VpHolder(
         )
     }
 
-    suspend fun getMatchingCredentials(preparationState: AuthorizationResponsePreparationState) =
+    suspend fun getMatchingCredentials(
+        preparationState: AuthorizationResponsePreparationState) =
         catchingUnwrapped {
             when (val it = preparationState.credentialPresentationRequest) {
                 is CredentialPresentationRequest.DCQLRequest -> {
