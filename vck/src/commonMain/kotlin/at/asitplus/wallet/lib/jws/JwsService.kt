@@ -49,6 +49,11 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
 import kotlinx.serialization.SerializationStrategy
 
 
+/** Modify the [JwsHeader] before it being signed. */
+fun interface JwsHeaderModifierFun {
+    suspend operator fun invoke(it: JwsHeader): JwsHeader
+}
+
 /** How to identify the key material in a [JwsHeader] */
 fun interface JwsHeaderIdentifierFun {
     suspend operator fun invoke(it: JwsHeader, keyMaterial: KeyMaterial): JwsHeader
@@ -104,6 +109,16 @@ fun interface SignJwtFun<P : Any> {
     ): KmmResult<JwsSigned<P>>
 }
 
+/** Create a [JwsSigned], setting [JwsHeader.type] to the specified value, applying the header modifier. */
+fun interface SignJwtExtFun<P : Any> {
+    suspend operator fun invoke(
+        type: String?,
+        payload: P,
+        serializer: SerializationStrategy<P>,
+        additionalHeaderModifier: JwsHeaderModifierFun,
+    ): KmmResult<JwsSigned<P>>
+}
+
 /** Create a [JwsSigned], setting [JwsHeader.type] to the specified value and applying [JwsHeaderIdentifierFun]. */
 class SignJwt<P : Any>(
     val keyMaterial: KeyMaterial,
@@ -121,6 +136,32 @@ class SignJwt<P : Any>(
             headerModifier(it, keyMaterial)
         }
         val plainSignatureInput = prepareJwsSignatureInput(header, payload, serializer, vckJsonSerializer)
+        val signature = keyMaterial.sign(plainSignatureInput).asKmmResult().getOrThrow()
+        JwsSigned(header, payload, signature, plainSignatureInput)
+    }
+}
+
+/** Create a [JwsSigned], setting [JwsHeader.type] to the specified value and applying [JwsHeaderIdentifierFun]. */
+class SignJwtExt<P : Any>(
+    val keyMaterial: KeyMaterial,
+    val headerModifier: JwsHeaderIdentifierFun,
+) : SignJwtExtFun<P> {
+    override suspend operator fun invoke(
+        type: String?,
+        payload: P,
+        serializer: SerializationStrategy<P>,
+        additionalHeaderModifier: JwsHeaderModifierFun,
+    ): KmmResult<JwsSigned<P>> = catching {
+        val header = JwsHeader(
+            algorithm = keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
+            type = type,
+        ).let {
+            headerModifier(it, keyMaterial)
+        }.let {
+            additionalHeaderModifier(it)
+        }
+        val plainSignatureInput =
+            prepareJwsSignatureInput(header, payload, serializer, vckJsonSerializer)
         val signature = keyMaterial.sign(plainSignatureInput).asKmmResult().getOrThrow()
         JwsSigned(header, payload, signature, plainSignatureInput)
     }

@@ -3,7 +3,7 @@ package at.asitplus.openid
 import at.asitplus.dcapi.request.DCAPIRequest
 import at.asitplus.openid.RequestParametersFrom.Json
 import at.asitplus.openid.RequestParametersFrom.JwsSigned
-import io.ktor.http.*
+import io.ktor.http.Url
 import kotlinx.serialization.Serializable
 
 @Serializable(with = RequestParametersFromSerializer::class)

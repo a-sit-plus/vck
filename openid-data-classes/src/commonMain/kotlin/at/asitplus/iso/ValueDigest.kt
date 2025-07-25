@@ -7,7 +7,7 @@ import kotlinx.serialization.builtins.ByteArraySerializer
 
 /**
  * Convenience class with a custom serializer ([ValueDigestListSerializer]) to prevent
- * usage of the type `Map<String, Map<UInt, ByteArray>>` in [at.asitplus.wallet.lib.iso.MobileSecurityObject.valueDigests].
+ * usage of the type `Map<String, Map<UInt, ByteArray>>` in [MobileSecurityObject.valueDigests].
  */
 data class ValueDigest(
     val key: UInt,

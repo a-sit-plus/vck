@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.catching
-import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.TokenResponseParameters

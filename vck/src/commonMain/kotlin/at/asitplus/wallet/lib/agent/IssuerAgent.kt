@@ -3,6 +3,8 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.iso.DeviceKeyInfo
+import at.asitplus.iso.IssuerSigned
+import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.ValidityInfo
 import at.asitplus.iso.ValueDigest
 import at.asitplus.iso.ValueDigestList
@@ -13,14 +15,28 @@ import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
-import at.asitplus.wallet.lib.cbor.*
-import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.cbor.CoseHeaderCertificate
+import at.asitplus.wallet.lib.cbor.CoseHeaderKeyId
+import at.asitplus.wallet.lib.cbor.CoseHeaderNone
+import at.asitplus.wallet.lib.cbor.SignCose
+import at.asitplus.wallet.lib.cbor.SignCoseFun
+import at.asitplus.wallet.lib.data.SdJwtConstants
+import at.asitplus.wallet.lib.data.Status
+import at.asitplus.wallet.lib.data.VerifiableCredential
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
-import at.asitplus.wallet.lib.iso.IssuerSigned
-import at.asitplus.wallet.lib.iso.MobileSecurityObject
-import at.asitplus.wallet.lib.jws.*
+import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
+import at.asitplus.wallet.lib.jws.JwsHeaderKeyId
+import at.asitplus.wallet.lib.jws.SdJwtSigned
+import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.SignJwtExt
+import at.asitplus.wallet.lib.jws.SignJwtExtFun
+import at.asitplus.wallet.lib.jws.SignJwtFun
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
@@ -52,9 +68,9 @@ class IssuerAgent(
     private val clock: Clock = Clock.System,
     override val cryptoAlgorithms: Set<SignatureAlgorithm> = setOf(keyMaterial.signatureAlgorithm),
     private val timePeriodProvider: TimePeriodProvider = FixedTimePeriodProvider,
-    /** The identifier used in `issuer` properties of issued credentials. Note that for SD-JWT VC this must be a URI. */
+    /** The identifier used in `issuer` properties of credentials. Note that for SD-JWT VC this must be a URI. */
     private val identifier: String = keyMaterial.identifier,
-    private val signIssuedSdJwt: SignJwtFun<JsonObject> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
+    private val signIssuedSdJwt: SignJwtExtFun<JsonObject> = SignJwtExt(keyMaterial, JwsHeaderCertOrJwk()),
     private val signIssuedVc: SignJwtFun<VerifiableCredentialJws> = SignJwt(keyMaterial, JwsHeaderKeyId()),
     @Deprecated("Removed, see `StatusListAgent`")
     private val signStatusListJwt: SignJwtFun<StatusListTokenPayload> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
@@ -67,7 +83,6 @@ class IssuerAgent(
     // TODO Remove > 5.8.0
     StatusListIssuer by StatusListAgent(
         keyMaterial = keyMaterial,
-        validator = validator,
         issuerCredentialStore = issuerCredentialStore,
         statusListBaseUrl = statusListBaseUrl,
         statusListAggregationUrl = statusListAggregationUrl,
@@ -235,6 +250,7 @@ class IssuerAgent(
             JwsContentTypeConstants.SD_JWT,
             entireObject,
             JsonObject.serializer(),
+            credential.modifyHeader,
         ).onFailure {
             Napier.w("issueVcSd error", it)
         }.getOrThrow()

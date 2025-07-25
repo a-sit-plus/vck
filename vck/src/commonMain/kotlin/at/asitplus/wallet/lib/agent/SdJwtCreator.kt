@@ -5,6 +5,7 @@ import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
+import at.asitplus.wallet.lib.data.fromAnyValue
 import kotlinx.serialization.json.*
 import kotlin.random.Random
 
@@ -119,7 +120,7 @@ object SdJwtCreator {
     )
 
     /**
-     * See [registered JWT claims](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-08.html#section-3.2.2.2)
+     * See [registered JWT claims](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-10.html#section-3.2.2.2)
      */
     private val notDisclosableClaims = listOf(
         "iss", "nbf", "exp", "cnf", "vct", "status"
@@ -130,7 +131,8 @@ object SdJwtCreator {
     )
 
     /**
-     * Honors list of [registered JWT claims](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-08.html#section-3.2.2.2)
+     * Honors list of
+     * [registered JWT claims](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-10.html#section-3.2.2.2)
      * and prevents claims of that names to be selectively disclosed,
      * as well as [disallowedNames] which covers constants used in the SD-JWT VC itself.
      */
@@ -170,6 +172,6 @@ object SdJwtCreator {
         SelectiveDisclosureItem(Random.nextBytes(32), name, claimValue)
 
     private fun ClaimToBeIssued.toSdItem() =
-        SelectiveDisclosureItem(Random.nextBytes(32), name, value)
+        SelectiveDisclosureItem.fromAnyValue(Random.nextBytes(32), name, value)
 
 }

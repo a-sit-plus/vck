@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.agent.validation.mdoc
 
+import at.asitplus.iso.IssuerSigned
 import at.asitplus.wallet.lib.agent.validation.TimeScope
-import at.asitplus.wallet.lib.iso.IssuerSigned
 import io.github.aakira.napier.Napier
 
 class MdocTimelinessValidator(

@@ -13,9 +13,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 
-@Deprecated("Renamed", ReplaceWith("SignHashRequestParameters"))
-typealias SignHashParameters = SignHashRequestParameters
-
 /**
  * CSC API v2.0.0.2
  * Data class defined in Ch. 11.10

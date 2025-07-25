@@ -8,6 +8,7 @@ import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.supreme.signature
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
+import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
@@ -38,24 +39,28 @@ class ValidatorVcTest : FreeSpec() {
     private lateinit var issuerSignVc: SignJwtFun<VerifiableCredentialJws>
     private lateinit var issuerKeyMaterial: KeyMaterial
     private lateinit var verifierKeyMaterial: KeyMaterial
-    private lateinit var validator: Validator
+    private lateinit var validator: ValidatorVcJws
 
     private val revocationListUrl: String = "https://wallet.a-sit.at/backend/credentials/status/1"
 
     init {
         beforeEach {
-            validator = Validator(
-                resolveStatusListToken = {
-                    if (Random.nextBoolean()) StatusListToken.StatusListJwt(
-                        statusListIssuer.issueStatusListJwt(),
-                        resolvedAt = Clock.System.now(),
-                    ) else {
-                        StatusListToken.StatusListCwt(
-                            statusListIssuer.issueStatusListCwt(),
-                            resolvedAt = Clock.System.now(),
-                        )
-                    }
-                },
+            validator = ValidatorVcJws(
+                validator = Validator(
+                    tokenStatusResolver = TokenStatusResolverImpl(
+                        resolveStatusListToken = {
+                            if (Random.nextBoolean()) StatusListToken.StatusListJwt(
+                                statusListIssuer.issueStatusListJwt(),
+                                resolvedAt = Clock.System.now(),
+                            ) else {
+                                StatusListToken.StatusListCwt(
+                                    statusListIssuer.issueStatusListCwt(),
+                                    resolvedAt = Clock.System.now(),
+                                )
+                            }
+                        },
+                    )
+                )
             )
             issuerCredentialStore = InMemoryIssuerCredentialStore()
             issuerKeyMaterial = EphemeralKeyWithoutCert()

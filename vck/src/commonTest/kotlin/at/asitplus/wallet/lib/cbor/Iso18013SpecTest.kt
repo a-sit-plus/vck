@@ -2,10 +2,10 @@ package at.asitplus.wallet.lib.cbor
 
 import at.asitplus.iso.CborCredentialSerializer
 import at.asitplus.iso.DeviceRequest
-import at.asitplus.wallet.lib.iso.DeviceResponse
+import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.IssuerSignedList
 import at.asitplus.iso.ItemsRequestList
-import at.asitplus.wallet.lib.iso.MobileSecurityObject
+import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.ValueDigestList
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer

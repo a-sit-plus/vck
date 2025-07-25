@@ -44,7 +44,7 @@ Notable features for multiplatform are:
 
 Some parts for increased multiplatform support have been extracted into separate repositories:
  - Reimplementation of Kotlin's [Result](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-result/) called [KmmResult](https://github.com/a-sit-plus/kmmresult) for easy use from Swift code (since inline classes are [not supported](https://kotlinlang.org/docs/native-objc-interop.html#unsupported)).
- - Several crypto datatypes (including an ASN.1 parser and encoder), as well as a mulitplatform crypto library, called [Signum](https://github.com/a-sit-plus/signum).
+ - Several crypto datatypes (including an ASN.1 parser and encoder), as well as a multiplatform crypto library, called [Signum](https://github.com/a-sit-plus/signum).
 
 The main entry point for applications is an instance of `HolderAgent`, `VerifierAgent` or `IssuerAgent`, according to the nomenclature from the [W3C VC Data Model](https://w3c.github.io/vc-data-model/).
 
@@ -94,7 +94,7 @@ implementation("at.asitplus.wallet:vck-rqes:$version")
 ```
 
 Everything else (serialization, crypto through Signum, …) will be taken care of.
-Therefore, **do not** manually add serialization dependencies! In case you are using this project in a codebase with dependencies on `kotlinx-serialization`, plese use the `vck-versionCatalog` artefact to keep versions in sync.
+Therefore, **do not** manually add serialization dependencies! In case you are using this project in a codebase with dependencies on `kotlinx-serialization`, please use the `vck-versionCatalog` artefact to keep versions in sync.
 If you
 As discovered in [#226](https://github.com/a-sit-plus/vck/issues/226), using the deprecated `io.spring.dependency-management` will cause issues.
 

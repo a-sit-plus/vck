@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.agent.validation.sdJwt
 
 import at.asitplus.KmmResult
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.wallet.lib.agent.SdJwtValidator
+import at.asitplus.wallet.lib.agent.SdJwtDecoded
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.jws.SdJwtSigned
@@ -39,7 +39,7 @@ data class SdJwtInputValidator(
         }
 
         val payloadJsonValidationSummary = sdJwtSigned.getPayloadAsJsonObject().map { jsonObject ->
-            SdJwtValidator(sdJwtSigned)
+            SdJwtDecoded(sdJwtSigned)
         }.onFailure { ex ->
             Napier.w("verifySdJwt: Could not parse payload", ex)
         }

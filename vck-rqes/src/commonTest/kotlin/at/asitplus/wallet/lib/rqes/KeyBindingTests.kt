@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.rqes
 
+import at.asitplus.iso.sha256
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.contentEquals
@@ -9,13 +10,24 @@ import at.asitplus.rqes.collection_entries.QesAuthorization
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.eupid.EuPidScheme
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.PresentationRequestParameters
+import at.asitplus.wallet.lib.agent.ValidatorSdJwt
+import at.asitplus.wallet.lib.agent.VerifierAgent
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
-import at.asitplus.wallet.lib.openid.*
+import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
+import at.asitplus.wallet.lib.openid.AuthnResponseResult
+import at.asitplus.wallet.lib.openid.ClientIdScheme
+import at.asitplus.wallet.lib.openid.OpenId4VpHolder
+import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.CreationOptions.Query
 import at.asitplus.wallet.lib.rqes.helper.DummyCredentialDataProvider
 import com.benasher44.uuid.bytes
@@ -278,7 +290,7 @@ class KeyBindingTests : FreeSpec({
                 stateToAuthnRequestStore = externalMapStore,
                 verifier = VerifierAgent(
                     identifier = clientIdScheme.clientId,
-                    validator = Validator(verifyTransactionData = false)
+                    validatorSdJwt = ValidatorSdJwt(verifyTransactionData = false)
                 )
             )
 
@@ -300,8 +312,8 @@ class KeyBindingTests : FreeSpec({
             ).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
-            val result = lenientVerifier.validateAuthnResponse(malignResponse.params)
-            result.shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
+            lenientVerifier.validateAuthnResponse(malignResponse.params)
+                .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
         }
 
         "Hash of transaction data is not changed during processing" {

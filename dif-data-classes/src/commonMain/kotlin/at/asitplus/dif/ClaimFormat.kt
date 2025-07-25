@@ -1,6 +1,5 @@
 package at.asitplus.dif
 
-import at.asitplus.dif.ClaimFormat.entries
 import kotlinx.serialization.Serializable
 
 /**

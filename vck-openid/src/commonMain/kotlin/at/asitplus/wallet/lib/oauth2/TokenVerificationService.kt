@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oauth2
 
+import at.asitplus.iso.sha256
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.OpenIdConstants.TOKEN_PREFIX_BEARER
@@ -11,7 +12,6 @@ import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
@@ -196,14 +196,14 @@ class BearerTokenVerificationService(
 
     override suspend fun validateRefreshToken(
         refreshToken: String,
-        request: RequestInfo?
+        request: RequestInfo?,
     ): String {
         throw InvalidToken("Refresh tokens are not supported by this verifier")
     }
 
     override suspend fun validateTokenExtractUser(
         authorizationHeader: String,
-        request: RequestInfo?
+        request: RequestInfo?,
     ): ValidatedAccessToken = if (authorizationHeader.startsWith(TOKEN_TYPE_BEARER, ignoreCase = true)) {
         val token = authorizationHeader.removePrefix(TOKEN_PREFIX_BEARER).split(" ").last()
         if (!nonceService.verifyNonce(token)) { // when to remove them?

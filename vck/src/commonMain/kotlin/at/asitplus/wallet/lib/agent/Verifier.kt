@@ -1,17 +1,22 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.iso.DeviceResponse
+import at.asitplus.iso.Document
+import at.asitplus.iso.IssuerSigned
+import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.jwkId
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.validation.CredentialFreshnessSummary
-import at.asitplus.wallet.lib.data.*
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
-import at.asitplus.wallet.lib.iso.DeviceResponse
-import at.asitplus.wallet.lib.iso.Document
-import at.asitplus.wallet.lib.iso.IssuerSigned
-import at.asitplus.wallet.lib.iso.MobileSecurityObject
+import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.IsoDocumentParsed
+import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
+import at.asitplus.wallet.lib.data.VerifiablePresentationJws
+import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import kotlinx.serialization.json.JsonObject
 
@@ -45,43 +50,58 @@ interface Verifier {
      * Verifies a presentation of some credentials in [ConstantIndex.CredentialRepresentation.ISO_MDOC] from a holder,
      * that shall include the [challenge] (sent by this verifier).
      */
+    @Deprecated(
+        "Use [verifyPresentationIsoMdoc] without `challenge` instead",
+        ReplaceWith("verifyPresentationIsoMdoc(input, verifyDocument)")
+    )
     suspend fun verifyPresentationIsoMdoc(
         input: DeviceResponse,
         challenge: String,
         verifyDocument: suspend (MobileSecurityObject, Document) -> Boolean,
     ): VerifyPresentationResult
 
+    /**
+     * Verifies a presentation of some credentials in [ConstantIndex.CredentialRepresentation.ISO_MDOC] from a holder,
+     * with a challenge validated by the callback in [verifyDocument] (i.e. device authentication for OpenID4VP).
+     */
+    suspend fun verifyPresentationIsoMdoc(
+        input: DeviceResponse,
+        verifyDocument: suspend (MobileSecurityObject, Document) -> Boolean,
+    ): VerifyPresentationResult
+
     sealed class VerifyPresentationResult {
-        data class Success(val vp: VerifiablePresentationParsed) : VerifyPresentationResult()
+        data class Success(
+            val vp: VerifiablePresentationParsed,
+        ) : VerifyPresentationResult()
+
         data class SuccessSdJwt(
             val sdJwtSigned: SdJwtSigned,
             val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
             val reconstructedJsonObject: JsonObject,
             val disclosures: Collection<SelectiveDisclosureItem>,
             val freshnessSummary: CredentialFreshnessSummary.SdJwt,
-        ) : VerifyPresentationResult() {
-            @Deprecated("Replaced with more expressive freshness information", ReplaceWith("""freshnessSummary.let { when(it.tokenStatusValidationResult) {
-                is TokenStatusValidationResult.Rejected -> null
-                is TokenStatusValidationResult.Invalid -> true
-                is TokenStatusValidationResult.Valid -> false
-            }}"""))
-            val isRevoked: Boolean?
-                get() = when(freshnessSummary.tokenStatusValidationResult) {
-                    is TokenStatusValidationResult.Rejected -> null
-                    is TokenStatusValidationResult.Invalid -> true
-                    is TokenStatusValidationResult.Valid -> false
-                }
-        }
+        ) : VerifyPresentationResult()
 
-        data class SuccessIso(val documents: List<IsoDocumentParsed>) : VerifyPresentationResult()
-        data class InvalidStructure(val input: String) : VerifyPresentationResult()
-        data class ValidationError(val cause: Throwable) : VerifyPresentationResult() {
+        data class SuccessIso(
+            val documents: List<IsoDocumentParsed>,
+        ) : VerifyPresentationResult()
+
+        data class InvalidStructure(
+            val input: String,
+        ) : VerifyPresentationResult()
+
+        data class ValidationError(
+            val cause: Throwable,
+        ) : VerifyPresentationResult() {
             constructor(message: String) : this(Throwable(message))
         }
     }
 
     sealed class VerifyCredentialResult {
-        data class SuccessJwt(val jws: VerifiableCredentialJws) : VerifyCredentialResult()
+        data class SuccessJwt(
+            val jws: VerifiableCredentialJws,
+        ) : VerifyCredentialResult()
+
         data class SuccessSdJwt(
             val sdJwtSigned: SdJwtSigned,
             val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
@@ -90,9 +110,17 @@ interface Verifier {
             val disclosures: Map<String, SelectiveDisclosureItem>,
         ) : VerifyCredentialResult()
 
-        data class SuccessIso(val issuerSigned: IssuerSigned) : VerifyCredentialResult()
-        data class InvalidStructure(val input: String) : VerifyCredentialResult()
-        data class ValidationError(val cause: Throwable) : VerifyCredentialResult() {
+        data class SuccessIso(
+            val issuerSigned: IssuerSigned,
+        ) : VerifyCredentialResult()
+
+        data class InvalidStructure(
+            val input: String,
+        ) : VerifyCredentialResult()
+
+        data class ValidationError(
+            val cause: Throwable,
+        ) : VerifyCredentialResult() {
             constructor(message: String) : this(Throwable(message))
         }
     }

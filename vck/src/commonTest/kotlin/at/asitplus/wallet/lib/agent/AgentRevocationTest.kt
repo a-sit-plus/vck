@@ -13,6 +13,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
+import at.asitplus.wallet.lib.extensions.toView
 import io.kotest.assertions.fail
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -136,7 +137,7 @@ class AgentRevocationTest : FreeSpec({
         }
         result.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-        val vcJws = Validator().verifyVcJws(result.signedVcJws, verifierKeyMaterial.publicKey)
+        val vcJws = ValidatorVcJws().verifyVcJws(result.signedVcJws, verifierKeyMaterial.publicKey)
         vcJws.shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
         val credentialStatus = vcJws.jws.vc.credentialStatus
         credentialStatus.shouldNotBeNull()
@@ -175,7 +176,7 @@ private fun verifyStatusList(statusList: StatusList, expectedRevokedIndexes: Lis
         expectedRevocationStatuses[it.toInt()] = TokenStatus.Invalid
     }
     expectedRevocationStatuses.forEachIndexed { index, it ->
-        statusList.view[index.toULong()] shouldBe it
+        statusList.toView()[index.toULong()] shouldBe it
     }
 }
 

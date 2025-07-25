@@ -143,9 +143,14 @@ class CredentialIssuer(
     }
 
     /**
-     * Serve this result JSON-serialized under `/.well-known/jwt-vc-issuer`
-     * (see [OpenIdConstants.PATH_WELL_KNOWN_JWT_VC_ISSUER_METADATA]),
-     * so that verifiers can look up the keys used to sign credentials.
+     * Metadata about the credential issuer in
+     * [SD-JWT VC](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-10.html#name-jwt-vc-issuer-metadata)
+     *
+     * Issuers publishing JWT VC Issuer Metadata MUST make a JWT VC Issuer Metadata configuration available at the
+     * location formed by inserting the well-known string `/.well-known/jwt-vc-issuer` (see
+     * [OpenIdConstants.PATH_WELL_KNOWN_JWT_VC_ISSUER_METADATA]) between the host component and the path component (if
+     * any) of the `iss` claim value in the JWT. The iss MUST be a case-sensitive URL using the HTTPS scheme that
+     * contains scheme, host and, optionally, port number and path components, but no query or fragment components.
      */
     val jwtVcMetadata: JwtVcIssuerMetadata by lazy {
         JwtVcIssuerMetadata(

@@ -1,10 +1,11 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.iso.IssuerSignedItem
+import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialSubject
-import at.asitplus.iso.IssuerSignedItem
-import at.asitplus.openid.OidcUserInfoExtended
+import at.asitplus.wallet.lib.jws.JwsHeaderModifierFun
 import kotlinx.datetime.Instant
 
 sealed class CredentialToBeIssued {
@@ -27,6 +28,8 @@ sealed class CredentialToBeIssued {
         override val scheme: ConstantIndex.CredentialScheme,
         override val subjectPublicKey: CryptoPublicKey,
         override val userInfo: OidcUserInfoExtended,
+        /** Implement to add type metadata field */
+        val modifyHeader: JwsHeaderModifierFun = JwsHeaderModifierFun { it },
     ) : CredentialToBeIssued()
 
     data class Iso(

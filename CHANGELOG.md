@@ -11,6 +11,14 @@ Release 5.8.0:
    - Add `SimpleQtspAuthorizationService` class
    - Remove `AuthorizationDetail` matching and validation from class to interface function
  - Code organization:
+   - Remove code elements deprecated in `5.7.0`
+   - Remove all remaining `serialize()` and `deserialize()` methods in data classes
+   - Move data classes for token status into artifact `openid-data-classes`, keeping the namespace
+   - Move data classes for VC and SD-JWT into artifact `openid-data-classes`, keeping the namespace
+ - Refactoring of ISO data classes:
+   - Move data classes from `vck` to `openid-data-classes`
+   - List of classes moved: `MobileSecurityObject`, `Document`, `IssuerSigned`, `DeviceResponse`
+ - Issuer:
    - Extract interface `StatusListIssuer` out of `Issuer` to separate credential issuing and status list management
    - Extract interface `IssueCredentialFun` to be used in `CredentialIssuer` for OID4VCI
    - Rework interface `IssuerCredentialStore`, deprecating methods `storeGetNewIndex` and class `IssuerCredentialStore.Credential`
@@ -21,7 +29,6 @@ Release 5.8.0:
    - In `CredentialIssuer` move constructor parameters for loading data and issuing credentials to method `credential()`
    - Extract `ProofValidator` out of `CredentialIssuer`
    - Extract `CredentialSchemeMapping` out of various top-level methods
-   - Remove all remaining `serialize()` and `deserialize()` methods in data classes
    - In `SimpleAuthorizationService` deprecate constructor parameter `dataProvider`, use `authorize()` with `OAuth2LoadUserFun` instead
    - In `AuthorizationService` deprecate `authorize()` methods, adding `authorize()` with `OAuth2LoadUserFun`
  - Credential schemes:
@@ -36,6 +43,18 @@ Release 5.8.0:
    - In data class `AuthenticationResponse` add member `error`, make `params` optional
    - In class `AuthenticationResponseFactory` add member `signError`
    - In class `OpenId4VpHolder` add member `signError`, add method `createAuthnErrorResponse`
+ - SD-JWT:
+   - Add data class for [SD-JWT VC Type metadata](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-10.html#name-sd-jwt-vc-type-metadata) in `SdJwtTypeMetadata`
+   - Update signum to provide SD-JWT VC Type metadata in `vctm` in the header of a SD-JWT
+ - Validation:
+   - Remove internal class `Parser` and data classes `ParseVpResult` and `ParseVcResult`
+   - Extract `ValidatorMdoc`, `ValidatorSdJwt`, `ValidatorVcJws` from `Validator`
+   - In `HolderAgent` add constructor parameters for `validatorVcJws`, `validatorSdJwt`, `validatorMdoc`
+   - In `Validator` deprecate constructor parameter `resolveStatusListToken`, clients shall use `tokenStatusResolver` instead
+   - In `Verifier` remove parameter `challenge` from `verifyPresentationIsoMdoc()`
+   - Rename `SdJwtValidator` to `SdJwtDecoded`
+   - In `VerifiablePresentationParsed` add the input data too, that is the `VerifiablePresentationJws`
+   - In `IsoDocumentParsed` add the input data too, that is the `Document`
 
 Release 5.7.2:
  - Presentation Exchange: Fix validation of optional constraint fields

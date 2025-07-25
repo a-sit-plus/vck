@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.PresentationSubmission
+import at.asitplus.iso.DeviceNameSpaces
 import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.TransactionDataBase64Url
@@ -10,12 +11,11 @@ import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.sha256
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.iso.DeviceNameSpaces
-import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.Serializable
@@ -125,7 +125,7 @@ sealed class CreatePresentationResult {
     }
 
     data class DeviceResponse(
-        val deviceResponse: at.asitplus.wallet.lib.iso.DeviceResponse,
+        val deviceResponse: at.asitplus.iso.DeviceResponse,
         /**
          * has been used to calculate the session transcript, and needs to be set into `apu` of the
          * JWE, see ISO/IEC 18013-7:2024 B.4.3.3.2.
