@@ -217,8 +217,7 @@ class OpenId4VpWallet(
     suspend fun getMatchingCredentials(
         preparationState: AuthorizationResponsePreparationState,
         request: RequestParametersFrom<AuthenticationRequestParameters>
-    ) =
-        catchingUnwrapped {
+    ) = catchingUnwrapped {
             openId4VpHolder.getMatchingCredentials(preparationState).getOrElse {
                 createAuthnErrorResponse(
                     error = OAuth2Error(
