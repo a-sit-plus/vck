@@ -223,7 +223,7 @@ class OpenId4VpWalletTest : FunSpec() {
             }
         }
 
-        test("Basic error response test") {
+        test("No matching credential test") {
             runTest {
                 val scheme = EuPidScheme
                 val representation = ISO_MDOC
