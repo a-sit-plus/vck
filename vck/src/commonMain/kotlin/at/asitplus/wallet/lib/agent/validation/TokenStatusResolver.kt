@@ -40,7 +40,7 @@ class TokenStatusResolverImpl(
             verifyCoseSignature = verifyCoseSignature,
             statusListInfo = status.statusList,
             isInstantInThePast = {
-                it < kotlinx.datetime.Instant.fromEpochMilliseconds(clock.now().toEpochMilliseconds())
+                it < kotlin.time.Instant.fromEpochMilliseconds(clock.now().toEpochMilliseconds())
             },
         ).getOrThrow()
 
@@ -72,7 +72,7 @@ fun StatusListTokenResolver.toTokenStatusResolver(
             verifyCoseSignature = verifyCoseSignature,
             statusListInfo = status.statusList,
             isInstantInThePast = {
-                it < kotlinx.datetime.Instant.fromEpochMilliseconds(clock.now().toEpochMilliseconds())
+                it < kotlin.time.Instant.fromEpochMilliseconds(clock.now().toEpochMilliseconds())
             },
         ).getOrThrow()
 
