@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBitSize
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.test.FreeSpec
 import io.kotest.datatest.withData
 import io.kotest.matchers.shouldBe
 

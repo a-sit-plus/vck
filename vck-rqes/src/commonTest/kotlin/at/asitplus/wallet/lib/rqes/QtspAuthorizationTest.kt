@@ -13,11 +13,12 @@ import at.asitplus.wallet.lib.rqes.helper.DummyValueProvider
 import at.asitplus.wallet.lib.rqes.helper.SimpleQtspAuthorizationService
 import io.kotest.assertions.throwables.shouldThrow
 import kotlinx.coroutines.runBlocking
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.test.FreeSpec
+import inited
 import io.ktor.http.*
 
-
 class QtspAuthorizationTest : FreeSpec({
+val init= inited
 
     val qtspAuthenticationService = SimpleQtspAuthorizationService(
         acceptedCredentials = setOf(ConstantIndex.AtomicAttribute2023),

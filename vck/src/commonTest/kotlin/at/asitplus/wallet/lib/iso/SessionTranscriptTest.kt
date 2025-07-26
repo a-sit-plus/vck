@@ -5,7 +5,7 @@ import at.asitplus.dcapi.OID4VPHandover
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.test.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.matthewnelson.encoding.base16.Base16

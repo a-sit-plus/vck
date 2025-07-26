@@ -3,7 +3,7 @@ package at.asitplus.iso
 import at.asitplus.catchingUnwrapped
 import at.asitplus.signum.indispensable.io.TransformingSerializerTemplate
 import io.github.aakira.napier.Napier
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ByteArraySerializer

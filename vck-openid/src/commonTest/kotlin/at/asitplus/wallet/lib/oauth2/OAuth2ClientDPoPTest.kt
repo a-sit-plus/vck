@@ -1,9 +1,11 @@
 package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.catching
-import at.asitplus.openid.*
+import at.asitplus.openid.OidcUserInfo
+import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.test.FreeSpec
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.jws.JwsHeaderJwk
@@ -11,19 +13,19 @@ import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidvci.BuildDPoPHeader
 import at.asitplus.wallet.lib.oidvci.DefaultNonceService
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.randomString
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FunSpec
+import inited
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.nulls.shouldNotBeNull
-import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
-import io.kotest.assertions.throwables.shouldThrow
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception
-import io.ktor.http.HttpMethod
-
-class OAuth2ClientDPoPTest : FunSpec({
+import io.kotest.matchers.types.shouldBeInstanceOf
+import io.ktor.http.*
+class OAuth2ClientDPoPTest : FreeSpec({
+ val init= inited
 
     lateinit var scope: String
     lateinit var client: OAuth2Client
@@ -63,7 +65,7 @@ class OAuth2ClientDPoPTest : FunSpec({
         return code
     }
 
-    test("authorization code flow with DPoP") {
+    "authorization code flow with DPoP" {
         val state = uuid4().toString()
         val code = getCode(state)
 
@@ -95,7 +97,7 @@ class OAuth2ClientDPoPTest : FunSpec({
         )
     }
 
-    test("authorization code flow with DPoP and refresh token") {
+    "authorization code flow with DPoP and refresh token" {
         val state = uuid4().toString()
         val code = getCode(state)
 
@@ -138,7 +140,7 @@ class OAuth2ClientDPoPTest : FunSpec({
         )
     }
 
-    test("authorization code flow with DPoP and wrong URL") {
+    "authorization code flow with DPoP and wrong URL" {
         val state = uuid4().toString()
         val code = getCode(state)
 
@@ -154,7 +156,7 @@ class OAuth2ClientDPoPTest : FunSpec({
         }
     }
 
-    test("authorization code flow without DPoP for token") {
+    "authorization code flow without DPoP for token" {
         val state = uuid4().toString()
         val code = getCode(state)
 
@@ -169,7 +171,7 @@ class OAuth2ClientDPoPTest : FunSpec({
         }
     }
 
-    test("authorization code flow without DPoP for resource") {
+    "authorization code flow without DPoP for resource" {
         val state = uuid4().toString()
         val code = getCode(state)
 
@@ -193,7 +195,7 @@ class OAuth2ClientDPoPTest : FunSpec({
         }
     }
 
-    test("authorization code flow with DPoP from other key") {
+    "authorization code flow with DPoP from other key" {
         val state = uuid4().toString()
         val code = getCode(state)
 

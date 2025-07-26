@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.data.rfc.tokenStatusList.jwt.claims
 
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.PositiveDuration
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.PositiveDurationSecondsJsonNumberSerializer
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 import kotlin.time.Duration

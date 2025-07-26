@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.catchingUnwrapped
 import at.asitplus.dif.ClaimFormat
 import at.asitplus.dif.FormatHolder
 import at.asitplus.dif.InputDescriptor
@@ -92,7 +91,7 @@ class HolderAgent(
             is Holder.StoreCredentialInput.Iso -> {
                 val issuerKey: CoseKey? =
                     credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull()?.let {
-                        catchingUnwrapped { X509Certificate.decodeFromDer(it) }.getOrNull()?.publicKey?.toCoseKey()
+                        runCatching { X509Certificate.decodeFromDer(it) }.getOrNull()?.decodedPublicKey?.getOrNull()?.toCoseKey()
                             ?.getOrNull()
                     }
                 val validated = validatorMdoc.verifyIsoCred(credential.issuerSigned, issuerKey)

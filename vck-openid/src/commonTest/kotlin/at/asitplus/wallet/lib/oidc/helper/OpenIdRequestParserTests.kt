@@ -3,7 +3,8 @@ package at.asitplus.wallet.lib.oidc.helper
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.wallet.lib.openid.RequestParser
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.test.FreeSpec
+import inited
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -13,6 +14,7 @@ import io.kotest.matchers.shouldBe
  * Tests our OpenID4VP/SIOP implementation against POTENTIAL Piloting Definition Scope
  */
 class OpenIdRequestParserTests : FreeSpec({
+val init= inited
     lateinit var requestParser: RequestParser
 
     beforeEach {

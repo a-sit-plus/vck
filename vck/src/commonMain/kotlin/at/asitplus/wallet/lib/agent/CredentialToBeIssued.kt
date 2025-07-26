@@ -6,7 +6,7 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialSubject
 import at.asitplus.wallet.lib.jws.JwsHeaderModifierFun
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 sealed class CredentialToBeIssued {
     abstract val expiration: Instant

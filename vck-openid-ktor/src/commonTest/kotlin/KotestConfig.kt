@@ -12,3 +12,4 @@ class KotestConfig : AbstractProjectConfig() {
         at.asitplus.wallet.mdl.Initializer.initWithVCK()
     }
 }
+val inited = KotestConfig()

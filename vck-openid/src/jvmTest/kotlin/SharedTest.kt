@@ -1,4 +1,4 @@
 import io.kotest.core.platform
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.test.FreeSpec
 
 class `Shared Andoid JVM Test` : FreeSpec({ "should work on $platform" { } })

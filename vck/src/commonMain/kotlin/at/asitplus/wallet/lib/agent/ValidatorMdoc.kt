@@ -89,7 +89,7 @@ class ValidatorMdoc(
             Napier.w("Could not parse issuer certificate in ${certificateHead.encodeToString(Base64())}}", it)
             throw IllegalArgumentException("issuerKey")
         }
-        val issuerKey = x509Certificate.publicKey.toCoseKey().getOrElse {
+        val issuerKey = x509Certificate.decodedPublicKey.getOrThrow().toCoseKey().getOrElse {
             Napier.w("Could not parse key from certificate in $x509Certificate", it)
             throw IllegalArgumentException("issuerKey")
         }

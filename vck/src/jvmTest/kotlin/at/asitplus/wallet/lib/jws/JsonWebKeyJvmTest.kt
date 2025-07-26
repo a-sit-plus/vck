@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.jws
 import at.asitplus.signum.indispensable.ECCurve
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.wallet.lib.ensureSize
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.test.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldHaveMinLength

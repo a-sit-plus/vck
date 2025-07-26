@@ -41,7 +41,7 @@ import at.asitplus.wallet.lib.jws.VerifyJwsSignature
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureFun
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnf
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnfFun
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -138,7 +138,6 @@ class Validator(
     )
 
     @Throws(IllegalArgumentException::class, CancellationException::class)
-    @Deprecated("Use method from ValidatorVcJws instead")
     suspend fun verifyVpJws(
         input: JwsSigned<VerifiablePresentationJws>,
         challenge: String,

@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.data.rfc1950
 
 import at.asitplus.wallet.lib.data.rfc1950.primitives.Nibble
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.test.FreeSpec
 import io.kotest.datatest.withData
 import io.kotest.matchers.shouldBe
 

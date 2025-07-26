@@ -32,7 +32,8 @@ import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.CreationOptions.Query
 import at.asitplus.wallet.lib.rqes.helper.DummyCredentialDataProvider
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.test.FreeSpec
+import inited
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldBeNull
@@ -45,7 +46,7 @@ import io.ktor.http.*
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 
 class KeyBindingTests : FreeSpec({
-
+     val init= inited
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var holderAgent: Holder
     lateinit var holderOid4vp: OpenId4VpHolder

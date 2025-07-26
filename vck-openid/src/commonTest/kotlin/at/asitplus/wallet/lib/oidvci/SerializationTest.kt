@@ -4,9 +4,10 @@ import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE
 import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_BEARER
+import at.asitplus.test.FreeSpec
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import io.kotest.core.spec.style.FunSpec
+import inited
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.ktor.http.*
@@ -15,7 +16,8 @@ import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
 
-class SerializationTest : FunSpec({
+class SerializationTest : FreeSpec({
+val init= inited
 
     fun createAuthorizationRequest() = AuthenticationRequestParameters(
         responseType = GRANT_TYPE_CODE,
@@ -74,7 +76,7 @@ class SerializationTest : FunSpec({
         clientNonceExpiresIn = Random.nextInt(1, Int.MAX_VALUE).seconds,
     )
 
-    test("createAuthorizationRequest as GET") {
+    "createAuthorizationRequest as GET" {
         val params = createAuthorizationRequest()
         val baseUrl = "https://wallet.a-sit.at/authorize"
 
@@ -88,7 +90,7 @@ class SerializationTest : FunSpec({
         parsed shouldBe params
     }
 
-    test("createAuthorizationRequest as POST") {
+    "createAuthorizationRequest as POST" {
         val params = createAuthorizationRequest()
         val intermediateMap = params.encodeToParameters()
         val formEncoded = intermediateMap.formUrlEncode()
@@ -102,7 +104,7 @@ class SerializationTest : FunSpec({
         parsedToo shouldBe params
     }
 
-    test("createTokenRequest as POST") {
+    "createTokenRequest as POST" {
         val params = createTokenRequest()
         val intermediateMap = params.encodeToParameters()
         val formEncoded = intermediateMap.formUrlEncode()
@@ -113,7 +115,7 @@ class SerializationTest : FunSpec({
         parsedToo shouldBe params
     }
 
-    test("createTokenResponse as JSON") {
+    "createTokenResponse as JSON" {
         val params = createTokenResponse()
 
         val json = vckJsonSerializer.encodeToString(params)
@@ -125,7 +127,7 @@ class SerializationTest : FunSpec({
         parsed shouldBe params
     }
 
-    test("createCredentialRequest as JSON") {
+    "createCredentialRequest as JSON" {
         val params = createCredentialRequest()
 
         val json = vckJsonSerializer.encodeToString(params)
@@ -137,7 +139,7 @@ class SerializationTest : FunSpec({
         parsed shouldBe params
     }
 
-    test("createCredentialResponse as JSON") {
+    "createCredentialResponse as JSON" {
         val params = createCredentialResponse()
 
         val json = vckJsonSerializer.encodeToString(params)

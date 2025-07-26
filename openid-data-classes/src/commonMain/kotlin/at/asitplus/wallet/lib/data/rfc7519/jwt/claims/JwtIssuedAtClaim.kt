@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.data.rfc7519.jwt.claims
 
 import at.asitplus.wallet.lib.data.rfc7519.primitives.NumericDate
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 

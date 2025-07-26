@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.data
 
 import at.asitplus.dif.SubmissionRequirement
 import at.asitplus.dif.SubmissionRequirementRuleEnum
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.test.FreeSpec
 import io.kotest.matchers.shouldBe
 
 class SubmissionRequirementsTest : FreeSpec({

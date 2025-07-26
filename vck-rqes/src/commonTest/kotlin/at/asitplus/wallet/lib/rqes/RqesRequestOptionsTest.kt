@@ -29,16 +29,17 @@ import at.asitplus.wallet.lib.openid.RequestOptionsCredential
 import at.asitplus.wallet.lib.rqes.helper.DummyCredentialDataProvider
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.test.FreeSpec
+import inited
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
-
 @Suppress("DEPRECATION")
 class RqesRequestOptionsTest : FreeSpec({
+val init= inited
 
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var holderAgent: Holder

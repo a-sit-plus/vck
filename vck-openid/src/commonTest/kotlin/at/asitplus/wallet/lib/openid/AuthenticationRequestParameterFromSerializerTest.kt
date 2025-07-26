@@ -9,13 +9,14 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.test.FreeSpec
+import inited
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
-
 class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
+val init= inited
 
     val clientId = "PRE-REGISTERED-CLIENT"
     val redirectUrl = "https://example.com/rp/${uuid4()}"

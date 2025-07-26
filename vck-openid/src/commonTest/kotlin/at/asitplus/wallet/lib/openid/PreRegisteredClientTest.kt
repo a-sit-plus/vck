@@ -10,7 +10,8 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.oidvci.*
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.test.FreeSpec
+import inited
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.maps.shouldHaveSize
@@ -23,8 +24,8 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.URLBuilder
 import io.ktor.http.Url
 import kotlin.collections.set
-
 class PreRegisteredClientTest : FreeSpec({
+val init= inited
 
     lateinit var clientId: String
     lateinit var walletUrl: String

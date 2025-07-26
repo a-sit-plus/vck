@@ -16,6 +16,7 @@ import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
+import at.asitplus.test.FreeSpec
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued.Iso
@@ -49,8 +50,9 @@ import at.asitplus.wallet.lib.oidvci.WalletService
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import com.benasher44.uuid.uuid4
+import inited
 import io.github.aakira.napier.Napier
-import io.kotest.core.spec.style.FunSpec
+import io.kotest.engine.runBlocking
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -59,14 +61,18 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.client.*
 import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
-import io.ktor.http.*
-import io.ktor.util.*
-import kotlinx.coroutines.test.runTest
-import kotlinx.datetime.Clock
+import io.ktor.client.request.get
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.fullPath
+import io.ktor.http.headersOf
+import io.ktor.util.toMap
+import kotlin.time.Clock
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
-
-class OpenId4VciClientTest : FunSpec() {
+class OpenId4VciClientTest : FreeSpec() {
+val init= inited
 
     lateinit var credentialKeyMaterial: KeyMaterial
     lateinit var dpopKeyMaterial: KeyMaterial
@@ -85,8 +91,8 @@ class OpenId4VciClientTest : FunSpec() {
             clientAuthKeyMaterial = EphemeralKeyWithoutCert()
         }
 
-        test("loadEuPidCredentialSdJwt") {
-            runTest {
+        "loadEuPidCredentialSdJwt" {
+            runBlocking {
                 val expectedFamilyName = uuid4().toString()
                 setup(
                     scheme = EuPidScheme,
@@ -120,8 +126,8 @@ class OpenId4VciClientTest : FunSpec() {
             }
         }
 
-        test("loadEuPidCredentialIsoWithOffer") {
-            runTest {
+        "loadEuPidCredentialIsoWithOffer" {
+            runBlocking {
                 val expectedGivenName = uuid4().toString()
                 setup(
                     scheme = EuPidScheme,

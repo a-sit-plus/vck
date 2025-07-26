@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.data
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
@@ -21,7 +21,7 @@ import kotlinx.serialization.encoding.Encoder
 @Serializable(with = LocalDateOrInstantSerializer::class)
 sealed class LocalDateOrInstant {
     data class LocalDate(val value: kotlinx.datetime.LocalDate) : LocalDateOrInstant()
-    data class Instant(val value: kotlinx.datetime.Instant) : LocalDateOrInstant()
+    data class Instant(val value: kotlin.time.Instant) : LocalDateOrInstant()
 }
 
 object LocalDateOrInstantSerializer : KSerializer<LocalDateOrInstant> {

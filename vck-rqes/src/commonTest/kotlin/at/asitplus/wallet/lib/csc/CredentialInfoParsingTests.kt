@@ -9,13 +9,14 @@ import at.asitplus.rqes.collection_entries.KeyParameters
 import at.asitplus.rqes.enums.CertificateOptions
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.test.FreeSpec
+import inited
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldNotContain
-
 class CredentialInfoParsingTests : FreeSpec({
+val init= inited
 
 
     /**

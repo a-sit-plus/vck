@@ -6,6 +6,7 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
+import at.asitplus.test.FreeSpec
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
@@ -21,15 +22,16 @@ import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
+import inited
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.datetime.Clock.System
+import kotlin.time.Clock.System
 
-class OidvciAttestationTest : FunSpec({
+class OidvciAttestationTest : FreeSpec({
+val init= inited
 
     lateinit var authorizationService: SimpleAuthorizationService
     lateinit var issuer: CredentialIssuer
@@ -73,7 +75,7 @@ class OidvciAttestationTest : FunSpec({
         state = uuid4().toString()
     }
 
-    test("use key attestation for proof") {
+    "use key attestation for proof" {
         client = buildClientWithKeyAttestation()
 
         val requestOptions = WalletService.RequestOptions(
@@ -103,7 +105,7 @@ class OidvciAttestationTest : FunSpec({
         }
     }
 
-    test("use key attestation for proof, issuer does not verify it") {
+    "use key attestation for proof, issuer does not verify it" {
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
             credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme),
@@ -134,7 +136,7 @@ class OidvciAttestationTest : FunSpec({
         }
     }
 
-    test("require key attestation for proof, but do not provide one") {
+    "require key attestation for proof, but do not provide one" {
         client = WalletService(loadKeyAttestation = null)
 
         val requestOptions = WalletService.RequestOptions(

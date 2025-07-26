@@ -2,7 +2,7 @@ package at.asitplus.openid.dcql
 
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.test.FreeSpec
 import io.kotest.datatest.withData
 
 class DCQLClaimsQueryIdentifierTest : FreeSpec({

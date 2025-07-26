@@ -7,6 +7,7 @@ import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.test.FreeSpec
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
@@ -19,14 +20,14 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.randomString
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import com.benasher44.uuid.uuid4
+import inited
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
-
-class OAuth2ClientAuthenticationTest : FunSpec({
+class OAuth2ClientAuthenticationTest : FreeSpec({
+val init= inited
 
     lateinit var scope: String
     lateinit var client: OAuth2Client
@@ -74,7 +75,7 @@ class OAuth2ClientAuthenticationTest : FunSpec({
         )
     ).getOrThrow()
 
-    test("pushed authorization request") {
+    "pushed authorization request" {
         val state = uuid4().toString()
         val authnRequest = client.createAuthRequest(
             state = state,
@@ -97,7 +98,7 @@ class OAuth2ClientAuthenticationTest : FunSpec({
             .authorizationDetails.shouldBeNull()
     }
 
-    test("pushed authorization request with wrong client attestation JWT") {
+    "pushed authorization request with wrong client attestation JWT" {
         val state = uuid4().toString()
         val authnRequest = client.createAuthRequest(
             state = state,
@@ -120,7 +121,7 @@ class OAuth2ClientAuthenticationTest : FunSpec({
         }
     }
 
-    test("pushed authorization request with client attestation JWT not trusted") {
+    "pushed authorization request with client attestation JWT not trusted" {
         val state = uuid4().toString()
         val authnRequest = client.createAuthRequest(
             state = state,
@@ -143,7 +144,7 @@ class OAuth2ClientAuthenticationTest : FunSpec({
         }
     }
 
-    test("pushed authorization request without client authentication") {
+    "pushed authorization request without client authentication" {
         val state = uuid4().toString()
         val authnRequest = client.createAuthRequest(
             state = state,
@@ -154,7 +155,7 @@ class OAuth2ClientAuthenticationTest : FunSpec({
         }
     }
 
-    test("authorization code flow and client authentication") {
+    "authorization code flow and client authentication" {
         val state = uuid4().toString()
         val authnRequest = client.createAuthRequest(
             state = state,
@@ -170,7 +171,7 @@ class OAuth2ClientAuthenticationTest : FunSpec({
             .authorizationDetails.shouldBeNull()
     }
 
-    test("authorization code flow without client authentication") {
+    "authorization code flow without client authentication" {
         val state = uuid4().toString()
         val authnRequest = client.createAuthRequest(
             state = state,

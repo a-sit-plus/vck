@@ -7,7 +7,7 @@ import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -408,7 +408,6 @@ data class AuthenticationRequestParameters(
     override val clientIdSchemeExtracted: OpenIdConstants.ClientIdScheme?
         get() = clientIdScheme
             ?: clientId?.let { OpenIdConstants.ClientIdScheme.decodeFromClientId(it) }
-
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

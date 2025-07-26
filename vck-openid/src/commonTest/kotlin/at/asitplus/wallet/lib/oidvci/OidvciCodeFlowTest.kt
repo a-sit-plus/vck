@@ -30,7 +30,8 @@ import at.asitplus.wallet.lib.openid.DummyUserProvider
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.test.FreeSpec
+import inited
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
@@ -45,6 +46,7 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.decodeFromByteArray
 
 class OidvciCodeFlowTest : FreeSpec({
+val init= inited
 
     lateinit var strategy: AuthorizationServiceStrategy
     lateinit var authorizationService: SimpleAuthorizationService

@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 /**
  * The Issuer gives updated status information to the Status Issuer, who creates a Status List
