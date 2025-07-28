@@ -50,7 +50,7 @@ Release 5.8.0:
    - In `VerifiablePresentationParsed` add the input data too, that is the `VerifiablePresentationJws`
    - In `IsoDocumentParsed` add the input data too, that is the `Document`
  - Respond to failed authentication request with error:
-   - In class `OpenId4VpWallet` add method `createAuthnErrorResponse`
+   - In class `OpenId4VpWallet` add method `sendAuthnErrorResponse`
    - In data class `OAuth2Error` add member `state`
    - In data class `AuthenticationResponse` add member `error`, make `params` optional
    - In class `AuthenticationResponseFactory` add member `signError`

@@ -120,17 +120,23 @@ class OpenId4VpWallet(
     ): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> =
         openId4VpHolder.parseAuthenticationRequestParameters(input, dcApiRequest)
 
-    suspend fun createAuthnErrorResponse(
+    /**
+     * Sends an error response with the appropriate method.
+     * Returns nothing as we don't expect a useful response.
+     */
+    suspend fun sendAuthnErrorResponse(
         error: OAuth2Error,
         request: RequestParametersFrom<AuthenticationRequestParameters>
-    ) = catchingUnwrapped {
-        Napier.i("createAuthnErrorResponse $error, $request")
-        openId4VpHolder.createAuthnErrorResponse(error = error, request = request).getOrThrow().let {
-            when (it) {
-                is AuthenticationResponseResult.Post -> postResponse(it)
-                is AuthenticationResponseResult.Redirect -> redirectResponse(it)
-                is AuthenticationResponseResult.DcApi ->
-                    throw UnsupportedOperationException("Unsupported error response mode")
+    ) {
+        catchingUnwrapped {
+            Napier.i("sendAuthnErrorResponse $error, $request")
+            openId4VpHolder.createAuthnErrorResponse(error = error, request = request).getOrThrow().let {
+                when (it) {
+                    is AuthenticationResponseResult.Post -> postResponse(it)
+                    is AuthenticationResponseResult.Redirect -> redirectResponse(it)
+                    is AuthenticationResponseResult.DcApi ->
+                        Napier.d("Unsupported error response mode")
+                }
             }
         }
     }
@@ -183,7 +189,7 @@ class OpenId4VpWallet(
             clientMetadata = clientMetadata,
             credentialPresentation = credentialPresentation
         ).getOrElse {
-            createAuthnErrorResponse(
+            sendAuthnErrorResponse(
                 error = OAuth2Error(
                     error = INVALID_REQUEST,
                     errorDescription = it.message,
@@ -219,7 +225,7 @@ class OpenId4VpWallet(
         request: RequestParametersFrom<AuthenticationRequestParameters>
     ) = catchingUnwrapped {
             openId4VpHolder.getMatchingCredentials(preparationState).getOrElse {
-                createAuthnErrorResponse(
+                sendAuthnErrorResponse(
                     error = OAuth2Error(
                         error = INVALID_REQUEST,
                         errorDescription = it.message,
