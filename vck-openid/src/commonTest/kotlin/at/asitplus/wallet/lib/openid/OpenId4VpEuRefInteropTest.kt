@@ -47,7 +47,7 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
     beforeEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         holderAgent = HolderAgent(holderKeyMaterial)
-        val issuerAgent = IssuerAgent()
+        val issuerAgent = IssuerAgent(identifier = "https://issuer.example.com/")
         holderAgent.storeCredential(
             issuerAgent.issueCredential(
                 DummyCredentialDataProvider.getCredential(

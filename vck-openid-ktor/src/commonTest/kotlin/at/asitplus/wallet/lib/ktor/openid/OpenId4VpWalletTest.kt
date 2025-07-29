@@ -303,7 +303,10 @@ class OpenId4VpWalletTest : FunSpec() {
         representation: ConstantIndex.CredentialRepresentation,
         attributes: Map<String, Any>,
     ) = storeCredential(
-        IssuerAgent(EphemeralKeyWithSelfSignedCert()).issueCredential(
+        IssuerAgent(
+            keyMaterial = EphemeralKeyWithSelfSignedCert(),
+            identifier = "https://issuer.example.com/"
+        ).issueCredential(
             representation.toCredentialToBeIssued(scheme, attributes)
         ).getOrThrow().toStoreCredentialInput()
     ).getOrThrow()

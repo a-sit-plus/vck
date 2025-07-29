@@ -15,12 +15,16 @@ class DCQLQueryProcedureAdapterTest : FreeSpec({
         val validator = Validator()
         val issuerCredentialStore = InMemoryIssuerCredentialStore()
         val holderCredentialStore = InMemorySubjectCredentialStore()
-        val issuer = IssuerAgent(issuerCredentialStore = issuerCredentialStore)
+        val issuerIdentifier = "https://issuer.example.com/"
+        val issuer = IssuerAgent(
+            issuerCredentialStore = issuerCredentialStore,
+            identifier = issuerIdentifier
+        )
 
         val holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
         val holder = HolderAgent(
-            holderKeyMaterial,
-            holderCredentialStore,
+            keyMaterial = holderKeyMaterial,
+            subjectCredentialStore = holderCredentialStore,
             validator = validator,
         )
         val credential = holder.storeCredential(
@@ -66,7 +70,7 @@ class DCQLQueryProcedureAdapterTest : FreeSpec({
                           "iss"
                         ],
                         "values": [
-                          "${issuer.keyMaterial.identifier}"
+                          "$issuerIdentifier"
                         ]
                       }
                     ]

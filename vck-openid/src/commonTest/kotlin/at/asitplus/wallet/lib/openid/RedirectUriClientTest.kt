@@ -42,7 +42,7 @@ class RedirectUriClientTest : FreeSpec({
         holderAgent = HolderAgent(holderKeyMaterial)
 
         holderAgent.storeCredential(
-            IssuerAgent().issueCredential(
+            IssuerAgent(identifier = "https://issuer.example.com/").issueCredential(
                 DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,

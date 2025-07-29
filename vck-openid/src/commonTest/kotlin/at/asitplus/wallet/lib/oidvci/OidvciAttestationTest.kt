@@ -64,6 +64,7 @@ class OidvciAttestationTest : FunSpec({
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
+            issuer = IssuerAgent(identifier = "https://issuer.example.com"),
             credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme),
             proofValidator = ProofValidator(
                 verifyAttestationProof = { true },
@@ -105,6 +106,7 @@ class OidvciAttestationTest : FunSpec({
     test("use key attestation for proof, issuer does not verify it") {
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
+            issuer = IssuerAgent(identifier = "https://issuer.example.com"),
             credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme),
             proofValidator = ProofValidator(
                 verifyAttestationProof = { false }, // do not accept key attestation

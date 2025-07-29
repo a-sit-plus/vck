@@ -45,7 +45,7 @@ class OpenId4VpX509SanDnsTest : FreeSpec({
         verifierKeyMaterial = EphemeralKeyWithSelfSignedCert(extensions = extensions)
         holderAgent = HolderAgent(holderKeyMaterial)
         holderAgent.storeCredential(
-            IssuerAgent().issueCredential(
+            IssuerAgent(identifier = "https://issuer.example.com/").issueCredential(
                 DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     AtomicAttribute2023,

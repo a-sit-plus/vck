@@ -37,6 +37,7 @@ class OidvciPreAuthTest : FreeSpec({
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
+            issuer = IssuerAgent(identifier = "https://issuer.example.com"),
             credentialSchemes = setOf(AtomicAttribute2023, MobileDrivingLicenceScheme),
         )
         client = WalletService()

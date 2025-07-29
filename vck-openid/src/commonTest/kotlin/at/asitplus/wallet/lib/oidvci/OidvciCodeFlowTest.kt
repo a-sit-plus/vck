@@ -59,6 +59,7 @@ class OidvciCodeFlowTest : FreeSpec({
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
+            issuer = IssuerAgent(identifier = "https://issuer.example.com"),
             credentialSchemes = setOf(AtomicAttribute2023, MobileDrivingLicenceScheme),
         )
         client = WalletService()
@@ -229,6 +230,7 @@ class OidvciCodeFlowTest : FreeSpec({
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
+            issuer = IssuerAgent(identifier = "https://issuer.example.com"),
             credentialSchemes = setOf(AtomicAttribute2023),
         )
         val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)

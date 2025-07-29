@@ -42,7 +42,7 @@ class CredentialIssuer(
     /** Used to get the user data, and access tokens. */
     private val authorizationService: OAuth2AuthorizationServerAdapter,
     /** Used to actually issue the credential. */
-    private val issuer: Issuer = IssuerAgent(),
+    private val issuer: Issuer,
     /** Key material used to sign credentials in [credential]. */
     private val keyMaterial: Set<KeyMaterial> = setOf(issuer.keyMaterial),
     /** Supported crypto algorithms of the key material used to sign credential in [credential]. */

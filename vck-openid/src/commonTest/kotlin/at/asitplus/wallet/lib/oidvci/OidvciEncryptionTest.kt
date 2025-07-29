@@ -62,6 +62,7 @@ class OidvciEncryptionTest : FunSpec({
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
+            issuer = IssuerAgent(identifier = "https://issuer.example.com"),
             credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023),
             requireEncryption = true, // this is important, to require encryption
         )
@@ -77,6 +78,7 @@ class OidvciEncryptionTest : FunSpec({
     test("issuer fails to encrypt") {
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
+            issuer = IssuerAgent(identifier = "https://issuer.example.com"),
             credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023),
             requireEncryption = true, // this is important, to require encryption
             encryptCredentialRequest = object : EncryptJweFun {

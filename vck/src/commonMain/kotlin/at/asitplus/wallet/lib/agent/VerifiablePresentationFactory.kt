@@ -63,7 +63,7 @@ class VerifiablePresentationFactory(
         when (credential) {
             is SubjectCredentialStore.StoreEntry.Vc -> createVcPresentation(
                 request = request,
-                validCredentials = listOf(credential.vcSerialized),
+                validCredentials = listOf(credential),
             )
 
             is SubjectCredentialStore.StoreEntry.SdJwt -> createSdJwtPresentation(
@@ -89,7 +89,7 @@ class VerifiablePresentationFactory(
                 throw IllegalArgumentException("Credential type only allows disclosure of all attributes.")
             } else createVcPresentation(
                 request = request,
-                validCredentials = listOf(credential.vcSerialized),
+                validCredentials = listOf(credential),
             )
 
             is SubjectCredentialStore.StoreEntry.SdJwt -> createSdJwtPresentation(
@@ -287,12 +287,16 @@ class VerifiablePresentationFactory(
      * Note: The caller is responsible that only valid credentials are passed to this function!
      */
     suspend fun createVcPresentation(
-        validCredentials: List<String>,
+        validCredentials: List<SubjectCredentialStore.StoreEntry.Vc>,
         request: PresentationRequestParameters,
     ) = CreatePresentationResult.Signed(
         signVerifiablePresentation(
             JwsContentTypeConstants.JWT,
-            VerifiablePresentation(validCredentials).toJws(request.nonce, keyMaterial.identifier, request.audience),
+            VerifiablePresentation(validCredentials.map { it.vcSerialized }).toJws(
+                request.nonce,
+                validCredentials.map { it.vc.vc.credentialSubject.id }.first(),
+                request.audience
+            ),
             VerifiablePresentationJws.serializer(),
         ).getOrElse {
             Napier.w("Could not create JWS for presentation", it)

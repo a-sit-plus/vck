@@ -60,7 +60,10 @@ class AgentTest : FreeSpec({
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         holderCredentialStore = InMemorySubjectCredentialStore()
 
-        issuer = IssuerAgent(issuerCredentialStore = issuerCredentialStore)
+        issuer = IssuerAgent(
+            issuerCredentialStore = issuerCredentialStore,
+            identifier = "https://issuer.example.com/"
+        )
         statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
 
         holderKeyMaterial = EphemeralKeyWithoutCert()

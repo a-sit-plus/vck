@@ -35,7 +35,10 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent(holderKeyMaterial)
 
-        val issuerAgent = IssuerAgent(EphemeralKeyWithSelfSignedCert())
+        val issuerAgent = IssuerAgent(
+            keyMaterial = EphemeralKeyWithSelfSignedCert(),
+            identifier = "https://issuer.example.com/"
+        )
         holderAgent.storeCredential(
             issuerAgent.issueCredential(
                 DummyCredentialDataProvider.getCredential(

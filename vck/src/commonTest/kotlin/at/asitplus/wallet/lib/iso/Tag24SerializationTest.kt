@@ -118,7 +118,7 @@ class Tag24SerializationTest : FreeSpec({
 
     "IssuerSigned from IssuerAgent" {
         val holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
-        val issuedCredential = IssuerAgent().issueCredential(
+        val issuedCredential = IssuerAgent(identifier = "https://issuer.example.com/").issueCredential(
             DummyCredentialDataProvider.getCredential(
                 holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
@@ -132,7 +132,8 @@ class Tag24SerializationTest : FreeSpec({
         val numberOfClaims = namespaces.entries.fold(0) { acc, entry ->
             acc + entry.value.entries.size
         }
-        val serialized = coseCompliantSerializer.encodeToByteArray(issuedCredential.issuerSigned).encodeToString(Base16Strict)
+        val serialized =
+            coseCompliantSerializer.encodeToByteArray(issuedCredential.issuerSigned).encodeToString(Base16Strict)
         withClue(serialized) {
             // add 1 for MSO in IssuerAuth
             "D818".toRegex().findAll(serialized).toList().shouldHaveAtLeastSize(numberOfClaims + 1)

@@ -69,7 +69,10 @@ class ValidatorVpTest : FreeSpec({
             )
         )
         issuerCredentialStore = InMemoryIssuerCredentialStore()
-        issuer = IssuerAgent(issuerCredentialStore = issuerCredentialStore)
+        issuer = IssuerAgent(
+            issuerCredentialStore = issuerCredentialStore,
+            identifier = "https://issuer.example.com/"
+        )
         statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
         holderCredentialStore = InMemorySubjectCredentialStore()
         holderKeyMaterial = EphemeralKeyWithoutCert()
@@ -126,11 +129,8 @@ class ValidatorVpTest : FreeSpec({
             .shouldNotBeNull()
             .shouldBeSingleton()
             .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
-        val holderVcSerialized = holderVc
-            .map { it.vcSerialized }
-            .map { it.reversed() }
         val vp = verifiablePresentationFactory.createVcPresentation(
-            holderVcSerialized,
+            holderVc,
             PresentationRequestParameters(nonce = challenge, audience = verifierId)
         ).shouldBeInstanceOf<CreatePresentationResult.Signed>()
 
@@ -138,7 +138,7 @@ class ValidatorVpTest : FreeSpec({
             it.shouldBeInstanceOf<VerifyPresentationResult.Success>()
             it.vp.freshVerifiableCredentials.shouldBeEmpty()
             it.vp.notVerifiablyFreshVerifiableCredentials.shouldBeEmpty()
-            it.vp.invalidVerifiableCredentials.shouldBe(holderVcSerialized)
+            it.vp.invalidVerifiableCredentials.shouldBe(holderVc.map { it.vcSerialized })
         }
     }
 

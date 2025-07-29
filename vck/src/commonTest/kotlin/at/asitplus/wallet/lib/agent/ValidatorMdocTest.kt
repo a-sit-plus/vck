@@ -47,7 +47,11 @@ class ValidatorMdocTest : FreeSpec() {
             )
             issuerCredentialStore = InMemoryIssuerCredentialStore()
             issuerKeyMaterial = EphemeralKeyWithSelfSignedCert()
-            issuer = IssuerAgent(issuerKeyMaterial, issuerCredentialStore = issuerCredentialStore)
+            issuer = IssuerAgent(
+                keyMaterial = issuerKeyMaterial,
+                issuerCredentialStore = issuerCredentialStore,
+                identifier = "https://issuer.example.com/"
+            )
             statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
             verifierKeyMaterial = EphemeralKeyWithoutCert()
         }

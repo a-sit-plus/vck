@@ -57,7 +57,7 @@ class OpenId4VpInteropTest : FreeSpec({
         issuerKeyId = uuid4().toString()
         issuerClientId = "https://issuer.example.com"
         val issuerKeyMaterial = EphemeralKeyWithoutCert(customKeyId = issuerKeyId)
-        val issuerAgent = IssuerAgent(issuerKeyMaterial, identifier = issuerClientId)
+        val issuerAgent = IssuerAgent(issuerKeyMaterial, identifier = issuerClientId,)
 
         holderKeyMaterial = EphemeralKeyWithoutCert()
         holderAgent = HolderAgent(

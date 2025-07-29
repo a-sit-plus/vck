@@ -240,7 +240,10 @@ class OpenId4VciClientTest : FunSpec() {
                 issueRefreshTokens = true
             ),
         )
-        val issuer = IssuerAgent(EphemeralKeyWithSelfSignedCert())
+        val issuer = IssuerAgent(
+            keyMaterial = EphemeralKeyWithSelfSignedCert(),
+            identifier = "https://issuer.example.com/"
+        )
         credentialIssuer = CredentialIssuer(
             authorizationService = authorizationService,
             issuer = issuer,

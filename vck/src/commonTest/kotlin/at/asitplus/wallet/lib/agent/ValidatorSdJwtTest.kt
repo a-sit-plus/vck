@@ -42,7 +42,7 @@ class ValidatorSdJwtTest : FreeSpec() {
     init {
         beforeEach {
             validator = ValidatorSdJwt()
-            issuer = IssuerAgent()
+            issuer = IssuerAgent(identifier = "https://issuer.example.com/")
             holderKeyMaterial = EphemeralKeyWithoutCert()
         }
 

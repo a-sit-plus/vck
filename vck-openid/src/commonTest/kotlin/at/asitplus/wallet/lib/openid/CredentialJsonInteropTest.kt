@@ -28,7 +28,10 @@ class CredentialJsonInteropTest : FreeSpec({
         holderKeyMaterial = EphemeralKeyWithoutCert()
         subjectCredentialStore = InMemorySubjectCredentialStore()
         holderAgent = HolderAgent(holderKeyMaterial, subjectCredentialStore)
-        issuerAgent = IssuerAgent(EphemeralKeyWithSelfSignedCert())
+        issuerAgent = IssuerAgent(
+            keyMaterial = EphemeralKeyWithSelfSignedCert(),
+            identifier = "https://issuer.example.com/"
+        )
     }
 
     "Plain jwt credential path resolving" {

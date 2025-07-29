@@ -48,7 +48,7 @@ class RqesRequestOptionsTest : FreeSpec({
         holderAgent = HolderAgent(holderKeyMaterial)
 
         holderAgent.storeCredential(
-            IssuerAgent().issueCredential(
+            IssuerAgent(identifier = "https://issuer.example.com/").issueCredential(
                 DummyCredentialDataProvider.getCredential(holderKeyMaterial.publicKey, EuPidScheme, SD_JWT)
                     .getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
