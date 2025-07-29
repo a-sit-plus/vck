@@ -16,7 +16,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
-import at.asitplus.wallet.lib.jws.JwsHeaderKeyId
+import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import com.benasher44.uuid.uuid4
@@ -66,7 +66,7 @@ class ValidatorVcTest : FreeSpec() {
             issuerKeyMaterial = EphemeralKeyWithoutCert()
             issuer = IssuerAgent(issuerKeyMaterial, issuerCredentialStore = issuerCredentialStore)
             statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
-            issuerSignVc = SignJwt(issuerKeyMaterial, JwsHeaderKeyId())
+            issuerSignVc = SignJwt(issuerKeyMaterial, JwsHeaderCertOrJwk())
             verifierKeyMaterial = EphemeralKeyWithoutCert()
         }
 

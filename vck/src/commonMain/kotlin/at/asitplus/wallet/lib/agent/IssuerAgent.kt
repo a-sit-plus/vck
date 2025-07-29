@@ -27,7 +27,6 @@ import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
-import at.asitplus.wallet.lib.jws.JwsHeaderKeyId
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtExt
@@ -57,7 +56,7 @@ class IssuerAgent(
     /** The identifier used in `issuer` properties of credentials. Note that for SD-JWT VC this must be a URI. */
     private val identifier: String = keyMaterial.identifier,
     private val signIssuedSdJwt: SignJwtExtFun<JsonObject> = SignJwtExt(keyMaterial, JwsHeaderCertOrJwk()),
-    private val signIssuedVc: SignJwtFun<VerifiableCredentialJws> = SignJwt(keyMaterial, JwsHeaderKeyId()),
+    private val signIssuedVc: SignJwtFun<VerifiableCredentialJws> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     private val signMobileSecurityObject: SignCoseFun<MobileSecurityObject> =
         SignCose(keyMaterial, CoseHeaderNone(), CoseHeaderCertificate()),
 ) : Issuer {
@@ -180,7 +179,7 @@ class IssuerAgent(
         val vcId = "urn:uuid:${uuid4()}"
         val expirationDate = credential.expiration
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
-        val subjectId = credential.subjectPublicKey.didEncoded
+        val subjectId = credential.subjectPublicKey.didEncoded // TODO not necessarily!
         val reference = issuerCredentialStore.createStatusListIndex(credential, timePeriod).getOrThrow()
         val credentialStatus = Status(
             statusList = StatusListInfo(

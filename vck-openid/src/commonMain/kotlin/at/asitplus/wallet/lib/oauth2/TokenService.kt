@@ -25,7 +25,7 @@ data class TokenService(
             generation = JwtTokenGenerationService(
                 nonceService = nonceService,
                 publicContext = publicContext,
-                signToken = SignJwt(keyMaterial, JwsHeaderJwk()),
+                keyMaterial = keyMaterial,
                 issueRefreshToken = issueRefreshTokens,
             ),
             verification = JwtTokenVerificationService(

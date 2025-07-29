@@ -13,6 +13,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
@@ -152,7 +153,7 @@ class OidvciAttestationTest : FunSpec({
 
 private fun buildClientWithKeyAttestation(): WalletService {
     val keyMaterial = EphemeralKeyWithoutCert()
-    val signKeyAttestation = SignJwt<KeyAttestationJwt>(keyMaterial, JwsHeaderJwk())
+    val signKeyAttestation = SignJwt<KeyAttestationJwt>(keyMaterial, JwsHeaderCertOrJwk())
     return WalletService(
         loadKeyAttestation = {
             catching {

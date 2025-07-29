@@ -344,7 +344,7 @@ class OpenId4VciClientTest : FunSpec() {
                 ).serialize()
             },
             signClientAttestationPop = SignJwt(clientAuthKeyMaterial, JwsHeaderNone()),
-            signDpop = SignJwt(dpopKeyMaterial, JwsHeaderJwk()),
+            signDpop = SignJwt(dpopKeyMaterial, JwsHeaderCertOrJwk()),
             dpopAlgorithm = dpopKeyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
             oid4vciService = WalletService(
                 clientId = clientId,

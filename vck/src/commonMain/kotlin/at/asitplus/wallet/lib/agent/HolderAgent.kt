@@ -23,7 +23,7 @@ import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.dif.PresentationExchangeInputEvaluator
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.extensions.toDefaultSubmission
-import at.asitplus.wallet.lib.jws.JwsHeaderKeyId
+import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
@@ -46,7 +46,7 @@ class HolderAgent(
     private val validatorSdJwt: ValidatorSdJwt = ValidatorSdJwt(validator = validator),
     private val validatorMdoc: ValidatorMdoc = ValidatorMdoc(validator = validator),
     private val signVerifiablePresentation: SignJwtFun<VerifiablePresentationJws> =
-        SignJwt(keyMaterial, JwsHeaderKeyId()),
+        SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     private val signKeyBinding: SignJwtFun<KeyBindingJws> = SignJwt(keyMaterial, JwsHeaderNone()),
     private val verifiablePresentationFactory: VerifiablePresentationFactory =
         VerifiablePresentationFactory(keyMaterial, signVerifiablePresentation, signKeyBinding),

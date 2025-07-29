@@ -21,6 +21,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMIL
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import com.benasher44.uuid.uuid4
@@ -284,7 +285,7 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
     "Request in request URI" {
         val input = "mdoc-openid4vp://?client_id=https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02" +
                 "&request_uri=https%3A%2F%2Fexample.com%2Fd15b5b6f-7821-4031-9a18-ebe491b720a6"
-        val signer = SignJwt<AuthenticationRequestParameters>(EphemeralKeyWithoutCert(), JwsHeaderJwk())
+        val signer = SignJwt<AuthenticationRequestParameters>(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk())
         val jws = signer(
             JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST,
             AuthenticationRequestParameters(

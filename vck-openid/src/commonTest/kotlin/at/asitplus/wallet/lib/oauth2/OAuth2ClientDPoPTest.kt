@@ -6,6 +6,7 @@ import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
@@ -47,7 +48,7 @@ class OAuth2ClientDPoPTest : FunSpec({
             ),
         )
         clientKey = EphemeralKeyWithoutCert()
-        signDpop = SignJwt(clientKey, JwsHeaderJwk())
+        signDpop = SignJwt(clientKey, JwsHeaderCertOrJwk())
     }
 
     suspend fun getCode(state: String): String {
@@ -205,7 +206,7 @@ class OAuth2ClientDPoPTest : FunSpec({
             ),
             RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, tokenUrl))
         ).getOrThrow()
-        val wrongSignDpop = SignJwt<JsonWebToken>(EphemeralKeyWithoutCert(), JwsHeaderJwk())
+        val wrongSignDpop = SignJwt<JsonWebToken>(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk())
         val dpopForResource = BuildDPoPHeader(
             wrongSignDpop,
             resourceUrl,

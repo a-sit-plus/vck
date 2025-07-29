@@ -12,7 +12,7 @@ import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePr
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
-import at.asitplus.wallet.lib.jws.JwsHeaderKeyId
+import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import com.benasher44.uuid.uuid4
@@ -79,7 +79,7 @@ class ValidatorVpTest : FreeSpec({
             validatorVcJws = validator,
         )
         verifiablePresentationFactory = VerifiablePresentationFactory(holderKeyMaterial)
-        holderSignVp = SignJwt(holderKeyMaterial, JwsHeaderKeyId())
+        holderSignVp = SignJwt(holderKeyMaterial, JwsHeaderCertOrJwk())
         verifierId = "urn:${uuid4()}"
         verifier = VerifierAgent(
             identifier = verifierId,

@@ -7,6 +7,7 @@ import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.*
 import at.asitplus.wallet.lib.oidvci.DefaultNonceService
@@ -42,8 +43,10 @@ class JwtTokenGenerationService(
     internal val publicContext: String = "https://wallet.a-sit.at/authorization-server",
     /** Used to verify client attestation JWTs. */
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
+    /** Key material used to sign the DPoP tokens in [signToken]. */
+    private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     /** Used to sign DPoP (RFC 9449) access tokens, if supported by the client. */
-    internal val signToken: SignJwtFun<OpenId4VciAccessToken> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderJwk()),
+    internal val signToken: SignJwtFun<OpenId4VciAccessToken> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     /** Clock used to verify timestamps in access tokens and refresh tokens. */
     private val clock: Clock = System,
     /** Whether to issue refresh tokens, which may be used by clients to get a new access token. */
