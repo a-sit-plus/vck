@@ -21,6 +21,7 @@ sealed interface VcJwsInputValidationResult {
         val isIntegrityGood: Boolean,
         val subjectMatchingResult: SubjectMatchingResult?,
         val contentSemanticsValidationSummary: VcJwsContentSemanticsValidationSummary,
+        val vpMappingValidationSummary: VcJwsToVpJwsMappingValidationSummary?,
     ) : VcJwsInputValidationResult {
         val payload: VerifiableCredentialJws
             get() = parsed.payload
@@ -30,6 +31,7 @@ sealed interface VcJwsInputValidationResult {
                 isIntegrityGood,
                 subjectMatchingResult?.isSuccess != false,
                 contentSemanticsValidationSummary.isSuccess,
+                vpMappingValidationSummary?.isSuccess != false,
             ).all { it }
     }
 }

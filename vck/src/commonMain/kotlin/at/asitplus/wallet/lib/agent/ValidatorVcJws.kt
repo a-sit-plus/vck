@@ -7,9 +7,15 @@ import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.*
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.agent.validation.vcJws.VcJwsInputValidationResult
 import at.asitplus.wallet.lib.agent.validation.vcJws.VcJwsInputValidator
-import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_PRESENTATION
-import at.asitplus.wallet.lib.jws.*
+import at.asitplus.wallet.lib.data.VcJwsVerificationResultWrapper
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiablePresentationJws
+import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
+import at.asitplus.wallet.lib.jws.VerifyJwsObject
+import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
+import at.asitplus.wallet.lib.jws.VerifyJwsSignature
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureFun
 import io.github.aakira.napier.Napier
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -55,7 +61,7 @@ class ValidatorVcJws(
         }
         val vpJws = input.payload.validate(challenge, clientId)
         val vcValidationResults = vpJws.vp.verifiableCredential
-            .map { it to verifyVcJws(it, null) }
+            .map { it to verifyVcJws(it, null, input) }
 
         val invalidVcList = vcValidationResults.filter {
             it.second !is SuccessJwt
@@ -121,24 +127,28 @@ class ValidatorVcJws(
      *
      * @param input JWS in compact representation
      * @param publicKey Optionally, the local key, to verify VC was issued to the correct subject
+     * @param vpJws Optionally, the VP enclosing the VC
      */
     suspend fun verifyVcJws(
         input: JwsSigned<VerifiableCredentialJws>,
         publicKey: CryptoPublicKey?,
-    ) = verifyVcJws(input.serialize(), publicKey)
+        vpJws: JwsSigned<VerifiablePresentationJws>? = null
+    ) = verifyVcJws(input.serialize(), publicKey, vpJws)
 
     /**
      * Validates the content of a JWS, expected to contain a Verifiable Credential.
      *
      * @param input JWS in compact representation
      * @param publicKey Optionally, the local key, to verify VC was issued to the correct subject
+     * @param vpJws Optionally, the VP enclosing the VC
      */
     suspend fun verifyVcJws(
         input: String,
         publicKey: CryptoPublicKey?,
+        vpJws: JwsSigned<VerifiablePresentationJws>? = null
     ): VerifyCredentialResult {
         Napier.d("Validating VC-JWS $input")
-        val validationSummary = vcJwsInputValidator(input, publicKey)
+        val validationSummary = vcJwsInputValidator(input, publicKey, vpJws)
         return when {
             validationSummary !is VcJwsInputValidationResult.ContentValidationSummary -> InvalidStructure(
                 input = input,

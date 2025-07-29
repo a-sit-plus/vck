@@ -18,6 +18,7 @@ import at.asitplus.wallet.lib.jws.SignJwtFun
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -109,14 +110,25 @@ class ValidatorVpTest : FreeSpec({
             .shouldBeInstanceOf<VerifyPresentationResult.Success>()
     }
 
-    "wrong structure of VC is detected" {
-        val holderCredentials = holder.getCredentials()
-        holderCredentials.shouldNotBeNull()
-        val holderVcSerialized = holderCredentials
+    "Presentation of VC from different holder is detected" {
+        val otherHolderKeyMaterial = EphemeralKeyWithoutCert()
+        val otherHolder = HolderAgent(otherHolderKeyMaterial)
+        otherHolder.storeCredential(
+            issuer.issueCredential(
+                DummyCredentialDataProvider.getCredential(
+                    otherHolderKeyMaterial.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    PLAIN_JWT,
+                ).getOrThrow()
+            ).getOrThrow().toStoreCredentialInput()
+        ).getOrThrow()
+        val holderVc = otherHolder.getCredentials()
+            .shouldNotBeNull()
+            .shouldBeSingleton()
             .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
+        val holderVcSerialized = holderVc
             .map { it.vcSerialized }
             .map { it.reversed() }
-
         val vp = verifiablePresentationFactory.createVcPresentation(
             holderVcSerialized,
             PresentationRequestParameters(nonce = challenge, audience = verifierId)

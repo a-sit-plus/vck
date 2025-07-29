@@ -2,6 +2,8 @@
 
 Release 5.9.0 (unreleased):
  - Remove code elements deprecated in 5.8.0
+ - Validation:
+   - Improve validation of JWT VC
 
 Release 5.8.0:
  - Refactor `AuthorizationServiceStrategy`
