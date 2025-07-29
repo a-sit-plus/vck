@@ -32,7 +32,7 @@ interface KeyMaterial : Signer {
     suspend fun getCertificate(): X509Certificate?
 
     val jsonWebKey: JsonWebKey
-        get() = publicKey.toJsonWebKey(identifier)
+        get() = publicKey.toJsonWebKey(null)
 }
 
 /**
@@ -41,6 +41,9 @@ interface KeyMaterial : Signer {
 interface PublishedKeyMaterial : KeyMaterial {
     /** Can be used by clients to look up this key in a [at.asitplus.signum.indispensable.josef.JsonWebKeySet]. */
     val keySetUrl: String?
+
+    override val jsonWebKey: JsonWebKey
+        get() = publicKey.toJsonWebKey(identifier)
 }
 
 abstract class KeyWithSelfSignedCert(
