@@ -140,11 +140,27 @@ class ValidatorVcJws(
         Napier.d("Validating VC-JWS $input")
         val validationSummary = vcJwsInputValidator(input, publicKey)
         return when {
-            validationSummary !is VcJwsInputValidationResult.ContentValidationSummary -> InvalidStructure(input)
-            !validationSummary.isIntegrityGood -> InvalidStructure(input)
-            !validationSummary.contentSemanticsValidationSummary.isSuccess -> InvalidStructure(input)
-            validationSummary.subjectMatchingResult?.isSuccess == false -> ValidationError("subject not matching key")
-            validationSummary.isSuccess -> SuccessJwt(validationSummary.payload)
+            validationSummary !is VcJwsInputValidationResult.ContentValidationSummary -> InvalidStructure(
+                input = input,
+                reason = validationSummary.toString()
+            )
+
+            !validationSummary.isIntegrityGood -> InvalidStructure(
+                input = input,
+                reason = "!isIntegrityGood"
+            )
+
+            !validationSummary.contentSemanticsValidationSummary.isSuccess -> InvalidStructure(
+                input = input,
+                reason = validationSummary.contentSemanticsValidationSummary.toString()
+            )
+
+            validationSummary.subjectMatchingResult?.isSuccess == false ->
+                ValidationError("subject not matching key")
+
+            validationSummary.isSuccess ->
+                SuccessJwt(validationSummary.payload)
+
             else -> ValidationError(input) // this branch shouldn't be executed anyway
         }
     }

@@ -704,9 +704,6 @@ open class OpenId4VpVerifier(
     }
 
     private fun VerifyPresentationResult.mapToAuthnResponseResult(state: String) = when (this) {
-        is VerifyPresentationResult.InvalidStructure -> AuthnResponseResult.Error("parse vp failed", state)
-            .also { Napier.w("VP error: $this") }
-
         is VerifyPresentationResult.ValidationError -> AuthnResponseResult.ValidationError("vpToken", state, cause)
             .also { Napier.w("VP error: $this", cause) }
 

@@ -229,7 +229,7 @@ class ValidatorVcTest : FreeSpec() {
                     .let {
                         VerifiableCredentialJws(
                             vc = it,
-                            subject = "urn:${uuid4()}",
+                            subject = it.credentialSubject.id,
                             notBefore = it.issuanceDate,
                             issuer = it.issuer,
                             expiration = Clock.System.now() + 1.hours,
@@ -384,7 +384,7 @@ class ValidatorVcTest : FreeSpec() {
 
     private fun wrapVcInJws(
         it: VerifiableCredential,
-        subject: String = verifierKeyMaterial.identifier,
+        subject: String = it.credentialSubject.id,
         issuer: String = it.issuer,
         jwtId: String = it.id,
         issuanceDate: Instant = it.issuanceDate,

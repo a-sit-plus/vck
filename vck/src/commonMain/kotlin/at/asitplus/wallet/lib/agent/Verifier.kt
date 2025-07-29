@@ -72,10 +72,6 @@ interface Verifier {
             val documents: List<IsoDocumentParsed>,
         ) : VerifyPresentationResult()
 
-        data class InvalidStructure(
-            val input: String,
-        ) : VerifyPresentationResult()
-
         data class ValidationError(
             val cause: Throwable,
         ) : VerifyPresentationResult() {
@@ -102,6 +98,7 @@ interface Verifier {
 
         data class InvalidStructure(
             val input: String,
+            val reason: String,
         ) : VerifyCredentialResult()
 
         data class ValidationError(

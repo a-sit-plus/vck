@@ -160,8 +160,12 @@ class ValidatorMdoc(
      */
     suspend fun verifyIsoCred(it: IssuerSigned, issuerKey: CoseKey?): VerifyCredentialResult {
         Napier.d("Verifying ISO Cred $it")
-        if (!mdocInputValidator(it, issuerKey).isSuccess) {
-            return InvalidStructure(coseCompliantSerializer.encodeToByteArray(it).encodeToString(Base16Strict))
+        val mdocInputValidator = mdocInputValidator(it, issuerKey)
+        if (!mdocInputValidator.isSuccess) {
+            return InvalidStructure(
+                input = coseCompliantSerializer.encodeToByteArray(it).encodeToString(Base16Strict),
+                reason = mdocInputValidator.integrityValidationSummary.toString()
+            )
         }
         return SuccessIso(it)
     }
