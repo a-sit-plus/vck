@@ -32,7 +32,8 @@ import kotlin.time.Instant
  * An agent that implements [StatusListIssuer], i.e. it manages status of credentials and status lists.
  */
 class StatusListAgent(
-    private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+    /** Should either be [PublishedKeyMaterial] or contain a certificate, so clients can look up the key. */
+    private val keyMaterial: KeyMaterial = EphemeralKeyWithSelfSignedCert(),
     private val issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
     private val statusListBaseUrl: String = "https://wallet.a-sit.at/backend/credentials/status",
     private val statusListAggregationUrl: String? = null,
@@ -139,7 +140,9 @@ class StatusListAgent(
         return list
     }
 
-    private suspend fun wrapStatusListTokenInCoseSigned(statusListTokenPayload: StatusListTokenPayload): CoseSigned<StatusListTokenPayload>? =
+    private suspend fun wrapStatusListTokenInCoseSigned(
+        statusListTokenPayload: StatusListTokenPayload,
+    ): CoseSigned<StatusListTokenPayload>? =
         signStatusListCwt(
             protectedHeader = CoseHeader(type = MediaTypes.Application.STATUSLIST_CWT),
             unprotectedHeader = null,

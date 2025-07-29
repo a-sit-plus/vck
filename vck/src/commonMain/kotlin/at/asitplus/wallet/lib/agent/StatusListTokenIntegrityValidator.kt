@@ -55,8 +55,8 @@ class StatusListTokenIntegrityValidator(
     suspend fun validateStatusListCwtIntegrity(statusListToken: StatusListToken.StatusListCwt): KmmResult<StatusListTokenPayload> =
         catching {
             val coseStatus = statusListToken.value
-            verifyCoseSignature(coseStatus, byteArrayOf(), null).isSuccess.ifFalse {
-                throw IllegalStateException("Invalid Signature.")
+            verifyCoseSignature(coseStatus, byteArrayOf(), null).getOrElse {
+                throw IllegalStateException("Invalid Signature.", it)
             }
             val type = coseStatus.protectedHeader.type?.lowercase()
                 ?: throw IllegalArgumentException("Invalid type header")
