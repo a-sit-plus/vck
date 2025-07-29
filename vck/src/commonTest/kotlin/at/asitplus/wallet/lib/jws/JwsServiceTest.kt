@@ -127,3 +127,21 @@ class JwsServiceTest : FreeSpec({
             .payload shouldBe randomPayload
     }
 })
+
+
+/**
+ * Identify [KeyMaterial] with it's [KeyMaterial.identifier] set in [JwsHeader.keyId],
+ * and URL set in[JwsHeader.jsonWebKeySetUrl].
+ */
+class JwsHeaderJwksUrl(val jsonWebKeySetUrl: String) : JwsHeaderIdentifierFun {
+    override suspend operator fun invoke(
+        it: JwsHeader,
+        keyMaterial: KeyMaterial,
+    ) = it.copy(keyId = keyMaterial.identifier, jsonWebKeySetUrl = jsonWebKeySetUrl)
+}
+
+/** Identify [KeyMaterial] with it's [KeyMaterial.jsonWebKey] in [JwsHeader.jsonWebKey]. */
+class JwsHeaderJwk : JwsHeaderIdentifierFun {
+    override suspend operator fun invoke(it: JwsHeader, keyMaterial: KeyMaterial) =
+        it.copy(jsonWebKey = keyMaterial.jsonWebKey)
+}

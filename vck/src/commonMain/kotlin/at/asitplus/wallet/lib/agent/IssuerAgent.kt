@@ -53,8 +53,12 @@ class IssuerAgent(
     private val clock: Clock = Clock.System,
     override val cryptoAlgorithms: Set<SignatureAlgorithm> = setOf(keyMaterial.signatureAlgorithm),
     private val timePeriodProvider: TimePeriodProvider = FixedTimePeriodProvider,
-    /** The identifier used in `issuer` properties of credentials. Note that for SD-JWT VC this must be a URI. */
-    private val identifier: String = keyMaterial.identifier,
+    /**
+     * The identifier used in `issuer` properties of credentials.
+     * Note that for SD-JWT VC this must be a URI.
+     * For JWT VC this must be a URI (since we're not supporting objects for that property).
+     */
+    private val identifier: String,
     private val signIssuedSdJwt: SignJwtExtFun<JsonObject> = SignJwtExt(keyMaterial, JwsHeaderCertOrJwk()),
     private val signIssuedVc: SignJwtFun<VerifiableCredentialJws> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     private val signMobileSecurityObject: SignCoseFun<MobileSecurityObject> =

@@ -22,7 +22,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
-import at.asitplus.wallet.lib.jws.JwsHeaderJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec

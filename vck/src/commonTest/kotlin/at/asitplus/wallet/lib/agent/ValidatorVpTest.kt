@@ -193,7 +193,7 @@ class ValidatorVpTest : FreeSpec({
             .shouldHaveSize(1)
     }
 
-    "Manually created and valid presentation is valid" {
+    "Manually created and presentation with jwkThumbprint is valid" {
         val credentials = holderCredentialStore.getCredentials().getOrThrow()
         val validCredentials = credentials
             .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
@@ -206,7 +206,33 @@ class ValidatorVpTest : FreeSpec({
         val vp = VerifiablePresentation(validCredentials)
         val vpSerialized = vp.toJws(
             challenge = challenge,
-            issuerId = holder.keyMaterial.identifier,
+            issuerId = holder.keyMaterial.jsonWebKey.jwkThumbprint,
+            audienceId = verifierId,
+        )
+        val vpJws = holderSignVp(
+            JwsContentTypeConstants.JWT,
+            vpSerialized,
+            VerifiablePresentationJws.serializer()
+        ).getOrThrow()
+
+        verifier.verifyPresentationVcJwt(vpJws, challenge)
+            .shouldBeInstanceOf<VerifyPresentationResult.Success>()
+    }
+
+    "Manually created and presentation with did is valid" {
+        val credentials = holderCredentialStore.getCredentials().getOrThrow()
+        val validCredentials = credentials
+            .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
+            .filter {
+                validator.checkRevocationStatus(it.vc) !is TokenStatusValidationResult.Invalid
+            }
+            .map { it.vcSerialized }
+        (validCredentials.isEmpty()) shouldBe false
+
+        val vp = VerifiablePresentation(validCredentials)
+        val vpSerialized = vp.toJws(
+            challenge = challenge,
+            issuerId = holder.keyMaterial.jsonWebKey.didEncoded!!,
             audienceId = verifierId,
         )
         val vpJws = holderSignVp(

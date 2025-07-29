@@ -10,7 +10,7 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.KeyStore
 import java.security.Security
 
-class KeyStoreMaterialTest: FreeSpec( {
+class KeyStoreMaterialTest : FreeSpec({
 
     val ks = KeyStore.getInstance("JKS")
     ks.load(KeyStoreMaterial::class.java.getResourceAsStream("/pw_bar_kpw_foo_alias_foo.jks"), "bar".toCharArray())
@@ -21,7 +21,12 @@ class KeyStoreMaterialTest: FreeSpec( {
         material.getCertificate().shouldBeNull()
     }
     "With Cert" {
-        val material = KeyStoreMaterial(ks, keyAlias = "foo", privateKeyPassword = "foo".toCharArray(), certAlias = "foo")
+        val material = KeyStoreMaterial(
+            keyStore = ks,
+            keyAlias = "foo",
+            privateKeyPassword = "foo".toCharArray(),
+            certAlias = "foo"
+        )
         material.sign(byteArrayOf()).shouldBeInstanceOf<SignatureResult.Success<*>>()
 
         material.getCertificate().shouldNotBeNull()
@@ -29,7 +34,13 @@ class KeyStoreMaterialTest: FreeSpec( {
 
     "With BC Prov and Cert" {
         Security.addProvider(BouncyCastleProvider())
-        val material = KeyStoreMaterial(ks, keyAlias = "foo", privateKeyPassword = "foo".toCharArray(), certAlias = "foo", providerName = "BC")
+        val material = KeyStoreMaterial(
+            keyStore = ks,
+            keyAlias = "foo",
+            privateKeyPassword = "foo".toCharArray(),
+            certAlias = "foo",
+            providerName = "BC"
+        )
         material.sign(byteArrayOf()).shouldBeInstanceOf<SignatureResult.Success<*>>()
 
         material.getCertificate().shouldNotBeNull()

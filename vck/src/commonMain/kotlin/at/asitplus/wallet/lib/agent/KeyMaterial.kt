@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.ECCurve
+import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
@@ -11,8 +12,10 @@ import at.asitplus.signum.supreme.asKmmResult
 import at.asitplus.signum.supreme.sign.EphemeralKey
 import at.asitplus.signum.supreme.sign.Signer
 import io.github.aakira.napier.Napier
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.random.Random
 
 /**
  * Abstracts the management of key material away from cryptographic functions.
@@ -28,15 +31,24 @@ interface KeyMaterial : Signer {
      */
     suspend fun getCertificate(): X509Certificate?
 
-    val jsonWebKey: JsonWebKey get() = publicKey.toJsonWebKey(identifier)
+    val jsonWebKey: JsonWebKey
+        get() = publicKey.toJsonWebKey(identifier)
+}
+
+/**
+ * Key material referenced by a key id in [identifier], which can be fetched by clients from [keySetUrl].
+ */
+interface PublishedKeyMaterial : KeyMaterial {
+    /** Can be used by clients to look up this key in a [at.asitplus.signum.indispensable.josef.JsonWebKeySet]. */
+    val keySetUrl: String?
 }
 
 abstract class KeyWithSelfSignedCert(
     private val extensions: List<X509CertificateExtension>,
-    val customKeyId: String? = null,
-    val lifetimeInSeconds: Long = 30,
+    private val customKeyId: String,
+    private val lifetimeInSeconds: Long,
 ) : KeyMaterial {
-    override val identifier: String get() = customKeyId ?: publicKey.didEncoded
+    override val identifier: String get() = customKeyId
     private val crtMut = Mutex()
     private var _certificate: X509Certificate? = null
 
@@ -66,7 +78,7 @@ class EphemeralKeyWithSelfSignedCert(
         }
     }.getOrThrow(),
     extensions: List<X509CertificateExtension> = listOf(),
-    customKeyId: String? = null,
+    customKeyId: String = Random.nextBytes(8).encodeToString(Base16Strict).lowercase(),
     lifetimeInSeconds: Long = 30,
 ) : KeyWithSelfSignedCert(extensions, customKeyId, lifetimeInSeconds), Signer by key.signer().getOrThrow() {
     override fun getUnderLyingSigner(): Signer = key.signer().getOrThrow()
@@ -82,24 +94,33 @@ class EphemeralKeyWithoutCert(
             digests = setOf(Digest.SHA256)
         }
     }.getOrThrow(),
-    val customKeyId: String? = null,
+    val customKeyId: String = Random.nextBytes(8).encodeToString(Base16Strict).lowercase(),
 ) : KeyMaterial, Signer by key.signer().getOrThrow() {
-    override val identifier: String = customKeyId ?: publicKey.didEncoded
+    override val identifier: String = customKeyId
     override fun getUnderLyingSigner(): Signer = key.signer().getOrThrow()
     override suspend fun getCertificate(): X509Certificate? = null
 }
 
-interface EphemeralKeyHolder {
-    val publicJsonWebKey: JsonWebKey?
-    val key: EphemeralKey
-}
-
-
+/**
+ * Key that will be referenced by its [getCertificate] or the [jsonWebKey] directly embedded in proofs.
+ */
 abstract class SignerBasedKeyMaterial(
     val signer: Signer,
-    val customKeyId: String? = null,
+    val customKeyId: String = Random.nextBytes(8).encodeToString(Base16Strict).lowercase(),
 ) : KeyMaterial, Signer by signer {
-    override val identifier = customKeyId ?: signer.publicKey.didEncoded
+    override val identifier = customKeyId
+    override fun getUnderLyingSigner() = signer
+}
 
+/**
+ * Key that will be referenced by [customKeyId] in the key set published under [keySetUrl],
+ * which will both be embedded in proofs.
+ */
+abstract class SignerBasedPublishedKeyMaterial(
+    val signer: Signer,
+    val customKeyId: String,
+    override val keySetUrl: String?,
+) : PublishedKeyMaterial, Signer by signer {
+    override val identifier = customKeyId
     override fun getUnderLyingSigner() = signer
 }

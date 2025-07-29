@@ -112,16 +112,12 @@ interface Verifier {
 }
 
 /**
- * Verifies that [input] is a valid identifier for this key
+ * Verifies that [input] is a valid identifier for this key (that is not forgeable like a simple ID)
  */
 fun CryptoPublicKey.matchesIdentifier(input: String): Boolean {
-    if (jwkId == input)
-        return true
     if (didEncoded == input)
         return true
     with(toJsonWebKey()) {
-        if (keyId == input)
-            return true
         if (jwkThumbprint == input)
             return true
         if (didEncoded == input)

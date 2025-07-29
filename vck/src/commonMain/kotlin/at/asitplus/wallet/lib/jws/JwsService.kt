@@ -41,6 +41,7 @@ import at.asitplus.signum.supreme.sign.Signer
 import at.asitplus.signum.supreme.symmetric.decrypt
 import at.asitplus.signum.supreme.symmetric.encrypt
 import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.PublishedKeyMaterial
 import at.asitplus.wallet.lib.agent.VerifySignature
 import at.asitplus.wallet.lib.agent.VerifySignatureFun
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -59,37 +60,17 @@ fun interface JwsHeaderIdentifierFun {
     suspend operator fun invoke(it: JwsHeader, keyMaterial: KeyMaterial): JwsHeader
 }
 
-/** Identify [KeyMaterial] with it's [KeyMaterial.identifier] in [JwsHeader.keyId]. */
-class JwsHeaderKeyId : JwsHeaderIdentifierFun {
-    override suspend operator fun invoke(it: JwsHeader, keyMaterial: KeyMaterial) =
-        it.copy(keyId = keyMaterial.identifier)
-}
-
 /**
  * Identify [KeyMaterial] with it's [KeyMaterial.getCertificate] in [JwsHeader.certificateChain] if it exists,
  * or [KeyMaterial.jsonWebKey] in [JwsHeader.jsonWebKey]. */
 class JwsHeaderCertOrJwk : JwsHeaderIdentifierFun {
     override suspend operator fun invoke(it: JwsHeader, keyMaterial: KeyMaterial) =
-        keyMaterial.getCertificate()?.let { x5c ->
-            it.copy(certificateChain = listOf(x5c))
-        } ?: it.copy(jsonWebKey = keyMaterial.jsonWebKey)
-}
-
-/** Identify [KeyMaterial] with it's [KeyMaterial.jsonWebKey] in [JwsHeader.jsonWebKey]. */
-class JwsHeaderJwk : JwsHeaderIdentifierFun {
-    override suspend operator fun invoke(it: JwsHeader, keyMaterial: KeyMaterial) =
-        it.copy(jsonWebKey = keyMaterial.jsonWebKey)
-}
-
-/**
- * Identify [KeyMaterial] with it's [KeyMaterial.identifier] set in [JwsHeader.keyId],
- * and URL set in[JwsHeader.jsonWebKeySetUrl].
- */
-class JwsHeaderJwksUrl(val jsonWebKeySetUrl: String) : JwsHeaderIdentifierFun {
-    override suspend operator fun invoke(
-        it: JwsHeader,
-        keyMaterial: KeyMaterial,
-    ) = it.copy(keyId = keyMaterial.identifier, jsonWebKeySetUrl = jsonWebKeySetUrl)
+        when (keyMaterial) {
+            is PublishedKeyMaterial -> it.copy(keyId = keyMaterial.identifier, jsonWebKeySetUrl = keyMaterial.keySetUrl)
+            else -> keyMaterial.getCertificate()?.let { x5c ->
+                it.copy(certificateChain = listOf(x5c))
+            } ?: it.copy(jsonWebKey = keyMaterial.jsonWebKey)
+        }
 }
 
 /** Don't identify [KeyMaterial] at all in a [JwsHeader], used for SD-JWT KB-JWS. */
@@ -160,8 +141,7 @@ class SignJwtExt<P : Any>(
         }.let {
             additionalHeaderModifier(it)
         }
-        val plainSignatureInput =
-            prepareJwsSignatureInput(header, payload, serializer, vckJsonSerializer)
+        val plainSignatureInput = prepareJwsSignatureInput(header, payload, serializer, vckJsonSerializer)
         val signature = keyMaterial.sign(plainSignatureInput).asKmmResult().getOrThrow()
         JwsSigned(header, payload, signature, plainSignatureInput)
     }

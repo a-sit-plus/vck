@@ -31,7 +31,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
-import at.asitplus.wallet.lib.jws.JwsHeaderJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oauth2.ClientAuthenticationService
