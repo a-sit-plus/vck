@@ -3,7 +3,6 @@ package at.asitplus.openid.dcql
 import at.asitplus.catching
 import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NodeListEntry
-import at.asitplus.openid.third_party.at.asitplus.jsonpath.core.plus
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject

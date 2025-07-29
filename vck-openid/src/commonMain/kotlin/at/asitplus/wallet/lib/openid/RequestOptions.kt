@@ -1,18 +1,38 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
-import at.asitplus.dif.*
+import at.asitplus.dif.Constraint
+import at.asitplus.dif.ConstraintField
+import at.asitplus.dif.ConstraintFilter
+import at.asitplus.dif.DifInputDescriptor
+import at.asitplus.dif.FormatContainerJwt
+import at.asitplus.dif.FormatContainerSdJwt
+import at.asitplus.dif.FormatHolder
+import at.asitplus.dif.InputDescriptor
+import at.asitplus.dif.PresentationDefinition
+import at.asitplus.dif.RequirementEnum
 import at.asitplus.jsonpath.core.NormalizedJsonPath
-import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
-import at.asitplus.jsonpath.core.NormalizedJsonPathSegment.IndexSegment
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment.NameSegment
-import at.asitplus.openid.*
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.CredentialFormatEnum
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.openid.OpenIdConstants.SCOPE_PROFILE
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
-import at.asitplus.openid.dcql.*
+import at.asitplus.openid.TransactionData
+import at.asitplus.openid.dcql.DCQLClaimsPathPointer
+import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment
+import at.asitplus.openid.dcql.DCQLClaimsQueryList
+import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
+import at.asitplus.openid.dcql.DCQLCredentialQueryInstance
+import at.asitplus.openid.dcql.DCQLCredentialQueryList
+import at.asitplus.openid.dcql.DCQLIsoMdocClaimsQuery
+import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstraints
+import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
+import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
 import at.asitplus.wallet.lib.agent.PresentationRequestParameters.Flow
-import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
@@ -282,22 +302,7 @@ data class RequestOptionsCredential(
 
     // EUDIW Reference Implementation only supports dot notation for JSONPath
     private fun String.splitByDotToJsonPath(): String =
-        NormalizedJsonPath(split(".").map { NameSegment(it) }).toDotNotation()
-
-    private fun NormalizedJsonPath.toDotNotation(): String =
-        "$" + segments.joinToString("") { it.toDotNotation() }
-
-    private fun NormalizedJsonPathSegment.toDotNotation(): CharSequence = when (this) {
-        is IndexSegment -> toString()
-        is NameSegment -> if (memberName.isValidForDotNotation()) ".$memberName" else toString()
-    }
-
-    private fun String.isValidForDotNotation(): Boolean =
-        firstOrNull().isLetterOrUnderscore() && all { it.isLetterOrDigit() || it.isUnderscore() }
-
-    private fun Char?.isLetterOrUnderscore(): Boolean = if (this == null) false else (isLetter() || this.isUnderscore())
-
-    private fun Char.isUnderscore(): Boolean = this == '_'
+        NormalizedJsonPath(split(".").map { NameSegment(it) }).toShorthandNameSegmentNotation()
 
     private fun ConstantIndex.CredentialScheme?.prefixWithIsoNamespace(attribute: String): String = NormalizedJsonPath(
         NameSegment(this?.isoNamespace ?: "mdoc"),

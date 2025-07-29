@@ -68,6 +68,7 @@ Release 5.8.0:
        * Coroutines 1.10.2
        * Ktor 3.2.2
        * Kotest 6.0.0.M6
+   - Update JsonPath4K to 3.0.0
  - Disable bogus ios X64 test tasks
  - Help XCode to get its act together
  - Add a manual test workflow to try different kotlin/ksp/kotest versions
