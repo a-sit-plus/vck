@@ -4,6 +4,7 @@ Release 5.9.0 (unreleased):
  - Remove code elements deprecated in 5.8.0
  - Validation:
    - Improve validation of JWT VC
+   - Remove subclass `InvalidStructure` from `Verifier.VerifyCredentialResult`, is now mapped to `ValidationError`
 
 Release 5.8.0:
  - Refactor `AuthorizationServiceStrategy`

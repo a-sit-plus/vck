@@ -9,13 +9,11 @@ import at.asitplus.iso.ValueDigestList
 import at.asitplus.iso.sha256
 import at.asitplus.iso.wrapInCborTag
 import at.asitplus.signum.indispensable.cosef.CoseKey
-import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
-import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.InvalidStructure
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.SuccessIso
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.agent.validation.mdoc.MdocInputValidator
@@ -26,7 +24,6 @@ import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.builtins.ByteArraySerializer
-import kotlinx.serialization.encodeToByteArray
 import kotlin.coroutines.cancellation.CancellationException
 
 class ValidatorMdoc(
@@ -162,9 +159,8 @@ class ValidatorMdoc(
         Napier.d("Verifying ISO Cred $it")
         val mdocInputValidator = mdocInputValidator(it, issuerKey)
         if (!mdocInputValidator.isSuccess) {
-            return InvalidStructure(
-                input = coseCompliantSerializer.encodeToByteArray(it).encodeToString(Base16Strict),
-                reason = mdocInputValidator.integrityValidationSummary.toString()
+            return VerifyCredentialResult.ValidationError(
+                cause = mdocInputValidator.error ?: IllegalArgumentException("No details available")
             )
         }
         return SuccessIso(it)

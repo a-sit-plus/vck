@@ -137,7 +137,7 @@ class ValidatorVcTest : FreeSpec() {
             validator.verifyVcJws(
                 credential.signedVcJws.serialize().replaceFirstChar { "f" },
                 verifierKeyMaterial.publicKey
-            ).shouldBeInstanceOf<VerifyCredentialResult.InvalidStructure>()
+            ).shouldBeInstanceOf<VerifyCredentialResult.ValidationError>()
         }
 
         "Manually created and valid credential is valid" {
@@ -167,7 +167,7 @@ class ValidatorVcTest : FreeSpec() {
                     .let { wrapVcInJwsWrongKey(it) }
                     .let {
                         validator.verifyVcJws(it, verifierKeyMaterial.publicKey)
-                            .shouldBeInstanceOf<VerifyCredentialResult.InvalidStructure>()
+                            .shouldBeInstanceOf<VerifyCredentialResult.ValidationError>()
                     }
             }
         }
@@ -183,7 +183,7 @@ class ValidatorVcTest : FreeSpec() {
                     .let { signJws(it) }
                     .let {
                         validator.verifyVcJws(it, verifierKeyMaterial.publicKey)
-                            .shouldBeInstanceOf<VerifyCredentialResult.InvalidStructure>()
+                            .shouldBeInstanceOf<VerifyCredentialResult.ValidationError>()
                     }
             }
         }
@@ -198,7 +198,7 @@ class ValidatorVcTest : FreeSpec() {
                     .let { wrapVcInJws(it, issuer = "vc.issuer") }
                     .let { signJws(it) }.let {
                         validator.verifyVcJws(it, verifierKeyMaterial.publicKey)
-                            .shouldBeInstanceOf<VerifyCredentialResult.InvalidStructure>()
+                            .shouldBeInstanceOf<VerifyCredentialResult.ValidationError>()
                     }
             }
         }
@@ -214,7 +214,7 @@ class ValidatorVcTest : FreeSpec() {
                     .let { signJws(it) }
                     .let {
                         validator.verifyVcJws(it, verifierKeyMaterial.publicKey)
-                            .shouldBeInstanceOf<VerifyCredentialResult.InvalidStructure>()
+                            .shouldBeInstanceOf<VerifyCredentialResult.ValidationError>()
                     }
             }
         }
@@ -239,7 +239,7 @@ class ValidatorVcTest : FreeSpec() {
                     .let { signJws(it) }
                     .let {
                         validator.verifyVcJws(it, verifierKeyMaterial.publicKey)
-                            .shouldBeInstanceOf<VerifyCredentialResult.InvalidStructure>()
+                            .shouldBeInstanceOf<VerifyCredentialResult.ValidationError>()
                     }
             }
         }
@@ -271,7 +271,7 @@ class ValidatorVcTest : FreeSpec() {
                     .let { signJws(it) }
                     .let {
                         validator.verifyVcJws(it, verifierKeyMaterial.publicKey)
-                            .shouldBeInstanceOf<VerifyCredentialResult.InvalidStructure>()
+                            .shouldBeInstanceOf<VerifyCredentialResult.ValidationError>()
                     }
             }
         }
@@ -287,7 +287,7 @@ class ValidatorVcTest : FreeSpec() {
                     .let { signJws(it) }
                     .let {
                         validator.verifyVcJws(it, verifierKeyMaterial.publicKey)
-                            .shouldBeInstanceOf<VerifyCredentialResult.InvalidStructure>()
+                            .shouldBeInstanceOf<VerifyCredentialResult.ValidationError>()
                     }
             }
         }
@@ -303,7 +303,7 @@ class ValidatorVcTest : FreeSpec() {
                     .let { signJws(it) }
                     .let {
                         validator.verifyVcJws(it, verifierKeyMaterial.publicKey)
-                            .shouldBeInstanceOf<VerifyCredentialResult.InvalidStructure>()
+                            .shouldBeInstanceOf<VerifyCredentialResult.ValidationError>()
                     }
             }
         }
@@ -337,7 +337,7 @@ class ValidatorVcTest : FreeSpec() {
                     .let { signJws(it) }
                     .let {
                         validator.verifyVcJws(it, verifierKeyMaterial.publicKey)
-                            .shouldBeInstanceOf<VerifyCredentialResult.InvalidStructure>()
+                            .shouldBeInstanceOf<VerifyCredentialResult.ValidationError>()
                     }
             }
         }

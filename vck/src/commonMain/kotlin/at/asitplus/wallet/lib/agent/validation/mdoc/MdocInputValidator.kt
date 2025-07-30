@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.agent.validation.mdoc
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.signum.indispensable.cosef.CoseKey
+import at.asitplus.wallet.lib.agent.validation.mdoc.MdocInputValidationSummary.IntegrityValidationSummary
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 import io.github.aakira.napier.Napier
@@ -13,20 +14,19 @@ class MdocInputValidator(
 ) {
     suspend operator fun invoke(it: IssuerSigned, issuerKey: CoseKey?) = MdocInputValidationSummary(
         integrityValidationSummary = if (issuerKey == null) {
-            Napier.w("ISO: No issuer key")
-            MdocInputValidationSummary.IntegrityValidationSummary.IntegrityNotValidated
+            Napier.w("MdocInputValidator: No issuer key")
+            IntegrityValidationSummary.IntegrityNotValidated
         } else {
-            MdocInputValidationSummary.IntegrityValidationSummary.IntegrityValidationResult(
+            val verifyCoseSignatureWithKey = verifyCoseSignatureWithKey(it.issuerAuth, issuerKey, byteArrayOf(), null)
+                .onFailure { Napier.w("MdocInputValidator: Could not verify credential", it) }
+            IntegrityValidationSummary.IntegrityValidationResult(
                 issuerKey = issuerKey,
-                isSuccess = verifyCoseSignatureWithKey(it.issuerAuth, issuerKey, byteArrayOf(), null).onFailure { ex ->
-                    Napier.w("ISO: Could not verify credential", ex)
-                }.isSuccess
+                isSuccess = verifyCoseSignatureWithKey.isSuccess,
+                error = verifyCoseSignatureWithKey.exceptionOrNull(),
             )
         },
     ).also {
-        if (it.isSuccess) {
-            Napier.d("Verifying ISO Cred $it")
-        }
+        Napier.d("MdocInputValidator: Result: $it")
     }
 }
 

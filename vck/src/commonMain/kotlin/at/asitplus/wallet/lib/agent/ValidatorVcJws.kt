@@ -3,9 +3,11 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
-import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.*
+import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.SuccessJwt
+import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.ValidationError
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
-import at.asitplus.wallet.lib.agent.validation.vcJws.VcJwsInputValidationResult
+import at.asitplus.wallet.lib.agent.validation.vcJws.VcJwsInputValidationResult.ContentValidationSummary
+import at.asitplus.wallet.lib.agent.validation.vcJws.VcJwsInputValidationResult.ParsingError
 import at.asitplus.wallet.lib.agent.validation.vcJws.VcJwsInputValidator
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_PRESENTATION
 import at.asitplus.wallet.lib.data.VcJwsVerificationResultWrapper
@@ -132,7 +134,7 @@ class ValidatorVcJws(
     suspend fun verifyVcJws(
         input: JwsSigned<VerifiableCredentialJws>,
         publicKey: CryptoPublicKey?,
-        vpJws: JwsSigned<VerifiablePresentationJws>? = null
+        vpJws: JwsSigned<VerifiablePresentationJws>? = null,
     ) = verifyVcJws(input.serialize(), publicKey, vpJws)
 
     /**
@@ -145,34 +147,17 @@ class ValidatorVcJws(
     suspend fun verifyVcJws(
         input: String,
         publicKey: CryptoPublicKey?,
-        vpJws: JwsSigned<VerifiablePresentationJws>? = null
-    ): VerifyCredentialResult {
-        Napier.d("Validating VC-JWS $input")
-        val validationSummary = vcJwsInputValidator(input, publicKey, vpJws)
-        return when {
-            validationSummary !is VcJwsInputValidationResult.ContentValidationSummary -> InvalidStructure(
-                input = input,
-                reason = validationSummary.toString()
-            )
-
-            !validationSummary.isIntegrityGood -> InvalidStructure(
-                input = input,
-                reason = "!isIntegrityGood"
-            )
-
-            !validationSummary.contentSemanticsValidationSummary.isSuccess -> InvalidStructure(
-                input = input,
-                reason = validationSummary.contentSemanticsValidationSummary.toString()
-            )
-
-            validationSummary.subjectMatchingResult?.isSuccess == false ->
-                ValidationError("subject not matching key")
-
-            validationSummary.isSuccess ->
-                SuccessJwt(validationSummary.payload)
-
-            else -> ValidationError(input) // this branch shouldn't be executed anyway
+        vpJws: JwsSigned<VerifiablePresentationJws>? = null,
+    ): VerifyCredentialResult =
+        when (val result = vcJwsInputValidator(input, publicKey, vpJws)) {
+            is ParsingError -> ValidationError(result.throwable)
+            is ContentValidationSummary ->
+                if (result.isSuccess)
+                    SuccessJwt(result.payload)
+                else
+                    ValidationError(result.toString())
+        }.also {
+            Napier.d("Validating VC-JWS $input got $it")
         }
-    }
 
 }
