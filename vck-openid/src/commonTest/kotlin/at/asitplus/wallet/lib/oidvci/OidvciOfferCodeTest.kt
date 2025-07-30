@@ -103,7 +103,6 @@ class OidvciOfferCodeTest : FreeSpec({
             authorizationHeader = token.toHttpHeaderValue(),
             params = credentialRequest.first(),
             credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
-            issueCredential = { IssuerAgent().issueCredential(it) }
         ).getOrThrow()
         credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
     }
@@ -151,7 +150,6 @@ class OidvciOfferCodeTest : FreeSpec({
             authorizationHeader = token.toHttpHeaderValue(),
             params = credentialRequest.first(),
             credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
-            issueCredential = { IssuerAgent().issueCredential(it) }
         ).getOrThrow()
         credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
     }

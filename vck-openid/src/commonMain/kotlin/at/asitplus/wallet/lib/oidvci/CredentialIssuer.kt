@@ -53,7 +53,6 @@ class CredentialIssuer(
     /** Used to get the user data, and access tokens. */
     private val authorizationService: OAuth2AuthorizationServerAdapter,
     /** Used to actually issue the credential. */
-    @Deprecated("Use `issueCredential` in method `credential, `keyMaterial`, `cryptoAlgorithms`")
     private val issuer: Issuer = IssuerAgent(),
     /** Key material used to sign credentials in [credential]. */
     private val keyMaterial: Set<KeyMaterial> = setOf(issuer.keyMaterial),
@@ -181,7 +180,7 @@ class CredentialIssuer(
      * @param request information about the HTTP request the client has made, to validate authentication
      */
     @Suppress("DEPRECATION")
-    @Deprecated("Use `credential` with parameters `credentialDataProvider`, `issueCredential` instead")
+    @Deprecated("Use `credential` with parameter `credentialDataProvider` instead")
     suspend fun credential(
         authorizationHeader: String,
         params: CredentialRequestParameters,
@@ -190,7 +189,6 @@ class CredentialIssuer(
         authorizationHeader = authorizationHeader,
         params = params,
         credentialDataProvider = CredentialIssuerDataProviderAdapter(credentialProvider),
-        issueCredential = { issuer.issueCredential(it) },
         request = request,
     )
 
@@ -205,18 +203,16 @@ class CredentialIssuer(
      * @param authorizationHeader value of HTTP header `Authorization` sent by the client, with all prefixes
      * @param params Parameters the client sent JSON-serialized in the HTTP body
      * @param request information about the HTTP request the client has made, to validate authentication
-     * @param issueCredential Used to actually issue the credential, with data provided from [credentialDataProvider]
-     * @param credentialDataProvider Extract data from the authenticated user and prepares it for [issueCredential]
+     * @param credentialDataProvider Extract data from the authenticated user and prepares it for issuing
      */
     suspend fun credential(
         authorizationHeader: String,
         params: CredentialRequestParameters,
         credentialDataProvider: CredentialDataProviderFun,
-        issueCredential: IssueCredentialFun,
         request: RequestInfo? = null,
     ): KmmResult<CredentialResponseParameters> = catching {
         proofValidator.validateProofExtractSubjectPublicKeys(params).map { subjectPublicKey ->
-            issueCredential(
+            issuer.issueCredential(
                 credentialDataProvider(
                     with(params.extractCredentialRepresentation()) {
                         CredentialDataProviderInput(

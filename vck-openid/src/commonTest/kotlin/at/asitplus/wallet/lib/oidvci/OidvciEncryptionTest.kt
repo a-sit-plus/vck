@@ -104,7 +104,6 @@ class OidvciEncryptionTest : FunSpec({
                     authorizationHeader = token.toHttpHeaderValue(),
                     params = it,
                     credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
-                    issueCredential = { IssuerAgent().issueCredential(it) }
                 ).getOrThrow()
             }
         }
@@ -126,7 +125,6 @@ class OidvciEncryptionTest : FunSpec({
                 token.toHttpHeaderValue(),
                 it,
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
-                issueCredential = { IssuerAgent().issueCredential(it) }
             ).getOrThrow()
             val serializedCredential = credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()

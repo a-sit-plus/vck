@@ -20,13 +20,12 @@ Release 5.8.0:
    - List of classes moved: `MobileSecurityObject`, `Document`, `IssuerSigned`, `DeviceResponse`
  - Issuer:
    - Extract interface `StatusListIssuer` out of `Issuer` to separate credential issuing and status list management
-   - Extract interface `IssueCredentialFun` to be used in `CredentialIssuer` for OID4VCI
    - Rework interface `IssuerCredentialStore`, deprecating methods `storeGetNewIndex` and class `IssuerCredentialStore.Credential`
    - In `Issuer.IssuedCredential` add the typed credentials as properties, add property `userInfo`
    - In `StatusListIssuer` deprecate methods `revokeCredentials()` and `revokeCredentialsWithId()`, callers should use `revokeCredential()`
    - In `CredentialIssuer` deprecate constructor parameter `credentialProvider`, replace with `credentialDataProvider`
    - Extend `CredentialToBeIssued` to contain properties `expiration`, `scheme`, `subjectPublicKey`, `userInfo`
-   - In `CredentialIssuer` move constructor parameters for loading data and issuing credentials to method `credential()`
+   - In `CredentialIssuer` move constructor parameter for loading data to method `credential()`
    - Extract `ProofValidator` out of `CredentialIssuer`
    - Extract `CredentialSchemeMapping` out of various top-level methods
    - In `SimpleAuthorizationService` deprecate constructor parameter `dataProvider`, use `authorize()` with `OAuth2LoadUserFun` instead

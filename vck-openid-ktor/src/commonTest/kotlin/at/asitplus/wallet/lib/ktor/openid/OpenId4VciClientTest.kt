@@ -244,6 +244,7 @@ class OpenId4VciClientTest : FunSpec() {
         val issuer = IssuerAgent(EphemeralKeyWithSelfSignedCert())
         credentialIssuer = CredentialIssuer(
             authorizationService = authorizationService,
+            issuer = issuer,
             credentialSchemes = credentialSchemes,
             publicContext = publicContext,
             credentialEndpointPath = credentialEndpointPath,
@@ -317,7 +318,6 @@ class OpenId4VciClientTest : FunSpec() {
                     val result = credentialIssuer.credential(
                         authorizationHeader = authn,
                         params = params,
-                        issueCredential = { issuer.issueCredential(it) },
                         credentialDataProvider = credentialDataProvider,
                         request = request.toRequestInfo(),
                     ).getOrThrow()

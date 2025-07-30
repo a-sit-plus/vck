@@ -149,7 +149,6 @@ class OidvciCodeFlowTest : FreeSpec({
                 clientNonce = clientNonce,
             ).getOrThrow().first(),
             credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
-            issueCredential = { IssuerAgent().issueCredential(it) }
         ).getOrThrow()
         val serializedCredential = credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
 
@@ -182,7 +181,6 @@ class OidvciCodeFlowTest : FreeSpec({
                     clientNonce = clientNonce,
                 ).getOrThrow().first(),
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
-                issueCredential = { IssuerAgent().issueCredential(it) }
             ).getOrThrow().credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
         }
     }
@@ -212,7 +210,6 @@ class OidvciCodeFlowTest : FreeSpec({
                 token.toHttpHeaderValue(),
                 credentialRequest,
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
-                issueCredential = { IssuerAgent().issueCredential(it) }
             ).getOrThrow()
                 .credentials.shouldNotBeEmpty().shouldHaveSize(2)
         // subject identifies the key of the client, here the keys of different proofs, so they should be unique
@@ -258,7 +255,6 @@ class OidvciCodeFlowTest : FreeSpec({
                 clientNonce = clientNonce,
             ).getOrThrow().first(),
             credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
-            issueCredential = { IssuerAgent().issueCredential(it) }
         ).getOrThrow()
         val serializedCredential = credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
 
@@ -281,7 +277,6 @@ class OidvciCodeFlowTest : FreeSpec({
                 clientNonce = clientNonce,
             ).getOrThrow().first(),
             credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
-            issueCredential = { IssuerAgent().issueCredential(it) }
         ).getOrThrow()
         val serializedCredential = credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
 
@@ -337,7 +332,6 @@ class OidvciCodeFlowTest : FreeSpec({
                 clientNonce = clientNonce,
             ).getOrThrow().first(),
             credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
-            issueCredential = { IssuerAgent().issueCredential(it) }
         ).getOrThrow()
         val serializedCredential = credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
 
@@ -365,7 +359,6 @@ class OidvciCodeFlowTest : FreeSpec({
                 clientNonce = clientNonce,
             ).getOrThrow().first(),
             credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
-            issueCredential = { IssuerAgent().issueCredential(it) }
         ).getOrThrow()
         val serializedCredential = credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
 
@@ -423,7 +416,6 @@ class OidvciCodeFlowTest : FreeSpec({
                     credentialConfigurationId = null,
                 ),
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
-                issueCredential = { IssuerAgent().issueCredential(it) }
             ).getOrThrow()
         }
     }
@@ -455,7 +447,6 @@ class OidvciCodeFlowTest : FreeSpec({
                     credentialIdentifier = null
                 ),
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
-                issueCredential = { IssuerAgent().issueCredential(it) }
             ).getOrThrow()
         }
     }
@@ -476,7 +467,6 @@ class OidvciCodeFlowTest : FreeSpec({
                 clientNonce = clientNonce,
             ).getOrThrow().first(),
             credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
-            issueCredential = { IssuerAgent().issueCredential(it) }
         ).getOrThrow()
         val serializedCredential = credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
 
