@@ -35,8 +35,6 @@ interface Issuer : ReferencedTokenIssuer<CredentialToBeIssued, KmmResult<Issuer.
         data class VcJwt(
             val vc: VerifiableCredential,
             val signedVcJws: JwsSigned<VerifiableCredentialJws>,
-            @Deprecated("Use signedVcJws instead", ReplaceWith("signedVcJws"))
-            val vcJws: String,
             override val scheme: ConstantIndex.CredentialScheme,
             override val subjectPublicKey: CryptoPublicKey,
             override val userInfo: OidcUserInfoExtended,
@@ -48,8 +46,6 @@ interface Issuer : ReferencedTokenIssuer<CredentialToBeIssued, KmmResult<Issuer.
         data class VcSdJwt(
             val sdJwtVc: VerifiableCredentialSdJwt,
             val signedSdJwtVc: SdJwtSigned,
-            @Deprecated("Use signedSdJwtVc instead", ReplaceWith("signedSdJwtVc"))
-            val vcSdJwt: String,
             override val scheme: ConstantIndex.CredentialScheme,
             override val subjectPublicKey: CryptoPublicKey,
             override val userInfo: OidcUserInfoExtended,

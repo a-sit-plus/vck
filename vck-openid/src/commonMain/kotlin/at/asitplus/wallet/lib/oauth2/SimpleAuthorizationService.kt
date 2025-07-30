@@ -23,7 +23,6 @@ import at.asitplus.wallet.lib.oidvci.CredentialIssuer
 import at.asitplus.wallet.lib.oidvci.DefaultCodeService
 import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.DefaultNonceService
-import at.asitplus.wallet.lib.oidvci.FallbackAdapter
 import at.asitplus.wallet.lib.oidvci.MapStore
 import at.asitplus.wallet.lib.oidvci.OAuth2AuthorizationServerAdapter
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
@@ -59,8 +58,6 @@ class SimpleAuthorizationService(
     /** Used to filter authorization details and scopes. */
     private val strategy: AuthorizationServiceStrategy,
     /** Used to load the actual user data during [authorize]. */
-    @Suppress("DEPRECATION") @Deprecated("Use callback from `OAuth2LoadUserFun` in `authorize` instead")
-    private val dataProvider: at.asitplus.wallet.lib.oidvci.OAuth2DataProvider? = null,
     /** Used to create and verify authorization codes during issuing. */
     private val codeService: CodeService = DefaultCodeService(),
     /** Used in several fields in [OAuth2AuthorizationServerMetadata], to provide endpoint URLs to clients. */
@@ -230,23 +227,6 @@ class SimpleAuthorizationService(
             expires = 5.minutes,
         )
     }
-
-    @Suppress("DEPRECATION")
-    @Deprecated("Use `authorize` with `loadUserFun` instead")
-    override suspend fun authorize(input: String) = catching {
-        requestParser.parseRequestParameters(input).getOrThrow()
-            .let { it.parameters as? AuthenticationRequestParameters }
-            ?.let { authorize(it).getOrThrow() }
-            ?: run {
-                Napier.w("authorize: could not parse request parameters from $input")
-                throw InvalidRequest("Could not parse request parameters from $input")
-            }
-    }
-
-    @Suppress("DEPRECATION")
-    @Deprecated("Use `authorize` with `loadUserFun` instead")
-    override suspend fun authorize(input: AuthenticationRequestParameters) =
-        authorize(input, FallbackAdapter(dataProvider))
 
     /**
      * Builds the authentication response.

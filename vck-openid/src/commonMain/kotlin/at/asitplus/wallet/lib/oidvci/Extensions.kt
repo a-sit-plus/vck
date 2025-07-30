@@ -7,21 +7,9 @@ import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
-import at.asitplus.wallet.lib.oidvci.CredentialSchemeMapping.toCredentialIdentifier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.json.JsonPrimitive
-
-// TODO In 5.4.0, use DC_SD_JWT instead of VC_SD_JWT
-@Suppress("DEPRECATION")
-@Deprecated("Use extension method in CredentialSchemeMapping instead")
-fun CredentialScheme.toCredentialIdentifier() = toCredentialIdentifier()
-
-// TODO In 5.4.0, use DC_SD_JWT instead of VC_SD_JWT
-@Suppress("DEPRECATION")
-@Deprecated("Use extension method in CredentialSchemeMapping instead")
-fun CredentialScheme.toCredentialIdentifier(rep: CredentialRepresentation) = toCredentialIdentifier(rep)
 
 fun CredentialRepresentation.toFormat(): CredentialFormatEnum = when (this) {
     CredentialRepresentation.PLAIN_JWT -> CredentialFormatEnum.JWT_VC

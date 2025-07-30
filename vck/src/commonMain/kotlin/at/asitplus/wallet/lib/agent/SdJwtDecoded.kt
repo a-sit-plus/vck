@@ -19,9 +19,6 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 
-@Deprecated("Replace with [SdJwtDecoded]", ReplaceWith("SdJwtDecoded"))
-typealias SdJwtValidator = SdJwtDecoded
-
 /**
  * Decodes a [SdJwtSigned], by substituting all blinded disclosure values (inside `_sd` elements of the payload)
  * with the claims of the disclosures appended to the SD-JWT (by a `~`).

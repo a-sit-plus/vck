@@ -62,7 +62,7 @@ class OpenId4VpInteropTest : FreeSpec({
         holderKeyMaterial = EphemeralKeyWithoutCert()
         holderAgent = HolderAgent(
             holderKeyMaterial,
-            validator = Validator(
+            validatorSdJwt = ValidatorSdJwt(
                 verifyJwsObject = VerifyJwsObject(publicKeyLookup = { setOf(issuerKeyMaterial.publicKey.toJsonWebKey()) })
             )
         )

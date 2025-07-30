@@ -7,7 +7,6 @@ import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * Selective Disclosure item in SD-JWT format
@@ -18,14 +17,6 @@ data class SelectiveDisclosureItem(
     val claimName: String?,
     val claimValue: JsonElement,
 ) {
-
-    @Deprecated(
-        "Replaced with fromAnyValue",
-        ReplaceWith("SelectiveDisclosureItem.fromAnyValue(salt, claimName, claimValue)"),
-        DeprecationLevel.ERROR
-    )
-    constructor(salt: ByteArray, claimName: String?, claimValue: Any)
-            : this(salt, claimName, JsonPrimitive(claimValue.toString()))
 
     /**
      * Creates a disclosure, as described in section 5.2 of

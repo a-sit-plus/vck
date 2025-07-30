@@ -5,7 +5,6 @@ import at.asitplus.wallet.lib.oauth2.AuthorizationService
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.OAuth2AuthorizationServerAdapter
-import at.asitplus.wallet.lib.oidvci.OAuth2DataProvider
 
 /**
  * Potential UC5:
@@ -14,20 +13,6 @@ import at.asitplus.wallet.lib.oidvci.OAuth2DataProvider
 class SimpleQtspAuthorizationService private constructor(
     private val authorizationService: SimpleAuthorizationService,
 ) : OAuth2AuthorizationServerAdapter by authorizationService, AuthorizationService by authorizationService {
-    @Deprecated("Use constructor without `dataProvider` instead")
-    constructor(
-        dataProvider: OAuth2DataProvider,
-        acceptedCredentials: Collection<ConstantIndex.CredentialScheme>,
-    ) : this(
-        authorizationService = SimpleAuthorizationService(
-            dataProvider = dataProvider,
-            strategy = QtspAuthorizationServiceStrategy(
-                authorizationServiceStrategy = CredentialAuthorizationServiceStrategy(
-                    acceptedCredentials.toSet()
-                )
-            )
-        )
-    )
 
     constructor(
         acceptedCredentials: Collection<ConstantIndex.CredentialScheme>,

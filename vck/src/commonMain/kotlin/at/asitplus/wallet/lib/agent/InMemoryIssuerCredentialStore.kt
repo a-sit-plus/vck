@@ -2,17 +2,12 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.iso.sha256
-import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListView
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBitSize
 import com.benasher44.uuid.uuid4
-import io.matthewnelson.encoding.base16.Base16
-import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlin.time.Instant
 
 class InMemoryIssuerCredentialStore(
@@ -30,37 +25,6 @@ class InMemoryIssuerCredentialStore(
 
     /** Maps timePeriod to credentials */
     private val credentialMap = mutableMapOf<Int, MutableList<Credential>>()
-
-    @Suppress("DEPRECATION")
-    @Deprecated("Use `createStatusListIndex` and `updateStoredCredential` instead")
-    override suspend fun storeGetNextIndex(
-        credential: IssuerCredentialStore.Credential,
-        subjectPublicKey: CryptoPublicKey,
-        issuanceDate: Instant,
-        expirationDate: Instant,
-        timePeriod: Int
-    ): Long = indexMutex.withLock {
-        val list = credentialMap.getOrPut(timePeriod) { mutableListOf() }
-        val newIndex: ULong = (list.maxOfOrNull { it.statusListIndex } ?: 0U) + 1U
-        val vcId = when (credential) {
-            is IssuerCredentialStore.Credential.Iso -> credential.issuerSignedItemList
-                .sortedBy { it.digestId }
-                .toString()
-                .encodeToByteArray().sha256()
-                .encodeToString(Base16(strict = true))
-
-            is IssuerCredentialStore.Credential.VcJwt -> credential.vcId
-            is IssuerCredentialStore.Credential.VcSd -> credential.vcId
-        }
-        list += Credential(
-            vcId = vcId,
-            statusListIndex = newIndex,
-            status = TokenStatus.Valid,
-            expirationDate = expirationDate,
-            scheme = credential.scheme,
-        )
-        newIndex.toLong()
-    }
 
     override suspend fun createStatusListIndex(
         credential: CredentialToBeIssued,
@@ -114,21 +78,6 @@ class InMemoryIssuerCredentialStore(
             tokenStatusList,
             statusBitSize = tokenStatusBitSize,
         )
-    }
-
-    @Deprecated("Use setStatus(timePeriod, index, status) instead")
-    override fun setStatus(vcId: String, status: TokenStatus, timePeriod: Int): Boolean {
-        if(status.value > tokenStatusBitSize.maxValue) {
-            throw IllegalStateException("Credential store only accepts token statuses of bitlength `${tokenStatusBitSize.value}`.")
-        }
-        val entry = credentialMap.getOrPut(timePeriod) {
-            mutableListOf()
-        }.find {
-            it.vcId == vcId
-        } ?: return false
-
-        entry.status = status
-        return true
     }
 
     override fun setStatus(

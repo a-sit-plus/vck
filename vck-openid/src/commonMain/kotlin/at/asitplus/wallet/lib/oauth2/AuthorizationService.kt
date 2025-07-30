@@ -45,14 +45,6 @@ interface AuthorizationService {
         clientAttestationPop: String? = null,
     ): KmmResult<PushedAuthenticationResponseParameters>
 
-    @Deprecated("Use `authorize` with `loadUserFun` instead")
-    suspend fun authorize(input: String):
-            KmmResult<AuthenticationResponseResult.Redirect>
-
-    @Deprecated("Use `authorize` with `loadUserFun` instead")
-    suspend fun authorize(input: AuthenticationRequestParameters):
-            KmmResult<AuthenticationResponseResult.Redirect>
-
     /**
      * Builds the authentication response for this specific user from [loadUserFun].
      * Send this result as HTTP Header `Location` in a 302 response to the client.

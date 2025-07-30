@@ -7,7 +7,6 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.StatusIssuer
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.StatusProvider
-import kotlin.time.Instant
 
 /**
  * Summarizes operations for an Issuer in the sense of the [W3C VC Data Model](https://w3c.github.io/vc-data-model/).
@@ -29,17 +28,4 @@ interface StatusListIssuer :
      */
     fun revokeCredential(timePeriod: Int, statusListIndex: ULong): Boolean
 
-    /**
-     * Revokes all verifiable credentials from [credentialsToRevoke] list that parse and validate.
-     * It returns true if all revocations were successful.
-     */
-    @Deprecated("Use `revokeCredential` instead")
-    suspend fun revokeCredentials(credentialsToRevoke: List<String>): Boolean
-
-    /**
-     * Revokes all verifiable credentials with ids and issuance date from [credentialIdsToRevoke]
-     * It returns true if all revocations were successful.
-     */
-    @Deprecated("Use `revokeCredential` instead")
-    fun revokeCredentialsWithId(credentialIdsToRevoke: Map<String, Instant>): Boolean
 }

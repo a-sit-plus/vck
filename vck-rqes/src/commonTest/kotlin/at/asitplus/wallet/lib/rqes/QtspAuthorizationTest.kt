@@ -7,7 +7,6 @@ import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
-import at.asitplus.wallet.lib.oidvci.OAuth2DataProvider
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.rqes.helper.DummyValueProvider
 import at.asitplus.wallet.lib.rqes.helper.SimpleQtspAuthorizationService

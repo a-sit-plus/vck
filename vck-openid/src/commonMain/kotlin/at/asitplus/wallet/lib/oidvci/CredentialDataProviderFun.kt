@@ -34,20 +34,3 @@ data class CredentialDataProviderInput(
     val credentialRepresentation: ConstantIndex.CredentialRepresentation,
 )
 
-/** Adapter for deprecated code, to be removed > 5.8.0 */
-@Suppress("DEPRECATION")
-class CredentialIssuerDataProviderAdapter(
-    val credentialDataProvider: CredentialIssuerDataProvider,
-) : CredentialDataProviderFun {
-    override suspend fun invoke(
-        input: CredentialDataProviderInput,
-    ): KmmResult<CredentialToBeIssued> =
-        credentialDataProvider.getCredential(
-            input.userInfo,
-            input.subjectPublicKey,
-            input.credentialScheme,
-            input.credentialRepresentation,
-            null
-        )
-
-}

@@ -12,11 +12,8 @@ import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.wallet.lib.DefaultZlibService
-import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
 import at.asitplus.wallet.lib.cbor.CoseHeaderCertificate
-import at.asitplus.wallet.lib.cbor.CoseHeaderKeyId
 import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.cbor.SignCoseFun
@@ -26,7 +23,6 @@ import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -39,14 +35,12 @@ import at.asitplus.wallet.lib.jws.SignJwtExtFun
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
-import kotlin.time.Clock
-import kotlin.time.Instant
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.hours
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 /**
  * An agent that implements [Issuer], i.e. it issues credentials for other agents.
@@ -55,16 +49,8 @@ import kotlin.time.Duration.Companion.hours
  */
 class IssuerAgent(
     override val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-    @Deprecated("Removed, see `StatusListAgent`")
-    private val validator: Validator = Validator(),
     private val issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
     private val statusListBaseUrl: String = "https://wallet.a-sit.at/backend/credentials/status",
-    @Deprecated("Removed, see `StatusListAgent`")
-    private val statusListAggregationUrl: String? = null,
-    @Deprecated("Removed, see `StatusListAgent`")
-    private val zlibService: ZlibService = DefaultZlibService(),
-    @Deprecated("Removed, see `StatusListAgent`")
-    private val revocationListLifetime: Duration = 48.hours,
     private val clock: Clock = Clock.System,
     override val cryptoAlgorithms: Set<SignatureAlgorithm> = setOf(keyMaterial.signatureAlgorithm),
     private val timePeriodProvider: TimePeriodProvider = FixedTimePeriodProvider,
@@ -72,27 +58,9 @@ class IssuerAgent(
     private val identifier: String = keyMaterial.identifier,
     private val signIssuedSdJwt: SignJwtExtFun<JsonObject> = SignJwtExt(keyMaterial, JwsHeaderCertOrJwk()),
     private val signIssuedVc: SignJwtFun<VerifiableCredentialJws> = SignJwt(keyMaterial, JwsHeaderKeyId()),
-    @Deprecated("Removed, see `StatusListAgent`")
-    private val signStatusListJwt: SignJwtFun<StatusListTokenPayload> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     private val signMobileSecurityObject: SignCoseFun<MobileSecurityObject> =
         SignCose(keyMaterial, CoseHeaderNone(), CoseHeaderCertificate()),
-    @Deprecated("Removed, see `StatusListAgent`")
-    private val signStatusListCwt: SignCoseFun<StatusListTokenPayload> =
-        SignCose(keyMaterial, CoseHeaderKeyId(), CoseHeaderCertificate()),
-) : Issuer,
-    // TODO Remove > 5.8.0
-    StatusListIssuer by StatusListAgent(
-        keyMaterial = keyMaterial,
-        issuerCredentialStore = issuerCredentialStore,
-        statusListBaseUrl = statusListBaseUrl,
-        statusListAggregationUrl = statusListAggregationUrl,
-        zlibService = zlibService,
-        revocationListLifetime = revocationListLifetime,
-        clock = clock,
-        timePeriodProvider = timePeriodProvider,
-        signStatusListJwt = signStatusListJwt,
-        signStatusListCwt = signStatusListCwt,
-    ) {
+) : Issuer {
 
     /**
      * Wraps the credential-to-be-issued in [credential] into a single instance of [CredentialToBeIssued],
@@ -197,7 +165,6 @@ class IssuerAgent(
         return Issuer.IssuedCredential.VcJwt(
             vc = vc,
             signedVcJws = vcInJws,
-            vcJws = vcInJws.serialize(),
             scheme = credential.scheme,
             subjectPublicKey = credential.subjectPublicKey,
             userInfo = credential.userInfo,
@@ -259,7 +226,6 @@ class IssuerAgent(
         return Issuer.IssuedCredential.VcSdJwt(
             sdJwtVc = vcSdJwt,
             signedSdJwtVc = sdJwtSigned,
-            vcSdJwt = sdJwtSigned.serialize(),
             scheme = credential.scheme,
             subjectPublicKey = credential.subjectPublicKey,
             userInfo = credential.userInfo,

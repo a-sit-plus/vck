@@ -20,11 +20,9 @@ class VerifierAgent(
      * It may be a cryptographic identifier of the key, but can be anything, e.g. a URL.
      */
     private val identifier: String,
-    @Deprecated("Use [validatorVcJws], [validatorSdJwt], [validatorMdoc] instead")
-    private val validator: Validator = Validator(),
-    private val validatorVcJws: ValidatorVcJws = ValidatorVcJws(validator = validator),
-    private val validatorSdJwt: ValidatorSdJwt = ValidatorSdJwt(validator = validator),
-    private val validatorMdoc: ValidatorMdoc = ValidatorMdoc(validator = validator),
+    private val validatorVcJws: ValidatorVcJws = ValidatorVcJws(),
+    private val validatorSdJwt: ValidatorSdJwt = ValidatorSdJwt(),
+    private val validatorMdoc: ValidatorMdoc = ValidatorMdoc(),
 ) : Verifier {
 
     override suspend fun verifyPresentationSdJwt(
@@ -42,18 +40,6 @@ class VerifierAgent(
         challenge: String,
     ): VerifyPresentationResult = catchingUnwrapped {
         validatorVcJws.verifyVpJws(input, challenge, identifier)
-    }.getOrElse {
-        VerifyPresentationResult.ValidationError(it)
-    }
-
-    @Deprecated("Use [verifyPresentationIsoMdoc] without `challenge` instead",
-        ReplaceWith("verifyPresentationIsoMdoc(input, verifyDocument)"))
-    override suspend fun verifyPresentationIsoMdoc(
-        input: DeviceResponse,
-        challenge: String,
-        verifyDocument: suspend (MobileSecurityObject, Document) -> Boolean,
-    ): VerifyPresentationResult = catchingUnwrapped {
-        validatorMdoc.verifyDeviceResponse(input, verifyDocument)
     }.getOrElse {
         VerifyPresentationResult.ValidationError(it)
     }

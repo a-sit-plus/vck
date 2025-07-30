@@ -71,7 +71,9 @@ class AgentTest : FreeSpec({
         )
         verifier = VerifierAgent(
             identifier = verifierId,
-            validator = validator,
+            validatorVcJws = ValidatorVcJws(validator = validator),
+            validatorSdJwt = ValidatorSdJwt(validator = validator),
+            validatorMdoc = ValidatorMdoc(validator = validator),
         )
         challenge = uuid4().toString()
     }

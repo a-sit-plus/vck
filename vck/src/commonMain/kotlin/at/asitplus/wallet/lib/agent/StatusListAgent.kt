@@ -9,20 +9,24 @@ import at.asitplus.wallet.lib.cbor.CoseHeaderKeyId
 import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.cbor.SignCoseFun
 import at.asitplus.wallet.lib.data.StatusListToken
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.*
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.MediaTypes
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListAggregation
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListView
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.PositiveDuration
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
+import at.asitplus.wallet.lib.extensions.toStatusList
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
-import at.asitplus.wallet.lib.extensions.toStatusList
 import io.github.aakira.napier.Napier
 import kotlin.time.Clock
-import kotlin.time.Instant
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
+import kotlin.time.Instant
 
 /**
  * An agent that implements [StatusListIssuer], i.e. it manages status of credentials and status lists.
@@ -96,20 +100,6 @@ class StatusListAgent(
      */
     override fun revokeCredential(timePeriod: Int, statusListIndex: ULong): Boolean =
         issuerCredentialStore.setStatus(timePeriod, statusListIndex, TokenStatus.Invalid)
-
-    /**
-     * Revokes all verifiable credentials from [credentialsToRevoke] list that parse and validate.
-     * It returns true if all revocations were successful.
-     */
-    @Deprecated("Use `revokeCredential` instead")
-    override suspend fun revokeCredentials(credentialsToRevoke: List<String>): Boolean = false
-
-    /**
-     * Revokes all verifiable credentials with ids from [credentialIdsToRevoke]
-     * It returns true if all revocations were successful.
-     */
-    @Deprecated("Use `revokeCredential` instead")
-    override fun revokeCredentialsWithId(credentialIdsToRevoke: Map<String, Instant>): Boolean = false
 
     override suspend fun provideStatusListToken(
         acceptedContentTypes: List<StatusListTokenMediaType>,
