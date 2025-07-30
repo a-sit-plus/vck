@@ -9,7 +9,7 @@ Release 5.9.0 (unreleased):
    - Introduce interface `PublishedKeyMaterial` to indicate clients can lookup that key with the `identifier` used as a `keyId` in a key set
    - Other key material gets randomly assigned identifiers to not rely on DIDs
    - For JVM add `PublishedKeyStoreMaterial` to load keys from Java key stores with a fixed identifier
-   - In class `HolderAgent` require the `identifier` to be set in the constructor, as this needs to be an URI for SD-JWT and JWT VC
+   - In class `HolderAgent` require the `identifier` to be a URI, set in the constructor, as required for SD-JWT and JWT VC
    - Key material will be referenced by its `keyId` and key set URL or by its certificate or plain public key in JWS proofs
 
 Release 5.8.0:

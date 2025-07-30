@@ -35,6 +35,7 @@ import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
+import at.asitplus.wallet.lib.data.rfc3986.toUri
 import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldHaveAtLeastSize
@@ -118,7 +119,7 @@ class Tag24SerializationTest : FreeSpec({
 
     "IssuerSigned from IssuerAgent" {
         val holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
-        val issuedCredential = IssuerAgent(identifier = "https://issuer.example.com/").issueCredential(
+        val issuedCredential = IssuerAgent(identifier = "https://issuer.example.com/".toUri()).issueCredential(
             DummyCredentialDataProvider.getCredential(
                 holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,

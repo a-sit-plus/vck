@@ -5,6 +5,7 @@ import at.asitplus.iso.IssuerSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
+import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -30,7 +31,7 @@ class StoreEntrySerializationTest : FreeSpec({
         issuer = IssuerAgent(
             keyMaterial = EphemeralKeyWithSelfSignedCert(),
             issuerCredentialStore = issuerCredentialStore,
-            identifier = "https://issuer.example.com/"
+            identifier = "https://issuer.example.com/".toUri()
         )
         holderKeyMaterial = EphemeralKeyWithoutCert()
         holder = HolderAgent(holderKeyMaterial, holderCredentialStore)

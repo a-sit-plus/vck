@@ -12,6 +12,7 @@ import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -64,7 +65,7 @@ class OidvciAttestationTest : FunSpec({
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
-            issuer = IssuerAgent(identifier = "https://issuer.example.com"),
+            issuer = IssuerAgent(identifier = "https://issuer.example.com".toUri()),
             credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme),
             proofValidator = ProofValidator(
                 verifyAttestationProof = { true },
@@ -106,7 +107,7 @@ class OidvciAttestationTest : FunSpec({
     test("use key attestation for proof, issuer does not verify it") {
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
-            issuer = IssuerAgent(identifier = "https://issuer.example.com"),
+            issuer = IssuerAgent(identifier = "https://issuer.example.com".toUri()),
             credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme),
             proofValidator = ProofValidator(
                 verifyAttestationProof = { false }, // do not accept key attestation

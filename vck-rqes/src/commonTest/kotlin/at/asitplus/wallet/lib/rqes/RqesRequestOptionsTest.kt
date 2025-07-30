@@ -20,6 +20,7 @@ import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.PresentationRequestParameters
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.toTransactionData
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.openid.ClientIdScheme
@@ -48,10 +49,11 @@ class RqesRequestOptionsTest : FreeSpec({
         holderAgent = HolderAgent(holderKeyMaterial)
 
         holderAgent.storeCredential(
-            IssuerAgent(identifier = "https://issuer.example.com/").issueCredential(
-                DummyCredentialDataProvider.getCredential(holderKeyMaterial.publicKey, EuPidScheme, SD_JWT)
-                    .getOrThrow()
-            ).getOrThrow().toStoreCredentialInput()
+            IssuerAgent(identifier = "https://issuer.example.com/".toUri())
+                .issueCredential(
+                    DummyCredentialDataProvider.getCredential(holderKeyMaterial.publicKey, EuPidScheme, SD_JWT)
+                        .getOrThrow()
+                ).getOrThrow().toStoreCredentialInput()
         )
     }
 
@@ -96,7 +98,10 @@ class RqesRequestOptionsTest : FreeSpec({
 internal fun List<TransactionData>.getReferenceHashes(): List<ByteArray> =
     this.map { it.toBase64UrlJsonString().content.decodeToByteArray(Base64UrlStrict).sha256() }
 
-internal fun buildRqesRequestOptions(flow: PresentationRequestParameters.Flow?, responseMode: OpenIdConstants.ResponseMode = OpenIdConstants.ResponseMode.Fragment): RqesRequestOptions {
+internal fun buildRqesRequestOptions(
+    flow: PresentationRequestParameters.Flow?,
+    responseMode: OpenIdConstants.ResponseMode = OpenIdConstants.ResponseMode.Fragment,
+): RqesRequestOptions {
     val id = uuid4().toString()
     return RqesRequestOptions(
         baseRequestOptions = OpenIdRequestOptions(

@@ -24,6 +24,7 @@ import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
+import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -75,7 +76,7 @@ class AgentSdJwtTest : FreeSpec({
         holderCredentialStore = InMemorySubjectCredentialStore()
         issuer = IssuerAgent(
             issuerCredentialStore = issuerCredentialStore,
-            identifier = "https://issuer.example.com/"
+            identifier = "https://issuer.example.com/".toUri()
         )
         statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
         holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
@@ -320,7 +321,7 @@ suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): S
     val holderKeyMaterial = EphemeralKeyWithoutCert()
     val holder = HolderAgent(holderKeyMaterial)
     holder.storeCredential(
-        IssuerAgent(identifier = "https://issuer.example.com/").issueCredential(
+        IssuerAgent(identifier = "https://issuer.example.com/".toUri()).issueCredential(
             DummyCredentialDataProvider.getCredential(
                 holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,

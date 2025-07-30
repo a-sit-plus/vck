@@ -12,6 +12,7 @@ import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DecryptJwe
 import at.asitplus.wallet.lib.jws.DecryptJweFun
@@ -62,7 +63,7 @@ class OidvciEncryptionTest : FunSpec({
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
-            issuer = IssuerAgent(identifier = "https://issuer.example.com"),
+            issuer = IssuerAgent(identifier = "https://issuer.example.com".toUri()),
             credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023),
             requireEncryption = true, // this is important, to require encryption
         )
@@ -78,7 +79,7 @@ class OidvciEncryptionTest : FunSpec({
     test("issuer fails to encrypt") {
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
-            issuer = IssuerAgent(identifier = "https://issuer.example.com"),
+            issuer = IssuerAgent(identifier = "https://issuer.example.com".toUri()),
             credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023),
             requireEncryption = true, // this is important, to require encryption
             encryptCredentialRequest = object : EncryptJweFun {

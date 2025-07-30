@@ -10,6 +10,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.SdJwtTypeMetadata
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
+import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
@@ -42,7 +43,7 @@ class ValidatorSdJwtTest : FreeSpec() {
     init {
         beforeEach {
             validator = ValidatorSdJwt()
-            issuer = IssuerAgent(identifier = "https://issuer.example.com/")
+            issuer = IssuerAgent(identifier = "https://issuer.example.com/".toUri())
             holderKeyMaterial = EphemeralKeyWithoutCert()
         }
 

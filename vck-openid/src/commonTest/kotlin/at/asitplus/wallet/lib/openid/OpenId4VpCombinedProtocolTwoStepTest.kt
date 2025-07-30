@@ -16,6 +16,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MD
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest.PresentationExchangeRequest
+import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldNotThrowAny
@@ -279,13 +280,14 @@ private suspend fun Holder.storeSdJwtCredential(
     credentialScheme: ConstantIndex.CredentialScheme,
 ) {
     storeCredential(
-        IssuerAgent(identifier = "https://issuer.example.com/").issueCredential(
-            DummyCredentialDataProvider.getCredential(
-                holderKeyMaterial.publicKey,
-                credentialScheme,
-                SD_JWT,
-            ).getOrThrow()
-        ).getOrThrow().toStoreCredentialInput()
+        IssuerAgent(identifier = "https://issuer.example.com/".toUri())
+            .issueCredential(
+                DummyCredentialDataProvider.getCredential(
+                    holderKeyMaterial.publicKey,
+                    credentialScheme,
+                    SD_JWT,
+                ).getOrThrow()
+            ).getOrThrow().toStoreCredentialInput()
     )
 }
 
@@ -295,7 +297,7 @@ private suspend fun Holder.storeIsoCredential(
 ) = storeCredential(
     IssuerAgent(
         keyMaterial = EphemeralKeyWithSelfSignedCert(),
-        identifier = "https://issuer.example.com/"
+        identifier = "https://issuer.example.com/".toUri()
     ).issueCredential(
         DummyCredentialDataProvider.getCredential(
             holderKeyMaterial.publicKey,

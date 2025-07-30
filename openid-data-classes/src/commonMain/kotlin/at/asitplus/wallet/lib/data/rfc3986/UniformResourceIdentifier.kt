@@ -21,3 +21,5 @@ import kotlin.jvm.JvmInline
         get() = url.toString()
 }
 
+fun String.toUri() = UniformResourceIdentifier(this)
+

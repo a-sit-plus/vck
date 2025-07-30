@@ -4,6 +4,7 @@ import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.rfc3986.toUri
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeIn
@@ -29,16 +30,18 @@ class OpenId4VpSdJwtProtocolTest : FreeSpec({
         holderAgent = HolderAgent(holderKeyMaterial)
 
         holderAgent.storeCredential(
-            IssuerAgent(identifier = "https://issuer.example.com/").issueCredential(
-                DummyCredentialDataProvider.getCredential(holderKeyMaterial.publicKey, AtomicAttribute2023, SD_JWT)
-                    .getOrThrow()
-            ).getOrThrow().toStoreCredentialInput()
+            IssuerAgent(identifier = "https://issuer.example.com/".toUri())
+                .issueCredential(
+                    DummyCredentialDataProvider.getCredential(holderKeyMaterial.publicKey, AtomicAttribute2023, SD_JWT)
+                        .getOrThrow()
+                ).getOrThrow().toStoreCredentialInput()
         )
         holderAgent.storeCredential(
-            IssuerAgent(identifier = "https://issuer.example.com/").issueCredential(
-                DummyCredentialDataProvider.getCredential(holderKeyMaterial.publicKey, EuPidScheme, SD_JWT)
-                    .getOrThrow()
-            ).getOrThrow().toStoreCredentialInput()
+            IssuerAgent(identifier = "https://issuer.example.com/".toUri())
+                .issueCredential(
+                    DummyCredentialDataProvider.getCredential(holderKeyMaterial.publicKey, EuPidScheme, SD_JWT)
+                        .getOrThrow()
+                ).getOrThrow().toStoreCredentialInput()
         )
 
         holderOid4vp = OpenId4VpHolder(

@@ -16,6 +16,7 @@ import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePr
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
+import at.asitplus.wallet.lib.data.rfc3986.toUri
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -64,7 +65,7 @@ class AgentTest : FreeSpec({
         issuerIdentifier = "https://issuer.example.com/${uuid4()}"
         issuer = IssuerAgent(
             issuerCredentialStore = issuerCredentialStore,
-            identifier = issuerIdentifier
+            identifier = issuerIdentifier.toUri()
         )
         statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
 

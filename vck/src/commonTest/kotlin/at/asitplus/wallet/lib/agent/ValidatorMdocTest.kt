@@ -10,6 +10,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MD
 import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
+import at.asitplus.wallet.lib.data.rfc3986.toUri
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -50,7 +51,7 @@ class ValidatorMdocTest : FreeSpec() {
             issuer = IssuerAgent(
                 keyMaterial = issuerKeyMaterial,
                 issuerCredentialStore = issuerCredentialStore,
-                identifier = "https://issuer.example.com/"
+                identifier = "https://issuer.example.com/".toUri()
             )
             statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
             verifierKeyMaterial = EphemeralKeyWithoutCert()

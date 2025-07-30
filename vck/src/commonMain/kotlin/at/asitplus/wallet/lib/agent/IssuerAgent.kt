@@ -42,9 +42,7 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 
 /**
- * An agent that implements [Issuer], i.e. it issues credentials for other agents.
- *
- * For backwards compatibility, this also implements [StatusListIssuer], but this should be separated.
+ * An agent that implements [Issuer], i.e., it issues credentials for other agents.
  */
 class IssuerAgent(
     override val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
@@ -53,12 +51,8 @@ class IssuerAgent(
     private val clock: Clock = Clock.System,
     override val cryptoAlgorithms: Set<SignatureAlgorithm> = setOf(keyMaterial.signatureAlgorithm),
     private val timePeriodProvider: TimePeriodProvider = FixedTimePeriodProvider,
-    /**
-     * The identifier used in `issuer` properties of credentials.
-     * Note that for SD-JWT VC this must be a URI.
-     * For JWT VC this must be a URI (since we're not supporting objects for that property).
-     */
-    private val identifier: String,
+    /** The identifier used in `issuer` properties of credentials (JWT VC and SD JWT). */
+    private val identifier: UniformResourceIdentifier,
     private val signIssuedSdJwt: SignJwtExtFun<JsonObject> = SignJwtExt(keyMaterial, JwsHeaderCertOrJwk()),
     private val signIssuedVc: SignJwtFun<VerifiableCredentialJws> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     private val signMobileSecurityObject: SignCoseFun<MobileSecurityObject> =
@@ -67,7 +61,7 @@ class IssuerAgent(
 
     /**
      * Wraps the credential-to-be-issued in [credential] into a single instance of [CredentialToBeIssued],
-     * according to the representation, i.e. it essentially signs the credential with the issuer key.
+     * according to the representation, i.e., it essentially signs the credential with the issuer key.
      */
     override suspend fun issueCredential(
         credential: CredentialToBeIssued,
@@ -149,7 +143,7 @@ class IssuerAgent(
         )
         val vc = VerifiableCredential(
             id = vcId,
-            issuer = identifier,
+            issuer = identifier.string,
             issuanceDate = issuanceDate,
             expirationDate = expirationDate,
             credentialStatus = credentialStatus,
@@ -196,7 +190,7 @@ class IssuerAgent(
         val vcSdJwt = VerifiableCredentialSdJwt(
             subject = subjectId,
             notBefore = issuanceDate,
-            issuer = identifier,
+            issuer = identifier.string,
             expiration = expirationDate,
             issuedAt = issuanceDate,
             jwtId = vcId,
@@ -214,8 +208,6 @@ class IssuerAgent(
                 put(it.key, it.value)
             }
         }
-        // inclusion of x5c/jwk may change when all clients can look up the issuer-signed key web-based,
-        // i.e. this issuer provides `.well-known/jwt-vc-issuer` file
         val jws = signIssuedSdJwt(
             JwsContentTypeConstants.SD_JWT,
             entireObject,
@@ -225,7 +217,7 @@ class IssuerAgent(
             Napier.w("issueVcSd error", it)
         }.getOrThrow()
         val sdJwtSigned = SdJwtSigned.issued(jws, disclosures.toList())
-        Napier.i("issueVcSd: $sdJwtSigned")
+            .also { Napier.i("issueVcSd: $it") }
         return Issuer.IssuedCredential.VcSdJwt(
             sdJwtVc = vcSdJwt,
             signedSdJwtVc = sdJwtSigned,

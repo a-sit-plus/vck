@@ -19,6 +19,7 @@ import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
+import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
@@ -47,7 +48,7 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
     beforeEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         holderAgent = HolderAgent(holderKeyMaterial)
-        val issuerAgent = IssuerAgent(identifier = "https://issuer.example.com/")
+        val issuerAgent = IssuerAgent(identifier = "https://issuer.example.com/".toUri())
         holderAgent.storeCredential(
             issuerAgent.issueCredential(
                 DummyCredentialDataProvider.getCredential(

@@ -15,6 +15,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
+import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderIdentifierFun
@@ -70,7 +71,7 @@ class ValidatorVcTest : FreeSpec() {
             issuer = IssuerAgent(
                 keyMaterial = issuerKeyMaterial,
                 issuerCredentialStore = issuerCredentialStore,
-                identifier = issuerIdentifier
+                identifier = issuerIdentifier.toUri()
             )
             statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
             issuerSignVc = SignJwt(issuerKeyMaterial, JwsHeaderCertOrJwk())

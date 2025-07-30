@@ -6,6 +6,7 @@ import at.asitplus.jsonpath.JsonPath
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.rfc3986.toUri
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeIn
@@ -41,22 +42,23 @@ class OpenId4VpComplexSdJwtProtocolTest : FreeSpec({
         holderAgent = HolderAgent(holderKeyMaterial)
 
         holderAgent.storeCredential(
-            IssuerAgent(identifier = "https://issuer.example.com/").issueCredential(
-                CredentialToBeIssued.VcSd(
-                    listOf(
-                        ClaimToBeIssued(
-                            CLAIM_ADDRESS, listOf(
-                                ClaimToBeIssued(CLAIM_ADDRESS_REGION, randomRegion),
-                                ClaimToBeIssued(CLAIM_ADDRESS_COUNTRY, randomCountry)
+            IssuerAgent(identifier = "https://issuer.example.com/".toUri())
+                .issueCredential(
+                    CredentialToBeIssued.VcSd(
+                        listOf(
+                            ClaimToBeIssued(
+                                CLAIM_ADDRESS, listOf(
+                                    ClaimToBeIssued(CLAIM_ADDRESS_REGION, randomRegion),
+                                    ClaimToBeIssued(CLAIM_ADDRESS_COUNTRY, randomCountry)
+                                )
                             )
-                        )
-                    ),
-                    Clock.System.now().plus(5.minutes),
-                    AtomicAttribute2023,
-                    holderKeyMaterial.publicKey,
-                    DummyUserProvider.user,
-                )
-            ).getOrThrow().toStoreCredentialInput()
+                        ),
+                        Clock.System.now().plus(5.minutes),
+                        AtomicAttribute2023,
+                        holderKeyMaterial.publicKey,
+                        DummyUserProvider.user,
+                    )
+                ).getOrThrow().toStoreCredentialInput()
         )
 
         holderOid4vp = OpenId4VpHolder(

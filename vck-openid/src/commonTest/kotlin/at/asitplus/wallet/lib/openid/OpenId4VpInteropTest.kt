@@ -14,7 +14,6 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.SdJwtDecoded
-import at.asitplus.wallet.lib.agent.Validator
 import at.asitplus.wallet.lib.agent.ValidatorSdJwt
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
@@ -22,6 +21,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.SdJwtConstants
+import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
@@ -42,7 +42,7 @@ import kotlinx.serialization.json.jsonPrimitive
  */
 class OpenId4VpInteropTest : FreeSpec({
     lateinit var issuerKeyId: String
-    lateinit var issuerClientId: String
+    lateinit var issuerIdentifier: String
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var holderAgent: Holder
     lateinit var holderOid4vp: OpenId4VpHolder
@@ -55,9 +55,9 @@ class OpenId4VpInteropTest : FreeSpec({
 
     beforeEach {
         issuerKeyId = uuid4().toString()
-        issuerClientId = "https://issuer.example.com"
+        issuerIdentifier = "https://issuer.example.com"
         val issuerKeyMaterial = EphemeralKeyWithoutCert(customKeyId = issuerKeyId)
-        val issuerAgent = IssuerAgent(issuerKeyMaterial, identifier = issuerClientId,)
+        val issuerAgent = IssuerAgent(issuerKeyMaterial, identifier = issuerIdentifier.toUri())
 
         holderKeyMaterial = EphemeralKeyWithoutCert()
         holderAgent = HolderAgent(
@@ -186,7 +186,7 @@ class OpenId4VpInteropTest : FreeSpec({
                 it.type shouldBe "vc+sd-jwt"
             }
             sdJwt.getPayloadAsVerifiableCredentialSdJwt().getOrThrow().also {
-                it.issuer shouldBe issuerClientId
+                it.issuer shouldBe issuerIdentifier
                 it.issuedAt.shouldNotBeNull()
                 it.expiration.shouldNotBeNull()
                 it.verifiableCredentialType.shouldNotBeNull()

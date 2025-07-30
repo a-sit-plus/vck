@@ -4,6 +4,7 @@ import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.procedures.dcql.DCQLQueryAdapter
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.maps.shouldHaveSize
@@ -18,7 +19,7 @@ class DCQLQueryProcedureAdapterTest : FreeSpec({
         val issuerIdentifier = "https://issuer.example.com/"
         val issuer = IssuerAgent(
             issuerCredentialStore = issuerCredentialStore,
-            identifier = issuerIdentifier
+            identifier = issuerIdentifier.toUri()
         )
 
         val holderKeyMaterial = EphemeralKeyWithSelfSignedCert()

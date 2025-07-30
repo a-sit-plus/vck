@@ -13,6 +13,7 @@ import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
+import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
@@ -450,13 +451,14 @@ private suspend fun Holder.storeJwtCredential(
     credentialScheme: ConstantIndex.CredentialScheme,
 ) {
     storeCredential(
-        IssuerAgent(identifier = "https://issuer.example.com/").issueCredential(
-            DummyCredentialDataProvider.getCredential(
-                holderKeyMaterial.publicKey,
-                credentialScheme,
-                PLAIN_JWT,
-            ).getOrThrow()
-        ).getOrThrow().toStoreCredentialInput()
+        IssuerAgent(identifier = "https://issuer.example.com/".toUri())
+            .issueCredential(
+                DummyCredentialDataProvider.getCredential(
+                    holderKeyMaterial.publicKey,
+                    credentialScheme,
+                    PLAIN_JWT,
+                ).getOrThrow()
+            ).getOrThrow().toStoreCredentialInput()
     )
 }
 
@@ -465,13 +467,14 @@ private suspend fun Holder.storeSdJwtCredential(
     credentialScheme: ConstantIndex.CredentialScheme,
 ) {
     storeCredential(
-        IssuerAgent(identifier = "https://issuer.example.com/").issueCredential(
-            DummyCredentialDataProvider.getCredential(
-                holderKeyMaterial.publicKey,
-                credentialScheme,
-                SD_JWT,
-            ).getOrThrow()
-        ).getOrThrow().toStoreCredentialInput()
+        IssuerAgent(identifier = "https://issuer.example.com/".toUri())
+            .issueCredential(
+                DummyCredentialDataProvider.getCredential(
+                    holderKeyMaterial.publicKey,
+                    credentialScheme,
+                    SD_JWT,
+                ).getOrThrow()
+            ).getOrThrow().toStoreCredentialInput()
     )
 }
 
@@ -481,7 +484,7 @@ private suspend fun Holder.storeIsoCredential(
 ) = storeCredential(
     IssuerAgent(
         keyMaterial = EphemeralKeyWithSelfSignedCert(),
-        identifier = "https://issuer.example.com/"
+        identifier = "https://issuer.example.com/".toUri()
     ).issueCredential(
         DummyCredentialDataProvider.getCredential(
             holderKeyMaterial.publicKey,
