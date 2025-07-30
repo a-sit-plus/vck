@@ -140,7 +140,7 @@ private suspend fun issueVcSd(
     val vcSdJwt = VerifiableCredentialSdJwt(
         subject = if (scrambleSubject) subjectId.reversed() else subjectId,
         notBefore = issuanceDate,
-        issuer = holderKeyMaterial.identifier,
+        issuer = "https://issuer.example.com/",
         expiration = expirationDate,
         issuedAt = issuanceDate,
         jwtId = vcId,

@@ -66,7 +66,11 @@ fun interface JwsHeaderIdentifierFun {
 class JwsHeaderCertOrJwk : JwsHeaderIdentifierFun {
     override suspend operator fun invoke(it: JwsHeader, keyMaterial: KeyMaterial) =
         when (keyMaterial) {
-            is PublishedKeyMaterial -> it.copy(keyId = keyMaterial.identifier, jsonWebKeySetUrl = keyMaterial.keySetUrl)
+            is PublishedKeyMaterial -> it.copy(
+                keyId = keyMaterial.identifier,
+                jsonWebKeySetUrl = keyMaterial.keySetUrl
+            )
+
             else -> keyMaterial.getCertificate()?.let { x5c ->
                 it.copy(certificateChain = listOf(x5c))
             } ?: it.copy(jsonWebKey = keyMaterial.jsonWebKey)

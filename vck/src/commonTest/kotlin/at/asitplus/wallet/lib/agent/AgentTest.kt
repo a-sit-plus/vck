@@ -29,6 +29,7 @@ import kotlin.random.Random
 
 class AgentTest : FreeSpec({
 
+    lateinit var issuerIdentifier: String
     lateinit var issuer: Issuer
     lateinit var statusListIssuer: StatusListIssuer
     lateinit var holder: Holder
@@ -60,9 +61,10 @@ class AgentTest : FreeSpec({
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         holderCredentialStore = InMemorySubjectCredentialStore()
 
+        issuerIdentifier = "https://issuer.example.com/${uuid4()}"
         issuer = IssuerAgent(
             issuerCredentialStore = issuerCredentialStore,
-            identifier = "https://issuer.example.com/"
+            identifier = issuerIdentifier
         )
         statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
 
@@ -129,7 +131,7 @@ class AgentTest : FreeSpec({
             val presentationParameters = holder.createPresentation(
                 request = PresentationRequestParameters(
                     nonce = challenge,
-                    audience = issuer.keyMaterial.identifier
+                    audience = issuerIdentifier,
                 ),
                 credentialPresentation = singularPresentationDefinition,
             ).getOrThrow()
@@ -322,7 +324,7 @@ class AgentTest : FreeSpec({
             val presentationParameters = holder.createDefaultPresentation(
                 request = PresentationRequestParameters(
                     nonce = challenge,
-                    audience = issuer.keyMaterial.identifier
+                    audience = issuerIdentifier,
                 ),
                 credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(singularDCQLRequest)
             ).getOrThrow() as PresentationResponseParameters.DCQLParameters

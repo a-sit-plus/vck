@@ -17,6 +17,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusVal
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
+import at.asitplus.wallet.lib.jws.JwsHeaderIdentifierFun
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import com.benasher44.uuid.uuid4
@@ -33,6 +34,7 @@ import kotlin.time.Duration.Companion.seconds
 
 class ValidatorVcTest : FreeSpec() {
 
+    private lateinit var issuerIdentifier: String
     private lateinit var issuer: Issuer
     private lateinit var statusListIssuer: StatusListIssuer
     private lateinit var issuerCredentialStore: IssuerCredentialStore
@@ -64,10 +66,11 @@ class ValidatorVcTest : FreeSpec() {
             )
             issuerCredentialStore = InMemoryIssuerCredentialStore()
             issuerKeyMaterial = EphemeralKeyWithoutCert()
+            issuerIdentifier = "https://issuer.example.com/"
             issuer = IssuerAgent(
                 keyMaterial = issuerKeyMaterial,
                 issuerCredentialStore = issuerCredentialStore,
-                identifier = "https://issuer.example.com/"
+                identifier = issuerIdentifier
             )
             statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
             issuerSignVc = SignJwt(issuerKeyMaterial, JwsHeaderCertOrJwk())
@@ -377,7 +380,7 @@ class ValidatorVcTest : FreeSpec() {
 
         return VerifiableCredential(
             id = vcId,
-            issuer = issuer.keyMaterial.identifier,
+            issuer = issuerIdentifier,
             credentialStatus = credentialStatus,
             credentialSubject = sub,
             credentialType = type,
@@ -402,25 +405,23 @@ class ValidatorVcTest : FreeSpec() {
         jwtId = jwtId
     )
 
-    private suspend fun signJws(vcJws: VerifiableCredentialJws): String = issuerSignVc(
-        JwsContentTypeConstants.JWT,
-        vcJws,
-        VerifiableCredentialJws.serializer()
-    ).getOrThrow().serialize()
+    private suspend fun signJws(vcJws: VerifiableCredentialJws): String =
+        issuerSignVc(
+            JwsContentTypeConstants.JWT,
+            vcJws,
+            VerifiableCredentialJws.serializer()
+        ).getOrThrow().serialize()
 
-    private suspend fun wrapVcInJwsWrongKey(vcJws: VerifiableCredentialJws): String {
-        val jwsHeader = JwsHeader(
-            algorithm = JwsAlgorithm.Signature.ES256,
-            keyId = verifierKeyMaterial.identifier,
-            type = JwsContentTypeConstants.JWT
-        )
-
-        val signatureInput =
-            vckJsonSerializer.encodeToString(jwsHeader).encodeToByteArray().encodeToString(Base64UrlStrict) +
-                    "." + vckJsonSerializer.encodeToString(vcJws).encodeToByteArray().encodeToString(Base64UrlStrict)
-        val signatureInputBytes = signatureInput.encodeToByteArray()
-        val signature = issuerKeyMaterial.sign(signatureInputBytes).signature
-        return JwsSigned(jwsHeader, vcJws, signature, signatureInputBytes).serialize()
-    }
+    private suspend fun wrapVcInJwsWrongKey(vcJws: VerifiableCredentialJws) =
+        SignJwt<VerifiableCredentialJws>(
+            issuerKeyMaterial
+        ) { header: JwsHeader, keyMaterial: KeyMaterial ->
+            // this should be issuerKeyMaterial.jsonWebKey, but is a wrong key
+            header.copy(jsonWebKey = EphemeralKeyWithoutCert().jsonWebKey)
+        }(
+            JwsContentTypeConstants.JWT,
+            vcJws,
+            VerifiableCredentialJws.serializer()
+        ).getOrThrow().serialize()
 
 }

@@ -248,12 +248,11 @@ class ValidatorVpTest : FreeSpec({
     "Wrong jwtId in VP is not valid" {
         val credentials = holderCredentialStore.getCredentials().getOrThrow()
             .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
-            .map { it.vcSerialized }
-        val vp = VerifiablePresentation(credentials)
+        val vp = VerifiablePresentation(credentials.map { it.vcSerialized })
         val vpSerialized = VerifiablePresentationJws(
             vp = vp,
             challenge = challenge,
-            issuer = holder.keyMaterial.identifier,
+            issuer = credentials.first().vc.vc.credentialSubject.id,
             audience = verifierId,
             jwtId = "wrong_jwtId",
         )
@@ -270,16 +269,15 @@ class ValidatorVpTest : FreeSpec({
     "Wrong type in VP is not valid" {
         val credentials = holderCredentialStore.getCredentials().getOrThrow()
             .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
-            .map { it.vcSerialized }
         val vp = VerifiablePresentation(
             id = "urn:uuid:${uuid4()}",
             type = "wrong_type",
-            verifiableCredential = credentials
+            verifiableCredential = credentials.map { it.vcSerialized }
         )
 
         val vpSerialized = vp.toJws(
             challenge = challenge,
-            issuerId = holder.keyMaterial.identifier,
+            issuerId = credentials.first().vc.vc.credentialSubject.id,
             audienceId = verifierId,
         )
         val vpJws = holderSignVp(
