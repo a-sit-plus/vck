@@ -13,7 +13,9 @@ Release 5.9.0 (unreleased):
    - Key material will be referenced by its `keyId` and key set URL or by its certificate or plain public key in JWS proofs
  - Remove workarounds for EUDIW reference implementation:
    - OpenID4VP: Verify mDoc generated nonce correctly
-   - OpenID4VP: Only send the `response` parameter when using `direct_post.jwt`
+   - OpenID4VP: Only send the `response` parameter when using `direct_post.jwt
+ - OpenID4VP:
+   - Use credential format identifier `dc+sd-jwt` everywhere
 
 Release 5.8.0:
  - Refactor `AuthorizationServiceStrategy`

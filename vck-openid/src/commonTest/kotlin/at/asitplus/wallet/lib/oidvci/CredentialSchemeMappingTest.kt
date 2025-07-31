@@ -13,7 +13,6 @@ import io.kotest.matchers.maps.shouldContainKey
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 
-@Suppress("DEPRECATION")
 class CredentialSchemeMappingTest : FunSpec({
 
     test("AtomicAttribute in plain JWT") {
@@ -24,7 +23,7 @@ class CredentialSchemeMappingTest : FunSpec({
     }
 
     test("AtomicAttribute in SD-JWT") {
-        val expectedKey = "${AtomicAttribute2023.sdJwtType}#${CredentialFormatEnum.VC_SD_JWT.text}"
+        val expectedKey = "${AtomicAttribute2023.sdJwtType}#${CredentialFormatEnum.DC_SD_JWT.text}"
         AtomicAttribute2023.toCredentialIdentifier(SD_JWT) shouldBe expectedKey
         AtomicAttribute2023.toSupportedCredentialFormat().shouldContainKey(expectedKey)
         decodeFromCredentialIdentifier(expectedKey) shouldBe Pair(AtomicAttribute2023, SD_JWT)
@@ -39,11 +38,6 @@ class CredentialSchemeMappingTest : FunSpec({
 
     test("unknown scheme in plain JWT") {
         val key = "${randomString()}#${CredentialFormatEnum.JWT_VC.text}"
-        decodeFromCredentialIdentifier(key).shouldBeNull()
-    }
-
-    test("unknown scheme in SD-JWT (old identifier)") {
-        val key = "${randomString()}#${CredentialFormatEnum.VC_SD_JWT.text}"
         decodeFromCredentialIdentifier(key).shouldBeNull()
     }
 

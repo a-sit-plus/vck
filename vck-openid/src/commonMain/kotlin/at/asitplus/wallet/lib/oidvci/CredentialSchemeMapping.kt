@@ -55,22 +55,8 @@ object CredentialSchemeMapping {
                 )
             }
         } else null
-        // Uses "vc+sd-jwt", defined in SD-JWT VC up until draft 06
-        val sdJwt = if (supportsSdJwt) {
-            with(encodeToCredentialIdentifier(sdJwtType!!, CredentialFormatEnum.VC_SD_JWT)) {
-                this to SupportedCredentialFormat.forSdJwt(
-                    format = CredentialFormatEnum.VC_SD_JWT,
-                    scope = this,
-                    sdJwtVcType = sdJwtType!!,
-                    supportedBindingMethods = setOf(BINDING_METHOD_JWK, URN_TYPE_JWK_THUMBPRINT),
-                    sdJwtClaims = claimNames.map {
-                        ClaimDescription(path = it.split("."))
-                    }.toSet(),
-                )
-            }
-        } else null
         // Uses "dc+sd-jwt", supported since SD-JWT VC draft 06
-        val sdJwtNewIdentifier = if (supportsSdJwt) {
+        val sdJwt = if (supportsSdJwt) {
             with(encodeToCredentialIdentifier(sdJwtType!!, CredentialFormatEnum.DC_SD_JWT)) {
                 this to SupportedCredentialFormat.forSdJwt(
                     format = CredentialFormatEnum.DC_SD_JWT,
@@ -83,22 +69,20 @@ object CredentialSchemeMapping {
                 )
             }
         } else null
-        return listOfNotNull(iso, jwtVc, sdJwt, sdJwtNewIdentifier).toMap()
+        return listOfNotNull(iso, jwtVc, sdJwt).toMap()
     }
 
-    // TODO use DC_SD_JWT >= 6.0.0
     @Suppress("DEPRECATION")
     fun CredentialScheme.toCredentialIdentifier() = listOfNotNull(
         if (supportsIso) isoNamespace!! else null,
         if (supportsVcJwt) encodeToCredentialIdentifier(vcType!!, CredentialFormatEnum.JWT_VC) else null,
-        if (supportsSdJwt) encodeToCredentialIdentifier(sdJwtType!!, CredentialFormatEnum.VC_SD_JWT) else null
+        if (supportsSdJwt) encodeToCredentialIdentifier(sdJwtType!!, CredentialFormatEnum.DC_SD_JWT) else null
     )
 
-    // TODO use DC_SD_JWT >= 6.0.0
     @Suppress("DEPRECATION")
     fun CredentialScheme.toCredentialIdentifier(rep: CredentialRepresentation) = when (rep) {
         CredentialRepresentation.PLAIN_JWT -> encodeToCredentialIdentifier(vcType!!, CredentialFormatEnum.JWT_VC)
-        CredentialRepresentation.SD_JWT -> encodeToCredentialIdentifier(sdJwtType!!, CredentialFormatEnum.VC_SD_JWT)
+        CredentialRepresentation.SD_JWT -> encodeToCredentialIdentifier(sdJwtType!!, CredentialFormatEnum.DC_SD_JWT)
         CredentialRepresentation.ISO_MDOC -> isoNamespace!!
     }
 

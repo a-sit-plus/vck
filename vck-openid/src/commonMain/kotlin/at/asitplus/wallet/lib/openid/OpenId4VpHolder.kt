@@ -120,7 +120,6 @@ class OpenId4VpHolder(
             ).map { it.stringRepresentation }.toSet(),
             vpFormatsSupported = VpFormatsSupported(
                 vcJwt = SupportedAlgorithmsContainer(supportedAlgorithmsStrings = supportedAlgorithmsStrings),
-                vcSdJwt = SupportedAlgorithmsContainer(supportedAlgorithmsStrings = supportedAlgorithmsStrings),
                 dcSdJwt = SupportedAlgorithmsContainer(supportedAlgorithmsStrings = supportedAlgorithmsStrings),
                 msoMdoc = SupportedAlgorithmsContainer(supportedAlgorithmsStrings = supportedAlgorithmsStrings),
             )

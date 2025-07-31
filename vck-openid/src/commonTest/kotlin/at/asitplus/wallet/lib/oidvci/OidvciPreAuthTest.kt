@@ -92,14 +92,14 @@ class OidvciPreAuthTest : FreeSpec({
         val credentialOffer =
             authorizationService.credentialOfferWithPreAuthnForUser(DummyUserProvider.user, issuer.publicContext)
         val credentialIdsToRequest = credentialOffer.configurationIds
-            .shouldHaveSize(5) // Atomic Attribute in 4 representations (JWT, ISO, dc+sd-jwt and vc+sd-jwt), mDL in ISO
+            .shouldHaveSize(4) // Atomic Attribute in 3 representations (JWT, ISO, dc+sd-jwt), mDL in ISO
             .toSet()
 
         val token = getToken(credentialOffer, credentialIdsToRequest)
         val clientNonce = issuer.nonce().getOrThrow().clientNonce
         val authnDetails = token.authorizationDetails
             .shouldNotBeNull()
-            .shouldHaveSize(5)
+            .shouldHaveSize(4)
 
         authnDetails.forEach {
             it.shouldBeInstanceOf<OpenIdAuthorizationDetails>()
