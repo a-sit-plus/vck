@@ -1,5 +1,77 @@
 # Changelog
 
+Release 5.8.0:
+ - Refactor `AuthorizationServiceStrategy`
+   - Allow for general AuthorizationDetails
+   - Remove `filterAuthorizationDetails` function
+   - Add `validateAuthorizationDetails` function 
+   - Add `matchAuthorizationDetails` function
+   - Add `RqesAuthorizationServiceStrategy` class
+ - Refactor `SimpleAuthorizationService` and 
+   - Add `SimpleQtspAuthorizationService` class
+   - Remove `AuthorizationDetail` matching and validation from class to interface function
+ - Code organization:
+   - Remove code elements deprecated in `5.7.0`
+   - Remove all remaining `serialize()` and `deserialize()` methods in data classes
+   - Move data classes for token status into artifact `openid-data-classes`, keeping the namespace
+   - Move data classes for VC and SD-JWT into artifact `openid-data-classes`, keeping the namespace
+ - Refactoring of ISO data classes:
+   - Move data classes from `vck` to `openid-data-classes`
+   - List of classes moved: `MobileSecurityObject`, `Document`, `IssuerSigned`, `DeviceResponse`
+ - Issuer:
+   - Extract interface `StatusListIssuer` out of `Issuer` to separate credential issuing and status list management
+   - Rework interface `IssuerCredentialStore`, deprecating methods `storeGetNewIndex` and class `IssuerCredentialStore.Credential`
+   - In `Issuer.IssuedCredential` add the typed credentials as properties, add property `userInfo`
+   - In `StatusListIssuer` deprecate methods `revokeCredentials()` and `revokeCredentialsWithId()`, callers should use `revokeCredential()`
+   - In `CredentialIssuer` deprecate constructor parameter `credentialProvider`, replace with `credentialDataProvider`
+   - Extend `CredentialToBeIssued` to contain properties `expiration`, `scheme`, `subjectPublicKey`, `userInfo`
+   - In `CredentialIssuer` move constructor parameter for loading data to method `credential()`
+   - Extract `ProofValidator` out of `CredentialIssuer`
+   - Extract `CredentialSchemeMapping` out of various top-level methods
+   - In `SimpleAuthorizationService` deprecate constructor parameter `dataProvider`, use `authorize()` with `OAuth2LoadUserFun` instead
+   - In `AuthorizationService` deprecate `authorize()` methods, adding `authorize()` with `OAuth2LoadUserFun`
+ - Credential schemes:
+   - Provide fallback credential schemes, to be used when no matching scheme is registered with this library:
+     - `SdJwtFallbackCredentialScheme`
+     - `VcFallbackCredentialScheme`
+     - `IsoMdocFallbackCredentialScheme`
+   - Note that these schemes are not resolved automatically, and need to be used explicitly in client applications
+ - SD-JWT:
+   - Add data class for [SD-JWT VC Type metadata](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-10.html#name-sd-jwt-vc-type-metadata) in `SdJwtTypeMetadata`
+   - Update signum to provide SD-JWT VC Type metadata in `vctm` in the header of a SD-JWT
+ - Validation:
+   - Remove internal class `Parser` and data classes `ParseVpResult` and `ParseVcResult`
+   - Extract `ValidatorMdoc`, `ValidatorSdJwt`, `ValidatorVcJws` from `Validator`
+   - In `HolderAgent` add constructor parameters for `validatorVcJws`, `validatorSdJwt`, `validatorMdoc`
+   - In `Validator` deprecate constructor parameter `resolveStatusListToken`, clients shall use `tokenStatusResolver` instead
+   - In `Verifier` remove parameter `challenge` from `verifyPresentationIsoMdoc()`
+   - Rename `SdJwtValidator` to `SdJwtDecoded`
+   - In `VerifiablePresentationParsed` add the input data too, that is the `VerifiablePresentationJws`
+   - In `IsoDocumentParsed` add the input data too, that is the `Document`
+ - Respond to failed authentication request with error:
+   - In class `OpenId4VpWallet` add method `sendAuthnErrorResponse`
+   - In data class `OAuth2Error` add member `state`
+   - In data class `AuthenticationResponse` add member `error`, make `params` optional
+   - In class `AuthenticationResponseFactory` add member `signError`
+   - In class `OpenId4VpHolder` add member `signError`, add method `createAuthnErrorResponse`
+ - Dependency Updates:
+   - Kotlin 2.2.0
+   - Signum 3.17.0 / Supreme 0.9.0
+   - kotlinx.datetime 0.7.1.
+       * This moves Instant and Clock to stdlib
+       * (but introduces typealiases for easier migration)
+       * Also forces serialization 1.9.0
+   - Update to latest conventions plugin:
+       * Bouncy Castle 1.81!!
+       * Serialization 1.9.0
+       * Coroutines 1.10.2
+       * Ktor 3.2.2
+       * Kotest 6.0.0.M6
+   - Update JsonPath4K to 3.0.0
+ - Disable bogus ios X64 test tasks
+ - Help XCode to get its act together
+ - Add a manual test workflow to try different kotlin/ksp/kotest versions
+
 Release 5.7.2:
  - Presentation Exchange: Fix validation of optional constraint fields
 

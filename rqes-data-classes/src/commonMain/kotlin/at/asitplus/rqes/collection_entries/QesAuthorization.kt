@@ -1,11 +1,10 @@
 package at.asitplus.rqes.collection_entries
 
 import at.asitplus.KmmResult
-import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.catching
 import at.asitplus.openid.SignatureQualifier
 import at.asitplus.openid.TransactionData
 import at.asitplus.rqes.rdcJsonSerializer
-import at.asitplus.rqes.serializers.DeprecatedBase64URLTransactionDataSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonPrimitive
@@ -76,14 +75,16 @@ data class QesAuthorization(
      * the `sha-256` hash algorithm.
      */
     @SerialName("transaction_data_hashes_alg")
-    override val transactionDataHashAlgorithms: Set<String>? = null
+    override val transactionDataHashAlgorithms: Set<String>? = null,
 
-) : TransactionData {
+    ) : TransactionData {
 
+    @Suppress("DEPRECATION")
     override fun toBase64UrlJsonString(): JsonPrimitive =
         rdcJsonSerializer.parseToJsonElement(
             rdcJsonSerializer.encodeToString(
-                DeprecatedBase64URLTransactionDataSerializer, this
+                at.asitplus.rqes.serializers.DeprecatedBase64URLTransactionDataSerializer,
+                this
             )
         ) as JsonPrimitive
 
@@ -105,7 +106,7 @@ data class QesAuthorization(
             processID: String? = null,
             credentialIds: Set<String>? = null,
             transactionDataHashAlgorithms: Set<String>? = null,
-        ): KmmResult<TransactionData> = runCatching {
+        ): KmmResult<TransactionData> = catching {
             QesAuthorization(
                 signatureQualifier = signatureQualifier,
                 credentialID = credentialId,
@@ -114,6 +115,6 @@ data class QesAuthorization(
                 documentDigests = documentDigest,
                 processID = processID,
             )
-        }.wrap()
+        }
     }
 }

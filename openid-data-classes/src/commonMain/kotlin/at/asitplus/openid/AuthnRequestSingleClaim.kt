@@ -1,9 +1,7 @@
 package at.asitplus.openid
 
-import at.asitplus.KmmResult.Companion.wrap
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 
 @Serializable
 data class AuthnRequestSingleClaim(
@@ -28,8 +26,6 @@ data class AuthnRequestSingleClaim(
     val values: Array<String>? = null,
 ) {
 
-    fun serialize() = odcJsonSerializer.encodeToString(this)
-
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
@@ -51,12 +47,6 @@ data class AuthnRequestSingleClaim(
         result = 31 * result + (value?.hashCode() ?: 0)
         result = 31 * result + (values?.contentHashCode() ?: 0)
         return result
-    }
-
-    companion object {
-        fun deserialize(it: String) = kotlin.runCatching {
-            odcJsonSerializer.decodeFromString<AuthnRequestSingleClaim>(it)
-        }.wrap()
     }
 
 }

@@ -2,36 +2,75 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
 import at.asitplus.dcapi.OID4VPHandover
-import at.asitplus.dif.*
+import at.asitplus.dif.ClaimFormat
+import at.asitplus.dif.FormatContainerJwt
+import at.asitplus.dif.FormatContainerSdJwt
+import at.asitplus.dif.FormatHolder
+import at.asitplus.dif.PresentationSubmissionDescriptor
 import at.asitplus.iso.ClientIdToHash
 import at.asitplus.iso.DeviceAuthentication
-import at.asitplus.wallet.lib.iso.DeviceResponse
-import at.asitplus.wallet.lib.iso.Document
-import at.asitplus.wallet.lib.iso.MobileSecurityObject
+import at.asitplus.iso.DeviceResponse
+import at.asitplus.iso.Document
+import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.ResponseUriToHash
 import at.asitplus.iso.SessionTranscript
+import at.asitplus.iso.sha256
+import at.asitplus.iso.wrapInCborTag
 import at.asitplus.jsonpath.JsonPath
-import at.asitplus.openid.*
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationResponseParameters
+import at.asitplus.openid.CredentialFormatEnum
+import at.asitplus.openid.IdToken
+import at.asitplus.openid.IdTokenType
+import at.asitplus.openid.JwtVcIssuerMetadata
+import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.RelyingPartyMetadata
+import at.asitplus.openid.RequestObjectParameters
+import at.asitplus.openid.ResponseParametersFrom
+import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.signum.indispensable.josef.*
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.signum.indispensable.josef.JsonWebKeySet
+import at.asitplus.signum.indispensable.josef.JweAlgorithm
+import at.asitplus.signum.indispensable.josef.JweEncryption
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
+import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.toJsonWebKey
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.PresentationRequestParameters
+import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
+import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.iso.*
-import at.asitplus.wallet.lib.jws.*
-import at.asitplus.wallet.lib.oidvci.*
+import at.asitplus.wallet.lib.jws.DecryptJwe
+import at.asitplus.wallet.lib.jws.DecryptJweFun
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.jws.JwsHeaderIdentifierFun
+import at.asitplus.wallet.lib.jws.SdJwtSigned
+import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.SignJwtFun
+import at.asitplus.wallet.lib.jws.VerifyJwsObject
+import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
+import at.asitplus.wallet.lib.oidvci.DefaultMapStore
+import at.asitplus.wallet.lib.oidvci.DefaultNonceService
+import at.asitplus.wallet.lib.oidvci.MapStore
+import at.asitplus.wallet.lib.oidvci.NonceService
+import at.asitplus.wallet.lib.oidvci.decode
+import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import io.github.aakira.napier.Napier
-import io.ktor.http.URLBuilder
+import io.ktor.http.*
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.json.JsonElement
@@ -119,7 +158,7 @@ open class OpenId4VpVerifier(
         metadata.copy(
             authorizationSignedResponseAlgString = null,
             authorizationEncryptedResponseAlgString = supportedJweAlgorithm.identifier,
-            authorizationEncryptedResponseEncodingString = supportedJweEncryptionAlgorithm.text,
+            authorizationEncryptedResponseEncodingString = supportedJweEncryptionAlgorithm.identifier,
             jsonWebKeySet = metadata.jsonWebKeySet?.let {
                 JsonWebKeySet(it.keys.map { it.copy(publicKeyUse = "enc") })
             }
@@ -191,7 +230,7 @@ open class OpenId4VpVerifier(
                         .forEach { parameters.append(it.key, it.value) }
                 }.buildString().toCreatedRequest {
                     catching {
-                        createAuthnRequest(requestOptions, it).serialize()
+                        vckJsonSerializer.encodeToString(createAuthnRequest(requestOptions, it))
                     }
                 }
             }
@@ -333,7 +372,7 @@ open class OpenId4VpVerifier(
      * Validates an Authentication Response from the Wallet, where [input] is a map of POST parameters received.
      */
     suspend fun validateAuthnResponse(input: Map<String, String>): AuthnResponseResult =
-        runCatching {
+        catchingUnwrapped {
             ResponseParametersFrom.Post(input.decode<AuthenticationResponseParameters>())
         }.getOrElse {
             Napier.w("Could not parse authentication response: $input", it)
@@ -347,7 +386,7 @@ open class OpenId4VpVerifier(
      * - parameters encoded as a POST body, e.g. `id_token=...&vp_token=...`
      */
     suspend fun validateAuthnResponse(input: String): AuthnResponseResult =
-        runCatching {
+        catchingUnwrapped {
             responseParser.parseAuthnResponse(input)
         }.getOrElse {
             Napier.w("Could not parse authentication response: $input", it)
@@ -456,7 +495,7 @@ open class OpenId4VpVerifier(
             val validationResults = presentationSubmission.descriptorMap?.map { descriptor ->
                 val relatedPresentation = JsonPath(descriptor.cumulativeJsonPath)
                     .query(verifiablePresentation).first().value
-                val result = runCatching {
+                val result = catchingUnwrapped {
                     verifyPresentationResult(
                         descriptor.format,
                         relatedPresentation,
@@ -570,7 +609,6 @@ open class OpenId4VpVerifier(
                 ?: ""
             val result = verifier.verifyPresentationIsoMdoc(
                 input = deviceResponse,
-                challenge = expectedNonce,
                 verifyDocument = verifyDocument(mdocGeneratedNonce, clientId, responseUrl, expectedNonce)
             )
             if (result is VerifyPresentationResult.ValidationError) {
@@ -581,7 +619,6 @@ open class OpenId4VpVerifier(
                     ?: ""
                 verifier.verifyPresentationIsoMdoc(
                     input = deviceResponse,
-                    challenge = expectedNonce,
                     verifyDocument = verifyDocument(mdocGeneratedNonce, clientId, responseUrl, expectedNonce)
                 )
             } else {

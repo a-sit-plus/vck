@@ -38,7 +38,8 @@ kotlin {
         }
         jvmTest {
             dependencies {
-                implementation(signum.jose)
+                implementation("at.asitplus.signum:indispensable-josef:${VcLibVersions.signum}")
+                implementation("com.nimbusds:nimbus-jose-jwt:9.31")
                 implementation(kotlin("reflect"))
                 implementation("org.json:json:${VcLibVersions.Jvm.json}")
                 implementation("com.authlete:cbor:${VcLibVersions.Jvm.`authlete-cbor`}")
@@ -106,11 +107,6 @@ publishing {
             signing.isRequired = false
         }
     }
-}
-
-repositories {
-    maven(url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
-    mavenCentral()
 }
 
 signing {

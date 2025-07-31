@@ -1,43 +1,48 @@
 package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.catching
-import at.asitplus.openid.*
+import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.ClientNonceResponse
+import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.CredentialRequestParameters
+import at.asitplus.openid.CredentialResponseParameters
+import at.asitplus.openid.IssuerMetadata
+import at.asitplus.openid.OAuth2AuthorizationServerMetadata
+import at.asitplus.openid.OidcUserInfo
+import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.TokenRequestParameters
-import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.eupid.EuPidScheme
-import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued.Iso
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued.VcSd
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.ValidatorSdJwt
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
-import at.asitplus.wallet.lib.data.*
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
-import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oauth2.ClientAuthenticationService
-import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oauth2.RequestInfo
+import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oauth2.TokenService
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
+import at.asitplus.wallet.lib.oidvci.CredentialDataProviderFun
 import at.asitplus.wallet.lib.oidvci.CredentialIssuer
-import at.asitplus.wallet.lib.oidvci.CredentialIssuerDataProvider
 import at.asitplus.wallet.lib.oidvci.DefaultNonceService
-import at.asitplus.wallet.lib.oidvci.OAuth2DataProvider
 import at.asitplus.wallet.lib.oidvci.WalletService
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
@@ -49,24 +54,18 @@ import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
-import io.ktor.client.engine.mock.respond
-import io.ktor.client.engine.mock.respondError
-import io.ktor.client.engine.mock.respondRedirect
-import io.ktor.client.engine.mock.toByteArray
+import io.ktor.client.*
+import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
-import io.ktor.client.request.get
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.fullPath
 import io.ktor.http.headersOf
 import io.ktor.util.toMap
-import kotlinx.coroutines.test.runTest
-import kotlinx.datetime.Clock
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
+import kotlin.time.Clock
 
 class OpenId4VciClientTest : FunSpec() {
 
@@ -88,72 +87,71 @@ class OpenId4VciClientTest : FunSpec() {
         }
 
         test("loadEuPidCredentialSdJwt") {
-            runTest {
-                val expectedFamilyName = uuid4().toString()
-                setup(
-                    scheme = EuPidScheme,
-                    representation = SD_JWT,
-                    attributes = mapOf(EuPidScheme.Attributes.FAMILY_NAME to expectedFamilyName),
-                )
 
-                // Load credential identifier infos from Issuing service
-                val credentialIdentifierInfos = client.loadCredentialMetadata("http://localhost").getOrThrow()
-                // just pick the first credential in SD-JWT that is available
-                val selectedCredential = credentialIdentifierInfos
-                    .first { it.supportedCredentialFormat.format == CredentialFormatEnum.DC_SD_JWT }
-                // client will call clientBrowser.openUrlExternally
-                client.startProvisioningWithAuthRequestReturningResult(
-                    credentialIssuerUrl = "http://localhost",
-                    credentialIdentifierInfo = selectedCredential,
-                ).getOrThrow().also {
-                    // Simulates the browser, handling authorization to get the authCode
-                    val httpClient = HttpClient(mockEngine) { followRedirects = false }
-                    val authCode = httpClient.get(it.url).headers[HttpHeaders.Location]
-                    client.resumeWithAuthCode(authCode!!, it.context).getOrThrow().also {
-                        refreshTokenStore = it.refreshToken!!
-                        verifySdJwtCredential(it, expectedFamilyName)
-                    }
-                }
+            val expectedFamilyName = uuid4().toString()
+            setup(
+                scheme = EuPidScheme,
+                representation = SD_JWT,
+                attributes = mapOf(EuPidScheme.Attributes.FAMILY_NAME to expectedFamilyName),
+            )
 
-                refreshTokenStore.shouldNotBeNull()
-                client.refreshCredentialReturningResult(refreshTokenStore).getOrThrow().also {
+            // Load credential identifier infos from Issuing service
+            val credentialIdentifierInfos = client.loadCredentialMetadata("http://localhost").getOrThrow()
+            // just pick the first credential in SD-JWT that is available
+            val selectedCredential = credentialIdentifierInfos
+                .first { it.supportedCredentialFormat.format == CredentialFormatEnum.DC_SD_JWT }
+            // client will call clientBrowser.openUrlExternally
+            client.startProvisioningWithAuthRequestReturningResult(
+                credentialIssuerUrl = "http://localhost",
+                credentialIdentifierInfo = selectedCredential,
+            ).getOrThrow().also {
+                // Simulates the browser, handling authorization to get the authCode
+                val httpClient = HttpClient(mockEngine) { followRedirects = false }
+                val authCode = httpClient.get(it.url).headers[HttpHeaders.Location]
+                client.resumeWithAuthCode(authCode!!, it.context).getOrThrow().also {
+                    refreshTokenStore = it.refreshToken!!
                     verifySdJwtCredential(it, expectedFamilyName)
                 }
             }
+
+            refreshTokenStore.shouldNotBeNull()
+            client.refreshCredentialReturningResult(refreshTokenStore).getOrThrow().also {
+                verifySdJwtCredential(it, expectedFamilyName)
+            }
+
         }
 
         test("loadEuPidCredentialIsoWithOffer") {
-            runTest {
-                val expectedGivenName = uuid4().toString()
-                setup(
-                    scheme = EuPidScheme,
-                    representation = ISO_MDOC,
-                    attributes = mapOf(
-                        EuPidScheme.Attributes.GIVEN_NAME to expectedGivenName
-                    )
+            val expectedGivenName = uuid4().toString()
+            setup(
+                scheme = EuPidScheme,
+                representation = ISO_MDOC,
+                attributes = mapOf(
+                    EuPidScheme.Attributes.GIVEN_NAME to expectedGivenName
                 )
+            )
 
-                // Load credential identifier infos from Issuing service
-                val credentialIdentifierInfos = client.loadCredentialMetadata("http://localhost").getOrThrow()
-                // just pick the first credential in MSO_MDOC that is available
-                val selectedCredential = credentialIdentifierInfos
-                    .first { it.supportedCredentialFormat.format == CredentialFormatEnum.MSO_MDOC }
+            // Load credential identifier infos from Issuing service
+            val credentialIdentifierInfos = client.loadCredentialMetadata("http://localhost").getOrThrow()
+            // just pick the first credential in MSO_MDOC that is available
+            val selectedCredential = credentialIdentifierInfos
+                .first { it.supportedCredentialFormat.format == CredentialFormatEnum.MSO_MDOC }
 
-                val offer = authorizationService.credentialOfferWithPreAuthnForUser(
-                    dummyUser(),
-                    credentialIssuer.metadata.credentialIssuer
-                )
-                client.loadCredentialWithOfferReturningResult(offer, selectedCredential, null).getOrThrow().also {
-                    it.shouldBeInstanceOf<CredentialIssuanceResult.Success>().also {
-                        refreshTokenStore = it.refreshToken!!
-                        verifyIsoMdocCredential(it, expectedGivenName)
-                    }
-                }
-                refreshTokenStore.shouldNotBeNull()
-                client.refreshCredentialReturningResult(refreshTokenStore).getOrThrow().also {
+            val offer = authorizationService.credentialOfferWithPreAuthnForUser(
+                dummyUser(),
+                credentialIssuer.metadata.credentialIssuer
+            )
+            client.loadCredentialWithOfferReturningResult(offer, selectedCredential, null).getOrThrow().also {
+                it.shouldBeInstanceOf<CredentialIssuanceResult.Success>().also {
+                    refreshTokenStore = it.refreshToken!!
                     verifyIsoMdocCredential(it, expectedGivenName)
                 }
             }
+            refreshTokenStore.shouldNotBeNull()
+            client.refreshCredentialReturningResult(refreshTokenStore).getOrThrow().also {
+                verifyIsoMdocCredential(it, expectedGivenName)
+            }
+
         }
     }
 
@@ -164,12 +162,12 @@ class OpenId4VciClientTest : FunSpec() {
         success.credentials.shouldBeSingleton().also {
             it.first().shouldBeInstanceOf<Holder.StoreCredentialInput.SdJwt>().also {
                 it.scheme shouldBe EuPidScheme
-                val sdJwt = Validator().verifySdJwt(
-                    SdJwtSigned.parse(it.vcSdJwt)!!,
-                    credentialKeyMaterial.publicKey
-                )
-                sdJwt.shouldBeInstanceOf<VerifyCredentialResult.SuccessSdJwt>()
-                sdJwt.disclosures.values.any { it.claimName == EuPidScheme.Attributes.FAMILY_NAME && it.claimValue.jsonPrimitive.content == expectedFamilyName }
+                ValidatorSdJwt().verifySdJwt(it.signedSdJwtVc, credentialKeyMaterial.publicKey)
+                    .shouldBeInstanceOf<VerifyCredentialResult.SuccessSdJwt>()
+                    .disclosures.values.any {
+                        it.claimName == EuPidScheme.Attributes.FAMILY_NAME &&
+                                it.claimValue.jsonPrimitive.content == expectedFamilyName
+                    }
                     .shouldBeTrue()
             }
         }
@@ -194,38 +192,33 @@ class OpenId4VciClientTest : FunSpec() {
         representation: ConstantIndex.CredentialRepresentation,
         attributes: Map<String, String>,
     ) {
-        val dataProvider = OAuth2DataProvider { _, _ -> dummyUser() }
-        val credentialProvider =
-            CredentialIssuerDataProvider { _, subjectPublicKey: CryptoPublicKey, credentialScheme, representation, _ ->
-                catching {
-                    require(credentialScheme == scheme)
-                    require(representation == representation)
-                    var digestId = 0u
-                    when (representation) {
-                        PLAIN_JWT -> TODO()
-                        SD_JWT -> VcSd(
-                            attributes.map { ClaimToBeIssued(it.key, it.value) },
-                            Clock.System.now(),
-                            credentialScheme,
-                            subjectPublicKey
-                        )
+        val credentialDataProvider = CredentialDataProviderFun {
+            catching {
+                require(it.credentialScheme == scheme)
+                require(it.credentialRepresentation == representation)
+                var digestId = 0u
+                when (representation) {
+                    PLAIN_JWT -> TODO()
+                    SD_JWT -> VcSd(
+                        attributes.map { ClaimToBeIssued(it.key, it.value) },
+                        Clock.System.now(),
+                        it.credentialScheme,
+                        it.subjectPublicKey,
+                        OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+                    )
 
-                        ISO_MDOC -> Iso(
-                            attributes.map {
-                                IssuerSignedItem(
-                                    digestId++,
-                                    Random.nextBytes(32),
-                                    it.key,
-                                    it.value
-                                )
-                            },
-                            Clock.System.now(),
-                            credentialScheme,
-                            subjectPublicKey
-                        )
-                    }
+                    ISO_MDOC -> Iso(
+                        attributes.map {
+                            IssuerSignedItem(digestId++, Random.nextBytes(32), it.key, it.value)
+                        },
+                        Clock.System.now(),
+                        it.credentialScheme,
+                        it.subjectPublicKey,
+                        OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+                    )
                 }
             }
+        }
         val credentialSchemes = setOf(EuPidScheme)
         val authorizationEndpointPath = "/authorize"
         val tokenEndpointPath = "/token"
@@ -235,7 +228,6 @@ class OpenId4VciClientTest : FunSpec() {
         val publicContext = "https://issuer.example.com"
         authorizationService = SimpleAuthorizationService(
             strategy = CredentialAuthorizationServiceStrategy(credentialSchemes),
-            dataProvider = dataProvider,
             publicContext = publicContext,
             authorizationEndpointPath = authorizationEndpointPath,
             tokenEndpointPath = tokenEndpointPath,
@@ -249,11 +241,11 @@ class OpenId4VciClientTest : FunSpec() {
                 issueRefreshTokens = true
             ),
         )
+        val issuer = IssuerAgent(EphemeralKeyWithSelfSignedCert())
         credentialIssuer = CredentialIssuer(
             authorizationService = authorizationService,
-            issuer = IssuerAgent(EphemeralKeyWithSelfSignedCert()),
+            issuer = issuer,
             credentialSchemes = credentialSchemes,
-            credentialProvider = credentialProvider,
             publicContext = publicContext,
             credentialEndpointPath = credentialEndpointPath,
             nonceEndpointPath = nonceEndpointPath,
@@ -297,7 +289,7 @@ class OpenId4VciClientTest : FunSpec() {
                     val authnRequest: AuthenticationRequestParameters =
                         if (requestBody.isEmpty()) queryParameters.decodeFromUrlQuery<AuthenticationRequestParameters>()
                         else requestBody.decodeFromPostBody<AuthenticationRequestParameters>()
-                    val result = authorizationService.authorize(authnRequest).getOrThrow()
+                    val result = authorizationService.authorize(authnRequest) { catching { dummyUser() } }.getOrThrow()
                     respondRedirect(result.url)
                 }
 
@@ -322,8 +314,13 @@ class OpenId4VciClientTest : FunSpec() {
                 request.url.fullPath.startsWith(credentialEndpointPath) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val authn = request.headers[HttpHeaders.Authorization].shouldNotBeNull()
-                    val params = CredentialRequestParameters.deserialize(requestBody).getOrThrow()
-                    val result = credentialIssuer.credential(authn, params, request.toRequestInfo()).getOrThrow()
+                    val params = vckJsonSerializer.decodeFromString<CredentialRequestParameters>(requestBody)
+                    val result = credentialIssuer.credential(
+                        authorizationHeader = authn,
+                        params = params,
+                        credentialDataProvider = credentialDataProvider,
+                        request = request.toRequestInfo(),
+                    ).getOrThrow()
                     respond(
                         vckJsonSerializer.encodeToString<CredentialResponseParameters>(result),
                         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())

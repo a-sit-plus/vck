@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.agent.validation.vcJws
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 data class VcJwsContentSemanticsValidationSummary(
     val inconsistentIssuerError: InconsistentIssuerError?,

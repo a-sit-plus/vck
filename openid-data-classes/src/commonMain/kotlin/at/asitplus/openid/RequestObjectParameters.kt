@@ -1,6 +1,6 @@
 package at.asitplus.openid
 
-import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.catchingUnwrapped
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -29,7 +29,7 @@ data class RequestObjectParameters(
 ) : RequestParameters {
 
     constructor(metadata: OAuth2AuthorizationServerMetadata, nonce: String) : this(
-        walletMetadataString = metadata.runCatching { odcJsonSerializer.encodeToString(this) }.getOrNull(),
+        walletMetadataString = metadata.catchingUnwrapped { odcJsonSerializer.encodeToString(this) }.getOrNull(),
         walletNonce = nonce
     )
 
@@ -43,18 +43,10 @@ data class RequestObjectParameters(
     override val state: String? = null
     override val transactionData: List<TransactionDataBase64Url>? = null
 
-    fun serialize() = odcJsonSerializer.encodeToString(this)
-
     val walletMetadata: OAuth2AuthorizationServerMetadata?
         get() = walletMetadataString?.let {
-            runCatching {
+            catchingUnwrapped {
                 odcJsonSerializer.decodeFromString<OAuth2AuthorizationServerMetadata>(it)
             }.getOrNull()
         }
-
-    companion object {
-        fun deserialize(it: String) = runCatching {
-            odcJsonSerializer.decodeFromString<RequestObjectParameters>(it)
-        }.wrap()
-    }
 }

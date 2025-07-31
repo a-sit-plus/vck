@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oauth2
 
+import at.asitplus.iso.sha256
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.OpenIdConstants.TOKEN_PREFIX_BEARER
@@ -11,7 +12,6 @@ import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
@@ -22,8 +22,8 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidDpopProof
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Clock.System
+import kotlin.time.Clock
+import kotlin.time.Clock.System
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
@@ -103,7 +103,7 @@ class JwtTokenVerificationService(
             Napier.w("validateDpopJwt: No dpop proof in header")
             throw InvalidDpopProof("no dpop proof")
         }
-        val jwt = parseAndValidate(request.dpop)
+        val jwt = parseAndValidate(request!!.dpop!!)
         if (dpopTokenJwt.payload.confirmationClaim == null ||
             jwt.header.jsonWebKey == null ||
             jwt.header.jsonWebKey!!.jwkThumbprintPlain != dpopTokenJwt.payload.confirmationClaim!!.jsonWebKeyThumbprint
@@ -190,20 +190,20 @@ class JwtTokenVerificationService(
 class BearerTokenVerificationService(
     /** Used to verify nonces of tokens. */
     internal val nonceService: NonceService,
-    /** Needs to local token generation service, to load actual user data. */
+    /** Loads the actual user data with [BearerTokenGenerationService.getValidatedAccessToken]. */
     internal val tokenGenerationService: BearerTokenGenerationService,
 ) : TokenVerificationService {
 
     override suspend fun validateRefreshToken(
         refreshToken: String,
-        request: RequestInfo?
+        request: RequestInfo?,
     ): String {
         throw InvalidToken("Refresh tokens are not supported by this verifier")
     }
 
     override suspend fun validateTokenExtractUser(
         authorizationHeader: String,
-        request: RequestInfo?
+        request: RequestInfo?,
     ): ValidatedAccessToken = if (authorizationHeader.startsWith(TOKEN_TYPE_BEARER, ignoreCase = true)) {
         val token = authorizationHeader.removePrefix(TOKEN_PREFIX_BEARER).split(" ").last()
         if (!nonceService.verifyNonce(token)) { // when to remove them?

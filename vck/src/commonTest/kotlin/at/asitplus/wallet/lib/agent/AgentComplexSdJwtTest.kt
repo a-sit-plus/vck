@@ -2,6 +2,8 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.openid.CredentialFormatEnum
+import at.asitplus.openid.OidcUserInfo
+import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.dcql.*
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
@@ -12,7 +14,7 @@ import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Duration.Companion.minutes
@@ -32,7 +34,7 @@ class AgentComplexSdJwtTest : FreeSpec({
     beforeEach {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         holderCredentialStore = InMemorySubjectCredentialStore()
-        issuer = IssuerAgent(EphemeralKeyWithoutCert(), issuerCredentialStore = issuerCredentialStore)
+        issuer = IssuerAgent(issuerCredentialStore = issuerCredentialStore)
         holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
         holder = HolderAgent(holderKeyMaterial, holderCredentialStore)
         verifierId = "urn:${uuid4()}"
@@ -445,6 +447,7 @@ private suspend fun issueAndStoreCredential(
                 expiration = Clock.System.now() + 1.minutes,
                 scheme = AtomicAttribute2023,
                 subjectPublicKey = holderKeyMaterial.publicKey,
+                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
             )
         ).getOrThrow().toStoreCredentialInput()
     )

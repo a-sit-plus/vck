@@ -1,5 +1,8 @@
 package at.asitplus.wallet.lib.data
 
+import at.asitplus.wallet.lib.data.IsoMdocFallbackCredentialScheme
+import at.asitplus.wallet.lib.data.SdJwtFallbackCredentialScheme
+import at.asitplus.wallet.lib.data.VcFallbackCredentialScheme
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
 
@@ -56,6 +59,7 @@ object AttributeIndex {
      * Compares the input to all [CredentialScheme] identifiers and on match
      * returns it plus its associated [CredentialRepresentation] if applicable.
      */
+    @Deprecated("To be removed, please use `resolveIsoNamespace`, or `resolveIsoDoctype`, or `resolveSdJwtAttributeType`, or `resolveAttributeType`")
     fun resolveCredential(input: String): Pair<CredentialScheme, CredentialRepresentation?>? =
         resolveAttributeType(input)?.let { it to CredentialRepresentation.PLAIN_JWT }
             ?: resolveSdJwtAttributeType(input)?.let { it to CredentialRepresentation.SD_JWT }

@@ -4,7 +4,10 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-@Deprecated("Legacy preview protocol. Use OID4VP or ISO 18013-7 Annex C", replaceWith = ReplaceWith("Oid4vpDCAPIRequest or IsoMdocRequest"))
+@Deprecated(
+    "Legacy preview protocol. Use OID4VP or ISO 18013-7 Annex C",
+    replaceWith = ReplaceWith("Oid4vpDCAPIRequest or IsoMdocRequest")
+)
 data class PreviewDCAPIRequest(
     @SerialName("request")
     val request: String,
@@ -28,7 +31,7 @@ data class PreviewDCAPIRequest(
         require(callingOrigin != null || callingPackageName != null)
     }
 
-
+    @Suppress("DEPRECATION")
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false

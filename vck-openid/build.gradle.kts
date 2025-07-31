@@ -51,7 +51,7 @@ kotlin {
 
         jvmTest {
             dependencies {
-                implementation(signum.jose)
+                api("at.asitplus.signum:indispensable-josef:${VcLibVersions.signum}")
                 implementation("org.json:json:${VcLibVersions.Jvm.json}")
             }
         }
@@ -114,11 +114,6 @@ publishing {
             signing.isRequired = false
         }
     }
-}
-
-repositories {
-    maven(url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
-    mavenCentral()
 }
 
 signing {

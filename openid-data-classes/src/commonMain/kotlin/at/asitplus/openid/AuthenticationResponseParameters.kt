@@ -1,12 +1,10 @@
 package at.asitplus.openid
 
-import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
 import at.asitplus.dif.PresentationSubmission
-import kotlinx.datetime.Instant
+import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
+import kotlin.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonElement
 
 /**
@@ -91,13 +89,4 @@ data class AuthenticationResponseParameters(
      */
     @SerialName("response")
     val response: String? = null,
-) {
-
-    fun serialize() = odcJsonSerializer.encodeToString(this)
-
-    companion object {
-        fun deserialize(it: String) = kotlin.runCatching {
-            odcJsonSerializer.decodeFromString<AuthenticationResponseParameters>(it)
-        }.wrap()
-    }
-}
+)

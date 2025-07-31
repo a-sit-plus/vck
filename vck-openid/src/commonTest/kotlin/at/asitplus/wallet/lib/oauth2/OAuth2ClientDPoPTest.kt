@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oauth2
 
+import at.asitplus.catching
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.signum.indispensable.josef.JsonWebToken
@@ -39,7 +40,6 @@ class OAuth2ClientDPoPTest : FunSpec({
         user = OidcUserInfoExtended(OidcUserInfo(randomString()))
         server = SimpleAuthorizationService(
             strategy = DummyAuthorizationServiceStrategy(scope),
-            dataProvider = DummyDataProvider(user),
             tokenService = TokenService.jwt(
                 nonceService = DefaultNonceService(),
                 keyMaterial = EphemeralKeyWithoutCert(),
@@ -55,7 +55,8 @@ class OAuth2ClientDPoPTest : FunSpec({
             state = state,
             scope = scope,
         )
-        val authnResponse = server.authorize(authnRequest).getOrThrow()
+        val authnResponse = server.authorize(authnRequest) { catching { user } }
+            .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code
             .shouldNotBeNull()

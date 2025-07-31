@@ -10,7 +10,9 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMIL
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT
 import at.asitplus.iso.IssuerSignedItem
-import kotlinx.datetime.Clock
+import at.asitplus.openid.OidcUserInfo
+import at.asitplus.openid.OidcUserInfoExtended
+import kotlin.time.Clock
 import kotlinx.datetime.LocalDate
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes
@@ -23,12 +25,9 @@ object DummyCredentialDataProvider {
         subjectPublicKey: CryptoPublicKey,
         credentialScheme: ConstantIndex.CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation,
-        claimNames: Collection<String>? = null,
     ): KmmResult<CredentialToBeIssued> = catching {
         val expiration = Clock.System.now() + defaultLifetime
-        val claims = claimNames?.map {
-            ClaimToBeIssued(it, "${it}_DUMMY_VALUE")
-        } ?: listOf(
+        val claims = listOf(
             ClaimToBeIssued(CLAIM_GIVEN_NAME, "Susanne"),
             ClaimToBeIssued(CLAIM_FAMILY_NAME, "Meier"),
             ClaimToBeIssued(CLAIM_DATE_OF_BIRTH, LocalDate.parse("1990-01-01")),
@@ -41,6 +40,7 @@ object DummyCredentialDataProvider {
                 expiration = expiration,
                 scheme = credentialScheme,
                 subjectPublicKey = subjectPublicKey,
+                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
             )
 
             ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
@@ -48,6 +48,7 @@ object DummyCredentialDataProvider {
                 expiration = expiration,
                 scheme = credentialScheme,
                 subjectPublicKey = subjectPublicKey,
+                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
             )
 
             ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
@@ -57,6 +58,7 @@ object DummyCredentialDataProvider {
                 expiration = expiration,
                 scheme = credentialScheme,
                 subjectPublicKey = subjectPublicKey,
+                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
             )
         }
     }

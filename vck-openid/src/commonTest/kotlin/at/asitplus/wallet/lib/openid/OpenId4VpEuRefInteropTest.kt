@@ -8,6 +8,7 @@ import at.asitplus.signum.indispensable.asn1.Asn1Primitive
 import at.asitplus.signum.indispensable.asn1.Asn1String
 import at.asitplus.signum.indispensable.asn1.KnownOIDs
 import at.asitplus.signum.indispensable.asn1.encoding.Asn1
+import at.asitplus.signum.indispensable.asn1.subjectAltName_2_5_29_17
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
@@ -29,7 +30,7 @@ import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 /**
  * Tests our OpenId4VP implementation against EUDI Ref Impl.,
@@ -53,7 +54,6 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
                     holderKeyMaterial.publicKey,
                     EuPidScheme,
                     ConstantIndex.CredentialRepresentation.SD_JWT,
-                    EuPidScheme.requiredClaimNames
                 ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         )
@@ -63,10 +63,6 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.SD_JWT,
-                    listOf(
-                        CLAIM_FAMILY_NAME,
-                        CLAIM_GIVEN_NAME
-                    )
                 ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         )

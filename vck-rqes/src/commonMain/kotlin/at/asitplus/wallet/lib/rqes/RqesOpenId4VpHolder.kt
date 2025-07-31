@@ -1,9 +1,9 @@
 package at.asitplus.wallet.lib.rqes
 
-import CscAuthorizationDetails
 import at.asitplus.catching
 import at.asitplus.openid.*
 import at.asitplus.rqes.CredentialInfo
+import at.asitplus.rqes.CscAuthorizationDetails
 import at.asitplus.rqes.QtspSignatureRequest
 import at.asitplus.rqes.SignHashRequestParameters
 import at.asitplus.rqes.collection_entries.*
@@ -12,7 +12,7 @@ import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.rqes.enums.SignedEnvelopeProperty
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
-import at.asitplus.signum.indispensable.X509SignatureAlgorithm.entries
+import at.asitplus.signum.indispensable.X509SignatureAlgorithm.Companion.entries
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.rqes.helper.OAuth2RqesParameters

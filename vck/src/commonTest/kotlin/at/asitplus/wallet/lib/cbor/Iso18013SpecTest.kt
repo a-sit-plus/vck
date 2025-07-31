@@ -2,21 +2,20 @@ package at.asitplus.wallet.lib.cbor
 
 import at.asitplus.iso.CborCredentialSerializer
 import at.asitplus.iso.DeviceRequest
-import at.asitplus.wallet.lib.iso.DeviceResponse
+import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.IssuerSignedList
 import at.asitplus.iso.ItemsRequestList
-import at.asitplus.wallet.lib.iso.MobileSecurityObject
+import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.ValueDigestList
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.wallet.lib.iso.*
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.decodeFromByteArray
 

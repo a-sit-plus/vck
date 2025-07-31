@@ -2,7 +2,10 @@ package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
+import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.openid.CredentialFormatEnum
+import at.asitplus.openid.OidcUserInfo
+import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants.ResponseMode
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
@@ -25,7 +28,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.CredentialPresentation.DCQLPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
-import at.asitplus.iso.IssuerSignedItem
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.openid.*
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessIso
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessSdJwt
@@ -33,6 +36,7 @@ import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.CreationOptions
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -47,11 +51,11 @@ import io.ktor.util.*
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes
@@ -70,7 +74,7 @@ class OpenId4VpWalletTest : FunSpec() {
         }
 
         test("presentEuPidCredentialSdJwtDirectPost") {
-            runTest {
+            runBlocking {
                 val (wallet, url, mockEngine) = setup(
                     scheme = EuPidScheme,
                     representation = SD_JWT,
@@ -94,7 +98,7 @@ class OpenId4VpWalletTest : FunSpec() {
 
 
         test(" presentEuPidCredentialIsoQuery") {
-            runTest {
+            runBlocking {
                 val (wallet, url, mockEngine) = setup(
                     scheme = EuPidScheme,
                     representation = ISO_MDOC,
@@ -116,7 +120,7 @@ class OpenId4VpWalletTest : FunSpec() {
         }
 
         test("DC API") {
-            runTest {
+            runBlocking {
                 val wallet = setupWallet(HttpClient().engine)
 
                 val attributes = mapOf(
@@ -202,7 +206,8 @@ class OpenId4VpWalletTest : FunSpec() {
                     )
                 )
 
-                val request = "{\"client_metadata\":{\"vp_formats_supported\":{\"mso_mdoc\":{\"deviceauth_alg_values\":[-7],\"issuerauth_alg_values\":[-7]}}},\"dcql_query\":{\"credentials\":[{\"claims\":[{\"path\":[\"org.iso.18013.5.1\",\"family_name\"]},{\"path\":[\"org.iso.18013.5.1\",\"given_name\"]},{\"path\":[\"org.iso.18013.5.1\",\"age_over_21\"]}],\"format\":\"mso_mdoc\",\"id\":\"cred1\",\"meta\":{\"doctype_value\":\"org.iso.18013.5.1.mDL\"}}]},\"nonce\":\"4mqexiA_rQQyzHOYkuW6-BrHKaza02b8JHFVoyB5Iw8\",\"response_mode\":\"dc_api\",\"response_type\":\"vp_token\"}"
+                val request =
+                    "{\"client_metadata\":{\"vp_formats_supported\":{\"mso_mdoc\":{\"deviceauth_alg_values\":[-7],\"issuerauth_alg_values\":[-7]}}},\"dcql_query\":{\"credentials\":[{\"claims\":[{\"path\":[\"org.iso.18013.5.1\",\"family_name\"]},{\"path\":[\"org.iso.18013.5.1\",\"given_name\"]},{\"path\":[\"org.iso.18013.5.1\",\"age_over_21\"]}],\"format\":\"mso_mdoc\",\"id\":\"cred1\",\"meta\":{\"doctype_value\":\"org.iso.18013.5.1.mDL\"}}]},\"nonce\":\"4mqexiA_rQQyzHOYkuW6-BrHKaza02b8JHFVoyB5Iw8\",\"response_mode\":\"dc_api\",\"response_type\":\"vp_token\"}"
                 val dcApiRequest = Oid4vpDCAPIRequest(
                     protocol = "openid4vp-v1-unsigned",
                     request = request,
@@ -211,7 +216,8 @@ class OpenId4VpWalletTest : FunSpec() {
                     callingOrigin = "https://apps.egiz.gv.at/customverifier"
                 )
 
-                val requestParametersFrom = wallet.parseAuthenticationRequestParameters(request, dcApiRequest).getOrThrow()
+                val requestParametersFrom =
+                    wallet.parseAuthenticationRequestParameters(request, dcApiRequest).getOrThrow()
                 val clientMetadata = RelyingPartyMetadata()
                 val presentation = DCQLPresentation(DCQLRequest(dcqlQuery), credentialQuerySubmissions)
                 wallet.finalizeAuthorizationResponse(requestParametersFrom, clientMetadata, presentation).also {
@@ -222,6 +228,39 @@ class OpenId4VpWalletTest : FunSpec() {
                     response.authenticationResponseResult.params.response shouldContain "vp_token"
                     response.authenticationResponseResult.params.response shouldContain "cred1"
                 }
+            }
+        }
+
+        test("No matching credential test") {
+            val scheme = EuPidScheme
+            val representation = ISO_MDOC
+            val attributes = mapOf(
+                EuPidScheme.Attributes.GIVEN_NAME to randomString()
+            )
+            val responseMode = ResponseMode.Query
+            val clientId = uuid4().toString()
+
+            val requestOptions = OpenIdRequestOptions(
+                credentials = setOf(
+                    RequestOptionsCredential(
+                        credentialScheme = scheme,
+                        representation = representation,
+                        requestedAttributes = attributes.keys
+                    )
+                ),
+                responseMode = responseMode,
+            )
+            val (mockEngine, url) = setupRelyingPartyService(clientId, requestOptions) {
+                it.verifyReceivedAttributes(attributes)
+            }
+            val wallet = setupWallet(mockEngine)
+
+            val requestParametersFrom = wallet.parseAuthenticationRequestParameters(url).getOrThrow()
+
+            val preparationState =
+                wallet.startAuthorizationResponsePreparation(requestParametersFrom).getOrThrow()
+            shouldThrow<OAuth2Exception.AccessDenied> {
+                wallet.getMatchingCredentials(preparationState, request = requestParametersFrom).getOrThrow()
             }
         }
     }
@@ -277,14 +316,16 @@ class OpenId4VpWalletTest : FunSpec() {
             claims = attributes.map { it.toClaimToBeIssued() },
             expiration = Clock.System.now().plus(1.minutes),
             scheme = scheme,
-            subjectPublicKey = keyMaterial.publicKey
+            subjectPublicKey = keyMaterial.publicKey,
+            userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
         )
 
         ISO_MDOC -> CredentialToBeIssued.Iso(
             issuerSignedItems = attributes.map { it.toIssuerSignedItem() },
             expiration = Clock.System.now().plus(1.minutes),
             scheme = scheme,
-            subjectPublicKey = keyMaterial.publicKey
+            subjectPublicKey = keyMaterial.publicKey,
+            userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
         )
 
         else -> TODO()
@@ -352,7 +393,10 @@ class OpenId4VpWalletTest : FunSpec() {
         val responseEndpointPath = "/response"
         val (url, jar) = verifier.createAuthnRequest(
             requestOptions.copy(responseUrl = responseEndpointPath),
-            CreationOptions.SignedRequestByReference("http://wallet.example.com/", "http://rp.example.com$requestEndpointPath")
+            CreationOptions.SignedRequestByReference(
+                "http://wallet.example.com/",
+                "http://rp.example.com$requestEndpointPath"
+            )
         ).getOrThrow()
         jar.shouldNotBeNull()
 
@@ -360,7 +404,8 @@ class OpenId4VpWalletTest : FunSpec() {
             when {
                 request.url.fullPath == requestEndpointPath -> respond(jar.invoke(null).getOrThrow())
 
-                request.url.fullPath.startsWith(responseEndpointPath) or request.url.toString().startsWith(redirectUri) -> {
+                request.url.fullPath.startsWith(responseEndpointPath) or request.url.toString()
+                    .startsWith(redirectUri) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val queryParameters: Map<String, String> =
                         request.url.parameters.toMap().entries.associate { it.key to it.value.first() }

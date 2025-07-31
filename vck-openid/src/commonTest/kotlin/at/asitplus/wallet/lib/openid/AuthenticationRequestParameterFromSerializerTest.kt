@@ -58,7 +58,9 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
         }
 
         "Json test $representation" {
-            val authnRequest = verifierOid4vp.createAuthnRequest(requestOptions = reqOptions).serialize()
+            val authnRequest = vckJsonSerializer.encodeToString(
+                verifierOid4vp.createAuthnRequest(requestOptions = reqOptions)
+            )
             authnRequest.shouldNotContain(DifInputDescriptor::class.simpleName!!)
             val params = holderOid4vp.parseAuthenticationRequestParameters(authnRequest).getOrThrow()
 

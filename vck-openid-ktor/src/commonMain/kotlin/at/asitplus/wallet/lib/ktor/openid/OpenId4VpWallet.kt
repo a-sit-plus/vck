@@ -2,15 +2,18 @@ package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
+import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
 import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.OpenIdConstants.Errors.INVALID_REQUEST
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.CredentialPresentation
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
-import at.asitplus.wallet.lib.data.MediaTypes
+import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.AuthorizationResponsePreparationState
@@ -33,8 +36,14 @@ import io.ktor.client.request.url
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.readRawBytes
-import io.ktor.http.*
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
+import io.ktor.http.Parameters
+import io.ktor.http.URLBuilder
 import io.ktor.http.content.OutgoingContent
+import io.ktor.http.formUrlEncode
+import io.ktor.http.parameters
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.utils.io.core.toByteArray
 import kotlinx.coroutines.Dispatchers
@@ -61,7 +70,8 @@ class OpenId4VpWallet(
     sealed interface AuthenticationResult
 
     data class AuthenticationSuccess(val redirectUri: String? = null) : AuthenticationResult
-    data class AuthenticationForward(val authenticationResponseResult: AuthenticationResponseResult.DcApi) : AuthenticationResult
+    data class AuthenticationForward(val authenticationResponseResult: AuthenticationResponseResult.DcApi) :
+        AuthenticationResult
 
 
     private val client: HttpClient = HttpClient(engine) {
@@ -111,6 +121,27 @@ class OpenId4VpWallet(
     ): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> =
         openId4VpHolder.parseAuthenticationRequestParameters(input, dcApiRequest)
 
+    /**
+     * Sends an error response with the appropriate method.
+     * Returns nothing as we don't expect a useful response.
+     */
+    suspend fun sendAuthnErrorResponse(
+        error: OAuth2Error,
+        request: RequestParametersFrom<AuthenticationRequestParameters>
+    ) {
+        catchingUnwrapped {
+            Napier.i("sendAuthnErrorResponse $error, $request")
+            openId4VpHolder.createAuthnErrorResponse(error = error, request = request).getOrThrow().let {
+                when (it) {
+                    is AuthenticationResponseResult.Post -> postResponse(it)
+                    is AuthenticationResponseResult.Redirect -> redirectResponse(it)
+                    is AuthenticationResponseResult.DcApi ->
+                        Napier.d("Unsupported error response mode")
+                }
+            }
+        }
+    }
+
     suspend fun startAuthorizationResponsePreparation(
         request: RequestParametersFrom<AuthenticationRequestParameters>
     ): KmmResult<AuthorizationResponsePreparationState> =
@@ -158,11 +189,20 @@ class OpenId4VpWallet(
             request = request,
             clientMetadata = clientMetadata,
             credentialPresentation = credentialPresentation
-        ).getOrThrow().let {
-            when (it) {
-                is AuthenticationResponseResult.Post -> postResponse(it)
-                is AuthenticationResponseResult.Redirect -> redirectResponse(it)
-                is AuthenticationResponseResult.DcApi -> AuthenticationForward(it)
+        ).getOrElse {
+            sendAuthnErrorResponse(
+                error = OAuth2Error(
+                    error = INVALID_REQUEST,
+                    errorDescription = it.message,
+                    state = request.parameters.state
+                ), request = request
+            )
+            throw it
+        }.let { response ->
+            when (response) {
+                is AuthenticationResponseResult.Post -> postResponse(response)
+                is AuthenticationResponseResult.Redirect -> redirectResponse(response)
+                is AuthenticationResponseResult.DcApi -> AuthenticationForward(response)
             }
         }
     }
@@ -180,6 +220,22 @@ class OpenId4VpWallet(
             }
         )
     }
+
+    suspend fun getMatchingCredentials(
+        preparationState: AuthorizationResponsePreparationState,
+        request: RequestParametersFrom<AuthenticationRequestParameters>
+    ) = catchingUnwrapped {
+            openId4VpHolder.getMatchingCredentials(preparationState).getOrElse {
+                sendAuthnErrorResponse(
+                    error = OAuth2Error(
+                        error = INVALID_REQUEST,
+                        errorDescription = it.message,
+                        state = request.parameters.state
+                    ), request = request
+                )
+                throw it
+            }
+        }
 
     /**
      * Our implementation of ktor's [FormDataContent], but with [contentType] without charset appended,
@@ -219,6 +275,6 @@ data class OpenId4VpSuccess(
 private suspend fun HttpResponse.extractRedirectUri(): String? =
     headers[HttpHeaders.Location]?.let {
         it.ifEmpty { null }
-    } ?: runCatching { body<OpenId4VpSuccess>() }.getOrNull()?.let {
+    } ?: catchingUnwrapped { body<OpenId4VpSuccess>() }.getOrNull()?.let {
         it.redirectUri.ifEmpty { null }
     }

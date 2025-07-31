@@ -4,16 +4,18 @@ import at.asitplus.iso.CborCredentialSerializer
 import at.asitplus.iso.DeviceAuth
 import at.asitplus.iso.DeviceKeyInfo
 import at.asitplus.iso.DeviceNameSpaces
-import at.asitplus.wallet.lib.iso.DeviceResponse
+import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.DeviceSigned
-import at.asitplus.wallet.lib.iso.Document
-import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.iso.Document
+import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.iso.IssuerSignedItemSerializer
-import at.asitplus.wallet.lib.iso.MobileSecurityObject
+import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.ValidityInfo
 import at.asitplus.iso.ValueDigest
 import at.asitplus.iso.ValueDigestList
+import at.asitplus.iso.sha256
+import at.asitplus.iso.wrapInCborTag
 import at.asitplus.signum.indispensable.CryptoSignature
 import at.asitplus.signum.indispensable.cosef.*
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
@@ -21,7 +23,6 @@ import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.data.LocalDateOrInstant
 import at.asitplus.wallet.lib.data.LocalDateOrInstantSerializer
-import at.asitplus.wallet.lib.iso.*
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldHaveSize
@@ -32,11 +33,12 @@ import io.kotest.matchers.string.shouldNotContain
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.builtins.ByteArraySerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
 import kotlin.random.Random
@@ -179,8 +181,7 @@ class IssuerSignedItemSerializationTest : FreeSpec({
                             + itemBytes.encodeToString(Base16())
                 )
                 // important here is wrapping in D818 before hashing it!
-                val itemHash = itemBytes
-                    .wrapInCborTag(24).sha256()
+                val itemHash = itemBytes.wrapInCborTag(24).sha256()
                 it.shouldContain( // inside the mso
                     namespace.toHex()
                             + "A1" // map(1)

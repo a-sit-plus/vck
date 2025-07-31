@@ -8,13 +8,15 @@ import at.asitplus.iso.DeviceSigned
 import at.asitplus.iso.DeviceSignedItem
 import at.asitplus.iso.DeviceSignedItemList
 import at.asitplus.iso.DocRequest
-import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.iso.ItemsRequest
-import at.asitplus.wallet.lib.iso.MobileSecurityObject
+import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.ValidityInfo
 import at.asitplus.iso.ValueDigest
 import at.asitplus.iso.ValueDigestList
+import at.asitplus.iso.stripCborTag
+import at.asitplus.iso.wrapInCborTag
 import at.asitplus.signum.indispensable.CryptoSignature
 import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseEllipticCurve
@@ -32,6 +34,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldHaveAtLeastSize
@@ -43,7 +46,7 @@ import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.decodeFromByteArray
@@ -119,7 +122,7 @@ class Tag24SerializationTest : FreeSpec({
             DummyCredentialDataProvider.getCredential(
                 holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.ISO_MDOC
+                ISO_MDOC
             ).getOrThrow()
         ).getOrThrow().shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
 

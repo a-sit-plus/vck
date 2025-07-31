@@ -1,6 +1,5 @@
 package at.asitplus.openid
 
-import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.dif.FormatHolder
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
@@ -9,7 +8,6 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import kotlinx.serialization.encodeToString
 
 @Serializable
 data class RelyingPartyMetadata(
@@ -125,14 +123,6 @@ data class RelyingPartyMetadata(
     val clientIdScheme: OpenIdConstants.ClientIdScheme? = OpenIdConstants.ClientIdScheme.PreRegistered,
 ) {
 
-    fun serialize() = odcJsonSerializer.encodeToString(this)
-
-    companion object {
-        fun deserialize(it: String) = kotlin.runCatching {
-            odcJsonSerializer.decodeFromString<RelyingPartyMetadata>(it)
-        }.wrap()
-    }
-
     /**
      * OID JARM: JWE (RFC7516) `alg` algorithm JWA (RFC7518). REQUIRED for encrypting authorization responses.
      * If both signing and encryption are requested, the response will be signed then encrypted, with the result being
@@ -180,7 +170,7 @@ data class RelyingPartyMetadata(
      */
     @Transient
     val authorizationEncryptedResponseEncoding: JweEncryption? = authorizationEncryptedResponseEncodingString
-        ?.let { s -> JweEncryption.entries.firstOrNull { it.text == s } }
+        ?.let { s -> JweEncryption.entries.firstOrNull { it.identifier == s } }
 
     /**
      * OIDC Registration: OPTIONAL. JWE enc algorithm REQUIRED for encrypting the ID Token issued to this Client.
@@ -189,6 +179,6 @@ data class RelyingPartyMetadata(
      */
     @Transient
     val idTokenEncryptedResponseEncoding: JweEncryption? = idTokenEncryptedResponseEncodingString
-        ?.let { s -> JweEncryption.entries.firstOrNull { it.text == s } }
+        ?.let { s -> JweEncryption.entries.firstOrNull { it.identifier == s } }
 }
 

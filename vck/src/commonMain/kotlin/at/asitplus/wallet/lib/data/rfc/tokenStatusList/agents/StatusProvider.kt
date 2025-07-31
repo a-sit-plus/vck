@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents
 
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListAggregation
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 /**
  * The Status Issuer provides the Status List Token to the Status Provider, who serves the Status

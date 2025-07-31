@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.catching
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.CredentialOffer
 import at.asitplus.openid.TokenResponseParameters
@@ -8,7 +9,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
-import at.asitplus.wallet.lib.openid.DummyOAuth2DataProvider
+import at.asitplus.wallet.lib.openid.DummyUserProvider
 import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
@@ -28,13 +29,10 @@ class OidvciOfferCodeTest : FreeSpec({
     beforeEach {
         authorizationService = SimpleAuthorizationService(
             strategy = CredentialAuthorizationServiceStrategy(setOf(AtomicAttribute2023, MobileDrivingLicenceScheme)),
-            dataProvider = DummyOAuth2DataProvider,
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
-            issuer = IssuerAgent(),
             credentialSchemes = setOf(AtomicAttribute2023, MobileDrivingLicenceScheme),
-            credentialProvider = DummyOAuth2IssuerCredentialDataProvider
         )
         client = WalletService()
         state = uuid4().toString()
@@ -50,7 +48,8 @@ class OidvciOfferCodeTest : FreeSpec({
             resource = issuer.metadata.credentialIssuer,
             issuerState = credentialOffer.grants?.authorizationCode.shouldNotBeNull().issuerState
         )
-        val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
+        val authnResponse = authorizationService.authorize(authnRequest) { catching { DummyUserProvider.user } }
+            .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code
             .shouldNotBeNull()
@@ -72,7 +71,8 @@ class OidvciOfferCodeTest : FreeSpec({
             authorizationDetails = authorizationDetails,
             issuerState = credentialOffer.grants?.authorizationCode.shouldNotBeNull().issuerState
         )
-        val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
+        val authnResponse = authorizationService.authorize(authnRequest) { catching { DummyUserProvider.user } }
+            .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code
             .shouldNotBeNull()
@@ -101,7 +101,8 @@ class OidvciOfferCodeTest : FreeSpec({
 
         val credential = issuer.credential(
             authorizationHeader = token.toHttpHeaderValue(),
-            params = credentialRequest.first()
+            params = credentialRequest.first(),
+            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
         ).getOrThrow()
         credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
     }
@@ -118,7 +119,9 @@ class OidvciOfferCodeTest : FreeSpec({
             issuerState = "wrong issuer_state"
         )
         shouldThrow<OAuth2Exception> {
-            authorizationService.authorize(authnRequest).getOrThrow()
+            authorizationService
+                .authorize(authnRequest) { catching { DummyUserProvider.user } }
+                .getOrThrow()
         }
     }
 
@@ -145,7 +148,8 @@ class OidvciOfferCodeTest : FreeSpec({
 
         val credential = issuer.credential(
             authorizationHeader = token.toHttpHeaderValue(),
-            params = credentialRequest.first()
+            params = credentialRequest.first(),
+            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
         ).getOrThrow()
         credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
     }

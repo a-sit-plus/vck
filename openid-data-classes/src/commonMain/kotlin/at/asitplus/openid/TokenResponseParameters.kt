@@ -1,7 +1,5 @@
 package at.asitplus.openid
 
-import at.asitplus.KmmResult
-import at.asitplus.KmmResult.Companion.wrap
 import io.ktor.http.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -96,11 +94,4 @@ data class TokenResponseParameters(
 
     fun toHttpHeaderValue() = "$tokenType $accessToken"
     fun toHttpHeader() = "${HttpHeaders.Authorization}: $tokenType $accessToken"
-
-    fun serialize() = odcJsonSerializer.encodeToString(this)
-
-    companion object {
-        fun deserialize(input: String): KmmResult<TokenResponseParameters> =
-            runCatching { odcJsonSerializer.decodeFromString<TokenResponseParameters>(input) }.wrap()
-    }
 }

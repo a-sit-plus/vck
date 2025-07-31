@@ -1,10 +1,7 @@
 package at.asitplus.openid
 
-import at.asitplus.KmmResult
-import at.asitplus.catching
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlin.time.Duration
 
 /**
@@ -36,13 +33,4 @@ data class PushedAuthenticationResponseParameters(
 
     @SerialName("error_description")
     val errorDescription: String? = null,
-) {
-
-    fun serialize() = odcJsonSerializer.encodeToString(this)
-
-    companion object {
-        fun deserialize(it: String): KmmResult<PushedAuthenticationResponseParameters> = catching {
-            odcJsonSerializer.decodeFromString<PushedAuthenticationResponseParameters>(it)
-        }
-    }
-}
+)

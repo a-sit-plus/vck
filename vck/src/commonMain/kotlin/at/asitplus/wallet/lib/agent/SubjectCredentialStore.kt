@@ -1,10 +1,21 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.wallet.lib.data.*
-import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.catchingUnwrapped
+import at.asitplus.iso.IssuerSigned
+import at.asitplus.iso.sha256
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.wallet.lib.iso.sha256
+import at.asitplus.wallet.lib.data.AttributeIndex
+import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.IsoMdocFallbackCredentialScheme
+import at.asitplus.wallet.lib.data.SdJwtFallbackCredentialScheme
+import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
+import at.asitplus.wallet.lib.data.VcFallbackCredentialScheme
+import at.asitplus.wallet.lib.data.VerifiableCredential
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToByteArray
@@ -25,7 +36,7 @@ interface SubjectCredentialStore {
         vc: VerifiableCredentialJws,
         vcSerialized: String,
         scheme: ConstantIndex.CredentialScheme,
-    ) : StoreEntry
+    ): StoreEntry
 
     /**
      * Implementations should store the passed credential in a secure way.
@@ -39,7 +50,7 @@ interface SubjectCredentialStore {
         vcSerialized: String,
         disclosures: Map<String, SelectiveDisclosureItem?>,
         scheme: ConstantIndex.CredentialScheme,
-    ) : StoreEntry
+    ): StoreEntry
 
     /**
      * Implementations should store the passed credential in a secure way.
@@ -50,7 +61,7 @@ interface SubjectCredentialStore {
     suspend fun storeCredential(
         issuerSigned: IssuerSigned,
         scheme: ConstantIndex.CredentialScheme,
-    ) : StoreEntry
+    ): StoreEntry
 
     /**
      * Return all stored credentials.
@@ -63,7 +74,9 @@ interface SubjectCredentialStore {
     sealed interface StoreEntry {
         val schemaUri: String
         val scheme: ConstantIndex.CredentialScheme?
-            get() = AttributeIndex.resolveSchemaUri(schemaUri)
+            get() = AttributeIndex.resolveSchemaUri(schemaUri) ?: getFallbackScheme()
+
+        fun getFallbackScheme(): ConstantIndex.CredentialScheme?
 
         @Serializable
         data class Vc(
@@ -73,7 +86,10 @@ interface SubjectCredentialStore {
             val vc: VerifiableCredentialJws,
             @SerialName("schema-uri")
             override val schemaUri: String,
-        ) : StoreEntry
+        ) : StoreEntry {
+            override fun getFallbackScheme(): ConstantIndex.CredentialScheme? =
+                VcFallbackCredentialScheme(vc.vc.type.first { it != VERIFIABLE_CREDENTIAL })
+        }
 
         @Serializable
         data class SdJwt(
@@ -86,7 +102,10 @@ interface SubjectCredentialStore {
             val disclosures: Map<String, SelectiveDisclosureItem?>,
             @SerialName("schema-uri")
             override val schemaUri: String,
-        ) : StoreEntry
+        ) : StoreEntry {
+            override fun getFallbackScheme(): ConstantIndex.CredentialScheme? =
+                SdJwtFallbackCredentialScheme(sdJwt.verifiableCredentialType)
+        }
 
         @Serializable
         data class Iso(
@@ -94,7 +113,11 @@ interface SubjectCredentialStore {
             val issuerSigned: IssuerSigned,
             @SerialName("schema-uri")
             override val schemaUri: String,
-        ) : StoreEntry
+        ) : StoreEntry {
+            override fun getFallbackScheme(): ConstantIndex.CredentialScheme? = catchingUnwrapped {
+                IsoMdocFallbackCredentialScheme(issuerSigned.issuerAuth.payload?.docType!!)
+            }.getOrNull()
+        }
 
         @OptIn(ExperimentalStdlibApi::class)
         @Throws(IllegalArgumentException::class)
@@ -102,7 +125,8 @@ interface SubjectCredentialStore {
             is Vc -> vc.jwtId
             is SdJwt -> sdJwt.jwtId
                 ?: sdJwt.subject
-                ?: sdJwt.serialize()
+                ?: vckJsonSerializer.encodeToString(sdJwt)
+
             is Iso -> coseCompliantSerializer.encodeToByteArray(issuerSigned).sha256().toHexString()
         }
 

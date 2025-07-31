@@ -5,13 +5,7 @@ import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
-import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
-import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
-import at.asitplus.wallet.lib.openid.DummyOAuth2DataProvider
-import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
-import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
-import com.benasher44.uuid.uuid4
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainAll
@@ -20,26 +14,6 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 
 class OidvciInteropTest : FunSpec({
-
-    lateinit var authorizationService: SimpleAuthorizationService
-    lateinit var issuer: CredentialIssuer
-    lateinit var client: WalletService
-    lateinit var state: String
-
-    beforeEach {
-        authorizationService = SimpleAuthorizationService(
-            strategy = CredentialAuthorizationServiceStrategy(setOf(AtomicAttribute2023, MobileDrivingLicenceScheme)),
-            dataProvider = DummyOAuth2DataProvider,
-        )
-        issuer = CredentialIssuer(
-            authorizationService = authorizationService,
-            issuer = IssuerAgent(),
-            credentialSchemes = setOf(AtomicAttribute2023, MobileDrivingLicenceScheme),
-            credentialProvider = DummyOAuth2IssuerCredentialDataProvider
-        )
-        client = WalletService()
-        state = uuid4().toString()
-    }
 
     test("Parse EUDIW URL") {
         val url =
@@ -186,7 +160,7 @@ class OidvciInteropTest : FunSpec({
             }
         """.trimIndent()
 
-        val issuerMetadata = IssuerMetadata.deserialize(credentialIssuerMetadataString).getOrThrow()
+        val issuerMetadata = joseCompliantSerializer.decodeFromString<IssuerMetadata>(credentialIssuerMetadataString)
         issuerMetadata.credentialIssuer shouldBe "https://localhost/pid-issuer"
         issuerMetadata.authorizationServers!!.shouldHaveSingleElement("https://localhost/idp/realms/pid-issuer-realm")
         issuerMetadata.credentialEndpointUrl shouldBe "https://localhost/pid-issuer/wallet/credentialEndpoint"
@@ -523,7 +497,7 @@ class OidvciInteropTest : FunSpec({
         }    
         """.trimIndent()
 
-        val parsed = OAuth2AuthorizationServerMetadata.deserialize(input).getOrThrow()
+        val parsed = joseCompliantSerializer.decodeFromString<OAuth2AuthorizationServerMetadata>(input)
 
         parsed.issuer shouldBe "https://auth.eudiw.dev/realms/pid-issuer-realm"
         parsed.authorizationEndpoint shouldBe "https://auth.eudiw.dev/realms/pid-issuer-realm/protocol/openid-connect/auth"

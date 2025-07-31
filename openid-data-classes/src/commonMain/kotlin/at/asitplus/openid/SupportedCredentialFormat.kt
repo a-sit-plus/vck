@@ -1,5 +1,6 @@
 package at.asitplus.openid
 
+import at.asitplus.catchingUnwrapped
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
@@ -110,13 +111,16 @@ data class SupportedCredentialFormat private constructor(
 
     val claimDescription: Set<ClaimDescription>?
         get() = claims?.let {
-            runCatching {
+            catchingUnwrapped {
                 odcJsonSerializer.decodeFromJsonElement<Set<ClaimDescription>>(it)
             }.getOrNull()
         }
 
     fun withSupportedProofTypes(supportedProofTypes: Map<String, CredentialRequestProofSupported>) =
         copy(supportedProofTypes = supportedProofTypes)
+
+    fun withSupportedSigningAlgorithms(supportedSigningAlgorithms: Set<String>) =
+        copy(supportedSigningAlgorithms = supportedSigningAlgorithms)
 
     companion object {
 

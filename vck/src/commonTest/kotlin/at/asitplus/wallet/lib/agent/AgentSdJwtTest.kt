@@ -3,19 +3,32 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
+import at.asitplus.iso.sha256
 import at.asitplus.openid.CredentialFormatEnum
-import at.asitplus.openid.dcql.*
+import at.asitplus.openid.dcql.DCQLClaimsPathPointer
+import at.asitplus.openid.dcql.DCQLClaimsQueryList
+import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
+import at.asitplus.openid.dcql.DCQLCredentialQueryList
+import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
+import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest
+import at.asitplus.wallet.lib.data.KeyBindingJws
+import at.asitplus.wallet.lib.data.StatusListToken
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
-import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
+import at.asitplus.wallet.lib.extensions.sdHashInput
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
@@ -23,7 +36,7 @@ import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldNotBeInstanceOf
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
 
@@ -31,6 +44,7 @@ import kotlin.random.Random
 class AgentSdJwtTest : FreeSpec({
 
     lateinit var issuer: Issuer
+    lateinit var statusListIssuer: StatusListIssuer
     lateinit var holder: Holder
     lateinit var verifier: Verifier
     lateinit var issuerCredentialStore: IssuerCredentialStore
@@ -40,36 +54,37 @@ class AgentSdJwtTest : FreeSpec({
     lateinit var verifierId: String
 
     beforeEach {
-        val validator = Validator(
-            resolveStatusListToken = {
-                if (Random.nextBoolean()) StatusListToken.StatusListJwt(
-                    issuer.issueStatusListJwt(),
-                    resolvedAt = Clock.System.now()
-                ) else {
-                    StatusListToken.StatusListCwt(
-                        issuer.issueStatusListCwt(),
-                        resolvedAt = Clock.System.now(),
-                    )
-                }
-            },
+        val validator = ValidatorSdJwt(
+            validator = Validator(
+                tokenStatusResolver = TokenStatusResolverImpl(
+                    resolveStatusListToken = {
+                        if (Random.nextBoolean()) StatusListToken.StatusListJwt(
+                            statusListIssuer.issueStatusListJwt(),
+                            resolvedAt = Clock.System.now()
+                        ) else {
+                            StatusListToken.StatusListCwt(
+                                statusListIssuer.issueStatusListCwt(),
+                                resolvedAt = Clock.System.now(),
+                            )
+                        }
+                    },
+                )
+            )
         )
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         holderCredentialStore = InMemorySubjectCredentialStore()
-        issuer = IssuerAgent(
-            EphemeralKeyWithoutCert(),
-            validator = validator,
-            issuerCredentialStore = issuerCredentialStore,
-        )
+        issuer = IssuerAgent(issuerCredentialStore = issuerCredentialStore)
+        statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
         holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
         holder = HolderAgent(
             holderKeyMaterial,
             holderCredentialStore,
-            validator = validator,
+            validatorSdJwt = validator,
         )
         verifierId = "urn:${uuid4()}"
         verifier = VerifierAgent(
             identifier = verifierId,
-            validator = validator,
+            validatorSdJwt = validator,
         )
         challenge = uuid4().toString()
         holder.storeCredential(
@@ -77,7 +92,7 @@ class AgentSdJwtTest : FreeSpec({
                 DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.SD_JWT,
+                    SD_JWT,
                 ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         ).getOrThrow()
@@ -87,19 +102,20 @@ class AgentSdJwtTest : FreeSpec({
         val credential = holderCredentialStore.getCredentials().getOrThrow()
             .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>().first()
         val sdJwt = createSdJwtPresentation(
-            signKeyBindingJws = SignJwt(holderKeyMaterial, { it, keyMaterial ->
-                it.copy(keyId = "definitely not matching")
+            signKeyBindingJws = SignJwt(holderKeyMaterial, { header, keyMaterial ->
+                header.copy(keyId = "definitely not matching")
             }),
             audienceId = verifierId,
             challenge = challenge,
             validSdJwtCredential = credential,
             claimName = CLAIM_GIVEN_NAME
         )
-        val verified = verifier.verifyPresentationSdJwt(sdJwt.sdJwt!!, challenge)
-            .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-
-        verified.reconstructedJsonObject.keys shouldContain CLAIM_GIVEN_NAME
-        verified.freshnessSummary.tokenStatusValidationResult.shouldNotBeInstanceOf<TokenStatusValidationResult.Invalid>()
+        verifier.verifyPresentationSdJwt(sdJwt.sdJwt!!, challenge)
+            .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
+                reconstructedJsonObject.keys shouldContain CLAIM_GIVEN_NAME
+                freshnessSummary.tokenStatusValidationResult
+                    .shouldNotBeInstanceOf<TokenStatusValidationResult.Invalid>()
+            }
     }
 
     "when using presentation exchange" - {
@@ -112,12 +128,13 @@ class AgentSdJwtTest : FreeSpec({
             val vp = presentationParameters.presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-
-            verified.reconstructedJsonObject[CLAIM_GIVEN_NAME]?.jsonPrimitive?.content shouldBe "Susanne"
-            verified.reconstructedJsonObject[CLAIM_DATE_OF_BIRTH]?.jsonPrimitive?.content shouldBe "1990-01-01"
-            verified.freshnessSummary.tokenStatusValidationResult.shouldNotBeInstanceOf<TokenStatusValidationResult.Invalid>()
+            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
+                    reconstructedJsonObject[CLAIM_GIVEN_NAME]?.jsonPrimitive?.content shouldBe "Susanne"
+                    reconstructedJsonObject[CLAIM_DATE_OF_BIRTH]?.jsonPrimitive?.content shouldBe "1990-01-01"
+                    freshnessSummary.tokenStatusValidationResult
+                        .shouldNotBeInstanceOf<TokenStatusValidationResult.Invalid>()
+                }
         }
 
         "wrong key binding jwt" {
@@ -159,13 +176,18 @@ class AgentSdJwtTest : FreeSpec({
             val vp = presentationParameters.presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            val listOfJwtId = holderCredentialStore.getCredentials().getOrThrow()
+            holderCredentialStore.getCredentials().getOrThrow()
                 .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
-                .associate { it.sdJwt.jwtId!! to it.sdJwt.notBefore!! }
-            issuer.revokeCredentialsWithId(listOfJwtId) shouldBe true
-            val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .forEach {
+                    statusListIssuer.revokeCredential(
+                        FixedTimePeriodProvider.timePeriod,
+                        it.sdJwt.credentialStatus!!.statusList.index
+                    ) shouldBe true
+                }
+            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-            verified.freshnessSummary.tokenStatusValidationResult.shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
+                .freshnessSummary.tokenStatusValidationResult
+                .shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
         }
     }
 
@@ -188,12 +210,13 @@ class AgentSdJwtTest : FreeSpec({
             val vp = presentationParameters.verifiablePresentations.values.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-
-            verified.reconstructedJsonObject[CLAIM_GIVEN_NAME]?.jsonPrimitive?.content shouldBe "Susanne"
-            verified.reconstructedJsonObject[CLAIM_DATE_OF_BIRTH]?.jsonPrimitive?.content shouldBe "1990-01-01"
-            verified.freshnessSummary.tokenStatusValidationResult.shouldNotBeInstanceOf<TokenStatusValidationResult.Invalid>()
+            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
+                    reconstructedJsonObject[CLAIM_GIVEN_NAME]?.jsonPrimitive?.content shouldBe "Susanne"
+                    reconstructedJsonObject[CLAIM_DATE_OF_BIRTH]?.jsonPrimitive?.content shouldBe "1990-01-01"
+                    freshnessSummary.tokenStatusValidationResult
+                        .shouldNotBeInstanceOf<TokenStatusValidationResult.Invalid>()
+                }
         }
 
         "wrong key binding jwt" {
@@ -257,13 +280,18 @@ class AgentSdJwtTest : FreeSpec({
             val vp = presentationParameters.verifiablePresentations.values.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            val listOfJwtId = holderCredentialStore.getCredentials().getOrThrow()
+            holderCredentialStore.getCredentials().getOrThrow()
                 .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
-                .associate { it.sdJwt.jwtId!! to it.sdJwt.notBefore!! }
-            issuer.revokeCredentialsWithId(listOfJwtId) shouldBe true
-            val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .forEach {
+                    statusListIssuer.revokeCredential(
+                        FixedTimePeriodProvider.timePeriod,
+                        it.sdJwt.credentialStatus!!.statusList.index,
+                    ) shouldBe true
+                }
+            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-            verified.freshnessSummary.tokenStatusValidationResult.shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
+                .freshnessSummary.tokenStatusValidationResult
+                .shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
         }
     }
 })
@@ -293,7 +321,7 @@ suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): S
             DummyCredentialDataProvider.getCredential(
                 holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.SD_JWT,
+                SD_JWT,
             ).getOrThrow()
         ).getOrThrow().toStoreCredentialInput()
     )

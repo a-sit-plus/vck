@@ -1,7 +1,18 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.openid.*
-import at.asitplus.openid.OpenIdConstants.ResponseMode.*
+import at.asitplus.catchingUnwrapped
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationResponseParameters
+import at.asitplus.openid.OpenIdConstants.ResponseMode.DcApi
+import at.asitplus.openid.OpenIdConstants.ResponseMode.DcApiJwt
+import at.asitplus.openid.OpenIdConstants.ResponseMode.DirectPost
+import at.asitplus.openid.OpenIdConstants.ResponseMode.DirectPostJwt
+import at.asitplus.openid.OpenIdConstants.ResponseMode.Fragment
+import at.asitplus.openid.OpenIdConstants.ResponseMode.Other
+import at.asitplus.openid.OpenIdConstants.ResponseMode.Query
+import at.asitplus.openid.RelyingPartyMetadata
+import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.openid.odcJsonSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweHeader
@@ -9,17 +20,19 @@ import at.asitplus.signum.indispensable.josef.JwkType
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.EncryptJweFun
 import at.asitplus.wallet.lib.jws.SignJwtFun
+import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.github.aakira.napier.Napier
-import io.ktor.http.*
+import io.ktor.http.URLBuilder
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.random.Random
 
 internal class AuthenticationResponseFactory(
     val signJarm: SignJwtFun<AuthenticationResponseParameters>,
+    val signError: SignJwtFun<OAuth2Error>,
     val encryptJarm: EncryptJweFun,
 ) {
     @Throws(OAuth2Exception::class, CancellationException::class)
@@ -40,8 +53,8 @@ internal class AuthenticationResponseFactory(
     internal suspend fun responseDcApi(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
-        requestsEncryption: Boolean
-    ) : AuthenticationResponseResult.DcApi {
+        requestsEncryption: Boolean,
+    ): AuthenticationResponseResult.DcApi {
         val responseSerialized = buildJarm(request, response, requestsEncryption)
         val jarm = AuthenticationResponseParameters(
             response = responseSerialized,
@@ -75,7 +88,11 @@ internal class AuthenticationResponseFactory(
         val url = request.parameters.responseUrl
             ?: request.parameters.redirectUrlExtracted
             ?: throw InvalidRequest("no response_uri or redirect_uri")
-        return AuthenticationResponseResult.Post(url, response.params.encodeToParameters())
+        val params: Map<String, String> = response.params?.encodeToParameters()
+            ?: response.error?.encodeToParameters()
+            ?: throw InvalidRequest("nothing to encode")
+
+        return AuthenticationResponseResult.Post(url, params)
     }
 
     @Throws(OAuth2Exception::class)
@@ -83,15 +100,19 @@ internal class AuthenticationResponseFactory(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
     ): AuthenticationResponseResult.Redirect {
-        val url = request.parameters.redirectUrlExtracted?.let { redirectUrl ->
-            URLBuilder(redirectUrl).apply {
-                response.params.encodeToParameters().forEach {
-                    this.parameters.append(it.key, it.value)
-                }
-            }.buildString()
-        } ?: throw InvalidRequest("no redirect_uri")
+        val url = catchingUnwrapped {
+            request.parameters.redirectUrlExtracted?.let { redirectUrl ->
+                URLBuilder(redirectUrl).apply {
+                    response.params.encodeToParameters().forEach {
+                        this.parameters.append(it.key, it.value)
+                    }
+                }.buildString()
+            } ?: throw InvalidRequest("no redirect_uri")
+        }.getOrElse {
+            throw InvalidRequest("Unable to build url")
+        }
 
-        return AuthenticationResponseResult.Redirect(url, response.params)
+        return AuthenticationResponseResult.Redirect(url, response.params ?: throw InvalidRequest("no params"))
     }
 
     /**
@@ -102,12 +123,17 @@ internal class AuthenticationResponseFactory(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
     ): AuthenticationResponseResult.Redirect {
-        val url = request.parameters.redirectUrlExtracted?.let { redirectUrl ->
-            URLBuilder(redirectUrl).apply {
-                encodedFragment = response.params.encodeToParameters().formUrlEncode()
-            }.buildString()
-        } ?: throw InvalidRequest("no redirect_uri")
-        return AuthenticationResponseResult.Redirect(url, response.params)
+        val url = catchingUnwrapped {
+            request.parameters.redirectUrlExtracted?.let { redirectUrl ->
+                URLBuilder(redirectUrl).apply {
+                    encodedFragment = response.params.encodeToParameters().formUrlEncode()
+                }.buildString()
+            } ?: throw InvalidRequest("no redirect_uri")
+        }.getOrElse {
+            throw InvalidRequest("Unable to build url")
+        }
+
+        return AuthenticationResponseResult.Redirect(url, response.params ?: throw InvalidRequest("no params"))
     }
 
     /**
@@ -117,11 +143,11 @@ internal class AuthenticationResponseFactory(
     private suspend fun buildJarm(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
-        requestsEncryption: Boolean = false
+        requestsEncryption: Boolean = false,
     ) = if (response.requestsEncryption()) {
         encrypt(request, response)
     } else if (response.requestsSignature()) {
-        sign(response.params)
+        response.params?.let { sign(it) } ?: throw InvalidRequest("No params in response")
     } else {
         if (requestsEncryption) {
             throw InvalidRequest("Invoker requests encryption but required parameters not set")
@@ -129,17 +155,27 @@ internal class AuthenticationResponseFactory(
         if (request.parameters.responseMode !is DcApi) {
             throw InvalidRequest("Response must be either signed, encrypted or both.")
         }
-        response.params.serialize()
+        odcJsonSerializer.encodeToString(response.params ?: throw InvalidRequest("No params in response"))
     }
 
     private suspend fun sign(payload: AuthenticationResponseParameters): String =
         signJarm(null, payload, AuthenticationResponseParameters.serializer())
             .map { it.serialize() }
             .getOrElse {
-                Napier.w("buildJarm error", it)
-                throw InvalidRequest("buildJarm error", it)
+                Napier.w("sign: error", it)
+                throw InvalidRequest("sign: error", it)
             }.also {
-                Napier.d("buildJarm: signed $payload")
+                Napier.d("sign: signed $payload")
+            }
+
+    private suspend fun signError(payload: OAuth2Error): String =
+        signError(null, payload, OAuth2Error.serializer())
+            .map { it.serialize() }
+            .getOrElse {
+                Napier.w("signError: error", it)
+                throw InvalidRequest("signError: error", it)
+            }.also {
+                Napier.d("signError: signed $payload")
             }
 
     private suspend fun encrypt(
@@ -162,18 +198,26 @@ internal class AuthenticationResponseFactory(
             keyId = recipientKey.keyId,
         )
         val jwe = if (response.requestsSignature()) {
-            sign(response.params).let { payload ->
+            val signature = response.params?.let { sign(it) }
+                ?: response.error?.let { signError(it) }
+
+            signature?.let { payload ->
                 encryptJarm(header, payload, recipientKey)
-                    .also { Napier.d("buildJarm: using $header to encrypt $payload") }
+                    .also { Napier.d("encrypt: using $header to encrypt $payload") }
             }
         } else {
-            encryptJarm(header, vckJsonSerializer.encodeToString(response.params), recipientKey)
-                .also { Napier.d("buildJarm: using $header to encrypt ${response.params}") }
+            response.params?.let {
+                encryptJarm(header, vckJsonSerializer.encodeToString(response.params), recipientKey)
+                    .also { Napier.d("encrypt: using $header to encrypt ${response.params}") }
+            } ?: response.error?.let {
+                encryptJarm(header, vckJsonSerializer.encodeToString(response.error), recipientKey)
+                    .also { Napier.d("encrypt: using $header to encrypt ${vckJsonSerializer.encodeToString(response.error)}") }
+            } ?: throw InvalidRequest("encrypt: nothing to encrypt")
         }
-        return jwe.map { it.serialize() }.getOrElse {
-            Napier.w("buildJarm error", it)
-            throw InvalidRequest("buildJarm error", it)
-        }
+        return jwe?.map { it.serialize() }?.getOrElse {
+            Napier.w("encrypt error", it)
+            throw InvalidRequest("encrypt error", it)
+        } ?: throw InvalidRequest("encrypt: nothing to serialize")
     }
 
     @Throws(OAuth2Exception::class)

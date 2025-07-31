@@ -1,3 +1,5 @@
+package at.asitplus.rqes
+
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.rqes.collection_entries.DocumentLocation
 import at.asitplus.rqes.collection_entries.OAuthDocumentDigest

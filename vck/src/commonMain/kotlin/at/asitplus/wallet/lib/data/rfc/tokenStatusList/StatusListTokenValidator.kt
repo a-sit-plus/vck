@@ -2,11 +2,13 @@ package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
+import at.asitplus.wallet.lib.extensions.ifTrue
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.third_party.kotlin.ifTrue
+import at.asitplus.wallet.lib.extensions.toView
 import io.github.aakira.napier.Napier
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 object StatusListTokenValidator {
     /**
@@ -24,7 +26,7 @@ object StatusListTokenValidator {
         validateStatusListTokenIntegrity: suspend (StatusListToken) -> StatusListTokenPayload,
         statusListInfo: StatusListInfo,
         isInstantInThePast: (Instant) -> Boolean,
-    ): KmmResult<StatusListTokenPayload> = at.asitplus.catching {
+    ): KmmResult<StatusListTokenPayload> = catching {
         val payload = validateStatusListTokenIntegrity(statusListToken)
 
         validateStatusListTokenPayloadClaims(
@@ -59,7 +61,7 @@ object StatusListTokenValidator {
         statusListInfo: StatusListInfo,
         statusListTokenResolvedAt: Instant?,
         isInstantInThePast: (Instant) -> Boolean,
-    ): KmmResult<Unit> = at.asitplus.catching {
+    ): KmmResult<Unit> = catching {
         if (statusListTokenPayload.subject.string != statusListInfo.uri.string) {
             throw IllegalArgumentException("The subject claim of the Status List Token is not equal to the uri claim in the status_list object of the Referenced Token.")
         }
@@ -68,7 +70,7 @@ object StatusListTokenValidator {
         }
         statusListTokenPayload.timeToLive?.let { ttl ->
             statusListTokenResolvedAt?.let { resolvedAt ->
-                if(isInstantInThePast(resolvedAt + ttl.duration)) {
+                if (isInstantInThePast(resolvedAt + ttl.duration)) {
                     throw IllegalStateException("The Status List Token is expired.")
                 }
             }
@@ -86,9 +88,10 @@ object StatusListTokenValidator {
     fun extractTokenStatus(
         statusList: StatusList,
         statusListInfo: StatusListInfo,
-        zlibService: ZlibService? = null,
+        zlibService: ZlibService = DefaultZlibService(),
     ): KmmResult<TokenStatus> = catching {
-        statusList.view.getOrNull(statusListInfo.index)
+        statusList.toView(zlibService).getOrNull(statusListInfo.index)
             ?: throw IndexOutOfBoundsException("The index specified in the status list info is out of bounds of the status list.")
     }
+
 }

@@ -17,8 +17,6 @@ group = "at.asitplus.wallet"
 version = artifactVersion
 
 
-setupAndroid()
-
 kotlin {
 
     jvm()
@@ -57,7 +55,6 @@ kotlin {
                 implementation("at.asitplus.wallet:mobiledrivinglicence:${VcLibVersions.mdl}")
                 implementation(ktor("client-mock"))
                 implementation(kotest("assertions-core"))
-                implementation(kotest("framework-api"))
             }
         }
 
@@ -68,6 +65,8 @@ kotlin {
         }
     }
 }
+
+setupAndroid()
 
 exportXCFramework(
     "VckOpenIdKtorKmm",
@@ -125,11 +124,6 @@ publishing {
             signing.isRequired = false
         }
     }
-}
-
-repositories {
-    maven(url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
-    mavenCentral()
 }
 
 signing {

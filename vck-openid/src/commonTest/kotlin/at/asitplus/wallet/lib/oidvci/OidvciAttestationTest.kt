@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.catching
+import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JwsSigned
@@ -17,7 +18,6 @@ import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
-import at.asitplus.wallet.lib.openid.DummyOAuth2DataProvider
 import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
@@ -27,7 +27,7 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.datetime.Clock.System
+import kotlin.time.Clock.System
 
 class OidvciAttestationTest : FunSpec({
 
@@ -42,7 +42,8 @@ class OidvciAttestationTest : FunSpec({
             scope = scope,
             resource = issuer.metadata.credentialIssuer
         )
-        val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
+        val authnResponse = authorizationService.authorize(authnRequest) { catching { dummyUser() } }
+            .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code
             .shouldNotBeNull()
@@ -60,15 +61,14 @@ class OidvciAttestationTest : FunSpec({
             strategy = CredentialAuthorizationServiceStrategy(
                 setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme)
             ),
-            dataProvider = DummyOAuth2DataProvider,
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
-            issuer = IssuerAgent(),
             credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme),
-            credentialProvider = DummyOAuth2IssuerCredentialDataProvider,
-            verifyAttestationProof = { true },
-            requireKeyAttestation = true, // this is important, to require key attestation
+            proofValidator = ProofValidator(
+                verifyAttestationProof = { true },
+                requireKeyAttestation = true, // this is important, to require key attestation
+            )
         )
         state = uuid4().toString()
     }
@@ -85,7 +85,11 @@ class OidvciAttestationTest : FunSpec({
         val token = getToken(scope)
         val clientNonce = issuer.nonce().getOrThrow().clientNonce
         client.createCredentialRequest(token, issuer.metadata, credentialFormat, clientNonce).getOrThrow().forEach {
-            val credential = issuer.credential(token.toHttpHeaderValue(), it).getOrThrow()
+            val credential = issuer.credential(
+                token.toHttpHeaderValue(),
+                it,
+                credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+            ).getOrThrow()
             val serializedCredential = credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
 
@@ -101,11 +105,11 @@ class OidvciAttestationTest : FunSpec({
     test("use key attestation for proof, issuer does not verify it") {
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
-            issuer = IssuerAgent(),
             credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme),
-            credentialProvider = DummyOAuth2IssuerCredentialDataProvider,
-            verifyAttestationProof = { false }, // do not accept key attestation
-            requireKeyAttestation = true, // this is important, to require key attestation
+            proofValidator = ProofValidator(
+                verifyAttestationProof = { false }, // do not accept key attestation
+                requireKeyAttestation = true, // this is important, to require key attestation
+            )
         )
         client = buildClientWithKeyAttestation()
 
@@ -119,7 +123,11 @@ class OidvciAttestationTest : FunSpec({
         val clientNonce = issuer.nonce().getOrThrow().clientNonce
         client.createCredentialRequest(token, issuer.metadata, credentialFormat, clientNonce).getOrThrow().forEach {
             shouldThrow<OAuth2Exception> {
-                issuer.credential(token.toHttpHeaderValue(), it).getOrThrow()
+                issuer.credential(
+                    token.toHttpHeaderValue(),
+                    it,
+                    credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+                ).getOrThrow()
             }
         }
     }
@@ -147,7 +155,7 @@ private fun buildClientWithKeyAttestation(): WalletService {
     val signKeyAttestation = SignJwt<KeyAttestationJwt>(keyMaterial, JwsHeaderJwk())
     return WalletService(
         loadKeyAttestation = {
-            runCatching {
+            catching {
                 signKeyAttestation(
                     OpenIdConstants.KEY_ATTESTATION_JWT_TYPE,
                     KeyAttestationJwt(
@@ -157,7 +165,9 @@ private fun buildClientWithKeyAttestation(): WalletService {
                     ),
                     KeyAttestationJwt.serializer(),
                 ).getOrThrow()
-            }.wrap()
+            }
         }
     )
 }
+
+private fun dummyUser(): OidcUserInfoExtended = OidcUserInfoExtended.deserialize("{\"sub\": \"foo\"}").getOrThrow()

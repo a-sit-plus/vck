@@ -1,7 +1,11 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.KmmResult
+import at.asitplus.catching
 import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweEncrypted
+import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.IssuerAgent
@@ -11,12 +15,14 @@ import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DecryptJwe
 import at.asitplus.wallet.lib.jws.DecryptJweFun
+import at.asitplus.wallet.lib.jws.EncryptJweFun
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
-import at.asitplus.wallet.lib.openid.DummyOAuth2DataProvider
+import at.asitplus.wallet.lib.openid.DummyUserProvider
 import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
 import com.benasher44.uuid.uuid4
+import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -36,7 +42,8 @@ class OidvciEncryptionTest : FunSpec({
             scope = scope,
             resource = issuer.metadata.credentialIssuer
         )
-        val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
+        val authnResponse = authorizationService.authorize(authnRequest) { catching { DummyUserProvider.user } }
+            .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code
             .shouldNotBeNull()
@@ -52,13 +59,10 @@ class OidvciEncryptionTest : FunSpec({
     beforeEach {
         authorizationService = SimpleAuthorizationService(
             strategy = CredentialAuthorizationServiceStrategy(setOf(ConstantIndex.AtomicAttribute2023)),
-            dataProvider = DummyOAuth2DataProvider,
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
-            issuer = IssuerAgent(),
             credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023),
-            credentialProvider = DummyOAuth2IssuerCredentialDataProvider,
             requireEncryption = true, // this is important, to require encryption
         )
         state = uuid4().toString()
@@ -70,7 +74,21 @@ class OidvciEncryptionTest : FunSpec({
         decryptJwe = DecryptJwe(decryptionKeyMaterial)
     }
 
-    test("decrypt received credential") {
+    test("issuer fails to encrypt") {
+        issuer = CredentialIssuer(
+            authorizationService = authorizationService,
+            credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023),
+            requireEncryption = true, // this is important, to require encryption
+            encryptCredentialRequest = object : EncryptJweFun {
+                override suspend fun invoke(
+                    header: JweHeader,
+                    payload: String,
+                    recipientKey: JsonWebKey,
+                ): KmmResult<JweEncrypted> = KmmResult.catching {
+                    TODO("issuer fails to encrypt")
+                }
+            }
+        )
         val requestOptions = WalletService.RequestOptions(
             ConstantIndex.AtomicAttribute2023,
             ConstantIndex.CredentialRepresentation.PLAIN_JWT
@@ -81,7 +99,33 @@ class OidvciEncryptionTest : FunSpec({
         val clientNonce = issuer.nonce().getOrThrow().clientNonce
 
         client.createCredentialRequest(token, issuer.metadata, credentialFormat, clientNonce).getOrThrow().forEach {
-            val credential = issuer.credential(token.toHttpHeaderValue(), it).getOrThrow()
+            shouldThrowAny {
+                issuer.credential(
+                    authorizationHeader = token.toHttpHeaderValue(),
+                    params = it,
+                    credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+                ).getOrThrow()
+            }
+        }
+    }
+
+    test("decrypt received credential") {
+        val requestOptions = WalletService.RequestOptions(
+            ConstantIndex.AtomicAttribute2023,
+            ConstantIndex.CredentialRepresentation.PLAIN_JWT
+        )
+        val credentialFormat =
+            client.selectSupportedCredentialFormat(requestOptions, issuer.metadata).shouldNotBeNull()
+        val scope = credentialFormat.scope.shouldNotBeNull()
+        val token = getToken(scope)
+        val clientNonce = issuer.nonce().getOrThrow().clientNonce
+
+        client.createCredentialRequest(token, issuer.metadata, credentialFormat, clientNonce).getOrThrow().forEach {
+            val credential = issuer.credential(
+                token.toHttpHeaderValue(),
+                it,
+                credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+            ).getOrThrow()
             val serializedCredential = credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
             val jwe = JweEncrypted.Companion.deserialize(serializedCredential).getOrThrow()

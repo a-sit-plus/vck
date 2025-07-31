@@ -1,3 +1,4 @@
+import at.asitplus.gradle.VcLibVersions
 import at.asitplus.gradle.exportXCFramework
 import at.asitplus.gradle.ktor
 import at.asitplus.gradle.napier
@@ -118,12 +119,6 @@ publishing {
     }
 }
 
-
-
-repositories {
-    maven(url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
-    mavenCentral()
-}
 
 signing {
     val signingKeyId: String? by project

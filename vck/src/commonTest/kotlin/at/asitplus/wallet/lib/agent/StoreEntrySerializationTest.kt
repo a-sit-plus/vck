@@ -1,10 +1,11 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.iso.CborCredentialSerializer
-import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.iso.IssuerSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -36,7 +37,7 @@ class StoreEntrySerializationTest : FreeSpec({
             DummyCredentialDataProvider.getCredential(
                 holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                PLAIN_JWT,
             ).getOrThrow()
         ).getOrThrow()
             .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
@@ -55,7 +56,7 @@ class StoreEntrySerializationTest : FreeSpec({
             DummyCredentialDataProvider.getCredential(
                 holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.SD_JWT,
+                SD_JWT,
             ).getOrThrow()
         ).getOrThrow()
             .shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>()
@@ -80,7 +81,7 @@ class StoreEntrySerializationTest : FreeSpec({
             DummyCredentialDataProvider.getCredential(
                 holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                ISO_MDOC,
             ).getOrThrow()
         ).getOrThrow()
             .shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()

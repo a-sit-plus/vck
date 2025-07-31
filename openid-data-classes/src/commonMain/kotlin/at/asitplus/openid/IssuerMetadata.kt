@@ -1,10 +1,7 @@
 package at.asitplus.openid
 
-import at.asitplus.KmmResult
-import at.asitplus.KmmResult.Companion.wrap
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 
 /**
  * Metadata about the credential issuer in
@@ -118,11 +115,4 @@ data class IssuerMetadata(
      */
     @SerialName("credential_configurations_supported")
     val supportedCredentialConfigurations: Map<String, SupportedCredentialFormat>? = null,
-) {
-    fun serialize() = odcJsonSerializer.encodeToString(this)
-
-    companion object {
-        fun deserialize(input: String): KmmResult<IssuerMetadata> =
-            runCatching { odcJsonSerializer.decodeFromString<IssuerMetadata>(input) }.wrap()
-    }
-}
+)

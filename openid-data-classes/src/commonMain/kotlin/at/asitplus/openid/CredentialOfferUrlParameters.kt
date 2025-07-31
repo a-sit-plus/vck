@@ -1,10 +1,7 @@
 package at.asitplus.openid
 
-import at.asitplus.KmmResult
-import at.asitplus.KmmResult.Companion.wrap
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonObject
 
 /**
@@ -27,11 +24,4 @@ data class CredentialOfferUrlParameters(
      */
     @SerialName("credential_offer_uri")
     val credentialOfferUrl: String? = null,
-) {
-    fun serialize() = odcJsonSerializer.encodeToString(this)
-
-    companion object {
-        fun deserialize(input: String): KmmResult<CredentialOfferUrlParameters> =
-            runCatching { odcJsonSerializer.decodeFromString<CredentialOfferUrlParameters>(input) }.wrap()
-    }
-}
+)

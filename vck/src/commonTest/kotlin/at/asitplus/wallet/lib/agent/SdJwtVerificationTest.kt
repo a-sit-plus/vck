@@ -41,9 +41,10 @@ class SdJwtVerificationTest : FreeSpec({
         """.trimIndent().replace("\n", "").replace(" ", "")
 
         val sdJwtSigned = SdJwtSigned.parse(input)!!
-        val sdJwtValidator = SdJwtValidator(sdJwtSigned)
-        val reconstructed = sdJwtValidator.reconstructedJsonObject.shouldNotBeNull()
-        sdJwtValidator.validDisclosures.shouldNotBeEmpty()
+        val sdJwtDecoded = SdJwtDecoded(sdJwtSigned)
+        val reconstructed = sdJwtDecoded.reconstructedJsonObject.shouldNotBeNull()
+        sdJwtDecoded.validDisclosures.shouldNotBeEmpty()
+        sdJwtSigned.serialize() shouldBe input
 
         val expected = """
             {
@@ -97,9 +98,10 @@ class SdJwtVerificationTest : FreeSpec({
         """.trimIndent().replace("\n", "").replace(" ", "")
 
         val sdJwtSigned = SdJwtSigned.parse(input)!!
-        val sdJwtValidator = SdJwtValidator(sdJwtSigned)
-        val reconstructed = sdJwtValidator.reconstructedJsonObject.shouldNotBeNull()
-        sdJwtValidator.validDisclosures.shouldNotBeEmpty()
+        val sdJwtDecoded = SdJwtDecoded(sdJwtSigned)
+        val reconstructed = sdJwtDecoded.reconstructedJsonObject.shouldNotBeNull()
+        sdJwtDecoded.validDisclosures.shouldNotBeEmpty()
+        sdJwtSigned.serialize() shouldBe input
 
         val expected = """
             {
@@ -196,9 +198,10 @@ class SdJwtVerificationTest : FreeSpec({
         """.trimIndent().replace("\n", "").replace(" ", "")
 
         val sdJwtSigned = SdJwtSigned.parse(input)!!
-        val sdJwtValidator = SdJwtValidator(sdJwtSigned)
-        val reconstructed = sdJwtValidator.reconstructedJsonObject.shouldNotBeNull()
-        sdJwtValidator.validDisclosures.shouldNotBeEmpty()
+        val sdJwtDecoded = SdJwtDecoded(sdJwtSigned)
+        val reconstructed = sdJwtDecoded.reconstructedJsonObject.shouldNotBeNull()
+        sdJwtDecoded.validDisclosures.shouldNotBeEmpty()
+        sdJwtSigned.serialize() shouldBe input
 
         val expected = """
             {

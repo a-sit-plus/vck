@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
 import at.asitplus.dcapi.request.DCAPIRequest
 import at.asitplus.openid.*
 import at.asitplus.signum.indispensable.josef.JwsSigned
@@ -49,7 +50,7 @@ class RequestParser(
     ): KmmResult<RequestParametersFrom<*>> = catching {
         // maybe it is a request JWS
         val parsedParams = run { parseRequestObjectJws(input, dcApiRequest) }
-            ?: runCatching { // maybe it's in the URL parameters
+            ?: catchingUnwrapped { // maybe it's in the URL parameters
                 Url(input).let {
                     val params = it.parameters.flattenEntries().toMap().decodeFromUrlQuery<JsonObject>()
                     val parsed = json.decodeFromJsonElement(PolymorphicSerializer(RequestParameters::class), params)

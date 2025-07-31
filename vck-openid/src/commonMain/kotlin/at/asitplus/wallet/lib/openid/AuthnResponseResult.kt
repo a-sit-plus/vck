@@ -6,7 +6,6 @@ import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import kotlinx.serialization.json.JsonObject
 
@@ -19,7 +18,8 @@ sealed class AuthnResponseResult {
     /**
      * Error when validating the `vpToken` or `idToken`
      */
-    data class ValidationError(val field: String, val state: String?, val cause: Throwable? = null) : AuthnResponseResult()
+    data class ValidationError(val field: String, val state: String?, val cause: Throwable? = null) :
+        AuthnResponseResult()
 
     /**
      * Wallet provided an `id_token`, no `vp_token` (as requested by us!)
@@ -39,13 +39,15 @@ sealed class AuthnResponseResult {
         AuthnResponseResult()
 
     /**
-     * Successfully decoded and validated the response from the Wallet (W3C credential)
+     * Successfully decoded and validated the response from the Wallet (VC in JWT)
      */
-    data class Success(val vp: VerifiablePresentationParsed, val state: String?) :
-        AuthnResponseResult()
+    data class Success(
+        val vp: VerifiablePresentationParsed,
+        val state: String?,
+    ) : AuthnResponseResult()
 
     /**
-     * Successfully decoded and validated the response from the Wallet (W3C credential in SD-JWT)
+     * Successfully decoded and validated the response from the Wallet (SD-JWT VC)
      */
     data class SuccessSdJwt(
         val sdJwtSigned: SdJwtSigned,
@@ -54,19 +56,13 @@ sealed class AuthnResponseResult {
         val disclosures: Collection<SelectiveDisclosureItem>,
         val state: String?,
         val freshnessSummary: CredentialFreshnessSummary.SdJwt,
-    ) : AuthnResponseResult() {
-        @Deprecated("Replaced with more expressive freshness information", ReplaceWith("freshnessSummary.tokenStatusValidationResult is TokenStatusValidationResult.Invalid"))
-        val isRevoked: Boolean?
-            get() = if(freshnessSummary.tokenStatusValidationResult is TokenStatusValidationResult.Rejected) {
-                null
-            } else {
-                freshnessSummary.tokenStatusValidationResult is TokenStatusValidationResult.Invalid
-            }
-    }
+    ) : AuthnResponseResult()
 
     /**
-     * Successfully decoded and validated the response from the Wallet (ISO credential)
+     * Successfully decoded and validated the response from the Wallet (ISO mDoc credential)
      */
-    data class SuccessIso(val documents: Collection<IsoDocumentParsed>, val state: String?) :
-        AuthnResponseResult()
+    data class SuccessIso(
+        val documents: Collection<IsoDocumentParsed>,
+        val state: String?,
+    ) : AuthnResponseResult()
 }

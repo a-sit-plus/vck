@@ -5,7 +5,9 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
+import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
@@ -20,7 +22,7 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlin.random.Random
 
 
@@ -34,10 +36,12 @@ class ValidatorVpTest : FreeSpec({
         ),
     )
 
-    lateinit var validator: Validator
+    lateinit var validator: ValidatorVcJws
     lateinit var issuer: Issuer
+    lateinit var statusListIssuer: StatusListIssuer
     lateinit var issuerCredentialStore: IssuerCredentialStore
     lateinit var holder: HolderAgent
+    lateinit var verifiablePresentationFactory: VerifiablePresentationFactory
     lateinit var holderCredentialStore: SubjectCredentialStore
     lateinit var holderSignVp: SignJwtFun<VerifiablePresentationJws>
     lateinit var holderKeyMaterial: KeyMaterial
@@ -46,37 +50,39 @@ class ValidatorVpTest : FreeSpec({
     lateinit var challenge: String
 
     beforeEach {
-        validator = Validator(
-            resolveStatusListToken = {
-                if (Random.nextBoolean()) StatusListToken.StatusListJwt(
-                    issuer.issueStatusListJwt(),
-                    resolvedAt = Clock.System.now()
-                ) else {
-                    StatusListToken.StatusListCwt(
-                        issuer.issueStatusListCwt(),
-                        resolvedAt = Clock.System.now()
-                    )
-                }
-            },
+        validator = ValidatorVcJws(
+            validator = Validator(
+                tokenStatusResolver = TokenStatusResolverImpl(
+                    resolveStatusListToken = {
+                        if (Random.nextBoolean()) StatusListToken.StatusListJwt(
+                            statusListIssuer.issueStatusListJwt(),
+                            resolvedAt = Clock.System.now()
+                        ) else {
+                            StatusListToken.StatusListCwt(
+                                statusListIssuer.issueStatusListCwt(),
+                                resolvedAt = Clock.System.now()
+                            )
+                        }
+                    },
+                )
+            )
         )
         issuerCredentialStore = InMemoryIssuerCredentialStore()
-        issuer = IssuerAgent(
-            EphemeralKeyWithoutCert(),
-            validator = validator,
-            issuerCredentialStore = issuerCredentialStore,
-        )
+        issuer = IssuerAgent(issuerCredentialStore = issuerCredentialStore)
+        statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
         holderCredentialStore = InMemorySubjectCredentialStore()
         holderKeyMaterial = EphemeralKeyWithoutCert()
         holder = HolderAgent(
             holderKeyMaterial,
             holderCredentialStore,
-            validator = validator,
+            validatorVcJws = validator,
         )
+        verifiablePresentationFactory = VerifiablePresentationFactory(holderKeyMaterial)
         holderSignVp = SignJwt(holderKeyMaterial, JwsHeaderKeyId())
         verifierId = "urn:${uuid4()}"
         verifier = VerifierAgent(
             identifier = verifierId,
-            validator = validator,
+            validatorVcJws = validator
         )
         challenge = uuid4().toString()
 
@@ -85,7 +91,7 @@ class ValidatorVpTest : FreeSpec({
                 DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                    PLAIN_JWT,
                 ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         ).getOrThrow()
@@ -110,11 +116,11 @@ class ValidatorVpTest : FreeSpec({
             .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
             .map { it.vcSerialized }
             .map { it.reversed() }
-        val vp = holder.createVcPresentation(
+
+        val vp = verifiablePresentationFactory.createVcPresentation(
             holderVcSerialized,
             PresentationRequestParameters(nonce = challenge, audience = verifierId)
-        ).getOrThrow()
-            .shouldBeInstanceOf<CreatePresentationResult.Signed>()
+        ).shouldBeInstanceOf<CreatePresentationResult.Signed>()
 
         verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge).also {
             it.shouldBeInstanceOf<VerifyPresentationResult.Success>()
@@ -161,9 +167,9 @@ class ValidatorVpTest : FreeSpec({
             .map { it.vc }
             .forEach {
                 issuerCredentialStore.setStatus(
-                    it.vc.id,
-                    TokenStatus.Invalid,
-                    FixedTimePeriodProvider.timePeriod
+                    timePeriod = FixedTimePeriodProvider.timePeriod,
+                    index = it.vc.credentialStatus!!.statusList.index,
+                    status = TokenStatus.Invalid,
                 ) shouldBe true
             }
 

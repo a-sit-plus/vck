@@ -2,11 +2,11 @@ package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBitSize
+import at.asitplus.wallet.lib.extensions.toView
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.datatest.withData
 import io.kotest.matchers.shouldBe
-import kotlinx.datetime.Instant
-import kotlinx.serialization.encodeToString
+import kotlin.time.Instant
 import kotlinx.serialization.json.Json
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
@@ -46,7 +46,7 @@ class StatusListTokenSerializationTest : FreeSpec({
                             it.statusList.statusBitSize shouldBe TokenStatusBitSize.ONE
                         },
                         "statuslist status" to {
-                            it.statusList.view[0u] shouldBe TokenStatus(1u)
+                            it.statusList.toView()[0u] shouldBe TokenStatus(1u)
                         },
                     ),
                 ),

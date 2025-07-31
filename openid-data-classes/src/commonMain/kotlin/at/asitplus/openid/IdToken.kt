@@ -1,12 +1,10 @@
 package at.asitplus.openid
 
-import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 
 /**
  * OpenID Connect ID Token, usually signed as JWS in `id_token` in a URL
@@ -82,14 +80,4 @@ data class IdToken(
      */
     @SerialName("sub_jwk")
     val subjectJwk: JsonWebKey? = null,
-) {
-
-    fun serialize() = odcJsonSerializer.encodeToString(this)
-
-    companion object {
-        fun deserialize(it: String) = kotlin.runCatching {
-            odcJsonSerializer.decodeFromString<IdToken>(it)
-        }.wrap()
-    }
-
-}
+)
