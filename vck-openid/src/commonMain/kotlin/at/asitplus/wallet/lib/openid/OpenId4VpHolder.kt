@@ -52,12 +52,12 @@ import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.MapStore
+import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import kotlin.time.Clock
-import at.asitplus.wallet.lib.oidvci.OAuth2Error
 
 /**
  * Combines Verifiable Presentations with OpenId Connect.
@@ -142,13 +142,7 @@ class OpenId4VpHolder(
     suspend fun createAuthnResponse(input: String): KmmResult<AuthenticationResponseResult> = catching {
         parseAuthenticationRequestParameters(input).getOrThrow().let { parsedRequest ->
             createAuthnResponse(parsedRequest).getOrElse {
-                createAuthnErrorResponse(
-                    OAuth2Error(
-                        error = INVALID_REQUEST,
-                        errorDescription = it.message,
-                        state = parsedRequest.parameters.state
-                    ), request = parsedRequest
-                ).getOrThrow()
+                createAuthnErrorResponse(it.toOAuth2Error(parsedRequest), parsedRequest).getOrThrow()
             }
         }
     }
@@ -170,7 +164,7 @@ class OpenId4VpHolder(
 
     suspend fun createAuthnErrorResponse(
         error: OAuth2Error,
-        request: RequestParametersFrom<AuthenticationRequestParameters>
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<AuthenticationResponseResult> = catching {
         val clientMetadata = request.parameters.loadClientMetadata()
         val jsonWebKeys = clientMetadata?.jsonWebKeySet?.keys
@@ -305,7 +299,8 @@ class OpenId4VpHolder(
     }
 
     suspend fun getMatchingCredentials(
-        preparationState: AuthorizationResponsePreparationState) =
+        preparationState: AuthorizationResponsePreparationState,
+    ) =
         catchingUnwrapped {
             when (val it = preparationState.credentialPresentationRequest) {
                 is CredentialPresentationRequest.DCQLRequest -> {
@@ -407,3 +402,11 @@ class OpenId4VpHolder(
 
 private fun Collection<JsonWebKey>?.combine(certKey: JsonWebKey?): Collection<JsonWebKey> =
     certKey?.let { (this ?: listOf()) + certKey } ?: this ?: listOf()
+
+fun Throwable.toOAuth2Error(
+    request: RequestParametersFrom<AuthenticationRequestParameters>,
+): OAuth2Error = OAuth2Error(
+    error = INVALID_REQUEST,
+    errorDescription = message,
+    state = request.parameters.state
+)
