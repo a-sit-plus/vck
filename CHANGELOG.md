@@ -1,5 +1,8 @@
 # Changelog
 
+Release 5.9.0 (unreleased):
+ - tbd
+
 Release 5.8.0:
  - Refactor `AuthorizationServiceStrategy`
    - Allow for general AuthorizationDetails
