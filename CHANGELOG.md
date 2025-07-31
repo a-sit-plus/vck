@@ -11,6 +11,8 @@ Release 5.9.0 (unreleased):
    - For JVM add `PublishedKeyStoreMaterial` to load keys from Java key stores with a fixed identifier
    - In class `HolderAgent` require the `identifier` to be a URI, set in the constructor, as required for SD-JWT and JWT VC
    - Key material will be referenced by its `keyId` and key set URL or by its certificate or plain public key in JWS proofs
+ - Remove workarounds for EUDIW reference implementation:
+   - OpenID4VP: Verify mDoc generated nonce correctly
 
 Release 5.8.0:
  - Refactor `AuthorizationServiceStrategy`
