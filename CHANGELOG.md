@@ -17,6 +17,7 @@ Release 5.9.0 (unreleased):
    - OpenID4VP: Use credential format identifier `dc+sd-jwt` everywhere
    - OpenID4VP: Discard option to use deprecated `client_id_scheme` parameter in `ClientIdScheme` subclasses
    - OpenID4VP: Do not read the explicit parameter `client_id_scheme` (it's prefixed in the `client_id`)
+   - DCAPI: Remove (already deprecated) preview data class `PreviewDCAPIRequest`, either use OpenID4VP or ISO 18013-7 Annex C
 
 Release 5.8.0:
  - Refactor `AuthorizationServiceStrategy`
