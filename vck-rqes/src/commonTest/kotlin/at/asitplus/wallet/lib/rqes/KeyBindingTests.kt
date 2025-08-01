@@ -13,7 +13,6 @@ import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.PresentationRequestParameters
 import at.asitplus.wallet.lib.agent.ValidatorSdJwt
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
@@ -174,7 +173,7 @@ class KeyBindingTests : FreeSpec({
         "KB-JWT contains transaction data" - {
             "OID4VP" {
                 //[AuthenticationRequestParameters] do not contain [transactionData] in [presentationDefinition]
-                val requestOptions = buildRqesRequestOptions(PresentationRequestParameters.Flow.OID4VP)
+                val requestOptions = buildRqesRequestOptions()
                 val rawRequest = rqesVerifier.createAuthnRequest(requestOptions)
 
                 val authnRequestUrl = URLBuilder(walletUrl).apply {
@@ -199,7 +198,7 @@ class KeyBindingTests : FreeSpec({
         }
 
         "Incorrect TransactionData is rejected" {
-            val requestOptions = buildRqesRequestOptions(null, OpenIdConstants.ResponseMode.DirectPost)
+            val requestOptions = buildRqesRequestOptions(OpenIdConstants.ResponseMode.DirectPost)
             val authnRequest = rqesVerifier.createAuthnRequest(requestOptions)
 
             val malignResponse = holderOid4vp.createAuthnResponse(
@@ -233,7 +232,7 @@ class KeyBindingTests : FreeSpec({
                 )
             )
 
-            val requestOptions = buildRqesRequestOptions(null, OpenIdConstants.ResponseMode.DirectPost)
+            val requestOptions = buildRqesRequestOptions(OpenIdConstants.ResponseMode.DirectPost)
             val authnRequest = lenientVerifier.createAuthnRequest(requestOptions)
 
             val malignResponse = holderOid4vp.createAuthnResponse(

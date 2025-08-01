@@ -82,7 +82,7 @@ class OpenId4VpComplexSdJwtProtocolTest : FreeSpec({
             ),
             presentationMechanism = PresentationMechanismEnum.PresentationExchange
         ).apply {
-            toInputDescriptor(FormatContainerJwt(), FormatContainerSdJwt(), null).shouldBeSingleton().first().apply {
+            toInputDescriptor(FormatContainerJwt(), FormatContainerSdJwt()).shouldBeSingleton().first().apply {
                 constraints.shouldNotBeNull().apply {
                     fields.shouldNotBeNull().forEach {
                         it.path.shouldBeSingleton().first().apply {

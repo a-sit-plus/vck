@@ -25,10 +25,21 @@ class VerifierAgent(
     private val validatorMdoc: ValidatorMdoc = ValidatorMdoc(),
 ) : Verifier {
 
+    @Deprecated("Use verifyPresentationSdJwt with list of transactionData", level = DeprecationLevel.ERROR)
     override suspend fun verifyPresentationSdJwt(
         input: SdJwtSigned,
         challenge: String,
-        transactionData: Pair<PresentationRequestParameters.Flow, List<TransactionDataBase64Url>>?,
+        @Suppress("DEPRECATION") transactionData: Pair<PresentationRequestParameters.Flow, List<TransactionDataBase64Url>>?,
+    ): VerifyPresentationResult = catchingUnwrapped {
+        validatorSdJwt.verifyVpSdJwt(input, challenge, identifier, transactionData?.second)
+    }.getOrElse {
+        VerifyPresentationResult.ValidationError(it)
+    }
+
+    override suspend fun verifyPresentationSdJwt(
+        input: SdJwtSigned,
+        challenge: String,
+        transactionData: List<TransactionDataBase64Url>?,
     ): VerifyPresentationResult = catchingUnwrapped {
         validatorSdJwt.verifyVpSdJwt(input, challenge, identifier, transactionData)
     }.getOrElse {

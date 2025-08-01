@@ -17,7 +17,6 @@ import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.PresentationRequestParameters
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.rfc3986.toUri
@@ -65,7 +64,7 @@ class RqesRequestOptionsTest : FreeSpec({
         )
 
         "Authentication request contains transactionData" - {
-            val authnRequest = rqesVerifier.createAuthnRequest(requestOptions = buildRqesRequestOptions(null))
+            val authnRequest = rqesVerifier.createAuthnRequest(requestOptions = buildRqesRequestOptions())
             val inputDescriptor = authnRequest.presentationDefinition!!.inputDescriptors.first()
             val serialized = vckJsonSerializer.encodeToString(inputDescriptor)
             authnRequest.presentationDefinition.shouldNotBeNull()
@@ -90,7 +89,6 @@ internal fun List<TransactionData>.getReferenceHashes(): List<ByteArray> =
     this.map { it.toBase64UrlJsonString().content.decodeToByteArray(Base64UrlStrict).sha256() }
 
 internal fun buildRqesRequestOptions(
-    flow: PresentationRequestParameters.Flow?,
     responseMode: OpenIdConstants.ResponseMode = OpenIdConstants.ResponseMode.Fragment,
 ): RqesRequestOptions {
     val id = uuid4().toString()
@@ -107,7 +105,6 @@ internal fun buildRqesRequestOptions(
                 )
             ),
             transactionData = listOf(getTransactionData(setOf(id)), getTransactionData(setOf(id))),
-            rqesFlow = flow
         )
     )
 }

@@ -100,13 +100,8 @@ interface RequestOptions {
 
     val transactionData: List<TransactionData>?
 
-    /**
-     * [rqesFlow] is used to decide where transaction data is encoded:
-     * [Flow.UC5] for UC5 compliant,
-     * [Flow.OID4VP] for OID compliant
-     * and null for both
-     */
-    // TODO do OID4VP only
+    @Suppress("DEPRECATION")
+    @Deprecated("Only supporting OID4VP flows")
     val rqesFlow: Flow?
 
     fun buildScope(): String = listOf(SCOPE_OPENID, SCOPE_PROFILE).joinToString(" ")
@@ -116,13 +111,11 @@ interface RequestOptions {
     fun toPresentationDefinition(
         containerJwt: FormatContainerJwt,
         containerSdJwt: FormatContainerSdJwt,
-        flow: Flow? = null,
     ): PresentationDefinition?
 
     fun toInputDescriptor(
         containerJwt: FormatContainerJwt,
         containerSdJwt: FormatContainerSdJwt,
-        flow: Flow? = null,
     ): List<InputDescriptor>
 }
 
@@ -136,7 +129,8 @@ data class OpenIdRequestOptions(
     override val encryption: Boolean = false,
     override val presentationMechanism: PresentationMechanismEnum = PresentationMechanismEnum.PresentationExchange,
     override val transactionData: List<TransactionData>? = null,
-    override val rqesFlow: Flow? = null,
+    @Deprecated("Only supporting OID4VP flows")
+    @Suppress("DEPRECATION") override val rqesFlow: Flow? = null,
 ) : RequestOptions {
 
     override fun toDCQLQuery(): DCQLQuery? = if (credentials.isEmpty()) null else DCQLQuery(
@@ -201,16 +195,14 @@ data class OpenIdRequestOptions(
     override fun toPresentationDefinition(
         containerJwt: FormatContainerJwt,
         containerSdJwt: FormatContainerSdJwt,
-        flow: Flow?,
     ): PresentationDefinition = PresentationDefinition(
         id = uuid4().toString(),
-        inputDescriptors = toInputDescriptor(containerJwt, containerSdJwt, flow)
+        inputDescriptors = toInputDescriptor(containerJwt, containerSdJwt)
     )
 
     override fun toInputDescriptor(
         containerJwt: FormatContainerJwt,
         containerSdJwt: FormatContainerSdJwt,
-        flow: Flow?,
     ): List<InputDescriptor> = credentials.map {
         DifInputDescriptor(
             id = it.buildId(),

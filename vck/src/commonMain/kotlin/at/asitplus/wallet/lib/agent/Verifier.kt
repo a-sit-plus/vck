@@ -7,7 +7,6 @@ import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.signum.indispensable.josef.jwkId
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.validation.CredentialFreshnessSummary
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -31,10 +30,21 @@ interface Verifier {
      * Verifies a presentation of some credentials in [ConstantIndex.CredentialRepresentation.SD_JWT] from a holder,
      * that shall include the [challenge] (sent by this verifier).
      */
+    @Deprecated("Use verifyPresentationSdJwt with list of transactionData", level = DeprecationLevel.ERROR)
     suspend fun verifyPresentationSdJwt(
         input: SdJwtSigned,
         challenge: String,
-        transactionData: Pair<PresentationRequestParameters.Flow, List<TransactionDataBase64Url>>? = null,
+        @Suppress("DEPRECATION") transactionData: Pair<PresentationRequestParameters.Flow, List<TransactionDataBase64Url>>?,
+    ): VerifyPresentationResult
+
+    /**
+     * Verifies a presentation of some credentials in [ConstantIndex.CredentialRepresentation.SD_JWT] from a holder,
+     * that shall include the [challenge] (sent by this verifier).
+     */
+    suspend fun verifyPresentationSdJwt(
+        input: SdJwtSigned,
+        challenge: String,
+        transactionData: List<TransactionDataBase64Url>? = null,
     ): VerifyPresentationResult
 
     /**

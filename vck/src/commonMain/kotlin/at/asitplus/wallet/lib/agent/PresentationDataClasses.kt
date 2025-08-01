@@ -18,6 +18,7 @@ import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.json.JsonElement
@@ -36,7 +37,7 @@ import kotlinx.serialization.json.buildJsonObject
 data class PresentationRequestParameters(
     val nonce: String,
     val audience: String,
-    val transactionData: Pair<Flow, List<TransactionDataBase64Url>>? = null,
+    val transactionData: List<TransactionDataBase64Url>? = null,
     /**
      * Handle calculating device signature for ISO mDocs, as this depends on the transport protocol
      * (OpenID4VP with ISO/IEC 18013-7)
@@ -48,15 +49,29 @@ data class PresentationRequestParameters(
     val mdocGeneratedNonce: String? = null,
 ) {
 
+    @Suppress("DEPRECATION")
+    @Deprecated("Use constructor with list of transactionData", level = DeprecationLevel.ERROR)
+    constructor(
+        nonce: String,
+        audience: String,
+        transactionData: Pair<Flow, List<TransactionDataBase64Url>>,
+        calcIsoDeviceSignature: (suspend (docType: String, deviceNameSpaceBytes: ByteStringWrapper<DeviceNameSpaces>) -> Pair<CoseSigned<ByteArray>, String?>?) = { _, _ ->
+            null
+        },
+        mdocGeneratedNonce: String? = null,
+
+        ) : this(nonce, audience, transactionData?.second, calcIsoDeviceSignature, mdocGeneratedNonce)
+
     fun getTransactionDataHashes() =
-        transactionData?.second?.map { it.sha256() }
+        transactionData?.map { it.sha256() }
+
     /**
      * Used to differentiate between the OID4VP and the UC5 transaction data flows
      * since they are not compatible
      */
+    @Deprecated("Will be handled as OpenID4VP flow everytime")
     enum class Flow {
         OID4VP,
-        @Deprecated("Use OID4VP instead")
         UC5
     }
 }
@@ -108,7 +123,8 @@ sealed interface PresentationResponseParameters {
             is CreatePresentationResult.Signed -> JsonPrimitive(presentationResult.serialized)
             is CreatePresentationResult.SdJwt -> JsonPrimitive(presentationResult.serialized)
             is CreatePresentationResult.DeviceResponse -> JsonPrimitive(
-                coseCompliantSerializer.encodeToByteArray(presentationResult.deviceResponse).encodeToString(Base64UrlStrict)
+                coseCompliantSerializer.encodeToByteArray(presentationResult.deviceResponse)
+                    .encodeToString(Base64UrlStrict)
             )
         }
     }
