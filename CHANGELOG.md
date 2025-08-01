@@ -1,6 +1,6 @@
 # Changelog
 
-Release 1.8.1-SNAPSHOT:
+Release 1.9.0:
 * Dependency Updates
   - kotlin 2.1.21
   - kotest 6.0.0.M1
