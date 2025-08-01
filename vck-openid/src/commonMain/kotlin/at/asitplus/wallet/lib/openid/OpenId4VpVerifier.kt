@@ -577,6 +577,7 @@ open class OpenId4VpVerifier(
         input: ResponseParametersFrom,
         clientId: String?,
         responseUrl: String?,
+        // TODO not a pair
         transactionData: Pair<PresentationRequestParameters.Flow, List<TransactionDataBase64Url>>?,
     ) = when (claimFormat) {
         ClaimFormat.JWT_SD, ClaimFormat.SD_JWT -> verifier.verifyPresentationSdJwt(

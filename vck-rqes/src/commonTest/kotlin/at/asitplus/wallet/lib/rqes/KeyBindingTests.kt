@@ -4,9 +4,7 @@ import at.asitplus.iso.sha256
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.contentEquals
-import at.asitplus.rqes.QesInputDescriptor
 import at.asitplus.rqes.collection_entries.QCertCreationAcceptance
-import at.asitplus.rqes.collection_entries.QesAuthorization
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.eupid.EuPidScheme
@@ -29,16 +27,12 @@ import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.OpenId4VpHolder
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
-import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.CreationOptions.Query
 import at.asitplus.wallet.lib.rqes.helper.DummyCredentialDataProvider
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
-import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
-import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
-import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -182,15 +176,9 @@ class KeyBindingTests : FreeSpec({
                 //[AuthenticationRequestParameters] do not contain [transactionData] in [presentationDefinition]
                 val requestOptions = buildRqesRequestOptions(PresentationRequestParameters.Flow.OID4VP)
                 val rawRequest = rqesVerifier.createAuthnRequest(requestOptions)
-                val newInputDescriptors = rawRequest.presentationDefinition!!.inputDescriptors.map {
-                    (it as QesInputDescriptor).copy(transactionData = null)
-                }
-                val authnRequest = rawRequest.copy(
-                    presentationDefinition = rawRequest.presentationDefinition!!.copy(inputDescriptors = newInputDescriptors)
-                )
 
                 val authnRequestUrl = URLBuilder(walletUrl).apply {
-                    authnRequest.encodeToParameters()
+                    rawRequest.encodeToParameters()
                         .forEach { parameters.append(it.key, it.value) }
                 }.buildString()
 
@@ -203,58 +191,7 @@ class KeyBindingTests : FreeSpec({
                     .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
 
                 with(result.sdJwtSigned.keyBindingJws.shouldNotBeNull().payload) {
-                    transactionData.shouldBeNull()
                     transactionDataHashes.shouldNotBeNull()
-                    transactionDataHashes.contentEquals(requestOptions.transactionData!!.getReferenceHashes())
-                    transactionDataHashesAlgorithm.shouldNotBeNull()
-                }
-            }
-
-            "UC5" {
-                //[AuthenticationRequestParameters] do not contain [transactionData] directly; only in [QesInputDescriptor]
-                val requestOptions = buildRqesRequestOptions(PresentationRequestParameters.Flow.UC5)
-                val authnRequest = rqesVerifier.createAuthnRequest(requestOptions)
-
-                val authnRequestUrl = URLBuilder(walletUrl).apply {
-                    authnRequest.encodeToParameters()
-                        .forEach { parameters.append(it.key, it.value) }
-                }.buildString()
-
-                val authnResponse = holderOid4vp.createAuthnResponse(authnRequestUrl).getOrThrow()
-                    .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-
-                val result = rqesVerifier.validateAuthnResponse(authnResponse.url)
-                    .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
-
-                val originalTransactionData = requestOptions.transactionData!!.map {
-                    (it as QesAuthorization).copy(
-                        transactionDataHashAlgorithms = null,
-                        credentialIds = null
-                    )
-                }
-                with(result.sdJwtSigned.keyBindingJws.shouldNotBeNull().payload) {
-                    transactionData.shouldNotBeNull()
-                    transactionData shouldBe originalTransactionData.map { it.toBase64UrlJsonString() }
-                    transactionDataHashes.shouldBeNull()
-                    transactionDataHashesAlgorithm.shouldBeNull()
-                }
-            }
-
-            "Generic" {
-                //[AuthenticationRequestParameters] contain both versions - in this case for the response we prefer OID4VP
-                val requestOptions = buildRqesRequestOptions(null)
-                val authnRequestUrl = rqesVerifier.createAuthnRequest(requestOptions, Query(walletUrl)).getOrThrow().url
-
-                val authnResponse = holderOid4vp.createAuthnResponse(authnRequestUrl).getOrThrow()
-                    .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-
-                val result = rqesVerifier.validateAuthnResponse(authnResponse.url)
-                    .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
-
-                with(result.sdJwtSigned.keyBindingJws.shouldNotBeNull().payload) {
-                    transactionData.shouldBeNull()
-                    transactionDataHashes.shouldNotBeNull()
-                    transactionDataHashes!!.shouldHaveSize(2)
                     transactionDataHashes.contentEquals(requestOptions.transactionData!!.getReferenceHashes())
                     transactionDataHashesAlgorithm.shouldNotBeNull()
                 }

@@ -106,6 +106,7 @@ interface RequestOptions {
      * [Flow.OID4VP] for OID compliant
      * and null for both
      */
+    // TODO do OID4VP only
     val rqesFlow: Flow?
 
     fun buildScope(): String = listOf(SCOPE_OPENID, SCOPE_PROFILE).joinToString(" ")

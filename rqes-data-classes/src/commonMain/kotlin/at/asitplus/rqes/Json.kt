@@ -62,13 +62,11 @@ private val authorizationDetailsModule = SerializersModule {
     }
 }
 
-@Suppress("DEPRECATION")
 private val transactionDataModule = SerializersModule {
     polymorphic(TransactionData::class) {
         subclass(QesAuthorization::class, QesAuthorization.serializer())
         subclass(QCertCreationAcceptance::class, QCertCreationAcceptance.serializer())
     }
-    contextual(at.asitplus.rqes.serializers.DeprecatedBase64URLTransactionDataSerializer)
 }
 
 /**

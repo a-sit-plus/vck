@@ -88,21 +88,9 @@ class TransactionDataInterop : FreeSpec({
         vckJsonSerializer.decodeFromString(Base64URLTransactionDataSerializer, encoded).shouldBe(transactionDataTest)
     }
 
-    "Backwards compatible with escaped Json" {
-        val incorrectlyEncoded = """
-            "{\"type\":\"qcert_creation_acceptance\",\"QC_terms_conditions_uri\":\"https://apps.egiz.gv.at/qtsp\",\"QC_hash\":\"47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=\",\"QC_hashAlgorithmOID\":\"2.16.840.1.101.3.4.2.1\"}"
-        """.trimIndent()
-        @Suppress("DEPRECATION") val decoded =
-            vckJsonSerializer.decodeFromString(at.asitplus.rqes.serializers.DeprecatedBase64URLTransactionDataSerializer, incorrectlyEncoded)
-        decoded.shouldBeInstanceOf<QCertCreationAcceptance>()
-    }
-
     "QesInputDescriptor serializable" {
         val input = QesInputDescriptor(
             id = "123",
-            transactionData = listOf(
-                transactionDataTest.toBase64UrlJsonString()
-            )
         )
         val serialized = vckJsonSerializer.encodeToString(input)
         serialized.shouldNotContain("type")
@@ -192,8 +180,7 @@ class TransactionDataInterop : FreeSpec({
     "The presentation Definition can be parsed" {
         val presentationDefinition =
             vckJsonSerializer.decodeFromString<PresentationDefinition>(presentationDefinitionAsJsonString)
-        val first = presentationDefinition.inputDescriptors.first().shouldBeInstanceOf<QesInputDescriptor>()
-        first.transactionData shouldNotBe null
+        presentationDefinition.inputDescriptors.first().shouldBeInstanceOf<QesInputDescriptor>()
     }
 })
 

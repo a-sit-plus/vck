@@ -81,15 +81,6 @@ class RqesRequestOptionsTest : FreeSpec({
                     credentialIds!!.first() shouldBe inputDescriptor.id
                 }
             }
-
-            "UC5" {
-                inputDescriptor.transactionData shouldNotBe null
-                with(inputDescriptor.transactionData!!.first().toTransactionData()) {
-                    shouldNotBeNull()
-                    credentialIds shouldBe null
-                    transactionDataHashAlgorithms shouldBe null
-                }
-            }
         }
 
     }

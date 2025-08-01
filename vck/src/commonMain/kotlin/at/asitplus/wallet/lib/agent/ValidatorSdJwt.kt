@@ -51,6 +51,7 @@ class ValidatorSdJwt(
         input: SdJwtSigned,
         challenge: String,
         clientId: String,
+        // TODO not flow
         transactionData: Pair<PresentationRequestParameters.Flow, List<TransactionDataBase64Url>>?,
     ): VerifyPresentationResult {
         Napier.d("verifyVpSdJwt: '$input', '$challenge', '$clientId', '$transactionData'")
@@ -93,20 +94,14 @@ class ValidatorSdJwt(
         }
         if (verifyTransactionData) {
             transactionData?.let { (flow, data) ->
-                @Suppress("DEPRECATION")
-                if (flow == PresentationRequestParameters.Flow.OID4VP) {
-                    //TODO support more hash algorithms
-                    if (keyBinding.transactionDataHashesAlgorithm != "sha-256") {
-                        Napier.w("verifyVpSdJwt: Key Binding uses unsupported hashing algorithm. Please use sha256")
-                        return VerifyPresentationResult.ValidationError("verifyVpSdJwt: Key Binding uses unsupported hashing algorithm. Please use sha256")
-                    }
-                    if (keyBinding.transactionDataHashes?.contentEquals(data.map { it.sha256() }) == false) {
-                        Napier.w("verifyVpSdJwt: Key Binding does not contain correct transaction data hashes")
-                        return VerifyPresentationResult.ValidationError("Key Binding does not contain correct transaction data hashes")
-                    }
-                } else if (keyBinding.transactionData?.contentEqualsIfArray(data) == false) {
+                //TODO support more hash algorithms
+                if (keyBinding.transactionDataHashesAlgorithm != "sha-256") {
+                    Napier.w("verifyVpSdJwt: Key Binding uses unsupported hashing algorithm. Please use sha256")
+                    return VerifyPresentationResult.ValidationError("verifyVpSdJwt: Key Binding uses unsupported hashing algorithm. Please use sha256")
+                }
+                if (keyBinding.transactionDataHashes?.contentEquals(data.map { it.sha256() }) == false) {
                     Napier.w("verifyVpSdJwt: Key Binding does not contain correct transaction data hashes")
-                    return VerifyPresentationResult.ValidationError("Key Binding does not contain correct transaction data")
+                    return VerifyPresentationResult.ValidationError("Key Binding does not contain correct transaction data hashes")
                 }
             }
         }

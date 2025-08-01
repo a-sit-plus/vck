@@ -56,6 +56,7 @@ data class PresentationRequestParameters(
      */
     enum class Flow {
         OID4VP,
+        @Deprecated("Use OID4VP instead")
         UC5
     }
 }
