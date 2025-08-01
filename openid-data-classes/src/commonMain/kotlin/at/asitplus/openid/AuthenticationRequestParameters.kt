@@ -50,7 +50,7 @@ data class AuthenticationRequestParameters(
      * OID4VP: OPTIONAL. A string identifying the scheme of the value in the `client_id` Authorization Request parameter
      * (Client Identifier scheme). Kept here only for compatibility with POTENTIAL.
      */
-    @Deprecated("Removed from OpenID4VP Draft 22")
+    @Deprecated("Removed from OpenID4VP Draft 22", level = DeprecationLevel.ERROR)
     @SerialName("client_id_scheme")
     val clientIdScheme: OpenIdConstants.ClientIdScheme? = null,
 
@@ -404,10 +404,8 @@ data class AuthenticationRequestParameters(
      * Reads the [OpenIdConstants.ClientIdScheme] of this request either directly from [clientIdScheme],
      * or by extracting the prefix from [clientId] (as specified in OpenID4VP draft 22 onwards).
      */
-    @Suppress("DEPRECATION")
     override val clientIdSchemeExtracted: OpenIdConstants.ClientIdScheme?
-        get() = clientIdScheme
-            ?: clientId?.let { OpenIdConstants.ClientIdScheme.decodeFromClientId(it) }
+        get() = clientId?.let { OpenIdConstants.ClientIdScheme.decodeFromClientId(it) }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

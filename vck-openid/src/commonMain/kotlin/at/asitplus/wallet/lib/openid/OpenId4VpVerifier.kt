@@ -265,9 +265,10 @@ open class OpenId4VpVerifier(
         }
     }
 
-    private fun String.toCreatedRequest(): CreatedRequest = CreatedRequest(this)
-    private fun String.toCreatedRequest(loadRequestObject: suspend (RequestObjectParameters?) -> KmmResult<String>): CreatedRequest =
-        CreatedRequest(this, loadRequestObject)
+    private fun String.toCreatedRequest() = CreatedRequest(this)
+    private fun String.toCreatedRequest(
+        loadRequestObject: suspend (RequestObjectParameters?) -> KmmResult<String>,
+    ) = CreatedRequest(this, loadRequestObject)
 
 
     /**
@@ -331,7 +332,6 @@ open class OpenId4VpVerifier(
     ): AuthenticationRequestParameters = AuthenticationRequestParameters(
         responseType = responseType,
         clientId = clientIdScheme.clientId,
-        clientIdScheme = clientIdScheme.clientIdScheme,
         redirectUrl = if (!isAnyDirectPost) clientIdScheme.redirectUri else null,
         responseUrl = responseUrl,
         // Using scope as an alias for a well-defined Presentation Exchange or DCQL is not supported
@@ -346,7 +346,8 @@ open class OpenId4VpVerifier(
         dcqlQuery = if (isDcql) toDCQLQuery() else null,
         presentationDefinition = if (isPresentationExchange)
             toPresentationDefinition(containerJwt, containerSdJwt, rqesFlow) else null,
-        transactionData = if (rqesFlow != PresentationRequestParameters.Flow.UC5) transactionData?.map { it.toBase64UrlJsonString() } else null
+        transactionData = if (rqesFlow != PresentationRequestParameters.Flow.UC5)
+            transactionData?.map { it.toBase64UrlJsonString() } else null
     )
 
     /**
@@ -607,23 +608,10 @@ open class OpenId4VpVerifier(
             val mdocGeneratedNonce = apuDirect?.decodeToString()
                 ?: apuNested?.decodeToString()
                 ?: ""
-            val result = verifier.verifyPresentationIsoMdoc(
+            verifier.verifyPresentationIsoMdoc(
                 input = deviceResponse,
                 verifyDocument = verifyDocument(mdocGeneratedNonce, clientId, responseUrl, expectedNonce)
             )
-            if (result is VerifyPresentationResult.ValidationError) {
-                // This is obviously wrong, but it's implemented that way in EUDIW Ref Wallet for Android
-                // see https://github.com/eu-digital-identity-wallet/eudi-lib-android-wallet-core/pull/153
-                val mdocGeneratedNonce = apuDirect?.encodeToString(Base64UrlStrict)
-                    ?: apuNested?.encodeToString(Base64UrlStrict)
-                    ?: ""
-                verifier.verifyPresentationIsoMdoc(
-                    input = deviceResponse,
-                    verifyDocument = verifyDocument(mdocGeneratedNonce, clientId, responseUrl, expectedNonce)
-                )
-            } else {
-                result
-            }
         }
 
         else -> throw IllegalArgumentException("descriptor.format: $claimFormat")
@@ -640,7 +628,10 @@ open class OpenId4VpVerifier(
         responseUrl: String?,
         expectedNonce: String,
     ): suspend (MobileSecurityObject, Document) -> Boolean = { mso, document ->
-        Napier.d("verifyDocument: mdocGeneratedNonce='$mdocGeneratedNonce', clientId='$clientId', responseUrl='$responseUrl', expectedNonce='$expectedNonce'")
+        Napier.d(
+            "verifyDocument: mdocGeneratedNonce='$mdocGeneratedNonce', clientId='$clientId'," +
+                    " responseUrl='$responseUrl', expectedNonce='$expectedNonce'"
+        )
         val deviceSignature = document.deviceSigned.deviceAuth.deviceSignature ?: run {
             Napier.w("DeviceSignature is null: ${document.deviceSigned.deviceAuth}")
             throw IllegalArgumentException("deviceSignature")

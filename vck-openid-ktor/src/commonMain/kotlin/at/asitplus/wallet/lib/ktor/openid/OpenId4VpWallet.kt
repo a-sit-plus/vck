@@ -5,46 +5,31 @@ import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.OpenIdConstants.Errors.INVALID_REQUEST
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.CredentialPresentation
-import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.AuthorizationResponsePreparationState
 import at.asitplus.wallet.lib.openid.OpenId4VpHolder
+import at.asitplus.wallet.lib.openid.toOAuth2Error
 import io.github.aakira.napier.Napier
-import io.ktor.client.HttpClient
-import io.ktor.client.HttpClientConfig
-import io.ktor.client.call.body
-import io.ktor.client.engine.HttpClientEngine
-import io.ktor.client.plugins.DefaultRequest
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.request.forms.FormDataContent
-import io.ktor.client.request.forms.submitForm
-import io.ktor.client.request.get
-import io.ktor.client.request.header
-import io.ktor.client.request.request
-import io.ktor.client.request.setBody
-import io.ktor.client.request.url
-import io.ktor.client.statement.HttpResponse
-import io.ktor.client.statement.bodyAsText
-import io.ktor.client.statement.readRawBytes
-import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpMethod
-import io.ktor.http.Parameters
-import io.ktor.http.URLBuilder
-import io.ktor.http.content.OutgoingContent
-import io.ktor.http.formUrlEncode
-import io.ktor.http.parameters
-import io.ktor.serialization.kotlinx.json.json
-import io.ktor.utils.io.core.toByteArray
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.engine.*
+import io.ktor.client.plugins.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.request.*
+import io.ktor.client.request.forms.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import io.ktor.http.content.*
+import io.ktor.serialization.kotlinx.json.*
+import io.ktor.utils.io.core.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
@@ -116,7 +101,7 @@ class OpenId4VpWallet(
 
     suspend fun parseAuthenticationRequestParameters(
         input: String,
-        dcApiRequest: Oid4vpDCAPIRequest? = null
+        dcApiRequest: Oid4vpDCAPIRequest? = null,
     ): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> =
         openId4VpHolder.parseAuthenticationRequestParameters(input, dcApiRequest)
 
@@ -126,7 +111,7 @@ class OpenId4VpWallet(
      */
     suspend fun sendAuthnErrorResponse(
         error: OAuth2Error,
-        request: RequestParametersFrom<AuthenticationRequestParameters>
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
     ) {
         catchingUnwrapped {
             Napier.i("sendAuthnErrorResponse $error, $request")
@@ -142,7 +127,7 @@ class OpenId4VpWallet(
     }
 
     suspend fun startAuthorizationResponsePreparation(
-        request: RequestParametersFrom<AuthenticationRequestParameters>
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<AuthorizationResponsePreparationState> =
         openId4VpHolder.startAuthorizationResponsePreparation(request)
 
@@ -189,13 +174,7 @@ class OpenId4VpWallet(
             clientMetadata = clientMetadata,
             credentialPresentation = credentialPresentation
         ).getOrElse {
-            sendAuthnErrorResponse(
-                error = OAuth2Error(
-                    error = INVALID_REQUEST,
-                    errorDescription = it.message,
-                    state = request.parameters.state
-                ), request = request
-            )
+            sendAuthnErrorResponse(it.toOAuth2Error(request), request)
             throw it
         }.let { response ->
             when (response) {
@@ -222,19 +201,13 @@ class OpenId4VpWallet(
 
     suspend fun getMatchingCredentials(
         preparationState: AuthorizationResponsePreparationState,
-        request: RequestParametersFrom<AuthenticationRequestParameters>
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
     ) = catchingUnwrapped {
-            openId4VpHolder.getMatchingCredentials(preparationState).getOrElse {
-                sendAuthnErrorResponse(
-                    error = OAuth2Error(
-                        error = INVALID_REQUEST,
-                        errorDescription = it.message,
-                        state = request.parameters.state
-                    ), request = request
-                )
-                throw it
-            }
+        openId4VpHolder.getMatchingCredentials(preparationState).getOrElse {
+            sendAuthnErrorResponse(it.toOAuth2Error(request), request)
+            throw it
         }
+    }
 
     /**
      * Our implementation of ktor's [FormDataContent], but with [contentType] without charset appended,
