@@ -11,11 +11,12 @@ Release 5.9.0 (unreleased):
    - For JVM add `PublishedKeyStoreMaterial` to load keys from Java key stores with a fixed identifier
    - In class `HolderAgent` require the `identifier` to be a URI, set in the constructor, as required for SD-JWT and JWT VC
    - Key material will be referenced by its `keyId` and key set URL or by its certificate or plain public key in JWS proofs
- - Remove workarounds for EUDIW reference implementation:
-   - OpenID4VP: Verify mDoc generated nonce correctly
-   - OpenID4VP: Only send the `response` parameter when using `direct_post.jwt
- - OpenID4VP:
-   - Use credential format identifier `dc+sd-jwt` everywhere
+ - Remove workarounds and deprecated features:
+   - OpenID4VP: Verify mDoc generated nonce correctly (not supporting broken EUDIW RI)
+   - OpenID4VP: Only send the `response` parameter when using `direct_post.jwt` (not supporting broken EUDIW RI)
+   - OpenID4VP: Use credential format identifier `dc+sd-jwt` everywhere
+   - OpenID4VP: Discard option to use deprecated `client_id_scheme` parameter in `ClientIdScheme` subclasses
+   - OpenID4VP: Do not read the explicit parameter `client_id_scheme` (it's prefixed in the `client_id`)
 
 Release 5.8.0:
  - Refactor `AuthorizationServiceStrategy`

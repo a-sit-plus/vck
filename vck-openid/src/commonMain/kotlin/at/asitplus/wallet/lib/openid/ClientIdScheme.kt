@@ -11,20 +11,33 @@ sealed class ClientIdScheme(
     val redirectUri: String,
     /** Optional parameter, to be used as `iss` for signed authorization requests */
     val issuerUri: String? = clientIdWithoutPrefix,
-    /** Whether to use the deprecated `client_id_scheme` field from OpenID4VP. */
-    val useDeprecatedClientIdScheme: Boolean = false,
 ) {
 
-    val clientId: String
-        get() = if (useDeprecatedClientIdScheme) clientIdWithoutPrefix else
-            when (scheme) {
-                OpenIdConstants.ClientIdScheme.PreRegistered -> clientIdWithoutPrefix
-                else -> scheme.prefix + clientIdWithoutPrefix
-            }
+    @Deprecated("Parameter `useDeprecatedClientIdScheme` is no longer supported", level = DeprecationLevel.ERROR)
+    constructor(
+        scheme: OpenIdConstants.ClientIdScheme,
+        clientIdWithoutPrefix: String,
+        redirectUri: String,
+        /** Optional parameter, to be used as `iss` for signed authorization requests */
+        issuerUri: String? = clientIdWithoutPrefix,
+        /** Whether to use the deprecated `client_id_scheme` field from OpenID4VP. */
+        useDeprecatedClientIdScheme: Boolean = false,
+    ) : this(
+        scheme = scheme,
+        clientIdWithoutPrefix = clientIdWithoutPrefix,
+        redirectUri = redirectUri,
+        issuerUri = issuerUri
+    )
 
-    /** Value to use for `client_id_scheme` for OpenID4VP, only when [useDeprecatedClientIdScheme] = true. */
+    val clientId: String
+        get() = when (scheme) {
+            OpenIdConstants.ClientIdScheme.PreRegistered -> clientIdWithoutPrefix
+            else -> scheme.prefix + clientIdWithoutPrefix
+        }
+
+    @Deprecated("Deprecated clientIdScheme  is no longer supported", level = DeprecationLevel.ERROR)
     val clientIdScheme: OpenIdConstants.ClientIdScheme?
-        get() = if (useDeprecatedClientIdScheme) scheme else null
+        get() = null
 
     /**
      * This Client Identifier Scheme allows the Verifier to authenticate using a JWT that is bound to a certain
@@ -42,14 +55,22 @@ sealed class ClientIdScheme(
     class VerifierAttestation(
         val attestationJwt: JwsSigned<JsonWebToken>,
         redirectUri: String,
-        /** Whether to use the deprecated `client_id_scheme` field from OpenID4VP. */
-        useDeprecatedClientIdScheme: Boolean = false,
     ) : ClientIdScheme(
         scheme = OpenIdConstants.ClientIdScheme.VerifierAttestation,
         clientIdWithoutPrefix = attestationJwt.payload.subject!!,
         redirectUri = redirectUri,
-        useDeprecatedClientIdScheme = useDeprecatedClientIdScheme,
     ) {
+        @Deprecated("Parameter `useDeprecatedClientIdScheme` is no longer supported", level = DeprecationLevel.ERROR)
+        constructor(
+            attestationJwt: JwsSigned<JsonWebToken>,
+            redirectUri: String,
+            /** Whether to use the deprecated `client_id_scheme` field from OpenID4VP. */
+            useDeprecatedClientIdScheme: Boolean,
+        ) : this(
+            attestationJwt = attestationJwt,
+            redirectUri = redirectUri
+        )
+
         init {
             require(redirectUri.contains(":/"))
         }
@@ -73,14 +94,24 @@ sealed class ClientIdScheme(
         val chain: CertificateChain,
         clientIdDnsName: String,
         redirectUri: String,
-        /** Whether to use the deprecated `client_id_scheme` field from OpenID4VP. */
-        useDeprecatedClientIdScheme: Boolean = false,
     ) : ClientIdScheme(
         scheme = OpenIdConstants.ClientIdScheme.X509SanDns,
         clientIdWithoutPrefix = clientIdDnsName,
         redirectUri = redirectUri,
-        useDeprecatedClientIdScheme = useDeprecatedClientIdScheme,
     ) {
+        @Deprecated("Parameter `useDeprecatedClientIdScheme` is no longer supported", level = DeprecationLevel.ERROR)
+        constructor(
+            chain: CertificateChain,
+            clientIdDnsName: String,
+            redirectUri: String,
+            /** Whether to use the deprecated `client_id_scheme` field from OpenID4VP. */
+            useDeprecatedClientIdScheme: Boolean,
+        ) : this(
+            chain = chain,
+            clientIdDnsName = clientIdDnsName,
+            redirectUri = redirectUri
+        )
+
         init {
             require(chain.first().tbsCertificate.subjectAlternativeNames?.dnsNames?.contains(clientIdDnsName) == true)
         }
@@ -95,14 +126,18 @@ sealed class ClientIdScheme(
      */
     class RedirectUri(
         redirectUri: String,
-        /** Whether to use the deprecated `client_id_scheme` field from OpenID4VP. */
-        useDeprecatedClientIdScheme: Boolean = false,
     ) : ClientIdScheme(
         scheme = OpenIdConstants.ClientIdScheme.RedirectUri,
         clientIdWithoutPrefix = redirectUri,
         redirectUri = redirectUri,
-        useDeprecatedClientIdScheme = useDeprecatedClientIdScheme,
     ) {
+        @Deprecated("Parameter `useDeprecatedClientIdScheme` is no longer supported", level = DeprecationLevel.ERROR)
+        constructor(
+            redirectUri: String,
+            /** Whether to use the deprecated `client_id_scheme` field from OpenID4VP. */
+            useDeprecatedClientIdScheme: Boolean,
+        ) : this(redirectUri = redirectUri)
+
         init {
             require(redirectUri.contains(":/"))
         }
@@ -118,15 +153,27 @@ sealed class ClientIdScheme(
         redirectUri: String,
         /** Optional parameter, to be used as `iss` for signed authorization requests */
         issuerUri: String? = null,
-        /** Whether to use the deprecated `client_id_scheme` field from OpenID4VP. */
-        useDeprecatedClientIdScheme: Boolean = false,
     ) : ClientIdScheme(
         scheme = OpenIdConstants.ClientIdScheme.PreRegistered,
         clientIdWithoutPrefix = clientId,
         redirectUri = redirectUri,
         issuerUri = issuerUri,
-        useDeprecatedClientIdScheme = useDeprecatedClientIdScheme,
     ) {
+
+        @Deprecated("Parameter `useDeprecatedClientIdScheme` is no longer supported", level = DeprecationLevel.ERROR)
+        constructor(
+            clientId: String,
+            redirectUri: String,
+            /** Optional parameter, to be used as `iss` for signed authorization requests */
+            issuerUri: String? = null,
+            /** Whether to use the deprecated `client_id_scheme` field from OpenID4VP. */
+            useDeprecatedClientIdScheme: Boolean,
+        ) : this(
+            clientId = clientId,
+            redirectUri = redirectUri,
+            issuerUri = issuerUri
+        )
+
         init {
             require(!clientId.contains(":"))
             require(redirectUri.contains(":/"))
