@@ -3,11 +3,29 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
-import at.asitplus.openid.*
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthorizationDetails
+import at.asitplus.openid.ClientNonceResponse
+import at.asitplus.openid.CredentialOffer
+import at.asitplus.openid.CredentialOfferUrlParameters
+import at.asitplus.openid.CredentialRequestParameters
+import at.asitplus.openid.CredentialRequestProof
+import at.asitplus.openid.CredentialRequestProofSupported
+import at.asitplus.openid.CredentialResponseEncryption
+import at.asitplus.openid.IssuerMetadata
+import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ProofType
-import at.asitplus.signum.indispensable.josef.*
+import at.asitplus.openid.SupportedCredentialFormat
+import at.asitplus.openid.TokenRequestParameters
+import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.openid.odcJsonSerializer
+import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JweAlgorithm
+import at.asitplus.signum.indispensable.josef.JweEncryption
+import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -15,15 +33,18 @@ import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
-import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
+import at.asitplus.wallet.lib.jws.JwsHeaderModifierFun
+import at.asitplus.wallet.lib.jws.SignJwtExt
+import at.asitplus.wallet.lib.jws.SignJwtExtFun
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.ktor.util.*
-import kotlin.time.Clock
 import kotlinx.serialization.json.decodeFromJsonElement
+import kotlin.time.Clock
 
 /**
  * Client service to retrieve credentials using OID4VCI
@@ -37,8 +58,10 @@ class WalletService(
     val clientId: String = "https://wallet.a-sit.at/app",
     /** Used to create [AuthenticationRequestParameters] and [TokenRequestParameters]. */
     private val redirectUrl: String = "$clientId/callback",
-    /** Used to prove possession of the key material to create [CredentialRequestProof], i.e. the holder key. */
+    /** The holder key, to which the credential will be bound to by the issuer, see [signProof]. */
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+    /** Used to prove possession of [keyMaterial] in [createCredentialRequest]. */
+    private val signProof: SignJwtExtFun<JsonWebToken> = SignJwtExt(keyMaterial, JwsHeaderCertOrJwk()),
     /**
      * Need to implement if resources are defined by reference, i.e. the URL for a [JsonWebKeySet],
      * or the authentication request itself as `request_uri`, or `presentation_definition_uri`.
@@ -272,11 +295,7 @@ class WalletService(
         addKeyAttestation: Boolean = false,
     ): CredentialRequestProof = CredentialRequestProof(
         proofType = ProofType.JWT,
-        jwt = SignJwt<JsonWebToken>(
-            keyMaterial,
-            // TODO To be refactored once signJwt is not passed in the constructor but to this function
-            addKeyAttestationToJwsHeader(clientNonce, addKeyAttestation)
-        ).invoke(
+        jwt = signProof.invoke(
             OpenIdConstants.PROOF_JWT_TYPE,
             JsonWebToken(
                 issuer = clientId, // omit when token was pre-authn?
@@ -285,19 +304,16 @@ class WalletService(
                 nonce = clientNonce,
             ),
             JsonWebToken.serializer(),
+            if (addKeyAttestation) addKeyAttestation(clientNonce) else JwsHeaderModifierFun { it }
         ).getOrThrow().serialize()
     )
 
-    private fun addKeyAttestationToJwsHeader(
-        clientNonce: String?,
-        addKeyAttestation: Boolean = false,
-    ): suspend (JwsHeader, KeyMaterial) -> JwsHeader =
-        { it: JwsHeader, key: KeyMaterial ->
-            val keyAttestation = if (addKeyAttestation) {
-                this.loadKeyAttestation?.invoke(KeyAttestationInput(clientNonce, null))?.getOrThrow()?.serialize()
-                    ?: throw IllegalArgumentException("Key attestation required, none provided")
-            } else null
-            it.copy(jsonWebKey = key.jsonWebKey, keyAttestation = keyAttestation)
-        }
+    private fun addKeyAttestation(clientNonce: String?) = JwsHeaderModifierFun { header ->
+        header.copy(
+            keyAttestation = loadKeyAttestation?.invoke(KeyAttestationInput(clientNonce, null))
+                ?.getOrThrow()?.serialize()
+                ?: throw IllegalArgumentException("Key attestation required, none provided")
+        )
+    }
 
 }
