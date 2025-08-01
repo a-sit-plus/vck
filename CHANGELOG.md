@@ -1,5 +1,7 @@
 # Changelog
 
+NEXT
+
 Release 1.9.0:
 * Dependency Updates
   - kotlin 2.1.21
