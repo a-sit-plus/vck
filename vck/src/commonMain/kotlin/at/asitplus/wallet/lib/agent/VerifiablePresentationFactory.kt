@@ -2,40 +2,25 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.iso.DeviceAuth
-import at.asitplus.iso.DeviceNameSpaces
-import at.asitplus.iso.DeviceResponse
-import at.asitplus.iso.DeviceSigned
-import at.asitplus.iso.Document
-import at.asitplus.iso.IssuerSigned
-import at.asitplus.iso.sha256
+import at.asitplus.iso.*
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
+import at.asitplus.openid.sha256
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.SdJwtCreator.NAME_SD
-import at.asitplus.wallet.lib.data.KeyBindingJws
-import at.asitplus.wallet.lib.data.SdJwtConstants
-import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
-import at.asitplus.wallet.lib.data.VerifiablePresentation
-import at.asitplus.wallet.lib.data.VerifiablePresentationJws
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.extensions.sdHashInput
-import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
-import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
-import at.asitplus.wallet.lib.jws.JwsHeaderNone
-import at.asitplus.wallet.lib.jws.SdJwtSigned
-import at.asitplus.wallet.lib.jws.SignJwt
-import at.asitplus.wallet.lib.jws.SignJwtFun
+import at.asitplus.wallet.lib.jws.*
 import io.github.aakira.napier.Napier
-import kotlin.time.Clock
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlin.time.Clock
 
 class VerifiablePresentationFactory(
     private val keyMaterial: KeyMaterial,
@@ -265,21 +250,14 @@ class VerifiablePresentationFactory(
             audience = request.audience,
             challenge = request.nonce,
             sdHash = issuerJwtPlusDisclosures.encodeToByteArray().sha256(),
-            transactionData = if (request.isUc5()) request.transactionData?.second else null,
-            transactionDataHashes = if (request.isOid4Vp()) request.getTransactionDataHashes() else null,
-            transactionDataHashesAlgorithm = if (request.isOid4Vp()) SdJwtConstants.SHA_256 else null,
+            transactionDataHashes = request.transactionData?.let { entry -> entry.map { it.sha256() } },
+            transactionDataHashesAlgorithm = request.transactionData?.let { SdJwtConstants.SHA_256 },
         ),
         KeyBindingJws.serializer(),
     ).getOrElse {
         Napier.w("Could not create JWS for presentation", it)
         throw PresentationException(it)
     }
-
-    private fun PresentationRequestParameters.isUc5(): Boolean =
-        transactionData?.first == PresentationRequestParameters.Flow.UC5
-
-    private fun PresentationRequestParameters.isOid4Vp(): Boolean =
-        transactionData?.first == PresentationRequestParameters.Flow.OID4VP
 
     /**
      * Creates a [VerifiablePresentation] with the given [validCredentials].

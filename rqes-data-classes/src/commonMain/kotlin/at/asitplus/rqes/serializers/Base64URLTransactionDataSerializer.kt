@@ -35,25 +35,3 @@ object Base64URLTransactionDataSerializer : KSerializer<TransactionData> {
         encoder.encodeString(base64URLString)
     }
 }
-
-@Deprecated(
-    "Will be removed, only for backwards compatability",
-    replaceWith = ReplaceWith("Base64URLTransactionDataSerializer")
-)
-object DeprecatedBase64URLTransactionDataSerializer : KSerializer<TransactionData> {
-    override val descriptor: SerialDescriptor =
-        PrimitiveSerialDescriptor("Base64URLTransactionDataSerializer", PrimitiveKind.STRING)
-
-    override fun deserialize(decoder: Decoder): TransactionData {
-        val decoded = decoder.decodeString()
-            .let { if (it.contains(",")) it else it.decodeToByteArray(Base64UrlStrict).decodeToString() }
-        val json = rdcJsonSerializer.decodeFromString(JsonElement.serializer(), decoded)
-        return rdcJsonSerializer.decodeFromJsonElement(PolymorphicSerializer(TransactionData::class), json)
-    }
-
-    override fun serialize(encoder: Encoder, value: TransactionData) {
-        val jsonString = rdcJsonSerializer.encodeToString(PolymorphicSerializer(TransactionData::class), value)
-        val base64URLString = jsonString.encodeToByteArray().encodeToString(Base64UrlStrict)
-        encoder.encodeString(base64URLString)
-    }
-}
