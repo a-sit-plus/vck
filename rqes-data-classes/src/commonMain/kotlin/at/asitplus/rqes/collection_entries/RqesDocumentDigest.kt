@@ -7,6 +7,7 @@ import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import at.asitplus.rqes.Method
 
 @ConsistentCopyVisibility
 @Serializable
@@ -159,8 +160,16 @@ data class RqesDocumentDigestEntry private constructor(
      * An object with
      * information how to access
      * [documentLocationUri].
+     *
+     * This class serializes to
+     * `{"document_access_mode":"OTP","oneTimePassword":"1234"}`
+     * `{"document_access_mode":"public", "oneTimePassword": null}`
+     * which is not to be confused with [Method] which instead serializes to
+     * `{"type":"OTP","oneTimePassword":"1234"}`
+     * `{"type":"public"}`
+     *
+     * but otherwise does the exact same thing. This was never unified.
      */
-//    @Suppress("DEPRECATION")
     @Serializable
     @SerialName("documentLocation_method")
     data class DocumentLocationMethod(
@@ -173,11 +182,6 @@ data class RqesDocumentDigestEntry private constructor(
             if (documentAccessMode == DocumentAccessMode.OTP) require(!oneTimePassword.isNullOrEmpty())
             else require(oneTimePassword.isNullOrEmpty())
         }
-
-        /**
-         * Incompatible version of [at.asitplus.rqes.Method] due to presumably incomplete changes in draft
-         */
-        @Deprecated("Unify with [at.asitplus.rqes.Method] as soon as new draft allows")
         enum class DocumentAccessMode {
             @SerialName("public")
             PUBLIC,
