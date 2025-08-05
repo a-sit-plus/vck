@@ -27,24 +27,19 @@ data class RqesRequestOptions(
     override fun toPresentationDefinition(
         containerJwt: FormatContainerJwt,
         containerSdJwt: FormatContainerSdJwt,
-        flow: PresentationRequestParameters.Flow?
     ): PresentationDefinition = PresentationDefinition(
         id = uuid4().toString(),
-        inputDescriptors = this.toInputDescriptor(containerJwt, containerSdJwt, flow)
+        inputDescriptors = this.toInputDescriptor(containerJwt, containerSdJwt)
     )
 
     override fun toInputDescriptor(
         containerJwt: FormatContainerJwt,
         containerSdJwt: FormatContainerSdJwt,
-        flow: PresentationRequestParameters.Flow?
     ): List<InputDescriptor> = credentials.map { requestOptionCredential ->
-        QesInputDescriptor(
+        DifInputDescriptor(
             id = requestOptionCredential.buildId(),
             format = requestOptionCredential.toFormatHolder(containerJwt, containerSdJwt),
             constraints = requestOptionCredential.toConstraint(),
-            transactionData = if (flow != PresentationRequestParameters.Flow.OID4VP) transactionData?.mapNotNull { entry ->
-                entry.makeUC5compliant()?.toBase64UrlJsonString()
-            } else null
         )
     }
 
