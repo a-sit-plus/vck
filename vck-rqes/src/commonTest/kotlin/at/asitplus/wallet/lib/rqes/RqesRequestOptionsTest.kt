@@ -92,7 +92,6 @@ internal fun buildRqesRequestOptions(
     )
 }
 
-//TODO other transactionData
 private fun getTransactionData(ids: Set<String>): TransactionData = QesAuthorization.create(
     documentDigest = listOf(getDocumentDigests()),
     signatureQualifier = SignatureQualifier.EU_EIDAS_QES,
@@ -101,7 +100,6 @@ private fun getTransactionData(ids: Set<String>): TransactionData = QesAuthoriza
     transactionDataHashAlgorithms = setOf(Digest.SHA256.oid.toString()),
 ).getOrThrow()
 
-@Suppress("DEPRECATION")
 private fun getDocumentDigests(): RqesDocumentDigestEntry = RqesDocumentDigestEntry.create(
     label = uuid4().toString(),
     hash = uuid4().bytes,

@@ -1,11 +1,6 @@
 package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.dif.*
-import at.asitplus.openid.TransactionData
-import at.asitplus.rqes.QesInputDescriptor
-import at.asitplus.rqes.collection_entries.QCertCreationAcceptance
-import at.asitplus.rqes.collection_entries.QesAuthorization
-import at.asitplus.wallet.lib.agent.PresentationRequestParameters
 import at.asitplus.wallet.lib.openid.OpenIdRequestOptions
 import at.asitplus.wallet.lib.openid.RequestOptions
 import com.benasher44.uuid.uuid4
@@ -42,19 +37,4 @@ data class RqesRequestOptions(
             constraints = requestOptionCredential.toConstraint(),
         )
     }
-
-    private fun TransactionData.makeUC5compliant(): TransactionData? =
-        when (this) {
-            is QesAuthorization -> this.copy(
-                credentialIds = null,
-                transactionDataHashAlgorithms = null
-            )
-
-            is QCertCreationAcceptance -> this.copy(
-                credentialIds = null,
-                transactionDataHashAlgorithms = null
-            )
-
-            else -> null
-        }
 }

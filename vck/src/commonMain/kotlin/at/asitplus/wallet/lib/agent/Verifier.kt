@@ -34,7 +34,7 @@ interface Verifier {
     suspend fun verifyPresentationSdJwt(
         input: SdJwtSigned,
         challenge: String,
-        transactionData: Pair<PresentationRequestParameters.Flow, List<TransactionDataBase64Url>>? = null,
+        transactionData: List<TransactionDataBase64Url>? = null,
     ): VerifyPresentationResult
 
     /**
