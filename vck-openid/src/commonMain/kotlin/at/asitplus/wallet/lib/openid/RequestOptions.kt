@@ -1,16 +1,7 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
-import at.asitplus.dif.Constraint
-import at.asitplus.dif.ConstraintField
-import at.asitplus.dif.ConstraintFilter
-import at.asitplus.dif.DifInputDescriptor
-import at.asitplus.dif.FormatContainerJwt
-import at.asitplus.dif.FormatContainerSdJwt
-import at.asitplus.dif.FormatHolder
-import at.asitplus.dif.InputDescriptor
-import at.asitplus.dif.PresentationDefinition
-import at.asitplus.dif.RequirementEnum
+import at.asitplus.dif.*
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment.NameSegment
 import at.asitplus.openid.AuthenticationRequestParameters
@@ -20,18 +11,7 @@ import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.openid.OpenIdConstants.SCOPE_PROFILE
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.TransactionData
-import at.asitplus.openid.dcql.DCQLClaimsPathPointer
-import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment
-import at.asitplus.openid.dcql.DCQLClaimsQueryList
-import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
-import at.asitplus.openid.dcql.DCQLCredentialQueryInstance
-import at.asitplus.openid.dcql.DCQLCredentialQueryList
-import at.asitplus.openid.dcql.DCQLIsoMdocClaimsQuery
-import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstraints
-import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
-import at.asitplus.openid.dcql.DCQLQuery
-import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
-import at.asitplus.wallet.lib.agent.PresentationRequestParameters.Flow
+import at.asitplus.openid.dcql.*
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
@@ -100,14 +80,6 @@ interface RequestOptions {
 
     val transactionData: List<TransactionData>?
 
-    /**
-     * [rqesFlow] is used to decide where transaction data is encoded:
-     * [Flow.UC5] for UC5 compliant,
-     * [Flow.OID4VP] for OID compliant
-     * and null for both
-     */
-    val rqesFlow: Flow?
-
     fun buildScope(): String = listOf(SCOPE_OPENID, SCOPE_PROFILE).joinToString(" ")
 
     fun toDCQLQuery(): DCQLQuery?
@@ -115,13 +87,11 @@ interface RequestOptions {
     fun toPresentationDefinition(
         containerJwt: FormatContainerJwt,
         containerSdJwt: FormatContainerSdJwt,
-        flow: Flow? = null,
     ): PresentationDefinition?
 
     fun toInputDescriptor(
         containerJwt: FormatContainerJwt,
         containerSdJwt: FormatContainerSdJwt,
-        flow: Flow? = null,
     ): List<InputDescriptor>
 }
 
@@ -135,7 +105,6 @@ data class OpenIdRequestOptions(
     override val encryption: Boolean = false,
     override val presentationMechanism: PresentationMechanismEnum = PresentationMechanismEnum.PresentationExchange,
     override val transactionData: List<TransactionData>? = null,
-    override val rqesFlow: Flow? = null,
 ) : RequestOptions {
 
     override fun toDCQLQuery(): DCQLQuery? = if (credentials.isEmpty()) null else DCQLQuery(
@@ -200,16 +169,14 @@ data class OpenIdRequestOptions(
     override fun toPresentationDefinition(
         containerJwt: FormatContainerJwt,
         containerSdJwt: FormatContainerSdJwt,
-        flow: Flow?,
     ): PresentationDefinition = PresentationDefinition(
         id = uuid4().toString(),
-        inputDescriptors = toInputDescriptor(containerJwt, containerSdJwt, flow)
+        inputDescriptors = toInputDescriptor(containerJwt, containerSdJwt)
     )
 
     override fun toInputDescriptor(
         containerJwt: FormatContainerJwt,
         containerSdJwt: FormatContainerSdJwt,
-        flow: Flow?,
     ): List<InputDescriptor> = credentials.map {
         DifInputDescriptor(
             id = it.buildId(),
