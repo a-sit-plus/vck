@@ -2,19 +2,21 @@ package at.asitplus.rqes
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import at.asitplus.rqes.collection_entries.RqesDocumentDigestEntry.DocumentLocationMethod
 
 /**
  * After D3.1: UC Specification WP3.
- * However, this class is potentially a mistake in the draft spec vs test vector,
- * currently we need it to be a sealed class with polymorphic serialization to get the structure
- * `method: {type: NAME}`
- * sealed class would instead serialize to
- * `method: NAME`
- * which might be the corrected implementation in the next draft.
+ * Describes the restrictions/way of accessing a document
  *
- * The method describes the restrictions/way of accessing a document
+ * This class serializes to
+ * `{"type":"OTP","oneTimePassword":"1234"}`
+ * `{"type":"public"}`
+ * which is not to be confused with [DocumentLocationMethod] which instead serializes to
+ * `{"document_access_mode":"OTP","oneTimePassword":"1234"}`
+ * `{"document_access_mode":"public", "oneTimePassword": null}`
+ *
+ * but otherwise does the exact same thing. This was never unified.
  */
-//TODO: Unify with [at.asitplus.rqes.collection_entries.RqesDocumentDigest.DocumentLocationMethod.DocumentAccessMethod] as soon as spec allows
 @Serializable
 @SerialName("method")
 sealed class Method {
@@ -24,7 +26,6 @@ sealed class Method {
      * fetched from [documentLocationUri] with a https-request
      * without further restrictions.
      */
-    @Suppress("DEPRECATION")
     @Serializable
     @SerialName("public")
     data object Public : Method()
@@ -36,7 +37,6 @@ sealed class Method {
      * input the shown value and only then allows to fetch the
      * document corresponding to [hash].
      */
-    @Suppress("DEPRECATION")
     @Serializable
     @SerialName("OTP")
     data class OTP(
@@ -50,7 +50,6 @@ sealed class Method {
      * [documentLocationUri]. The document should be fetched
      * using the ‘Basic’ HTTP Authentication Scheme (RFC 7617).
      */
-    @Suppress("DEPRECATION")
     @Serializable
     @SerialName("Basic_Auth")
     data object Basic : Method()
@@ -61,7 +60,6 @@ sealed class Method {
      * [documentLocationUri]. The document should be fetched
      * using the ‘Digest’ HTTP Authentication Scheme (RFC 7616).
      */
-    @Suppress("DEPRECATION")
     @Serializable
     @SerialName("Digest_Auth")
     data object Digest : Method()
@@ -73,7 +71,6 @@ sealed class Method {
      * using the ‘OAuth 2.0’ Authentication Framework (RFC6749
      * and RFC8252).
      */
-    @Suppress("DEPRECATION")
     @Serializable
     @SerialName("OAuth_20")
     data object Oauth2 : Method()
