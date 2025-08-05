@@ -2,12 +2,7 @@ package at.asitplus.rqes
 
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.InputDescriptor
-import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.AuthorizationDetails
-import at.asitplus.openid.OpenIdAuthorizationDetails
-import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.TransactionData
-import at.asitplus.openid.odcJsonSerializer
+import at.asitplus.openid.*
 import at.asitplus.rqes.collection_entries.QCertCreationAcceptance
 import at.asitplus.rqes.collection_entries.QesAuthorization
 import at.asitplus.rqes.serializers.InputDescriptorSerializer
@@ -21,7 +16,6 @@ import kotlinx.serialization.modules.polymorphic
 private val inputDescriptorModule = SerializersModule {
     polymorphic(InputDescriptor::class) {
         subclass(DifInputDescriptor::class, DifInputDescriptor.serializer())
-        subclass(QesInputDescriptor::class, QesInputDescriptor.serializer())
     }
     polymorphicDefaultSerializer(
         InputDescriptor::class,
@@ -68,7 +62,7 @@ private val transactionDataModule = SerializersModule {
         subclass(QesAuthorization::class, QesAuthorization.serializer())
         subclass(QCertCreationAcceptance::class, QCertCreationAcceptance.serializer())
     }
-    contextual(at.asitplus.rqes.serializers.DeprecatedBase64URLTransactionDataSerializer)
+    contextual(at.asitplus.rqes.serializers.Base64URLTransactionDataSerializer)
 }
 
 /**

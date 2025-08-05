@@ -2,9 +2,7 @@ package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.InputDescriptor
-import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.TransactionData
-import at.asitplus.rqes.QesInputDescriptor
 import at.asitplus.rqes.collection_entries.QCertCreationAcceptance
 import at.asitplus.rqes.collection_entries.QesAuthorization
 import at.asitplus.rqes.collection_entries.RqesDocumentDigestEntry
@@ -23,53 +21,12 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.util.*
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.PolymorphicSerializer
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.*
 
 /**
  * Test vectors taken from "Transaction Data entries as defined in D3.1: UC Specification WP3"
  */
 class TransactionDataInterop : FreeSpec({
-
-    val presentationDefinitionAsJsonString = """
-        {
-            "id": "d76c51b7-ea90-49bb-8368-6b3d194fc131",
-            "input_descriptors": [
-                {
-                    "id": "IdentityCredential",
-                    "format": {
-                        "vc+sd-jwt": {}
-                    },
-                    "constraints": {
-                        "limit_disclosure": "required",
-                        "fields": [
-                            {
-                                "path": ["$.vct"],
-                                "filter": {
-                                    "type": "string",
-                                    "const": "IdentityCredential"
-                                }
-                            },
-                            {
-                                "path": ["$.family_name"]
-                            },
-                            {
-                                "path": ["$.given_name"]
-                            }
-                        ]
-                    },
-                    "transaction_data": [
-                        "ewogICJ0eXBlIjogInFlc19hdXRob3JpemF0aW9uIiwKICAic2lnbmF0dXJlUXVhbGlmaWVyIjogImV1X2VpZGFzX3FlcyIsCiAgImNyZWRlbnRpYWxJRCI6ICJvRW92QzJFSEZpRUZyRHBVeDhtUjBvN3llR0hrMmg3NGIzWHl3a05nQkdvPSIsCiAgImRvY3VtZW50RGlnZXN0cyI6IFsKICAgIHsKICAgICAgImxhYmVsIjogIkV4YW1wbGUgQ29udHJhY3QiLAogICAgICAiaGFzaCI6ICJzVE9nd09tKzQ3NGdGajBxMHgxaVNOc3BLcWJjc2U0SWVpcWxEZy9IV3VJPSIsCiAgICAgICJoYXNoQWxnb3JpdGhtT0lEIjogIjIuMTYuODQwLjEuMTAxLjMuNC4yLjEiLAogICAgICAiZG9jdW1lbnRMb2NhdGlvbl91cmkiOiAiaHR0cHM6Ly9wcm90ZWN0ZWQucnAuZXhhbXBsZS9jb250cmFjdC0wMS5wZGY/dG9rZW49SFM5bmFKS1d3cDkwMWhCY0szNDhJVUhpdUg4Mzc0IiwKICAgICAgImRvY3VtZW50TG9jYXRpb25fbWV0aG9kIjogewogICAgICAgICJkb2N1bWVudF9hY2Nlc3NfbW9kZSI6ICJPVFAiLAogICAgICAgICJvbmVUaW1lUGFzc3dvcmQiOiAibXlGaXJzdFBhc3N3b3JkIgogICAgICB9LAogICAgICAiRFRCUy9SIjogIlZZRGw0b1RlSjVUbUlQQ1hLZFRYMU1TV1JMSTlDS1ljeU1SejZ4bGFHZyIsCiAgICAgICJEVEJTL1JIYXNoQWxnb3JpdGhtT0lEIjogIjIuMTYuODQwLjEuMTAxLjMuNC4yLjEiCiAgICB9CiAgXSwKICAicHJvY2Vzc0lEIjogImVPWjZVd1h5ZUZMSzk4RG81MXgzM2ZtdXY0T3FBejVaYzRsc2hLTnRFZ1E9Igp9",
-                        "ewogICJ0eXBlIjogInFjZXJ0X2NyZWF0aW9uX2FjY2VwdGFuY2UiLAogICJRQ190ZXJtc19jb25kaXRpb25zX3VyaSI6ICJodHRwczovL2V4YW1wbGUuY29tL3RvcyIsCiAgIlFDX2hhc2giOiAia1hBZ3dEY2RBZTNvYnhwbzhVb0RrQytEK2I3T0NyRG84SU9HWmpTWDgvTT0iLAogICJRQ19oYXNoQWxnb3JpdGhtT0lEIjogIjIuMTYuODQwLjEuMTAxLjMuNC4yLjEiCn0="
-                    ]
-                }
-            ]
-        }
-    """.trimIndent().replace("\n", "").replace("\r", "").replace(" ", "")
 
     val transactionDataTest = QCertCreationAcceptance(
         qcTermsConditionsUri = "abc", qcHash = "cde".decodeBase64Bytes(), qcHashAlgorithmOid = KnownOIDs.sha_256
@@ -86,27 +43,6 @@ class TransactionDataInterop : FreeSpec({
     "Base64Url Serialization is stable" {
         val encoded = vckJsonSerializer.encodeToString(Base64URLTransactionDataSerializer, transactionDataTest)
         vckJsonSerializer.decodeFromString(Base64URLTransactionDataSerializer, encoded).shouldBe(transactionDataTest)
-    }
-
-    "Backwards compatible with escaped Json" {
-        val incorrectlyEncoded = """
-            "{\"type\":\"qcert_creation_acceptance\",\"QC_terms_conditions_uri\":\"https://apps.egiz.gv.at/qtsp\",\"QC_hash\":\"47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=\",\"QC_hashAlgorithmOID\":\"2.16.840.1.101.3.4.2.1\"}"
-        """.trimIndent()
-        @Suppress("DEPRECATION") val decoded =
-            vckJsonSerializer.decodeFromString(at.asitplus.rqes.serializers.DeprecatedBase64URLTransactionDataSerializer, incorrectlyEncoded)
-        decoded.shouldBeInstanceOf<QCertCreationAcceptance>()
-    }
-
-    "QesInputDescriptor serializable" {
-        val input = QesInputDescriptor(
-            id = "123",
-            transactionData = listOf(
-                transactionDataTest.toBase64UrlJsonString()
-            )
-        )
-        val serialized = vckJsonSerializer.encodeToString(input)
-        serialized.shouldNotContain("type")
-        vckJsonSerializer.decodeFromString(PolymorphicSerializer(InputDescriptor::class), serialized).shouldBe(input)
     }
 
     "DifInputDescriptor Sanity Check" {
@@ -187,13 +123,6 @@ class TransactionDataInterop : FreeSpec({
             vckJsonSerializer.encodeToJsonElement(PolymorphicSerializer(TransactionData::class), transactionData)
                 .canonicalize().shouldBe(expected)
         }
-    }
-
-    "The presentation Definition can be parsed" {
-        val presentationDefinition =
-            vckJsonSerializer.decodeFromString<PresentationDefinition>(presentationDefinitionAsJsonString)
-        val first = presentationDefinition.inputDescriptors.first().shouldBeInstanceOf<QesInputDescriptor>()
-        first.transactionData shouldNotBe null
     }
 })
 

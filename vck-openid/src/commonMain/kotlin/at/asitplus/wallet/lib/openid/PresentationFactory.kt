@@ -2,9 +2,13 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.dcapi.DCAPIHandover
+import at.asitplus.dcapi.OID4VPHandover
+import at.asitplus.dcapi.OpenID4VPDCAPIHandoverInfo
+import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
 import at.asitplus.dif.ClaimFormat
 import at.asitplus.dif.FormatHolder
-import at.asitplus.jsonpath.JsonPath
+import at.asitplus.iso.*
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.signum.indispensable.CryptoPublicKey
@@ -12,43 +16,23 @@ import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.signum.indispensable.josef.JsonWebKey
-import at.asitplus.signum.indispensable.josef.JwsAlgorithm
-import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.signum.indispensable.josef.toJsonWebKey
+import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.*
-import at.asitplus.wallet.lib.cbor.SignCoseFun
-import at.asitplus.wallet.lib.agent.PresentationRequestParameters.Flow
 import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
+import at.asitplus.wallet.lib.cbor.SignCoseFun
 import at.asitplus.wallet.lib.data.CredentialPresentation
-import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
-import at.asitplus.iso.ClientIdToHash
-import at.asitplus.dcapi.DCAPIHandover
-import at.asitplus.dcapi.OID4VPHandover
-import at.asitplus.dcapi.OpenID4VPDCAPIHandoverInfo
-import at.asitplus.iso.DeviceAuthentication
-import at.asitplus.iso.DeviceNameSpaces
-import at.asitplus.iso.ResponseUriToHash
-import at.asitplus.iso.SessionTranscript
-import at.asitplus.iso.sha256
-import at.asitplus.iso.wrapInCborTag
-import at.asitplus.signum.indispensable.josef.JwkType
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import io.github.aakira.napier.Napier
-import io.ktor.utils.io.core.toByteArray
+import io.ktor.utils.io.core.*
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlin.time.Clock
-import kotlinx.serialization.PolymorphicSerializer
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.encodeToByteArray
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.jsonArray
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.random.Random
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 
 internal class PresentationFactory(
@@ -75,7 +59,7 @@ internal class PresentationFactory(
             jsonWebKeys != null && (clientMetadata?.requestsEncryption() == true || requestsDcApiEncryption)
         val clientId = request.clientId
         val responseUrl = request.responseUrl
-        val transactionData = request.parseTransactionData()
+        val transactionData = request.transactionData
         val mdocGeneratedNonce = if (clientId != null && responseUrl != null) {
             if (responseWillBeEncrypted) Random.nextBytes(16).encodeToString(Base64UrlStrict) else ""
         } else null
@@ -311,32 +295,4 @@ internal class PresentationFactory(
         else -> false
     }
 
-}
-
-/**
- * Parses all `transaction_data` fields from the request, with a JsonPath, because
- * ... for OpenID4VP Draft 23, that's encoded in the AuthnRequest
- * ... but for Potential UC 5, that's encoded in the input descriptor
- *     and we cannot deserialize into data classes defined in [at.asitplus.rqes]
- *
- * The two standards are not compatible
- * For interoperability if both are present we prefer OpenID over UC5
- */
-@Suppress("DEPRECATION")
-internal fun RequestParameters.parseTransactionData(): Pair<Flow, List<TransactionDataBase64Url>>? {
-    val jsonRequest =
-        vckJsonSerializer.encodeToJsonElement(PolymorphicSerializer(RequestParameters::class), this)
-
-    val rawTransactionData = JsonPath("$..transaction_data").query(jsonRequest)
-        .flatMap { it.value.jsonArray }
-        .map { it as JsonPrimitive }
-        .ifEmpty { return null }
-
-    //Do not change to map because keys are unordered!
-    val oid4vpTransactionData: List<Pair<JsonPrimitive, TransactionData>> = rawTransactionData.map {
-        it to vckJsonSerializer.decodeFromJsonElement(at.asitplus.wallet.lib.data.DeprecatedBase64URLTransactionDataSerializer, it)
-    }.filter { it.second.credentialIds != null }
-
-    return if (oid4vpTransactionData.isNotEmpty()) Flow.OID4VP to oid4vpTransactionData.map { it.first }
-    else Flow.UC5 to rawTransactionData
 }
