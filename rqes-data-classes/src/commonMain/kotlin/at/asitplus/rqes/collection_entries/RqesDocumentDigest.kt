@@ -160,7 +160,7 @@ data class RqesDocumentDigestEntry private constructor(
      * information how to access
      * [documentLocationUri].
      */
-    @Suppress("DEPRECATION")
+//    @Suppress("DEPRECATION")
     @Serializable
     @SerialName("documentLocation_method")
     data class DocumentLocationMethod(
