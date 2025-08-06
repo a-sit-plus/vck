@@ -3,7 +3,7 @@ package at.asitplus.openid
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.rqes.Hashes
-import at.asitplus.rqes.collection_entries.SignatureQualifier
+import at.asitplus.rqes.enums.SignatureQualifier
 import at.asitplus.rqes.contentEquals
 import at.asitplus.rqes.contentHashCode
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
@@ -384,9 +384,6 @@ data class AuthenticationRequestParameters(
      * parameter set with details about the transaction that the Verifier is requesting the End-User to authorize.
      * The Wallet MUST return an error if a request contains even one unrecognized transaction data type or transaction
      * data not conforming to the respective type definition.
-     *
-     * Transaction data classes are implemented in module [rqes-data-classes] and thus not known at compile time.
-     * For the contextual serializer see [at.asitplus.openid.qes.Base64URLTransactionDataSerializer]
      */
     @SerialName("transaction_data")
     override val transactionData: List<TransactionDataBase64Url>? = null,

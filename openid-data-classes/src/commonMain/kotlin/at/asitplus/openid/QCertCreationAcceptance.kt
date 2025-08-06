@@ -1,13 +1,10 @@
-package at.asitplus.openid.qes
+package at.asitplus.openid
 
-import at.asitplus.openid.TransactionData
-import at.asitplus.openid.odcJsonSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * D3.1: UC Specification WP3:
@@ -77,15 +74,7 @@ data class QCertCreationAcceptance(
     @SerialName("transaction_data_hashes_alg")
     override val transactionDataHashAlgorithms: Set<String>? = null,
 
-    ) : TransactionData {
-
-    override fun toBase64UrlJsonString(): JsonPrimitive =
-        odcJsonSerializer.parseToJsonElement(
-            odcJsonSerializer.encodeToString(
-                Base64URLTransactionDataSerializer,
-                this
-            )
-        ) as JsonPrimitive
+    ) : TransactionData() {
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -111,5 +100,3 @@ data class QCertCreationAcceptance(
         return result
     }
 }
-
-

@@ -3,7 +3,7 @@ package at.asitplus.rqes
 import at.asitplus.rqes.collection_entries.AuthParameters
 import at.asitplus.rqes.collection_entries.CertificateParameters
 import at.asitplus.rqes.collection_entries.KeyParameters
-import at.asitplus.rqes.collection_entries.SignatureQualifier
+import at.asitplus.rqes.enums.SignatureQualifier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

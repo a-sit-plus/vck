@@ -3,9 +3,9 @@ package at.asitplus.wallet.lib.rqes
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.InputDescriptor
 import at.asitplus.openid.TransactionData
-import at.asitplus.openid.qes.Base64URLTransactionDataSerializer
-import at.asitplus.openid.qes.QCertCreationAcceptance
-import at.asitplus.openid.qes.QesAuthorization
+import at.asitplus.wallet.lib.data.Base64URLTransactionDataSerializer
+import at.asitplus.openid.QCertCreationAcceptance
+import at.asitplus.openid.QesAuthorization
 import at.asitplus.rqes.collection_entries.RqesDocumentDigestEntry
 import at.asitplus.signum.indispensable.asn1.KnownOIDs
 import at.asitplus.signum.indispensable.asn1.sha_256
@@ -34,9 +34,9 @@ class TransactionDataInterop : FreeSpec({
 
     "Polymorphic Serialization is stable" {
         val encoded =
-            vckJsonSerializer.encodeToString(PolymorphicSerializer(TransactionData::class), transactionDataTest)
+            vckJsonSerializer.encodeToString(TransactionData.serializer(), transactionDataTest)
         encoded shouldContain "type"
-        vckJsonSerializer.decodeFromString(PolymorphicSerializer(TransactionData::class), encoded)
+        vckJsonSerializer.decodeFromString(TransactionData.serializer(), encoded)
             .shouldBe(transactionDataTest)
     }
 
@@ -49,7 +49,7 @@ class TransactionDataInterop : FreeSpec({
         val input = DifInputDescriptor(id = "123")
         val serialized = vckJsonSerializer.encodeToString(input)
         serialized.shouldNotContain("type")
-        vckJsonSerializer.decodeFromString(PolymorphicSerializer(InputDescriptor::class), serialized).shouldBe(input)
+        vckJsonSerializer.decodeFromString(InputDescriptor.serializer(), serialized).shouldBe(input)
     }
 
     "QesAuthorization can be parsed" - {
@@ -73,7 +73,7 @@ class TransactionDataInterop : FreeSpec({
                 testVector.decodeToByteArray(Base64UrlStrict).decodeToString()
             ).canonicalize() as JsonObject
             val actual =
-                vckJsonSerializer.encodeToJsonElement(PolymorphicSerializer(TransactionData::class), transactionData)
+                vckJsonSerializer.encodeToJsonElement(TransactionData.serializer(), transactionData)
                     .canonicalize() as JsonObject
 
             actual["credentialID"] shouldBe expected["credentialID"]
@@ -120,7 +120,7 @@ class TransactionDataInterop : FreeSpec({
                 testVector.decodeToByteArray(Base64UrlStrict).decodeToString()
             ).canonicalize()
 
-            vckJsonSerializer.encodeToJsonElement(PolymorphicSerializer(TransactionData::class), transactionData)
+            vckJsonSerializer.encodeToJsonElement(TransactionData.serializer(), transactionData)
                 .canonicalize().shouldBe(expected)
         }
     }

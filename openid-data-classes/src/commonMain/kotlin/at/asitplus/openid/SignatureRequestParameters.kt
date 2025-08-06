@@ -2,7 +2,7 @@ package at.asitplus.openid
 
 import at.asitplus.rqes.collection_entries.DocumentLocation
 import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
-import at.asitplus.rqes.collection_entries.SignatureQualifier
+import at.asitplus.rqes.enums.SignatureQualifier
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer

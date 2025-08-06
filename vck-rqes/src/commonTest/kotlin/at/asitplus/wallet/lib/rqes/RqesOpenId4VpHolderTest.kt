@@ -10,7 +10,7 @@ import at.asitplus.rqes.SignHashRequestParameters
 import at.asitplus.rqes.collection_entries.CertificateParameters
 import at.asitplus.rqes.collection_entries.DocumentDigest
 import at.asitplus.rqes.collection_entries.KeyParameters
-import at.asitplus.rqes.collection_entries.SignatureQualifier
+import at.asitplus.rqes.enums.SignatureQualifier
 import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.signum.indispensable.Digest
