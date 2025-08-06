@@ -53,14 +53,14 @@ class RequestParser(
             ?: catchingUnwrapped { // maybe it's in the URL parameters
                 Url(input).let {
                     val params = it.parameters.flattenEntries().toMap().decodeFromUrlQuery<JsonObject>()
-                    val parsed = json.decodeFromJsonElement(PolymorphicSerializer(RequestParameters::class), params)
+                    val parsed = json.decodeFromJsonElement(RequestParameters.serializer(),params)
                     matchRequestParameterCases(it, parsed, dcApiRequest)
                 }
             }.onFailure {
                 Napier.d("parseRequestParameters: Failed for $input", it)
             }.getOrNull()
             ?: catching {  // maybe it is already a JSON string
-                val params = vckJsonSerializer.decodeFromString(PolymorphicSerializer(RequestParameters::class), input)
+                val params = vckJsonSerializer.decodeFromString(RequestParameters.serializer(), input)
                 matchRequestParameterCases(input, params, dcApiRequest)
             }.onFailure {
                 Napier.d("parseRequestParameters: Failed for $input", it)
@@ -116,7 +116,7 @@ class RequestParser(
         dcApiRequest: DCAPIRequest? = null
     ): RequestParametersFrom<*>? =
         JwsSigned.deserialize<RequestParameters>(
-            PolymorphicSerializer(RequestParameters::class),
+            RequestParameters.serializer(),
             requestObject,
             vckJsonSerializer
         ).onFailure {
