@@ -1,8 +1,11 @@
-package at.asitplus.openid
+package at.asitplus.rqes.collection_entries
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+/**
+ * CSC API v2.1.0.1 Ch 11.12
+ */
 @Suppress("unused")
 @Serializable
 enum class SignatureQualifier {

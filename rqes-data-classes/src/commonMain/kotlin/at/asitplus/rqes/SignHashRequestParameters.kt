@@ -1,14 +1,11 @@
 package at.asitplus.rqes
 
-import at.asitplus.openid.Hashes
-import at.asitplus.openid.contentEquals
-import at.asitplus.openid.contentHashCode
 import at.asitplus.rqes.enums.OperationMode
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
+import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient

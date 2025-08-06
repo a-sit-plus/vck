@@ -1,9 +1,8 @@
 package at.asitplus.rqes
 
-import at.asitplus.openid.SignatureQualifier
-import at.asitplus.rqes.collection_entries.DocumentDigest
 import at.asitplus.rqes.collection_entries.Document
-import at.asitplus.rqes.collection_entries.or
+import at.asitplus.rqes.collection_entries.DocumentDigest
+import at.asitplus.rqes.collection_entries.SignatureQualifier
 import at.asitplus.rqes.enums.OperationMode
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

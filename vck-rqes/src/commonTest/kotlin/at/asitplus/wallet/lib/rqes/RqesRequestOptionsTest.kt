@@ -2,10 +2,10 @@ package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.iso.sha256
 import at.asitplus.openid.OpenIdConstants
-import at.asitplus.openid.SignatureQualifier
 import at.asitplus.openid.TransactionData
-import at.asitplus.rqes.collection_entries.QesAuthorization
+import at.asitplus.openid.qes.QesAuthorization
 import at.asitplus.rqes.collection_entries.RqesDocumentDigestEntry
+import at.asitplus.rqes.collection_entries.SignatureQualifier
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.eupid.EuPidScheme

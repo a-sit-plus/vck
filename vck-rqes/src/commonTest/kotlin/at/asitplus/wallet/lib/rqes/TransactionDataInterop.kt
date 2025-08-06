@@ -3,10 +3,10 @@ package at.asitplus.wallet.lib.rqes
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.InputDescriptor
 import at.asitplus.openid.TransactionData
-import at.asitplus.rqes.collection_entries.QCertCreationAcceptance
-import at.asitplus.rqes.collection_entries.QesAuthorization
+import at.asitplus.openid.qes.Base64URLTransactionDataSerializer
+import at.asitplus.openid.qes.QCertCreationAcceptance
+import at.asitplus.openid.qes.QesAuthorization
 import at.asitplus.rqes.collection_entries.RqesDocumentDigestEntry
-import at.asitplus.rqes.serializers.Base64URLTransactionDataSerializer
 import at.asitplus.signum.indispensable.asn1.KnownOIDs
 import at.asitplus.signum.indispensable.asn1.sha_256
 import at.asitplus.signum.indispensable.io.Base64UrlStrict

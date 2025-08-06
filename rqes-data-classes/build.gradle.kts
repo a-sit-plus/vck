@@ -40,7 +40,7 @@ kotlin {
                 implementation(project.napier())
                 implementation(project.ktor("http"))
                 api(project(":dif-data-classes"))
-                api(project(":openid-data-classes"))
+//                api(project(":openid-data-classes"))
                 api("com.benasher44:uuid:${VcLibVersions.uuid}")
                 api("at.asitplus.signum:indispensable-cosef:${VcLibVersions.signum}")
                 api("at.asitplus.signum:indispensable-josef:${VcLibVersions.signum}")

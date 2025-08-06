@@ -2,6 +2,10 @@ package at.asitplus.openid
 
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.rqes.Hashes
+import at.asitplus.rqes.collection_entries.SignatureQualifier
+import at.asitplus.rqes.contentEquals
+import at.asitplus.rqes.contentHashCode
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
@@ -382,7 +386,7 @@ data class AuthenticationRequestParameters(
      * data not conforming to the respective type definition.
      *
      * Transaction data classes are implemented in module [rqes-data-classes] and thus not known at compile time.
-     * For the contextual serializer see [at.asitplus.rqes.serializers.Base64URLTransactionDataSerializer]
+     * For the contextual serializer see [at.asitplus.openid.qes.Base64URLTransactionDataSerializer]
      */
     @SerialName("transaction_data")
     override val transactionData: List<TransactionDataBase64Url>? = null,

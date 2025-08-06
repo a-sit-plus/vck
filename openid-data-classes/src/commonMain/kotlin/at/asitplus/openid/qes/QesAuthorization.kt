@@ -1,10 +1,12 @@
-package at.asitplus.rqes.collection_entries
+package at.asitplus.openid.qes
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.openid.SignatureQualifier
 import at.asitplus.openid.TransactionData
-import at.asitplus.rqes.rdcJsonSerializer
+import at.asitplus.openid.odcJsonSerializer
+import at.asitplus.rqes.collection_entries.RqesDocumentDigestEntry
+import at.asitplus.rqes.collection_entries.SignatureQualifier
+import at.asitplus.rqes.or
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonPrimitive
@@ -80,9 +82,9 @@ data class QesAuthorization(
     ) : TransactionData {
 
     override fun toBase64UrlJsonString(): JsonPrimitive =
-        rdcJsonSerializer.parseToJsonElement(
-            rdcJsonSerializer.encodeToString(
-                at.asitplus.rqes.serializers.Base64URLTransactionDataSerializer,
+        odcJsonSerializer.parseToJsonElement(
+            odcJsonSerializer.encodeToString(
+                Base64URLTransactionDataSerializer,
                 this
             )
         ) as JsonPrimitive

@@ -2,12 +2,14 @@ package at.asitplus.rqes.collection_entries
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.rqes.Method
+import at.asitplus.rqes.iff
+import at.asitplus.rqes.or
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import at.asitplus.rqes.Method
 
 @ConsistentCopyVisibility
 @Serializable
@@ -115,10 +117,10 @@ data class RqesDocumentDigestEntry private constructor(
      * - [hash] or [dtbsr]
      */
     init {
-        require(hashAlgorithmOid iff hash) {"If any is set both hashAlgorithmOid and hash must be set"}
-        require(dtbsrHashAlgorithmOid iff dataToBeSignedRepresentation) {"If any is set both dtbsrHashAlgorithmOid and dataToBeSignedRepresentation must be set"}
-        require(documentLocationMethod iff documentLocationUri) {"If any is set both documentLocationMethod and documentLocationUri must be set"}
-        require(hash or dataToBeSignedRepresentation) {"Either hash or dataToBeSignedRepresentation must be set"}
+        require(hashAlgorithmOid iff hash) { "If any is set both hashAlgorithmOid and hash must be set" }
+        require(dtbsrHashAlgorithmOid iff dataToBeSignedRepresentation) { "If any is set both dtbsrHashAlgorithmOid and dataToBeSignedRepresentation must be set" }
+        require(documentLocationMethod iff documentLocationUri) { "If any is set both documentLocationMethod and documentLocationUri must be set" }
+        require(hash or dataToBeSignedRepresentation) { "Either hash or dataToBeSignedRepresentation must be set" }
     }
 
     override fun equals(other: Any?): Boolean {
@@ -182,15 +184,20 @@ data class RqesDocumentDigestEntry private constructor(
             if (documentAccessMode == DocumentAccessMode.OTP) require(!oneTimePassword.isNullOrEmpty())
             else require(oneTimePassword.isNullOrEmpty())
         }
+
         enum class DocumentAccessMode {
             @SerialName("public")
             PUBLIC,
+
             @SerialName("OTP")
             OTP,
+
             @SerialName("Basic_Auth")
             BASIC,
+
             @SerialName("Digest_Auth")
             DIGEST,
+
             @SerialName("OAuth_20")
             OAUTH2,
         }
@@ -221,15 +228,3 @@ data class RqesDocumentDigestEntry private constructor(
         }
     }
 }
-
-/**
- * Checks if either both strings are present or null
- */
-internal infix fun Any?.iff(other: Any?): Boolean =
-    (this != null && other != null) or (this == null && other == null)
-
-/**
- * Checks if at least one Element is present
- */
-internal infix fun Any?.or(other: Any?): Boolean =
-    (this != null || other != null)

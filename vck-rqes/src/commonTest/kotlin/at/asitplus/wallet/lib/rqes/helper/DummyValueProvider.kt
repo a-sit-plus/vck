@@ -1,11 +1,7 @@
 package at.asitplus.wallet.lib.rqes.helper
 
-import at.asitplus.openid.SignatureQualifier
 import at.asitplus.rqes.CredentialInfo
-import at.asitplus.rqes.collection_entries.AuthParameters
-import at.asitplus.rqes.collection_entries.CertificateParameters
-import at.asitplus.rqes.collection_entries.KeyParameters
-import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
+import at.asitplus.rqes.collection_entries.*
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
