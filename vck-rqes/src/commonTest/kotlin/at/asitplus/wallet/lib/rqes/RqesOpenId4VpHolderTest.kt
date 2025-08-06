@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.rqes
 import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.TokenRequestParameters
-import at.asitplus.openid.qes.CscAuthorizationDetails
+import at.asitplus.openid.CscAuthorizationDetails
 import at.asitplus.rqes.CredentialInfo
 import at.asitplus.rqes.QtspSignatureRequest
 import at.asitplus.rqes.SignHashRequestParameters
