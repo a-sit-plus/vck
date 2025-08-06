@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.rqes.helper
 
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.TokenRequestParameters
-import at.asitplus.openid.qes.CscAuthorizationDetails
+import at.asitplus.openid.CscAuthorizationDetails
 import at.asitplus.wallet.lib.oauth2.AuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oauth2.ClientAuthRequest
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
