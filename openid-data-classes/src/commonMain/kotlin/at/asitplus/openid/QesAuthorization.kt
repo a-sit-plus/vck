@@ -2,9 +2,9 @@ package at.asitplus.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.rqes.collection_entries.RqesDocumentDigestEntry
-import at.asitplus.rqes.enums.SignatureQualifier
-import at.asitplus.rqes.or
+import at.asitplus.csc.collection_entries.RqesDocumentDigestEntry
+import at.asitplus.csc.enums.SignatureQualifier
+import at.asitplus.csc.or
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

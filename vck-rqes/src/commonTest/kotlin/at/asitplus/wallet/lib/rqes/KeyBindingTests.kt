@@ -4,7 +4,7 @@ import at.asitplus.iso.sha256
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.QCertCreationAcceptance
-import at.asitplus.rqes.contentEquals
+import at.asitplus.csc.contentEquals
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.eupid.EuPidScheme

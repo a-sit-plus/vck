@@ -1,5 +1,9 @@
-
-import at.asitplus.gradle.*
+import at.asitplus.gradle.VcLibVersions
+import at.asitplus.gradle.exportXCFramework
+import at.asitplus.gradle.ktor
+import at.asitplus.gradle.napier
+import at.asitplus.gradle.setupAndroid
+import at.asitplus.gradle.setupDokka
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree.Companion.test
 
@@ -18,18 +22,14 @@ group = "at.asitplus.wallet"
 version = artifactVersion
 
 
-setupAndroid()
-
 kotlin {
 
     jvm()
-
     androidTarget {
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         instrumentedTestVariant.sourceSetTree.set(test)
         publishLibraryVariants("release")
     }
-
     iosArm64()
     iosSimulatorArm64()
     iosX64()
@@ -37,25 +37,30 @@ kotlin {
 
         commonMain {
             dependencies {
-                api(project(":vck-openid"))
-                api(project(":openid-data-classes"))
-                commonImplementationDependencies()
-            }
-        }
-
-        commonTest {
-            dependencies {
-                implementation("at.asitplus.wallet:eupidcredential:${VcLibVersions.eupidcredential}")
+                implementation(project.napier())
+                implementation(project.ktor("http"))
+                api(project(":dif-data-classes"))
+//                api(project(":openid-data-classes"))
+                api("com.benasher44:uuid:${VcLibVersions.uuid}")
+                api("at.asitplus.signum:indispensable-cosef:${VcLibVersions.signum}")
+                api("at.asitplus.signum:indispensable-josef:${VcLibVersions.signum}")
+                api("at.asitplus:jsonpath4k:${VcLibVersions.jsonpath}")
             }
         }
     }
 }
 
+
+setupAndroid()
+
 exportXCFramework(
-    "VckRqesKmm",
-    transitiveExports = false,
+    "CscDataClasses",
+    transitiveExports = true,
     static = false,
-    project(":vck")
+    "at.asitplus.signum:indispensable-cosef:${VcLibVersions.signum}",
+    "at.asitplus.signum:indispensable-josef:${VcLibVersions.signum}",
+    "at.asitplus:jsonpath4k:${VcLibVersions.jsonpath}",
+    "com.benasher44:uuid:${VcLibVersions.uuid}"
 )
 
 val javadocJar = setupDokka(
@@ -68,8 +73,8 @@ publishing {
         withType<MavenPublication> {
             if (this.name != "relocation") artifact(javadocJar)
             pom {
-                name.set("VC-K RQES")
-                description.set("Kotlin Multiplatform library implementing the W3C VC Data Model, with RQES protocol implementations")
+                name.set("CSC Data Classes")
+                description.set("Kotlin Multiplatform data classes for CSC  ")
                 url.set("https://github.com/a-sit-plus/vck")
                 licenses {
                     license {
@@ -113,6 +118,7 @@ publishing {
         }
     }
 }
+
 
 signing {
     val signingKeyId: String? by project

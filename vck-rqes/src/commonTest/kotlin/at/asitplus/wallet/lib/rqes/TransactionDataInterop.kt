@@ -6,7 +6,7 @@ import at.asitplus.openid.TransactionData
 import at.asitplus.wallet.lib.data.Base64URLTransactionDataSerializer
 import at.asitplus.openid.QCertCreationAcceptance
 import at.asitplus.openid.QesAuthorization
-import at.asitplus.rqes.collection_entries.RqesDocumentDigestEntry
+import at.asitplus.csc.collection_entries.RqesDocumentDigestEntry
 import at.asitplus.signum.indispensable.asn1.KnownOIDs
 import at.asitplus.signum.indispensable.asn1.sha_256
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -20,7 +20,6 @@ import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.util.*
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
-import kotlinx.serialization.PolymorphicSerializer
 import kotlinx.serialization.json.*
 
 /**
