@@ -1,6 +1,8 @@
 package at.asitplus.openid
 
 import at.asitplus.dif.ddcJsonSerializer
+import at.asitplus.openid.qes.RequestParametersSerializer
+import at.asitplus.openid.qes.SignatureRequestParameters
 import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
@@ -10,20 +12,22 @@ import kotlinx.serialization.modules.polymorphic
 @Suppress("UNCHECKED_CAST")
 private val requestParametersModule = SerializersModule {
     polymorphic(RequestParameters::class) {
-        subclass(AuthenticationRequestParameters::class, AuthenticationRequestParameters.serializer())
+        subclass(
+            SignatureRequestParameters::class,
+            SignatureRequestParameters.serializer()
+        )
+        subclass(
+            AuthenticationRequestParameters::class,
+            AuthenticationRequestParameters.serializer()
+        )
     }
     polymorphicDefaultSerializer(
         RequestParameters::class,
-        defaultSerializerProvider = {
-            when (it) {
-                is AuthenticationRequestParameters -> AuthenticationRequestParameters.serializer() as SerializationStrategy<RequestParameters>
-                else -> throw Exception("Serializer for ${it::class} unknown")
-            }
-        },
+        defaultSerializerProvider = { RequestParametersSerializer },
     )
     polymorphicDefaultDeserializer(
         RequestParameters::class,
-        defaultDeserializerProvider = { AuthenticationRequestParameters.serializer() },
+        defaultDeserializerProvider = { RequestParametersSerializer }
     )
 }
 
