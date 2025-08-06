@@ -4,8 +4,7 @@ import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.supreme.hash.digest
 import io.ktor.utils.io.charsets.*
 import io.ktor.utils.io.core.*
-import kotlinx.serialization.ContextualSerializer
-import kotlinx.serialization.PolymorphicSerializer
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonPrimitive
 
 
@@ -24,17 +23,9 @@ fun TransactionDataBase64Url.sha256(): ByteArray =
 /**
  * OID4VP Draft 24: OPTIONAL. Array of strings, where each string is a base64url encoded JSON object that contains a typed parameter
  * set with details about the transaction that the Verifier is requesting the End-User to authorize.
- *
- * SERIALIZATION:
- * This module does not contain a TransactionData implementation. This means all serialization is done either
- * via [ContextualSerializer] (for when the data class is used but not all data classes are known in this module)
- * or via [PolymorphicSerializer] (when all data class implementations are known). These can be defined as submodules of a serializer.
- * The contextual serializer can be overridden and the polymorphic scope can be extended.
- * For an example implementation refer to [at.asitplus.rqes.rdcJsonSerializer] found in Json.kt.
- * When vck-rqes is used the Initializer will copy this into vckJsonSerializer. In this case the contextual serializer is the default serializer
- * and the polymorphic serializer needs to be specified when necessary.
  */
-interface TransactionData {
+@Serializable
+sealed class TransactionData {
     /**
      * OID4VP: REQUIRED. Array of strings each referencing a Credential requested by the Verifier that can be used to
      * authorize this transaction. In Presentation Exchange, the string matches the `id` field in the Input Descriptor.
@@ -42,7 +33,7 @@ interface TransactionData {
      * If there is more than one element in the array, the Wallet MUST use only one of the referenced Credentials for
      * transaction authorization.
      */
-    val credentialIds: Set<String>?
+    abstract val credentialIds: Set<String>?
 
     /**
      * OID4VP: OPTIONAL. Array of strings each representing a hash algorithm identifier, one of which MUST be used to
@@ -52,9 +43,5 @@ interface TransactionData {
      * present, a default value of sha-256 MUST be used. To promote interoperability, implementations MUST support the
      * `sha-256` hash algorithm.
      */
-    val transactionDataHashAlgorithms: Set<String>?
-
-    fun toBase64UrlJsonString(): TransactionDataBase64Url
-
-    fun sha256(): ByteArray = toBase64UrlJsonString().sha256()
+    abstract val transactionDataHashAlgorithms: Set<String>?
 }

@@ -1,4 +1,4 @@
-package at.asitplus.rqes.collection_entries
+package at.asitplus.rqes.enums
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

@@ -1,15 +1,12 @@
-package at.asitplus.openid.qes
+package at.asitplus.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.openid.TransactionData
-import at.asitplus.openid.odcJsonSerializer
 import at.asitplus.rqes.collection_entries.RqesDocumentDigestEntry
-import at.asitplus.rqes.collection_entries.SignatureQualifier
+import at.asitplus.rqes.enums.SignatureQualifier
 import at.asitplus.rqes.or
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * D3.1: UC Specification WP3:
@@ -79,15 +76,7 @@ data class QesAuthorization(
     @SerialName("transaction_data_hashes_alg")
     override val transactionDataHashAlgorithms: Set<String>? = null,
 
-    ) : TransactionData {
-
-    override fun toBase64UrlJsonString(): JsonPrimitive =
-        odcJsonSerializer.parseToJsonElement(
-            odcJsonSerializer.encodeToString(
-                Base64URLTransactionDataSerializer,
-                this
-            )
-        ) as JsonPrimitive
+    ) : TransactionData() {
 
     /**
      * Validation according to D3.1: UC Specification WP3
