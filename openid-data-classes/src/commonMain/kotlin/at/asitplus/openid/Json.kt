@@ -1,6 +1,5 @@
 package at.asitplus.openid
 
-import at.asitplus.dif.ddcJsonSerializer
 import at.asitplus.openid.qes.RequestParametersSerializer
 import at.asitplus.openid.qes.SignatureRequestParameters
 import kotlinx.serialization.SerializationStrategy
@@ -65,6 +64,6 @@ val odcJsonSerializer by lazy {
         encodeDefaults = false
         classDiscriminator = "type"
         ignoreUnknownKeys = true
-        serializersModule = ddcJsonSerializer.serializersModule.overwriteWith(baseOpenIdSerializerModule)
+        serializersModule = baseOpenIdSerializerModule
     }
 }
