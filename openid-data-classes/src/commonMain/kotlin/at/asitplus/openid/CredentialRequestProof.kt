@@ -5,6 +5,7 @@ import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
 @Serializable
 data class CredentialRequestProof(
@@ -31,7 +32,7 @@ data class CredentialRequestProof(
     val attestation: String? = null,
 ) {
     val jwtParsed: JwsSigned<JsonWebToken>? by lazy {
-        jwt?.let { JwsSigned.deserialize<JsonWebToken>(JsonWebToken.serializer(), it, odcJsonSerializer).getOrNull() }
+        jwt?.let { JwsSigned.deserialize<JsonWebToken>(JsonWebToken.serializer(), it, Json).getOrNull() }
     }
 
     val attestationParsed: JwsSigned<KeyAttestationJwt>? by lazy {

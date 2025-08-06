@@ -1,8 +1,8 @@
 package at.asitplus.wallet.lib.rqes.helper
 
-import at.asitplus.rqes.CredentialInfo
-import at.asitplus.rqes.collection_entries.*
-import at.asitplus.rqes.enums.SignatureQualifier
+import at.asitplus.csc.CredentialInfo
+import at.asitplus.csc.collection_entries.*
+import at.asitplus.csc.enums.SignatureQualifier
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.io.Base64UrlStrict

@@ -2,16 +2,16 @@ package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.catching
 import at.asitplus.openid.*
-import at.asitplus.rqes.CredentialInfo
+import at.asitplus.csc.CredentialInfo
 import at.asitplus.openid.CscAuthorizationDetails
-import at.asitplus.rqes.Hashes
-import at.asitplus.rqes.QtspSignatureRequest
-import at.asitplus.rqes.SignHashRequestParameters
-import at.asitplus.rqes.collection_entries.*
-import at.asitplus.rqes.enums.ConformanceLevel
-import at.asitplus.rqes.enums.SignatureFormat
-import at.asitplus.rqes.enums.SignatureQualifier
-import at.asitplus.rqes.enums.SignedEnvelopeProperty
+import at.asitplus.csc.Hashes
+import at.asitplus.csc.QtspSignatureRequest
+import at.asitplus.csc.SignHashRequestParameters
+import at.asitplus.csc.collection_entries.*
+import at.asitplus.csc.enums.ConformanceLevel
+import at.asitplus.csc.enums.SignatureFormat
+import at.asitplus.csc.enums.SignatureQualifier
+import at.asitplus.csc.enums.SignedEnvelopeProperty
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm.Companion.entries

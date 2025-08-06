@@ -1,12 +1,12 @@
 package at.asitplus.wallet.lib.csc
 
-import at.asitplus.rqes.CredentialInfoRequest
-import at.asitplus.rqes.CredentialListRequest
-import at.asitplus.rqes.CredentialListResponse
-import at.asitplus.rqes.collection_entries.AuthParameters
-import at.asitplus.rqes.collection_entries.CertificateParameters
-import at.asitplus.rqes.collection_entries.KeyParameters
-import at.asitplus.rqes.enums.CertificateOptions
+import at.asitplus.csc.CredentialInfoRequest
+import at.asitplus.csc.CredentialListRequest
+import at.asitplus.csc.CredentialListResponse
+import at.asitplus.csc.collection_entries.AuthParameters
+import at.asitplus.csc.collection_entries.CertificateParameters
+import at.asitplus.csc.collection_entries.KeyParameters
+import at.asitplus.csc.enums.CertificateOptions
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec

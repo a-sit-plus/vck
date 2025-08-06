@@ -4,8 +4,8 @@ import at.asitplus.iso.sha256
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.QesAuthorization
 import at.asitplus.openid.TransactionData
-import at.asitplus.rqes.collection_entries.RqesDocumentDigestEntry
-import at.asitplus.rqes.enums.SignatureQualifier
+import at.asitplus.csc.collection_entries.RqesDocumentDigestEntry
+import at.asitplus.csc.enums.SignatureQualifier
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.eupid.EuPidScheme

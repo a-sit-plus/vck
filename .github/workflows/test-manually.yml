@@ -40,5 +40,5 @@ jobs:
         if: success() || failure()
         with:
           name: All Tests
-          path: dif-data-classes/build/test-results/**/TEST*.xml,openid-data-classes/build/test-results/**/TEST*.xml,rqes-data-classes/build/test-results/**/TEST*.xml,vck/build/test-results/**/TEST*.xml,vck-openid/build/test-results/**/TEST*.xml,vck-openid-ktor/build/test-results/**/TEST*.xml,vck-rqes/build/test-results/**/TEST*.xml,
+          path: dif-data-classes/build/test-results/**/TEST*.xml,openid-data-classes/build/test-results/**/TEST*.xml,csc-data-classes/build/test-results/**/TEST*.xml,vck/build/test-results/**/TEST*.xml,vck-openid/build/test-results/**/TEST*.xml,vck-openid-ktor/build/test-results/**/TEST*.xml,vck-csc/build/test-results/**/TEST*.xml,
           reporter: java-junit

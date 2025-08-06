@@ -2,10 +2,11 @@ package at.asitplus.openid
 
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.dcql.DCQLQuery
-import at.asitplus.rqes.Hashes
-import at.asitplus.rqes.enums.SignatureQualifier
-import at.asitplus.rqes.contentEquals
-import at.asitplus.rqes.contentHashCode
+import at.asitplus.csc.Hashes
+import at.asitplus.csc.serializers.HashesSerializer
+import at.asitplus.csc.enums.SignatureQualifier
+import at.asitplus.csc.contentEquals
+import at.asitplus.csc.contentHashCode
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer

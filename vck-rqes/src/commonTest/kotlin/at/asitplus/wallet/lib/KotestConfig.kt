@@ -1,11 +1,10 @@
-package io.kotest.provided
+package at.asitplus.wallet.lib
+
 import at.asitplus.test.XmlReportingProjectConfig
-import at.asitplus.test.JUnitXmlReporter
+import at.asitplus.wallet.eupid.Initializer
 import at.asitplus.wallet.lib.rqes.Initializer.initRqesModule
 import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
-import io.kotest.core.config.AbstractProjectConfig
-import io.kotest.core.extensions.Extension
 
 /** Wires KMP JUnit XML reporting */
 class ProjectConfig : XmlReportingProjectConfig() {
@@ -13,6 +12,6 @@ class ProjectConfig : XmlReportingProjectConfig() {
         Napier.takeLogarithm()
         Napier.base(DebugAntilog())
         initRqesModule()
-        at.asitplus.wallet.eupid.Initializer.initWithVCK()
+        Initializer.initWithVCK()
     }
 }
