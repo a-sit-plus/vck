@@ -26,7 +26,7 @@ data class RequestObjectParameters(
      */
     @SerialName("wallet_nonce")
     val walletNonce: String? = null,
-) : RequestParameters {
+) : RequestParameters() {
 
     constructor(metadata: OAuth2AuthorizationServerMetadata, nonce: String) : this(
         walletMetadataString = metadata.catchingUnwrapped { odcJsonSerializer.encodeToString(this) }.getOrNull(),

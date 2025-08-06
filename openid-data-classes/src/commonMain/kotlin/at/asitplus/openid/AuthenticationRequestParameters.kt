@@ -402,7 +402,7 @@ data class AuthenticationRequestParameters(
      */
     @SerialName("expected_origins")
     val expectedOrigins: List<String>? = null,
-) : RequestParameters {
+) : RequestParameters() {
 
     /**
      * Reads the [OpenIdConstants.ClientIdScheme] of this request either directly from [clientIdScheme],

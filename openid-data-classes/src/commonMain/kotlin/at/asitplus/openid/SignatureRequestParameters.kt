@@ -1,8 +1,5 @@
-package at.asitplus.openid.qes
+package at.asitplus.openid
 
-import at.asitplus.openid.OpenIdConstants
-import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.rqes.collection_entries.DocumentLocation
 import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
 import at.asitplus.rqes.collection_entries.SignatureQualifier
@@ -138,7 +135,7 @@ data class SignatureRequestParameters(
      */
     @SerialName("transaction_data")
     override val transactionData: List<TransactionDataBase64Url>? = null,
-) : RequestParameters {
+) : RequestParameters() {
 
     override val redirectUrl: String? = null
     override val audience: String? = null
