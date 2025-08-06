@@ -1,10 +1,10 @@
 package at.asitplus.rqes.collection_entries
 
-import at.asitplus.rqes.serializers.Base64X509CertificateSerializer
-import at.asitplus.signum.indispensable.pki.X509Certificate
-import at.asitplus.rqes.enums.CertificateOptions
 import at.asitplus.rqes.CredentialInfo
 import at.asitplus.rqes.CredentialInfoRequest
+import at.asitplus.rqes.enums.CertificateOptions
+import at.asitplus.rqes.serializers.Base64X509CertificateSerializer
+import at.asitplus.signum.indispensable.pki.X509Certificate
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -80,7 +80,6 @@ data class CertificateParameters(
     @SerialName("validTo")
     val validTo: String? = null,
 ) {
-
     /**
      * Valid certificate statuses as defined in CSC v2.0.0.2
      */

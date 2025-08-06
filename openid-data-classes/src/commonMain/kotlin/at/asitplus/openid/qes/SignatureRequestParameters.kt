@@ -1,11 +1,14 @@
-package at.asitplus.rqes
+package at.asitplus.openid.qes
 
-import at.asitplus.openid.*
+import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.RequestParameters
+import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.rqes.collection_entries.DocumentLocation
 import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
+import at.asitplus.rqes.collection_entries.SignatureQualifier
 import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
+import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

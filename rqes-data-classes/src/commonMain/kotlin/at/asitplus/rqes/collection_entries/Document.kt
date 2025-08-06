@@ -1,15 +1,15 @@
 package at.asitplus.rqes.collection_entries
 
+import at.asitplus.rqes.SignDocRequestParameters
 import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.rqes.enums.SignedEnvelopeProperty
 import at.asitplus.rqes.getSignAlgorithm
 import at.asitplus.rqes.serializers.Asn1EncodableBase64Serializer
-import at.asitplus.rqes.SignDocRequestParameters
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
+import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

@@ -8,15 +8,14 @@ import at.asitplus.rqes.collection_entries.DocumentDigest
 import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.rqes.enums.SignedEnvelopeProperty
-import at.asitplus.rqes.rdcJsonSerializer
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.io.Base64Strict
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 
@@ -198,10 +197,10 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
             )
         dummyEntries.forEachIndexed { i, dummyEntry ->
             "Entry ${i + 1}" {
-                val serialized = rdcJsonSerializer.encodeToString(QtspSignatureRequest.serializer(), dummyEntry)
+                val serialized = vckJsonSerializer.encodeToString(QtspSignatureRequest.serializer(), dummyEntry)
                     .also { Napier.d("serialized ${dummyEntry::class}: $it") }
                 val deserialized =
-                    rdcJsonSerializer.decodeFromString(QtspSignatureRequest.serializer(), serialized)
+                    vckJsonSerializer.decodeFromString(QtspSignatureRequest.serializer(), serialized)
 
                 deserialized shouldBe dummyEntry
             }
@@ -218,9 +217,9 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
             adaptedCscTestVectorSignDoc3
         ).forEachIndexed { i, vec ->
             "Testvector ${i + 1}" - {
-                val expected = rdcJsonSerializer.decodeFromString<JsonObject>(vec).canonicalize()
-                val actual = rdcJsonSerializer.encodeToJsonElement(
-                    rdcJsonSerializer.decodeFromString(QtspSignatureRequest.serializer(), vec)
+                val expected = vckJsonSerializer.decodeFromString<JsonObject>(vec).canonicalize()
+                val actual = vckJsonSerializer.encodeToJsonElement(
+                    vckJsonSerializer.decodeFromString(QtspSignatureRequest.serializer(), vec)
                 ).canonicalize()
 
                 actual shouldBe expected

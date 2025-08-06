@@ -1,8 +1,7 @@
 package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.openid.RequestParametersFrom
-import at.asitplus.rqes.SignatureRequestParameters
-import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.openid.qes.SignatureRequestParameters
 import at.asitplus.wallet.lib.openid.RequestParser
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty

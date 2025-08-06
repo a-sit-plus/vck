@@ -33,6 +33,7 @@ kotlin {
         commonMain {
             dependencies {
                 api(project(":dif-data-classes"))
+                api(project(":rqes-data-classes"))
                 api(ktor("http"))
                 implementation(napier())
                 commonImplementationAndApiDependencies()

@@ -1,8 +1,8 @@
 package at.asitplus.rqes.collection_entries
 
+import at.asitplus.rqes.CredentialInfo
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
-import at.asitplus.rqes.CredentialInfo
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -52,7 +52,7 @@ data class KeyParameters(
                     X509SignatureAlgorithm.ES512.oid
                 ).toSet()
             ) != emptySet<ObjectIdentifier>() || curve == null
-        ) { "If curve is specified algorithm must be (supported) EC algorithm"}
+        ) { "If curve is specified algorithm must be (supported) EC algorithm" }
     }
 
     enum class KeyStatusOptions {

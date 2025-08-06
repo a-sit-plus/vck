@@ -1,7 +1,7 @@
-package at.asitplus.rqes.collection_entries
+package at.asitplus.openid.qes
 
 import at.asitplus.openid.TransactionData
-import at.asitplus.rqes.rdcJsonSerializer
+import at.asitplus.openid.odcJsonSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
@@ -80,9 +80,9 @@ data class QCertCreationAcceptance(
     ) : TransactionData {
 
     override fun toBase64UrlJsonString(): JsonPrimitive =
-        rdcJsonSerializer.parseToJsonElement(
-            rdcJsonSerializer.encodeToString(
-                at.asitplus.rqes.serializers.Base64URLTransactionDataSerializer,
+        odcJsonSerializer.parseToJsonElement(
+            odcJsonSerializer.encodeToString(
+                Base64URLTransactionDataSerializer,
                 this
             )
         ) as JsonPrimitive

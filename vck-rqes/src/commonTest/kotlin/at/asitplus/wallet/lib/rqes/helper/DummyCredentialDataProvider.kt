@@ -9,8 +9,8 @@ import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.data.ConstantIndex
-import kotlin.time.Clock
 import kotlinx.datetime.LocalDate
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
 object DummyCredentialDataProvider {
@@ -59,6 +59,7 @@ object DummyCredentialDataProvider {
                         subjectPublicKey = subjectPublicKey,
                         userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
                     )
+
                 else -> throw NotImplementedError()
             }
         } else {

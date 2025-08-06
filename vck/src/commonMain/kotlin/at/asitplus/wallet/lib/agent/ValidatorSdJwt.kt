@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.iso.sha256
 import at.asitplus.openid.TransactionDataBase64Url
-import at.asitplus.openid.contentEquals
+import at.asitplus.rqes.contentEquals
 import at.asitplus.openid.sha256
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult

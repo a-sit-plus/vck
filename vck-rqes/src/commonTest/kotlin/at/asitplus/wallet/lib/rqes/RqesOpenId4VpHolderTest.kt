@@ -2,15 +2,15 @@ package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.SignatureQualifier
 import at.asitplus.openid.TokenRequestParameters
+import at.asitplus.openid.qes.CscAuthorizationDetails
 import at.asitplus.rqes.CredentialInfo
-import at.asitplus.rqes.CscAuthorizationDetails
 import at.asitplus.rqes.QtspSignatureRequest
 import at.asitplus.rqes.SignHashRequestParameters
 import at.asitplus.rqes.collection_entries.CertificateParameters
 import at.asitplus.rqes.collection_entries.DocumentDigest
 import at.asitplus.rqes.collection_entries.KeyParameters
+import at.asitplus.rqes.collection_entries.SignatureQualifier
 import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.signum.indispensable.Digest

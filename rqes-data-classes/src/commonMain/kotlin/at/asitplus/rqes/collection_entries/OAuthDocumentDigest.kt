@@ -10,7 +10,7 @@ import kotlinx.serialization.Serializable
  * Used as part of [CscAuthorizationDetails]
  */
 @Serializable
-data class OAuthDocumentDigest (
+data class OAuthDocumentDigest(
     /**
      * REQUIRED.
      * CSC: Conditional String containing the actual Base64-

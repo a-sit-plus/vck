@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.catching
-import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.signum.indispensable.Digest
@@ -11,9 +10,9 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.rqes.helper.DummyValueProvider
 import at.asitplus.wallet.lib.rqes.helper.SimpleQtspAuthorizationService
 import io.kotest.assertions.throwables.shouldThrow
-import kotlinx.coroutines.runBlocking
 import io.kotest.core.spec.style.FreeSpec
 import io.ktor.http.*
+import kotlinx.coroutines.runBlocking
 
 
 class QtspAuthorizationTest : FreeSpec({

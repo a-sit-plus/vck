@@ -1,10 +1,10 @@
 package at.asitplus.wallet.lib.rqes.helper
 
-import at.asitplus.openid.Hashes
+import at.asitplus.rqes.Hashes
 import at.asitplus.openid.HashesSerializer
-import at.asitplus.openid.SignatureQualifier
-import at.asitplus.openid.contentEquals
-import at.asitplus.openid.contentHashCode
+import at.asitplus.rqes.collection_entries.SignatureQualifier
+import at.asitplus.rqes.contentEquals
+import at.asitplus.rqes.contentHashCode
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebToken

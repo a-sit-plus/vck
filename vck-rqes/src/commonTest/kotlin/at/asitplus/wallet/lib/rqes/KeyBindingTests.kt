@@ -3,8 +3,8 @@ package at.asitplus.wallet.lib.rqes
 import at.asitplus.iso.sha256
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
-import at.asitplus.openid.contentEquals
-import at.asitplus.rqes.collection_entries.QCertCreationAcceptance
+import at.asitplus.openid.qes.QCertCreationAcceptance
+import at.asitplus.rqes.contentEquals
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.eupid.EuPidScheme
