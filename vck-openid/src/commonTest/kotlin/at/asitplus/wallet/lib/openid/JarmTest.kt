@@ -55,7 +55,7 @@ class JarmTest : FreeSpec({
      */
     "DirectPostJwt must either be signed or encrypted" {
         val authnRequest = verifierOid4vp.createAuthnRequest(
-            OpenIdRequestOptions(
+            RequestOptions(
                 credentials = setOf(
                     RequestOptionsCredential(AtomicAttribute2023, SD_JWT, setOf(AtomicAttribute2023.CLAIM_GIVEN_NAME))
                 ),

@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.rqes
+package io.kotest.provided.at.asitplus.wallet.lib.rqes
 
 import at.asitplus.iso.sha256
 import at.asitplus.openid.AuthenticationRequestParameters
@@ -16,7 +16,7 @@ import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.openid.*
-import at.asitplus.wallet.lib.rqes.helper.DummyCredentialDataProvider
+import io.kotest.provided.at.asitplus.wallet.lib.rqes.helper.DummyCredentialDataProvider
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
@@ -162,7 +162,7 @@ class KeyBindingTests : FreeSpec({
 
         "KB-JWT contains transaction data" {
             //[AuthenticationRequestParameters] do not contain [transactionData] in [presentationDefinition]
-            val requestOptions = buildRqesRequestOptions()
+            val requestOptions = buildRequestOptions()
             val authnRequest = rqesVerifier.createAuthnRequest(requestOptions)
 
             val authnRequestUrl = URLBuilder(walletUrl).apply {
@@ -186,7 +186,7 @@ class KeyBindingTests : FreeSpec({
         }
 
         "Incorrect TransactionData is rejected" {
-            val requestOptions = buildRqesRequestOptions(OpenIdConstants.ResponseMode.DirectPost)
+            val requestOptions = buildRequestOptions(OpenIdConstants.ResponseMode.DirectPost)
             val authnRequest = rqesVerifier.createAuthnRequest(requestOptions)
 
             val malignResponse = holderOid4vp.createAuthnResponse(
@@ -220,7 +220,7 @@ class KeyBindingTests : FreeSpec({
                 )
             )
 
-            val requestOptions = buildRqesRequestOptions(OpenIdConstants.ResponseMode.DirectPost)
+            val requestOptions = buildRequestOptions(OpenIdConstants.ResponseMode.DirectPost)
             val authnRequest = lenientVerifier.createAuthnRequest(requestOptions)
 
             val malignResponse = holderOid4vp.createAuthnResponse(

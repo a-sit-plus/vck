@@ -37,7 +37,7 @@ class OpenId4VpErrorResponseTest : FreeSpec({
 
     "Basic error response test" {
         val authnRequest = verifierOid4vp.createAuthnRequest(
-            OpenIdRequestOptions(
+            RequestOptions(
                 credentials = setOf(),
                 responseMode = OpenIdConstants.ResponseMode.DirectPost,
                 responseUrl = null

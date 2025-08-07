@@ -1,9 +1,7 @@
 package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.catching
-import at.asitplus.openid.*
 import at.asitplus.csc.CredentialInfo
-import at.asitplus.openid.CscAuthorizationDetails
 import at.asitplus.csc.Hashes
 import at.asitplus.csc.QtspSignatureRequest
 import at.asitplus.csc.SignHashRequestParameters
@@ -12,12 +10,15 @@ import at.asitplus.csc.enums.ConformanceLevel
 import at.asitplus.csc.enums.SignatureFormat
 import at.asitplus.csc.enums.SignatureQualifier
 import at.asitplus.csc.enums.SignedEnvelopeProperty
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthorizationDetails
+import at.asitplus.openid.CscAuthorizationDetails
+import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm.Companion.entries
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
-import at.asitplus.wallet.lib.rqes.helper.OAuth2RqesParameters
 import com.benasher44.uuid.uuid4
 
 /**
@@ -25,9 +26,12 @@ import com.benasher44.uuid.uuid4
  * to successfully end-end a remote signature creation request by a driving application
  * This class focuses on the POTENTIAL UC5 wallet use case and
  * as such currently only supports `signHash`.
+ * The originally specified handling of transaction data has been removed and
+ * as noted in 'D3.1: UC Specification - v3' has been replaced with the now favored
+ * OpenID4VP specification
  * `signDoc` is out of testing scope for now but may be added later
  */
-class RqesOpenId4VpHolder(
+class RqesWalletService(
     private val clientId: String = "https://wallet.a-sit.at/app",
     private val redirectUrl: String = "$clientId/callback",
     private val oauth2Client: OAuth2Client = OAuth2Client(

@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.rqes
+package io.kotest.provided.at.asitplus.wallet.lib.rqes
 
 import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.AuthenticationRequestParameters
@@ -18,7 +18,8 @@ import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
-import at.asitplus.wallet.lib.rqes.helper.DummyValueProvider
+import at.asitplus.wallet.lib.rqes.RqesWalletService
+import io.kotest.provided.at.asitplus.wallet.lib.rqes.helper.DummyValueProvider
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
@@ -31,7 +32,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 class RqesOpenId4VpHolderTest : FreeSpec({
 
     val dummyValueProvider = DummyValueProvider()
-    val rqesWalletService = RqesOpenId4VpHolder(
+    val rqesWalletService = RqesWalletService(
         oauth2Client = OAuth2Client(signPushedAuthorizationRequest = null)
     )
 

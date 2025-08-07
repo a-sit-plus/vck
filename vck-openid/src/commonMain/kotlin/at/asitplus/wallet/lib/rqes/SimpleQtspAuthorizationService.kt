@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.rqes.helper
+package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oauth2.AuthorizationService
@@ -8,7 +8,7 @@ import at.asitplus.wallet.lib.oidvci.OAuth2AuthorizationServerAdapter
 
 /**
  * Potential UC5:
- * Simple wrapper for [SimpleAuthorizationService] which uses [QtspAuthorizationServiceStrategy]
+ * Simple wrapper for [at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService] which uses [QtspAuthorizationServiceStrategy]
  */
 class SimpleQtspAuthorizationService private constructor(
     private val authorizationService: SimpleAuthorizationService,

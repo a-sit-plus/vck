@@ -26,7 +26,6 @@ include(":openid-data-classes")
 include(":csc-data-classes")
 include(":vck")
 include(":vck-openid")
-include(":vck-rqes")
 include(":vck-openid-ktor")
 
 
