@@ -19,7 +19,7 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 
-class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
+class QtspSignatureRequestSerializerTest : FreeSpec({
 
     val adaptedCscTestVectorSignHash1 = """
     {
