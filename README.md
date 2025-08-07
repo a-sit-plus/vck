@@ -96,14 +96,14 @@ VC-K demonstrated very high **interoperability** with various implementations ac
 VC-K uses a modular structure to separate concerns. Hence, depending on the use cases you want to cover, you will need different artifacts:
 
 
-|       Artefact        | Info                                                                                                                                                                                                                                 |
-|:---------------------:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-|         `vck`         | VC-K base functionality. Contains business logic for creating, issuing, presenting, and verifying credentials.                                                                                                                       |
-|     `vck-openid`      | OpenID protocol implementation, including OpenID4VCI. Contains client and server authentication business logic and the actual issuing protocol.                                                                                      |
-|   `vck-openid-ktor`   | Contains ktor-based OpenID4VCI client and OpenID4VP wallet implementations. **please call `Initializer.initOpenIdModule()` at the start of your project!**                                                                           |
-|  `dif-data-classes`   | [DIF Presentation Exchange v1.0.0](https://identity.foundation/presentation-exchange/spec/v1.0.0/#presentation-definition) data classes. **Does not depend on any other vck artefact** and can hence be used independently of VC-K!  |
-| `openid-data-classes` | OpenID data classes. **Only depends on `dif-data-classes` and `csc-data-classes`** and can hence be used independently of VC-K!                                                                                                      |
-|  `csc-data-classes`   | CSC data classes. **Does not depend on any other vck artefact** and can hence be used independently of VC-K!                                                                                                                         |
+|       Artefact        | Info                                                                                                                                                                                                                                                                                                   |
+|:---------------------:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|         `vck`         | VC-K base functionality. Contains business logic for creating, issuing, presenting, and verifying credentials.                                                                                                                                                                                         |
+|     `vck-openid`      | OpenID protocol implementation, including OpenID4VCI. Contains client and server authentication business logic and the actual issuing protocol.                                                                                                                                                        |
+|   `vck-openid-ktor`   | Contains ktor-based OpenID4VCI client and OpenID4VP wallet implementations. **please call `Initializer.initOpenIdModule()` at the start of your project!**                                                                                                                                             |
+|  `dif-data-classes`   | [DIF Presentation Exchange v1.0.0](https://identity.foundation/presentation-exchange/spec/v1.0.0/#presentation-definition) data classes. **Does not depend on any other vck artefact** and can hence be used independently of VC-K!                                                                    |
+| `openid-data-classes` | OpenID data classes. **Only depends on `dif-data-classes` and `csc-data-classes`** and can hence be used independently of VC-K!                                                                                                                                                                        |
+|  `csc-data-classes`   | [CSC](https://cloudsignatureconsortium.org/wp-content/uploads/2025/01/csc-api-2.1.0.1.pdf) data classes. **Does not depend on any other vck artefact** and can hence be used independently of VC-K!                                                                                                    |
 
 Simply declare the desired dependency to get going. This will usually be one of:
 
@@ -113,10 +113,6 @@ implementation("at.asitplus.wallet:vck:$version")
 
 ```kotlin 
 implementation("at.asitplus.wallet:vck-openid:$version")
-```
-
-```kotlin 
-implementation("at.asitplus.wallet:vck-csc:$version")
 ```
 
 Everything else (serialization, crypto through Signum, …) will be taken care of.
