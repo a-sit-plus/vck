@@ -48,7 +48,8 @@ exportXCFramework(
     "OpenIdDataClasses",
     transitiveExports = true,
     static = false,
-    project(":dif-data-classes")
+    project(":dif-data-classes"),
+            project(":csc-data-classes")
 )
 
 val javadocJar = setupDokka(

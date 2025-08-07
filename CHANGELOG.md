@@ -1,6 +1,25 @@
 # Changelog
 
 Release 5.9.0 (unreleased):
+ - Change dependency structure of modules
+ - Remove `vck-rqes` module
+   - Relevant classes now in `vck-openid` 
+ - Rename `rqes-data-classes` to `csc-data-classes`
+   - Move Dif-related classes to `dif-data-classes`
+   - Move OpenId-related classes to `openid-data-classes`
+ - Remove `vck-openid` Initializer class
+ - Refactor RQES:
+   - Remove "UC5-flow" option in RQES flows
+   - Remove `transactionData` from `KeyBindingJws`
+   - Remove `QesAuthorizationDetails`
+   - Refactor `AuthorizationDetails` to sealed class
+   - Remove `QesInputDescriptor`
+   - Refactor `InputDescriptor` to sealed class
+   - Remove `RqesRequestOptions`
+   - Remove `RequestOptions` interface
+   - Rename `OpenIdRequestOptions` to `RequestOptions`
+   - Refactor `TransactionData` to sealed class
+   - Refactor `RequestParameters` to sealed class
  - Remove code elements deprecated in 5.8.0
  - Validation:
    - Improve validation of JWT VC
