@@ -4,7 +4,6 @@ import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.dif.*
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment.NameSegment
-import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
@@ -22,48 +21,33 @@ import kotlinx.serialization.json.JsonPrimitive
 // TODO Should be NormalizedJsonPath
 typealias RequestedAttributes = Set<String>
 
-interface RequestOptions {
-    /** Requested credentials, should be at least one. */
-    val credentials: Set<RequestOptionsCredential>
+data class RequestOptions(
+    val credentials: Set<RequestOptionsCredential>,
+    val responseMode: OpenIdConstants.ResponseMode = OpenIdConstants.ResponseMode.Fragment,
+    val responseUrl: String? = null,
+    val responseType: String = VP_TOKEN,
+    val state: String = uuid4().toString(),
+    val clientMetadataUrl: String? = null,
+    val encryption: Boolean = false,
+    val presentationMechanism: PresentationMechanismEnum = PresentationMechanismEnum.PresentationExchange,
+    val transactionData: List<TransactionData>? = null,
+) {
+    init {
+        if (!transactionData.isNullOrEmpty()) {
+            val transactionIds =
+                transactionData.mapNotNull { it.credentialIds?.toList() }.flatten()?.sorted()?.distinct()
+            val credentialIds = credentials.map { it.id }.sorted().distinct()
+            transactionIds?.let {
+                require(it == credentialIds) { "OpenId4VP defines that the credential_ids that must be part of a transaction_data element have to be an ID from InputDescriptor" }
+            }
+        }
+    }
 
-    /** Presentation mechanism to be used for requesting credentials. */
-    val presentationMechanism: PresentationMechanismEnum
+    val isDcql: Boolean
+        get() = presentationMechanism == PresentationMechanismEnum.DCQL
 
-    /**
-     * Response mode to request, see [OpenIdConstants.ResponseMode],
-     * by default [OpenIdConstants.ResponseMode.Fragment].
-     * Setting this to any other value may require setting [responseUrl] too.
-     */
-    val responseMode: OpenIdConstants.ResponseMode
-
-    /**
-     * Response URL to set in the [AuthenticationRequestParameters.responseUrl],
-     * required if [responseMode] is set to [OpenIdConstants.ResponseMode.DirectPost] or
-     * [OpenIdConstants.ResponseMode.DirectPostJwt].
-     */
-    val responseUrl: String?
-
-    /**
-     * Response type to set in [AuthenticationRequestParameters.responseType],
-     * by default only `vp_token` (as per OpenID4VP spec, see [OpenIdConstants.VP_TOKEN]).
-     * Be sure to separate values by a space, e.g. `vp_token id_token` (see [OpenIdConstants.ID_TOKEN]).
-     */
-    val responseType: String
-
-    /** Opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]. */
-    val state: String
-
-    /**
-     * Optional URL to include metadata by reference (see [AuthenticationRequestParameters.clientMetadataUri])
-     * instead of by value (see [AuthenticationRequestParameters.clientMetadata])
-     */
-    val clientMetadataUrl: String?
-
-    /**
-     * Set this value to include metadata with encryption parameters set. Beware if setting this value and also
-     * [clientMetadataUrl], that the URL shall point to [OpenId4VpVerifier.metadataWithEncryption].
-     */
-    val encryption: Boolean
+    val isPresentationExchange
+        get() = presentationMechanism == PresentationMechanismEnum.PresentationExchange
 
     val isAnyDirectPost: Boolean
         get() = (responseMode == OpenIdConstants.ResponseMode.DirectPost) ||
@@ -72,42 +56,9 @@ interface RequestOptions {
     val isSiop: Boolean
         get() = responseType.contains(OpenIdConstants.ID_TOKEN)
 
-    val isDcql: Boolean
-        get() = presentationMechanism == PresentationMechanismEnum.DCQL
-
-    val isPresentationExchange
-        get() = presentationMechanism == PresentationMechanismEnum.PresentationExchange
-
-    val transactionData: List<TransactionData>?
-
     fun buildScope(): String = listOf(SCOPE_OPENID, SCOPE_PROFILE).joinToString(" ")
 
-    fun toDCQLQuery(): DCQLQuery?
-
-    fun toPresentationDefinition(
-        containerJwt: FormatContainerJwt,
-        containerSdJwt: FormatContainerSdJwt,
-    ): PresentationDefinition?
-
-    fun toInputDescriptor(
-        containerJwt: FormatContainerJwt,
-        containerSdJwt: FormatContainerSdJwt,
-    ): List<InputDescriptor>
-}
-
-data class OpenIdRequestOptions(
-    override val credentials: Set<RequestOptionsCredential>,
-    override val responseMode: OpenIdConstants.ResponseMode = OpenIdConstants.ResponseMode.Fragment,
-    override val responseUrl: String? = null,
-    override val responseType: String = VP_TOKEN,
-    override val state: String = uuid4().toString(),
-    override val clientMetadataUrl: String? = null,
-    override val encryption: Boolean = false,
-    override val presentationMechanism: PresentationMechanismEnum = PresentationMechanismEnum.PresentationExchange,
-    override val transactionData: List<TransactionData>? = null,
-) : RequestOptions {
-
-    override fun toDCQLQuery(): DCQLQuery? = if (credentials.isEmpty()) null else DCQLQuery(
+    fun toDCQLQuery(): DCQLQuery? = if (credentials.isEmpty()) null else DCQLQuery(
         credentials = DCQLCredentialQueryList<DCQLCredentialQueryInstance>(
             credentials.map<RequestOptionsCredential, DCQLCredentialQueryInstance> { credential ->
                 val format = when (credential.representation) {
@@ -166,7 +117,7 @@ data class OpenIdRequestOptions(
         attribute.split(".").map { DCQLClaimsPathPointerSegment.NameSegment(it) }.toNonEmptyList()
     )
 
-    override fun toPresentationDefinition(
+    fun toPresentationDefinition(
         containerJwt: FormatContainerJwt,
         containerSdJwt: FormatContainerSdJwt,
     ): PresentationDefinition = PresentationDefinition(
@@ -174,7 +125,7 @@ data class OpenIdRequestOptions(
         inputDescriptors = toInputDescriptor(containerJwt, containerSdJwt)
     )
 
-    override fun toInputDescriptor(
+    fun toInputDescriptor(
         containerJwt: FormatContainerJwt,
         containerSdJwt: FormatContainerSdJwt,
     ): List<InputDescriptor> = credentials.map {
@@ -262,7 +213,11 @@ data class RequestOptionsCredential(
     }
 
     private fun String.toIsoMdocConstraintField(scheme: ConstantIndex.CredentialScheme?, optional: Boolean) =
-        ConstraintField(path = listOf(scheme.prefixWithIsoNamespace(this)), intentToRetain = false, optional = optional)
+        ConstraintField(
+            path = listOf(scheme.prefixWithIsoNamespace(this)),
+            intentToRetain = false,
+            optional = optional
+        )
 
     private fun String.toJwtConstraintField(optional: Boolean): ConstraintField =
         ConstraintField(path = listOf(splitByDotToJsonPath()), optional = optional)
@@ -271,10 +226,11 @@ data class RequestOptionsCredential(
     private fun String.splitByDotToJsonPath(): String =
         NormalizedJsonPath(split(".").map { NameSegment(it) }).toShorthandNameSegmentNotation()
 
-    private fun ConstantIndex.CredentialScheme?.prefixWithIsoNamespace(attribute: String): String = NormalizedJsonPath(
-        NameSegment(this?.isoNamespace ?: "mdoc"),
-        NameSegment(attribute),
-    ).toString()
+    private fun ConstantIndex.CredentialScheme?.prefixWithIsoNamespace(attribute: String): String =
+        NormalizedJsonPath(
+            NameSegment(this?.isoNamespace ?: "mdoc"),
+            NameSegment(attribute),
+        ).toString()
 
     private fun ConstantIndex.CredentialScheme.toVcConstraint() = if (supportsVcJwt)
         ConstraintField(
