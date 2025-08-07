@@ -105,7 +105,7 @@ class VerifierAttestationTest : FreeSpec({
 })
 
 
-private fun requestOptionsAtomicAttribute() = OpenIdRequestOptions(
+private fun requestOptionsAtomicAttribute() = RequestOptions(
     credentials = setOf(
         RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
     ),

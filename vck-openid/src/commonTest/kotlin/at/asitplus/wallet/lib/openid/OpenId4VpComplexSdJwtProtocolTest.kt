@@ -76,7 +76,7 @@ class OpenId4VpComplexSdJwtProtocolTest : FreeSpec({
             "$CLAIM_ADDRESS.$CLAIM_ADDRESS_REGION",
             "$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
         )
-        val requestOptions = OpenIdRequestOptions(
+        val requestOptions = RequestOptions(
             credentials = setOf(
                 RequestOptionsCredential(AtomicAttribute2023, SD_JWT, requestedClaims)
             ),
@@ -119,7 +119,7 @@ class OpenId4VpComplexSdJwtProtocolTest : FreeSpec({
             "$CLAIM_ADDRESS.$CLAIM_ADDRESS_REGION",
             "$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
         )
-        val requestOptions = OpenIdRequestOptions(
+        val requestOptions = RequestOptions(
             credentials = setOf(
                 RequestOptionsCredential(AtomicAttribute2023, SD_JWT, requestedClaims)
             ),

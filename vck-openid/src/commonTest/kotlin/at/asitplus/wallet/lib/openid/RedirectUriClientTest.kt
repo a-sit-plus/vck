@@ -91,7 +91,7 @@ class RedirectUriClientTest : FreeSpec({
                 override suspend fun verifyAndRemoveNonce(it: String) = false
             }
         )
-        val requestOptions = OpenIdRequestOptions(
+        val requestOptions = RequestOptions(
             credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
             responseType = OpenIdConstants.ID_TOKEN
         )
@@ -148,7 +148,7 @@ class RedirectUriClientTest : FreeSpec({
 
     "test with direct_post" {
         val authnRequest = verifierOid4vp.createAuthnRequest(
-            OpenIdRequestOptions(
+            RequestOptions(
                 credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
                 responseMode = OpenIdConstants.ResponseMode.DirectPost,
                 responseUrl = clientId,
@@ -167,7 +167,7 @@ class RedirectUriClientTest : FreeSpec({
 
     "test with direct_post_jwt" {
         val authnRequest = verifierOid4vp.createAuthnRequest(
-            OpenIdRequestOptions(
+            RequestOptions(
                 credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
                 responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                 responseUrl = clientId,
@@ -194,7 +194,7 @@ class RedirectUriClientTest : FreeSpec({
     "test with Query" {
         val expectedState = uuid4().toString()
         val authnRequest = verifierOid4vp.createAuthnRequest(
-            OpenIdRequestOptions(
+            RequestOptions(
                 credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
                 responseMode = OpenIdConstants.ResponseMode.Query,
                 state = expectedState
@@ -285,7 +285,7 @@ class RedirectUriClientTest : FreeSpec({
 
 })
 
-private fun requestOptionsAtomicAttribute() = OpenIdRequestOptions(
+private fun requestOptionsAtomicAttribute() = RequestOptions(
     credentials = setOf(
         RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
     ),
@@ -304,7 +304,7 @@ private suspend fun verifySecondProtocolRun(
         .shouldBeInstanceOf<AuthnResponseResult.Success>()
 }
 
-private val defaultRequestOptions = OpenIdRequestOptions(
+private val defaultRequestOptions = RequestOptions(
     credentials = setOf(
         RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
     )

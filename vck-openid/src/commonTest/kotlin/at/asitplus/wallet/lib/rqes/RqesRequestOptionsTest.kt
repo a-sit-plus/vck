@@ -1,11 +1,11 @@
-package at.asitplus.wallet.lib.rqes
+package io.kotest.provided.at.asitplus.wallet.lib.rqes
 
+import at.asitplus.csc.collection_entries.RqesDocumentDigestEntry
+import at.asitplus.csc.enums.SignatureQualifier
 import at.asitplus.iso.sha256
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.QesAuthorization
 import at.asitplus.openid.TransactionData
-import at.asitplus.csc.collection_entries.RqesDocumentDigestEntry
-import at.asitplus.csc.enums.SignatureQualifier
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.eupid.EuPidScheme
@@ -18,9 +18,9 @@ import at.asitplus.wallet.lib.data.toBase64UrlJsonString
 import at.asitplus.wallet.lib.data.toTransactionData
 import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
-import at.asitplus.wallet.lib.openid.OpenIdRequestOptions
+import at.asitplus.wallet.lib.openid.RequestOptions
 import at.asitplus.wallet.lib.openid.RequestOptionsCredential
-import at.asitplus.wallet.lib.rqes.helper.DummyCredentialDataProvider
+import io.kotest.provided.at.asitplus.wallet.lib.rqes.helper.DummyCredentialDataProvider
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
@@ -55,7 +55,7 @@ class RqesRequestOptionsTest : FreeSpec({
         )
 
         "Authentication request contains transactionData" - {
-            val authnRequest = rqesVerifier.createAuthnRequest(requestOptions = buildRqesRequestOptions())
+            val authnRequest = rqesVerifier.createAuthnRequest(requestOptions = buildRequestOptions())
             val inputDescriptor = authnRequest.presentationDefinition!!.inputDescriptors.first()
             authnRequest.presentationDefinition.shouldNotBeNull()
             authnRequest.transactionData.shouldNotBeNull()
@@ -72,24 +72,22 @@ class RqesRequestOptionsTest : FreeSpec({
 internal fun List<TransactionData>.getReferenceHashes(): List<ByteArray> =
     this.map { it.toBase64UrlJsonString().content.decodeToByteArray(Base64UrlStrict).sha256() }
 
-internal fun buildRqesRequestOptions(
+internal fun buildRequestOptions(
     responseMode: OpenIdConstants.ResponseMode = OpenIdConstants.ResponseMode.Fragment,
-): RqesRequestOptions {
+): RequestOptions {
     val id = uuid4().toString()
-    return RqesRequestOptions(
-        baseRequestOptions = OpenIdRequestOptions(
-            responseMode = responseMode,
-            responseUrl = if (responseMode == OpenIdConstants.ResponseMode.DirectPost) "https://example.com/rp/${uuid4()}" else null,
-            credentials = setOf(
-                RequestOptionsCredential(
-                    credentialScheme = EuPidScheme,
-                    representation = SD_JWT,
-                    requestedAttributes = setOf(FAMILY_NAME, GIVEN_NAME),
-                    id = id
-                )
-            ),
-            transactionData = listOf(getTransactionData(setOf(id)), getTransactionData(setOf(id))),
-        )
+    return RequestOptions(
+        responseMode = responseMode,
+        responseUrl = if (responseMode == OpenIdConstants.ResponseMode.DirectPost) "https://example.com/rp/${uuid4()}" else null,
+        credentials = setOf(
+            RequestOptionsCredential(
+                credentialScheme = EuPidScheme,
+                representation = SD_JWT,
+                requestedAttributes = setOf(FAMILY_NAME, GIVEN_NAME),
+                id = id
+            )
+        ),
+        transactionData = listOf(getTransactionData(setOf(id)), getTransactionData(setOf(id))),
     )
 }
 

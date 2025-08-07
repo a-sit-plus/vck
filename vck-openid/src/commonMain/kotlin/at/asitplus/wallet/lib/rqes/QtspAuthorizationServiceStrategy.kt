@@ -1,12 +1,12 @@
-package at.asitplus.wallet.lib.rqes.helper
+package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.openid.AuthorizationDetails
-import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.CscAuthorizationDetails
+import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.wallet.lib.oauth2.AuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oauth2.ClientAuthRequest
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidAuthorizationDetails
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 
 /**
  * Implements Authorization for QTSP as necessary for Potential UC5
@@ -16,13 +16,13 @@ class QtspAuthorizationServiceStrategy(
 ) : AuthorizationServiceStrategy by authorizationServiceStrategy {
 
     /**
-     * QTSP can be assumed to only know CSC-related authn details ([CscAuthorizationDetails]) and rejet all others
+     * QTSP can be assumed to only know CSC-related authn details ([at.asitplus.openid.CscAuthorizationDetails]) and rejet all others
      */
     override fun validateAuthorizationDetails(
         authorizationDetails: Collection<AuthorizationDetails>,
     ): Set<AuthorizationDetails> = authorizationDetails.filterIsInstance<CscAuthorizationDetails>().toSet().apply {
         if (this.size != authorizationDetails.size)
-            throw InvalidAuthorizationDetails("Request may only contain CSC specific authorization details")
+            throw OAuth2Exception.InvalidAuthorizationDetails("Request may only contain CSC specific authorization details")
     }
 
     /**
@@ -40,8 +40,8 @@ class QtspAuthorizationServiceStrategy(
             ?: emptySet()
         //Matching irrespective of order
         if (!validAuthCscDetails.containsAll(validTokenCscDetails))
-            throw InvalidAuthorizationDetails("Authorization details do not match")
+            throw OAuth2Exception.InvalidAuthorizationDetails("Authorization details do not match")
         if (!validTokenCscDetails.containsAll(validAuthCscDetails))
-            throw InvalidAuthorizationDetails("Authorization details do not match")
+            throw OAuth2Exception.InvalidAuthorizationDetails("Authorization details do not match")
     } ?: emptySet()
 }

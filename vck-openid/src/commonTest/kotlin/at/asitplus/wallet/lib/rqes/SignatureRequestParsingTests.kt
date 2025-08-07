@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.rqes
+package io.kotest.provided.at.asitplus.wallet.lib.rqes
 
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.SignatureRequestParameters

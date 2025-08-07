@@ -56,7 +56,7 @@ class OpenId4VpSdJwtProtocolTest : FreeSpec({
     "Selective Disclosure with custom credential" {
         val requestedClaim = AtomicAttribute2023.CLAIM_GIVEN_NAME
         val authnRequest = verifierOid4vp.createAuthnRequest(
-            OpenIdRequestOptions(
+            RequestOptions(
                 setOf(
                     RequestOptionsCredential(AtomicAttribute2023, SD_JWT, setOf(requestedClaim))
                 )
@@ -83,7 +83,7 @@ class OpenId4VpSdJwtProtocolTest : FreeSpec({
             EuPidScheme.SdJwtAttributes.GIVEN_NAME_BIRTH, // "birth_given_name" instead of "given_name_birth"
         )
         val authnRequest = verifierOid4vp.createAuthnRequest(
-            OpenIdRequestOptions(
+            RequestOptions(
                 credentials = setOf(
                     RequestOptionsCredential(EuPidScheme, SD_JWT, requestedClaims)
                 )

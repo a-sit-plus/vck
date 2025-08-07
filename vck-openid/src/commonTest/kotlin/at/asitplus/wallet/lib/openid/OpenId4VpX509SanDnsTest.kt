@@ -73,7 +73,7 @@ class OpenId4VpX509SanDnsTest : FreeSpec({
     "test with request object" {
         val requestUrl = "https://example.com/request"
         val (walletUrl, jar) = verifierOid4vp.createAuthnRequest(
-            OpenIdRequestOptions(
+            RequestOptions(
                 credentials = setOf(
                     RequestOptionsCredential(AtomicAttribute2023, SD_JWT, setOf(CLAIM_GIVEN_NAME))
                 ),
@@ -103,7 +103,7 @@ class OpenId4VpX509SanDnsTest : FreeSpec({
     "test with encryption" {
         val requestUrl = "https://example.com/request"
         val (walletUrl, jar) = verifierOid4vp.createAuthnRequest(
-            OpenIdRequestOptions(
+            RequestOptions(
                 credentials = setOf(
                     RequestOptionsCredential(AtomicAttribute2023, SD_JWT, setOf(CLAIM_GIVEN_NAME))
                 ),
