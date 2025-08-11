@@ -22,14 +22,52 @@ import kotlinx.serialization.json.JsonPrimitive
 typealias RequestedAttributes = Set<String>
 
 data class RequestOptions(
+    /** Requested credentials, should be at least one. */
     val credentials: Set<RequestOptionsCredential>,
-    val responseMode: OpenIdConstants.ResponseMode = OpenIdConstants.ResponseMode.Fragment,
-    val responseUrl: String? = null,
-    val responseType: String = VP_TOKEN,
-    val state: String = uuid4().toString(),
-    val clientMetadataUrl: String? = null,
-    val encryption: Boolean = false,
+
+    /** Presentation mechanism to be used for requesting credentials. */
     val presentationMechanism: PresentationMechanismEnum = PresentationMechanismEnum.PresentationExchange,
+
+    /**
+     * Response mode to request, see [OpenIdConstants.ResponseMode],
+     * by default [OpenIdConstants.ResponseMode.Fragment].
+     * Setting this to any other value may require setting [responseUrl] too.
+     */
+    val responseMode: OpenIdConstants.ResponseMode = OpenIdConstants.ResponseMode.Fragment,
+
+    /**
+     * Response URL to set in the [AuthenticationRequestParameters.responseUrl],
+     * required if [responseMode] is set to [OpenIdConstants.ResponseMode.DirectPost] or
+     * [OpenIdConstants.ResponseMode.DirectPostJwt].
+     */
+    val responseUrl: String? = null,
+
+    /**
+     * Response type to set in [AuthenticationRequestParameters.responseType],
+     * by default only `vp_token` (as per OpenID4VP spec, see [OpenIdConstants.VP_TOKEN]).
+     * Be sure to separate values by a space, e.g. `vp_token id_token` (see [OpenIdConstants.ID_TOKEN]).
+     */
+    val responseType: String = VP_TOKEN,
+
+    /** Opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]. */
+    val state: String = uuid4().toString(),
+
+    /**
+     * Optional URL to include metadata by reference (see [AuthenticationRequestParameters.clientMetadataUri])
+     * instead of by value (see [AuthenticationRequestParameters.clientMetadata])
+     */
+    val clientMetadataUrl: String? = null,
+
+    /**
+     * Set this value to include metadata with encryption parameters set. Beware if setting this value and also
+     * [clientMetadataUrl], that the URL shall point to [OpenId4VpVerifier.metadataWithEncryption].
+     */
+    val encryption: Boolean = false,
+
+    /**
+     *  Non-empty array of strings, where each string is a base64url-encoded JSON object that contains a typed parameter set
+     *  with details about the transaction that the Verifier is requesting the End-User to authorize.
+     */
     val transactionData: List<TransactionData>? = null,
 ) {
     init {
