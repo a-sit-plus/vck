@@ -24,9 +24,11 @@ rootProject.name = "vc-k"
 include(":dif-data-classes")
 include(":openid-data-classes")
 include(":csc-data-classes")
+include(":rqes-data-classes")
 include(":vck")
 include(":vck-openid")
 include(":vck-openid-ktor")
+include(":vck-rqes")
 
 
 buildscript {
