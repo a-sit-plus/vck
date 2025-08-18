@@ -6,7 +6,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 //TODO WIP
-@Serializable
+@Serializable(with = AuthenticationRequestSerializer::class)
 data class OidcAuthReqDcApi(
     // openid4vp-v<version>-<request-type>
     @SerialName("protocol")
@@ -19,7 +19,7 @@ data class OidcAuthReqDcApi(
     val callingPackageName: String,
     @SerialName("callingOrigin")
     val callingOrigin: String
-) : DcApiRequest {
+) : DcApiRequest, AuthenticationRequest {
     val openIdVersion =
         catching {
             protocol.removePrefix(DC_API_OID4VP_PROTOCOL_IDENTIFIER).split(DELIMITER)[1]

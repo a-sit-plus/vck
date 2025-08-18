@@ -3,7 +3,7 @@ package at.asitplus.requests
 import at.asitplus.openid.AuthorizationDetails
 import kotlinx.serialization.SerialName
 
-sealed interface OAuth2AuthReqParam : AuthenticationRequest {
+sealed interface OAuth2AuthRequest : AuthenticationRequest {
     /**
      * OAuth2: Required
      * OIDC: REQUIRED. OAuth 2.0 Client Identifier valid at the Authorization Server.

@@ -10,14 +10,7 @@ import at.asitplus.signum.indispensable.josef.JsonWebToken
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-sealed interface CscAuthReq : AuthenticationRequest{
-    /**
-     * CSC: Optional
-     * Request a preferred language according to RFC 5646
-     */
-    @SerialName("lang")
-    val lang: String?
-
+sealed interface CscAuthRequest : AuthenticationRequest{
     /**
      * CSC: REQUIRED-"credential"
      * The identifier associated to the credential to authorize.
@@ -87,4 +80,11 @@ sealed interface CscAuthReq : AuthenticationRequest{
      */
     @SerialName("clientData")
     val clientData: String?
+
+    /**
+     * CSC: Optional
+     * Request a preferred language according to RFC 5646
+     */
+    @SerialName("lang")
+    val lang: String?
 }

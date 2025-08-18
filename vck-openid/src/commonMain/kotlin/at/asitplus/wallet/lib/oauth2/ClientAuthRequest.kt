@@ -4,9 +4,10 @@ import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OidcUserInfoExtended
 
 /**
- * Extracted information from [at.asitplus.openid.AuthenticationRequest],
+ * Extracted information from [at.asitplus.openid.AuthenticationRequestParameters],
  * to store what the client has initially requested (which [scope] and/or [authnDetails]).
  */
+//TODO Maybe incorperate
 data class ClientAuthRequest(
     val issuedCode: String,
     val userInfo: OidcUserInfoExtended,

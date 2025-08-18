@@ -3,6 +3,7 @@ package at.asitplus.requests
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.TransactionDataBase64Url
 
+//TODO Overhaul
 interface RequestParameters {
     val responseType: String?
     val nonce: String?

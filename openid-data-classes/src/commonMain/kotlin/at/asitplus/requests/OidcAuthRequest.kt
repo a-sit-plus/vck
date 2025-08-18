@@ -5,7 +5,7 @@ import at.asitplus.openid.AuthnRequestClaims
 import at.asitplus.openid.RelyingPartyMetadata
 import kotlinx.serialization.SerialName
 
-interface OidcAuthReqParam : AuthenticationRequest{
+interface OidcAuthRequest : AuthenticationRequest{
     /**
      * OpenID4VP: When received in [at.asitplus.openid.RequestObjectParameters.walletNonce], the Verifier MUST use it as the [walletNonce]
      * value in the signed authorization request object.
