@@ -1,6 +1,9 @@
 package at.asitplus.requests
 
 import at.asitplus.openid.AuthorizationDetails
+import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.OpenIdConstants.ClientIdScheme
+import at.asitplus.openid.OpenIdConstants.ClientIdScheme.RedirectUri
 import kotlinx.serialization.SerialName
 
 sealed interface OAuth2AuthRequest : AuthenticationRequest {
@@ -44,7 +47,7 @@ sealed interface OAuth2AuthRequest : AuthenticationRequest {
      * See also [redirectUrlExtracted]
      */
     @SerialName("redirect_uri")
-    val redirectUri: String?
+    val redirectUrl: String?
 
     /**
      * OAuth2: Optional
@@ -97,4 +100,31 @@ sealed interface OAuth2AuthRequest : AuthenticationRequest {
      */
     @SerialName("resource")
     val resource: String?
+
+
+    /**
+     * Reads the [at.asitplus.openid.OpenIdConstants.ClientIdScheme] of this request either directly from [clientIdScheme],
+     * or by extracting the prefix from [clientId] (as specified in OpenID4VP draft 22 onwards).
+     */
+    val clientIdSchemeExtracted: ClientIdScheme?
+        get() = clientId.let { ClientIdScheme.decodeFromClientId(it) }
+
+    /**
+     * Reads the [clientId] and removes the prefix of the [clientIdSchemeExtracted],
+     * as specified in OpenID4VP draft 22 onwards.
+     * OpenID4VP states that the *full* [clientId] must be used for presentations and anything else.
+     */
+    val clientIdWithoutPrefix: String?
+        get() = clientId.let { clientId ->
+            clientIdSchemeExtracted?.let { clientId.removePrefix("${it.stringRepresentation}:") }
+        }
+
+    /**
+     * Reads the [redirectUrl], or the [clientIdWithoutPrefix] if [clientIdSchemeExtracted] is
+     * [OpenIdConstants.ClientIdScheme.RedirectUri], as specified in OpenID4VP draft 22 onwards.
+     */
+    val redirectUrlExtracted: String?
+        get() = redirectUrl
+            ?: (clientIdSchemeExtracted as? OpenIdConstants.ClientIdScheme.RedirectUri)?.let { clientIdWithoutPrefix }
+
 }

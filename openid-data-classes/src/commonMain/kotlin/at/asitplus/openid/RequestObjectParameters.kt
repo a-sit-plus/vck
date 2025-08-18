@@ -10,6 +10,7 @@ import kotlinx.serialization.Serializable
  *
  * Usually, these parameters are sent to the Request Endpoint URL of the OpenID Verifier.
  */
+//TODO Check
 @Serializable
 data class RequestObjectParameters(
     /**
@@ -27,22 +28,12 @@ data class RequestObjectParameters(
      */
     @SerialName("wallet_nonce")
     val walletNonce: String? = null,
-) : RequestParameters {
+) {
 
     constructor(metadata: OAuth2AuthorizationServerMetadata, nonce: String) : this(
         walletMetadataString = metadata.catchingUnwrapped { odcJsonSerializer.encodeToString(this) }.getOrNull(),
         walletNonce = nonce
     )
-
-    override val responseType: String? = null
-    override val nonce: String? = null
-    override val clientId: String? = null
-    override val redirectUrl: String? = null
-    override val responseUrl: String? = null
-    override val audience: String? = null
-    override val issuer: String? = null
-    override val state: String? = null
-    override val transactionData: List<TransactionDataBase64Url>? = null
 
     val walletMetadata: OAuth2AuthorizationServerMetadata?
         get() = walletMetadataString?.let {

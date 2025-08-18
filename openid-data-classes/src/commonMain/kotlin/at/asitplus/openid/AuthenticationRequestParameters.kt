@@ -69,7 +69,7 @@ data class AuthenticationRequestParameters(
      * See also [redirectUrlExtracted]
      */
     @SerialName("redirect_uri")
-    override val redirectUrl: String? = null,
+    val redirectUrl: String? = null,
 
     /**
      * OIDC: REQUIRED. OpenID Connect requests MUST contain the openid scope value. If the openid scope value is not
@@ -265,7 +265,7 @@ data class AuthenticationRequestParameters(
      * value of `aud` should be the value of the authorization server (AS) `issuer`, as defined in RFC 8414.
      */
     @SerialName("aud")
-    override val audience: String? = null,
+    val audience: String? = null,
 
     /**
      * OAuth 2.0 JAR: If signed, the Authorization Request Object SHOULD contain the Claims `iss` (issuer) and `aud`
@@ -273,7 +273,7 @@ data class AuthenticationRequestParameters(
      * value of `aud` should be the value of the authorization server (AS) `issuer`, as defined in RFC 8414.
      */
     @SerialName("iss")
-    override val issuer: String? = null,
+    val issuer: String? = null,
 
     /**
      * OPTIONAL. Time at which the request was issued.
@@ -390,7 +390,7 @@ data class AuthenticationRequestParameters(
      * For the contextual serializer see [at.asitplus.rqes.serializers.Base64URLTransactionDataSerializer]
      */
     @SerialName("transaction_data")
-    override val transactionData: List<TransactionDataBase64Url>? = null,
+    val transactionData: List<TransactionDataBase64Url>? = null,
 
     /**
      * DCAPI: REQUIRED when signed requests defined in Appendix A.3.2 are used with the Digital
@@ -410,7 +410,7 @@ data class AuthenticationRequestParameters(
      * or by extracting the prefix from [clientId] (as specified in OpenID4VP draft 22 onwards).
      */
     @Suppress("DEPRECATION")
-    override val clientIdSchemeExtracted: OpenIdConstants.ClientIdScheme?
+    val clientIdSchemeExtracted: OpenIdConstants.ClientIdScheme?
         get() = clientIdScheme
             ?: clientId?.let { OpenIdConstants.ClientIdScheme.decodeFromClientId(it) }
 

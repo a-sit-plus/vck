@@ -135,11 +135,5 @@ data class SignatureRequestParameters(
      * data not conforming to the respective type definition.
      */
     @SerialName("transaction_data")
-    override val transactionData: List<TransactionDataBase64Url>? = null,
-) : RequestParameters {
-
-    override val redirectUrl: String? = null
-    override val audience: String? = null
-    override val issuer: String? = null
-
-}
+    val transactionData: List<TransactionDataBase64Url>? = null,
+) : RequestParameters
