@@ -1,0 +1,3 @@
+package at.asitplus.requests
+
+data class OidcAuthReqJar()
