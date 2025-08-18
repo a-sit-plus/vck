@@ -27,5 +27,5 @@ data class CscAuthRequestOAuth2 (
     override val authorizationDetails: List<AuthorizationDetails>?,
     override val codeChallenge: String?,
     override val codeChallengeMethod: String?,
-    override val lang: String?
+    override val lang: String?, override val resource: String?
 ) : CscAuthRequest, OAuth2AuthRequest

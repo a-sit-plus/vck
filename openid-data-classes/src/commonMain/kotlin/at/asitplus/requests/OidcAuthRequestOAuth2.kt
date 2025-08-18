@@ -4,6 +4,7 @@ import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.AuthnRequestClaims
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.RelyingPartyMetadata
+import at.asitplus.openid.TransactionDataBase64Url
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -23,5 +24,7 @@ data class OidcAuthRequestOAuth2(
     override val state: String?,
     override val authorizationDetails: List<AuthorizationDetails>?,
     override val codeChallenge: String?,
-    override val codeChallengeMethod: String?
+    override val codeChallengeMethod: String?,
+    override val transactionData: List<TransactionDataBase64Url>?,
+    override val resource: String?
 ) : OidcAuthRequest, OAuth2AuthRequest
