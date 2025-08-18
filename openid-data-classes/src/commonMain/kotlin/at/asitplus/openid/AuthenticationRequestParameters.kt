@@ -137,7 +137,6 @@ data class AuthenticationRequestParameters(
     val idTokenHint: String? = null,
 
     /**
-     * TODO: Not part of Oauth2.0 JAR!
      * OAuth 2.0 JAR: REQUIRED unless `request_uri` is specified. The Request Object that holds authorization request
      * parameters stated in Section 4 of RFC6749 (OAuth 2.0). If this parameter is present in the authorization request,
      * `request_uri` MUST NOT be present.
@@ -146,7 +145,6 @@ data class AuthenticationRequestParameters(
     val request: String? = null,
 
     /**
-     * TODO: Not part of Oauth2.0 JAR!
      * OAuth 2.0 JAR: REQUIRED unless request is specified. The absolute URI, as defined by RFC3986, that is the
      * Request Object URI referencing the authorization request parameters stated in Section 4 of RFC6749 (OAuth 2.0).
      * If this parameter is present in the authorization request, `request` MUST NOT be present.

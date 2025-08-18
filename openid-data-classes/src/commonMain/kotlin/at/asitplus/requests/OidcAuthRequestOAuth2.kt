@@ -4,8 +4,10 @@ import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.AuthnRequestClaims
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.RelyingPartyMetadata
+import kotlinx.serialization.Serializable
 
-data class OidcAuthReqOAuth2(
+@Serializable
+data class OidcAuthRequestOAuth2(
     override val walletNonce: String?,
     override val claims: AuthnRequestClaims?,
     override val clientMetadata: RelyingPartyMetadata?,
@@ -22,4 +24,4 @@ data class OidcAuthReqOAuth2(
     override val authorizationDetails: List<AuthorizationDetails>?,
     override val codeChallenge: String?,
     override val codeChallengeMethod: String?
-) : OidcAuthRequest, OAuth2AuthRequest, AuthenticationRequest
+) : OidcAuthRequest, OAuth2AuthRequest

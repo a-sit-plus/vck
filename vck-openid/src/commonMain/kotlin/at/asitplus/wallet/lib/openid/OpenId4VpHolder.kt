@@ -4,7 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.requests.DcApiRequest
-import at.asitplus.requests.OidcAuthReqDcApi
+import at.asitplus.requests.OidcAuthRequestDcApi
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.AuthenticationRequest
 import at.asitplus.openid.AuthenticationResponseParameters
@@ -233,7 +233,7 @@ class OpenId4VpHolder(
         AuthorizationResponsePreparationState(
             presentationDefinition,
             clientMetadata,
-            params.extractDcApiRequest() as? OidcAuthReqDcApi?
+            params.extractDcApiRequest() as? OidcAuthRequestDcApi?
         )
     }
 
@@ -269,7 +269,7 @@ class OpenId4VpHolder(
             (request as? RequestParametersFrom.JwsSigned<AuthenticationRequest>)
                 ?.jwsSigned?.header?.certificateChain?.firstOrNull()?.decodedPublicKey?.getOrNull()?.toJsonWebKey()
         val clientJsonWebKeySet = clientMetadata?.loadJsonWebKeySet()
-        val dcApiRequest = request.extractDcApiRequest() as? OidcAuthReqDcApi?
+        val dcApiRequest = request.extractDcApiRequest() as? OidcAuthRequestDcApi?
         val audience = request.parameters.extractAudience(clientJsonWebKeySet, dcApiRequest)
         val presentationFactory =
             PresentationFactory(supportedAlgorithms, signDeviceAuthDetached, signDeviceAuthFallback, signIdToken)
@@ -311,7 +311,7 @@ class OpenId4VpHolder(
                 is CredentialPresentationRequest.DCQLRequest -> {
                     val dcqlQueryResult = holder.matchDCQLQueryAgainstCredentialStore(
                         it.dcqlQuery,
-                        preparationState.oidcAuthReqDcApi?.credentialId
+                        preparationState.oidcAuthRequestDcApi?.credentialId
                     ).getOrThrow()
                     DCQLMatchingResult(
                         presentationRequest = it,
@@ -323,7 +323,7 @@ class OpenId4VpHolder(
                     holder.matchInputDescriptorsAgainstCredentialStore(
                         inputDescriptors = it.presentationDefinition.inputDescriptors,
                         fallbackFormatHolder = it.fallbackFormatHolder,
-                        filterById = preparationState.oidcAuthReqDcApi?.credentialId
+                        filterById = preparationState.oidcAuthRequestDcApi?.credentialId
                     ).getOrThrow().let { matchInputDescriptors ->
                         if (matchInputDescriptors.values.find { it.size != 0 } == null) {
                             throw OAuth2Exception.AccessDenied("No matching credential")
@@ -353,7 +353,7 @@ class OpenId4VpHolder(
     @Throws(OAuth2Exception::class)
     private fun RequestParameters.extractAudience(
         clientJsonWebKeySet: JsonWebKeySet?,
-        dcApiRequest: OidcAuthReqDcApi?,
+        dcApiRequest: OidcAuthRequestDcApi?,
     ) = dcApiRequest?.let { "origin:${it.callingOrigin}" }
         ?: clientId
         ?: issuer

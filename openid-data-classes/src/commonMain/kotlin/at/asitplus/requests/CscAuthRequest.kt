@@ -87,4 +87,19 @@ sealed interface CscAuthRequest : AuthenticationRequest{
      */
     @SerialName("lang")
     val lang: String?
+
+    companion object {
+        //workaround since iOS does not support reflection
+        fun getMembers(): List<String> = listOf(
+            "credentialID",
+            "signatureQualifier",
+            "numSignatures",
+            "hashes",
+            "hashAlgorithmOID",
+            "description",
+            "account_token",
+            "clientData",
+            "lang",
+        )
+    }
 }

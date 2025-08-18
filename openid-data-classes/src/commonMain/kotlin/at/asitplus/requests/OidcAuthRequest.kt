@@ -3,6 +3,7 @@ package at.asitplus.requests
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.AuthnRequestClaims
 import at.asitplus.openid.RelyingPartyMetadata
+import at.asitplus.openid.TransactionDataBase64Url
 import kotlinx.serialization.SerialName
 
 interface OidcAuthRequest : AuthenticationRequest{
@@ -79,4 +80,17 @@ interface OidcAuthRequest : AuthenticationRequest{
      */
     @SerialName("presentation_definition")
     val presentationDefinition: PresentationDefinition?
+
+    /**
+     * OID4VP: OPTIONAL. Array of strings, where each string is a base64url encoded JSON object that contains a typed
+     * parameter set with details about the transaction that the Verifier is requesting the End-User to authorize.
+     * The Wallet MUST return an error if a request contains even one unrecognized transaction data type or transaction
+     * data not conforming to the respective type definition.
+     *
+     * Transaction data classes are implemented in module [rqes-data-classes] and thus not known at compile time.
+     * For the contextual serializer see [at.asitplus.rqes.serializers.Base64URLTransactionDataSerializer]
+     */
+    @SerialName("transaction_data")
+    val transactionData: List<TransactionDataBase64Url>?
+
 }

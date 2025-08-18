@@ -6,8 +6,8 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 //TODO WIP
-@Serializable(with = AuthenticationRequestSerializer::class)
-data class OidcAuthReqDcApi(
+@Serializable
+data class OidcAuthRequestDcApi(
     // openid4vp-v<version>-<request-type>
     @SerialName("protocol")
     val protocol: String,

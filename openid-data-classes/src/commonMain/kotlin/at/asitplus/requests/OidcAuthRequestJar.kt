@@ -3,7 +3,9 @@ package at.asitplus.requests
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.AuthnRequestClaims
 import at.asitplus.openid.RelyingPartyMetadata
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class OidcAuthRequestJar(
     override val walletNonce: String?,
     override val claims: AuthnRequestClaims?,
@@ -12,5 +14,8 @@ data class OidcAuthRequestJar(
     override val idTokenHint: String?,
     override val requestUriMethod: String?,
     override val idTokenType: String?,
-    override val presentationDefinition: PresentationDefinition?
-) : OidcAuthRequest, JarAuthRequest, AuthenticationRequest
+    override val presentationDefinition: PresentationDefinition?,
+    override val request: String?,
+    override val requestUri: String?,
+    override val clientId: String
+) : OidcAuthRequest, JarAuthRequest

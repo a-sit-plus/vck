@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
-import at.asitplus.requests.OidcAuthReqDcApi
+import at.asitplus.requests.OidcAuthRequestDcApi
 import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.OidcUserInfo
@@ -209,7 +209,7 @@ class OpenId4VpWalletTest : FunSpec() {
 
                 val request =
                     "{\"client_metadata\":{\"vp_formats_supported\":{\"mso_mdoc\":{\"deviceauth_alg_values\":[-7],\"issuerauth_alg_values\":[-7]}}},\"dcql_query\":{\"credentials\":[{\"claims\":[{\"path\":[\"org.iso.18013.5.1\",\"family_name\"]},{\"path\":[\"org.iso.18013.5.1\",\"given_name\"]},{\"path\":[\"org.iso.18013.5.1\",\"age_over_21\"]}],\"format\":\"mso_mdoc\",\"id\":\"cred1\",\"meta\":{\"doctype_value\":\"org.iso.18013.5.1.mDL\"}}]},\"nonce\":\"4mqexiA_rQQyzHOYkuW6-BrHKaza02b8JHFVoyB5Iw8\",\"response_mode\":\"dc_api\",\"response_type\":\"vp_token\"}"
-                val dcApiRequest = OidcAuthReqDcApi(
+                val dcApiRequest = OidcAuthRequestDcApi(
                     protocol = "openid4vp-v1-unsigned",
                     request = request,
                     credentialId = "c72a2a8a6e94564cd8dea6ef0c7eb47b31a31947620ebcc0f07177bb71078def",

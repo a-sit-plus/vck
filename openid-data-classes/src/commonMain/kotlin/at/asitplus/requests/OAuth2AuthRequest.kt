@@ -89,4 +89,12 @@ sealed interface OAuth2AuthRequest : AuthenticationRequest {
      */
     @SerialName("code_challenge_method")
     val codeChallengeMethod: String?
+
+    /**
+     * RFC8707: In requests to the authorization server, a client MAY indicate the protected resource (a.k.a.
+     * resource server, application, API, etc.) to which it is requesting access. Its value MUST be an absolute URI,
+     * as specified by Section 4.3 of (RFC3986).
+     */
+    @SerialName("resource")
+    val resource: String?
 }
