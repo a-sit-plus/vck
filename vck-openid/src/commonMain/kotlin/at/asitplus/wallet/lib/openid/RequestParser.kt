@@ -3,8 +3,10 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
-import at.asitplus.dcapi.request.DCAPIRequest
+import at.asitplus.requests.DcApiRequest
 import at.asitplus.openid.*
+import at.asitplus.requests.RequestParameters
+import at.asitplus.requests.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
@@ -42,11 +44,11 @@ class RequestParser(
      * Pass in the request by a relying party, that is either a complete URL,
      * or the POST body (e.g. the form-serialized values of the authorization request),
      * or a serialized JWS (which may have been extracted from a `request` parameter),
-     * to parse the [AuthenticationRequestParameters], wrapped in [RequestParametersFrom].
+     * to parse the [AuthenticationRequestParameters], wrapped in [at.asitplus.requests.RequestParametersFrom].
      */
     suspend fun parseRequestParameters(
         input: String,
-        dcApiRequest: DCAPIRequest? = null
+        dcApiRequest: DcApiRequest? = null
     ): KmmResult<RequestParametersFrom<*>> = catching {
         // maybe it is a request JWS
         val parsedParams = run { parseRequestObjectJws(input, dcApiRequest) }
@@ -93,7 +95,7 @@ class RequestParser(
 
     private suspend fun extractRequestObject(
         params: AuthenticationRequestParameters,
-        dcApiRequest: DCAPIRequest?
+        dcApiRequest: DcApiRequest?
     ): RequestParametersFrom<*>? =
         params.request?.let { requestObject ->
             parseRequestObjectJws(requestObject, dcApiRequest)
@@ -113,7 +115,7 @@ class RequestParser(
 
     private suspend fun parseRequestObjectJws(
         requestObject: String,
-        dcApiRequest: DCAPIRequest? = null
+        dcApiRequest: DcApiRequest? = null
     ): RequestParametersFrom<*>? =
         JwsSigned.deserialize<RequestParameters>(
             PolymorphicSerializer(RequestParameters::class),
@@ -134,7 +136,7 @@ class RequestParser(
     private fun <T> matchRequestParameterCases(
         input: T,
         params: RequestParameters,
-        dcApiRequest: DCAPIRequest? = null
+        dcApiRequest: DcApiRequest? = null
     ): RequestParametersFrom<*> =
         when (input) {
             is Url -> RequestParametersFrom.Uri(input, params)

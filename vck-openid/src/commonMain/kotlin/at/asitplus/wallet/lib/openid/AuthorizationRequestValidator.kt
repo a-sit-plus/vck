@@ -2,9 +2,9 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
-import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.requests.RequestParametersFrom
 import at.asitplus.signum.indispensable.pki.leaf
-import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
+import at.asitplus.requests.OidcAuthReqDcApi
 import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.MapStore
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
@@ -31,10 +31,10 @@ internal class AuthorizationRequestValidator(
         }
 
         if (request.parameters.responseMode.isAnyDcApi() && request is RequestParametersFrom.JwsSigned) {
-            if (request.dcApiRequest == null || request.dcApiRequest !is Oid4vpDCAPIRequest) {
+            if (request.dcApiRequest == null || request.dcApiRequest !is OidcAuthReqDcApi) {
                 throw InvalidRequest("DC API request not set even though response mode is dcapi")
             }
-            val dcApiRequest = request.dcApiRequest as Oid4vpDCAPIRequest
+            val dcApiRequest = request.dcApiRequest as OidcAuthReqDcApi
             request.parameters.verifyClientIdPresent()
             request.parameters.verifyExpectedOrigin(dcApiRequest.callingOrigin)
         }

@@ -5,7 +5,7 @@ import at.asitplus.dif.InputDescriptor
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OpenIdAuthorizationDetails
-import at.asitplus.openid.RequestParameters
+import at.asitplus.requests.RequestParameters
 import at.asitplus.openid.TransactionData
 import at.asitplus.openid.odcJsonSerializer
 import at.asitplus.rqes.collection_entries.QCertCreationAcceptance

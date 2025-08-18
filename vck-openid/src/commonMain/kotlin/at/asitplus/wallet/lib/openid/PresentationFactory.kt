@@ -22,7 +22,7 @@ import at.asitplus.wallet.lib.agent.PresentationRequestParameters.Flow
 import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
+import at.asitplus.requests.OidcAuthReqDcApi
 import at.asitplus.iso.ClientIdToHash
 import at.asitplus.dcapi.DCAPIHandover
 import at.asitplus.dcapi.OID4VPHandover
@@ -33,6 +33,8 @@ import at.asitplus.iso.ResponseUriToHash
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.sha256
 import at.asitplus.iso.wrapInCborTag
+import at.asitplus.requests.RequestParameters
+import at.asitplus.requests.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JwkType
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
@@ -65,7 +67,7 @@ internal class PresentationFactory(
         clientMetadata: RelyingPartyMetadata?,
         jsonWebKeys: Collection<JsonWebKey>?,
         credentialPresentation: CredentialPresentation,
-        dcApiRequest: Oid4vpDCAPIRequest?,
+        dcApiRequest: OidcAuthReqDcApi?,
     ): KmmResult<PresentationResponseParameters> = catching {
         request.verifyResponseType()
 
@@ -128,7 +130,7 @@ internal class PresentationFactory(
         responseUrl: String?,
         nonce: String,
         docType: String,
-        dcApiRequest: Oid4vpDCAPIRequest?,
+        dcApiRequest: OidcAuthReqDcApi?,
         jsonWebKeys: Collection<JsonWebKey>?,
         responseWillBeEncrypted: Boolean,
     ): CoseSigned<ByteArray> {
@@ -209,7 +211,7 @@ internal class PresentationFactory(
     }
 
     private fun calcSessionTranscript(
-        dcApiRequest: Oid4vpDCAPIRequest,
+        dcApiRequest: OidcAuthReqDcApi,
         nonce: String,
         jsonWebKeys: Collection<JsonWebKey>?,
         responseWillBeEncrypted: Boolean,

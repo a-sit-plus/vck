@@ -1,4 +1,4 @@
-package at.asitplus.dcapi.request
+package at.asitplus.requests
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -8,14 +8,14 @@ import kotlinx.serialization.Serializable
     "Legacy preview protocol. Use OID4VP or ISO 18013-7 Annex C",
     replaceWith = ReplaceWith("Oid4vpDCAPIRequest or IsoMdocRequest")
 )
-data class PreviewDCAPIRequest(
+data class PreviewDcApiRequest(
     @SerialName("request")
     val request: String,
     // namespace -> name, intentToRetain
     @SerialName("requestedData")
     val requestedData: MutableMap<String, MutableList<Pair<String, Boolean>>>,
     @SerialName("credentialId")
-    val credentialId: String,
+    override val credentialId: String,
     @SerialName("callingPackageName")
     val callingPackageName: String? = null,
     @SerialName("callingOrigin")
@@ -26,7 +26,7 @@ data class PreviewDCAPIRequest(
     val readerPublicKeyBase64: String,
     @SerialName("docType")
     val docType: String,
-) : DCAPIRequest() {
+) : DcApiRequest {
     init {
         require(callingOrigin != null || callingPackageName != null)
     }
@@ -36,7 +36,7 @@ data class PreviewDCAPIRequest(
         if (this === other) return true
         if (other == null || this::class != other::class) return false
 
-        other as PreviewDCAPIRequest
+        other as PreviewDcApiRequest
 
         if (request != other.request) return false
         if (requestedData != other.requestedData) return false

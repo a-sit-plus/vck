@@ -1,7 +1,9 @@
 package at.asitplus.openid
 
+import at.asitplus.requests.OAuth2AuthReqParam
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.requests.RequestParameters
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
@@ -73,7 +75,7 @@ data class AuthenticationRequestParameters(
      * e.g. `profile` or `com.example.healthCardCredential`
      */
     @SerialName("scope")
-    val scope: String? = null,
+    override val scope: String? = null,
 
     /**
      * OIDC: RECOMMENDED. Opaque value used to maintain state between the request and the callback. Typically,
@@ -132,6 +134,7 @@ data class AuthenticationRequestParameters(
     val idTokenHint: String? = null,
 
     /**
+     * TODO: Not part of Oauth2.0 JAR!
      * OAuth 2.0 JAR: REQUIRED unless `request_uri` is specified. The Request Object that holds authorization request
      * parameters stated in Section 4 of RFC6749 (OAuth 2.0). If this parameter is present in the authorization request,
      * `request_uri` MUST NOT be present.
@@ -140,6 +143,7 @@ data class AuthenticationRequestParameters(
     val request: String? = null,
 
     /**
+     * TODO: Not part of Oauth2.0 JAR!
      * OAuth 2.0 JAR: REQUIRED unless request is specified. The absolute URI, as defined by RFC3986, that is the
      * Request Object URI referencing the authorization request parameters stated in Section 4 of RFC6749 (OAuth 2.0).
      * If this parameter is present in the authorization request, `request` MUST NOT be present.
@@ -206,7 +210,7 @@ data class AuthenticationRequestParameters(
      * This specification introduces a new authorization details type `openid_credential`.
      */
     @SerialName("authorization_details")
-    val authorizationDetails: Set<AuthorizationDetails>? = null,
+    override val authorizationDetails: List<AuthorizationDetails>? = null,
 
     /**
      * OID4VP: OPTIONAL. String containing the Wallet's identifier. The Credential Issuer can use the discovery process
@@ -398,7 +402,7 @@ data class AuthenticationRequestParameters(
      */
     @SerialName("expected_origins")
     val expectedOrigins: List<String>? = null,
-) : RequestParameters {
+) : RequestParameters, OAuth2AuthReqParam {
 
     /**
      * Reads the [OpenIdConstants.ClientIdScheme] of this request either directly from [clientIdScheme],

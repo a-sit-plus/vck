@@ -1,24 +1,25 @@
-package at.asitplus.dcapi.request
+package at.asitplus.requests
 
 import at.asitplus.catching
 import at.asitplus.openid.OpenIdConstants.DC_API_OID4VP_PROTOCOL_IDENTIFIER
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+//TODO WIP
 @Serializable
-data class Oid4vpDCAPIRequest(
+data class OidcAuthReqDcApi(
     // openid4vp-v<version>-<request-type>
     @SerialName("protocol")
     val protocol: String,
     @SerialName("request")
     val request: String,
     @SerialName("credentialId")
-    val credentialId: String,
+    override val credentialId: String,
     @SerialName("callingPackageName")
     val callingPackageName: String,
     @SerialName("callingOrigin")
     val callingOrigin: String
-) : DCAPIRequest() {
+) : DcApiRequest {
     val openIdVersion =
         catching {
             protocol.removePrefix(DC_API_OID4VP_PROTOCOL_IDENTIFIER).split(DELIMITER)[1]

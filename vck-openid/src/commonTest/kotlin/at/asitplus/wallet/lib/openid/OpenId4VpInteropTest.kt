@@ -4,7 +4,7 @@ import at.asitplus.dif.ClaimFormat
 import at.asitplus.dif.PresentationSubmission
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
-import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.requests.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey

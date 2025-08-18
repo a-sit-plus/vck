@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.oidc
 
-import at.asitplus.openid.RequestParameters
+import at.asitplus.requests.RequestParameters
 import at.asitplus.signum.indispensable.josef.JwsSigned
 
 /**

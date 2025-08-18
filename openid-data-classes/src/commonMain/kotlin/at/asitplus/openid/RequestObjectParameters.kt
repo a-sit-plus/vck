@@ -1,6 +1,7 @@
 package at.asitplus.openid
 
 import at.asitplus.catchingUnwrapped
+import at.asitplus.requests.RequestParameters
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

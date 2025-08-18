@@ -11,7 +11,7 @@ import at.asitplus.openid.OpenIdConstants.ResponseMode.Fragment
 import at.asitplus.openid.OpenIdConstants.ResponseMode.Other
 import at.asitplus.openid.OpenIdConstants.ResponseMode.Query
 import at.asitplus.openid.RelyingPartyMetadata
-import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.requests.RequestParametersFrom
 import at.asitplus.openid.odcJsonSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweAlgorithm

@@ -14,7 +14,7 @@ import kotlinx.serialization.encoding.Encoder
  * ONLY USE TO SERIALIZE!
  * DO NOT USE TO DESERIALIZE!
  *
- * For more info on correct deserialization see [RequestParametersFromSerializer]
+ * For more info on correct deserialization see [at.asitplus.requests.RequestParametersFromSerializer]
  */
 object JwsSignedSerializer : KSerializer<JwsSigned<*>> {
 

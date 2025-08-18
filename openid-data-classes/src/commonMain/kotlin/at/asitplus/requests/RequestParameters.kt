@@ -1,4 +1,7 @@
-package at.asitplus.openid
+package at.asitplus.requests
+
+import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.TransactionDataBase64Url
 
 interface RequestParameters {
     val responseType: String?
@@ -12,7 +15,7 @@ interface RequestParameters {
     val transactionData: List<TransactionDataBase64Url>?
 
     /**
-     * Reads the [OpenIdConstants.ClientIdScheme] of this request either directly from [clientIdScheme],
+     * Reads the [at.asitplus.openid.OpenIdConstants.ClientIdScheme] of this request either directly from [clientIdScheme],
      * or by extracting the prefix from [clientId] (as specified in OpenID4VP draft 22 onwards).
      */
     val clientIdSchemeExtracted: OpenIdConstants.ClientIdScheme?

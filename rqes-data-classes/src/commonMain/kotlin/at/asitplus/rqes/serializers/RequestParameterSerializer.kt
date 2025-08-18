@@ -1,7 +1,7 @@
 package at.asitplus.rqes.serializers
 
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.RequestParameters
+import at.asitplus.requests.RequestParameters
 import at.asitplus.rqes.SignatureRequestParameters
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.json.JsonContentPolymorphicSerializer

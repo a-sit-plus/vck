@@ -1,8 +1,9 @@
-package at.asitplus.openid
+package at.asitplus.requests
 
-import at.asitplus.dcapi.request.DCAPIRequest
-import at.asitplus.openid.RequestParametersFrom.Json
-import at.asitplus.openid.RequestParametersFrom.JwsSigned
+import at.asitplus.openid.JwsSignedSerializer
+import at.asitplus.openid.UrlSerializer
+import at.asitplus.requests.RequestParametersFrom.Json
+import at.asitplus.requests.RequestParametersFrom.JwsSigned
 import io.ktor.http.Url
 import kotlinx.serialization.Serializable
 
@@ -16,7 +17,7 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         @Serializable(JwsSignedSerializer::class)
         val jwsSigned: at.asitplus.signum.indispensable.josef.JwsSigned<T>,
         override val parameters: T,
-        val dcApiRequest: DCAPIRequest? = null
+        val dcApiRequest: DcApiRequest? = null
     ) : RequestParametersFrom<T>() {
         override fun toString(): String {
             return "JwsSigned(jwsSigned=${jwsSigned.serialize()}, parameters=$parameters)"
@@ -38,7 +39,7 @@ sealed class RequestParametersFrom<S : RequestParameters> {
     data class Json<T : RequestParameters>(
         val jsonString: String,
         override val parameters: T,
-        val dcApiRequest: DCAPIRequest? = null
+        val dcApiRequest: DcApiRequest? = null
     ) : RequestParametersFrom<T>() {
         override fun toString(): String {
             return "Json(jsonString='$jsonString', parameters=$parameters)"

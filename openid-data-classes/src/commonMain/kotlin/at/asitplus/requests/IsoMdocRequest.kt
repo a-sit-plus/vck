@@ -1,4 +1,4 @@
-package at.asitplus.dcapi.request
+package at.asitplus.requests
 
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.iso.EncryptionInfo
@@ -12,9 +12,9 @@ data class IsoMdocRequest(
     @SerialName("encryptionInfo")
     val encryptionInfo: EncryptionInfo,
     @SerialName("credentialId")
-    val credentialId: String,
+    override val credentialId: String,
     @SerialName("callingPackageName")
     val callingPackageName: String,
     @SerialName("callingOrigin")
     val callingOrigin: String
-) : DCAPIRequest()
+) : DcApiRequest

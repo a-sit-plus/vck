@@ -1,12 +1,8 @@
-package at.asitplus.openid.authReqExt
+package at.asitplus.requests
 
-import at.asitplus.catchingUnwrapped
-import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.Hashes
 import at.asitplus.openid.HashesSerializer
 import at.asitplus.openid.SignatureQualifier
-import at.asitplus.openid.contentEquals
-import at.asitplus.openid.contentHashCode
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
@@ -14,14 +10,13 @@ import at.asitplus.signum.indispensable.josef.JsonWebToken
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-@Serializable
-data class CscExtension(
+sealed interface CscAuthReq : AuthenticationRequest{
     /**
      * CSC: Optional
      * Request a preferred language according to RFC 5646
      */
     @SerialName("lang")
-    val lang: String? = null,
+    val lang: String?
 
     /**
      * CSC: REQUIRED-"credential"
@@ -32,7 +27,7 @@ data class CscExtension(
      */
     @SerialName("credentialID")
     @Serializable(ByteArrayBase64UrlSerializer::class)
-    val credentialID: ByteArray? = null,
+    val credentialID: ByteArray?
 
     /**
      * CSC: Required-"credential"
@@ -40,14 +35,14 @@ data class CscExtension(
      * signature to be created
      */
     @SerialName("signatureQualifier")
-    val signatureQualifier: SignatureQualifier? = null,
+    val signatureQualifier: SignatureQualifier?
 
     /**
      * CSC: Required-"credential"
      * The number of signatures to authorize
      */
     @SerialName("numSignatures")
-    val numSignatures: Int? = null,
+    val numSignatures: Int?
 
     /**
      * CSC: REQUIRED-"credential"
@@ -55,7 +50,7 @@ data class CscExtension(
      */
     @SerialName("hashes")
     @Serializable(HashesSerializer::class)
-    val hashes: Hashes? = null,
+    val hashes: Hashes?
 
     /**
      * CSC: REQUIRED-"credential"
@@ -63,7 +58,7 @@ data class CscExtension(
      */
     @SerialName("hashAlgorithmOID")
     @Serializable(with = ObjectIdentifierStringSerializer::class)
-    val hashAlgorithmOid: ObjectIdentifier? = null,
+    val hashAlgorithmOid: ObjectIdentifier?
 
     /**
      * CSC: OPTIONAL
@@ -71,7 +66,7 @@ data class CscExtension(
      * The maximum size of the string is 500 characters
      */
     @SerialName("description")
-    val description: String? = null,
+    val description: String?
 
     /**
      * CSC: OPTIONAL
@@ -82,7 +77,7 @@ data class CscExtension(
      * user’s application account
      */
     @SerialName("account_token")
-    val accountToken: JsonWebToken? = null,
+    val accountToken: JsonWebToken?
 
     /**
      * CSC: OPTIONAL
@@ -91,54 +86,5 @@ data class CscExtension(
      * debugging purposes
      */
     @SerialName("clientData")
-    val clientData: String? = null,
-): AuthenticationRequestExtension {
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other == null || this::class != other::class) return false
-
-        other as CscExtension
-
-        if (numSignatures != other.numSignatures) return false
-        if (lang != other.lang) return false
-        if (!credentialID.contentEquals(other.credentialID)) return false
-        if (signatureQualifier != other.signatureQualifier) return false
-        if (!hashes.contentEquals( other.hashes)) return false
-        if (hashAlgorithmOid != other.hashAlgorithmOid) return false
-        if (description != other.description) return false
-        if (accountToken != other.accountToken) return false
-        if (clientData != other.clientData) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = numSignatures ?: 0
-        result = 31 * result + (lang?.hashCode() ?: 0)
-        result = 31 * result + (credentialID?.contentHashCode() ?: 0)
-        result = 31 * result + (signatureQualifier?.hashCode() ?: 0)
-        result = 31 * result + (hashes?.contentHashCode() ?: 0)
-        result = 31 * result + (hashAlgorithmOid?.hashCode() ?: 0)
-        result = 31 * result + (description?.hashCode() ?: 0)
-        result = 31 * result + (accountToken?.hashCode() ?: 0)
-        result = 31 * result + (clientData?.hashCode() ?: 0)
-        return result
-    }
-
-    override fun fromSurrogate(authReqParam: AuthenticationRequestParameters): AuthenticationRequestExtension? =
-        catchingUnwrapped {
-            CscExtension(
-                lang = lang,
-                credentialID = credentialID,
-                signatureQualifier = signatureQualifier,
-                numSignatures = numSignatures,
-                hashAlgorithmOid = hashAlgorithmOid,
-                description = description,
-                accountToken = accountToken,
-                clientData = clientData,
-            )
-        }.getOrNull()
-
-    override fun isValid() {}
+    val clientData: String?
 }

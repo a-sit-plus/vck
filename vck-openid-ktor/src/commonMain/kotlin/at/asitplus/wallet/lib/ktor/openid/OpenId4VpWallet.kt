@@ -3,15 +3,14 @@ package at.asitplus.wallet.lib.ktor.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
-import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
+import at.asitplus.requests.OidcAuthReqDcApi
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_REQUEST
 import at.asitplus.openid.RelyingPartyMetadata
-import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.requests.RequestParametersFrom
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.CredentialPresentation
-import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
@@ -116,7 +115,7 @@ class OpenId4VpWallet(
 
     suspend fun parseAuthenticationRequestParameters(
         input: String,
-        dcApiRequest: Oid4vpDCAPIRequest? = null
+        dcApiRequest: OidcAuthReqDcApi? = null
     ): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> =
         openId4VpHolder.parseAuthenticationRequestParameters(input, dcApiRequest)
 

@@ -3,8 +3,8 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
-import at.asitplus.dcapi.request.DCAPIRequest
-import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
+import at.asitplus.requests.DcApiRequest
+import at.asitplus.requests.OidcAuthReqDcApi
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
@@ -20,11 +20,11 @@ import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestObjectParameters
-import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.requests.RequestParameters
+import at.asitplus.requests.RequestParametersFrom
 import at.asitplus.openid.SupportedAlgorithmsContainer
 import at.asitplus.openid.VpFormatsSupported
-import at.asitplus.openid.extractDcApiRequest
+import at.asitplus.requests.extractDcApiRequest
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
@@ -128,7 +128,7 @@ class OpenId4VpHolder(
     }
 
     /**
-     * Used to resolve [at.asitplus.openid.RequestParameters] by reference and also matches them to the correct [at.asitplus.openid.RequestParametersFrom]
+     * Used to resolve [RequestParameters] by reference and also matches them to the correct [RequestParametersFrom]
      */
     private val requestParser: RequestParser = RequestParser(remoteResourceRetriever, requestObjectJwsVerifier) {
         RequestObjectParameters(metadata, uuid4().toString().also { walletNonceMapStore.put(it, it) })
@@ -160,7 +160,7 @@ class OpenId4VpHolder(
      */
     suspend fun parseAuthenticationRequestParameters(
         input: String,
-        dcApiRequest: DCAPIRequest? = null,
+        dcApiRequest: DcApiRequest? = null,
     ): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> =
         catching {
             @Suppress("UNCHECKED_CAST")
@@ -233,7 +233,7 @@ class OpenId4VpHolder(
         AuthorizationResponsePreparationState(
             presentationDefinition,
             clientMetadata,
-            params.extractDcApiRequest() as? Oid4vpDCAPIRequest?
+            params.extractDcApiRequest() as? OidcAuthReqDcApi?
         )
     }
 
@@ -269,7 +269,7 @@ class OpenId4VpHolder(
             (request as? RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>)
                 ?.jwsSigned?.header?.certificateChain?.firstOrNull()?.decodedPublicKey?.getOrNull()?.toJsonWebKey()
         val clientJsonWebKeySet = clientMetadata?.loadJsonWebKeySet()
-        val dcApiRequest = request.extractDcApiRequest() as? Oid4vpDCAPIRequest?
+        val dcApiRequest = request.extractDcApiRequest() as? OidcAuthReqDcApi?
         val audience = request.parameters.extractAudience(clientJsonWebKeySet, dcApiRequest)
         val presentationFactory =
             PresentationFactory(supportedAlgorithms, signDeviceAuthDetached, signDeviceAuthFallback, signIdToken)
@@ -311,7 +311,7 @@ class OpenId4VpHolder(
                 is CredentialPresentationRequest.DCQLRequest -> {
                     val dcqlQueryResult = holder.matchDCQLQueryAgainstCredentialStore(
                         it.dcqlQuery,
-                        preparationState.oid4vpDCAPIRequest?.credentialId
+                        preparationState.oidcAuthReqDcApi?.credentialId
                     ).getOrThrow()
                     DCQLMatchingResult(
                         presentationRequest = it,
@@ -323,7 +323,7 @@ class OpenId4VpHolder(
                     holder.matchInputDescriptorsAgainstCredentialStore(
                         inputDescriptors = it.presentationDefinition.inputDescriptors,
                         fallbackFormatHolder = it.fallbackFormatHolder,
-                        filterById = preparationState.oid4vpDCAPIRequest?.credentialId
+                        filterById = preparationState.oidcAuthReqDcApi?.credentialId
                     ).getOrThrow().let { matchInputDescriptors ->
                         if (matchInputDescriptors.values.find { it.size != 0 } == null) {
                             throw OAuth2Exception.AccessDenied("No matching credential")
@@ -353,7 +353,7 @@ class OpenId4VpHolder(
     @Throws(OAuth2Exception::class)
     private fun RequestParameters.extractAudience(
         clientJsonWebKeySet: JsonWebKeySet?,
-        dcApiRequest: Oid4vpDCAPIRequest?,
+        dcApiRequest: OidcAuthReqDcApi?,
     ) = dcApiRequest?.let { "origin:${it.callingOrigin}" }
         ?: clientId
         ?: issuer

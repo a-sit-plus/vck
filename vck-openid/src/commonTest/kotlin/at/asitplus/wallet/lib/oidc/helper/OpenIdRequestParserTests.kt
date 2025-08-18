@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.oidc.helper
 
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.requests.RequestParametersFrom
 import at.asitplus.wallet.lib.openid.RequestParser
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContain

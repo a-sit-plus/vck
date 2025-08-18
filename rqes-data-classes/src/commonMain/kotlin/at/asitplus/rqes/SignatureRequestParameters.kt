@@ -1,6 +1,7 @@
 package at.asitplus.rqes
 
 import at.asitplus.openid.*
+import at.asitplus.requests.RequestParameters
 import at.asitplus.rqes.collection_entries.DocumentLocation
 import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
 import at.asitplus.signum.indispensable.Digest
