@@ -25,5 +25,5 @@ data class CscAuthRequestJar(
     override val issuedAt: Instant?,
     override val request: String?,
     override val requestUri: String?,
-    override val clientId: String
+    override val clientId: String,
 ) : CscAuthRequest, JarAuthRequest

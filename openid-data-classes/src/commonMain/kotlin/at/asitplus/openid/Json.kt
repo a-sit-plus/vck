@@ -1,6 +1,8 @@
 package at.asitplus.openid
 
 import at.asitplus.dif.ddcJsonSerializer
+import at.asitplus.requests.AuthenticationRequest
+import at.asitplus.requests.AuthenticationRequestSerializer
 import at.asitplus.requests.RequestParameters
 import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.json.Json

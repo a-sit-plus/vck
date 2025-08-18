@@ -34,7 +34,7 @@ data class AuthenticationRequestParameters(
      * Optional when JAR (RFC9101) is used.
      */
     @SerialName("response_type")
-    override val responseType: String? = null,
+    val responseType: String? = null,
 
     /**
      * OIDC: REQUIRED. OAuth 2.0 Client Identifier valid at the Authorization Server.
@@ -49,7 +49,7 @@ data class AuthenticationRequestParameters(
      * See also [clientIdWithoutPrefix] and the notes there.
      */
     @SerialName("client_id")
-    override val clientId: String? = null,
+    val clientId: String? = null,
 
     /**
      * OID4VP: OPTIONAL. A string identifying the scheme of the value in the `client_id` Authorization Request parameter
@@ -86,7 +86,7 @@ data class AuthenticationRequestParameters(
      * parameter with a browser cookie.
      */
     @SerialName("state")
-    override val state: String? = null,
+    val state: String? = null,
 
     /**
      * OIDC: OPTIONAL. String value used to associate a Client session with an ID Token, and to mitigate replay attacks.
@@ -94,7 +94,7 @@ data class AuthenticationRequestParameters(
      * be present in the nonce values used to prevent attackers from guessing values.
      */
     @SerialName("nonce")
-    override val nonce: String? = null,
+    val nonce: String? = null,
 
     /**
      * OpenID4VP: When received in [RequestObjectParameters.walletNonce], the Verifier MUST use it as the [walletNonce]
@@ -257,7 +257,7 @@ data class AuthenticationRequestParameters(
      * `invalid_request` Authorization Response error.
      */
     @SerialName("response_uri")
-    override val responseUrl: String? = null,
+    val responseUrl: String? = null,
 
     /**
      * OAuth 2.0 JAR: If signed, the Authorization Request Object SHOULD contain the Claims `iss` (issuer) and `aud`

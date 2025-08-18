@@ -2,12 +2,12 @@ package at.asitplus.rqes
 
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.InputDescriptor
-import at.asitplus.openid.AuthenticationRequest
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.requests.RequestParameters
 import at.asitplus.openid.TransactionData
 import at.asitplus.openid.odcJsonSerializer
+import at.asitplus.requests.AuthenticationRequest
 import at.asitplus.rqes.collection_entries.QCertCreationAcceptance
 import at.asitplus.rqes.collection_entries.QesAuthorization
 import at.asitplus.rqes.serializers.InputDescriptorSerializer

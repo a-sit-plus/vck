@@ -21,11 +21,11 @@ data class CscAuthRequestOAuth2 (
     override val clientData: String?,
     override val clientId: String,
     override val responseType: String,
-    override val redirectUri: String?,
     override val scope: String?,
     override val state: String?,
     override val authorizationDetails: List<AuthorizationDetails>?,
     override val codeChallenge: String?,
     override val codeChallengeMethod: String?,
-    override val lang: String?, override val resource: String?
+    override val lang: String?, override val resource: String?,
+    override val redirectUrl: String?
 ) : CscAuthRequest, OAuth2AuthRequest

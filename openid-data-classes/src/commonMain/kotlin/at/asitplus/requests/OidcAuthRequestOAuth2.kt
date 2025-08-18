@@ -19,7 +19,7 @@ data class OidcAuthRequestOAuth2(
     override val presentationDefinition: PresentationDefinition?,
     override val clientId: String,
     override val responseType: String,
-    override val redirectUri: String?,
+    override val redirectUrl: String?,
     override val scope: String?,
     override val state: String?,
     override val authorizationDetails: List<AuthorizationDetails>?,
