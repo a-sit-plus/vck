@@ -33,6 +33,11 @@ import at.asitplus.iso.ResponseUriToHash
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.sha256
 import at.asitplus.iso.wrapInCborTag
+import at.asitplus.requests.AuthenticationRequest
+import at.asitplus.requests.OAuth2AuthRequest
+import at.asitplus.requests.OidcAuthRequest
+import at.asitplus.requests.OidcAuthRequestJar
+import at.asitplus.requests.OidcAuthRequestOAuth2
 import at.asitplus.requests.RequestParameters
 import at.asitplus.requests.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JwkType
@@ -61,7 +66,7 @@ internal class PresentationFactory(
 ) {
     suspend fun createPresentation(
         holder: Holder,
-        request: RequestParameters,
+        request: OidcAuthRequestOAuth2,
         nonce: String,
         audience: String,
         clientMetadata: RelyingPartyMetadata?,
@@ -72,7 +77,7 @@ internal class PresentationFactory(
         request.verifyResponseType()
 
         val requestsDcApiEncryption =
-            (request as? AuthenticationRequest)?.responseMode == OpenIdConstants.ResponseMode.DcApiJwt // TODO enable this check in draft28 branch && clientMetadata?.encryptionSupported() == true
+            (request as? OAuth2AuthRequest)?.responseMode == OpenIdConstants.ResponseMode.DcApiJwt // TODO enable this check in draft28 branch && clientMetadata?.encryptionSupported() == true
         val responseWillBeEncrypted =
             jsonWebKeys != null && (clientMetadata?.requestsEncryption() == true || requestsDcApiEncryption)
         val clientId = request.clientId
@@ -232,42 +237,49 @@ internal class PresentationFactory(
         )
     }
 
-    suspend fun <T : RequestParameters> createSignedIdToken(
+    suspend fun <T : OidcAuthRequest> createSignedIdToken(
         clock: Clock,
         agentPublicKey: CryptoPublicKey,
         request: RequestParametersFrom<T>,
     ): KmmResult<JwsSigned<IdToken>?> = catching {
-        if (request.parameters.responseType?.contains(OpenIdConstants.ID_TOKEN) != true) {
-            return@catching null
+        when(request.parameters) {
+            is OidcAuthRequestDcApi -> TODO()
+            is OidcAuthRequestJar -> TODO()
+            is OidcAuthRequestOAuth2 -> {
+                if (!(request.parameters as OidcAuthRequestOAuth2).responseType.contains(OpenIdConstants.ID_TOKEN)) {
+                    return@catching null
+                }
+                val nonce = request.parameters.nonce ?: run {
+                    Napier.w("nonce is null in ${request.parameters}")
+                    throw InvalidRequest("nonce is null")
+                }
+                val now = clock.now()
+                // we'll assume jwk-thumbprint
+                val agentJsonWebKey = agentPublicKey.toJsonWebKey()
+                val audience = (request.parameters as OidcAuthRequestOAuth2).clientId
+                    ?: (request.parameters as OidcAuthRequestOAuth2).redirectUrlExtracted
+                    ?: agentJsonWebKey.jwkThumbprint
+                val idToken = IdToken(
+                    issuer = agentJsonWebKey.jwkThumbprint,
+                    subject = agentJsonWebKey.jwkThumbprint,
+                    subjectJwk = agentJsonWebKey,
+                    audience = audience,
+                    issuedAt = now,
+                    expiration = now + 60.seconds,
+                    nonce = nonce,
+                )
+                signIdToken(null, idToken, IdToken.serializer()).getOrElse {
+                    Napier.w("Could not sign id_token", it)
+                    throw AccessDenied("Could not sign id_token", it)
+                }
+            }
         }
-        val nonce = request.parameters.nonce ?: run {
-            Napier.w("nonce is null in ${request.parameters}")
-            throw InvalidRequest("nonce is null")
-        }
-        val now = clock.now()
-        // we'll assume jwk-thumbprint
-        val agentJsonWebKey = agentPublicKey.toJsonWebKey()
-        val audience = request.parameters.clientId
-            ?: request.parameters.redirectUrlExtracted
-            ?: agentJsonWebKey.jwkThumbprint
-        val idToken = IdToken(
-            issuer = agentJsonWebKey.jwkThumbprint,
-            subject = agentJsonWebKey.jwkThumbprint,
-            subjectJwk = agentJsonWebKey,
-            audience = audience,
-            issuedAt = now,
-            expiration = now + 60.seconds,
-            nonce = nonce,
-        )
-        signIdToken(null, idToken, IdToken.serializer()).getOrElse {
-            Napier.w("Could not sign id_token", it)
-            throw AccessDenied("Could not sign id_token", it)
-        }
+
     }
 
     @Throws(OAuth2Exception::class)
-    private fun RequestParameters.verifyResponseType() {
-        if (responseType == null || !responseType!!.contains(VP_TOKEN)) {
+    private fun OAuth2AuthRequest.verifyResponseType() {
+        if (!responseType.contains(VP_TOKEN)) {
             Napier.w("vp_token not requested in response_type='$responseType'")
             throw InvalidRequest("response_type invalid")
         }

@@ -101,6 +101,16 @@ sealed interface OAuth2AuthRequest : AuthenticationRequest {
     @SerialName("resource")
     val resource: String?
 
+    /**
+     * OAuth 2.0 Responses: OPTIONAL. Informs the Authorization Server of the mechanism to be used for returning
+     * Authorization Response parameters from the Authorization Endpoint. This use of this parameter is NOT RECOMMENDED
+     * with a value that specifies the same Response Mode as the default Response Mode for the Response Type used.
+     *
+     * OIDC SIOPv2: This response mode `post` is used to request the Self-Issued OP to deliver the result of the
+     * authentication process to a certain endpoint using the HTTP POST method.
+     */
+    @SerialName("response_mode")
+    val responseMode: OpenIdConstants.ResponseMode?
 
     /**
      * Reads the [at.asitplus.openid.OpenIdConstants.ClientIdScheme] of this request either directly from [clientIdScheme],

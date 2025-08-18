@@ -6,7 +6,7 @@ import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.TransactionDataBase64Url
 import kotlinx.serialization.SerialName
 
-interface OidcAuthRequest : AuthenticationRequest{
+sealed interface OidcAuthRequest : AuthenticationRequest{
     /**
      * OpenID4VP: When received in [at.asitplus.openid.RequestObjectParameters.walletNonce], the Verifier MUST use it as the [walletNonce]
      * value in the signed authorization request object.
@@ -93,4 +93,31 @@ interface OidcAuthRequest : AuthenticationRequest{
     @SerialName("transaction_data")
     val transactionData: List<TransactionDataBase64Url>?
 
+    /**
+     * OID4VP: OPTIONAL. The Response URI to which the Wallet MUST send the Authorization Response using an HTTPS POST
+     * request as defined by the Response Mode `direct_post`. The Response URI receives all Authorization Response
+     * parameters as defined by the respective Response Type. When the `response_uri` parameter is present,
+     * the `redirect_uri` Authorization Request parameter MUST NOT be present. If the `redirect_uri` Authorization
+     * Request parameter is present when the Response Mode is `direct_post`, the Wallet MUST return an
+     * `invalid_request` Authorization Response error.
+     */
+    @SerialName("response_uri")
+    val responseUrl: String?
+
+    /**
+     * OIDC: OPTIONAL. String value used to associate a Client session with an ID Token, and to mitigate replay attacks.
+     * The value is passed through unmodified from the Authentication Request to the ID Token. Sufficient entropy MUST
+     * be present in the nonce values used to prevent attackers from guessing values.
+     */
+    @SerialName("nonce")
+    val nonce: String?
+
+    /**
+     * OAuth2: Recommended
+     * OIDC: RECOMMENDED. Opaque value used to maintain state between the request and the callback. Typically,
+     * Cross-Site Request Forgery (CSRF, XSRF) mitigation is done by cryptographically binding the value of this
+     * parameter with a browser cookie.
+     */
+    @SerialName("state")
+    val state: String?
 }

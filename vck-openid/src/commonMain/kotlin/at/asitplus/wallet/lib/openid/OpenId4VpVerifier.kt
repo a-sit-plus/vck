@@ -31,6 +31,10 @@ import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.ResponseParametersFrom
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
+import at.asitplus.requests.AuthenticationRequest
+import at.asitplus.requests.OAuth2AuthRequest
+import at.asitplus.requests.OidcAuthRequest
+import at.asitplus.requests.OidcAuthRequestJar
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
@@ -101,7 +105,7 @@ open class OpenId4VpVerifier(
     private val clock: Clock = Clock.System,
     private val nonceService: NonceService = DefaultNonceService(),
     /** Used to store issued authn requests, to verify the authn response to it */
-    private val stateToAuthnRequestStore: MapStore<String, AuthenticationRequest> = DefaultMapStore(),
+    private val stateToAuthnRequestStore: MapStore<String, OidcAuthRequest> = DefaultMapStore(),
     /** Algorithm supported to decrypt responses from wallets, for [metadataWithEncryption]. */
     private val supportedJweAlgorithm: JweAlgorithm = JweAlgorithm.ECDH_ES,
     /** Algorithm supported to decrypt responses from wallets, for [metadataWithEncryption]. */
@@ -207,7 +211,7 @@ open class OpenId4VpVerifier(
     )
 
     suspend fun createAuthnRequest(
-        requestOptions: RequestOptions,
+        requestOptions: OpenIdRequestOptions,
         creationOptions: CreationOptions,
     ): KmmResult<CreatedRequest> = catching {
         when (creationOptions) {
@@ -222,7 +226,7 @@ open class OpenId4VpVerifier(
             is CreationOptions.RequestByReference -> {
                 require(clientIdScheme !is ClientIdScheme.CertificateSanDns) // per OpenID4VP d23 5.10.4
                 URLBuilder(creationOptions.walletUrl).apply {
-                    AuthenticationRequest(
+                    OidcAuthRequestJar(
                         clientId = clientIdScheme.clientId,
                         requestUri = creationOptions.requestUrl,
                         requestUriMethod = creationOptions.requestUrlMethod,
@@ -249,7 +253,7 @@ open class OpenId4VpVerifier(
             is CreationOptions.SignedRequestByReference -> {
                 require(clientIdScheme !is ClientIdScheme.RedirectUri) // per OpenID4VP d23 5.10.4
                 URLBuilder(creationOptions.walletUrl).apply {
-                    AuthenticationRequest(
+                    OidcAuthRequestJar(
                         clientId = clientIdScheme.clientId,
                         requestUri = creationOptions.requestUrl,
                         requestUriMethod = creationOptions.requestUrlMethod,
@@ -308,7 +312,7 @@ open class OpenId4VpVerifier(
      * see [createAuthnRequest]
      */
     suspend fun createAuthnRequest(
-        requestOptions: RequestOptions,
+        requestOptions: OpenIdRequestOptions,
         requestObjectParameters: RequestObjectParameters? = null,
     ) = prepareAuthnRequest(
         requestOptions = requestOptions,
@@ -322,38 +326,42 @@ open class OpenId4VpVerifier(
      * see [createAuthnRequest]
      */
     suspend fun prepareAuthnRequest(
-        requestOptions: RequestOptions,
+        requestOptions: OpenIdRequestOptions,
         requestObjectParameters: RequestObjectParameters? = null,
     ) = requestOptions.toAuthnRequest(requestObjectParameters)
 
     private suspend fun RequestOptions.toAuthnRequest(
         requestObjectParameters: RequestObjectParameters?,
-    ): AuthenticationRequest = AuthenticationRequest(
-        responseType = responseType,
-        clientId = clientIdScheme.clientId,
-        clientIdScheme = clientIdScheme.clientIdScheme,
-        redirectUrl = if (!isAnyDirectPost) clientIdScheme.redirectUri else null,
-        responseUrl = responseUrl,
-        // Using scope as an alias for a well-defined Presentation Exchange or DCQL is not supported
-        scope = if (isSiop) buildScope() else null,
-        nonce = nonceService.provideNonce(),
-        walletNonce = requestObjectParameters?.walletNonce,
-        clientMetadata = clientMetadata(this),
-        clientMetadataUri = clientMetadataUrl,
-        idTokenType = if (isSiop) IdTokenType.SUBJECT_SIGNED.text else null,
-        responseMode = responseMode,
-        state = state,
-        dcqlQuery = if (isDcql) toDCQLQuery() else null,
-        presentationDefinition = if (isPresentationExchange)
-            toPresentationDefinition(containerJwt, containerSdJwt, rqesFlow) else null,
-        transactionData = if (rqesFlow != PresentationRequestParameters.Flow.UC5) transactionData?.map { it.toBase64UrlJsonString() } else null
-    )
+    ): AuthenticationRequest =
+        when {
+            else -> TODO()
+        }
+//    AuthenticationRequest(
+//        responseType = responseType,
+//        clientId = clientIdScheme.clientId,
+//        clientIdScheme = clientIdScheme.clientIdScheme,
+//        redirectUrl = if (!isAnyDirectPost) clientIdScheme.redirectUri else null,
+//        responseUrl = responseUrl,
+//        // Using scope as an alias for a well-defined Presentation Exchange or DCQL is not supported
+//        scope = if (isSiop) buildScope() else null,
+//        nonce = nonceService.provideNonce(),
+//        walletNonce = requestObjectParameters?.walletNonce,
+//        clientMetadata = clientMetadata(this),
+//        clientMetadataUri = clientMetadataUrl,
+//        idTokenType = if (isSiop) IdTokenType.SUBJECT_SIGNED.text else null,
+//        responseMode = responseMode,
+//        state = state,
+//        dcqlQuery = if (isDcql) toDCQLQuery() else null,
+//        presentationDefinition = if (isPresentationExchange)
+//            toPresentationDefinition(containerJwt, containerSdJwt, rqesFlow) else null,
+//        transactionData = if (rqesFlow != PresentationRequestParameters.Flow.UC5) transactionData?.map { it.toBase64UrlJsonString() } else null
+//    )
 
     /**
      * Remembers [authenticationRequest] to link responses to requests
      */
     suspend fun submitAuthnRequest(
-        authenticationRequest: AuthenticationRequest,
+        authenticationRequest: OidcAuthRequest,
     ) = stateToAuthnRequestStore.put(
         authenticationRequest.state
             ?: throw IllegalArgumentException("No state value has been provided"),
