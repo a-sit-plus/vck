@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequest
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.requests.RequestParametersFrom
 import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
@@ -244,7 +244,7 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
         }
         """.trimIndent()
 
-        val parsed = vckJsonSerializer.decodeFromString<AuthenticationRequestParameters>(input)
+        val parsed = vckJsonSerializer.decodeFromString<AuthenticationRequest>(input)
         parsed.shouldNotBeNull()
 
         parsed.responseUrl shouldBe "https://verifier-backend.eudiw.dev/wallet/direct_post"
@@ -285,16 +285,16 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
     "Request in request URI" {
         val input = "mdoc-openid4vp://?client_id=https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02" +
                 "&request_uri=https%3A%2F%2Fexample.com%2Fd15b5b6f-7821-4031-9a18-ebe491b720a6"
-        val signer = SignJwt<AuthenticationRequestParameters>(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk())
+        val signer = SignJwt<AuthenticationRequest>(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk())
         val jws = signer(
             JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST,
-            AuthenticationRequestParameters(
+            AuthenticationRequest(
                 nonce = "RjEQKQeG8OUaKT4ij84E8mCvry6pVSgDyqRBMW5eBTPItP4DIfbKaT6M6v6q2Dvv8fN7Im7Ifa6GI2j6dHsJaQ==",
                 state = "ef391e30-bacc-4441-af5d-7f42fb682e02",
                 responseUrl = "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02",
                 clientId = "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02",
             ),
-            AuthenticationRequestParameters.Companion.serializer(),
+            AuthenticationRequest.Companion.serializer(),
         ).getOrThrow().serialize()
 
         val wallet = OpenId4VpHolder(
@@ -358,7 +358,7 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
             remoteResourceRetriever = { if (it.url == requestUrl) jar.invoke(it.requestObjectParameters).getOrThrow() else null }
         )
 
-        val parameters: RequestParametersFrom<AuthenticationRequestParameters> = holderOid4vp.parseAuthenticationRequestParameters(walletUrl).getOrThrow()
+        val parameters: RequestParametersFrom<AuthenticationRequest> = holderOid4vp.parseAuthenticationRequestParameters(walletUrl).getOrThrow()
         val response = holderOid4vp.createAuthnResponse(parameters).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
         verifierOid4vp.validateAuthnResponse(response.params)

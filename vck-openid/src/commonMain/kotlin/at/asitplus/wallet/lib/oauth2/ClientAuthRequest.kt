@@ -4,7 +4,7 @@ import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OidcUserInfoExtended
 
 /**
- * Extracted information from [at.asitplus.openid.AuthenticationRequestParameters],
+ * Extracted information from [at.asitplus.openid.AuthenticationRequest],
  * to store what the client has initially requested (which [scope] and/or [authnDetails]).
  */
 data class ClientAuthRequest(

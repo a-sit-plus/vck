@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.dif.DifInputDescriptor
-import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequest
 import at.asitplus.requests.RequestParametersFrom
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
@@ -50,10 +50,10 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
             ).getOrThrow().url
 
             val params = holderOid4vp.parseAuthenticationRequestParameters(authnRequest).getOrThrow()
-                .shouldBeInstanceOf<RequestParametersFrom.Uri<AuthenticationRequestParameters>>()
+                .shouldBeInstanceOf<RequestParametersFrom.Uri<AuthenticationRequest>>()
 
             val serialized = vckJsonSerializer.encodeToString(params)
-            val deserialized = vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
+            val deserialized = vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequest>>(serialized)
             deserialized shouldBe params
         }
 
@@ -65,7 +65,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
             val params = holderOid4vp.parseAuthenticationRequestParameters(authnRequest).getOrThrow()
 
             val serialized = vckJsonSerializer.encodeToString(params)
-            val deserialized = vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
+            val deserialized = vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequest>>(serialized)
             deserialized shouldBe params
         }
 
@@ -73,7 +73,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
             val authnRequestUrl = verifierOid4vp.createAuthnRequest(
                 reqOptions, OpenId4VpVerifier.CreationOptions.SignedRequestByValue(walletUrl)
             ).getOrThrow().url
-            val interim1: AuthenticationRequestParameters =
+            val interim1: AuthenticationRequest =
                 Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
             interim1.clientId shouldBe clientId
 
@@ -81,7 +81,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
             val params = holderOid4vp.parseAuthenticationRequestParameters(interim2).getOrThrow()
 
             val serialized = vckJsonSerializer.encodeToString(params)
-            val deserialized = vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
+            val deserialized = vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequest>>(serialized)
             deserialized shouldBe params
         }
     }

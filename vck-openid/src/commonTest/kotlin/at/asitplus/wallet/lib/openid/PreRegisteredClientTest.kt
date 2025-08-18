@@ -153,10 +153,10 @@ class PreRegisteredClientTest : FreeSpec({
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = ClientIdScheme.PreRegistered(clientId, redirectUrl),
-            stateToAuthnRequestStore = object : MapStore<String, AuthenticationRequestParameters> {
-                override suspend fun put(key: String, value: AuthenticationRequestParameters) {}
-                override suspend fun get(key: String): AuthenticationRequestParameters? = null
-                override suspend fun remove(key: String): AuthenticationRequestParameters? = null
+            stateToAuthnRequestStore = object : MapStore<String, AuthenticationRequest> {
+                override suspend fun put(key: String, value: AuthenticationRequest) {}
+                override suspend fun get(key: String): AuthenticationRequest? = null
+                override suspend fun remove(key: String): AuthenticationRequest? = null
             },
         )
         val authnRequest = verifierOid4vp.createAuthnRequest(
@@ -175,13 +175,13 @@ class PreRegisteredClientTest : FreeSpec({
         val authnRequestUrl = verifierOid4vp.createAuthnRequest(
             defaultRequestOptions, OpenId4VpVerifier.CreationOptions.SignedRequestByValue(walletUrl)
         ).getOrThrow().url
-        val authnRequest: AuthenticationRequestParameters =
+        val authnRequest: AuthenticationRequest =
             Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
         authnRequest.clientId shouldBe clientId
         val jar = authnRequest.request
             .shouldNotBeNull()
-        val jwsObject = JwsSigned.Companion.deserialize<AuthenticationRequestParameters>(
-            AuthenticationRequestParameters.Companion.serializer(), jar,
+        val jwsObject = JwsSigned.Companion.deserialize<AuthenticationRequest>(
+            AuthenticationRequest.Companion.serializer(), jar,
             vckJsonSerializer
         ).getOrThrow()
         VerifyJwsObject().invoke(jwsObject).shouldBeTrue()
@@ -241,10 +241,10 @@ class PreRegisteredClientTest : FreeSpec({
         val authnRequest = verifierOid4vp.createAuthnRequest(defaultRequestOptions)
         val authnRequestUrlParams = authnRequest.encodeToParameters().formUrlEncode()
 
-        val parsedAuthnRequest: AuthenticationRequestParameters =
+        val parsedAuthnRequest: AuthenticationRequest =
             authnRequestUrlParams.decodeFromUrlQuery()
         val authnResponse = holderOid4vp.createAuthnResponseParams(
-            RequestParametersFrom.Uri<AuthenticationRequestParameters>(
+            RequestParametersFrom.Uri<AuthenticationRequest>(
                 Url(authnRequestUrlParams),
                 parsedAuthnRequest
             )
@@ -369,7 +369,7 @@ class PreRegisteredClientTest : FreeSpec({
             remoteResourceRetriever = {
                 if (it.url == requestUrl) {
                     jar.invoke(it.requestObjectParameters).getOrThrow().also {
-                        odcJsonSerializer.decodeFromString<AuthenticationRequestParameters>(it).walletNonce.also {
+                        odcJsonSerializer.decodeFromString<AuthenticationRequest>(it).walletNonce.also {
                             it.shouldNotBeNull()
                             nonceMap.contains(it).shouldBeTrue()
                         }

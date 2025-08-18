@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.catching
-import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.signum.indispensable.Digest

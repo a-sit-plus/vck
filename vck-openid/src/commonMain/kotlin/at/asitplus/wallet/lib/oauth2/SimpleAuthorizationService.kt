@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.oauth2
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.iso.sha256
-import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequest
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.CredentialOffer
 import at.asitplus.openid.CredentialOfferGrants
@@ -84,7 +84,7 @@ class SimpleAuthorizationService(
     /** Associates issued refresh tokens with the auth request from the client. *Refresh tokens are usually long-lived!* */
     private val refreshTokenToAuthRequest: MapStore<String, ClientAuthRequest> = DefaultMapStore(),
     /** Associates the issued request_uri to the auth request from the client. */
-    private val requestUriToPushedAuthorizationRequest: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
+    private val requestUriToPushedAuthorizationRequest: MapStore<String, AuthenticationRequest> = DefaultMapStore(),
     /** Service to create and validate access tokens. */
     private val tokenService: TokenService = TokenService.bearer(nonceService = DefaultNonceService()),
     /** Handles client authentication in [par] and [token]. */
@@ -186,7 +186,7 @@ class SimpleAuthorizationService(
         clientAttestationPop: String?,
     ) = catching {
         requestParser.parseRequestParameters(input).getOrThrow()
-            .let { it.parameters as? AuthenticationRequestParameters }
+            .let { it.parameters as? AuthenticationRequest }
             ?.let { par(it, clientAttestation, clientAttestationPop).getOrThrow() }
             ?: run {
                 Napier.w("par: could not parse request parameters from $input")
@@ -205,7 +205,7 @@ class SimpleAuthorizationService(
      * @param clientAttestationPop value of the header `OAuth-Client-Attestation-PoP`
      */
     override suspend fun par(
-        request: AuthenticationRequestParameters,
+        request: AuthenticationRequest,
         clientAttestation: String?,
         clientAttestationPop: String?,
     ) = catching {
@@ -237,7 +237,7 @@ class SimpleAuthorizationService(
      * code from [codeService].
      */
     override suspend fun authorize(
-        input: AuthenticationRequestParameters,
+        input: AuthenticationRequest,
         loadUserFun: OAuth2LoadUserFun,
     ) = catching {
         Napier.i("authorize called with $input")
@@ -286,13 +286,13 @@ class SimpleAuthorizationService(
     }
 
     /**
-     * Validates basic requirements to [AuthenticationRequestParameters]:
-     *  * [AuthenticationRequestParameters.redirectUrl] needs to be set
-     *  * [AuthenticationRequestParameters.issuerState] needs to conform to our internal state
-     *  * [AuthenticationRequestParameters.scope] is validated by [strategy]
-     *  * [AuthenticationRequestParameters.authorizationDetails] are validated by [strategy]
+     * Validates basic requirements to [AuthenticationRequest]:
+     *  * [AuthenticationRequest.redirectUrl] needs to be set
+     *  * [AuthenticationRequest.issuerState] needs to conform to our internal state
+     *  * [AuthenticationRequest.scope] is validated by [strategy]
+     *  * [AuthenticationRequest.authorizationDetails] are validated by [strategy]
      */
-    private suspend fun AuthenticationRequestParameters.validate(): AuthenticationRequestParameters {
+    private suspend fun AuthenticationRequest.validate(): AuthenticationRequest {
         if (redirectUrl == null) {
             Napier.w("authorize: client did not set redirect_uri in $this")
             throw InvalidRequest("redirect_uri not set")

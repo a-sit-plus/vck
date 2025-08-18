@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.KmmResult
-import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequest
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
@@ -40,7 +40,7 @@ interface AuthorizationService {
      * @return [KmmResult] may contain a [OAuth2Exception]
      */
     suspend fun par(
-        request: AuthenticationRequestParameters,
+        request: AuthenticationRequest,
         clientAttestation: String? = null,
         clientAttestationPop: String? = null,
     ): KmmResult<PushedAuthenticationResponseParameters>
@@ -51,7 +51,7 @@ interface AuthorizationService {
      * @return [KmmResult] may contain a [OAuth2Exception]
      */
     suspend fun authorize(
-        input: AuthenticationRequestParameters,
+        input: AuthenticationRequest,
         loadUserFun: OAuth2LoadUserFun,
     ): KmmResult<AuthenticationResponseResult.Redirect>
 

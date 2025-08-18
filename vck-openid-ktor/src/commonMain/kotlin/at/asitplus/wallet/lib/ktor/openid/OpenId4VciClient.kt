@@ -4,7 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.iso.IssuerSigned
-import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequest
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.ClientNonceResponse
 import at.asitplus.openid.CredentialOffer
@@ -504,7 +504,7 @@ class OpenId4VciClient(
     }
 
     /**
-     * Builds the authorization request ([AuthenticationRequestParameters]) to start authentication at the
+     * Builds the authorization request ([AuthenticationRequest]) to start authentication at the
      * authorization server associated with the credential issuer.
      *
      * Prefers building the authn request by using `scope` (from [SupportedCredentialFormat]), as advised in
@@ -552,13 +552,13 @@ class OpenId4VciClient(
                 tokenAuthMethods = oauthMetadata.tokenEndPointAuthMethodsSupported
             )
             URLBuilder(authorizationEndpointUrl).also { builder ->
-                authRequestAfterPar.encodeToParameters<AuthenticationRequestParameters>().forEach {
+                authRequestAfterPar.encodeToParameters<AuthenticationRequest>().forEach {
                     builder.parameters.append(it.key, it.value)
                 }
             }.build().toString()
         } else {
             URLBuilder(authorizationEndpointUrl).also { builder ->
-                authRequest.encodeToParameters<AuthenticationRequestParameters>().forEach {
+                authRequest.encodeToParameters<AuthenticationRequest>().forEach {
                     builder.parameters.append(it.key, it.value)
                 }
                 builder.parameters.append(PARAMETER_PROMPT, PARAMETER_PROMPT_LOGIN)
@@ -576,12 +576,12 @@ class OpenId4VciClient(
 
     @Throws(Exception::class)
     private suspend fun pushAuthorizationRequest(
-        authRequest: AuthenticationRequestParameters,
+        authRequest: AuthenticationRequest,
         state: String,
         url: String,
         credentialIssuer: String,
         tokenAuthMethods: Set<String>?,
-    ): AuthenticationRequestParameters {
+    ): AuthenticationRequest {
         val shouldIncludeClientAttestation = tokenAuthMethods?.contains(AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH) == true
         val clientAttestationJwt = if (shouldIncludeClientAttestation) {
             loadClientAttestationJwt?.invoke()
@@ -617,7 +617,7 @@ class OpenId4VciClient(
             throw Exception("No request_uri from PAR response at $url")
         }
 
-        return AuthenticationRequestParameters(
+        return AuthenticationRequest(
             clientId = oid4vciService.clientId,
             requestUri = response.requestUri,
             state = state,

@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequest
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.requests.RequestParametersFrom
@@ -111,10 +111,10 @@ class RedirectUriClientTest : FreeSpec({
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = ClientIdScheme.RedirectUri(clientId),
-            stateToAuthnRequestStore = object : MapStore<String, AuthenticationRequestParameters> {
-                override suspend fun put(key: String, value: AuthenticationRequestParameters) {}
-                override suspend fun get(key: String): AuthenticationRequestParameters? = null
-                override suspend fun remove(key: String): AuthenticationRequestParameters? = null
+            stateToAuthnRequestStore = object : MapStore<String, AuthenticationRequest> {
+                override suspend fun put(key: String, value: AuthenticationRequest) {}
+                override suspend fun get(key: String): AuthenticationRequest? = null
+                override suspend fun remove(key: String): AuthenticationRequest? = null
             },
         )
         val authnRequest = verifierOid4vp.createAuthnRequest(
@@ -218,10 +218,10 @@ class RedirectUriClientTest : FreeSpec({
         val authnRequest = verifierOid4vp.createAuthnRequest(defaultRequestOptions)
         val authnRequestUrlParams = authnRequest.encodeToParameters().formUrlEncode()
 
-        val parsedAuthnRequest: AuthenticationRequestParameters =
+        val parsedAuthnRequest: AuthenticationRequest =
             authnRequestUrlParams.decodeFromUrlQuery()
         val authnResponse = holderOid4vp.createAuthnResponseParams(
-            RequestParametersFrom.Uri<AuthenticationRequestParameters>(
+            RequestParametersFrom.Uri<AuthenticationRequest>(
                 Url(authnRequestUrlParams),
                 parsedAuthnRequest
             )

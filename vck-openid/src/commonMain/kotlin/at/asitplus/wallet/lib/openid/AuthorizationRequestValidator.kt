@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequest
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.requests.RequestParametersFrom
 import at.asitplus.signum.indispensable.pki.leaf
@@ -18,7 +18,7 @@ internal class AuthorizationRequestValidator(
 ) {
     @Throws(OAuth2Exception::class, CancellationException::class)
     suspend fun validateAuthorizationRequest(
-        request: RequestParametersFrom<AuthenticationRequestParameters>
+        request: RequestParametersFrom<AuthenticationRequest>
     ) {
         request.parameters.responseType?.let {
             if (!it.contains(OpenIdConstants.ID_TOKEN) && !it.contains(OpenIdConstants.VP_TOKEN)) {
@@ -62,11 +62,11 @@ internal class AuthorizationRequestValidator(
         // TODO Verifier Attestation JWT from OpenId4VP 11. also redirect_uri in there
     }
 
-    private fun RequestParametersFrom<AuthenticationRequestParameters>.isFromRequestObject(): Boolean =
+    private fun RequestParametersFrom<AuthenticationRequest>.isFromRequestObject(): Boolean =
         this is RequestParametersFrom.Json || this is RequestParametersFrom.JwsSigned
 
     @Throws(OAuth2Exception::class)
-    private fun AuthenticationRequestParameters.verifyRedirectUrl() {
+    private fun AuthenticationRequest.verifyRedirectUrl() {
         if (redirectUrl != null) {
             if (clientIdWithoutPrefix != redirectUrl) {
                 Napier.w("client_id does not match redirect_uri")
@@ -79,7 +79,7 @@ internal class AuthorizationRequestValidator(
         (this == OpenIdConstants.ClientIdScheme.X509SanDns) || (this == OpenIdConstants.ClientIdScheme.X509SanUri)
 
     @Throws(OAuth2Exception::class)
-    private fun AuthenticationRequestParameters.verifyClientMetadata() {
+    private fun AuthenticationRequest.verifyClientMetadata() {
         if (clientMetadata == null && clientMetadataUri == null) {
             Napier.w("client_id_scheme is redirect_uri, but metadata is not set")
             throw InvalidRequest("client_metadata is null")
@@ -87,7 +87,7 @@ internal class AuthorizationRequestValidator(
     }
 
     @Throws(OAuth2Exception::class)
-    private fun AuthenticationRequestParameters.verifyClientIdPresent() {
+    private fun AuthenticationRequest.verifyClientIdPresent() {
         if (clientId == null) {
             Napier.w("client_id is not set even though it is required")
             throw InvalidRequest("client_id is null")
@@ -95,7 +95,7 @@ internal class AuthorizationRequestValidator(
     }
 
     @Throws(OAuth2Exception::class)
-    private fun AuthenticationRequestParameters.verifyExpectedOrigin(actualOrigin: String?) {
+    private fun AuthenticationRequest.verifyExpectedOrigin(actualOrigin: String?) {
         expectedOrigins.run {
             if (this == null || !this.contains(actualOrigin)) {
                 Napier.w("actual origin does not match any of the expected origins")
@@ -105,12 +105,12 @@ internal class AuthorizationRequestValidator(
     }
 
     @Throws(OAuth2Exception::class)
-    private fun RequestParametersFrom<AuthenticationRequestParameters>.verifyClientIdSchemeX509() {
+    private fun RequestParametersFrom<AuthenticationRequest>.verifyClientIdSchemeX509() {
         val clientIdScheme = parameters.clientIdSchemeExtracted
         val responseModeIsDirectPost = parameters.responseMode.isAnyDirectPost()
         val responseModeIsDcApi = parameters.responseMode.isAnyDcApi()
         val prefix = "client_id_scheme is $clientIdScheme"
-        if (this !is RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>
+        if (this !is RequestParametersFrom.JwsSigned<AuthenticationRequest>
             || jwsSigned.header.certificateChain == null || jwsSigned.header.certificateChain?.isEmpty() == true
         ) {
             Napier.w("$prefix, but metadata is not set and no x5c certificate chain is present")
@@ -166,7 +166,7 @@ internal class AuthorizationRequestValidator(
         (this == OpenIdConstants.ResponseMode.DirectPost) || (this == OpenIdConstants.ResponseMode.DirectPostJwt)
 
     @Throws(OAuth2Exception::class)
-    private fun AuthenticationRequestParameters.verifyResponseModeDirectPost() {
+    private fun AuthenticationRequest.verifyResponseModeDirectPost() {
         if (redirectUrl != null) {
             Napier.w("response_mode is $responseMode, but redirect_url is set")
             throw InvalidRequest("redirect_uri is set")

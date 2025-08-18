@@ -1,6 +1,5 @@
 package at.asitplus.openid
 
-import at.asitplus.requests.OAuth2AuthReqParam
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.requests.RequestParameters
@@ -20,6 +19,10 @@ import kotlin.time.Instant
  * Wallet App in case of OpenID4VP, or the Credential Issuer for OID4VCI).
  */
 @Serializable
+@Deprecated(
+    "Replaced by more fine grained classes",
+    ReplaceWith("AuthenticationRequest", imports = ["at.asitplus.requests"]),
+)
 data class AuthenticationRequestParameters(
     /**
      * OIDC: REQUIRED. OAuth 2.0 Response Type value that determines the authorization processing flow to be used,
@@ -75,7 +78,7 @@ data class AuthenticationRequestParameters(
      * e.g. `profile` or `com.example.healthCardCredential`
      */
     @SerialName("scope")
-    override val scope: String? = null,
+    val scope: String? = null,
 
     /**
      * OIDC: RECOMMENDED. Opaque value used to maintain state between the request and the callback. Typically,
@@ -210,7 +213,7 @@ data class AuthenticationRequestParameters(
      * This specification introduces a new authorization details type `openid_credential`.
      */
     @SerialName("authorization_details")
-    override val authorizationDetails: List<AuthorizationDetails>? = null,
+    val authorizationDetails: List<AuthorizationDetails>? = null,
 
     /**
      * OID4VP: OPTIONAL. String containing the Wallet's identifier. The Credential Issuer can use the discovery process
@@ -402,7 +405,7 @@ data class AuthenticationRequestParameters(
      */
     @SerialName("expected_origins")
     val expectedOrigins: List<String>? = null,
-) : RequestParameters, OAuth2AuthReqParam {
+) : RequestParameters {
 
     /**
      * Reads the [OpenIdConstants.ClientIdScheme] of this request either directly from [clientIdScheme],

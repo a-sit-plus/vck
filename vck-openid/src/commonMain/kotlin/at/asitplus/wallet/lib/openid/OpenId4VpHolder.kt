@@ -6,7 +6,7 @@ import at.asitplus.catchingUnwrapped
 import at.asitplus.requests.DcApiRequest
 import at.asitplus.requests.OidcAuthReqDcApi
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequest
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.IdToken
 import at.asitplus.openid.IdTokenType
@@ -135,7 +135,7 @@ class OpenId4VpHolder(
     }
 
     /**
-     * Pass in the URL sent by the Verifier (containing the [at.asitplus.openid.AuthenticationRequestParameters] as query parameters),
+     * Pass in the URL sent by the Verifier (containing the [at.asitplus.openid.AuthenticationRequest] as query parameters),
      * to create [AuthenticationResponseResult] that can be sent back to the Verifier, see
      * [AuthenticationResponseResult].
      */
@@ -154,23 +154,23 @@ class OpenId4VpHolder(
     }
 
     /**
-     * Pass in the URL sent by the Verifier (containing the [at.asitplus.openid.AuthenticationRequestParameters] as query parameters),
+     * Pass in the URL sent by the Verifier (containing the [at.asitplus.openid.AuthenticationRequest] as query parameters),
      * to create [at.asitplus.openid.AuthenticationResponseParameters] that can be sent back to the Verifier, see
      * [AuthenticationResponseResult].
      */
     suspend fun parseAuthenticationRequestParameters(
         input: String,
         dcApiRequest: DcApiRequest? = null,
-    ): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> =
+    ): KmmResult<RequestParametersFrom<AuthenticationRequest>> =
         catching {
             @Suppress("UNCHECKED_CAST")
             requestParser.parseRequestParameters(input, dcApiRequest)
-                .getOrThrow() as RequestParametersFrom<AuthenticationRequestParameters>
+                .getOrThrow() as RequestParametersFrom<AuthenticationRequest>
         }
 
     suspend fun createAuthnErrorResponse(
         error: OAuth2Error,
-        request: RequestParametersFrom<AuthenticationRequestParameters>
+        request: RequestParametersFrom<AuthenticationRequest>
     ): KmmResult<AuthenticationResponseResult> = catching {
         val clientMetadata = request.parameters.loadClientMetadata()
         val jsonWebKeys = clientMetadata?.jsonWebKeySet?.keys
@@ -187,11 +187,11 @@ class OpenId4VpHolder(
 
 
     /**
-     * Pass in the deserialized [AuthenticationRequestParameters], which were either encoded as query params,
+     * Pass in the deserialized [AuthenticationRequest], which were either encoded as query params,
      * or JSON serialized as a JWT Request Object.
      */
     suspend fun createAuthnResponse(
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        request: RequestParametersFrom<AuthenticationRequest>,
     ): KmmResult<AuthenticationResponseResult> =
         createAuthnResponseParams(request).map {
             authenticationResponseFactory.createAuthenticationResponse(request, it)
@@ -201,7 +201,7 @@ class OpenId4VpHolder(
      * Creates the authentication response from the RP's [params]
      */
     suspend fun createAuthnResponseParams(
-        params: RequestParametersFrom<AuthenticationRequestParameters>,
+        params: RequestParametersFrom<AuthenticationRequest>,
     ): KmmResult<AuthenticationResponse> =
         startAuthorizationResponsePreparation(params).map {
             finalizeAuthorizationResponseParameters(
@@ -225,7 +225,7 @@ class OpenId4VpHolder(
      * Starts the authorization response building process from the RP's authentication request in [params]
      */
     suspend fun startAuthorizationResponsePreparation(
-        params: RequestParametersFrom<AuthenticationRequestParameters>,
+        params: RequestParametersFrom<AuthenticationRequest>,
     ): KmmResult<AuthorizationResponsePreparationState> = catching {
         val clientMetadata = params.parameters.loadClientMetadata()
         val presentationDefinition = params.parameters.loadCredentialRequest()
@@ -243,7 +243,7 @@ class OpenId4VpHolder(
      * @param request the parsed authentication request
      */
     suspend fun finalizeAuthorizationResponse(
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        request: RequestParametersFrom<AuthenticationRequest>,
         clientMetadata: RelyingPartyMetadata?,
         credentialPresentation: CredentialPresentation?,
     ): KmmResult<AuthenticationResponseResult> =
@@ -266,7 +266,7 @@ class OpenId4VpHolder(
         credentialPresentation: CredentialPresentation?,
     ): KmmResult<AuthenticationResponse> = catching {
         @Suppress("UNCHECKED_CAST") val certKey =
-            (request as? RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>)
+            (request as? RequestParametersFrom.JwsSigned<AuthenticationRequest>)
                 ?.jwsSigned?.header?.certificateChain?.firstOrNull()?.decodedPublicKey?.getOrNull()?.toJsonWebKey()
         val clientJsonWebKeySet = clientMetadata?.loadJsonWebKeySet()
         val dcApiRequest = request.extractDcApiRequest() as? OidcAuthReqDcApi?
@@ -375,7 +375,7 @@ class OpenId4VpHolder(
                     }
             }
 
-    private suspend fun AuthenticationRequestParameters.loadCredentialRequest(): CredentialPresentationRequest? =
+    private suspend fun AuthenticationRequest.loadCredentialRequest(): CredentialPresentationRequest? =
         if (responseType?.contains(VP_TOKEN) == true) {
             run {
                 presentationDefinition ?: presentationDefinitionUrl
@@ -391,7 +391,7 @@ class OpenId4VpHolder(
             } ?: dcqlQuery?.let { CredentialPresentationRequest.DCQLRequest(it) }
         } else null
 
-    private suspend fun AuthenticationRequestParameters.loadClientMetadata() =
+    private suspend fun AuthenticationRequest.loadClientMetadata() =
         clientMetadata
             ?: clientMetadataUri?.let {
                 remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(it))

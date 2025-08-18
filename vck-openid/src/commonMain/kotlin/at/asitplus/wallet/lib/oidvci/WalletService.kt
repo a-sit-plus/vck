@@ -33,9 +33,9 @@ import kotlinx.serialization.json.decodeFromJsonElement
  * , Draft 15, 2024-12-19.
  */
 class WalletService(
-    /** Used to create request parameters, e.g. [AuthenticationRequestParameters], typically a URI. */
+    /** Used to create request parameters, e.g. [AuthenticationRequest], typically a URI. */
     val clientId: String = "https://wallet.a-sit.at/app",
-    /** Used to create [AuthenticationRequestParameters] and [TokenRequestParameters]. */
+    /** Used to create [AuthenticationRequest] and [TokenRequestParameters]. */
     private val redirectUrl: String = "$clientId/callback",
     /** Used to prove possession of the key material to create [CredentialRequestProof], i.e. the holder key. */
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),

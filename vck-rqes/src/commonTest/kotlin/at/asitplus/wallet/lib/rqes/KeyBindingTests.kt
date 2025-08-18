@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.iso.sha256
-import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequest
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.contentEquals
 import at.asitplus.rqes.QesInputDescriptor
@@ -51,7 +51,7 @@ class KeyBindingTests : FreeSpec({
     lateinit var holderAgent: Holder
     lateinit var holderOid4vp: OpenId4VpHolder
 
-    val externalMapStore = DefaultMapStore<String, AuthenticationRequestParameters>()
+    val externalMapStore = DefaultMapStore<String, AuthenticationRequest>()
 
     beforeEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()

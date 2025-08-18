@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequest
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
@@ -307,4 +307,4 @@ private suspend fun Holder.storeIsoCredential(
     ).getOrThrow().toStoreCredentialInput()
 )
 
-private fun AuthenticationRequestParameters.serialize(): String = vckJsonSerializer.encodeToString(this)
+private fun AuthenticationRequest.serialize(): String = vckJsonSerializer.encodeToString(this)

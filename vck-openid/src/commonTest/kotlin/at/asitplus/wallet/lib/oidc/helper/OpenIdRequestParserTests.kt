@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.oidc.helper
 
-import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequest
 import at.asitplus.requests.RequestParametersFrom
 import at.asitplus.wallet.lib.openid.RequestParser
 import io.kotest.core.spec.style.FreeSpec
@@ -88,7 +88,7 @@ class OpenIdRequestParserTests : FreeSpec({
         """.trimIndent()
 
         @Suppress("UNCHECKED_CAST") val parsed = requestParser.parseRequestParameters(input)
-            .getOrThrow() as RequestParametersFrom<AuthenticationRequestParameters>
+            .getOrThrow() as RequestParametersFrom<AuthenticationRequest>
         val params = (parsed.parameters)
         val fields = params.presentationDefinition!!.inputDescriptors.first().constraints!!.fields!!
 

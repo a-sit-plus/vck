@@ -4,7 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.requests.OidcAuthReqDcApi
-import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequest
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_REQUEST
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.requests.RequestParametersFrom
@@ -116,7 +116,7 @@ class OpenId4VpWallet(
     suspend fun parseAuthenticationRequestParameters(
         input: String,
         dcApiRequest: OidcAuthReqDcApi? = null
-    ): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> =
+    ): KmmResult<RequestParametersFrom<AuthenticationRequest>> =
         openId4VpHolder.parseAuthenticationRequestParameters(input, dcApiRequest)
 
     /**
@@ -125,7 +125,7 @@ class OpenId4VpWallet(
      */
     suspend fun sendAuthnErrorResponse(
         error: OAuth2Error,
-        request: RequestParametersFrom<AuthenticationRequestParameters>
+        request: RequestParametersFrom<AuthenticationRequest>
     ) {
         catchingUnwrapped {
             Napier.i("sendAuthnErrorResponse $error, $request")
@@ -141,7 +141,7 @@ class OpenId4VpWallet(
     }
 
     suspend fun startAuthorizationResponsePreparation(
-        request: RequestParametersFrom<AuthenticationRequestParameters>
+        request: RequestParametersFrom<AuthenticationRequest>
     ): KmmResult<AuthorizationResponsePreparationState> =
         openId4VpHolder.startAuthorizationResponsePreparation(request)
 
@@ -157,7 +157,7 @@ class OpenId4VpWallet(
      * In case the result shall be sent as a redirect to the verifier, we return that URL.
      */
     suspend fun startPresentationReturningUrl(
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        request: RequestParametersFrom<AuthenticationRequest>,
     ): KmmResult<AuthenticationSuccess> = catching {
         Napier.i("startPresentation: $request")
         openId4VpHolder.createAuthnResponse(request).getOrThrow().let {
@@ -178,7 +178,7 @@ class OpenId4VpWallet(
      * will be returned with the result to be forwarded.
      */
     suspend fun finalizeAuthorizationResponse(
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        request: RequestParametersFrom<AuthenticationRequest>,
         clientMetadata: RelyingPartyMetadata?,
         credentialPresentation: CredentialPresentation,
     ): KmmResult<AuthenticationResult> = catching {
@@ -221,7 +221,7 @@ class OpenId4VpWallet(
 
     suspend fun getMatchingCredentials(
         preparationState: AuthorizationResponsePreparationState,
-        request: RequestParametersFrom<AuthenticationRequestParameters>
+        request: RequestParametersFrom<AuthenticationRequest>
     ) = catchingUnwrapped {
             openId4VpHolder.getMatchingCredentials(preparationState).getOrElse {
                 sendAuthnErrorResponse(

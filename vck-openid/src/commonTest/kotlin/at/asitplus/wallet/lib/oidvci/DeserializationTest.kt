@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequest
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
@@ -399,7 +399,7 @@ class DeserializationTest : FunSpec({
             }    
         """.trimIndent()
 
-        vckJsonSerializer.decodeFromString<AuthenticationRequestParameters>(input)
+        vckJsonSerializer.decodeFromString<AuthenticationRequest>(input)
             .shouldNotBeNull()
     }
 

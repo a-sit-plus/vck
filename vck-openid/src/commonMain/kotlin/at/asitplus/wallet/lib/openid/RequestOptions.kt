@@ -13,7 +13,7 @@ import at.asitplus.dif.PresentationDefinition
 import at.asitplus.dif.RequirementEnum
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment.NameSegment
-import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequest
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
@@ -57,14 +57,14 @@ interface RequestOptions {
     val responseMode: OpenIdConstants.ResponseMode
 
     /**
-     * Response URL to set in the [AuthenticationRequestParameters.responseUrl],
+     * Response URL to set in the [AuthenticationRequest.responseUrl],
      * required if [responseMode] is set to [OpenIdConstants.ResponseMode.DirectPost] or
      * [OpenIdConstants.ResponseMode.DirectPostJwt].
      */
     val responseUrl: String?
 
     /**
-     * Response type to set in [AuthenticationRequestParameters.responseType],
+     * Response type to set in [AuthenticationRequest.responseType],
      * by default only `vp_token` (as per OpenID4VP spec, see [OpenIdConstants.VP_TOKEN]).
      * Be sure to separate values by a space, e.g. `vp_token id_token` (see [OpenIdConstants.ID_TOKEN]).
      */
@@ -74,8 +74,8 @@ interface RequestOptions {
     val state: String
 
     /**
-     * Optional URL to include metadata by reference (see [AuthenticationRequestParameters.clientMetadataUri])
-     * instead of by value (see [AuthenticationRequestParameters.clientMetadata])
+     * Optional URL to include metadata by reference (see [AuthenticationRequest.clientMetadataUri])
+     * instead of by value (see [AuthenticationRequest.clientMetadata])
      */
     val clientMetadataUrl: String?
 

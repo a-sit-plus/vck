@@ -19,7 +19,7 @@ data class CredentialRequestParameters(
      * used otherwise. String that uniquely identifies one of the keys in the name/value pairs stored in the
      * [IssuerMetadata.supportedCredentialConfigurations].
      * The corresponding object in the [IssuerMetadata.supportedCredentialConfigurations] MUST contain one of the
-     * value(s) used in the [AuthenticationRequestParameters.scope].
+     * value(s) used in the [AuthenticationRequest.scope].
      * When this parameter is used, the [credentialIdentifier] MUST NOT be present.
      */
     @SerialName("credential_configuration_id")

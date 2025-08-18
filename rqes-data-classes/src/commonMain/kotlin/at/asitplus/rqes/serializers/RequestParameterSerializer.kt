@@ -1,6 +1,6 @@
 package at.asitplus.rqes.serializers
 
-import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequest
 import at.asitplus.requests.RequestParameters
 import at.asitplus.rqes.SignatureRequestParameters
 import kotlinx.serialization.DeserializationStrategy
@@ -13,7 +13,7 @@ object RequestParametersSerializer : JsonContentPolymorphicSerializer<RequestPar
         val parameters = element.jsonObject
         return when {
             "documentDigests" in parameters -> SignatureRequestParameters.serializer()
-            else -> AuthenticationRequestParameters.serializer()
+            else -> AuthenticationRequest.serializer()
         }
     }
 }

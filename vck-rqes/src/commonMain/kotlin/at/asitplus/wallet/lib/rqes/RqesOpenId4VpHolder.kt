@@ -137,7 +137,7 @@ class RqesOpenId4VpHolder(
         redirectUrl: String = this.redirectUrl,
         wrapAsPar: Boolean = false,
         optionalParameters: OAuth2RqesParameters.Optional? = null,
-    ): AuthenticationRequestParameters = oauth2Client.createAuthRequest(
+    ): AuthenticationRequest = oauth2Client.createAuthRequest(
         state = uuid4().toString(),
         scope = RqesOauthScope.SERVICE.value,
         wrapAsJar = wrapAsPar,
@@ -157,7 +157,7 @@ class RqesOpenId4VpHolder(
         wrapAsPar: Boolean = false,
         optionalParameters: OAuth2RqesParameters.Optional? = null,
         documentLocation: Collection<DocumentLocation>? = null,
-    ): AuthenticationRequestParameters = oauth2Client.createAuthRequest(
+    ): AuthenticationRequest = oauth2Client.createAuthRequest(
         state = uuid4().toString(),
         authorizationDetails = setOf(getCscAuthenticationDetails(documentDigests, hashAlgorithm, documentLocation)),
         wrapAsJar = wrapAsPar,
@@ -191,11 +191,11 @@ class RqesOpenId4VpHolder(
     } ?: throw Exception("Please set a signing credential before using CSC functionality.")
 }
 
-private suspend fun AuthenticationRequestParameters.enrichAuthRequest(
+private suspend fun AuthenticationRequest.enrichAuthRequest(
     redirectUrl: String?,
     requiredParameters: OAuth2RqesParameters.CredentialRequired? = null,
     optionalParameters: OAuth2RqesParameters.Optional? = null,
-): AuthenticationRequestParameters = this.copy(
+): AuthenticationRequest = this.copy(
     redirectUrl = redirectUrl,
     lang = optionalParameters?.lang,
     credentialID = requiredParameters?.credentialID,

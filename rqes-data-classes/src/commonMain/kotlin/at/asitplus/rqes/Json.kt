@@ -2,7 +2,7 @@ package at.asitplus.rqes
 
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.InputDescriptor
-import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequest
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.requests.RequestParameters
@@ -41,8 +41,8 @@ private val requestParametersModule = SerializersModule {
             SignatureRequestParameters.serializer()
         )
         subclass(
-            AuthenticationRequestParameters::class,
-            AuthenticationRequestParameters.serializer()
+            AuthenticationRequest::class,
+            AuthenticationRequest.serializer()
         )
     }
     polymorphicDefaultSerializer(

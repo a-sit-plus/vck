@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.openid.AuthenticationRequest
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -444,7 +443,7 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
     }
 })
 
-private fun AuthenticationRequestParameters.serialize(): String = vckJsonSerializer.encodeToString(this)
+private fun AuthenticationRequest.serialize(): String = vckJsonSerializer.encodeToString(this)
 
 private suspend fun Holder.storeJwtCredential(
     holderKeyMaterial: KeyMaterial,

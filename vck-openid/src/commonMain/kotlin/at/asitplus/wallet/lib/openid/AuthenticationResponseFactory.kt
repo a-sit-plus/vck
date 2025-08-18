@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.catchingUnwrapped
-import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequest
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OpenIdConstants.ResponseMode.DcApi
 import at.asitplus.openid.OpenIdConstants.ResponseMode.DcApiJwt
@@ -37,7 +37,7 @@ internal class AuthenticationResponseFactory(
 ) {
     @Throws(OAuth2Exception::class, CancellationException::class)
     internal suspend fun createAuthenticationResponse(
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        request: RequestParametersFrom<AuthenticationRequest>,
         response: AuthenticationResponse,
     ) = when (request.parameters.responseMode) {
         DirectPost -> authnResponseDirectPost(request, response)
@@ -51,7 +51,7 @@ internal class AuthenticationResponseFactory(
 
     @Throws(OAuth2Exception::class, CancellationException::class)
     internal suspend fun responseDcApi(
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        request: RequestParametersFrom<AuthenticationRequest>,
         response: AuthenticationResponse,
         requestsEncryption: Boolean,
     ): AuthenticationResponseResult.DcApi {
@@ -64,7 +64,7 @@ internal class AuthenticationResponseFactory(
 
     @Throws(OAuth2Exception::class, CancellationException::class)
     internal suspend fun authnResponseDirectPostJwt(
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        request: RequestParametersFrom<AuthenticationRequest>,
         response: AuthenticationResponse,
     ): AuthenticationResponseResult.Post {
         val url = request.parameters.responseUrl
@@ -82,7 +82,7 @@ internal class AuthenticationResponseFactory(
 
     @Throws(OAuth2Exception::class)
     internal fun authnResponseDirectPost(
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        request: RequestParametersFrom<AuthenticationRequest>,
         response: AuthenticationResponse,
     ): AuthenticationResponseResult.Post {
         val url = request.parameters.responseUrl
@@ -97,7 +97,7 @@ internal class AuthenticationResponseFactory(
 
     @Throws(OAuth2Exception::class)
     internal fun authnResponseQuery(
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        request: RequestParametersFrom<AuthenticationRequest>,
         response: AuthenticationResponse,
     ): AuthenticationResponseResult.Redirect {
         val url = catchingUnwrapped {
@@ -120,7 +120,7 @@ internal class AuthenticationResponseFactory(
      */
     @Throws(OAuth2Exception::class)
     internal fun authnResponseFragment(
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        request: RequestParametersFrom<AuthenticationRequest>,
         response: AuthenticationResponse,
     ): AuthenticationResponseResult.Redirect {
         val url = catchingUnwrapped {
@@ -141,7 +141,7 @@ internal class AuthenticationResponseFactory(
      */
     @Throws(OAuth2Exception::class, CancellationException::class)
     private suspend fun buildJarm(
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        request: RequestParametersFrom<AuthenticationRequest>,
         response: AuthenticationResponse,
         requestsEncryption: Boolean = false,
     ) = if (response.requestsEncryption()) {
@@ -179,7 +179,7 @@ internal class AuthenticationResponseFactory(
             }
 
     private suspend fun encrypt(
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        request: RequestParametersFrom<AuthenticationRequest>,
         response: AuthenticationResponse,
     ): String {
         val algorithm = response.clientMetadata!!.authorizationEncryptedResponseAlg!!

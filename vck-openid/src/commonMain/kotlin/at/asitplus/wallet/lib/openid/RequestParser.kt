@@ -44,7 +44,7 @@ class RequestParser(
      * Pass in the request by a relying party, that is either a complete URL,
      * or the POST body (e.g. the form-serialized values of the authorization request),
      * or a serialized JWS (which may have been extracted from a `request` parameter),
-     * to parse the [AuthenticationRequestParameters], wrapped in [at.asitplus.requests.RequestParametersFrom].
+     * to parse the [AuthenticationRequest], wrapped in [at.asitplus.requests.RequestParametersFrom].
      */
     suspend fun parseRequestParameters(
         input: String,
@@ -70,7 +70,7 @@ class RequestParser(
             ?: throw InvalidRequest("parse error")
                 .also { Napier.w("Could not parse authentication request: $input") }
 
-        (parsedParams.parameters as? AuthenticationRequestParameters)?.let {
+        (parsedParams.parameters as? AuthenticationRequest)?.let {
             extractRequestObject(it, dcApiRequest)
         } ?: parsedParams
             .also { Napier.i("Parsed authentication request: $it") }
@@ -78,23 +78,23 @@ class RequestParser(
 
     /**
      * Extracts the actual request, referenced by the passed-in [input],
-     * e.g. extracting [AuthenticationRequestParameters.request]
-     * or [AuthenticationRequestParameters.requestUri] if necessary.
+     * e.g. extracting [AuthenticationRequest.request]
+     * or [AuthenticationRequest.requestUri] if necessary.
      */
     suspend fun extractActualRequest(
-        input: AuthenticationRequestParameters,
-    ): KmmResult<AuthenticationRequestParameters> = catching {
+        input: AuthenticationRequest,
+    ): KmmResult<AuthenticationRequest> = catching {
         input.request?.let {
-            parseRequestObjectJws(it)?.parameters as? AuthenticationRequestParameters
+            parseRequestObjectJws(it)?.parameters as? AuthenticationRequest
         } ?: input.requestUri?.let { uri ->
             remoteResourceRetriever.invoke(input.resourceRetrieverInput(uri))?.let {
-                parseRequestParameters(it).getOrNull()?.parameters as? AuthenticationRequestParameters
+                parseRequestParameters(it).getOrNull()?.parameters as? AuthenticationRequest
             }
         } ?: input
     }
 
     private suspend fun extractRequestObject(
-        params: AuthenticationRequestParameters,
+        params: AuthenticationRequest,
         dcApiRequest: DcApiRequest?
     ): RequestParametersFrom<*>? =
         params.request?.let { requestObject ->
@@ -104,7 +104,7 @@ class RequestParser(
                 ?.let { parseRequestParameters(it).getOrNull() }
         }
 
-    private suspend fun AuthenticationRequestParameters.resourceRetrieverInput(
+    private suspend fun AuthenticationRequest.resourceRetrieverInput(
         uri: String,
     ): RemoteResourceRetrieverInput = RemoteResourceRetrieverInput(
         url = uri,

@@ -72,7 +72,7 @@ internal class PresentationFactory(
         request.verifyResponseType()
 
         val requestsDcApiEncryption =
-            (request as? AuthenticationRequestParameters)?.responseMode == OpenIdConstants.ResponseMode.DcApiJwt // TODO enable this check in draft28 branch && clientMetadata?.encryptionSupported() == true
+            (request as? AuthenticationRequest)?.responseMode == OpenIdConstants.ResponseMode.DcApiJwt // TODO enable this check in draft28 branch && clientMetadata?.encryptionSupported() == true
         val responseWillBeEncrypted =
             jsonWebKeys != null && (clientMetadata?.requestsEncryption() == true || requestsDcApiEncryption)
         val clientId = request.clientId

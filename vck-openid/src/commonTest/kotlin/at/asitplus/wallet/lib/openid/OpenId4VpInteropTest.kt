@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.dif.ClaimFormat
 import at.asitplus.dif.PresentationSubmission
-import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequest
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.requests.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
@@ -134,7 +134,7 @@ class OpenId4VpInteropTest : FreeSpec({
             })
 
         val parameters = holderOid4vp.parseAuthenticationRequestParameters(requestUrlForWallet).getOrThrow()
-        parameters.shouldBeInstanceOf<RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>>()
+        parameters.shouldBeInstanceOf<RequestParametersFrom.JwsSigned<AuthenticationRequest>>()
 
         val jar = parameters.jwsSigned
         jar.header.algorithm shouldBe JwsAlgorithm.Signature.ES256
@@ -225,8 +225,8 @@ class OpenId4VpInteropTest : FreeSpec({
             .i7Kli1T5RZzo2-TvWsw9-JpxjYPBUae8Lrc_ORfTdabHlXmuPucGVrE5lkBu7vLss2RKKEmdFFy57-ZvRFn4Tg
         """.trimIndent()
 
-        val jar = JwsSigned.deserialize<AuthenticationRequestParameters>(
-            AuthenticationRequestParameters.serializer(),
+        val jar = JwsSigned.deserialize<AuthenticationRequest>(
+            AuthenticationRequest.serializer(),
             input,
             vckJsonSerializer
         ).getOrThrow()

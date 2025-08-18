@@ -17,7 +17,7 @@ import kotlin.time.Duration.Companion.seconds
 
 class SerializationTest : FunSpec({
 
-    fun createAuthorizationRequest() = AuthenticationRequestParameters(
+    fun createAuthorizationRequest() = AuthenticationRequest(
         responseType = GRANT_TYPE_CODE,
         clientId = randomString(),
         authorizationDetails = setOf(
@@ -84,7 +84,7 @@ class SerializationTest : FunSpec({
         url shouldContain baseUrl
         url shouldContain "response_type=${params.responseType}"
         url shouldContain "client_id=${params.clientId}"
-        val parsed: AuthenticationRequestParameters = intermediateMap.decode()
+        val parsed: AuthenticationRequest = intermediateMap.decode()
         parsed shouldBe params
     }
 
@@ -96,9 +96,9 @@ class SerializationTest : FunSpec({
         formEncoded shouldContain "response_type=${params.responseType}"
         formEncoded shouldContain "client_id=${params.clientId}"
         formEncoded shouldContain "authorization_details=" + "[{\"type\":".encodeURLParameter()
-        val parsed: AuthenticationRequestParameters = intermediateMap.decode()
+        val parsed: AuthenticationRequest = intermediateMap.decode()
         parsed shouldBe params
-        val parsedToo: AuthenticationRequestParameters = formEncoded.decodeFromPostBody()
+        val parsedToo: AuthenticationRequest = formEncoded.decodeFromPostBody()
         parsedToo shouldBe params
     }
 

@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.catchingUnwrapped
-import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequest
 import at.asitplus.openid.SignatureQualifier
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.rqes.CredentialInfo
@@ -134,7 +134,7 @@ class RqesOpenId4VpHolderTest : FreeSpec({
             request.numSignatures shouldBe null
 
             val serialized = vckJsonSerializer.encodeToString(request)
-            vckJsonSerializer.decodeFromString<AuthenticationRequestParameters>(serialized)
+            vckJsonSerializer.decodeFromString<AuthenticationRequest>(serialized)
                 .shouldBe(request)
         }
 
@@ -154,7 +154,7 @@ class RqesOpenId4VpHolderTest : FreeSpec({
             }
 
             val serialized = vckJsonSerializer.encodeToString(request)
-            vckJsonSerializer.decodeFromString<AuthenticationRequestParameters>(serialized)
+            vckJsonSerializer.decodeFromString<AuthenticationRequest>(serialized)
                 .shouldBe(request)
         }
 

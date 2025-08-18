@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.iso.sha256
-import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequest
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.CredentialOffer
 import at.asitplus.openid.CredentialOfferGrants
@@ -35,16 +35,16 @@ import kotlin.random.Random
  */
 class OAuth2Client(
     /**
-     * Used to create [AuthenticationRequestParameters], [TokenRequestParameters] and [CredentialRequestProof],
+     * Used to create [AuthenticationRequest], [TokenRequestParameters] and [CredentialRequestProof],
      * typically a URI.
      */
     val clientId: String = "https://wallet.a-sit.at/app",
     /**
-     * Used to create [AuthenticationRequestParameters] and [TokenRequestParameters].
+     * Used to create [AuthenticationRequest] and [TokenRequestParameters].
      */
     val redirectUrl: String = "$clientId/callback",
     /**
-     * Used to store the code, associated to the state, to first send [AuthenticationRequestParameters.codeChallenge],
+     * Used to store the code, associated to the state, to first send [AuthenticationRequest.codeChallenge],
      * and then [TokenRequestParameters.codeVerifier], see [RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636).
      */
     private val stateToCodeStore: MapStore<String, String> = DefaultMapStore(),
@@ -52,7 +52,7 @@ class OAuth2Client(
      * Set this variable to use JAR (JWT-secured authorization requests, RFC 9101)
      * for PAR (Pushed authorization requests, RFC 9126), as mandated by OpenID4VC HAIP.
      */
-    val signPushedAuthorizationRequest: SignJwtFun<AuthenticationRequestParameters>? =
+    val signPushedAuthorizationRequest: SignJwtFun<AuthenticationRequest>? =
         SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
 ) {
 
@@ -101,7 +101,7 @@ class OAuth2Client(
         issuerState: String? = null,
         audience: String? = null,
         wrapAsJar: Boolean = true,
-    ) = AuthenticationRequestParameters(
+    ) = AuthenticationRequest(
         responseType = GRANT_TYPE_CODE,
         state = state,
         clientId = clientId,
@@ -114,13 +114,13 @@ class OAuth2Client(
         codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256
     ).wrapIfNecessary(wrapAsJar, audience)
 
-    private suspend fun AuthenticationRequestParameters.wrapIfNecessary(wrapAsJar: Boolean, audience: String?) =
+    private suspend fun AuthenticationRequest.wrapIfNecessary(wrapAsJar: Boolean, audience: String?) =
         if (signPushedAuthorizationRequest != null && wrapAsJar) wrapInJar(signPushedAuthorizationRequest, audience) else this
 
-    private suspend fun AuthenticationRequestParameters.wrapInJar(
-        signPushedAuthorizationRequest: SignJwtFun<AuthenticationRequestParameters>,
+    private suspend fun AuthenticationRequest.wrapInJar(
+        signPushedAuthorizationRequest: SignJwtFun<AuthenticationRequest>,
         audience: String?,
-    ) = AuthenticationRequestParameters(
+    ) = AuthenticationRequest(
         clientId = clientId,
         request = signPushedAuthorizationRequest(
             JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST,
@@ -128,7 +128,7 @@ class OAuth2Client(
                 audience = audience,
                 issuer = this.clientId,
             ),
-            AuthenticationRequestParameters.serializer(),
+            AuthenticationRequest.serializer(),
         ).getOrThrow().serialize()
     )
 
@@ -141,7 +141,7 @@ class OAuth2Client(
      */
     suspend fun createAuthRequestAfterPar(
         parResponse: PushedAuthenticationResponseParameters,
-    ) = AuthenticationRequestParameters(
+    ) = AuthenticationRequest(
         clientId = clientId,
         requestUri = parResponse.requestUri,
     )

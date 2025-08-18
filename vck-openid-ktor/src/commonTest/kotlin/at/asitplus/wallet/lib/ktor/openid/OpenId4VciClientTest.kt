@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.catching
 import at.asitplus.iso.IssuerSignedItem
-import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequest
 import at.asitplus.openid.ClientNonceResponse
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.CredentialRequestParameters
@@ -268,8 +268,8 @@ class OpenId4VciClientTest : FunSpec() {
 
                 request.url.fullPath.startsWith(parEndpointPath) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
-                    val authnRequest: AuthenticationRequestParameters =
-                        requestBody.decodeFromPostBody<AuthenticationRequestParameters>()
+                    val authnRequest: AuthenticationRequest =
+                        requestBody.decodeFromPostBody<AuthenticationRequest>()
                     val result = authorizationService.par(
                         authnRequest,
                         request.headers["OAuth-Client-Attestation"],
@@ -285,9 +285,9 @@ class OpenId4VciClientTest : FunSpec() {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val queryParameters: Map<String, String> =
                         request.url.parameters.toMap().entries.associate { it.key to it.value.first() }
-                    val authnRequest: AuthenticationRequestParameters =
-                        if (requestBody.isEmpty()) queryParameters.decodeFromUrlQuery<AuthenticationRequestParameters>()
-                        else requestBody.decodeFromPostBody<AuthenticationRequestParameters>()
+                    val authnRequest: AuthenticationRequest =
+                        if (requestBody.isEmpty()) queryParameters.decodeFromUrlQuery<AuthenticationRequest>()
+                        else requestBody.decodeFromPostBody<AuthenticationRequest>()
                     val result = authorizationService.authorize(authnRequest) { catching { dummyUser() } }.getOrThrow()
                     respondRedirect(result.url)
                 }

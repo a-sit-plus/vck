@@ -19,7 +19,7 @@ import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.sha256
 import at.asitplus.iso.wrapInCborTag
 import at.asitplus.jsonpath.JsonPath
-import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequest
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.IdToken
@@ -92,7 +92,7 @@ open class OpenId4VpVerifier(
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
     private val decryptJwe: DecryptJweFun = DecryptJwe(keyMaterial),
-    private val signAuthnRequest: SignJwtFun<AuthenticationRequestParameters> =
+    private val signAuthnRequest: SignJwtFun<AuthenticationRequest> =
         SignJwt(keyMaterial, JwsHeaderClientIdScheme(clientIdScheme)),
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
     private val supportedAlgorithms: List<JwsAlgorithm> = listOf(JwsAlgorithm.Signature.ES256),
@@ -101,7 +101,7 @@ open class OpenId4VpVerifier(
     private val clock: Clock = Clock.System,
     private val nonceService: NonceService = DefaultNonceService(),
     /** Used to store issued authn requests, to verify the authn response to it */
-    private val stateToAuthnRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
+    private val stateToAuthnRequestStore: MapStore<String, AuthenticationRequest> = DefaultMapStore(),
     /** Algorithm supported to decrypt responses from wallets, for [metadataWithEncryption]. */
     private val supportedJweAlgorithm: JweAlgorithm = JweAlgorithm.ECDH_ES,
     /** Algorithm supported to decrypt responses from wallets, for [metadataWithEncryption]. */
@@ -222,7 +222,7 @@ open class OpenId4VpVerifier(
             is CreationOptions.RequestByReference -> {
                 require(clientIdScheme !is ClientIdScheme.CertificateSanDns) // per OpenID4VP d23 5.10.4
                 URLBuilder(creationOptions.walletUrl).apply {
-                    AuthenticationRequestParameters(
+                    AuthenticationRequest(
                         clientId = clientIdScheme.clientId,
                         requestUri = creationOptions.requestUrl,
                         requestUriMethod = creationOptions.requestUrlMethod,
@@ -238,7 +238,7 @@ open class OpenId4VpVerifier(
             is CreationOptions.SignedRequestByValue -> {
                 require(clientIdScheme !is ClientIdScheme.RedirectUri) // per OpenID4VP d23 5.10.4
                 URLBuilder(creationOptions.walletUrl).apply {
-                    AuthenticationRequestParameters(
+                    AuthenticationRequest(
                         clientId = clientIdScheme.clientId,
                         request = createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow().serialize(),
                     ).encodeToParameters()
@@ -249,7 +249,7 @@ open class OpenId4VpVerifier(
             is CreationOptions.SignedRequestByReference -> {
                 require(clientIdScheme !is ClientIdScheme.RedirectUri) // per OpenID4VP d23 5.10.4
                 URLBuilder(creationOptions.walletUrl).apply {
-                    AuthenticationRequestParameters(
+                    AuthenticationRequest(
                         clientId = clientIdScheme.clientId,
                         requestUri = creationOptions.requestUrl,
                         requestUriMethod = creationOptions.requestUrlMethod,
@@ -271,7 +271,7 @@ open class OpenId4VpVerifier(
 
 
     /**
-     * Creates an JWS Authorization Request (JAR, RFC9101), wrapping the usual [AuthenticationRequestParameters].
+     * Creates an JWS Authorization Request (JAR, RFC9101), wrapping the usual [AuthenticationRequest].
      *
      * To use this for an Authentication Request with `request_uri`, use the following code,
      * `jar` being the result of this function:
@@ -286,7 +286,7 @@ open class OpenId4VpVerifier(
     suspend fun createAuthnRequestAsSignedRequestObject(
         requestOptions: RequestOptions,
         requestObjectParameters: RequestObjectParameters? = null,
-    ): KmmResult<JwsSigned<AuthenticationRequestParameters>> = catching {
+    ): KmmResult<JwsSigned<AuthenticationRequest>> = catching {
         val requestObject = createAuthnRequest(requestOptions, requestObjectParameters)
         val siopClientId = "https://self-issued.me/v2"
         val issuer = when (clientIdScheme) {
@@ -299,12 +299,12 @@ open class OpenId4VpVerifier(
                 audience = siopClientId,
                 issuer = issuer,
             ),
-            AuthenticationRequestParameters.serializer(),
+            AuthenticationRequest.serializer(),
         ).getOrThrow()
     }
 
     /**
-     * Creates [AuthenticationRequestParameters], to be encoded in the URL of the wallet somehow,
+     * Creates [AuthenticationRequest], to be encoded in the URL of the wallet somehow,
      * see [createAuthnRequest]
      */
     suspend fun createAuthnRequest(
@@ -318,7 +318,7 @@ open class OpenId4VpVerifier(
     }
 
     /**
-     * Creates [AuthenticationRequestParameters], to be encoded in the URL of the wallet somehow,
+     * Creates [AuthenticationRequest], to be encoded in the URL of the wallet somehow,
      * see [createAuthnRequest]
      */
     suspend fun prepareAuthnRequest(
@@ -328,7 +328,7 @@ open class OpenId4VpVerifier(
 
     private suspend fun RequestOptions.toAuthnRequest(
         requestObjectParameters: RequestObjectParameters?,
-    ): AuthenticationRequestParameters = AuthenticationRequestParameters(
+    ): AuthenticationRequest = AuthenticationRequest(
         responseType = responseType,
         clientId = clientIdScheme.clientId,
         clientIdScheme = clientIdScheme.clientIdScheme,
@@ -350,14 +350,14 @@ open class OpenId4VpVerifier(
     )
 
     /**
-     * Remembers [authenticationRequestParameters] to link responses to requests
+     * Remembers [authenticationRequest] to link responses to requests
      */
     suspend fun submitAuthnRequest(
-        authenticationRequestParameters: AuthenticationRequestParameters,
+        authenticationRequest: AuthenticationRequest,
     ) = stateToAuthnRequestStore.put(
-        authenticationRequestParameters.state
+        authenticationRequest.state
             ?: throw IllegalArgumentException("No state value has been provided"),
-        authenticationRequestParameters,
+        authenticationRequest,
     )
 
     // OpenID4VP: Metadata MUST be passed as parameter if client_id_scheme is "redirect_uri"
@@ -476,7 +476,7 @@ open class OpenId4VpVerifier(
      * as referenced by [OpenID for VP](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html).
      */
     private suspend fun validateVpToken(
-        authnRequest: AuthenticationRequestParameters,
+        authnRequest: AuthenticationRequest,
         responseParameters: ResponseParametersFrom,
         state: String,
     ): AuthnResponseResult {
