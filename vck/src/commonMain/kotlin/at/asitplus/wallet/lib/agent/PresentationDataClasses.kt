@@ -46,7 +46,13 @@ data class PresentationRequestParameters(
     },
     /** mdocGeneratedNonce to be used for the presentation and [calcIsoDeviceSignature] (OpenID4VP with ISO/IEC 18013-7) */
     val mdocGeneratedNonce: String? = null,
-)
+) {
+    @Deprecated("No longer necessary. Will be removed")
+    enum class Flow {
+        OID4VP,
+        UC5
+    }
+}
 
 sealed interface PresentationResponseParameters {
     val vpToken: JsonElement?
