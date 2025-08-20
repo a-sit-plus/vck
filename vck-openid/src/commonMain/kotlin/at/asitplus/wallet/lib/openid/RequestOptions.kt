@@ -37,6 +37,9 @@ import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import com.benasher44.uuid.uuid4
 import kotlinx.serialization.json.JsonPrimitive
 
+@Deprecated("Will be removed in future release", replaceWith= ReplaceWith("RequestOptions"))
+typealias OpenIdRequestOptions = RequestOptions
+
 // TODO Should be NormalizedJsonPath
 typealias RequestedAttributes = Set<String>
 
