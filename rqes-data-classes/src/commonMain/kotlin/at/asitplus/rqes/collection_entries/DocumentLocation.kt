@@ -10,7 +10,7 @@ import kotlinx.serialization.Serializable
  * Class used as part of [CscAuthorizationDetails]
  */
 @Serializable
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.collection_entries.DocumentLocation"))
+@Deprecated("Module will be removed in the future", ReplaceWith("DocumentLocation", imports = ["at.asitplus.csc.collection_entries.DocumentLocation"]))
 data class DocumentLocation(
     @SerialName("uri")
     val uri: String,

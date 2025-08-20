@@ -13,7 +13,12 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.openid.RequestParameters"))
+@Deprecated(
+    "Module will be removed in the future", ReplaceWith(
+        "RequestParameters",
+        imports = ["at.asitplus.openid.RequestParameters"]
+    )
+)
 interface RequestParameters
 
 /**
@@ -22,7 +27,12 @@ interface RequestParameters
  * the process
  */
 @Serializable
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.openid.SignatureRequestParameters"))
+@Deprecated(
+    "Module will be removed in the future", ReplaceWith(
+        "SignatureRequestParameters",
+        imports = ["at.asitplus.openid.SignatureRequestParameters"]
+    )
+)
 data class SignatureRequestParameters(
 
     /**

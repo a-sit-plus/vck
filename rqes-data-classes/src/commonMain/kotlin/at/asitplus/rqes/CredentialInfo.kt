@@ -12,7 +12,12 @@ import kotlinx.serialization.Serializable
  * in CSC-API v2.0.0.2 Ch. 11.4 "credentials/list" and Ch. 11.5 "credentials/info"
  */
 @Serializable
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.CredentialInfo"))
+@Deprecated(
+    "Module will be removed in the future", ReplaceWith(
+        "CredentialInfo",
+        imports = ["at.asitplus.csc.CredentialInfo"]
+    )
+)
 data class CredentialInfo(
     /**
      * CSC

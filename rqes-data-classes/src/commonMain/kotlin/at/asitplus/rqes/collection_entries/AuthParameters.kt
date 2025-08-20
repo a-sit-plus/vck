@@ -10,7 +10,7 @@ import at.asitplus.rqes.CredentialInfo
  * Part of [CredentialInfo]
  */
 @Serializable
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.collection_entries.AuthParameters"))
+@Deprecated("Module will be removed in the future", ReplaceWith("AuthParameters", imports = ["at.asitplus.csc.collection_entries.AuthParameters"]))
 data class AuthParameters(
     /**
      * REQUIRED.

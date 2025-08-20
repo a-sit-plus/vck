@@ -1,11 +1,11 @@
 package at.asitplus.rqes
 
-import at.asitplus.openid.odcJsonSerializer
 import at.asitplus.rqes.collection_entries.QCertCreationAcceptance
 import at.asitplus.rqes.collection_entries.QesAuthorization
 import at.asitplus.rqes.collection_entries.TransactionData
 import at.asitplus.rqes.serializers.InputDescriptorSerializer
 import at.asitplus.rqes.serializers.RequestParametersSerializer
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.contextual
@@ -69,13 +69,13 @@ private val extendedOpenIdSerializerModule = SerializersModule {
     include(transactionDataModule)
 }
 
-@Deprecated("Entire Module will be removed in the future")
+@Deprecated("Entire Module will be removed in the future. Serialization of rqes-data-classes is also broken!")
 val rdcJsonSerializer by lazy {
     Json {
         prettyPrint = false
         encodeDefaults = false
         classDiscriminator = "type"
         ignoreUnknownKeys = true
-        serializersModule = odcJsonSerializer.serializersModule.overwriteWith(extendedOpenIdSerializerModule)
+        serializersModule = joseCompliantSerializer.serializersModule.overwriteWith(extendedOpenIdSerializerModule)
     }
 }

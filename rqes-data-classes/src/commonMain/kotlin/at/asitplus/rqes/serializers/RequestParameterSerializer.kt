@@ -7,7 +7,12 @@ import kotlinx.serialization.json.JsonContentPolymorphicSerializer
 import kotlinx.serialization.json.JsonElement
 
 
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.openid.RequestParameterSerializer"))
+@Deprecated(
+    "Module will be removed in the future", ReplaceWith(
+        "RequestParameterSerializer",
+        imports = ["at.asitplus.openid.RequestParameterSerializer"]
+    )
+)
 object RequestParametersSerializer : JsonContentPolymorphicSerializer<RequestParameters>(RequestParameters::class) {
     override fun selectDeserializer(element: JsonElement): DeserializationStrategy<RequestParameters> =
         SignatureRequestParameters.serializer()

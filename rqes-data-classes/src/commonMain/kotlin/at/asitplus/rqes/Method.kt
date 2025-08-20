@@ -16,7 +16,12 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 @SerialName("method")
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.Method"))
+@Deprecated(
+    "Module will be removed in the future", ReplaceWith(
+        "Method",
+        imports = ["at.asitplus.csc.Method"]
+    )
+)
 sealed class Method {
     /**
      * D3.1: UC Specification WP3:
@@ -26,7 +31,6 @@ sealed class Method {
      */
     @Serializable
     @SerialName("public")
-    @Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.Method"))
     data object Public : Method()
 
     /**
@@ -38,7 +42,6 @@ sealed class Method {
      */
     @Serializable
     @SerialName("OTP")
-    @Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.Method"))
     data class OTP(
         @SerialName("oneTimePassword")
         val oneTimePassword: String
@@ -52,7 +55,6 @@ sealed class Method {
      */
     @Serializable
     @SerialName("Basic_Auth")
-    @Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.Method"))
     data object Basic : Method()
 
     /**
@@ -63,7 +65,6 @@ sealed class Method {
      */
     @Serializable
     @SerialName("Digest_Auth")
-    @Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.Method"))
     data object Digest : Method()
 
     /**
@@ -75,6 +76,5 @@ sealed class Method {
      */
     @Serializable
     @SerialName("OAuth_20")
-    @Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.Method"))
     data object Oauth2 : Method()
 }

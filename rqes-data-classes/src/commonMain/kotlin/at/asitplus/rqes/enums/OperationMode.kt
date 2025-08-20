@@ -9,7 +9,12 @@ import kotlinx.serialization.Serializable
  */
 @Suppress("unused")
 @Serializable
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.enums.OperationMode"))
+@Deprecated(
+    "Module will be removed in the future", ReplaceWith(
+        "OperationMode",
+        imports = ["at.asitplus.csc.enums.OperationMode"]
+    )
+)
 enum class OperationMode {
     /**
      * “A”: an asynchronous operation mode is requested.

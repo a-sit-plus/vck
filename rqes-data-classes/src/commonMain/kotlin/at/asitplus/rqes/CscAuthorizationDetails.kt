@@ -3,13 +3,18 @@ package at.asitplus.rqes
 import at.asitplus.csc.enums.SignatureQualifier
 import at.asitplus.rqes.collection_entries.DocumentLocation
 import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
+import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.openid.AuthorizationDetails"))
+@Deprecated(
+    "Module will be removed in the future", ReplaceWith(
+        "AuthorizationDetails",
+        imports = ["at.asitplus.openid.AuthorizationDetails"]
+    )
+)
 interface AuthorizationDetails
 
 /**
@@ -19,7 +24,12 @@ interface AuthorizationDetails
  */
 @Serializable
 @SerialName("credential")
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.openid.CscAuthorizationDetails"))
+@Deprecated(
+    "Module will be removed in the future", ReplaceWith(
+        "CscAuthorizationDetails",
+        imports = ["at.asitplus.openid.CscAuthorizationDetails"]
+    )
+)
 data class CscAuthorizationDetails(
     /**
      * The identifier associated to the credential to authorize

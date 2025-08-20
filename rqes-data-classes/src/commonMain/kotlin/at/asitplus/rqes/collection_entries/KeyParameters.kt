@@ -12,7 +12,7 @@ import kotlinx.serialization.Serializable
  * Part of [CredentialInfo]
  */
 @Serializable
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.collection_entries.KeyParameters"))
+@Deprecated("Module will be removed in the future", ReplaceWith("KeyParameters", imports = ["at.asitplus.csc.collection_entries.KeyParameters"]))
 data class KeyParameters(
     /**
      * REQUIRED.
@@ -55,7 +55,7 @@ data class KeyParameters(
             ) != emptySet<ObjectIdentifier>() || curve == null
         ) { "If curve is specified algorithm must be (supported) EC algorithm"}
     }
-
+    @Deprecated("Module will be removed in the future", ReplaceWith("KeyStatusOptions", imports = ["at.asitplus.csc.collection_entries.KeyParameters.KeyStatusOptions"]))
     enum class KeyStatusOptions {
         /**
          * the signing key is enabled and can be used for signing.

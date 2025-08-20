@@ -4,7 +4,12 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.CredentialListResponse"))
+@Deprecated(
+    "Module will be removed in the future", ReplaceWith(
+        "CredentialListResponse",
+        imports = ["at.asitplus.csc.CredentialListResponse"]
+    )
+)
 data class CredentialListResponse(
     /**
      * One or more credentialID(s) associated with the provided or implicit userID.

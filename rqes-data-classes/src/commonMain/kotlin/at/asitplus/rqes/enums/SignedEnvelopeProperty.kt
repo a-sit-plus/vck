@@ -8,7 +8,12 @@ import kotlinx.serialization.Serializable
  * TODO use `viableSignatureFormats` in input validation
  */
 @Serializable
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.enums.SignedEnvelopeProperty"))
+@Deprecated(
+    "Module will be removed in the future", ReplaceWith(
+        "SignedEnvelopeProperty",
+        imports = ["at.asitplus.csc.enums.SignedEnvelopeProperty"]
+    )
+)
 enum class SignedEnvelopeProperty(val viableSignatureFormats: List<SignatureFormat>) {
 
     @SerialName("Detached")

@@ -14,7 +14,12 @@ import kotlinx.serialization.Serializable
  * Used to request the creation of one or more AdES signature(s).
  */
 @Serializable
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.SignDocRequestParameters"))
+@Deprecated(
+    "Module will be removed in the future", ReplaceWith(
+        "SignDocRequestParameters",
+        imports = ["at.asitplus.csc.SignDocRequestParameters"]
+    )
+)
 data class SignDocRequestParameters(
     /**
      * REQUIRED-CONDITIONAL.

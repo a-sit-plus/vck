@@ -8,7 +8,12 @@ import kotlinx.serialization.Serializable
  * CSC v2.0.0.2 Signature formats
  */
 @Serializable
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.enums.SignatureFormat"))
+@Deprecated(
+    "Module will be removed in the future", ReplaceWith(
+        "SignatureFormat",
+        imports = ["at.asitplus.csc.enums.SignatureFormat"]
+    )
+)
 enum class SignatureFormat {
     /**
      * “C” SHALL be used to request the creation of a CAdES signature;

@@ -10,7 +10,12 @@ import kotlinx.serialization.Serializable
  * Holds response to [SignHashRequestParameters].
  */
 @Serializable
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.SignHashResponseParameters"))
+@Deprecated(
+    "Module will be removed in the future", ReplaceWith(
+        "SignHashResponseParameters",
+        imports = ["at.asitplus.csc.SignHashResponseParameters"]
+    )
+)
 data class SignHashResponseParameters(
     /**
      * REQUIRED-CONDITIONAL.
