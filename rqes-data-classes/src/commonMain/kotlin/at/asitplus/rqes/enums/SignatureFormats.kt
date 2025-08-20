@@ -7,7 +7,6 @@ import kotlinx.serialization.Serializable
 /**
  * CSC v2.0.0.2 Signature formats
  */
-@Suppress("unused")
 @Serializable
 @Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.enums.SignatureFormat"))
 enum class SignatureFormat {
