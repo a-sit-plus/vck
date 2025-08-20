@@ -7,7 +7,13 @@ import kotlinx.serialization.json.JsonContentPolymorphicSerializer
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
 
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.serializers.QtspSignatureRequestSerializer"))
+@Deprecated(
+    "Module will be removed in the future",
+    ReplaceWith(
+        "QtspSignatureRequestSerializer",
+        imports = ["at.asitplus.csc.serializers.QtspSignatureRequestSerializer"]
+    )
+)
 object QtspSignatureRequestSerializer :
     JsonContentPolymorphicSerializer<QtspSignatureRequest>(QtspSignatureRequest::class) {
     override fun selectDeserializer(element: JsonElement) = when {

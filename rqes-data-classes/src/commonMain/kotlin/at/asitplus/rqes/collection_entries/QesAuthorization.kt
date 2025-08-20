@@ -14,7 +14,7 @@ import kotlinx.serialization.json.JsonPrimitive
  */
 @Serializable
 @SerialName("qes_authorization")
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.openid.QesAuthorization"))
+@Deprecated("Module will be removed in the future", ReplaceWith("QesAuthorization", imports = ["at.asitplus.openid.QesAuthorization"]))
 data class QesAuthorization(
     /**
      * CSC: OPTIONAL.

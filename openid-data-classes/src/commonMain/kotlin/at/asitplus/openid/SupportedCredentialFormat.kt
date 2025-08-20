@@ -1,6 +1,7 @@
 package at.asitplus.openid
 
 import at.asitplus.catchingUnwrapped
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
@@ -112,7 +113,7 @@ data class SupportedCredentialFormat private constructor(
     val claimDescription: Set<ClaimDescription>?
         get() = claims?.let {
             catchingUnwrapped {
-                odcJsonSerializer.decodeFromJsonElement<Set<ClaimDescription>>(it)
+                joseCompliantSerializer.decodeFromJsonElement<Set<ClaimDescription>>(it)
             }.getOrNull()
         }
 
@@ -143,7 +144,7 @@ data class SupportedCredentialFormat private constructor(
             supportedProofTypes = supportedProofTypes,
             credentialDefinition = credentialDefinition,
             docType = docType,
-            claims = odcJsonSerializer.encodeToJsonElement(isoClaims),
+            claims = joseCompliantSerializer.encodeToJsonElement(isoClaims),
             order = order,
             display = display
         )
@@ -167,7 +168,7 @@ data class SupportedCredentialFormat private constructor(
             supportedProofTypes = supportedProofTypes,
             credentialDefinition = credentialDefinition,
             sdJwtVcType = sdJwtVcType,
-            claims = odcJsonSerializer.encodeToJsonElement(sdJwtClaims),
+            claims = joseCompliantSerializer.encodeToJsonElement(sdJwtClaims),
             order = order,
             display = display
         )

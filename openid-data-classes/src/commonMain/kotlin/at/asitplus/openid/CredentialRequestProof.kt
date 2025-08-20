@@ -3,6 +3,7 @@ package at.asitplus.openid
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -36,6 +37,6 @@ data class CredentialRequestProof(
     }
 
     val attestationParsed: JwsSigned<KeyAttestationJwt>? by lazy {
-        attestation?.let { JwsSigned.deserialize<KeyAttestationJwt>(KeyAttestationJwt.serializer(), it, odcJsonSerializer).getOrNull() }
+        attestation?.let { JwsSigned.deserialize<KeyAttestationJwt>(KeyAttestationJwt.serializer(), it, joseCompliantSerializer).getOrNull() }
     }
 }

@@ -3,18 +3,18 @@ package at.asitplus.rqes.collection_entries
 import at.asitplus.csc.Hashes
 import at.asitplus.csc.contentEquals
 import at.asitplus.csc.contentHashCode
+import at.asitplus.rqes.SignDocRequestParameters
 import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.rqes.enums.SignedEnvelopeProperty
 import at.asitplus.rqes.getHashAlgorithm
 import at.asitplus.rqes.getSignAlgorithm
 import at.asitplus.rqes.serializers.Asn1EncodableBase64Serializer
-import at.asitplus.rqes.SignDocRequestParameters
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
+import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
@@ -25,7 +25,10 @@ import kotlinx.serialization.json.JsonObject
  * Part of [SignDocRequestParameters]
  */
 @Serializable
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.collection_entries.DocumentDigest"))
+@Deprecated(
+    "Module will be removed in the future",
+    ReplaceWith("DocumentDigest", imports = ["at.asitplus.csc.collection_entries.DocumentDigest"])
+)
 data class DocumentDigest(
     /**
      *

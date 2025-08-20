@@ -11,7 +11,12 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.serializers.Asn1EncodableBase64Serializer"))
+@Deprecated(
+    "Module will be removed in the future", ReplaceWith(
+        "Asn1EncodableBase64Serializer",
+        imports = ["at.asitplus.csc.serializers.Asn1EncodableBase64Serializer"]
+    )
+)
 object Asn1EncodableBase64Serializer : KSerializer<Asn1Element> {
     override val descriptor = PrimitiveSerialDescriptor("Asn1Encodable", PrimitiveKind.STRING)
 

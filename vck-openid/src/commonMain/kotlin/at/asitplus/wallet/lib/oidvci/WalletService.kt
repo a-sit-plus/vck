@@ -8,6 +8,7 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ProofType
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -87,13 +88,13 @@ class WalletService(
             val params = Url(input).parameters.flattenEntries().toMap()
                 .decodeFromUrlQuery<CredentialOfferUrlParameters>()
             params.credentialOffer?.let {
-                odcJsonSerializer.decodeFromJsonElement<CredentialOffer>(it)
+                joseCompliantSerializer.decodeFromJsonElement<CredentialOffer>(it)
             } ?: params.credentialOfferUrl?.let { uri ->
                 remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(uri))
                     ?.let { parseCredentialOffer(it).getOrNull() }
             }
         }.getOrNull() ?: catchingUnwrapped {
-            odcJsonSerializer.decodeFromString<CredentialOffer>(input)
+            joseCompliantSerializer.decodeFromString<CredentialOffer>(input)
         }.getOrNull() ?: throw InvalidRequest("could not parse credential offer")
             .also { Napier.w("Could not parse credential offer from $input") }
     }

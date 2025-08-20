@@ -8,7 +8,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonPrimitive
 
-@Deprecated("Interface was removed", ReplaceWith("at.asitplus.openid.TransactionData"))
+@Deprecated("Interface was removed", ReplaceWith("TransactionData", imports = ["at.asitplus.openid.TransactionData"]))
 interface TransactionData
 
 
@@ -19,7 +19,7 @@ interface TransactionData
  */
 @Serializable
 @SerialName("qcert_creation_acceptance")
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.openid.QCertCreationAcceptance"))
+@Deprecated("Module will be removed in the future", ReplaceWith("QCertCreationAcceptance", imports = ["at.asitplus.openid.QCertCreationAcceptance"]))
 data class QCertCreationAcceptance(
     /**
      * D3.1: UC Specification WP3: REQUIRED.

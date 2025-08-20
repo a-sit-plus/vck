@@ -5,7 +5,12 @@ import at.asitplus.rqes.serializers.QtspSignatureRequestSerializer
 import kotlinx.serialization.Serializable
 
 @Serializable(with = QtspSignatureRequestSerializer::class)
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.QtspSignatureRequest"))
+@Deprecated(
+    "Module will be removed in the future", ReplaceWith(
+        "QtspSignatureRequest",
+        imports = ["at.asitplus.csc.QtspSignatureRequest"]
+    )
+)
 sealed interface QtspSignatureRequest {
     val credentialId: String?
     val sad: String?

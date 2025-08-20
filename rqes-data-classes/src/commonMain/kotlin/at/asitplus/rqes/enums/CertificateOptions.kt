@@ -6,7 +6,13 @@ import kotlinx.serialization.SerialName
  * Specifies which certificates from the certificate chain SHALL be returned
  */
 
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.enums.CertificateOptions"))
+@Deprecated(
+    "Module will be removed in the future",
+    ReplaceWith(
+        "CertificateOptions",
+        imports = ["at.asitplus.csc.enums.CertificateOptions"]
+    )
+)
 enum class CertificateOptions {
     /**
      * No certificate SHALL be returned

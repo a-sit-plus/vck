@@ -6,6 +6,7 @@ import at.asitplus.csc.collection_entries.OAuthDocumentDigest
 import at.asitplus.csc.enums.SignatureQualifier
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
@@ -92,7 +93,7 @@ data class OpenIdAuthorizationDetails(
     val claimDescription: Set<ClaimDescription>?
         get() = claims?.let {
             catchingUnwrapped {
-                odcJsonSerializer.decodeFromJsonElement<Set<ClaimDescription>>(it)
+                joseCompliantSerializer.decodeFromJsonElement<Set<ClaimDescription>>(it)
             }.getOrNull()
         }
 

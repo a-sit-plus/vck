@@ -1,7 +1,5 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.openid.odcJsonSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

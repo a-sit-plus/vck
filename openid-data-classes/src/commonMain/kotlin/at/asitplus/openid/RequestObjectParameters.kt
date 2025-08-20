@@ -1,6 +1,7 @@
 package at.asitplus.openid
 
 import at.asitplus.catchingUnwrapped
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -29,7 +30,7 @@ data class RequestObjectParameters(
 ) : RequestParameters() {
 
     constructor(metadata: OAuth2AuthorizationServerMetadata, nonce: String) : this(
-        walletMetadataString = metadata.catchingUnwrapped { odcJsonSerializer.encodeToString(this) }.getOrNull(),
+        walletMetadataString = metadata.catchingUnwrapped { joseCompliantSerializer.encodeToString(this) }.getOrNull(),
         walletNonce = nonce
     )
 
@@ -46,7 +47,7 @@ data class RequestObjectParameters(
     val walletMetadata: OAuth2AuthorizationServerMetadata?
         get() = walletMetadataString?.let {
             catchingUnwrapped {
-                odcJsonSerializer.decodeFromString<OAuth2AuthorizationServerMetadata>(it)
+                joseCompliantSerializer.decodeFromString<OAuth2AuthorizationServerMetadata>(it)
             }.getOrNull()
         }
 }

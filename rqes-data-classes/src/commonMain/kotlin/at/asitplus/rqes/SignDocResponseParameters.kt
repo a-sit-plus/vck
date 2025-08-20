@@ -12,7 +12,12 @@ import kotlinx.serialization.json.JsonObject
  */
 @Serializable
 
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.SignDocResponseParameters"))
+@Deprecated(
+    "Module will be removed in the future", ReplaceWith(
+        "SignDocResponseParameters",
+        imports = ["at.asitplus.csc.SignDocResponseParameters"]
+    )
+)
 data class SignDocResponseParameters(
     /**
      * REQUIRED-CONDITIONAL.

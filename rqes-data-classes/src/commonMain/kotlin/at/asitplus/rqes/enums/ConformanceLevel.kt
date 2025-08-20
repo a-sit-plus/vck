@@ -9,8 +9,12 @@ import kotlinx.serialization.Serializable
  */
 @Suppress("unused")
 @Serializable
-
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.enums.ConformanceLevel"))
+@Deprecated(
+    "Module will be removed in the future", ReplaceWith(
+        "ConformanceLevel",
+        imports = ["at.asitplus.csc.enums.ConformanceLevel"]
+    )
+)
 enum class ConformanceLevel {
 
     /**

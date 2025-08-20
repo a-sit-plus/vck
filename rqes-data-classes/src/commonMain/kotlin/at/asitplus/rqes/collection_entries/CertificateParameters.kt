@@ -13,7 +13,7 @@ import kotlinx.serialization.Serializable
  * JsonObject which is part of [CredentialInfo]
  */
 @Serializable
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.collection_entries.CertificateParameters"))
+@Deprecated("Module will be removed in the future", ReplaceWith("CertificateParameters", imports = ["at.asitplus.csc.collection_entries.CertificateParameters"]))
 data class CertificateParameters(
     /**
      * OPTIONAL.

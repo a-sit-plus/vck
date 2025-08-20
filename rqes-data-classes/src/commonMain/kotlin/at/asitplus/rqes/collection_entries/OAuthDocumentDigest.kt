@@ -10,8 +10,11 @@ import kotlinx.serialization.Serializable
  * Used as part of [CscAuthorizationDetails]
  */
 @Serializable
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.collection_entries.OAuthDocumentDigest"))
-data class OAuthDocumentDigest (
+@Deprecated(
+    "Module will be removed in the future",
+    ReplaceWith("OAuthDocumentDigest", imports = ["at.asitplus.csc.collection_entries.OAuthDocumentDigest"])
+)
+data class OAuthDocumentDigest(
     /**
      * REQUIRED.
      * CSC: Conditional String containing the actual Base64-

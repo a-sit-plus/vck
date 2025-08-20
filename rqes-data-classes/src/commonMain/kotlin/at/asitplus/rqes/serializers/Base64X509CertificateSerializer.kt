@@ -11,7 +11,12 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.serializers.Base64X509CertificateSerializer"))
+@Deprecated(
+    "Module will be removed in the future", ReplaceWith(
+        "Base64X509CertificateSerializer",
+        imports = ["at.asitplus.csc.serializers.Base64X509CertificateSerializer"]
+    )
+)
 object Base64X509CertificateSerializer : KSerializer<X509Certificate> {
 
     override val descriptor: SerialDescriptor =

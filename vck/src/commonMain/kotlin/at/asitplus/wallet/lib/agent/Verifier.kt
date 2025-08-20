@@ -35,8 +35,8 @@ interface Verifier {
     suspend fun verifyPresentationSdJwt(
         input: SdJwtSigned,
         challenge: String,
-        transactionData: Pair<PresentationRequestParameters.Flow, List<TransactionDataBase64Url>>? = null,
-    ): VerifyPresentationResult = verifyPresentationSdJwt(input, challenge, transactionData?.second)
+        transactionData: Pair<PresentationRequestParameters.Flow, List<TransactionDataBase64Url>>,
+    ): VerifyPresentationResult = verifyPresentationSdJwt(input, challenge, transactionData.second)
 
     /**
      * Verifies a presentation of some credentials in [ConstantIndex.CredentialRepresentation.SD_JWT] from a holder,

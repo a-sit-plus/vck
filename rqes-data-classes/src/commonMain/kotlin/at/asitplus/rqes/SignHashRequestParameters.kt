@@ -19,7 +19,12 @@ import kotlinx.serialization.Transient
  * Used to request the calculation of remote digital signature(s) of one or multiple hash values.
  */
 @Serializable
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.SignHashRequestParameters"))
+@Deprecated(
+    "Module will be removed in the future", ReplaceWith(
+        "SignHashRequestParameters",
+        imports = ["at.asitplus.csc.SignHashRequestParameters"]
+    )
+)
 data class SignHashRequestParameters(
     /**
      * REQUIRED.

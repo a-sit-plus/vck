@@ -18,7 +18,12 @@ import kotlinx.serialization.json.JsonElement
  * According to "Transaction Data entries as defined in D3.1: UC Specification WP3" the encoding
  * is JSON and every entry is serialized to a base64 encoded string
  */
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.wallet.lib.data.Base64URLTransactionDataSerializer"))
+@Deprecated(
+    "Module will be removed in the future", ReplaceWith(
+        "Base64URLTransactionDataSerializer",
+        imports = ["at.asitplus.wallet.lib.data.Base64URLTransactionDataSerializer"]
+    )
+)
 object Base64URLTransactionDataSerializer : KSerializer<TransactionData> {
 
     override val descriptor: SerialDescriptor =

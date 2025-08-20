@@ -10,7 +10,10 @@ import kotlinx.serialization.Serializable
 
 @ConsistentCopyVisibility
 @Serializable
-@Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.collection_entries.RqesDocumentDigest"))
+@Deprecated(
+    "Module will be removed in the future",
+    ReplaceWith("at.asitplus.csc.collection_entries.RqesDocumentDigest")
+)
 data class RqesDocumentDigestEntry private constructor(
     /**
      * D3.1: UC Specification WP3: REQUIRED.
@@ -115,10 +118,10 @@ data class RqesDocumentDigestEntry private constructor(
      * - [hash] or [dtbsr]
      */
     init {
-        require(hashAlgorithmOid iff hash) {"If any is set both hashAlgorithmOid and hash must be set"}
-        require(dtbsrHashAlgorithmOid iff dataToBeSignedRepresentation) {"If any is set both dtbsrHashAlgorithmOid and dataToBeSignedRepresentation must be set"}
-        require(documentLocationMethod iff documentLocationUri) {"If any is set both documentLocationMethod and documentLocationUri must be set"}
-        require(hash or dataToBeSignedRepresentation) {"Either hash or dataToBeSignedRepresentation must be set"}
+        require(hashAlgorithmOid iff hash) { "If any is set both hashAlgorithmOid and hash must be set" }
+        require(dtbsrHashAlgorithmOid iff dataToBeSignedRepresentation) { "If any is set both dtbsrHashAlgorithmOid and dataToBeSignedRepresentation must be set" }
+        require(documentLocationMethod iff documentLocationUri) { "If any is set both documentLocationMethod and documentLocationUri must be set" }
+        require(hash or dataToBeSignedRepresentation) { "Either hash or dataToBeSignedRepresentation must be set" }
     }
 
     override fun equals(other: Any?): Boolean {
@@ -163,7 +166,13 @@ data class RqesDocumentDigestEntry private constructor(
      */
     @Serializable
     @SerialName("documentLocation_method")
-    @Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.collection_entries.RqesDocumentDigest.DocumentLocationMethod"))
+    @Deprecated(
+        "Module will be removed in the future",
+        ReplaceWith(
+            "DocumentLocationMethod",
+            imports = ["at.asitplus.csc.collection_entries.RqesDocumentDigest.DocumentLocationMethod"]
+        )
+    )
     data class DocumentLocationMethod(
         @SerialName("document_access_mode")
         val documentAccessMode: DocumentAccessMode,
@@ -178,27 +187,35 @@ data class RqesDocumentDigestEntry private constructor(
         /**
          * Incompatible version of [at.asitplus.rqes.Method] due to presumably incomplete changes in draft
          */
-        @Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.collection_entries.RqesDocumentDigest.DocumentLocationMethod.DocumentAccessMode"))
+        @Deprecated(
+            "Module will be removed in the future",
+            ReplaceWith(
+                "DocumentAccessMode",
+                imports = ["at.asitplus.csc.collection_entries.RqesDocumentDigest.DocumentLocationMethod.DocumentAccessMode"]
+            )
+        )
         enum class DocumentAccessMode {
             @SerialName("public")
             PUBLIC,
+
             @SerialName("OTP")
             OTP,
+
             @SerialName("Basic_Auth")
             BASIC,
+
             @SerialName("Digest_Auth")
             DIGEST,
+
             @SerialName("OAuth_20")
             OAUTH2,
         }
     }
 
-    @Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.collection_entries.RqesDocumentDigest.DocumentLocationMethod"))
     companion object {
         /**
          * Safe way to construct the object as init throws
          */
-        @Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.collection_entries.RqesDocumentDigest.DocumentLocationMethod.create"))
         fun create(
             label: String,
             hash: ByteArray? = null,

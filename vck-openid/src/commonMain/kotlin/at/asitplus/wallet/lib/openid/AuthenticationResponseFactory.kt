@@ -12,11 +12,11 @@ import at.asitplus.openid.OpenIdConstants.ResponseMode.Other
 import at.asitplus.openid.OpenIdConstants.ResponseMode.Query
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestParametersFrom
-import at.asitplus.openid.odcJsonSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.JwkType
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.EncryptJweFun
 import at.asitplus.wallet.lib.jws.SignJwtFun
@@ -152,7 +152,7 @@ internal class AuthenticationResponseFactory(
         if (request.parameters.responseMode !is DcApi) {
             throw InvalidRequest("Response must be either signed, encrypted or both.")
         }
-        odcJsonSerializer.encodeToString(response.params ?: throw InvalidRequest("No params in response"))
+        joseCompliantSerializer.encodeToString(response.params ?: throw InvalidRequest("No params in response"))
     }
 
     private suspend fun sign(payload: AuthenticationResponseParameters): String =
