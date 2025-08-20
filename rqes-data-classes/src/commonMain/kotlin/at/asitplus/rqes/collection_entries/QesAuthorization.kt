@@ -79,7 +79,6 @@ data class QesAuthorization(
 
     ) : TransactionData {
 
-    @Suppress("DEPRECATION")
      fun toBase64UrlJsonString(): JsonPrimitive =
         rdcJsonSerializer.parseToJsonElement(
             rdcJsonSerializer.encodeToString(

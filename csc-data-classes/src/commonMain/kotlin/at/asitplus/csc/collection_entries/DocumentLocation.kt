@@ -1,5 +1,3 @@
-@file:Suppress("DEPRECATION")
-
 package at.asitplus.csc.collection_entries
 
 import at.asitplus.csc.Method

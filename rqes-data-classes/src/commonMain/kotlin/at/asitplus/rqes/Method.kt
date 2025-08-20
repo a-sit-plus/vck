@@ -14,7 +14,6 @@ import kotlinx.serialization.Serializable
  *
  * The method describes the restrictions/way of accessing a document
  */
-//TODO: Unify with [at.asitplus.rqes.collection_entries.RqesDocumentDigest.DocumentLocationMethod.DocumentAccessMethod] as soon as spec allows
 @Serializable
 @SerialName("method")
 @Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.Method"))
@@ -25,9 +24,9 @@ sealed class Method {
      * fetched from [documentLocationUri] with a https-request
      * without further restrictions.
      */
-    @Suppress("DEPRECATION")
     @Serializable
     @SerialName("public")
+    @Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.Method"))
     data object Public : Method()
 
     /**
@@ -37,9 +36,9 @@ sealed class Method {
      * input the shown value and only then allows to fetch the
      * document corresponding to [hash].
      */
-    @Suppress("DEPRECATION")
     @Serializable
     @SerialName("OTP")
+    @Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.Method"))
     data class OTP(
         @SerialName("oneTimePassword")
         val oneTimePassword: String
@@ -51,9 +50,9 @@ sealed class Method {
      * [documentLocationUri]. The document should be fetched
      * using the ‘Basic’ HTTP Authentication Scheme (RFC 7617).
      */
-    @Suppress("DEPRECATION")
     @Serializable
     @SerialName("Basic_Auth")
+    @Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.Method"))
     data object Basic : Method()
 
     /**
@@ -62,9 +61,9 @@ sealed class Method {
      * [documentLocationUri]. The document should be fetched
      * using the ‘Digest’ HTTP Authentication Scheme (RFC 7616).
      */
-    @Suppress("DEPRECATION")
     @Serializable
     @SerialName("Digest_Auth")
+    @Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.Method"))
     data object Digest : Method()
 
     /**
@@ -74,8 +73,8 @@ sealed class Method {
      * using the ‘OAuth 2.0’ Authentication Framework (RFC6749
      * and RFC8252).
      */
-    @Suppress("DEPRECATION")
     @Serializable
     @SerialName("OAuth_20")
+    @Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.Method"))
     data object Oauth2 : Method()
 }

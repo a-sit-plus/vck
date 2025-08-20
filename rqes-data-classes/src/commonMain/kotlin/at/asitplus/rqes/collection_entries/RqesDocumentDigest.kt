@@ -193,10 +193,12 @@ data class RqesDocumentDigestEntry private constructor(
         }
     }
 
+    @Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.collection_entries.RqesDocumentDigest.DocumentLocationMethod"))
     companion object {
         /**
          * Safe way to construct the object as init throws
          */
+        @Deprecated("Module will be removed in the future", ReplaceWith("at.asitplus.csc.collection_entries.RqesDocumentDigest.DocumentLocationMethod.create"))
         fun create(
             label: String,
             hash: ByteArray? = null,

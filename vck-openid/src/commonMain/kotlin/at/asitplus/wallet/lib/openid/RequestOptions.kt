@@ -1,7 +1,16 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
-import at.asitplus.dif.*
+import at.asitplus.dif.Constraint
+import at.asitplus.dif.ConstraintField
+import at.asitplus.dif.ConstraintFilter
+import at.asitplus.dif.DifInputDescriptor
+import at.asitplus.dif.FormatContainerJwt
+import at.asitplus.dif.FormatContainerSdJwt
+import at.asitplus.dif.FormatHolder
+import at.asitplus.dif.InputDescriptor
+import at.asitplus.dif.PresentationDefinition
+import at.asitplus.dif.RequirementEnum
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment.NameSegment
 import at.asitplus.openid.CredentialFormatEnum
@@ -10,7 +19,17 @@ import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.openid.OpenIdConstants.SCOPE_PROFILE
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.TransactionData
-import at.asitplus.openid.dcql.*
+import at.asitplus.openid.dcql.DCQLClaimsPathPointer
+import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment
+import at.asitplus.openid.dcql.DCQLClaimsQueryList
+import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
+import at.asitplus.openid.dcql.DCQLCredentialQueryInstance
+import at.asitplus.openid.dcql.DCQLCredentialQueryList
+import at.asitplus.openid.dcql.DCQLIsoMdocClaimsQuery
+import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstraints
+import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
+import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
