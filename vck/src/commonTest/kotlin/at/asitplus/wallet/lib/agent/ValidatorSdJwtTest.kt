@@ -37,7 +37,7 @@ import kotlin.time.Clock
 class ValidatorSdJwtTest : FreeSpec() {
 
     private lateinit var issuer: Issuer
-    private lateinit var holderKeyMaterial: KeyMaterial
+    private lateinit var holderKeyMaterial: SignKeyMaterial
     private lateinit var validator: ValidatorSdJwt
 
     init {
@@ -128,7 +128,7 @@ class ValidatorSdJwtTest : FreeSpec() {
 
 private suspend fun issueVcSd(
     credential: CredentialToBeIssued.VcSd,
-    holderKeyMaterial: KeyMaterial,
+    holderKeyMaterial: SignKeyMaterial,
     buildCnf: Boolean = true,
     scrambleSubject: Boolean = false,
 ): Issuer.IssuedCredential {

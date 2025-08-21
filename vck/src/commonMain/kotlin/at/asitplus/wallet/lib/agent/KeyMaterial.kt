@@ -7,22 +7,28 @@ import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
+import at.asitplus.signum.indispensable.symmetric.SealedBox
+import at.asitplus.signum.indispensable.symmetric.SymmetricKey
 import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.signum.supreme.asKmmResult
 import at.asitplus.signum.supreme.sign.EphemeralKey
 import at.asitplus.signum.supreme.sign.Signer
+import at.asitplus.signum.supreme.symmetric.encrypt
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.random.Random
 
+interface KeyMaterial {
+    val identifier: String
+    val jsonWebKey: JsonWebKey
+}
+
 /**
  * Abstracts the management of key material away from cryptographic functions.
  */
-interface KeyMaterial : Signer {
-    val identifier: String
-
+interface SignKeyMaterial : KeyMaterial, Signer {
     fun getUnderLyingSigner(): Signer
 
     /**
@@ -31,14 +37,37 @@ interface KeyMaterial : Signer {
      */
     suspend fun getCertificate(): X509Certificate?
 
-    val jsonWebKey: JsonWebKey
+    override val jsonWebKey: JsonWebKey
         get() = publicKey.toJsonWebKey(null)
+}
+
+interface MacKeyMaterial : KeyMaterial {
+    val key: SymmetricKey<*, *, *>
+
+    override val jsonWebKey: JsonWebKey
+        get() = key.toJsonWebKey().getOrThrow()
+
+    suspend fun encrypt(data: ByteArray) : SealedBox<*, *, *>
+}
+
+class EphemeralHmacKey(
+    override val identifier: String = Random.nextBytes(8).encodeToString(Base16Strict).lowercase(),
+    override val key: SymmetricKey.WithDedicatedMac<*>
+) : MacKeyMaterial {
+
+    init {
+        if (!key.algorithm.name.contains("HMAC")) throw IllegalArgumentException("Illegal Cose_Mac0 algorithm.")
+    }
+
+    override suspend fun encrypt(data: ByteArray): SealedBox<*, *, *> {
+        return key.encrypt(data).getOrThrow()
+    }
 }
 
 /**
  * Key material referenced by a key id in [identifier], which can be fetched by clients from [keySetUrl].
  */
-interface PublishedKeyMaterial : KeyMaterial {
+interface PublishedKeyMaterial : SignKeyMaterial {
     /** Can be used by clients to look up this key in a [at.asitplus.signum.indispensable.josef.JsonWebKeySet]. */
     val keySetUrl: String?
 
@@ -50,7 +79,7 @@ abstract class KeyWithSelfSignedCert(
     private val extensions: List<X509CertificateExtension>,
     private val customKeyId: String,
     private val lifetimeInSeconds: Long,
-) : KeyMaterial {
+) : SignKeyMaterial {
     override val identifier: String get() = customKeyId
     private val crtMut = Mutex()
     private var _certificate: X509Certificate? = null
@@ -98,7 +127,7 @@ class EphemeralKeyWithoutCert(
         }
     }.getOrThrow(),
     val customKeyId: String = Random.nextBytes(8).encodeToString(Base16Strict).lowercase(),
-) : KeyMaterial, Signer by key.signer().getOrThrow() {
+) : SignKeyMaterial, Signer by key.signer().getOrThrow() {
     override val identifier: String = customKeyId
     override fun getUnderLyingSigner(): Signer = key.signer().getOrThrow()
     override suspend fun getCertificate(): X509Certificate? = null
@@ -110,7 +139,7 @@ class EphemeralKeyWithoutCert(
 abstract class SignerBasedKeyMaterial(
     val signer: Signer,
     val customKeyId: String = Random.nextBytes(8).encodeToString(Base16Strict).lowercase(),
-) : KeyMaterial, Signer by signer {
+) : SignKeyMaterial, Signer by signer {
     override val identifier = customKeyId
     override fun getUnderLyingSigner() = signer
 }

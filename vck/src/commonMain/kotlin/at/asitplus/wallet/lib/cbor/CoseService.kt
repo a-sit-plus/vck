@@ -10,8 +10,10 @@ import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.supreme.asKmmResult
 import at.asitplus.signum.supreme.sign.Verifier
 import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.MacKeyMaterial
 import at.asitplus.wallet.lib.agent.VerifySignature
 import at.asitplus.wallet.lib.agent.VerifySignatureFun
+import at.asitplus.wallet.lib.cbor.CoseUtils.calcMac
 import at.asitplus.wallet.lib.cbor.CoseUtils.calcSignature
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
@@ -90,6 +92,44 @@ class SignCose<P : Any>(
     }
 }
 
+fun interface MacCoseFun<P> {
+    suspend operator fun invoke(
+        protectedHeader: CoseHeader?,
+        unprotectedHeader: CoseHeader?,
+        payload: P?,
+        serializer: KSerializer<P>,
+    ): KmmResult<CoseMac<P>>
+}
+
+class MacCose<P : Any>(
+    val keyMaterial: MacKeyMaterial,
+    val protectedHeaderModifier: CoseHeaderIdentifierFun? = null,
+    val unprotectedHeaderModifier: CoseHeaderIdentifierFun? = null,
+) : MacCoseFun<P> {
+    override suspend fun invoke(
+        protectedHeader: CoseHeader?,
+        unprotectedHeader: CoseHeader?,
+        payload: P?,
+        serializer: KSerializer<P>
+    ): KmmResult<CoseMac<P>> = catching {
+        val algorithm = keyMaterial.key.algorithm.toCoseAlgorithm().getOrThrow()
+        val headerWithAlg = (protectedHeader ?: CoseHeader()).copy(algorithm = algorithm)
+        val protectedHeader = protectedHeaderModifier?.invoke(headerWithAlg, keyMaterial) ?: headerWithAlg
+        val unprotectedHeader = unprotectedHeaderModifier?.invoke(unprotectedHeader ?: CoseHeader(), keyMaterial)
+            ?: unprotectedHeader
+        calcMac(keyMaterial, protectedHeader, payload, serializer).let { mac ->
+            CoseMac.create(
+                protectedHeader = protectedHeader,
+                unprotectedHeader = unprotectedHeader,
+                payload = payload,
+                tag = mac,
+                payloadSerializer = serializer,
+            )
+        }
+    }
+
+}
+
 fun interface SignCoseDetachedFun<P> {
     suspend operator fun invoke(
         protectedHeader: CoseHeader?,
@@ -154,6 +194,27 @@ object CoseUtils {
                 Napier.w("No signature from native code", it)
                 throw it
             }
+        }
+
+    /**
+     * @return payload to calculated MAC
+     */
+    @Throws(Throwable::class)
+    suspend fun <P : Any> calcMac(
+        keyMaterial: MacKeyMaterial,
+        protectedHeader: CoseHeader,
+        payload: P?,
+        serializer: KSerializer<P>,
+    ): ByteArray =
+        CoseMac.prepare<P>(
+            protectedHeader = protectedHeader,
+            externalAad = byteArrayOf(),
+            payload = payload,
+            payloadSerializer = serializer
+        ).let { macInput ->
+            val serialized = coseCompliantSerializer.encodeToByteArray(macInput)
+            Napier.d("COSE Mac input is ${serialized.encodeToString(Base16())}")
+            keyMaterial.encrypt(serialized).encryptedData
         }
 
 }

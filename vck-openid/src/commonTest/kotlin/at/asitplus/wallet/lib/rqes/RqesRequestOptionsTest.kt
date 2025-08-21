@@ -31,7 +31,7 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 
 class RqesRequestOptionsTest : FreeSpec({
 
-    lateinit var holderKeyMaterial: KeyMaterial
+    lateinit var holderKeyMaterial: SignKeyMaterial
     lateinit var holderAgent: Holder
 
     beforeContainer {

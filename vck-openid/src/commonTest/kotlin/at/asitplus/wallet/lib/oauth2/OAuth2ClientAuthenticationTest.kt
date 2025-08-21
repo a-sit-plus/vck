@@ -8,7 +8,7 @@ import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
-import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.SignKeyMaterial
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -34,7 +34,7 @@ class OAuth2ClientAuthenticationTest : FunSpec({
     lateinit var server: SimpleAuthorizationService
     lateinit var clientAttestation: JwsSigned<JsonWebToken>
     lateinit var clientAttestationPop: JwsSigned<JsonWebToken>
-    lateinit var clientKey: KeyMaterial
+    lateinit var clientKey: SignKeyMaterial
 
     beforeEach {
         scope = randomString()

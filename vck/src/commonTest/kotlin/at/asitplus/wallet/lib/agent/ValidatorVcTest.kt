@@ -2,11 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.signum.supreme.signature
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.*
@@ -18,14 +14,12 @@ import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
-import at.asitplus.wallet.lib.jws.JwsHeaderIdentifierFun
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlin.random.Random
@@ -40,8 +34,8 @@ class ValidatorVcTest : FreeSpec() {
     private lateinit var statusListIssuer: StatusListIssuer
     private lateinit var issuerCredentialStore: IssuerCredentialStore
     private lateinit var issuerSignVc: SignJwtFun<VerifiableCredentialJws>
-    private lateinit var issuerKeyMaterial: KeyMaterial
-    private lateinit var verifierKeyMaterial: KeyMaterial
+    private lateinit var issuerKeyMaterial: SignKeyMaterial
+    private lateinit var verifierKeyMaterial: SignKeyMaterial
     private lateinit var validator: ValidatorVcJws
 
     private val revocationListUrl: String = "https://wallet.a-sit.at/backend/credentials/status/1"
@@ -416,7 +410,7 @@ class ValidatorVcTest : FreeSpec() {
     private suspend fun wrapVcInJwsWrongKey(vcJws: VerifiableCredentialJws) =
         SignJwt<VerifiableCredentialJws>(
             issuerKeyMaterial
-        ) { header: JwsHeader, keyMaterial: KeyMaterial ->
+        ) { header: JwsHeader, keyMaterial: SignKeyMaterial ->
             // this should be issuerKeyMaterial.jsonWebKey, but is a wrong key
             header.copy(jsonWebKey = EphemeralKeyWithoutCert().jsonWebKey)
         }(

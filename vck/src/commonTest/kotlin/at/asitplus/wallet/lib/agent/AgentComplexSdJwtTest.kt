@@ -28,7 +28,7 @@ class AgentComplexSdJwtTest : FreeSpec({
     lateinit var verifier: Verifier
     lateinit var issuerCredentialStore: IssuerCredentialStore
     lateinit var holderCredentialStore: SubjectCredentialStore
-    lateinit var holderKeyMaterial: KeyMaterial
+    lateinit var holderKeyMaterial: SignKeyMaterial
     lateinit var challenge: String
     lateinit var verifierId: String
 
@@ -442,7 +442,7 @@ private suspend fun issueAndStoreCredential(
     holder: Holder,
     issuer: Issuer,
     claims: List<ClaimToBeIssued>,
-    holderKeyMaterial: KeyMaterial,
+    holderKeyMaterial: SignKeyMaterial,
 ) {
     holder.storeCredential(
         issuer.issueCredential(

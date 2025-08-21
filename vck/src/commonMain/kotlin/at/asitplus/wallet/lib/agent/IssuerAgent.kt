@@ -45,7 +45,7 @@ import kotlin.time.Instant
  * An agent that implements [Issuer], i.e., it issues credentials for other agents.
  */
 class IssuerAgent(
-    override val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+    override val keyMaterial: SignKeyMaterial = EphemeralKeyWithoutCert(),
     private val issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
     private val statusListBaseUrl: String = "https://wallet.a-sit.at/backend/credentials/status",
     private val clock: Clock = Clock.System,

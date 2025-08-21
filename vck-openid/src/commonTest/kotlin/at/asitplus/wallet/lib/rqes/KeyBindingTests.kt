@@ -30,7 +30,7 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 
 class KeyBindingTests : FreeSpec({
 
-    lateinit var holderKeyMaterial: KeyMaterial
+    lateinit var holderKeyMaterial: SignKeyMaterial
     lateinit var holderAgent: Holder
     lateinit var holderOid4vp: OpenId4VpHolder
 

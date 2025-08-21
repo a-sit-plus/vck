@@ -35,7 +35,7 @@ import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.SignKeyMaterial
 import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
@@ -67,7 +67,7 @@ import kotlin.time.Clock
  * The [holder] creates the Authentication Response, see [OpenId4VpVerifier] for the verifier.
  */
 class OpenId4VpHolder(
-    private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+    private val keyMaterial: SignKeyMaterial = EphemeralKeyWithoutCert(),
     private val holder: Holder = HolderAgent(keyMaterial),
     private val signIdToken: SignJwtFun<IdToken> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     private val signJarm: SignJwtFun<AuthenticationResponseParameters> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),

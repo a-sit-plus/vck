@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.jws
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.SignKeyMaterial
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -17,7 +17,7 @@ import kotlin.random.Random
 class JwsServiceTest : FreeSpec({
 
     lateinit var keyId: String
-    lateinit var keyMaterial: KeyMaterial
+    lateinit var keyMaterial: SignKeyMaterial
     lateinit var signJwt: SignJwtFun<ByteArray>
     lateinit var verifierJwsService: VerifyJwsObjectFun
     lateinit var randomPayload: String
@@ -130,18 +130,18 @@ class JwsServiceTest : FreeSpec({
 
 
 /**
- * Identify [KeyMaterial] with it's [KeyMaterial.identifier] set in [JwsHeader.keyId],
+ * Identify [SignKeyMaterial] with it's [SignKeyMaterial.identifier] set in [JwsHeader.keyId],
  * and URL set in[JwsHeader.jsonWebKeySetUrl].
  */
 class JwsHeaderJwksUrl(val jsonWebKeySetUrl: String) : JwsHeaderIdentifierFun {
     override suspend operator fun invoke(
         it: JwsHeader,
-        keyMaterial: KeyMaterial,
+        keyMaterial: SignKeyMaterial,
     ) = it.copy(keyId = keyMaterial.identifier, jsonWebKeySetUrl = jsonWebKeySetUrl)
 }
 
-/** Identify [KeyMaterial] with it's [KeyMaterial.jsonWebKey] in [JwsHeader.jsonWebKey]. */
+/** Identify [SignKeyMaterial] with it's [SignKeyMaterial.jsonWebKey] in [JwsHeader.jsonWebKey]. */
 class JwsHeaderJwk : JwsHeaderIdentifierFun {
-    override suspend operator fun invoke(it: JwsHeader, keyMaterial: KeyMaterial) =
+    override suspend operator fun invoke(it: JwsHeader, keyMaterial: SignKeyMaterial) =
         it.copy(jsonWebKey = keyMaterial.jsonWebKey)
 }

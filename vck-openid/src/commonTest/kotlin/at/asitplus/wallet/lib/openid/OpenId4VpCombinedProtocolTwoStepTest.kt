@@ -6,7 +6,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.SignKeyMaterial
 import at.asitplus.wallet.lib.agent.PresentationExchangeCredentialDisclosure
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
@@ -30,8 +30,8 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
 
     lateinit var clientId: String
-    lateinit var holderKeyMaterial: KeyMaterial
-    lateinit var verifierKeyMaterial: KeyMaterial
+    lateinit var holderKeyMaterial: SignKeyMaterial
+    lateinit var verifierKeyMaterial: SignKeyMaterial
     lateinit var holderAgent: Holder
     lateinit var holderOid4vp: OpenId4VpHolder
     lateinit var verifierOid4vp: OpenId4VpVerifier
@@ -276,7 +276,7 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
 })
 
 private suspend fun Holder.storeSdJwtCredential(
-    holderKeyMaterial: KeyMaterial,
+    holderKeyMaterial: SignKeyMaterial,
     credentialScheme: ConstantIndex.CredentialScheme,
 ) {
     storeCredential(
@@ -292,7 +292,7 @@ private suspend fun Holder.storeSdJwtCredential(
 }
 
 private suspend fun Holder.storeIsoCredential(
-    holderKeyMaterial: KeyMaterial,
+    holderKeyMaterial: SignKeyMaterial,
     credentialScheme: ConstantIndex.CredentialScheme,
 ) = storeCredential(
     IssuerAgent(

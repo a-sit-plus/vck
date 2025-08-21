@@ -40,7 +40,7 @@ import at.asitplus.signum.supreme.hash.digest
 import at.asitplus.signum.supreme.sign.Signer
 import at.asitplus.signum.supreme.symmetric.decrypt
 import at.asitplus.signum.supreme.symmetric.encrypt
-import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.SignKeyMaterial
 import at.asitplus.wallet.lib.agent.PublishedKeyMaterial
 import at.asitplus.wallet.lib.agent.VerifySignature
 import at.asitplus.wallet.lib.agent.VerifySignatureFun
@@ -57,14 +57,14 @@ fun interface JwsHeaderModifierFun {
 
 /** How to identify the key material in a [JwsHeader] */
 fun interface JwsHeaderIdentifierFun {
-    suspend operator fun invoke(it: JwsHeader, keyMaterial: KeyMaterial): JwsHeader
+    suspend operator fun invoke(it: JwsHeader, keyMaterial: SignKeyMaterial): JwsHeader
 }
 
 /**
- * Identify [KeyMaterial] with it's [KeyMaterial.getCertificate] in [JwsHeader.certificateChain] if it exists,
- * or [KeyMaterial.jsonWebKey] in [JwsHeader.jsonWebKey]. */
+ * Identify [SignKeyMaterial] with it's [SignKeyMaterial.getCertificate] in [JwsHeader.certificateChain] if it exists,
+ * or [SignKeyMaterial.jsonWebKey] in [JwsHeader.jsonWebKey]. */
 class JwsHeaderCertOrJwk : JwsHeaderIdentifierFun {
-    override suspend operator fun invoke(it: JwsHeader, keyMaterial: KeyMaterial) =
+    override suspend operator fun invoke(it: JwsHeader, keyMaterial: SignKeyMaterial) =
         when (keyMaterial) {
             is PublishedKeyMaterial -> it.copy(
                 keyId = keyMaterial.identifier,
@@ -77,11 +77,11 @@ class JwsHeaderCertOrJwk : JwsHeaderIdentifierFun {
         }
 }
 
-/** Don't identify [KeyMaterial] at all in a [JwsHeader], used for SD-JWT KB-JWS. */
+/** Don't identify [SignKeyMaterial] at all in a [JwsHeader], used for SD-JWT KB-JWS. */
 class JwsHeaderNone : JwsHeaderIdentifierFun {
     override suspend operator fun invoke(
         it: JwsHeader,
-        keyMaterial: KeyMaterial,
+        keyMaterial: SignKeyMaterial,
     ) = it
 }
 
@@ -106,7 +106,7 @@ fun interface SignJwtExtFun<P : Any> {
 
 /** Create a [JwsSigned], setting [JwsHeader.type] to the specified value and applying [JwsHeaderIdentifierFun]. */
 class SignJwt<P : Any>(
-    val keyMaterial: KeyMaterial,
+    val keyMaterial: SignKeyMaterial,
     val headerModifier: JwsHeaderIdentifierFun,
 ) : SignJwtFun<P> {
     override suspend operator fun invoke(
@@ -128,7 +128,7 @@ class SignJwt<P : Any>(
 
 /** Create a [JwsSigned], setting [JwsHeader.type] to the specified value and applying [JwsHeaderIdentifierFun]. */
 class SignJwtExt<P : Any>(
-    val keyMaterial: KeyMaterial,
+    val keyMaterial: SignKeyMaterial,
     val headerModifier: JwsHeaderIdentifierFun,
 ) : SignJwtExtFun<P> {
     override suspend operator fun invoke(
@@ -163,7 +163,7 @@ fun interface EncryptJweFun {
 
 /** Create a [JweEncrypted], setting values for [JweHeader]. */
 class EncryptJwe(
-    val keyMaterial: KeyMaterial,
+    val keyMaterial: SignKeyMaterial,
 ) : EncryptJweFun {
     override suspend operator fun invoke(
         header: JweHeader,
@@ -252,7 +252,7 @@ fun interface DecryptJweFun {
 }
 
 class DecryptJwe(
-    val keyMaterial: KeyMaterial,
+    val keyMaterial: SignKeyMaterial,
 ) : DecryptJweFun {
     override suspend operator fun invoke(
         jweObject: JweEncrypted,

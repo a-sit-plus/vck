@@ -21,7 +21,7 @@ class StoreEntrySerializationTest : FreeSpec({
 
     lateinit var issuer: Issuer
     lateinit var holder: Holder
-    lateinit var holderKeyMaterial: KeyMaterial
+    lateinit var holderKeyMaterial: SignKeyMaterial
     lateinit var issuerCredentialStore: IssuerCredentialStore
     lateinit var holderCredentialStore: SubjectCredentialStore
 

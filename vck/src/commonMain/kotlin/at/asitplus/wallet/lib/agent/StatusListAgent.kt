@@ -33,7 +33,7 @@ import kotlin.time.Instant
  */
 class StatusListAgent(
     /** Should either be [PublishedKeyMaterial] or contain a certificate, so clients can look up the key. */
-    private val keyMaterial: KeyMaterial = EphemeralKeyWithSelfSignedCert(),
+    private val keyMaterial: SignKeyMaterial = EphemeralKeyWithSelfSignedCert(),
     private val issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
     private val statusListBaseUrl: String = "https://wallet.a-sit.at/backend/credentials/status",
     private val statusListAggregationUrl: String? = null,

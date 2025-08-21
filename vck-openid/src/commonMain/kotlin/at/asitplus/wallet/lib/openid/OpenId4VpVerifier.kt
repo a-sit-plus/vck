@@ -41,8 +41,7 @@ import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.PresentationRequestParameters
+import at.asitplus.wallet.lib.agent.SignKeyMaterial
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.agent.VerifierAgent
@@ -90,7 +89,7 @@ import kotlin.time.toDuration
  */
 class OpenId4VpVerifier(
     private val clientIdScheme: ClientIdScheme,
-    private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+    private val keyMaterial: SignKeyMaterial = EphemeralKeyWithoutCert(),
     val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
     private val decryptJwe: DecryptJweFun = DecryptJwe(keyMaterial),
     private val signAuthnRequest: SignJwtFun<AuthenticationRequestParameters> =
@@ -730,7 +729,7 @@ private val PresentationSubmissionDescriptor.cumulativeJsonPath: String
 class JwsHeaderClientIdScheme(val clientIdScheme: ClientIdScheme) : JwsHeaderIdentifierFun {
     override suspend operator fun invoke(
         it: JwsHeader,
-        keyMaterial: KeyMaterial,
+        keyMaterial: SignKeyMaterial,
     ) = run {
         val attestationJwt = (clientIdScheme as? ClientIdScheme.VerifierAttestation)?.attestationJwt?.serialize()
         (clientIdScheme as? ClientIdScheme.CertificateSanDns)?.chain?.let { x5c ->

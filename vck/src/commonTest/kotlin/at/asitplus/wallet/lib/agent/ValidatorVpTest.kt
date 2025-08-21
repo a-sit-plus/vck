@@ -46,7 +46,7 @@ class ValidatorVpTest : FreeSpec({
     lateinit var verifiablePresentationFactory: VerifiablePresentationFactory
     lateinit var holderCredentialStore: SubjectCredentialStore
     lateinit var holderSignVp: SignJwtFun<VerifiablePresentationJws>
-    lateinit var holderKeyMaterial: KeyMaterial
+    lateinit var holderKeyMaterial: SignKeyMaterial
     lateinit var verifierId: String
     lateinit var verifier: Verifier
     lateinit var challenge: String

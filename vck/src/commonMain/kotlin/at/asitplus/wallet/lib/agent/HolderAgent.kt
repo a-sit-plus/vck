@@ -39,7 +39,7 @@ import kotlinx.coroutines.joinAll
  * and present credentials to other agents.
  */
 class HolderAgent(
-    override val keyMaterial: KeyMaterial,
+    override val keyMaterial: SignKeyMaterial,
     private val subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
     private val validator: Validator = Validator(),
     private val validatorVcJws: ValidatorVcJws = ValidatorVcJws(validator = validator),

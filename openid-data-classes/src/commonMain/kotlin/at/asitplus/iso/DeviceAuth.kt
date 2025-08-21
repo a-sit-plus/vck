@@ -1,5 +1,6 @@
 package at.asitplus.iso
 
+import at.asitplus.signum.indispensable.cosef.CoseMac
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -12,5 +13,5 @@ data class DeviceAuth(
     @SerialName("deviceSignature")
     val deviceSignature: CoseSigned<ByteArray>? = null,
     @SerialName("deviceMac")
-    val deviceMac: CoseSigned<ByteArray>? = null, // TODO is COSE_Mac0
+    val deviceMac: CoseMac<ByteArray>? = null, // TODO is COSE_Mac0
 )

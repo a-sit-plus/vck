@@ -29,7 +29,7 @@ import kotlin.time.Duration.Companion.seconds
 class AgentRevocationTest : FreeSpec({
 
     lateinit var issuerCredentialStore: IssuerCredentialStore
-    lateinit var verifierKeyMaterial: KeyMaterial
+    lateinit var verifierKeyMaterial: SignKeyMaterial
     lateinit var issuer: Issuer
     lateinit var statusListIssuer: StatusListIssuer
     lateinit var expectedRevokedIndexes: List<ULong>

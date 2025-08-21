@@ -23,7 +23,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlin.time.Clock
 
 class VerifiablePresentationFactory(
-    private val keyMaterial: KeyMaterial,
+    private val keyMaterial: SignKeyMaterial,
     private val signVerifiablePresentation: SignJwtFun<VerifiablePresentationJws> =
         SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     private val signKeyBinding: SignJwtFun<KeyBindingJws> =
