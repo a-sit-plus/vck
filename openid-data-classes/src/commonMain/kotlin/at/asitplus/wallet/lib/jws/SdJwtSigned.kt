@@ -88,25 +88,28 @@ data class SdJwtSigned(
             if (stringList.isEmpty()) {
                 return null.also { Napier.w("Could not parse SD-JWT: $input") }
             }
-            val jws = JwsSigned.Companion.deserialize<JsonElement>(
-                deserializationStrategy = JsonElement.Companion.serializer(),
+            val jws = JwsSigned.deserialize<JsonElement>(
+                deserializationStrategy = JsonElement.serializer(),
                 it = stringList.first(),
                 json = joseCompliantSerializer
-            ).getOrNull()
-                ?: return null.also { Napier.w("Could not parse JWS from SD-JWT: $input") }
+            ).onFailure {
+                Napier.w("Could not parse JWS from SD-JWT: $input", it)
+            }.getOrNull()
+                ?: return null
             val stringListWithoutJws = stringList.drop(1)
             val rawDisclosures = stringListWithoutJws
                 .filterNot { it.contains(".") }
                 .filterNot { it.isEmpty() }
             val keyBindingString = stringList.drop(1 + rawDisclosures.size).firstOrNull()
-            val keyBindingJws = keyBindingString
-                ?.let {
-                    JwsSigned.Companion.deserialize<KeyBindingJws>(
-                        deserializationStrategy = KeyBindingJws.serializer(),
-                        it = it,
-                        json = joseCompliantSerializer
-                    ).getOrNull()
-                }
+            val keyBindingJws = keyBindingString?.let {
+                JwsSigned.deserialize<KeyBindingJws>(
+                    deserializationStrategy = KeyBindingJws.serializer(),
+                    it = it,
+                    json = joseCompliantSerializer
+                ).onFailure {
+                    Napier.w("Could not parse KB-JWS from SD-JWT: $keyBindingString", it)
+                }.getOrNull()
+            }
             val hashInput = input.substringBeforeLast("~") + "~"
             return SdJwtSigned(jws, rawDisclosures, keyBindingJws, hashInput)
         }
