@@ -21,17 +21,23 @@ import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.JwsSigned.Companion.prepareJwsSignatureInput
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.signum.indispensable.josef.jsonWebKeyBytes
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.signum.indispensable.symmetric.AuthCapability
+import at.asitplus.signum.indispensable.symmetric.KeyType
 import at.asitplus.signum.indispensable.symmetric.NonceTrait
 import at.asitplus.signum.indispensable.symmetric.SymmetricEncryptionAlgorithm
 import at.asitplus.signum.indispensable.symmetric.SymmetricKey
 import at.asitplus.signum.indispensable.symmetric.authTag
 import at.asitplus.signum.indispensable.symmetric.hasDedicatedMac
+import at.asitplus.signum.indispensable.symmetric.hasDedicatedMacKey
+import at.asitplus.signum.indispensable.symmetric.hasNonce
 import at.asitplus.signum.indispensable.symmetric.isAuthenticated
+import at.asitplus.signum.indispensable.symmetric.isIntegrated
 import at.asitplus.signum.indispensable.symmetric.keyFrom
 import at.asitplus.signum.indispensable.symmetric.nonce
+import at.asitplus.signum.indispensable.symmetric.randomKey
 import at.asitplus.signum.indispensable.symmetric.requiresNonce
 import at.asitplus.signum.supreme.agree.Ephemeral
 import at.asitplus.signum.supreme.agree.keyAgreement
@@ -167,10 +173,9 @@ class EncryptJwe(
 ) : EncryptJweFun {
     override suspend operator fun invoke(
         header: JweHeader,
-        payload: String, recipientKey: JsonWebKey,
+        payload: String,
+        recipientKey: JsonWebKey,
     ) = catching {
-        val cryptoPublicKey = recipientKey.toCryptoPublicKey().getOrThrow()
-        require(cryptoPublicKey is CryptoPublicKey.EC)
         val crv = recipientKey.curve
             ?: throw IllegalArgumentException("No curve in recipient key")
         val ephemeralKeyPair = KeyAgreementPrivateValue.ECDH.Ephemeral(crv).getOrThrow()
@@ -184,6 +189,31 @@ class EncryptJwe(
     }
 }
 
+/** Create a [JweEncrypted], setting values for [JweHeader]. */
+fun interface EncryptJweSymmetricFun {
+    suspend operator fun invoke(
+        header: JweHeader,
+        payload: String,
+    ): KmmResult<JweEncrypted>
+}
+
+/** Create a [JweEncrypted], setting values for [JweHeader]. */
+class EncryptJweSymmetric(
+    val keyMaterial: SymmetricKey<AuthCapability<out KeyType>, NonceTrait, out KeyType>,
+) : EncryptJweSymmetricFun {
+    override suspend operator fun invoke(
+        header: JweHeader,
+        payload: String,
+    ) = catching {
+        val jweEncryption = header.encryption
+            ?: throw IllegalArgumentException("No encryption in JWE header")
+        val algorithm = jweEncryption.algorithm
+        require(algorithm.requiresNonce())
+        require(algorithm.isAuthenticated())
+
+        JweUtils.encryptJwe(keyMaterial, header, payload)
+    }
+}
 
 object JweUtils {
     /**
@@ -210,7 +240,6 @@ object JweUtils {
         }
         return output.take(jweEncryption.combinedEncryptionKeyLength.bytes.toInt()).toByteArray()
     }
-
 
     internal suspend fun encryptJwe(
         ephemeralKeyPair: KeyAgreementPrivateValue.ECDH,
@@ -242,6 +271,129 @@ object JweUtils {
         return JweEncrypted(jweHeader, aad, null, sealedBox.nonce, sealedBox.encryptedData, sealedBox.authTag)
     }
 
+    internal suspend fun decryptJwe(
+        keyMaterial: KeyMaterial,
+        header: JweHeader,
+        jweObject: JweEncrypted,
+    ): JweDecrypted<String> {
+        val z = (keyMaterial.getUnderLyingSigner() as Signer.ECDSA)
+            .keyAgreement(header.ephemeralKeyPair?.toCryptoPublicKey()?.getOrThrow() as CryptoPublicKey.EC)
+            .getOrThrow()
+        val intermediateKey = concatKdf(
+            z,
+            header.encryption!!,
+            header.agreementPartyUInfo,
+            header.agreementPartyVInfo
+        )
+        require(header.algorithm == JweAlgorithm.ECDH_ES)
+        val algorithm = header.encryption!!.algorithm
+        require(algorithm.requiresNonce())
+        require(algorithm.isAuthenticated())
+        val key = algorithm.keyFromIntermediate(intermediateKey)
+        val iv = jweObject.iv
+        val aad = jweObject.headerAsParsed.encodeToByteArray(Base64UrlStrict)
+        val ciphertext = jweObject.ciphertext
+        val authTag = jweObject.authTag
+        val plaintext = key.decrypt(iv, ciphertext, authTag, aad).getOrThrow()
+        val plainObject = plaintext.decodeToString()
+
+        return JweDecrypted(header, plainObject)
+    }
+
+    internal suspend fun encryptJwe(
+        key: SymmetricKey<AuthCapability<out KeyType>, NonceTrait, out KeyType>,
+        jweHeader: JweHeader,
+        payload: String,
+    ): JweEncrypted {
+        require(jweHeader.algorithm is JweAlgorithm.Symmetric)
+        val keyAlgorithm = (jweHeader.algorithm as JweAlgorithm.Symmetric).algorithm
+        if (key.algorithm != keyAlgorithm)
+            throw IllegalArgumentException("Key algorithm mismatch: $keyAlgorithm != ${key.algorithm}")
+
+        val contentAlgorithm = jweHeader.encryption!!.algorithm
+        require(contentAlgorithm.requiresNonce())
+        require(contentAlgorithm.isAuthenticated())
+        val contentKey = contentAlgorithm.randomKey()
+        val encryptedKey = key.encrypt(contentKey.jsonWebKeyBytes.getOrThrow()).getOrThrow()
+
+        val headerWithContentKeyParams = jweHeader.copy(
+            initializationVector = if (encryptedKey.hasNonce()) encryptedKey.nonce else null,
+            authenticationTag = if (encryptedKey.isAuthenticated()) encryptedKey.authTag else null,
+        )
+        val headerSerialized = joseCompliantSerializer.encodeToString(headerWithContentKeyParams)
+        val aad = headerSerialized.encodeToByteArray()
+        val aadForCipher = aad.encodeToByteArray(Base64UrlStrict)
+        val bytes = payload.encodeToByteArray()
+        val sealedBox = contentKey.encrypt(bytes, aadForCipher).getOrThrow()
+
+        return JweEncrypted(
+            headerWithContentKeyParams,
+            aad,
+            encryptedKey.encryptedData,
+            sealedBox.nonce,
+            sealedBox.encryptedData,
+            sealedBox.authTag
+        )
+    }
+
+    internal suspend fun decryptJwe(
+        key: SymmetricKey<AuthCapability<out KeyType>, NonceTrait, out KeyType>,
+        jweObject: JweEncrypted,
+        header: JweHeader,
+    ): JweDecrypted<String> {
+        val keyAlgorithm = (header.algorithm as JweAlgorithm.Symmetric).algorithm
+        if (key.algorithm != keyAlgorithm)
+            throw IllegalArgumentException("Key algorithm mismatch: $keyAlgorithm != ${key.algorithm}")
+        require(key is SymmetricKey.Integrated)
+
+        // TODO Can we simplify this?
+        val contentKeyBytes = if (key is SymmetricKey.Integrated.Authenticating.RequiringNonce) {
+            key.decrypt(
+                nonce = header.initializationVector!!,
+                encryptedData = jweObject.encryptedKey!!,
+                authTag = header.authenticationTag!!,
+            ).getOrThrow()
+        } else if (key is SymmetricKey.Integrated.Authenticating.WithoutNonce) {
+            key.decrypt(
+                encryptedData = jweObject.encryptedKey!!,
+                authTag = header.authenticationTag!!,
+            ).getOrThrow()
+        } else if (key is SymmetricKey.Integrated.NonAuthenticating.WithoutNonce) {
+            key.decrypt(
+                encryptedData = jweObject.encryptedKey!!,
+            ).getOrThrow()
+        } else if (key is SymmetricKey.Integrated.NonAuthenticating.RequiringNonce) {
+            key.decrypt(
+                nonce = header.initializationVector!!,
+                encryptedData = jweObject.encryptedKey!!,
+            ).getOrThrow()
+        } else {
+            throw IllegalArgumentException("Unsupported key type: $key")
+        }
+        val contentAlgorithm = header.encryption!!.algorithm
+        require(contentAlgorithm.requiresNonce())
+        require(contentAlgorithm.isAuthenticated())
+
+        // does not work as the method called doesn't guarantee the contract?
+        //val contentKey = header.encryption!!.symmetricKeyFromJsonWebKeyBytes(contentKeyBytes).getOrThrow()
+        val contentKey = if (contentAlgorithm.isIntegrated()) {
+            contentAlgorithm.keyFrom(contentKeyBytes).getOrThrow()
+        } else {
+            contentAlgorithm.keyFrom(
+                contentKeyBytes.drop(contentKeyBytes.size / 2).toByteArray(),
+                contentKeyBytes.take(contentKeyBytes.size / 2).toByteArray()
+            ).getOrThrow()
+        }
+
+        val iv = jweObject.iv
+        val aad = jweObject.headerAsParsed.encodeToByteArray(Base64UrlStrict)
+        val ciphertext = jweObject.ciphertext
+        val authTag = jweObject.authTag
+        val plaintext = contentKey.decrypt(iv, ciphertext, authTag, aad).getOrThrow()
+        val plainObject = plaintext.decodeToString()
+
+        return JweDecrypted(header, plainObject)
+    }
 }
 
 /** Decrypt a [JweEncrypted] object*/
@@ -260,32 +412,35 @@ class DecryptJwe(
         val header = jweObject.header
         val alg = header.algorithm
             ?: throw IllegalArgumentException("No algorithm in JWE header")
+        require(alg == JweAlgorithm.ECDH_ES)
         val enc = header.encryption
             ?: throw IllegalArgumentException("No encryption in JWE header")
+        require(enc.algorithm.requiresNonce())
+        require(enc.algorithm.isAuthenticated())
         val epk = header.ephemeralKeyPair
             ?: throw IllegalArgumentException("No epk in JWE header")
-        val z = (keyMaterial.getUnderLyingSigner() as Signer.ECDSA)
-            .keyAgreement(epk.toCryptoPublicKey().getOrThrow() as CryptoPublicKey.EC)
-            .getOrThrow()
-        val intermediateKey = JweUtils.concatKdf(
-            z,
-            enc,
-            header.agreementPartyUInfo,
-            header.agreementPartyVInfo
-        )
-        require(alg == JweAlgorithm.ECDH_ES)
+        require(epk.toCryptoPublicKey().getOrThrow() is CryptoPublicKey.EC)
+        JweUtils.decryptJwe(keyMaterial, header, jweObject)
+    }
+
+}
+
+class DecryptJweSymmetric(
+    val keyMaterial: SymmetricKey<AuthCapability<out KeyType>, NonceTrait, out KeyType>,
+) : DecryptJweFun {
+    override suspend operator fun invoke(
+        jweObject: JweEncrypted,
+    ) = catching {
+        val header = jweObject.header
+        header.algorithm
+            ?: throw IllegalArgumentException("No algorithm in JWE header")
+        val enc = header.encryption
+            ?: throw IllegalArgumentException("No encryption in JWE header")
         val algorithm = enc.algorithm
         require(algorithm.requiresNonce())
         require(algorithm.isAuthenticated())
-        val key = algorithm.keyFromIntermediate(intermediateKey)
-        val iv = jweObject.iv
-        val aad = jweObject.headerAsParsed.encodeToByteArray(Base64UrlStrict)
-        val ciphertext = jweObject.ciphertext
-        val authTag = jweObject.authTag
-        val plaintext = key.decrypt(iv, ciphertext, authTag, aad).getOrThrow()
-        val plainObject = plaintext.decodeToString()
 
-        JweDecrypted(header, plainObject)
+        JweUtils.decryptJwe(keyMaterial, jweObject, header)
     }
 }
 
