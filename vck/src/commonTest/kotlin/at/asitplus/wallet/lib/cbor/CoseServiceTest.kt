@@ -5,15 +5,25 @@ import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.ValidityInfo
 import at.asitplus.iso.ValueDigest
 import at.asitplus.iso.ValueDigestList
+import at.asitplus.signum.indispensable.HMAC
+import at.asitplus.signum.indispensable.MessageAuthenticationCode
+import at.asitplus.signum.indispensable.asn1.encoding.encodeTo4Bytes
 import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseEllipticCurve
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseKey
+import at.asitplus.signum.indispensable.cosef.CoseKeyOperation
 import at.asitplus.signum.indispensable.cosef.CoseKeyParams
 import at.asitplus.signum.indispensable.cosef.CoseKeyType
+import at.asitplus.signum.indispensable.cosef.CoseMac
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.toCoseKey
+import at.asitplus.signum.indispensable.misc.bit
+import at.asitplus.signum.indispensable.misc.bytes
+import at.asitplus.signum.indispensable.symmetric.SymmetricEncryptionAlgorithm
+import at.asitplus.signum.indispensable.symmetric.randomKey
+import at.asitplus.wallet.lib.agent.EphemeralHmacKey
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -36,16 +46,28 @@ class CoseServiceTest : FreeSpec({
     lateinit var signCoseMso: SignCoseFun<MobileSecurityObject>
     lateinit var signCoseDetached: SignCoseDetachedFun<ByteArray>
     lateinit var randomPayload: ByteArray
-    lateinit var coseKey: CoseKey
+    lateinit var signCoseKey: CoseKey
+
+    lateinit var macCose: MacCoseFun<ByteArray>
+    lateinit var macCoseMso: MacCoseFun<MobileSecurityObject>
+    lateinit var macCoseNothing: MacCoseFun<Nothing>
+    lateinit var macCoseKey: CoseKey
 
     beforeEach {
-        val keyMaterial = EphemeralKeyWithoutCert()
-        signCose = SignCose(keyMaterial)
-        signCoseNothing = SignCose(keyMaterial)
-        signCoseMso = SignCose(keyMaterial)
-        signCoseDetached = SignCoseDetached(keyMaterial)
+        val signKeyMaterial = EphemeralKeyWithoutCert()
+        signCose = SignCose(signKeyMaterial)
+        signCoseNothing = SignCose(signKeyMaterial)
+        signCoseMso = SignCose(signKeyMaterial)
+        signCoseDetached = SignCoseDetached(signKeyMaterial)
         randomPayload = Random.nextBytes(32)
-        coseKey = keyMaterial.publicKey.toCoseKey().getOrThrow()
+        signCoseKey = signKeyMaterial.publicKey.toCoseKey().getOrThrow()
+
+        val macAlgorithm = HMAC.SHA256
+        val macKeyMaterial = EphemeralHmacKey(algorithm = macAlgorithm, key = Random.nextBytes(32))
+        macCose = MacCose(macKeyMaterial)
+        macCoseMso = MacCose(macKeyMaterial)
+        macCoseNothing = MacCose(macKeyMaterial)
+        macCoseKey = CoseKey.forMacKey(macAlgorithm, macKeyMaterial.key, null, CoseKeyOperation.MAC_CREATE, CoseKeyOperation.MAC_VERIFY)
     }
 
     // "T" translates to 54 hex = "bytes(20)" in CBOR meaning,
@@ -70,7 +92,29 @@ class CoseServiceTest : FreeSpec({
         val parsed = CoseSigned.deserialize(parameterSerializer, serialized).getOrThrow()
             .shouldBe(signed)
 
-        VerifyCoseSignatureWithKey<ByteArray>()(parsed, coseKey, byteArrayOf(), null).isSuccess shouldBe true
+        VerifyCoseSignatureWithKey<ByteArray>()(parsed, signCoseKey, byteArrayOf(), null).isSuccess shouldBe true
+    }
+
+    "mac object with pseudo-random bytes can be verified" {
+        val parameterSerializer = ByteArraySerializer()
+        val payloadToUse = "This is the content: ".encodeToByteArray() + randomPayload
+        val maced = macCose(
+            protectedHeader = CoseHeader(algorithm = CoseAlgorithm.MAC.HS256),
+            unprotectedHeader = null,
+            payload = payloadToUse,
+            serializer = parameterSerializer
+        ).getOrThrow()
+
+        maced.payload shouldBe payloadToUse
+        maced.wireFormat.payload shouldBe payloadToUse
+        maced.tag.shouldNotBeNull()
+
+        val serialized = maced.serialize(parameterSerializer)
+
+        val parsed = CoseMac.deserialize(parameterSerializer, serialized).getOrThrow()
+            .shouldBe(maced)
+
+        VerifyCoseMacWithKey<ByteArray>()(parsed, macCoseKey, byteArrayOf(), null).isSuccess shouldBe true
     }
 
     "signed object with random bytes can be verified" {
@@ -90,7 +134,27 @@ class CoseServiceTest : FreeSpec({
         val parsed = CoseSigned.deserialize(parameterSerializer, serialized).getOrThrow()
             .shouldBe(signed)
 
-        VerifyCoseSignatureWithKey<ByteArray>()(parsed, coseKey, byteArrayOf(), null).isSuccess shouldBe true
+        VerifyCoseSignatureWithKey<ByteArray>()(parsed, signCoseKey, byteArrayOf(), null).isSuccess shouldBe true
+    }
+
+    "maced object with random bytes can be verified" {
+        val parameterSerializer = ByteArraySerializer()
+        val maced = macCose(
+            protectedHeader = null,
+            unprotectedHeader = CoseHeader(algorithm = CoseAlgorithm.MAC.HS256),
+            payload = randomPayload,
+            serializer = parameterSerializer,
+        ).getOrThrow()
+
+        maced.payload shouldBe randomPayload
+        maced.tag.shouldNotBeNull()
+
+        val serialized = maced.serialize(parameterSerializer)
+
+        val parsed = CoseMac.deserialize(parameterSerializer, serialized).getOrThrow()
+            .shouldBe(maced)
+
+        VerifyCoseMacWithKey<ByteArray>()(parsed, macCoseKey, byteArrayOf(), null).isSuccess shouldBe true
     }
 
     "signed object with MSO payload can be verified" {
@@ -123,7 +187,37 @@ class CoseServiceTest : FreeSpec({
         val parsed = CoseSigned.deserialize(parameterSerializer, signed.serialize(parameterSerializer)).getOrThrow()
             .shouldBe(signed)
 
-        VerifyCoseSignatureWithKey<MobileSecurityObject>()(parsed, coseKey, byteArrayOf(), null).isSuccess shouldBe true
+        VerifyCoseSignatureWithKey<MobileSecurityObject>()(parsed, signCoseKey, byteArrayOf(), null).isSuccess shouldBe true
+    }
+
+    "maced object with MSO payload can be verified" {
+        val parameterSerializer = MobileSecurityObject.serializer()
+        val mso = MobileSecurityObject(
+            version = "1.0",
+            digestAlgorithm = "SHA-256",
+            valueDigests = mapOf(
+                "foo" to ValueDigestList(listOf(ValueDigest(0U, byteArrayOf())))
+            ),
+            deviceKeyInfo = DeviceKeyInfo(
+                macCoseKey
+            ),
+            docType = "docType",
+            validityInfo = ValidityInfo(Clock.System.now(), Clock.System.now(), Clock.System.now())
+        )
+        val maced = macCoseMso(
+            protectedHeader = CoseHeader(algorithm = CoseAlgorithm.MAC.HS256),
+            unprotectedHeader = null,
+            payload = mso,
+            serializer = parameterSerializer
+        ).getOrThrow()
+
+        maced.payload shouldBe mso
+        maced.tag.shouldNotBeNull()
+
+        val parsed = CoseMac.deserialize(parameterSerializer, maced.serialize(parameterSerializer)).getOrThrow()
+            .shouldBe(maced)
+
+        VerifyCoseMacWithKey<MobileSecurityObject>()(parsed, macCoseKey, byteArrayOf(), null).isSuccess shouldBe true
     }
 
     "signed object with null payload can be verified" {
@@ -142,7 +236,26 @@ class CoseServiceTest : FreeSpec({
         val parsed = CoseSigned.deserialize(parameterSerializer, serialized).getOrThrow()
             .shouldBe(signed)
 
-        VerifyCoseSignatureWithKey<Nothing>()(parsed, coseKey, byteArrayOf(), null).isSuccess shouldBe true
+        VerifyCoseSignatureWithKey<Nothing>()(parsed, signCoseKey, byteArrayOf(), null).isSuccess shouldBe true
+    }
+
+    "maced object with null payload can be verified" {
+        val parameterSerializer = NothingSerializer()
+        val maced = macCoseNothing(null, null, null, parameterSerializer).getOrThrow()
+
+        maced.payload shouldBe null
+        maced.tag.shouldNotBeNull()
+        val serialized = maced.serialize(parameterSerializer).apply {
+            // A0 = empty map (unprotected header)
+            // F6 = CBOR Null (payload)
+            // 58 20 = 32 bytes (hmac256)
+            encodeToString(Base16()) shouldContain "A0F65820"
+        }
+
+        val parsed = CoseMac.deserialize(parameterSerializer, serialized).getOrThrow()
+            .shouldBe(maced)
+
+        VerifyCoseMacWithKey<Nothing>()(parsed, macCoseKey, byteArrayOf(), null).isSuccess shouldBe true
     }
 
     "signed object with random bytes, transported detached, can be verified" {
@@ -168,9 +281,9 @@ class CoseServiceTest : FreeSpec({
             .shouldBe(signed)
 
         with(VerifyCoseSignatureWithKey<ByteArray>()) {
-            invoke(parsed, coseKey, byteArrayOf(), randomPayload).isSuccess shouldBe true
-            invoke(parsed, coseKey, byteArrayOf(), randomPayload + byteArrayOf(0)).isSuccess shouldBe false
-            invoke(parsed, coseKey, byteArrayOf(), null).isSuccess shouldBe false
+            invoke(parsed, signCoseKey, byteArrayOf(), randomPayload).isSuccess shouldBe true
+            invoke(parsed, signCoseKey, byteArrayOf(), randomPayload + byteArrayOf(0)).isSuccess shouldBe false
+            invoke(parsed, signCoseKey, byteArrayOf(), null).isSuccess shouldBe false
         }
     }
 

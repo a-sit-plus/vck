@@ -38,7 +38,7 @@ val kotlinVer = versionOf("kotlin")
 dependencies {
     api("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVer")
     api("org.jetbrains.kotlin:kotlin-serialization:$kotlinVer")
-    api("at.asitplus.gradle:k2:20250729")
+    api("at.asitplus.gradle:k2:+")
     api("com.squareup:kotlinpoet:1.16.0")
     api("com.android.library:com.android.library.gradle.plugin:$agp")
     api("de.mannodermaus.gradle.plugins:android-junit5:1.11.0.0")

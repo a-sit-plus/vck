@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.ECCurve
+import at.asitplus.signum.indispensable.HMAC
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
@@ -11,6 +12,7 @@ import at.asitplus.signum.indispensable.symmetric.SealedBox
 import at.asitplus.signum.indispensable.symmetric.SymmetricKey
 import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.signum.supreme.asKmmResult
+import at.asitplus.signum.supreme.mac.mac
 import at.asitplus.signum.supreme.sign.EphemeralKey
 import at.asitplus.signum.supreme.sign.Signer
 import at.asitplus.signum.supreme.symmetric.encrypt
@@ -22,7 +24,6 @@ import kotlin.random.Random
 
 interface KeyMaterial {
     val identifier: String
-    val jsonWebKey: JsonWebKey
 }
 
 /**
@@ -37,31 +38,23 @@ interface SignKeyMaterial : KeyMaterial, Signer {
      */
     suspend fun getCertificate(): X509Certificate?
 
-    override val jsonWebKey: JsonWebKey
+    val jsonWebKey: JsonWebKey
         get() = publicKey.toJsonWebKey(null)
 }
 
 interface MacKeyMaterial : KeyMaterial {
-    val key: SymmetricKey<*, *, *>
+    val key: ByteArray
+    val algorithm: HMAC
 
-    override val jsonWebKey: JsonWebKey
-        get() = key.toJsonWebKey().getOrThrow()
-
-    suspend fun encrypt(data: ByteArray) : SealedBox<*, *, *>
+    suspend fun encrypt(data: ByteArray) : ByteArray
 }
 
 class EphemeralHmacKey(
     override val identifier: String = Random.nextBytes(8).encodeToString(Base16Strict).lowercase(),
-    override val key: SymmetricKey.WithDedicatedMac<*>
+    override val algorithm: HMAC = HMAC.SHA256,
+    override val key: ByteArray
 ) : MacKeyMaterial {
-
-    init {
-        if (!key.algorithm.name.contains("HMAC")) throw IllegalArgumentException("Illegal Cose_Mac0 algorithm.")
-    }
-
-    override suspend fun encrypt(data: ByteArray): SealedBox<*, *, *> {
-        return key.encrypt(data).getOrThrow()
-    }
+    override suspend fun encrypt(data: ByteArray): ByteArray = algorithm.mac(key, data).getOrThrow()
 }
 
 /**

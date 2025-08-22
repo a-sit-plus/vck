@@ -12,6 +12,8 @@ import at.asitplus.signum.supreme.sign.Verifier
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.SignKeyMaterial
 import at.asitplus.wallet.lib.agent.MacKeyMaterial
+import at.asitplus.wallet.lib.agent.VerifyMac
+import at.asitplus.wallet.lib.agent.VerifyMacFun
 import at.asitplus.wallet.lib.agent.VerifySignature
 import at.asitplus.wallet.lib.agent.VerifySignatureFun
 import at.asitplus.wallet.lib.cbor.CoseUtils.calcMac
@@ -113,7 +115,7 @@ class MacCose<P : Any>(
         payload: P?,
         serializer: KSerializer<P>
     ): KmmResult<CoseMac<P>> = catching {
-        val algorithm = keyMaterial.key.algorithm.toCoseAlgorithm().getOrThrow()
+        val algorithm = keyMaterial.algorithm.toCoseAlgorithm().getOrThrow()
         val headerWithAlg = (protectedHeader ?: CoseHeader()).copy(algorithm = algorithm)
         val protectedHeader = protectedHeaderModifier?.invoke(headerWithAlg, keyMaterial) ?: headerWithAlg
         val unprotectedHeader = unprotectedHeaderModifier?.invoke(unprotectedHeader ?: CoseHeader(), keyMaterial)
@@ -215,7 +217,7 @@ object CoseUtils {
         ).let { macInput ->
             val serialized = coseCompliantSerializer.encodeToByteArray(macInput)
             Napier.d("COSE Mac input is ${serialized.encodeToString(Base16())}")
-            keyMaterial.encrypt(serialized).encryptedData
+            keyMaterial.encrypt(serialized)
         }
 
 }
@@ -284,6 +286,40 @@ class VerifyCoseSignatureWithKey<P : Any>(
             publicKey
         ).getOrThrow()
     }
+}
+
+fun interface VerifyCoseMacWithKeyFun<P> {
+    suspend operator fun invoke(
+        coseMac: CoseMac<P>,
+        coseKey: CoseKey,
+        externalAad: ByteArray,
+        detachedPayload: ByteArray?,
+    ): KmmResult<VerifyMacFun.Success>
+}
+
+class VerifyCoseMacWithKey<P : Any>(
+    val verifyMac: VerifyMacFun = VerifyMac(),
+) : VerifyCoseMacWithKeyFun<P> {
+    override suspend fun invoke(
+        coseMac: CoseMac<P>,
+        coseKey: CoseKey,
+        externalAad: ByteArray,
+        detachedPayload: ByteArray?
+    ) = catching {
+        val macInput = coseMac.prepareCoseMacInput(externalAad, detachedPayload)
+            .also { Napier.d("verifyCose input is ${it.encodeToString(Base16())}") }
+        val algorithm = coseMac.protectedHeader.algorithm
+            ?: throw IllegalArgumentException("Algorithm not specified")
+        require(algorithm is CoseAlgorithm.MAC) { "CoseAlgorithm not supported: ${algorithm}" }
+        val key = (coseKey.keyParams as CoseKeyParams.SymmKeyParams).k
+        verifyMac(
+            macInput,
+            coseMac.tag,
+            algorithm.algorithm,
+            key
+        ).getOrThrow()
+    }
+
 }
 
 fun interface PublicCoseKeyLookup {
