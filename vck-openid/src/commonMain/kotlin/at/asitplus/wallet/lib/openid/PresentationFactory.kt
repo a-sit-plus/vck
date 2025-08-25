@@ -20,7 +20,6 @@ import at.asitplus.openid.IdToken
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.RelyingPartyMetadata
-import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.CoseSigned
@@ -62,7 +61,7 @@ internal class PresentationFactory(
 ) {
     suspend fun createPresentation(
         holder: Holder,
-        request: RequestParameters,
+        request: AuthenticationRequestParameters,
         nonce: String,
         audience: String,
         clientMetadata: RelyingPartyMetadata?,
@@ -73,7 +72,7 @@ internal class PresentationFactory(
         request.verifyResponseType()
 
         val requestsDcApiEncryption =
-            (request as? AuthenticationRequestParameters)?.responseMode == OpenIdConstants.ResponseMode.DcApiJwt // TODO enable this check in draft28 branch && clientMetadata?.encryptionSupported() == true
+            request.responseMode == OpenIdConstants.ResponseMode.DcApiJwt // TODO enable this check in draft28 branch && clientMetadata?.encryptionSupported() == true
         val responseWillBeEncrypted =
             jsonWebKeys != null && (clientMetadata?.requestsEncryption() == true || requestsDcApiEncryption)
         val clientId = request.clientId
@@ -233,10 +232,10 @@ internal class PresentationFactory(
         )
     }
 
-    suspend fun <T : RequestParameters> createSignedIdToken(
+    suspend fun createSignedIdToken(
         clock: Clock,
         agentPublicKey: CryptoPublicKey,
-        request: RequestParametersFrom<T>,
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<JwsSigned<IdToken>?> = catching {
         if (request.parameters.responseType?.contains(OpenIdConstants.ID_TOKEN) != true) {
             return@catching null
@@ -267,7 +266,7 @@ internal class PresentationFactory(
     }
 
     @Throws(OAuth2Exception::class)
-    private fun RequestParameters.verifyResponseType() {
+    private fun AuthenticationRequestParameters.verifyResponseType() {
         if (responseType == null || !responseType!!.contains(VP_TOKEN)) {
             Napier.w("vp_token not requested in response_type='$responseType'")
             throw InvalidRequest("response_type invalid")
