@@ -194,7 +194,7 @@ class OpenId4VciClient(
 
         oauth2Client.startAuthorization(
             oauthMetadata = oauthMetadata,
-            popAudience = credentialIssuerUrl,
+            authorizationServer = authorizationServer,
             authorizationDetails = oid4vciService.buildAuthorizationDetails(
                 credentialIdentifierInfo.credentialIdentifier,
                 issuerMetadata.authorizationServers
@@ -234,7 +234,7 @@ class OpenId4VciClient(
         val tokenResponse = oauth2Client.requestTokenWithAuthCode(
             oauthMetadata = context.oauthMetadata,
             url = url,
-            popAudience = context.issuerMetadata.credentialIssuer,
+            authorizationServer = context.issuerMetadata.credentialIssuer,
             state = context.state,
             scope = context.credential.supportedCredentialFormat.scope,
             authorizationDetails = oid4vciService.buildAuthorizationDetails(
@@ -398,7 +398,7 @@ class OpenId4VciClient(
             )
             val tokenResponse = oauth2Client.requestTokenWithPreAuthorizedCode(
                 oauthMetadata = oauthMetadata,
-                credentialIssuer = issuerMetadata.credentialIssuer,
+                authorizationServer = issuerMetadata.credentialIssuer,
                 preAuthorizedCode = it.preAuthorizedCode,
                 transactionCode = transactionCode,
                 scope = credentialIdentifierInfo.supportedCredentialFormat.scope,
@@ -420,7 +420,7 @@ class OpenId4VciClient(
 
             oauth2Client.startAuthorization(
                 oauthMetadata = oauthMetadata,
-                popAudience = credentialOffer.credentialIssuer,
+                authorizationServer = authorizationServer,
                 state = state,
                 issuerState = it.issuerState,
                 authorizationDetails = oid4vciService.buildAuthorizationDetails(

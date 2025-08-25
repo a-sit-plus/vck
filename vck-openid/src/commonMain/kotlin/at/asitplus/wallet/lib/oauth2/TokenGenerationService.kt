@@ -9,8 +9,15 @@ import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.jws.*
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
+import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.SignJwtFun
+import at.asitplus.wallet.lib.jws.VerifyJwsObject
+import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
+import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.DefaultNonceService
+import at.asitplus.wallet.lib.oidvci.MapStore
 import at.asitplus.wallet.lib.oidvci.NonceService
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidDpopProof
 import io.github.aakira.napier.Napier
@@ -24,7 +31,7 @@ interface TokenGenerationService {
     /** Builds an access token, probably with a refresh token. Input parameters are assumed to be validated already. */
     suspend fun buildToken(
         httpRequest: RequestInfo?,
-        userInfo: OidcUserInfoExtended?,
+        userInfo: OidcUserInfoExtended,
         authorizationDetails: Set<AuthorizationDetails>?,
         scope: String?,
     ): TokenResponseParameters
@@ -51,58 +58,61 @@ class JwtTokenGenerationService(
     private val clock: Clock = System,
     /** Whether to issue refresh tokens, which may be used by clients to get a new access token. */
     private val issueRefreshToken: Boolean = false,
+    /** Maps the issued token's `jwtId` to the user info. */
+    private val jwtIdToUserInfoExtended: MapStore<String, OidcUserInfoExtended> = DefaultMapStore(),
 ) : TokenGenerationService {
 
     override suspend fun buildToken(
         httpRequest: RequestInfo?,
-        userInfo: OidcUserInfoExtended?,
+        userInfo: OidcUserInfoExtended,
         authorizationDetails: Set<AuthorizationDetails>?,
         scope: String?,
-    ): TokenResponseParameters =
-        if (httpRequest?.dpop == null) {
-            Napier.w("dpop: no JWT provided, but enforced")
-            throw InvalidDpopProof("no DPoP header value")
-        } else {
-            val clientKey = validateDpopJwtForToken(httpRequest)
-            TokenResponseParameters(
-                expires = 5.minutes,
-                tokenType = TOKEN_TYPE_DPOP,
-                refreshToken = if (issueRefreshToken) signToken(
-                    JwsContentTypeConstants.RT_JWT,
-                    OpenId4VciAccessToken(
-                        issuer = publicContext,
-                        jwtId = nonceService.provideNonce(),
-                        notBefore = clock.now(),
-                        expiration = clock.now().plus(30.days),
-                        confirmationClaim = ConfirmationClaim(
-                            jsonWebKeyThumbprint = clientKey.jwkThumbprintPlain
-                        ),
-                        userInfo = userInfo?.jsonObject,
-                        scope = scope,
-                        authorizationDetails = authorizationDetails,
+    ): TokenResponseParameters = if (httpRequest?.dpop == null) {
+        Napier.w("dpop: no JWT provided, but enforced")
+        throw InvalidDpopProof("no DPoP header value")
+    } else {
+        val clientKey = validateDpopJwtForToken(httpRequest)
+        TokenResponseParameters(
+            expires = 5.minutes,
+            tokenType = TOKEN_TYPE_DPOP,
+            refreshToken = if (issueRefreshToken) signToken(
+                JwsContentTypeConstants.RT_JWT,
+                OpenId4VciAccessToken(
+                    issuer = publicContext,
+                    jwtId = nonceService.provideNonce().also {
+                        jwtIdToUserInfoExtended.put(it, userInfo)
+                    },
+                    notBefore = clock.now(),
+                    expiration = clock.now().plus(30.days),
+                    confirmationClaim = ConfirmationClaim(
+                        jsonWebKeyThumbprint = clientKey.jwkThumbprintPlain
                     ),
-                    OpenId4VciAccessToken.serializer(),
-                ).getOrThrow().serialize() else null,
-                accessToken = signToken(
-                    JwsContentTypeConstants.OID4VCI_AT_JWT,
-                    OpenId4VciAccessToken(
-                        issuer = publicContext,
-                        jwtId = nonceService.provideNonce(),
-                        notBefore = clock.now(),
-                        expiration = clock.now().plus(5.minutes),
-                        confirmationClaim = ConfirmationClaim(
-                            jsonWebKeyThumbprint = clientKey.jwkThumbprintPlain
-                        ),
-                        userInfo = userInfo?.jsonObject,
-                        scope = scope,
-                        authorizationDetails = authorizationDetails,
+                    scope = scope,
+                    authorizationDetails = authorizationDetails,
+                ),
+                OpenId4VciAccessToken.serializer(),
+            ).getOrThrow().serialize() else null,
+            accessToken = signToken(
+                JwsContentTypeConstants.OID4VCI_AT_JWT,
+                OpenId4VciAccessToken(
+                    issuer = publicContext,
+                    jwtId = nonceService.provideNonce().also {
+                        jwtIdToUserInfoExtended.put(it, userInfo)
+                    },
+                    notBefore = clock.now(),
+                    expiration = clock.now().plus(5.minutes),
+                    confirmationClaim = ConfirmationClaim(
+                        jsonWebKeyThumbprint = clientKey.jwkThumbprintPlain
                     ),
-                    OpenId4VciAccessToken.serializer(),
-                ).getOrThrow().serialize(),
-                authorizationDetails = authorizationDetails,
-                scope = scope,
-            )
-        }
+                    scope = scope,
+                    authorizationDetails = authorizationDetails,
+                ),
+                OpenId4VciAccessToken.serializer(),
+            ).getOrThrow().serialize(),
+            authorizationDetails = authorizationDetails,
+            scope = scope,
+        )
+    }
 
     private suspend fun validateDpopJwtForToken(
         httpRequest: RequestInfo,
@@ -145,6 +155,7 @@ class JwtTokenGenerationService(
     private val JsonWebKey.jwkThumbprintPlain
         get() = this.jwkThumbprint.removePrefix("urn:ietf:params:oauth:jwk-thumbprint:sha256:")
 
+    suspend fun getUserInfoExtended(jwtId: String) = jwtIdToUserInfoExtended.remove(jwtId)
 }
 
 /**
@@ -156,14 +167,12 @@ class JwtTokenGenerationService(
 class BearerTokenGenerationService(
     /** Used to create nonces for tokens during issuing. */
     internal val nonceService: NonceService = DefaultNonceService(),
+    private val accessTokenToUserInfoExtended: MapStore<String, ValidatedAccessToken> = DefaultMapStore(),
 ) : TokenGenerationService {
-
-    /** Only for local tests. */
-    private val listOfValidatedAccessToken = mutableListOf<ValidatedAccessToken>()
 
     override suspend fun buildToken(
         httpRequest: RequestInfo?,
-        userInfo: OidcUserInfoExtended?,
+        userInfo: OidcUserInfoExtended,
         authorizationDetails: Set<AuthorizationDetails>?,
         scope: String?,
     ): TokenResponseParameters = TokenResponseParameters(
@@ -173,12 +182,18 @@ class BearerTokenGenerationService(
         authorizationDetails = authorizationDetails,
         scope = scope,
     ).also {
-        listOfValidatedAccessToken.add(
-            ValidatedAccessToken(it.accessToken, userInfo, authorizationDetails, scope)
+        accessTokenToUserInfoExtended.put(
+            it.accessToken,
+            ValidatedAccessToken(
+                token = it.accessToken,
+                userInfoExtended = userInfo,
+                authorizationDetails = authorizationDetails,
+                scope = scope
+            )
         )
     }
 
-    fun getValidatedAccessToken(accessToken: String): ValidatedAccessToken? {
-        return listOfValidatedAccessToken.firstOrNull { it.token == accessToken }
-    }
+    suspend fun getValidatedAccessToken(accessToken: String) =
+        accessTokenToUserInfoExtended.get(accessToken)
+
 }

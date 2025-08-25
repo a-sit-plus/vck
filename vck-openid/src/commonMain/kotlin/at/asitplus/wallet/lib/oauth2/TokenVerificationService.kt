@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.iso.sha256
-import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.OpenIdConstants.TOKEN_PREFIX_BEARER
 import at.asitplus.openid.OpenIdConstants.TOKEN_PREFIX_DPOP
@@ -33,14 +32,25 @@ import kotlin.time.Duration.Companion.minutes
  * or by any other OAuth 2.0 authorization server.
  */
 interface TokenVerificationService {
+
+    /** Validates that this refresh token was actually issued by the known [TokenGenerationService]. */
     suspend fun validateRefreshToken(
         refreshToken: String,
         request: RequestInfo?,
     ): String
 
+    /** Validates that the token sent from the client is actually one issued from the known [TokenGenerationService]. */
     suspend fun validateTokenExtractUser(
         authorizationHeader: String,
         request: RequestInfo?,
+    ): ValidatedAccessToken
+
+    /**
+     * Validates the subject token (that is a token sent by a third party for token exchange) is one issued from
+     * [TokenGenerationService]. Callers need to authenticate the client before calling this method.
+     */
+    suspend fun validateTokenForTokenExchange(
+        subjectToken: String,
     ): ValidatedAccessToken
 }
 
@@ -63,6 +73,7 @@ class JwtTokenVerificationService(
     private val clock: Clock = System,
     /** Time leeway for verification of timestamps in access tokens and refresh tokens. */
     private val timeLeeway: Duration = 5.minutes,
+    private val tokenGenerationService: JwtTokenGenerationService,
 ) : TokenVerificationService {
 
     override suspend fun validateRefreshToken(
@@ -81,17 +92,36 @@ class JwtTokenVerificationService(
     ): ValidatedAccessToken = if (authorizationHeader.startsWith(TOKEN_TYPE_DPOP, ignoreCase = true)) {
         val dpopToken = authorizationHeader.removePrefix(TOKEN_PREFIX_DPOP).split(" ").last()
         val dpopTokenJwt = validateDpopToken(dpopToken, JwsContentTypeConstants.OID4VCI_AT_JWT)
+        val jwtId = dpopTokenJwt.payload.jwtId
+            ?: throw InvalidToken("access token not valid: $dpopToken")
         validateDpopJwt(dpopToken, dpopTokenJwt, request)
         with(dpopTokenJwt.payload) {
             ValidatedAccessToken(
                 token = dpopToken,
-                userInfoExtended = userInfo?.let { OidcUserInfoExtended.fromJsonObject(it) }?.getOrNull(),
+                userInfoExtended = tokenGenerationService.getUserInfoExtended(jwtId),
                 authorizationDetails = authorizationDetails?.filterIsInstance<OpenIdAuthorizationDetails>()?.toSet(),
                 scope = scope
             )
         }
     } else {
         throw InvalidToken("authorization header not valid: $authorizationHeader")
+    }
+
+    override suspend fun validateTokenForTokenExchange(
+        subjectToken: String
+    ): ValidatedAccessToken = run {
+        val dpopTokenJwt = validateDpopToken(subjectToken, JwsContentTypeConstants.OID4VCI_AT_JWT)
+        val jwtId = dpopTokenJwt.payload.jwtId
+            ?: throw InvalidToken("access token not valid: $subjectToken")
+        // can't validate DPoP JWT, as the third party can't forward this
+        with(dpopTokenJwt.payload) {
+            ValidatedAccessToken(
+                token = subjectToken,
+                userInfoExtended = tokenGenerationService.getUserInfoExtended(jwtId),
+                authorizationDetails = authorizationDetails?.filterIsInstance<OpenIdAuthorizationDetails>()?.toSet(),
+                scope = scope
+            )
+        }
     }
 
     private suspend fun validateDpopJwt(
@@ -103,7 +133,7 @@ class JwtTokenVerificationService(
             Napier.w("validateDpopJwt: No dpop proof in header")
             throw InvalidDpopProof("no dpop proof")
         }
-        val jwt = parseAndValidate(request!!.dpop!!)
+        val jwt = parseAndValidate(request.dpop)
         if (dpopTokenJwt.payload.confirmationClaim == null ||
             jwt.header.jsonWebKey == null ||
             jwt.header.jsonWebKey!!.jwkThumbprintPlain != dpopTokenJwt.payload.confirmationClaim!!.jsonWebKeyThumbprint
@@ -216,4 +246,14 @@ class BearerTokenVerificationService(
         throw InvalidToken("authorization header not valid: $authorizationHeader")
     }
 
+    override suspend fun validateTokenForTokenExchange(
+        subjectToken: String
+    ): ValidatedAccessToken = run {
+        if (!nonceService.verifyNonce(subjectToken)) { // when to remove them?
+            Napier.w("validateToken: Nonce not known: $subjectToken")
+            throw InvalidToken("access token not valid: $subjectToken")
+        }
+        tokenGenerationService.getValidatedAccessToken(subjectToken)
+            ?: throw InvalidToken("access token not valid: $subjectToken")
+    }
 }

@@ -74,10 +74,8 @@ class OAuth2KtorClient(
      */
     private val loadClientAttestationJwt: (suspend () -> String)? = null,
     /** Used for authenticating the client at the authorization server with client attestation. */
-    private val signClientAttestationPop: SignJwtFun<JsonWebToken>? = SignJwt(
-        EphemeralKeyWithoutCert(),
-        JwsHeaderNone()
-    ),
+    private val signClientAttestationPop: SignJwtFun<JsonWebToken>? =
+        SignJwt(EphemeralKeyWithoutCert(), JwsHeaderNone()),
     /** Used to calculate DPoP, i.e. the key the access token and refresh token gets bound to. */
     private val signDpop: SignJwtFun<JsonWebToken> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk()),
     private val dpopAlgorithm: JwsAlgorithm = JwsAlgorithm.Signature.ES256,
@@ -117,7 +115,7 @@ class OAuth2KtorClient(
      */
     suspend fun requestTokenWithPreAuthorizedCode(
         oauthMetadata: OAuth2AuthorizationServerMetadata,
-        credentialIssuer: String,
+        authorizationServer: String,
         preAuthorizedCode: String,
         transactionCode: String?,
         scope: String?,
@@ -135,7 +133,7 @@ class OAuth2KtorClient(
                 scope = scope,
                 authorizationDetails = if (!hasScope) authorizationDetails else null
             ),
-            popAudience = credentialIssuer
+            popAudience = authorizationServer
         )
         Napier.i("Received token response")
         Napier.d("Received token response: $tokenResponse")
@@ -154,7 +152,7 @@ class OAuth2KtorClient(
     suspend fun requestTokenWithAuthCode(
         oauthMetadata: OAuth2AuthorizationServerMetadata,
         url: String,
-        popAudience: String,
+        authorizationServer: String,
         state: String,
         scope: String? = null,
         authorizationDetails: Set<OpenIdAuthorizationDetails>? = null,
@@ -176,7 +174,7 @@ class OAuth2KtorClient(
                 scope = scope,
                 authorizationDetails = if (!hasScope) authorizationDetails else null
             ),
-            popAudience = popAudience,
+            popAudience = authorizationServer,
         )
         Napier.i("Received token response")
         Napier.d("Received token response $tokenResponse")
@@ -225,8 +223,8 @@ class OAuth2KtorClient(
         subjectToken: String,
         resource: String?,
     ): KmmResult<TokenResponseParameters> = catching {
-        Napier.i("refreshCredential")
-        Napier.d("refreshCredential: $subjectToken")
+        Napier.i("requestTokenWithTokenExchange")
+        Napier.d("requestTokenWithTokenExchange: $subjectToken")
         val tokenResponse = postToken(
             oauthMetadata = oauthMetadata,
             tokenRequest = oAuth2Client.createTokenRequestParameters(
@@ -306,7 +304,7 @@ class OAuth2KtorClient(
     @Throws(Exception::class)
     suspend fun startAuthorization(
         oauthMetadata: OAuth2AuthorizationServerMetadata,
-        popAudience: String,
+        authorizationServer: String,
         state: String = uuid4().toString(),
         issuerState: String? = null,
         authorizationDetails: Set<OpenIdAuthorizationDetails>? = null,
@@ -327,11 +325,10 @@ class OAuth2KtorClient(
         val parEndpointUrl = oauthMetadata.pushedAuthorizationRequestEndpoint
         val authorizationUrl = if (parEndpointUrl != null && requiresPar) {
             val authRequestAfterPar = pushAuthorizationRequest(
+                oauthMetadata = oauthMetadata,
                 authRequest = authRequest,
                 state = state,
-                url = parEndpointUrl,
-                popAudience = popAudience,
-                tokenAuthMethods = oauthMetadata.tokenEndPointAuthMethodsSupported
+                popAudience = authorizationServer,
             )
             URLBuilder(authorizationEndpointUrl).also { builder ->
                 authRequestAfterPar.encodeToParameters<AuthenticationRequestParameters>().forEach {
@@ -352,19 +349,19 @@ class OAuth2KtorClient(
 
     @Throws(Exception::class)
     private suspend fun pushAuthorizationRequest(
+        oauthMetadata: OAuth2AuthorizationServerMetadata,
         authRequest: AuthenticationRequestParameters,
         state: String,
-        url: String,
         popAudience: String,
-        tokenAuthMethods: Set<String>?,
     ): AuthenticationRequestParameters {
-        val shouldIncludeClientAttestation =
-            tokenAuthMethods?.contains(OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH) == true
-        val clientAttestationJwt = if (shouldIncludeClientAttestation) {
+        val useClientAuth = oauthMetadata.useClientAuth()
+        val parEndpointUrl = oauthMetadata.pushedAuthorizationRequestEndpoint
+            ?: throw Exception("No pushedAuthorizationRequestEndpoint in $oauthMetadata")
+        val clientAttestationJwt = if (useClientAuth) {
             loadClientAttestationJwt?.invoke()
         } else null
         val clientAttestationPoPJwt =
-            if (shouldIncludeClientAttestation && signClientAttestationPop != null && clientAttestationJwt != null) {
+            if (useClientAuth && signClientAttestationPop != null && clientAttestationJwt != null) {
                 BuildClientAttestationPoPJwt(
                     signClientAttestationPop,
                     clientId = oAuth2Client.clientId,
@@ -373,7 +370,7 @@ class OAuth2KtorClient(
                 ).serialize()
             } else null
         val response = client.submitForm(
-            url = url,
+            url = parEndpointUrl ,
             formParameters = parameters {
                 authRequest.encodeToParameters().forEach { append(it.key, it.value) }
                 append(OpenIdConstants.PARAMETER_PROMPT, OpenIdConstants.PARAMETER_PROMPT_LOGIN)
@@ -391,7 +388,7 @@ class OAuth2KtorClient(
             throw Exception(response.error)
         }
         if (response.requestUri == null) {
-            throw Exception("No request_uri from PAR response at $url")
+            throw Exception("No request_uri from PAR response at $parEndpointUrl")
         }
 
         return AuthenticationRequestParameters(

@@ -14,7 +14,6 @@ import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
-import at.asitplus.openid.OpenIdConstants.TokenTypes
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
@@ -37,6 +36,7 @@ import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.serialization.json.JsonObject
 import kotlin.time.Duration.Companion.minutes
 
 
@@ -361,8 +361,14 @@ class SimpleAuthorizationService(
     ): KmmResult<TokenResponseParameters> = catching {
         Napier.i("token called with $request")
 
+        clientAuthenticationService.authenticateClient(
+            httpRequest?.clientAttestation,
+            httpRequest?.clientAttestationPop,
+            request.clientId
+        )
+
         if (request.grantType == OpenIdConstants.GRANT_TYPE_TOKEN_EXCHANGE) {
-            return@catching request.tokenExchange(authorizationHeader, httpRequest)
+            return@catching tokenService.tokenExchange(request, httpRequest, metadata())
         }
 
         val clientAuthRequest = request.loadClientAuthnRequest(httpRequest) ?: run {
@@ -375,12 +381,6 @@ class SimpleAuthorizationService(
                 validateCodeChallenge(code, request.codeVerifier, clientAuthRequest.codeChallenge)
             }
         }
-
-        clientAuthenticationService.authenticateClient(
-            httpRequest?.clientAttestation,
-            httpRequest?.clientAttestationPop,
-            request.clientId
-        )
 
         val token = if (request.authorizationDetails != null) {
             tokenService.generation.buildToken(
@@ -421,7 +421,7 @@ class SimpleAuthorizationService(
         Napier.i("token returns $token")
         token
     }
-
+    
     private fun validateCodeChallenge(code: String, codeVerifier: String?, codeChallenge: String) {
         if (codeVerifier == null) {
             Napier.w("token: client did not provide any code verifier: $codeVerifier for $code")
@@ -442,46 +442,6 @@ class SimpleAuthorizationService(
                 throw InvalidRequest("Scope not from auth code: $singleScope")
         }
         return scope
-    }
-
-    private suspend fun TokenRequestParameters.tokenExchange(
-        authorizationHeader: String?,
-        httpRequest: RequestInfo?,
-    ): TokenResponseParameters {
-        // Client wants to exchange Wallet's access token (probably DPoP-constrained) with a fresh one for userInfo
-        if (subjectTokenType == null || subjectToken == null) {
-            Napier.w("tokenExchange: subject_token or subject_token_type is null for token exchange")
-            throw InvalidGrant("subject_token or subject_token_type is null")
-        }
-        if (authorizationHeader == null) {
-            Napier.w("tokenExchange: no authorization header")
-            throw InvalidGrant("authorization header is null")
-        }
-        val metadata = metadata()
-        if (resource != metadata.userInfoEndpoint) {
-            throw InvalidGrant("resource is not valid, is not for ${metadata.userInfoEndpoint}")
-        }
-        if (requestedTokenType != TokenTypes.ACCESS_TOKEN) {
-            throw InvalidGrant("requested_token_type is not valid, must be ${TokenTypes.ACCESS_TOKEN}")
-        }
-        // TODO Here, we can not verify the subjectToken with the requestInfo, as this doesn't match anymore
-        // because the CI is the one requesting this token exchange, the wallets access token is in subjectToken
-        // TODO extract this into a method of tokenService, because we would need to store the user info object
-        val validated = tokenService.verification.validateTokenExtractUser(
-            authorizationHeader = authorizationHeader,
-            request = httpRequest,
-        ).apply {
-            if (userInfoExtended == null)
-                throw InvalidGrant("subject_token is not valid, no stored user")
-        }
-        val newToken = tokenService.generation.buildToken(
-            userInfo = validated.userInfoExtended!!,
-            httpRequest = httpRequest,
-            authorizationDetails = validated.authorizationDetails,
-            scope = validated.scope
-        )
-        return newToken
-            .also { Napier.i("token returns after token exchange: $it") }
     }
 
     internal suspend fun TokenRequestParameters.loadClientAuthnRequest(
@@ -536,7 +496,7 @@ class SimpleAuthorizationService(
         credentialIdentifier: String?,
         credentialConfigurationId: String?,
         request: RequestInfo?,
-    ) = catching {
+    ): KmmResult<JsonObject> = catching {
         with(tokenService.verification.validateTokenExtractUser(authorizationHeader, request)) {
             if (credentialIdentifier != null) {
                 if (authorizationDetails == null)
@@ -552,7 +512,7 @@ class SimpleAuthorizationService(
                 throw InvalidToken("neither credential_identifier nor credential_configuration_id set")
             }
 
-            userInfoExtended
+            userInfoExtended?.jsonObject
                 ?: throw InvalidGrant("no user info found for $authorizationHeader")
         }
     }

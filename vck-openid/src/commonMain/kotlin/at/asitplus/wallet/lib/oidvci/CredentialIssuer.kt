@@ -7,6 +7,8 @@ import at.asitplus.openid.CredentialRequestParameters
 import at.asitplus.openid.CredentialResponseParameters
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.JwtVcIssuerMetadata
+import at.asitplus.openid.OidcUserInfo
+import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.SupportedAlgorithmsContainer
 import at.asitplus.signum.indispensable.SignatureAlgorithm
@@ -74,7 +76,7 @@ class CredentialIssuer(
         publicContext = publicContext,
         requireKeyAttestation = requireKeyAttestation,
     ),
-    /** Used to verify the access token for [credential]. */
+    @Deprecated("[OAuth2AuthorizationServerAdapter.userInfo] is been used now, which validates tokens")
     private val tokenVerificationService: TokenVerificationService = authorizationService.tokenVerificationService,
 ) {
     private val supportedSigningAlgorithms = cryptoAlgorithms
@@ -164,7 +166,9 @@ class CredentialIssuer(
                                 credentialIdentifier = params.credentialIdentifier,
                                 credentialConfigurationId = params.credentialConfigurationId,
                                 request = request
-                            ).getOrThrow(),
+                            ).getOrThrow().let {
+                                OidcUserInfoExtended.fromJsonObject(it).getOrThrow()
+                            },
                             subjectPublicKey = subjectPublicKey,
                             credentialScheme = first,
                             credentialRepresentation = second,
