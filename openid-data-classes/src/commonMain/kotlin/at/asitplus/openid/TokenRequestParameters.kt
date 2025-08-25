@@ -32,9 +32,57 @@ data class TokenRequestParameters(
      * RFC8707: When requesting a token, the client can indicate the desired target service(s) where it intends to use
      * that token by way of the [resource] parameter and can indicate the desired scope of the requested token using the
      * [scope] parameter.
+     *
+     * RFC8693: Optional URI that indicates the target service or resource where the client intends to use the requested
+     * security token. This enables the authorization server to apply policy as appropriate for the target, such as
+     * determining the type and content of the token to be issued or if and how the token is to be encrypted.
      */
     @SerialName("resource")
     val resource: String? = null,
+
+    /**
+     * RFC8693: Optional logical name of the target service where the client intends to use the requested security
+     * token. This serves a purpose similar to the resource parameter but with the client providing a logical name for
+     * the target service.
+     */
+    @SerialName("audience")
+    val audience: String? = null,
+
+    /**
+     * RFC8693: Optional identifier for the type of the requested security token. If the requested type is unspecified,
+     * the issued token type is at the discretion of the authorization server and may be dictated by knowledge of the
+     * requirements of the service or resource indicated by the resource or audience parameter.
+     */
+    @SerialName("requested_token_type")
+    val requestedTokenType: String? = null,
+
+    /**
+     * RFC8693: Required security token that represents the identity of the party on behalf of whom the request is
+     * being made. Typically, the subject of this token will be the subject of the security token issued in response
+     * to the request.
+     */
+    @SerialName("subject_token")
+    val subjectToken: String? = null,
+
+    /**
+     * RFC8693: Required identifier that indicates the type of the security token in the subject_token parameter.
+     */
+    @SerialName("subject_token_type")
+    val subjectTokenType: String? = null,
+
+    /**
+     * RFC8693: Optional security token that represents the identity of the acting party. Typically, this will be the
+     * party that is authorized to use the requested security token and act on behalf of the subject.
+     */
+    @SerialName("actor_token")
+    val actorToken: String? = null,
+
+    /**
+     * RFC8693: An identifier that indicates the type of the security token in the [actorToken] parameter.
+     * This is REQUIRED when the [actorToken] parameter is present in the request but MUST NOT be included otherwise.
+     */
+    @SerialName("actor_token_type")
+    val actorTokenType: String? = null,
 
     /**
      * RFC6749: OPTIONAL. The refresh token issued to the client.
@@ -43,19 +91,17 @@ data class TokenRequestParameters(
     val refreshToken: String? = null,
 
     /**
-     * RFC6749:
-     * REQUIRED, if the "redirect_uri" parameter was included in the authorization request,
+     * RFC6749: REQUIRED, if the `redirect_uri` parameter was included in the authorization request,
      * and their values MUST be identical.
      */
     @SerialName("redirect_uri")
-    val redirectUrl: String,
+    val redirectUrl: String? = null,
 
     /**
-     * RFC6749:
-     * REQUIRED, if the client is not authenticating with the authorization server.
+     * RFC6749: REQUIRED, if the client is not authenticating with the authorization server.
      */
     @SerialName("client_id")
-    val clientId: String,
+    val clientId: String? = null,
 
     /**
      * OID4VCI: Credential Issuers MAY support requesting authorization to issue a Credential using this parameter.

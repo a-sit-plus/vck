@@ -135,7 +135,7 @@ class OAuth2KtorClient(
                 scope = scope,
                 authorizationDetails = if (!hasScope) authorizationDetails else null
             ),
-            credentialIssuer = credentialIssuer
+            popAudience = credentialIssuer
         )
         Napier.i("Received token response")
         Napier.d("Received token response: $tokenResponse")
@@ -176,7 +176,7 @@ class OAuth2KtorClient(
                 scope = scope,
                 authorizationDetails = if (!hasScope) authorizationDetails else null
             ),
-            credentialIssuer = credentialIssuer,
+            popAudience = credentialIssuer,
         )
         Napier.i("Received token response")
         Napier.d("Received token response $tokenResponse")
@@ -208,7 +208,35 @@ class OAuth2KtorClient(
                 scope = scope,
                 authorizationDetails = if (!hasScope) authorizationDetails else null
             ),
-            credentialIssuer = credentialIssuer,
+            popAudience = credentialIssuer,
+        )
+        Napier.i("Received token response")
+        Napier.d("Received token response $tokenResponse")
+        tokenResponse
+    }
+
+    /**
+     * Uses an access token from another client to request a new access token,
+     * see [RFC8693 OAuth 2.0 Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693).
+     */
+    suspend fun requestTokenWithTokenExchange(
+        oauthMetadata: OAuth2AuthorizationServerMetadata,
+        authorizationServer: String,
+        subjectToken: String,
+        resource: String?,
+    ): KmmResult<TokenResponseParameters> = catching {
+        Napier.i("refreshCredential")
+        Napier.d("refreshCredential: $subjectToken")
+        val tokenResponse = postToken(
+            oauthMetadata = oauthMetadata,
+            tokenRequest = oAuth2Client.createTokenRequestParameters(
+                authorization = AuthorizationForToken.TokenExchange(subjectToken),
+                state = null,
+                scope = "${OpenIdConstants.SCOPE_OPENID} ${OpenIdConstants.SCOPE_PROFILE}",
+                authorizationDetails = null,
+                resource = resource,
+            ),
+            popAudience = authorizationServer
         )
         Napier.i("Received token response")
         Napier.d("Received token response $tokenResponse")
@@ -219,7 +247,7 @@ class OAuth2KtorClient(
     private suspend fun postToken(
         oauthMetadata: OAuth2AuthorizationServerMetadata,
         tokenRequest: TokenRequestParameters,
-        credentialIssuer: String,
+        popAudience: String,
     ): TokenResponseParameters {
         val tokenEndpointUrl = oauthMetadata.tokenEndpoint
             ?: throw Exception("No tokenEndpoint in $oauthMetadata")
@@ -233,7 +261,7 @@ class OAuth2KtorClient(
                 BuildClientAttestationPoPJwt(
                     signClientAttestationPop,
                     clientId = oAuth2Client.clientId,
-                    audience = credentialIssuer,
+                    audience = popAudience,
                     lifetime = 10.minutes,
                 ).serialize()
             } else null

@@ -42,6 +42,9 @@ Release 5.9.0 (unreleased):
    - DCAPI: Remove (already deprecated) preview data class `PreviewDCAPIRequest`, either use OpenID4VP or ISO 18013-7 Annex C
  - JWE:
    - Add `EncryptJweSymmetricFun` and `EncryptJweSymmetric` and `DecryptJweSymmetric`
+ - OAuth 2.0:
+   - Refactor the split between credential issuer (OpenID4VCI) and authorization server (OAuth2.0)
+   - `SimpleAuthorizationService` supports token exchange acc. to [RFC 8693](https://datatracker.ietf.org/doc/html/rfc8693)
 
 Release 5.8.0:
  - Refactor `AuthorizationServiceStrategy`

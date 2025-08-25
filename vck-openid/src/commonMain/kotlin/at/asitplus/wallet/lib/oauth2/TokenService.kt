@@ -10,7 +10,8 @@ import at.asitplus.wallet.lib.oidvci.NonceService
 data class TokenService(
     val generation: TokenGenerationService,
     val verification: TokenVerificationService,
-    val dpopSigningAlgValuesSupportedStrings: Set<String>? = null,
+    val dpopSigningAlgValuesSupportedStrings: Set<String>?,
+    val supportsRefreshTokens: Boolean,
 ) {
     companion object {
         fun jwt(
@@ -30,8 +31,8 @@ data class TokenService(
                 nonceService = nonceService,
                 issuerKey = keyMaterial.jsonWebKey,
             ),
-            dpopSigningAlgValuesSupportedStrings = verificationAlgorithms.map { it.identifier }.toSet()
-
+            dpopSigningAlgValuesSupportedStrings = verificationAlgorithms.map { it.identifier }.toSet(),
+            supportsRefreshTokens = true,
         )
 
         fun bearer(
@@ -43,7 +44,8 @@ data class TokenService(
                     nonceService = nonceService,
                     tokenGenerationService = generationService
                 ),
-                dpopSigningAlgValuesSupportedStrings = null
+                dpopSigningAlgValuesSupportedStrings = null,
+                supportsRefreshTokens = false,
             )
         }
     }

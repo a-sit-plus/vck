@@ -60,12 +60,13 @@ class OAuth2ClientAuthenticationTest : FunSpec({
     }
 
     suspend fun getToken(state: String, code: String): TokenResponseParameters = server.token(
-        client.createTokenRequestParameters(
+        request = client.createTokenRequestParameters(
             state = state,
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
             scope = scope
         ),
-        RequestInfo(
+        authorizationHeader = null,
+        httpRequest = RequestInfo(
             url = "https://example.com/",
             method = HttpMethod.Post,
             dpop = null,
@@ -187,7 +188,7 @@ class OAuth2ClientAuthenticationTest : FunSpec({
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
             scope = scope
         )
-        shouldThrow<OAuth2Exception> { server.token(tokenRequest).getOrThrow() }
+        shouldThrow<OAuth2Exception> { server.token(tokenRequest, null, null).getOrThrow() }
     }
 
 })

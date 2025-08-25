@@ -10,62 +10,102 @@ import kotlinx.serialization.encoding.Encoder
 
 object OpenIdConstants {
 
+    /** `id_token` */
     const val ID_TOKEN = "id_token"
 
+    /** `vp_token` */
     const val VP_TOKEN = "vp_token"
 
+    /** `code` */
     const val GRANT_TYPE_CODE = "code"
 
+    /** `authorization_code` */
     const val GRANT_TYPE_AUTHORIZATION_CODE = "authorization_code"
 
+    /** `urn:ietf:params:oauth:grant-type:pre-authorized_code` */
     const val GRANT_TYPE_PRE_AUTHORIZED_CODE = "urn:ietf:params:oauth:grant-type:pre-authorized_code"
 
+    /** `urn:ietf:params:oauth:grant-type:token-exchange` */
+    const val GRANT_TYPE_TOKEN_EXCHANGE = "urn:ietf:params:oauth:grant-type:token-exchange"
+
+    /** `refresh_token` */
     const val GRANT_TYPE_REFRESH_TOKEN = "refresh_token"
 
+    /** `Bearer ` */
     const val TOKEN_PREFIX_BEARER = "Bearer "
 
+    /** `DPoP ` */
     const val TOKEN_PREFIX_DPOP = "DPoP "
 
+    /** `bearer` */
     const val TOKEN_TYPE_BEARER = "bearer"
 
+    /** `DPoP` */
     const val TOKEN_TYPE_DPOP = "DPoP"
 
+    /** `urn:ietf:params:oauth:jwk-thumbprint` */
     const val URN_TYPE_JWK_THUMBPRINT = "urn:ietf:params:oauth:jwk-thumbprint"
 
+    /** `cose_key` */
     const val BINDING_METHOD_COSE_KEY = "cose_key"
 
+    /** `did:key` */
     const val PREFIX_DID_KEY = "did:key"
 
-    /** OID4VCI support binding keys to [at.asitplus.signum.indispensable.josef.JsonWebKey] */
+    /** `jwk`, OID4VCI support binding keys to [at.asitplus.signum.indispensable.josef.JsonWebKey] */
     const val BINDING_METHOD_JWK = "jwk"
 
+    /** `/.well-known/openid-credential-issuer` */
     const val PATH_WELL_KNOWN_CREDENTIAL_ISSUER = "/.well-known/openid-credential-issuer"
 
+    /** `/.well-known/openid-configuration` */
     const val PATH_WELL_KNOWN_OPENID_CONFIGURATION = "/.well-known/openid-configuration"
 
+    /** `/.well-known/oauth-authorization-server` */
     const val PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER = "/.well-known/oauth-authorization-server"
 
+    /** `/.well-known/jwt-vc-issuer` */
     const val PATH_WELL_KNOWN_JWT_VC_ISSUER_METADATA = "/.well-known/jwt-vc-issuer"
 
+    /** `/.well-known/jar-issuer` */
     const val PATH_WELL_KNOWN_JAR_ISSUER = "/.well-known/jar-issuer"
 
+    /** `openid` */
     const val SCOPE_OPENID = "openid"
 
+    /** `profile` */
     const val SCOPE_PROFILE = "profile"
 
+    /** `S256` */
     const val CODE_CHALLENGE_METHOD_SHA256 = "S256"
 
+    /** `openid4vci-proof+jwt` */
     const val PROOF_JWT_TYPE = "openid4vci-proof+jwt"
 
+    /** `key-attestation+jwt` */
     const val KEY_ATTESTATION_JWT_TYPE = "key-attestation+jwt"
 
+    /** `attest_jwt_client_auth` */
     const val AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH = "attest_jwt_client_auth"
 
+    /** `prompt` */
     const val PARAMETER_PROMPT = "prompt"
 
+    /** `login` */
     const val PARAMETER_PROMPT_LOGIN = "login"
 
+    /** `openid4vp` */
     const val DC_API_OID4VP_PROTOCOL_IDENTIFIER = "openid4vp"
+
+    /**
+     * Token Type Identifiers from [RFC 8693](https://datatracker.ietf.org/doc/html/rfc8693#section-3)
+     */
+    object TokenTypes {
+        /** `urn:ietf:params:oauth:token-type:access_token` */
+        const val ACCESS_TOKEN = "urn:ietf:params:oauth:token-type:access_token"
+        /** `urn:ietf:params:oauth:token-type:refresh_token` */
+        const val REFRESH_TOKEN = "urn:ietf:params:oauth:token-type:refresh_token"
+    }
 
 
     @Serializable(with = ProofType.Serializer::class)

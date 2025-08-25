@@ -55,17 +55,25 @@ interface AuthorizationService {
         loadUserFun: OAuth2LoadUserFun,
     ): KmmResult<AuthenticationResponseResult.Redirect>
 
+    @Deprecated("Use [token] with parameter instead", ReplaceWith("token(request, null, httpRequest)"))
+    suspend fun token(
+        request: TokenRequestParameters,
+        httpRequest: RequestInfo? = null,
+    ): KmmResult<TokenResponseParameters>
+
     /**
      * Verifies the authorization code sent by the client and issues an access token.
      * Send this value JSON-serialized back to the client.
 
      * @param request as sent from the client as `POST`
+     * @param authorizationHeader value of HTTP header `Authorization` sent by the client, with all prefixes
      * @param httpRequest information about the HTTP request from the client, to validate authentication
      *
      * @return [KmmResult] may contain a [OAuth2Exception]
      */
     suspend fun token(
         request: TokenRequestParameters,
+        authorizationHeader: String? = null,
         httpRequest: RequestInfo? = null,
     ): KmmResult<TokenResponseParameters>
 }

@@ -41,6 +41,15 @@ data class OAuth2AuthorizationServerMetadata(
     val authorizationEndpoint: String? = null,
 
     /**
+     * OIDC: The UserInfo Endpoint is an OAuth 2.0 Protected Resource that returns Claims about the authenticated
+     * End-User. To obtain the requested Claims about the End-User, the Client makes a request to the UserInfo Endpoint
+     * using an Access Token obtained through OpenID Connect Authentication. These Claims are normally represented by a
+     * JSON object that contains a collection of name and value pairs for the Claims.
+     */
+    @SerialName("userinfo_endpoint")
+    val userInfoEndpoint: String? = null,
+
+    /**
      * RFC 9126: The URL of the pushed authorization request endpoint at which a client can post an authorization
      * request to exchange for a request_uri value usable at the authorization server.
      *

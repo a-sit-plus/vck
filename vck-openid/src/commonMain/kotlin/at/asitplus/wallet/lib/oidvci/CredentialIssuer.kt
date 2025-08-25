@@ -7,7 +7,6 @@ import at.asitplus.openid.CredentialRequestParameters
 import at.asitplus.openid.CredentialResponseParameters
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.JwtVcIssuerMetadata
-import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.SupportedAlgorithmsContainer
 import at.asitplus.signum.indispensable.SignatureAlgorithm
@@ -18,18 +17,17 @@ import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
-import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
 import at.asitplus.wallet.lib.jws.EncryptJwe
 import at.asitplus.wallet.lib.jws.EncryptJweFun
 import at.asitplus.wallet.lib.oauth2.RequestInfo
+import at.asitplus.wallet.lib.oauth2.TokenVerificationService
 import at.asitplus.wallet.lib.oidvci.CredentialSchemeMapping.decodeFromCredentialIdentifier
 import at.asitplus.wallet.lib.oidvci.CredentialSchemeMapping.toSupportedCredentialFormat
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import io.github.aakira.napier.Napier
-import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Server implementation to issue credentials using OID4VCI.
@@ -76,6 +74,8 @@ class CredentialIssuer(
         publicContext = publicContext,
         requireKeyAttestation = requireKeyAttestation,
     ),
+    /** Used to verify the access token for [credential]. */
+    private val tokenVerificationService: TokenVerificationService = authorizationService.tokenVerificationService,
 ) {
     private val supportedSigningAlgorithms = cryptoAlgorithms
         .mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }.toSet()
@@ -159,12 +159,12 @@ class CredentialIssuer(
                 credentialDataProvider(
                     with(params.extractCredentialRepresentation()) {
                         CredentialDataProviderInput(
-                            userInfo = loadUserInfo(
+                            userInfo = authorizationService.userInfo(
                                 authorizationHeader = authorizationHeader,
                                 credentialIdentifier = params.credentialIdentifier,
                                 credentialConfigurationId = params.credentialConfigurationId,
                                 request = request
-                            ),
+                            ).getOrThrow(),
                             subjectPublicKey = subjectPublicKey,
                             credentialScheme = first,
                             credentialRepresentation = second,
@@ -192,34 +192,6 @@ class CredentialIssuer(
         supportedCredentialConfigurations[credentialConfigurationId]?.let {
             decodeFromCredentialIdentifier(credentialConfigurationId)
         }
-
-    @Throws(InvalidToken::class, CancellationException::class)
-    private suspend fun loadUserInfo(
-        authorizationHeader: String,
-        credentialIdentifier: String?,
-        credentialConfigurationId: String?,
-        request: RequestInfo? = null,
-    ): OidcUserInfoExtended {
-        val accessToken = authorizationService.tokenVerificationService
-            .validateTokenExtractUser(authorizationHeader, request)
-        if (credentialIdentifier != null) {
-            if (accessToken.authorizationDetails == null)
-                throw InvalidToken("no authorization details stored for header $authorizationHeader")
-            if (!accessToken.validCredentialIdentifiers.contains(credentialIdentifier))
-                throw InvalidToken("credential_identifier $credentialIdentifier expected to be in $accessToken")
-        } else if (credentialConfigurationId != null) {
-            if (accessToken.scope == null)
-                throw InvalidToken("no scope stored for header $authorizationHeader")
-            if (!accessToken.scope.contains(credentialConfigurationId))
-                throw InvalidToken("credential_configuration_id $credentialConfigurationId expected to be $accessToken")
-        } else {
-            throw InvalidToken("neither credential_identifier nor credential_configuration_id set")
-        }
-        val userInfo = accessToken.userInfoExtended
-            ?: throw InvalidToken("no user info stored for header $authorizationHeader")
-        return userInfo
-            .also { Napier.v("getUserInfo returns $it") }
-    }
 
     /** Encrypts the issued credential, if requested so by the client. */
     private fun CredentialRequestParameters.encrypter(): (suspend (String) -> String) = { input: String ->

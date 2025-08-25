@@ -14,6 +14,7 @@ import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
+import at.asitplus.openid.OpenIdConstants.TokenTypes
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
@@ -77,6 +78,11 @@ class SimpleAuthorizationService(
      * forward POST requests to that URI (which starts with [publicContext]) to [par].
      */
     private val pushedAuthorizationRequestEndpointPath: String = "/par",
+    /**
+     * Used to build [OAuth2AuthorizationServerMetadata.userInfoEndpoint], i.e. implementers need to forward POST or GET
+     * requests to that URI (which starts with [publicContext]) to [userInfo].
+     */
+    private val userInfoEndpointPath: String = "/userinfo",
     /** Associates issuer_state with credential offers. */
     private val issuerStateToCredentialOffer: MapStore<String, CredentialOffer> = DefaultMapStore(),
     /** Associates issued codes with the auth request from the client. */
@@ -103,8 +109,28 @@ class SimpleAuthorizationService(
     ),
 ) : OAuth2AuthorizationServerAdapter, AuthorizationService {
 
+    @Deprecated("Use [validateTokenExtractUser] instead")
     override val tokenVerificationService: TokenVerificationService
         get() = tokenService.verification
+
+    private val _metadata: OAuth2AuthorizationServerMetadata by lazy {
+        OAuth2AuthorizationServerMetadata(
+            issuer = publicContext,
+            authorizationEndpoint = "$publicContext$authorizationEndpointPath",
+            tokenEndpoint = "$publicContext$tokenEndpointPath",
+            pushedAuthorizationRequestEndpoint = "$publicContext$pushedAuthorizationRequestEndpointPath",
+            userInfoEndpoint = "$publicContext$userInfoEndpointPath",
+            requirePushedAuthorizationRequests = true, // per OID4VC HAIP
+            tokenEndPointAuthMethodsSupported = setOf(AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH), // per OID4VC HAIP
+            dpopSigningAlgValuesSupportedStrings = tokenService.dpopSigningAlgValuesSupportedStrings,
+            grantTypesSupported = setOfNotNull(
+                OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE,
+                OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE,
+                OpenIdConstants.GRANT_TYPE_TOKEN_EXCHANGE,
+                if (tokenService.supportsRefreshTokens) OpenIdConstants.GRANT_TYPE_REFRESH_TOKEN else null,
+            )
+        )
+    }
 
     /**
      * Serve this result JSON-serialized under `/.well-known/openid-configuration`,
@@ -112,17 +138,12 @@ class SimpleAuthorizationService(
      * and under `/.well-known/oauth-authorization-server`,
      * see [OpenIdConstants.PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER]
      */
+    @Deprecated("Use [metadata()] instead")
     override val metadata: OAuth2AuthorizationServerMetadata by lazy {
-        OAuth2AuthorizationServerMetadata(
-            issuer = publicContext,
-            authorizationEndpoint = "$publicContext$authorizationEndpointPath",
-            tokenEndpoint = "$publicContext$tokenEndpointPath",
-            pushedAuthorizationRequestEndpoint = "$publicContext$pushedAuthorizationRequestEndpointPath",
-            requirePushedAuthorizationRequests = true, // per OID4VC HAIP
-            tokenEndPointAuthMethodsSupported = setOf(AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH), // per OID4VC HAIP
-            dpopSigningAlgValuesSupportedStrings = tokenService.dpopSigningAlgValuesSupportedStrings
-        )
+        _metadata
     }
+
+    override suspend fun metadata(): OAuth2AuthorizationServerMetadata = _metadata
 
     /**
      * Offer all available schemes from [strategy] to clients.
@@ -321,8 +342,13 @@ class SimpleAuthorizationService(
         return this
     }
 
+    override suspend fun token(
+        request: TokenRequestParameters,
+        httpRequest: RequestInfo?,
+    ) = token(request, null, httpRequest)
+
     /**
-     * Verifies the authorization code sent by the client and issues an access token.
+     * Verifies the authorization code sent by the client and issues an access token, uses [tokenService].
      * Send this value JSON-serialized back to the client.
 
      * @param request as sent from the client as `POST`
@@ -332,9 +358,14 @@ class SimpleAuthorizationService(
      */
     override suspend fun token(
         request: TokenRequestParameters,
+        authorizationHeader: String?,
         httpRequest: RequestInfo?,
     ): KmmResult<TokenResponseParameters> = catching {
         Napier.i("token called with $request")
+
+        if (request.grantType == OpenIdConstants.GRANT_TYPE_TOKEN_EXCHANGE) {
+            return@catching request.tokenExchange(authorizationHeader, httpRequest)
+        }
 
         val clientAuthRequest = request.loadClientAuthnRequest(httpRequest) ?: run {
             Napier.w("token: could not load user info for $request}")
@@ -415,7 +446,47 @@ class SimpleAuthorizationService(
         return scope
     }
 
-    private suspend fun TokenRequestParameters.loadClientAuthnRequest(
+    private suspend fun TokenRequestParameters.tokenExchange(
+        authorizationHeader: String?,
+        httpRequest: RequestInfo?,
+    ): TokenResponseParameters {
+        // Client wants to exchange Wallet's access token (probably DPoP-constrained) with a fresh one for userInfo
+        if (subjectTokenType == null || subjectToken == null) {
+            Napier.w("tokenExchange: subject_token or subject_token_type is null for token exchange")
+            throw InvalidGrant("subject_token or subject_token_type is null")
+        }
+        if (authorizationHeader == null) {
+            Napier.w("tokenExchange: no authorization header")
+            throw InvalidGrant("authorization header is null")
+        }
+        val metadata = metadata()
+        if (resource != metadata.userInfoEndpoint) {
+            throw InvalidGrant("resource is not valid, is not for ${metadata.userInfoEndpoint}")
+        }
+        if (requestedTokenType != TokenTypes.ACCESS_TOKEN) {
+            throw InvalidGrant("requested_token_type is not valid, must be ${TokenTypes.ACCESS_TOKEN}")
+        }
+        // TODO Here, we can not verify the subjectToken with the requestInfo, as this doesn't match anymore
+        // because the CI is the one requesting this token exchange, the wallets access token is in subjectToken
+        // TODO extract this into a method of tokenService, because we would need to store the user info object
+        val validated = tokenService.verification.validateTokenExtractUser(
+            authorizationHeader = authorizationHeader,
+            request = httpRequest,
+        ).apply {
+            if (userInfoExtended == null)
+                throw InvalidGrant("subject_token is not valid, no stored user")
+        }
+        val newToken = tokenService.generation.buildToken(
+            userInfo = validated.userInfoExtended!!,
+            httpRequest = httpRequest,
+            authorizationDetails = validated.authorizationDetails,
+            scope = validated.scope
+        )
+        return newToken
+            .also { Napier.i("token returns after token exchange: $it") }
+    }
+
+    internal suspend fun TokenRequestParameters.loadClientAuthnRequest(
         httpRequest: RequestInfo? = null,
     ): ClientAuthRequest? = when (grantType) {
         OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE -> {
@@ -462,5 +533,30 @@ class SimpleAuthorizationService(
             )
         }
 
+    override suspend fun userInfo(
+        authorizationHeader: String,
+        credentialIdentifier: String?,
+        credentialConfigurationId: String?,
+        request: RequestInfo?,
+    ) = catching {
+        with(tokenService.verification.validateTokenExtractUser(authorizationHeader, request)) {
+            if (credentialIdentifier != null) {
+                if (authorizationDetails == null)
+                    throw InvalidToken("no authorization details stored for header $authorizationHeader")
+                if (!validCredentialIdentifiers.contains(credentialIdentifier))
+                    throw InvalidToken("credential_identifier $credentialIdentifier expected to be in $this")
+            } else if (credentialConfigurationId != null) {
+                if (scope == null)
+                    throw InvalidToken("no scope stored for header $authorizationHeader")
+                if (!scope.contains(credentialConfigurationId))
+                    throw InvalidToken("credential_configuration_id $credentialConfigurationId expected to be $this")
+            } else {
+                throw InvalidToken("neither credential_identifier nor credential_configuration_id set")
+            }
+
+            userInfoExtended
+                ?: throw InvalidGrant("no user info found for $authorizationHeader")
+        }
+    }
 }
 

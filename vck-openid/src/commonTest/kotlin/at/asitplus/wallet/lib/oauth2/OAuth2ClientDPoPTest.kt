@@ -69,12 +69,13 @@ class OAuth2ClientDPoPTest : FunSpec({
         val code = getCode(state)
 
         val token = server.token(
-            client.createTokenRequestParameters(
+            request = client.createTokenRequestParameters(
                 state = state,
                 authorization = OAuth2Client.AuthorizationForToken.Code(code),
                 scope = scope
             ),
-            RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, tokenUrl))
+            authorizationHeader = null,
+            httpRequest = RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, tokenUrl))
         ).getOrThrow().also {
             it.tokenType shouldBe TOKEN_TYPE_DPOP
         }
@@ -86,8 +87,10 @@ class OAuth2ClientDPoPTest : FunSpec({
         )
 
         // simulate access to protected resource, i.e. verify access token
-        server.tokenVerificationService.validateTokenExtractUser(
+        server.userInfo(
             token.toHttpHeaderValue(),
+            null,
+            null,
             RequestInfo(
                 url = resourceUrl,
                 method = HttpMethod.Post,
@@ -101,24 +104,26 @@ class OAuth2ClientDPoPTest : FunSpec({
         val code = getCode(state)
 
         val token = server.token(
-            client.createTokenRequestParameters(
+            request = client.createTokenRequestParameters(
                 state = state,
                 authorization = OAuth2Client.AuthorizationForToken.Code(code),
                 scope = scope
             ),
-            RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, tokenUrl))
+            authorizationHeader = null,
+            httpRequest = RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, tokenUrl))
         ).getOrThrow().also {
             it.tokenType shouldBe TOKEN_TYPE_DPOP
             it.refreshToken.shouldNotBeNull()
         }
 
         val refreshedAccessToken = server.token(
-            client.createTokenRequestParameters(
+            request = client.createTokenRequestParameters(
                 state = state,
                 authorization = OAuth2Client.AuthorizationForToken.RefreshToken(token.refreshToken!!),
                 scope = scope
             ),
-            RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, tokenUrl))
+            authorizationHeader = null,
+            httpRequest = RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, tokenUrl))
         ).getOrThrow()
         refreshedAccessToken.accessToken shouldNotBe token.accessToken
 
@@ -129,8 +134,10 @@ class OAuth2ClientDPoPTest : FunSpec({
         )
 
         // simulate access to protected resource, i.e. verify access token
-        server.tokenVerificationService.validateTokenExtractUser(
+        server.userInfo(
             refreshedAccessToken.toHttpHeaderValue(),
+            null,
+            null,
             RequestInfo(
                 url = resourceUrl,
                 method = HttpMethod.Post,
@@ -145,12 +152,13 @@ class OAuth2ClientDPoPTest : FunSpec({
 
         shouldThrow<OAuth2Exception> {
             server.token(
-                client.createTokenRequestParameters(
+                request = client.createTokenRequestParameters(
                     state = state,
                     authorization = OAuth2Client.AuthorizationForToken.Code(code),
                     scope = scope
                 ),
-                RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, "https://somethingelse.com/"))
+                authorizationHeader = null,
+                httpRequest = RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, "https://somethingelse.com/"))
             ).getOrThrow()
         }
     }
@@ -161,11 +169,13 @@ class OAuth2ClientDPoPTest : FunSpec({
 
         shouldThrow<OAuth2Exception> {
             server.token(
-                client.createTokenRequestParameters(
+                request = client.createTokenRequestParameters(
                     state = state,
                     authorization = OAuth2Client.AuthorizationForToken.Code(code),
                     scope = scope
-                )
+                ),
+                authorizationHeader = null,
+                httpRequest = null
             ).getOrThrow()
         }
     }
@@ -175,20 +185,23 @@ class OAuth2ClientDPoPTest : FunSpec({
         val code = getCode(state)
 
         val token = server.token(
-            client.createTokenRequestParameters(
+            request = client.createTokenRequestParameters(
                 state = state,
                 authorization = OAuth2Client.AuthorizationForToken.Code(code),
                 scope = scope
             ),
-            RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, tokenUrl))
+            authorizationHeader = null,
+            httpRequest = RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, tokenUrl))
         ).getOrThrow().also {
             it.tokenType shouldBe TOKEN_TYPE_DPOP
         }
 
         // simulate access to protected resource, i.e. verify access token
         shouldThrow<OAuth2Exception> {
-            server.tokenVerificationService.validateTokenExtractUser(
+            server.userInfo(
                 token.toHttpHeaderValue(),
+                null,
+                null,
                 null
             )
         }
@@ -199,12 +212,13 @@ class OAuth2ClientDPoPTest : FunSpec({
         val code = getCode(state)
 
         val token = server.token(
-            client.createTokenRequestParameters(
+            request = client.createTokenRequestParameters(
                 state = state,
                 authorization = OAuth2Client.AuthorizationForToken.Code(code),
                 scope = scope
             ),
-            RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, tokenUrl))
+            authorizationHeader = null,
+            httpRequest = RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, tokenUrl))
         ).getOrThrow()
         val wrongSignDpop = SignJwt<JsonWebToken>(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk())
         val dpopForResource = BuildDPoPHeader(
@@ -215,8 +229,10 @@ class OAuth2ClientDPoPTest : FunSpec({
 
         // simulate access to protected resource, i.e. verify access token
         shouldThrow<OAuth2Exception> {
-            server.tokenVerificationService.validateTokenExtractUser(
+            server.userInfo(
                 token.toHttpHeaderValue(),
+                null,
+                null,
                 RequestInfo(
                     url = resourceUrl,
                     method = HttpMethod.Post,

@@ -38,7 +38,7 @@ class OAuth2ClientTest : FunSpec({
             authorization = OAuth2Client.AuthorizationForToken.PreAuthCode(preAuth),
             scope = scope
         )
-        val token = server.token(tokenRequest).getOrThrow()
+        val token = server.token(tokenRequest, null, null).getOrThrow()
         token.authorizationDetails.shouldBeNull()
     }
 
@@ -51,8 +51,8 @@ class OAuth2ClientTest : FunSpec({
             authorization = OAuth2Client.AuthorizationForToken.PreAuthCode(preAuth),
             scope = scope
         )
-        server.token(tokenRequest).isSuccess shouldBe true
-        server.token(tokenRequest).isFailure shouldBe true
+        server.token(tokenRequest, null, null).isSuccess shouldBe true
+        server.token(tokenRequest, null, null).isFailure shouldBe true
     }
 
     test("process with pushed authorization request") {
@@ -74,7 +74,7 @@ class OAuth2ClientTest : FunSpec({
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
             scope = scope
         )
-        val token = server.token(tokenRequest).getOrThrow()
+        val token = server.token(tokenRequest, null, null).getOrThrow()
         token.authorizationDetails.shouldBeNull()
     }
 
@@ -96,7 +96,7 @@ class OAuth2ClientTest : FunSpec({
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
             scope = scope
         )
-        val token = server.token(tokenRequest).getOrThrow()
+        val token = server.token(tokenRequest, null, null).getOrThrow()
         token.authorizationDetails.shouldBeNull()
     }
 
@@ -118,7 +118,7 @@ class OAuth2ClientTest : FunSpec({
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
             scope = scope
         )
-        val token = server.token(tokenRequest).getOrThrow()
+        val token = server.token(tokenRequest, null, null).getOrThrow()
         token.authorizationDetails.shouldBeNull()
     }
 
@@ -140,7 +140,7 @@ class OAuth2ClientTest : FunSpec({
             scope = scope.reversed() // invalid, not in authn request
         )
         shouldThrow<OAuth2Exception> {
-            server.token(tokenRequest).getOrThrow()
+            server.token(tokenRequest, null, null).getOrThrow()
         }
     }
 
@@ -161,7 +161,7 @@ class OAuth2ClientTest : FunSpec({
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
             scope = null // already specified in authnrequest
         )
-        val token = server.token(tokenRequest).getOrThrow()
+        val token = server.token(tokenRequest, null, null).getOrThrow()
         token.authorizationDetails.shouldBeNull()
         token.scope.shouldBe(scope)
     }
