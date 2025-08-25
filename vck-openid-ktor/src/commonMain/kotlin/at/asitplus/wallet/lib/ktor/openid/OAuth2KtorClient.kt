@@ -154,10 +154,10 @@ class OAuth2KtorClient(
     suspend fun requestTokenWithAuthCode(
         oauthMetadata: OAuth2AuthorizationServerMetadata,
         url: String,
-        credentialIssuer: String,
+        popAudience: String,
         state: String,
-        scope: String?,
-        authorizationDetails: Set<OpenIdAuthorizationDetails>,
+        scope: String? = null,
+        authorizationDetails: Set<OpenIdAuthorizationDetails>? = null,
     ): KmmResult<TokenResponseParameters> = catching {
         Napier.i("resumeWithAuthCode")
         Napier.d("resumeWithAuthCode: $url")
@@ -176,7 +176,7 @@ class OAuth2KtorClient(
                 scope = scope,
                 authorizationDetails = if (!hasScope) authorizationDetails else null
             ),
-            popAudience = credentialIssuer,
+            popAudience = popAudience,
         )
         Napier.i("Received token response")
         Napier.d("Received token response $tokenResponse")
@@ -291,8 +291,8 @@ class OAuth2KtorClient(
 
 
     /**
-     * Builds the authorization request ([at.asitplus.openid.AuthenticationRequestParameters]) to start authentication at the
-     * authorization server associated with the credential issuer.
+     * Builds the authorization request ([AuthenticationRequestParameters]) to start authentication at the
+     * authorization server.
      *
      * Prefers building the authn request by using `scope` (from [SupportedCredentialFormat]), as advised in
      * [OpenID4VC HAIP](https://openid.net/specs/openid4vc-high-assurance-interoperability-profile-1_0.html),
@@ -301,17 +301,17 @@ class OAuth2KtorClient(
      * Uses Pushed Authorization Requests [RFC 9126](https://datatracker.ietf.org/doc/html/rfc9126) if advised
      * by the authorization server.
      *
-     * Clients need to contiune the process (after getting back from the browser) with [requestTokenWithAuthCode].
+     * Clients need to continue the process (after getting back from the browser) with [requestTokenWithAuthCode].
      */
     @Throws(Exception::class)
     suspend fun startAuthorization(
-        state: String = uuid4().toString(),
-        credentialIssuer: String,
-        issuerState: String? = null,
         oauthMetadata: OAuth2AuthorizationServerMetadata,
-        authorizationDetails: Set<OpenIdAuthorizationDetails>?,
-        scope: String?,
-    ): OpenUrlForAuthnRequest {
+        popAudience: String,
+        state: String = uuid4().toString(),
+        issuerState: String? = null,
+        authorizationDetails: Set<OpenIdAuthorizationDetails>? = null,
+        scope: String? = null,
+    ) = catching {
         val authorizationEndpointUrl = oauthMetadata.authorizationEndpoint
             ?: throw Exception("no authorizationEndpoint in $oauthMetadata")
         val wrapAsJar =
@@ -330,7 +330,7 @@ class OAuth2KtorClient(
                 authRequest = authRequest,
                 state = state,
                 url = parEndpointUrl,
-                credentialIssuer = credentialIssuer,
+                popAudience = popAudience,
                 tokenAuthMethods = oauthMetadata.tokenEndPointAuthMethodsSupported
             )
             URLBuilder(authorizationEndpointUrl).also { builder ->
@@ -347,7 +347,7 @@ class OAuth2KtorClient(
             }.build().toString()
         }
         Napier.i("Provisioning starts by returning URL to open: $authorizationUrl")
-        return OpenUrlForAuthnRequest(authorizationUrl, state)
+        OpenUrlForAuthnRequest(authorizationUrl, state)
     }
 
     @Throws(Exception::class)
@@ -355,7 +355,7 @@ class OAuth2KtorClient(
         authRequest: AuthenticationRequestParameters,
         state: String,
         url: String,
-        credentialIssuer: String,
+        popAudience: String,
         tokenAuthMethods: Set<String>?,
     ): AuthenticationRequestParameters {
         val shouldIncludeClientAttestation =
@@ -368,7 +368,7 @@ class OAuth2KtorClient(
                 BuildClientAttestationPoPJwt(
                     signClientAttestationPop,
                     clientId = oAuth2Client.clientId,
-                    audience = credentialIssuer,
+                    audience = popAudience,
                     lifetime = 10.minutes,
                 ).serialize()
             } else null

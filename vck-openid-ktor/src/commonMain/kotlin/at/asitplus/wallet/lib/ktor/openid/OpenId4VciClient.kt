@@ -193,15 +193,14 @@ class OpenId4VciClient(
         }
 
         oauth2Client.startAuthorization(
-            credentialIssuer = credentialIssuerUrl,
-            issuerState = null,
             oauthMetadata = oauthMetadata,
+            popAudience = credentialIssuerUrl,
             authorizationDetails = oid4vciService.buildAuthorizationDetails(
                 credentialIdentifierInfo.credentialIdentifier,
                 issuerMetadata.authorizationServers
             ),
             scope = credentialIdentifierInfo.supportedCredentialFormat.scope,
-        ).let {
+        ).getOrThrow().let {
             CredentialIssuanceResult.OpenUrlForAuthnRequest(
                 url = it.url,
                 context = ProvisioningContext(
@@ -235,7 +234,7 @@ class OpenId4VciClient(
         val tokenResponse = oauth2Client.requestTokenWithAuthCode(
             oauthMetadata = context.oauthMetadata,
             url = url,
-            credentialIssuer = context.issuerMetadata.credentialIssuer,
+            popAudience = context.issuerMetadata.credentialIssuer,
             state = context.state,
             scope = context.credential.supportedCredentialFormat.scope,
             authorizationDetails = oid4vciService.buildAuthorizationDetails(
@@ -420,16 +419,16 @@ class OpenId4VciClient(
         } ?: credentialOffer.grants?.authorizationCode?.let {
 
             oauth2Client.startAuthorization(
-                state = state,
-                credentialIssuer = credentialOffer.credentialIssuer,
-                issuerState = it.issuerState,
                 oauthMetadata = oauthMetadata,
+                popAudience = credentialOffer.credentialIssuer,
+                state = state,
+                issuerState = it.issuerState,
                 authorizationDetails = oid4vciService.buildAuthorizationDetails(
                     credentialIdentifierInfo.credentialIdentifier,
                     issuerMetadata.authorizationServers
                 ),
                 scope = credentialIdentifierInfo.supportedCredentialFormat.scope,
-            ).let {
+            ).getOrThrow().let {
                 CredentialIssuanceResult.OpenUrlForAuthnRequest(
                     url = it.url,
                     context = ProvisioningContext(

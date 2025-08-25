@@ -258,12 +258,12 @@ class OpenId4VciClientTest : FunSpec() {
                 )
 
                 request.url.fullPath == OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION -> respond(
-                    vckJsonSerializer.encodeToString<OAuth2AuthorizationServerMetadata>(authorizationService.metadata),
+                    vckJsonSerializer.encodeToString<OAuth2AuthorizationServerMetadata>(authorizationService.metadata()),
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
 
                 request.url.fullPath == OpenIdConstants.PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER -> respond(
-                    vckJsonSerializer.encodeToString<OAuth2AuthorizationServerMetadata>(authorizationService.metadata),
+                    vckJsonSerializer.encodeToString<OAuth2AuthorizationServerMetadata>(authorizationService.metadata()),
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
 

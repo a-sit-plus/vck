@@ -139,9 +139,7 @@ class SimpleAuthorizationService(
      * see [OpenIdConstants.PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER]
      */
     @Deprecated("Use [metadata()] instead")
-    override val metadata: OAuth2AuthorizationServerMetadata by lazy {
-        _metadata
-    }
+    override val metadata: OAuth2AuthorizationServerMetadata by lazy { _metadata }
 
     override suspend fun metadata(): OAuth2AuthorizationServerMetadata = _metadata
 
@@ -559,4 +557,3 @@ class SimpleAuthorizationService(
         }
     }
 }
-
