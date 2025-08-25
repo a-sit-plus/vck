@@ -61,7 +61,7 @@ class OidvciOfferCodeTest : FreeSpec({
             scope = scope,
             resource = issuer.metadata.credentialIssuer
         )
-        return authorizationService.token(tokenRequest).getOrThrow()
+        return authorizationService.token(tokenRequest, null, null).getOrThrow()
     }
 
     suspend fun getToken(
@@ -83,7 +83,7 @@ class OidvciOfferCodeTest : FreeSpec({
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
             authorizationDetails = authorizationDetails,
         )
-        return authorizationService.token(tokenRequest).getOrThrow()
+        return authorizationService.token(tokenRequest, null, null).getOrThrow()
     }
 
     "process with code after credential offer, and scope for one credential" {

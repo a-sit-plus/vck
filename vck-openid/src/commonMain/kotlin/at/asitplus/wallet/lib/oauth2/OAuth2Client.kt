@@ -115,7 +115,10 @@ class OAuth2Client(
     ).wrapIfNecessary(wrapAsJar, audience)
 
     private suspend fun AuthenticationRequestParameters.wrapIfNecessary(wrapAsJar: Boolean, audience: String?) =
-        if (signPushedAuthorizationRequest != null && wrapAsJar) wrapInJar(signPushedAuthorizationRequest, audience) else this
+        if (signPushedAuthorizationRequest != null && wrapAsJar) wrapInJar(
+            signPushedAuthorizationRequest,
+            audience
+        ) else this
 
     private suspend fun AuthenticationRequestParameters.wrapInJar(
         signPushedAuthorizationRequest: SignJwtFun<AuthenticationRequestParameters>,
@@ -168,6 +171,10 @@ class OAuth2Client(
         data class PreAuthCode(
             val preAuthorizedCode: String,
             val transactionCode: String? = null,
+        ) : AuthorizationForToken()
+
+        data class TokenExchange(
+            val subjectToken: String,
         ) : AuthorizationForToken()
     }
 
@@ -252,6 +259,15 @@ class OAuth2Client(
             redirectUrl = redirectUrl,
             clientId = clientId,
             authorizationDetails = authorizationDetails,
+            scope = scope,
+            resource = resource,
+        )
+
+        is AuthorizationForToken.TokenExchange -> TokenRequestParameters(
+            grantType = OpenIdConstants.GRANT_TYPE_TOKEN_EXCHANGE,
+            subjectToken = authorization.subjectToken,
+            subjectTokenType = OpenIdConstants.TokenTypes.ACCESS_TOKEN,
+            requestedTokenType = OpenIdConstants.TokenTypes.ACCESS_TOKEN,
             scope = scope,
             resource = resource,
         )
