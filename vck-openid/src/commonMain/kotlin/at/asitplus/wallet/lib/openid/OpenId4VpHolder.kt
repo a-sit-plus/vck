@@ -253,8 +253,8 @@ class OpenId4VpHolder(
      *
      * @param request the parsed authentication request
      */
-    suspend fun <T : RequestParameters> finalizeAuthorizationResponseParameters(
-        request: RequestParametersFrom<T>,
+    suspend fun finalizeAuthorizationResponseParameters(
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
         clientMetadata: RelyingPartyMetadata?,
         credentialPresentation: CredentialPresentation?,
     ): KmmResult<AuthenticationResponse> = catching {
@@ -345,7 +345,7 @@ class OpenId4VpHolder(
     * the Client Identifier is not used as the audience for the response.
      */
     @Throws(OAuth2Exception::class)
-    private fun RequestParameters.extractAudience(
+    private fun AuthenticationRequestParameters.extractAudience(
         clientJsonWebKeySet: JsonWebKeySet?,
         dcApiRequest: Oid4vpDCAPIRequest?,
     ) = dcApiRequest?.let { "origin:${it.callingOrigin}" }
