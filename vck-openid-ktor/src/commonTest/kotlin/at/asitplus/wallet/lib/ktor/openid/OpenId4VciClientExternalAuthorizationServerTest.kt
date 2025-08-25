@@ -317,6 +317,7 @@ class OpenId4VciClientExternalAuthorizationServerTest : FunSpec() {
                 request.url.toString() == "$authServerPublicContext$userInfoEndpointPath" -> {
                     val authn = request.headers[HttpHeaders.Authorization]
                     val result =
+                        // TODO How do we transport credential_configuration_id here?
                         externalAuthorizationServer.userInfo(authn!!, null, null, request.toRequestInfo()).getOrThrow()
                     respond(
                         vckJsonSerializer.encodeToString<JsonObject>(result),

@@ -10,6 +10,7 @@ import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION
 import at.asitplus.openid.OpenIdConstants.TOKEN_PREFIX_DPOP
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_BEARER
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
+import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.RequestInfo
@@ -140,7 +141,7 @@ class RemoteOAuth2AuthorizationServerAdapter(
                 subjectToken = authorizationHeader.substringAfter(TOKEN_PREFIX_DPOP).trim(),
                 resource = userInfoEndpoint,
             ).getOrThrow().let {
-                callUserInfo(userInfoEndpoint, it.toHttpHeaderValue())
+                callUserInfo(userInfoEndpoint, it.toHttpHeaderValue(), it)
             }
         } else {
             throw InvalidToken("authorization header not valid: $authorizationHeader")
@@ -150,11 +151,12 @@ class RemoteOAuth2AuthorizationServerAdapter(
     private suspend fun callUserInfo(
         userInfoEndpoint: String,
         authorizationHeader: String,
+        tokenResponseParameters: TokenResponseParameters? = null,
     ): JsonObject = client.request {
         url(userInfoEndpoint)
         method = HttpMethod.Get
-        header(HttpHeaders.Authorization, authorizationHeader)
-        // TODO Also the DPoP and so on!
+        tokenResponseParameters?.let { oauth2Client.applyToken(it, userInfoEndpoint, HttpMethod.Get)() }
+            ?: header(HttpHeaders.Authorization, authorizationHeader)
     }.body<JsonObject>()
 
 }
