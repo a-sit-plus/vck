@@ -39,12 +39,6 @@ data class OpenId4VciAccessToken(
     @SerialName("cnf")
     val confirmationClaim: ConfirmationClaim? = null,
 
-    /**
-     * All user information, can be parsed into [at.asitplus.openid.OidcUserInfoExtended] when needed.
-     */
-    @SerialName("userInfo")
-    val userInfo: JsonObject? = null,
-
     /** Scope that has been validated to use for credential issuance. */
     @SerialName("scope")
     val scope: String? = null,

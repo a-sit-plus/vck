@@ -53,7 +53,7 @@ class OAuth2KtorClientTest : FunSpec() {
         test("auth code and token") {
             client.startAuthorization(
                 oauthMetadata = authorizationService.metadata(),
-                popAudience = authorizationService.publicContext,
+                authorizationServer = authorizationService.publicContext,
                 scope = requestedScope,
             ).getOrThrow().also {
                 // Simulates the browser, handling authorization to get the authCode
@@ -62,7 +62,7 @@ class OAuth2KtorClientTest : FunSpec() {
                 client.requestTokenWithAuthCode(
                     oauthMetadata = authorizationService.metadata(),
                     url = authCodeUrl,
-                    popAudience = authorizationService.publicContext,
+                    authorizationServer = authorizationService.publicContext,
                     state = it.state,
                     scope = requestedScope,
                     authorizationDetails = setOf()

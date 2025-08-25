@@ -13,6 +13,7 @@ import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.CODE_CHALLENGE_METHOD_SHA256
 import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_CODE
+import at.asitplus.openid.OpenIdConstants.TokenTypes
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
@@ -48,10 +49,7 @@ class OAuth2Client(
      * and then [TokenRequestParameters.codeVerifier], see [RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636).
      */
     private val stateToCodeStore: MapStore<String, String> = DefaultMapStore(),
-    /**
-     * Set this variable to use JAR (JWT-secured authorization requests, RFC 9101)
-     * for PAR (Pushed authorization requests, RFC 9126), as mandated by OpenID4VC HAIP.
-     */
+    /** Set this variable to use JAR (JWT-secured authorization requests, RFC 9101), as mandated by OpenID4VC HAIP. */
     val signPushedAuthorizationRequest: SignJwtFun<AuthenticationRequestParameters>? =
         SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
 ) {
@@ -115,17 +113,16 @@ class OAuth2Client(
     ).wrapIfNecessary(wrapAsJar, audience)
 
     private suspend fun AuthenticationRequestParameters.wrapIfNecessary(wrapAsJar: Boolean, audience: String?) =
-        if (signPushedAuthorizationRequest != null && wrapAsJar) wrapInJar(
-            signPushedAuthorizationRequest,
-            audience
-        ) else this
+        if (signPushedAuthorizationRequest != null && wrapAsJar)
+            wrapInJar(signPushedAuthorizationRequest, audience)
+        else this
 
     private suspend fun AuthenticationRequestParameters.wrapInJar(
-        signPushedAuthorizationRequest: SignJwtFun<AuthenticationRequestParameters>,
+        signAuthorizationRequest: SignJwtFun<AuthenticationRequestParameters>,
         audience: String?,
     ) = AuthenticationRequestParameters(
         clientId = clientId,
-        request = signPushedAuthorizationRequest(
+        request = signAuthorizationRequest(
             JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST,
             this.copy(
                 audience = audience,
@@ -150,11 +147,10 @@ class OAuth2Client(
     )
 
     @OptIn(ExperimentalStdlibApi::class)
-    suspend fun generateCodeVerifier(state: String): String {
-        val codeVerifier = Random.nextBytes(32).toHexString(HexFormat.Default)
-        stateToCodeStore.put(state, codeVerifier)
-        return codeVerifier.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
-    }
+    suspend fun generateCodeVerifier(state: String): String =
+        Random.nextBytes(32).toHexString(HexFormat.Default)
+            .also { stateToCodeStore.put(state, it) }
+            .encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
 
     sealed class AuthorizationForToken {
         /** Authorization code from an actual OAuth2 Authorization Server, or [SimpleAuthorizationService.authorize]. */
@@ -173,6 +169,7 @@ class OAuth2Client(
             val transactionCode: String? = null,
         ) : AuthorizationForToken()
 
+        /** Use a [subjectToken] provided by another entity to perform Token Exchange. */
         data class TokenExchange(
             val subjectToken: String,
         ) : AuthorizationForToken()
@@ -266,8 +263,10 @@ class OAuth2Client(
         is AuthorizationForToken.TokenExchange -> TokenRequestParameters(
             grantType = OpenIdConstants.GRANT_TYPE_TOKEN_EXCHANGE,
             subjectToken = authorization.subjectToken,
-            subjectTokenType = OpenIdConstants.TokenTypes.ACCESS_TOKEN,
-            requestedTokenType = OpenIdConstants.TokenTypes.ACCESS_TOKEN,
+            subjectTokenType = TokenTypes.ACCESS_TOKEN,
+            requestedTokenType = TokenTypes.ACCESS_TOKEN,
+            redirectUrl = redirectUrl,
+            clientId = clientId,
             scope = scope,
             resource = resource,
         )

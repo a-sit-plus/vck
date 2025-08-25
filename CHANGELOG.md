@@ -45,6 +45,7 @@ Release 5.9.0 (unreleased):
  - OAuth 2.0:
    - Refactor the split between credential issuer (OpenID4VCI) and authorization server (OAuth2.0)
    - `SimpleAuthorizationService` supports token exchange acc. to [RFC 8693](https://datatracker.ietf.org/doc/html/rfc8693)
+   - Implement `RemoteOAuth2AuthorizationServerAdapter` so that credential issuers may be connected to external OAuth2.0 authorization servers
 
 Release 5.8.0:
  - Refactor `AuthorizationServiceStrategy`
