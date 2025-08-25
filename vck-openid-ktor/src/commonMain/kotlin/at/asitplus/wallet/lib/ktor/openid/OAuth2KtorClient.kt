@@ -7,6 +7,7 @@ import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.openid.TokenRequestParameters
@@ -35,13 +36,20 @@ import io.ktor.client.plugins.DefaultRequest
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.cookies.CookiesStorage
 import io.ktor.client.plugins.cookies.HttpCookies
+import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.forms.FormDataContent
 import io.ktor.client.request.forms.submitForm
 import io.ktor.client.request.header
 import io.ktor.client.request.headers
+import io.ktor.client.request.request
+import io.ktor.client.request.setBody
+import io.ktor.client.request.url
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
 import io.ktor.http.URLBuilder
 import io.ktor.http.Url
+import io.ktor.http.headers
 import io.ktor.http.parameters
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.util.flattenEntries
@@ -250,43 +258,15 @@ class OAuth2KtorClient(
         val tokenEndpointUrl = oauthMetadata.tokenEndpoint
             ?: throw Exception("No tokenEndpoint in $oauthMetadata")
         Napier.i("postToken: $tokenEndpointUrl with $tokenRequest")
-
-        val clientAttestationJwt = if (oauthMetadata.useClientAuth()) {
-            loadClientAttestationJwt?.invoke()
-        } else null
-        val clientAttestationPoPJwt =
-            if (oauthMetadata.useClientAuth() && signClientAttestationPop != null && clientAttestationJwt != null) {
-                BuildClientAttestationPoPJwt(
-                    signClientAttestationPop,
-                    clientId = oAuth2Client.clientId,
-                    audience = popAudience,
-                    lifetime = 10.minutes,
-                ).serialize()
-            } else null
-        val dpopHeader = if (oauthMetadata.hasMatchingDpopAlgorithm()) {
-            BuildDPoPHeader(signDpop, url = tokenEndpointUrl)
-        } else null
-
-        return client.submitForm(
-            url = tokenEndpointUrl,
-            formParameters = parameters {
+        return client.request {
+            url(tokenEndpointUrl)
+            method = HttpMethod.Post
+            setBody(FormDataContent(parameters {
                 tokenRequest.encodeToParameters<TokenRequestParameters>().forEach { append(it.key, it.value) }
-            }
-        ) {
-            headers {
-                clientAttestationJwt?.let { append(HttpHeaders.OAuthClientAttestation, it) }
-                clientAttestationPoPJwt?.let { append(HttpHeaders.OAuthClientAttestationPop, it) }
-                dpopHeader?.let { append(HttpHeaders.DPoP, it) }
-            }
+            }))
+            applyAuthnForToken(oauthMetadata, popAudience, tokenEndpointUrl, HttpMethod.Post, true)()
         }.body<TokenResponseParameters>()
     }
-
-    private fun OAuth2AuthorizationServerMetadata.useClientAuth(): Boolean =
-        tokenEndPointAuthMethodsSupported?.contains(OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH) == true
-
-    private fun OAuth2AuthorizationServerMetadata.hasMatchingDpopAlgorithm(): Boolean =
-        dpopSigningAlgValuesSupported?.contains(dpopAlgorithm) == true
-
 
     /**
      * Builds the authorization request ([AuthenticationRequestParameters]) to start authentication at the
@@ -354,33 +334,19 @@ class OAuth2KtorClient(
         state: String,
         popAudience: String,
     ): AuthenticationRequestParameters {
-        val useClientAuth = oauthMetadata.useClientAuth()
         val parEndpointUrl = oauthMetadata.pushedAuthorizationRequestEndpoint
             ?: throw Exception("No pushedAuthorizationRequestEndpoint in $oauthMetadata")
-        val clientAttestationJwt = if (useClientAuth) {
-            loadClientAttestationJwt?.invoke()
-        } else null
-        val clientAttestationPoPJwt =
-            if (useClientAuth && signClientAttestationPop != null && clientAttestationJwt != null) {
-                BuildClientAttestationPoPJwt(
-                    signClientAttestationPop,
-                    clientId = oAuth2Client.clientId,
-                    audience = popAudience,
-                    lifetime = 10.minutes,
-                ).serialize()
-            } else null
-        val response = client.submitForm(
-            url = parEndpointUrl ,
-            formParameters = parameters {
+
+        val response = client.request {
+            url(parEndpointUrl)
+            method = HttpMethod.Post
+            setBody(FormDataContent(parameters {
                 authRequest.encodeToParameters().forEach { append(it.key, it.value) }
                 append(OpenIdConstants.PARAMETER_PROMPT, OpenIdConstants.PARAMETER_PROMPT_LOGIN)
-            }
-        ) {
-            headers {
-                clientAttestationJwt?.let { append(HttpHeaders.OAuthClientAttestation, it) }
-                clientAttestationPoPJwt?.let { append(HttpHeaders.OAuthClientAttestationPop, it) }
-            }
+            }))
+            applyAuthnForToken(oauthMetadata, popAudience, parEndpointUrl, HttpMethod.Post, false)()
         }.body<PushedAuthenticationResponseParameters>()
+
         if (response.errorDescription != null) {
             throw Exception(response.errorDescription)
         }
@@ -398,6 +364,73 @@ class OAuth2KtorClient(
         )
     }
 
+    /**
+     * Sets the appropriate headers when accessing [resourceUrl], by reading data from [tokenResponse],
+     * i.e. [HttpHeaders.Authorization] and probably [HttpHeaders.DPoP].
+     */
+    suspend fun applyToken(
+        tokenResponse: TokenResponseParameters,
+        resourceUrl: String,
+        httpMethod: HttpMethod,
+    ): HttpRequestBuilder.() -> Unit {
+        val dpopHeader = if (tokenResponse.tokenType.equals(TOKEN_TYPE_DPOP, true))
+            BuildDPoPHeader(
+                signDpop = signDpop,
+                url = resourceUrl,
+                accessToken = tokenResponse.accessToken,
+                httpMethod = httpMethod.value
+            )
+        else null
+        return {
+            headers {
+                append(HttpHeaders.Authorization, tokenResponse.toHttpHeaderValue())
+                dpopHeader?.let { append(HttpHeaders.DPoP, it) }
+            }
+        }
+    }
+
+    /**
+     * Sets the appropriate headers when accessing a token endpoint,
+     * i.e., performs client authentication.
+     */
+    suspend fun applyAuthnForToken(
+        oauthMetadata: OAuth2AuthorizationServerMetadata,
+        popAudience: String,
+        resourceUrl: String,
+        httpMethod: HttpMethod,
+        useDpop: Boolean,
+    ): HttpRequestBuilder.() -> Unit {
+        val clientAttestationJwt = if (oauthMetadata.useClientAuth()) {
+            loadClientAttestationJwt?.invoke()
+        } else null
+        val clientAttestationPoPJwt =
+            if (oauthMetadata.useClientAuth() && signClientAttestationPop != null && clientAttestationJwt != null) {
+                BuildClientAttestationPoPJwt(
+                    signClientAttestationPop,
+                    clientId = oAuth2Client.clientId,
+                    audience = popAudience,
+                    lifetime = 10.minutes,
+                ).serialize()
+            } else null
+
+        val dpopHeader = if (oauthMetadata.hasMatchingDpopAlgorithm() && useDpop) {
+            BuildDPoPHeader(signDpop = signDpop, url = resourceUrl, httpMethod = httpMethod.value)
+        } else null
+
+        return {
+            headers {
+                clientAttestationJwt?.let { append(HttpHeaders.OAuthClientAttestation, it) }
+                clientAttestationPoPJwt?.let { append(HttpHeaders.OAuthClientAttestationPop, it) }
+                dpopHeader?.let { append(HttpHeaders.DPoP, it) }
+            }
+        }
+    }
+
+    private fun OAuth2AuthorizationServerMetadata.useClientAuth(): Boolean =
+        tokenEndPointAuthMethodsSupported?.contains(OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH) == true
+
+    private fun OAuth2AuthorizationServerMetadata.hasMatchingDpopAlgorithm(): Boolean =
+        dpopSigningAlgValuesSupported?.contains(dpopAlgorithm) == true
 }
 
 val HttpHeaders.OAuthClientAttestation: String

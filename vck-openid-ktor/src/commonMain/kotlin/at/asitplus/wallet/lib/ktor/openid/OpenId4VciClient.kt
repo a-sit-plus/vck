@@ -332,18 +332,11 @@ class OpenId4VciClient(
             previouslyRequestedScope = previouslyRequestedScope
         ).getOrThrow()
 
-        val dpopHeader = if (tokenResponse.tokenType.equals(TOKEN_TYPE_DPOP, true))
-            BuildDPoPHeader(signDpop, url = credentialEndpointUrl, accessToken = tokenResponse.accessToken)
-        else null
-
         val storeCredentialInputs = credentialRequests.flatMap { credentialRequest ->
             val credentialResponse: CredentialResponseParameters = client.post(credentialEndpointUrl) {
                 contentType(ContentType.Application.Json)
                 setBody(credentialRequest)
-                headers {
-                    append(HttpHeaders.Authorization, tokenResponse.toHttpHeaderValue())
-                    dpopHeader?.let { append(HttpHeaders.DPoP, it) }
-                }
+                oauth2Client.applyToken(tokenResponse, credentialEndpointUrl, HttpMethod.Post)()
             }.body()
 
             credentialResponse.extractCredentials()
