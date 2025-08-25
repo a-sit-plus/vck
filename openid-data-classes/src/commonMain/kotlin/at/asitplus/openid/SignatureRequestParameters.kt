@@ -27,13 +27,13 @@ data class SignatureRequestParameters(
      * Optional when JAR (RFC9101) is used.
      */
     @SerialName("response_type")
-    override val responseType: String,
+    val responseType: String,
 
     /**
      * OIDC: REQUIRED. OAuth 2.0 Client Identifier valid at the Authorization Server.
      */
     @SerialName("client_id")
-    override val clientId: String,
+    val clientId: String,
 
     /**
      * OID4VP: OPTIONAL. A string identifying the scheme of the value in the `client_id` Authorization Request parameter
@@ -66,7 +66,7 @@ data class SignatureRequestParameters(
      * `invalid_request` Authorization Response error.
      */
     @SerialName("response_uri")
-    override val responseUrl: String? = null,
+    val responseUrl: String? = null,
 
     /**
      * OIDC: OPTIONAL. String value used to associate a Client session with an ID Token, and to mitigate replay attacks.
@@ -74,7 +74,7 @@ data class SignatureRequestParameters(
      * be present in the nonce values used to prevent attackers from guessing values.
      */
     @SerialName("nonce")
-    override val nonce: String? = null,
+    val nonce: String? = null,
 
     /**
      * OIDC: RECOMMENDED. Opaque value used to maintain state between the request and the callback. Typically,
@@ -82,7 +82,7 @@ data class SignatureRequestParameters(
      * parameter with a browser cookie.
      */
     @SerialName("state")
-    override val state: String? = null,
+    val state: String? = null,
 
     /**
      * UC5 Draft REQUIRED.
@@ -134,11 +134,5 @@ data class SignatureRequestParameters(
      * data not conforming to the respective type definition.
      */
     @SerialName("transaction_data")
-    override val transactionData: List<TransactionDataBase64Url>? = null,
-) : RequestParameters() {
-
-    override val redirectUrl: String? = null
-    override val audience: String? = null
-    override val issuer: String? = null
-
-}
+    val transactionData: List<TransactionDataBase64Url>? = null,
+) : RequestParameters()

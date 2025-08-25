@@ -33,17 +33,7 @@ data class RequestObjectParameters(
         walletMetadataString = metadata.catchingUnwrapped { joseCompliantSerializer.encodeToString(this) }.getOrNull(),
         walletNonce = nonce
     )
-
-    override val responseType: String? = null
-    override val nonce: String? = null
-    override val clientId: String? = null
-    override val redirectUrl: String? = null
-    override val responseUrl: String? = null
-    override val audience: String? = null
-    override val issuer: String? = null
-    override val state: String? = null
-    override val transactionData: List<TransactionDataBase64Url>? = null
-
+    
     val walletMetadata: OAuth2AuthorizationServerMetadata?
         get() = walletMetadataString?.let {
             catchingUnwrapped {
