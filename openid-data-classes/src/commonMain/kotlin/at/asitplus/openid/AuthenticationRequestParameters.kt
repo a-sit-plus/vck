@@ -34,7 +34,7 @@ data class AuthenticationRequestParameters(
      * Optional when JAR (RFC9101) is used.
      */
     @SerialName("response_type")
-    override val responseType: String? = null,
+    val responseType: String? = null,
 
     /**
      * OIDC: REQUIRED. OAuth 2.0 Client Identifier valid at the Authorization Server.
@@ -49,7 +49,7 @@ data class AuthenticationRequestParameters(
      * See also [clientIdWithoutPrefix] and the notes there.
      */
     @SerialName("client_id")
-    override val clientId: String? = null,
+    val clientId: String? = null,
 
     /**
      * OID4VP: OPTIONAL. A string identifying the scheme of the value in the `client_id` Authorization Request parameter
@@ -69,7 +69,7 @@ data class AuthenticationRequestParameters(
      * See also [redirectUrlExtracted]
      */
     @SerialName("redirect_uri")
-    override val redirectUrl: String? = null,
+    val redirectUrl: String? = null,
 
     /**
      * OIDC: REQUIRED. OpenID Connect requests MUST contain the openid scope value. If the openid scope value is not
@@ -86,7 +86,7 @@ data class AuthenticationRequestParameters(
      * parameter with a browser cookie.
      */
     @SerialName("state")
-    override val state: String? = null,
+    val state: String? = null,
 
     /**
      * OIDC: OPTIONAL. String value used to associate a Client session with an ID Token, and to mitigate replay attacks.
@@ -94,7 +94,7 @@ data class AuthenticationRequestParameters(
      * be present in the nonce values used to prevent attackers from guessing values.
      */
     @SerialName("nonce")
-    override val nonce: String? = null,
+    val nonce: String? = null,
 
     /**
      * OpenID4VP: When received in [RequestObjectParameters.walletNonce], the Verifier MUST use it as the [walletNonce]
@@ -257,7 +257,7 @@ data class AuthenticationRequestParameters(
      * `invalid_request` Authorization Response error.
      */
     @SerialName("response_uri")
-    override val responseUrl: String? = null,
+    val responseUrl: String? = null,
 
     /**
      * OAuth 2.0 JAR: If signed, the Authorization Request Object SHOULD contain the Claims `iss` (issuer) and `aud`
@@ -265,7 +265,7 @@ data class AuthenticationRequestParameters(
      * value of `aud` should be the value of the authorization server (AS) `issuer`, as defined in RFC 8414.
      */
     @SerialName("aud")
-    override val audience: String? = null,
+    val audience: String? = null,
 
     /**
      * OAuth 2.0 JAR: If signed, the Authorization Request Object SHOULD contain the Claims `iss` (issuer) and `aud`
@@ -273,7 +273,7 @@ data class AuthenticationRequestParameters(
      * value of `aud` should be the value of the authorization server (AS) `issuer`, as defined in RFC 8414.
      */
     @SerialName("iss")
-    override val issuer: String? = null,
+    val issuer: String? = null,
 
     /**
      * OPTIONAL. Time at which the request was issued.
@@ -387,7 +387,7 @@ data class AuthenticationRequestParameters(
      * data not conforming to the respective type definition.
      */
     @SerialName("transaction_data")
-    override val transactionData: List<TransactionDataBase64Url>? = null,
+    val transactionData: List<TransactionDataBase64Url>? = null,
 
     /**
      * DCAPI: REQUIRED when signed requests defined in Appendix A.3.2 are used with the Digital
@@ -406,8 +406,27 @@ data class AuthenticationRequestParameters(
      * Reads the [OpenIdConstants.ClientIdScheme] of this request either directly from [clientIdScheme],
      * or by extracting the prefix from [clientId] (as specified in OpenID4VP draft 22 onwards).
      */
-    override val clientIdSchemeExtracted: OpenIdConstants.ClientIdScheme?
+    val clientIdSchemeExtracted: OpenIdConstants.ClientIdScheme?
         get() = clientId?.let { OpenIdConstants.ClientIdScheme.decodeFromClientId(it) }
+
+    /**
+     * Reads the [clientId] and removes the prefix of the [clientIdSchemeExtracted],
+     * as specified in OpenID4VP draft 22 onwards.
+     * OpenID4VP states that the *full* [clientId] must be used for presentations and anything else.
+     */
+    val clientIdWithoutPrefix: String?
+        get() = clientId?.let { clientId ->
+            clientIdSchemeExtracted?.let { clientId.removePrefix("${it.stringRepresentation}:") }
+        }
+
+    /**
+     * Reads the [redirectUrl], or the [clientIdWithoutPrefix] if [clientIdSchemeExtracted] is
+     * [OpenIdConstants.ClientIdScheme.RedirectUri], as specified in OpenID4VP draft 22 onwards.
+     */
+    val redirectUrlExtracted: String?
+        get() = redirectUrl
+            ?: (clientIdSchemeExtracted as? OpenIdConstants.ClientIdScheme.RedirectUri)?.let { clientIdWithoutPrefix }
+
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
