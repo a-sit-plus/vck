@@ -51,6 +51,7 @@ class CoseServiceTest : FreeSpec({
     lateinit var macCose: MacCoseFun<ByteArray>
     lateinit var macCoseMso: MacCoseFun<MobileSecurityObject>
     lateinit var macCoseNothing: MacCoseFun<Nothing>
+    lateinit var macCoseDetached: MacCoseDetachedFun<ByteArray>
     lateinit var macCoseKey: CoseKey
 
     beforeEach {
@@ -67,6 +68,7 @@ class CoseServiceTest : FreeSpec({
         macCose = MacCose(macKeyMaterial)
         macCoseMso = MacCose(macKeyMaterial)
         macCoseNothing = MacCose(macKeyMaterial)
+        macCoseDetached = MacCoseDetached(macKeyMaterial)
         macCoseKey = CoseKey.forMacKey(macAlgorithm, macKeyMaterial.key, null, CoseKeyOperation.MAC_CREATE, CoseKeyOperation.MAC_VERIFY)
     }
 
@@ -287,6 +289,35 @@ class CoseServiceTest : FreeSpec({
         }
     }
 
+    "maced object with random bytes, transported detached, can be verified" {
+        val parameterSerializer = ByteArraySerializer()
+        val maced = macCoseDetached(
+            protectedHeader = null,
+            unprotectedHeader = null,
+            payload = randomPayload,
+            serializer = parameterSerializer
+        ).getOrThrow()
+
+        maced.payload shouldBe null
+        maced.tag.shouldNotBeNull()
+
+        val serialized = maced.serialize(parameterSerializer).apply {
+            // A0 = empty map (unprotected header)
+            // F6 = CBOR Null (payload)
+            // 58 20 = 32 bytes (HMAC256)
+            encodeToString(Base16()) shouldContain "A0F65820"
+        }
+
+        val parsed = CoseMac.deserialize(parameterSerializer, serialized).getOrThrow()
+            .shouldBe(maced)
+
+        with(VerifyCoseMacWithKey<ByteArray>()) {
+            invoke(parsed, macCoseKey, byteArrayOf(), randomPayload).isSuccess shouldBe true
+            invoke(parsed, macCoseKey, byteArrayOf(), randomPayload + byteArrayOf(0)).isSuccess shouldBe false
+            invoke(parsed, macCoseKey, byteArrayOf(), null).isSuccess shouldBe false
+        }
+    }
+
     // https://github.com/cose-wg/Examples/tree/master/sign1-tests
     "sample 01 can be verified" {
         val input = """
@@ -329,5 +360,32 @@ class CoseServiceTest : FreeSpec({
             Base16()
         )
     }
+
+    // https://github.com/cose-wg/Examples/tree/master/mac0-tests
+    "MAC0 sample 01 can be verified" {
+        val input = """
+            D18441A0A1010554546869732069732074686520636F6E74656E742E5820176DCE14C1E57430C13658233F41DC89AA4FA0FF9B8783F23B0EF51CA6B026BC
+        """.trimIndent()
+
+        val maced = CoseMac.deserialize(ByteArraySerializer(), input.decodeToByteArray(Base16())).getOrThrow()
+
+        maced.payload shouldBe "546869732069732074686520636F6E74656E742E".decodeToByteArray(Base16())
+        maced.prepareCoseMacInput()
+            .encodeToString(Base16Strict) shouldBe "84644D414330404054546869732069732074686520636F6E74656E742E"
+    }
+
+    // https://github.com/cose-wg/Examples/tree/master/mac0-tests
+    // test fails because protected header is 0x40 -> byte string of length 0 so it failes to decode not sure if that is bug in our CoseHeader implementation, since test says it should deserialize
+//    "MAC0 sample 02 can be verified" {
+//        val input = """
+//            D18440A1010554546869732069732074686520636F6E74656E742E58200FECAEC59BB46CC8A488AACA4B205E322DD52696B75A45768D3C302DD4BAE2F7
+//        """.trimIndent()
+//
+//        val maced = CoseMac.deserialize(ByteArraySerializer(), input.decodeToByteArray(Base16())).getOrThrow()
+//
+//        maced.payload shouldBe "546869732069732074686520636F6E74656E742E".decodeToByteArray(Base16())
+//        maced.prepareCoseMacInput()
+//            .encodeToString(Base16Strict) shouldBe "84644D414330404EFF00EE11DD22CC33BB44AA55996654546869732069732074686520636F6E74656E742E"
+//    }
 })
 

@@ -130,7 +130,6 @@ class MacCose<P : Any>(
             )
         }
     }
-
 }
 
 fun interface SignCoseDetachedFun<P> {
@@ -167,6 +166,43 @@ class SignCoseDetached<P : Any>(
                 unprotectedHeader = unprotectedHeader,
                 payload = null,
                 signature = signature,
+                payloadSerializer = serializer,
+            )
+        }
+    }
+}
+
+fun interface MacCoseDetachedFun<P> {
+    suspend operator fun invoke(
+        protectedHeader: CoseHeader?,
+        unprotectedHeader: CoseHeader?,
+        payload: P?,
+        serializer: KSerializer<P>,
+    ): KmmResult<CoseMac<P>>
+}
+
+class MacCoseDetached<P : Any>(
+    val keyMaterial: MacKeyMaterial,
+    val protectedHeaderModifier: CoseHeaderIdentifierFun? = null,
+    val unprotectedHeaderModifier: CoseHeaderIdentifierFun? = null,
+) : MacCoseDetachedFun<P> {
+    override suspend fun invoke(
+        protectedHeader: CoseHeader?,
+        unprotectedHeader: CoseHeader?,
+        payload: P?,
+        serializer: KSerializer<P>
+    ): KmmResult<CoseMac<P>> = catching {
+        val algorithm = keyMaterial.algorithm.toCoseAlgorithm().getOrThrow()
+        val headerWithAlg = (protectedHeader ?: CoseHeader()).copy(algorithm = algorithm)
+        val protectedHeader = protectedHeaderModifier?.invoke(headerWithAlg, keyMaterial) ?: headerWithAlg
+        val unprotectedHeader = unprotectedHeaderModifier?.invoke(unprotectedHeader ?: CoseHeader(), keyMaterial)
+            ?: unprotectedHeader
+        calcMac(keyMaterial, protectedHeader, payload, serializer).let { mac ->
+            CoseMac.create(
+                protectedHeader = protectedHeader,
+                unprotectedHeader = unprotectedHeader,
+                payload = null,
+                tag = mac,
                 payloadSerializer = serializer,
             )
         }
