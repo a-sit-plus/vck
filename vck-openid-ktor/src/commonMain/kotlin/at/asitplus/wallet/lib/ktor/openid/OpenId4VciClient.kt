@@ -4,23 +4,16 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.iso.IssuerSigned
-import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.ClientNonceResponse
 import at.asitplus.openid.CredentialOffer
 import at.asitplus.openid.CredentialResponseParameters
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants
-import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
-import at.asitplus.openid.OpenIdConstants.PARAMETER_PROMPT
-import at.asitplus.openid.OpenIdConstants.PARAMETER_PROMPT_LOGIN
 import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER
 import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
-import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.SupportedCredentialFormat
-import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebToken
@@ -41,12 +34,8 @@ import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
-import at.asitplus.wallet.lib.oauth2.OAuth2Client.AuthorizationForToken
-import at.asitplus.wallet.lib.oidvci.BuildClientAttestationPoPJwt
 import at.asitplus.wallet.lib.oidvci.BuildDPoPHeader
 import at.asitplus.wallet.lib.oidvci.WalletService
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
-import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.toRepresentation
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
@@ -57,15 +46,12 @@ import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.cookies.*
 import io.ktor.client.request.*
-import io.ktor.client.request.forms.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
-import io.ktor.util.*
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromByteArray
-import kotlin.time.Duration.Companion.minutes
 
 
 /**
@@ -96,21 +82,36 @@ class OpenId4VciClient(
      * the key behind [signClientAttestationPop], see
      * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-04.html)
      */
+    @Deprecated("Configure oAuth2Client instead")
     private val loadClientAttestationJwt: (suspend () -> String)? = null,
     /** Used for authenticating the client at the authorization server with client attestation. */
+    @Deprecated("Configure oAuth2Client instead")
     private val signClientAttestationPop: SignJwtFun<JsonWebToken>? = SignJwt(
         EphemeralKeyWithoutCert(),
         JwsHeaderNone()
     ),
-    /** Used to calculate DPoP, i.e. the key the access token and refresh token gets bound to. */
+    /** Used to calculate DPoP, i.e. the key the access token and refresh token gets bound to.
+     * Must match [OAuth2KtorClient.signDpop] in [oauth2Client]. */
     private val signDpop: SignJwtFun<JsonWebToken> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk()),
+    @Deprecated("Configure oAuth2Client instead")
     private val dpopAlgorithm: JwsAlgorithm = JwsAlgorithm.Signature.ES256,
     /**
      * Implements OID4VCI protocol, `redirectUrl` needs to be registered by the OS for this application, so redirection
      * back from browser works, `cryptoService` provides proof of possession for credential key material.
      */
     val oid4vciService: WalletService = WalletService(),
+    private val oauth2Client: OAuth2KtorClient = OAuth2KtorClient(
+        engine = engine,
+        cookiesStorage = cookiesStorage,
+        httpClientConfig = httpClientConfig,
+        loadClientAttestationJwt = loadClientAttestationJwt,
+        signClientAttestationPop = signClientAttestationPop,
+        signDpop = signDpop,
+        dpopAlgorithm = dpopAlgorithm,
+        oAuth2Client = oid4vciService.oauth2Client,
+    ),
 ) {
+
     private val client: HttpClient = HttpClient(engine) {
         followRedirects = false
         install(ContentNegotiation) {
@@ -191,14 +192,26 @@ class OpenId4VciClient(
                 .body<OAuth2AuthorizationServerMetadata>()
         }
 
-        val state = uuid4().toString()
-        startAuthorization(
-            state = state,
-            credentialIdentifierInfo = credentialIdentifierInfo,
-            issuerMetadata = issuerMetadata,
+        oauth2Client.startAuthorization(
             credentialIssuer = credentialIssuerUrl,
+            issuerState = null,
             oauthMetadata = oauthMetadata,
-        )
+            authorizationDetails = oid4vciService.buildAuthorizationDetails(
+                credentialIdentifierInfo.credentialIdentifier,
+                issuerMetadata.authorizationServers
+            ),
+            scope = credentialIdentifierInfo.supportedCredentialFormat.scope,
+        ).let {
+            CredentialIssuanceResult.OpenUrlForAuthnRequest(
+                url = it.url,
+                context = ProvisioningContext(
+                    state = it.state,
+                    credential = credentialIdentifierInfo,
+                    oauthMetadata = oauthMetadata,
+                    issuerMetadata = issuerMetadata
+                )
+            )
+        }
     }
 
     /**
@@ -219,27 +232,17 @@ class OpenId4VciClient(
         Napier.i("resumeWithAuthCode")
         Napier.d("resumeWithAuthCode: $url, $context")
 
-        val authnResponse = Url(url).parameters.flattenEntries().toMap()
-            .decodeFromUrlQuery<AuthenticationResponseParameters>()
-        val code = authnResponse.code
-            ?: throw Exception("No authn code in $url")
-
-        val hasScope = context.credential.supportedCredentialFormat.scope != null
-        val tokenResponse = postToken(
+        val tokenResponse = oauth2Client.requestTokenWithAuthCode(
             oauthMetadata = context.oauthMetadata,
-            issuerMetadata = context.issuerMetadata,
-            tokenRequest = oid4vciService.oauth2Client.createTokenRequestParameters(
-                state = context.state,
-                authorization = AuthorizationForToken.Code(code),
-                scope = context.credential.supportedCredentialFormat.scope,
-                authorizationDetails = if (!hasScope) oid4vciService.buildAuthorizationDetails(
-                    context.credential.credentialIdentifier,
-                    context.issuerMetadata.authorizationServers
-                ) else null
-            ),
-        )
-        Napier.i("Received token response")
-        Napier.d("Received token response $tokenResponse")
+            url = url,
+            credentialIssuer = context.issuerMetadata.credentialIssuer,
+            state = context.state,
+            scope = context.credential.supportedCredentialFormat.scope,
+            authorizationDetails = oid4vciService.buildAuthorizationDetails(
+                context.credential.credentialIdentifier,
+                context.issuerMetadata.authorizationServers
+            )
+        ).getOrThrow()
 
         val credentialScheme = context.credential.supportedCredentialFormat.resolveCredentialScheme()
             ?: throw Exception("Unknown credential scheme in ${context.credential}")
@@ -257,7 +260,7 @@ class OpenId4VciClient(
 
     /**
      * Call to refresh a credential with a stored refresh token (that was received when issuing the credential
-     * for the first time, stored with [storeRefreshToken]).
+     * for the first time, as returned in [CredentialIssuanceResult.Success.refreshToken]).
      *
      * Will request a new access token, and use that token to request the same credential again and store it.
      *
@@ -271,20 +274,16 @@ class OpenId4VciClient(
         with(refreshTokenInfo) {
             Napier.i("refreshCredential")
             Napier.d("refreshCredential: $refreshToken, $credentialFormat, $credentialIdentifier")
-            val hasScope = credentialFormat.scope != null
-            val tokenResponse = postToken(
+            val tokenResponse = oauth2Client.requestTokenWithRefreshToken(
                 oauthMetadata = oauthMetadata,
-                issuerMetadata = issuerMetadata,
-                tokenRequest = oid4vciService.oauth2Client.createTokenRequestParameters(
-                    authorization = AuthorizationForToken.RefreshToken(refreshToken),
-                    state = null,
-                    scope = credentialFormat.scope,
-                    authorizationDetails = if (!hasScope) oid4vciService.buildAuthorizationDetails(
-                        credentialIdentifier,
-                        issuerMetadata.authorizationServers
-                    ) else null
-                ),
-            )
+                credentialIssuer = issuerMetadata.credentialIssuer,
+                refreshToken = refreshToken,
+                scope = credentialFormat.scope,
+                authorizationDetails = oid4vciService.buildAuthorizationDetails(
+                    credentialIdentifier,
+                    issuerMetadata.authorizationServers
+                )
+            ).getOrThrow()
             Napier.i("Received token response")
             Napier.d("Received token response $tokenResponse")
 
@@ -302,52 +301,6 @@ class OpenId4VciClient(
             )
         }
     }
-
-    @Throws(Exception::class)
-    private suspend fun postToken(
-        oauthMetadata: OAuth2AuthorizationServerMetadata,
-        issuerMetadata: IssuerMetadata,
-        tokenRequest: TokenRequestParameters,
-    ): TokenResponseParameters {
-        val tokenEndpointUrl = oauthMetadata.tokenEndpoint
-            ?: throw Exception("No tokenEndpoint in $oauthMetadata")
-        Napier.i("postToken: $tokenEndpointUrl with $tokenRequest")
-
-        val clientAttestationJwt = if (oauthMetadata.useClientAuth()) {
-            loadClientAttestationJwt?.invoke()
-        } else null
-        val clientAttestationPoPJwt =
-            if (oauthMetadata.useClientAuth() && signClientAttestationPop != null && clientAttestationJwt != null) {
-                BuildClientAttestationPoPJwt(
-                    signClientAttestationPop,
-                    clientId = oid4vciService.clientId,
-                    audience = issuerMetadata.credentialIssuer,
-                    lifetime = 10.minutes,
-                ).serialize()
-            } else null
-        val dpopHeader = if (oauthMetadata.hasMatchingDpopAlgorithm()) {
-            BuildDPoPHeader(signDpop, url = tokenEndpointUrl)
-        } else null
-
-        return client.submitForm(
-            url = tokenEndpointUrl,
-            formParameters = parameters {
-                tokenRequest.encodeToParameters<TokenRequestParameters>().forEach { append(it.key, it.value) }
-            }
-        ) {
-            headers {
-                clientAttestationJwt?.let { append(HttpHeaders.OAuthClientAttestation, it) }
-                clientAttestationPoPJwt?.let { append(HttpHeaders.OAuthClientAttestationPop, it) }
-                dpopHeader?.let { append(HttpHeaders.DPoP, it) }
-            }
-        }.body<TokenResponseParameters>()
-    }
-
-    private fun OAuth2AuthorizationServerMetadata.useClientAuth(): Boolean =
-        tokenEndPointAuthMethodsSupported?.contains(AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH) == true
-
-    private fun OAuth2AuthorizationServerMetadata.hasMatchingDpopAlgorithm(): Boolean =
-        dpopSigningAlgValuesSupported?.contains(dpopAlgorithm) == true
 
     /**
      * Will use the [tokenResponse] to request a credential and store it with [storeCredential].
@@ -440,20 +393,18 @@ class OpenId4VciClient(
             val credentialScheme = credentialIdentifierInfo.supportedCredentialFormat.resolveCredentialScheme()
                 ?: throw Exception("Unknown credential scheme in $credentialIdentifierInfo")
 
-            val hasScope = credentialIdentifierInfo.supportedCredentialFormat.scope != null
-            val tokenResponse = postToken(
-                oauthMetadata = oauthMetadata,
-                issuerMetadata = issuerMetadata,
-                tokenRequest = oid4vciService.oauth2Client.createTokenRequestParameters(
-                    state = state,
-                    authorization = AuthorizationForToken.PreAuthCode(it.preAuthorizedCode, transactionCode),
-                    scope = credentialIdentifierInfo.supportedCredentialFormat.scope,
-                    authorizationDetails = if (!hasScope) oid4vciService.buildAuthorizationDetails(
-                        credentialIdentifierInfo.credentialIdentifier,
-                        issuerMetadata.authorizationServers
-                    ) else null
-                )
+            val authorizationDetails = oid4vciService.buildAuthorizationDetails(
+                credentialIdentifierInfo.credentialIdentifier,
+                issuerMetadata.authorizationServers
             )
+            val tokenResponse = oauth2Client.requestTokenWithPreAuthorizedCode(
+                oauthMetadata = oauthMetadata,
+                credentialIssuer = issuerMetadata.credentialIssuer,
+                preAuthorizedCode = it.preAuthorizedCode,
+                transactionCode = transactionCode,
+                scope = credentialIdentifierInfo.supportedCredentialFormat.scope,
+                authorizationDetails = authorizationDetails
+            ).getOrThrow()
             Napier.i("Received token response")
             Napier.d("Received token response: $tokenResponse")
 
@@ -467,14 +418,28 @@ class OpenId4VciClient(
                 previouslyRequestedScope = credentialIdentifierInfo.supportedCredentialFormat.scope,
             )
         } ?: credentialOffer.grants?.authorizationCode?.let {
-            startAuthorization(
+
+            oauth2Client.startAuthorization(
                 state = state,
-                credentialIdentifierInfo = credentialIdentifierInfo,
-                issuerMetadata = issuerMetadata,
                 credentialIssuer = credentialOffer.credentialIssuer,
                 issuerState = it.issuerState,
                 oauthMetadata = oauthMetadata,
-            )
+                authorizationDetails = oid4vciService.buildAuthorizationDetails(
+                    credentialIdentifierInfo.credentialIdentifier,
+                    issuerMetadata.authorizationServers
+                ),
+                scope = credentialIdentifierInfo.supportedCredentialFormat.scope,
+            ).let {
+                CredentialIssuanceResult.OpenUrlForAuthnRequest(
+                    url = it.url,
+                    context = ProvisioningContext(
+                        state = it.state,
+                        credential = credentialIdentifierInfo,
+                        oauthMetadata = oauthMetadata,
+                        issuerMetadata = issuerMetadata
+                    )
+                )
+            }
         } ?: throw Exception("No offer grants received in ${credentialOffer.grants}")
     }
 
@@ -501,127 +466,6 @@ class OpenId4VciClient(
                 scheme = credentialScheme
             )
         }.getOrElse { throw Exception("Invalid credential format: $this", it) }
-    }
-
-    /**
-     * Builds the authorization request ([AuthenticationRequestParameters]) to start authentication at the
-     * authorization server associated with the credential issuer.
-     *
-     * Prefers building the authn request by using `scope` (from [SupportedCredentialFormat]), as advised in
-     * [OpenID4VC HAIP](https://openid.net/specs/openid4vc-high-assurance-interoperability-profile-1_0.html),
-     * but falls back to authorization details if needed.
-     *
-     * Uses Pushed Authorization Requests [RFC 9126](https://datatracker.ietf.org/doc/html/rfc9126) if advised
-     * by the authorization server.
-     *
-     * Clients need to contiune the process (after getting back from the browser) with [resumeWithAuthCode].
-     */
-    @Throws(Exception::class)
-    private suspend fun startAuthorization(
-        state: String,
-        credentialIdentifierInfo: CredentialIdentifierInfo,
-        issuerMetadata: IssuerMetadata,
-        credentialIssuer: String,
-        issuerState: String? = null,
-        oauthMetadata: OAuth2AuthorizationServerMetadata,
-    ): CredentialIssuanceResult.OpenUrlForAuthnRequest {
-        val scope = credentialIdentifierInfo.supportedCredentialFormat.scope
-        val authorizationDetails = oid4vciService.buildAuthorizationDetails(
-            credentialIdentifierInfo.credentialIdentifier,
-            issuerMetadata.authorizationServers
-        )
-        val authorizationEndpointUrl = oauthMetadata.authorizationEndpoint
-            ?: throw Exception("no authorizationEndpoint in $oauthMetadata")
-        val wrapAsJar =
-            oauthMetadata.requestObjectSigningAlgorithmsSupported?.contains(JwsAlgorithm.Signature.ES256) == true
-        val authRequest = oid4vciService.oauth2Client.createAuthRequest(
-            state = state,
-            authorizationDetails = if (scope == null) authorizationDetails else null,
-            issuerState = issuerState,
-            scope = scope,
-            wrapAsJar = wrapAsJar
-        )
-        val requiresPar = oauthMetadata.requirePushedAuthorizationRequests == true
-        val parEndpointUrl = oauthMetadata.pushedAuthorizationRequestEndpoint
-        val authorizationUrl = if (parEndpointUrl != null && requiresPar) {
-            val authRequestAfterPar = pushAuthorizationRequest(
-                authRequest = authRequest,
-                state = state,
-                url = parEndpointUrl,
-                credentialIssuer = credentialIssuer,
-                tokenAuthMethods = oauthMetadata.tokenEndPointAuthMethodsSupported
-            )
-            URLBuilder(authorizationEndpointUrl).also { builder ->
-                authRequestAfterPar.encodeToParameters<AuthenticationRequestParameters>().forEach {
-                    builder.parameters.append(it.key, it.value)
-                }
-            }.build().toString()
-        } else {
-            URLBuilder(authorizationEndpointUrl).also { builder ->
-                authRequest.encodeToParameters<AuthenticationRequestParameters>().forEach {
-                    builder.parameters.append(it.key, it.value)
-                }
-                builder.parameters.append(PARAMETER_PROMPT, PARAMETER_PROMPT_LOGIN)
-            }.build().toString()
-        }
-        val context = ProvisioningContext(
-            state = state,
-            credential = credentialIdentifierInfo,
-            oauthMetadata = oauthMetadata,
-            issuerMetadata = issuerMetadata
-        )
-        Napier.i("Provisioning starts by returning URL to open: $authorizationUrl")
-        return CredentialIssuanceResult.OpenUrlForAuthnRequest(authorizationUrl, context)
-    }
-
-    @Throws(Exception::class)
-    private suspend fun pushAuthorizationRequest(
-        authRequest: AuthenticationRequestParameters,
-        state: String,
-        url: String,
-        credentialIssuer: String,
-        tokenAuthMethods: Set<String>?,
-    ): AuthenticationRequestParameters {
-        val shouldIncludeClientAttestation = tokenAuthMethods?.contains(AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH) == true
-        val clientAttestationJwt = if (shouldIncludeClientAttestation) {
-            loadClientAttestationJwt?.invoke()
-        } else null
-        val clientAttestationPoPJwt =
-            if (shouldIncludeClientAttestation && signClientAttestationPop != null && clientAttestationJwt != null) {
-                BuildClientAttestationPoPJwt(
-                    signClientAttestationPop,
-                    clientId = oid4vciService.clientId,
-                    audience = credentialIssuer,
-                    lifetime = 10.minutes,
-                ).serialize()
-            } else null
-        val response = client.submitForm(
-            url = url,
-            formParameters = parameters {
-                authRequest.encodeToParameters().forEach { append(it.key, it.value) }
-                append(PARAMETER_PROMPT, PARAMETER_PROMPT_LOGIN)
-            }
-        ) {
-            headers {
-                clientAttestationJwt?.let { append(HttpHeaders.OAuthClientAttestation, it) }
-                clientAttestationPoPJwt?.let { append(HttpHeaders.OAuthClientAttestationPop, it) }
-            }
-        }.body<PushedAuthenticationResponseParameters>()
-        if (response.errorDescription != null) {
-            throw Exception(response.errorDescription)
-        }
-        if (response.error != null) {
-            throw Exception(response.error)
-        }
-        if (response.requestUri == null) {
-            throw Exception("No request_uri from PAR response at $url")
-        }
-
-        return AuthenticationRequestParameters(
-            clientId = oid4vciService.clientId,
-            requestUri = response.requestUri,
-            state = state,
-        )
     }
 
 }
@@ -684,12 +528,3 @@ data class RefreshTokenInfo(
     val credentialIdentifier: String,
 )
 
-
-private val HttpHeaders.OAuthClientAttestation: String
-    get() = "OAuth-Client-Attestation"
-
-private val HttpHeaders.OAuthClientAttestationPop: String
-    get() = "OAuth-Client-Attestation-PoP"
-
-private val HttpHeaders.DPoP: String
-    get() = "DPoP"

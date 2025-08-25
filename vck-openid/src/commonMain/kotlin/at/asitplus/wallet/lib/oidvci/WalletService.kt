@@ -34,10 +34,12 @@ import kotlinx.serialization.json.decodeFromJsonElement
  * , Draft 15, 2024-12-19.
  */
 class WalletService(
-    /** Used to create request parameters, e.g. [AuthenticationRequestParameters], typically a URI. */
+    /** Used to create request parameters, e.g. [AuthenticationRequestParameters], typically a URI.
+     * Must match [OAuth2Client.clientId] in [oauth2Client]. */
     val clientId: String = "https://wallet.a-sit.at/app",
     /** Used to create [AuthenticationRequestParameters] and [TokenRequestParameters]. */
-    private val redirectUrl: String = "$clientId/callback",
+    @Deprecated("Configure oauth2Client instead")
+    val redirectUrl: String = "$clientId/callback",
     /** Used to prove possession of the key material to create [CredentialRequestProof], i.e. the holder key. */
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     /**
@@ -58,7 +60,10 @@ class WalletService(
     /** Algorithm to decrypt credential response encryption, see [requestEncryption]. */
     private val supportedJweEncryptionAlgorithm: JweEncryption = JweEncryption.A256GCM,
     /** OAuth2 client to build authorization requests */
-    val oauth2Client: OAuth2Client = OAuth2Client(clientId, redirectUrl),
+    val oauth2Client: OAuth2Client = OAuth2Client(
+        clientId = clientId,
+        redirectUrl = redirectUrl
+    ),
 ) {
 
     data class KeyAttestationInput(val clientNonce: String?, val supportedAlgorithms: Collection<String>?)

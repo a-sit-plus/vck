@@ -35,6 +35,7 @@ import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oauth2.ClientAuthenticationService
+import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oauth2.TokenService
@@ -334,21 +335,27 @@ class OpenId4VciClientTest : FunSpec() {
         val clientId = "https://example.com/rp"
         client = OpenId4VciClient(
             engine = mockEngine,
-            loadClientAttestationJwt = {
-                BuildClientAttestationJwt(
-                    SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
-                    clientId = clientId,
-                    issuer = "issuer",
-                    clientKey = clientAuthKeyMaterial.jsonWebKey
-                ).serialize()
-            },
-            signClientAttestationPop = SignJwt(clientAuthKeyMaterial, JwsHeaderNone()),
-            signDpop = SignJwt(dpopKeyMaterial, JwsHeaderCertOrJwk()),
-            dpopAlgorithm = dpopKeyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
             oid4vciService = WalletService(
                 clientId = clientId,
                 keyMaterial = credentialKeyMaterial,
             ),
+            oauth2Client = OAuth2KtorClient(
+                engine = mockEngine,
+                loadClientAttestationJwt = {
+                    BuildClientAttestationJwt(
+                        SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
+                        clientId = clientId,
+                        issuer = "issuer",
+                        clientKey = clientAuthKeyMaterial.jsonWebKey
+                    ).serialize()
+                },
+                signClientAttestationPop = SignJwt(clientAuthKeyMaterial, JwsHeaderNone()),
+                signDpop = SignJwt(dpopKeyMaterial, JwsHeaderCertOrJwk()),
+                dpopAlgorithm = dpopKeyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
+                oAuth2Client = OAuth2Client(
+                    clientId = clientId,
+                )
+            )
         )
     }
 
