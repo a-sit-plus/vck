@@ -24,6 +24,9 @@ import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.IdToken
 import at.asitplus.openid.IdTokenType
+import at.asitplus.openid.JarRequestParameters
+import at.asitplus.openid.JarRequestParameters.RequestUriMethod
+import at.asitplus.openid.JarRequestParameters.RequestUriMethod.POST
 import at.asitplus.openid.JwtVcIssuerMetadata
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RelyingPartyMetadata
@@ -42,7 +45,6 @@ import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.PresentationRequestParameters
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.agent.VerifierAgent
@@ -71,13 +73,13 @@ import io.ktor.http.*
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlin.time.Clock
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Clock
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
@@ -179,7 +181,7 @@ class OpenId4VpVerifier(
         data class RequestByReference(
             val walletUrl: String,
             val requestUrl: String,
-            val requestUrlMethod: String = "post",
+            val requestUrlMethod: RequestUriMethod = POST,
         ) : CreationOptions()
 
         /** Appends authentication request as signed object to [walletUrl] */
@@ -192,7 +194,7 @@ class OpenId4VpVerifier(
         data class SignedRequestByReference(
             val walletUrl: String,
             val requestUrl: String,
-            val requestUrlMethod: String = "post",
+            val requestUrlMethod: RequestUriMethod = POST,
         ) : CreationOptions()
     }
 
@@ -223,7 +225,7 @@ class OpenId4VpVerifier(
             is CreationOptions.RequestByReference -> {
                 require(clientIdScheme !is ClientIdScheme.CertificateSanDns) // per OpenID4VP d23 5.10.4
                 URLBuilder(creationOptions.walletUrl).apply {
-                    AuthenticationRequestParameters(
+                    JarRequestParameters(
                         clientId = clientIdScheme.clientId,
                         requestUri = creationOptions.requestUrl,
                         requestUriMethod = creationOptions.requestUrlMethod,
@@ -239,7 +241,7 @@ class OpenId4VpVerifier(
             is CreationOptions.SignedRequestByValue -> {
                 require(clientIdScheme !is ClientIdScheme.RedirectUri) // per OpenID4VP d23 5.10.4
                 URLBuilder(creationOptions.walletUrl).apply {
-                    AuthenticationRequestParameters(
+                    JarRequestParameters(
                         clientId = clientIdScheme.clientId,
                         request = createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow().serialize(),
                     ).encodeToParameters()
@@ -250,7 +252,7 @@ class OpenId4VpVerifier(
             is CreationOptions.SignedRequestByReference -> {
                 require(clientIdScheme !is ClientIdScheme.RedirectUri) // per OpenID4VP d23 5.10.4
                 URLBuilder(creationOptions.walletUrl).apply {
-                    AuthenticationRequestParameters(
+                    JarRequestParameters(
                         clientId = clientIdScheme.clientId,
                         requestUri = creationOptions.requestUrl,
                         requestUriMethod = creationOptions.requestUrlMethod,
