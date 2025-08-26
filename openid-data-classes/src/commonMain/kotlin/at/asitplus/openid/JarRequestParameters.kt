@@ -1,5 +1,6 @@
 package at.asitplus.openid
 
+import io.ktor.http.HttpMethod
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -58,6 +59,11 @@ data class JarRequestParameters(
         @SerialName("get")
         GET,
         @SerialName("post")
-        POST,
+        POST;
+
+        fun toHttpMethod(): HttpMethod = when (this) {
+            POST -> HttpMethod.Post
+            else -> HttpMethod.Get
+        }
     }
 }
