@@ -37,7 +37,7 @@ import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.cookies.*
 import io.ktor.client.request.*
-import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
@@ -488,7 +488,7 @@ sealed interface CredentialIssuanceResult {
 
     /**
      * Open the [url] in a browser (so the user can authenticate at the AS), and store [context] to use in next call
-     * to [at.asitplus.wallet.lib.ktor.openid.OpenId4VciClient.resumeWithAuthCode].
+     * to [OpenId4VciClient.resumeWithAuthCode].
      */
     data class OpenUrlForAuthnRequest(
         val url: String,

@@ -4,11 +4,15 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
+import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.PushedAuthenticationResponseParameters
+import at.asitplus.openid.RequestObjectParameters
+import at.asitplus.openid.RequestParameters
+import at.asitplus.openid.SignatureRequestParameters
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
@@ -29,30 +33,18 @@ import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
-import io.ktor.client.HttpClient
-import io.ktor.client.HttpClientConfig
-import io.ktor.client.engine.HttpClientEngine
-import io.ktor.client.plugins.DefaultRequest
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.cookies.CookiesStorage
-import io.ktor.client.plugins.cookies.HttpCookies
-import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.request.forms.FormDataContent
-import io.ktor.client.request.header
-import io.ktor.client.request.headers
-import io.ktor.client.request.request
-import io.ktor.client.request.setBody
-import io.ktor.client.request.url
-import io.ktor.client.statement.HttpResponse
-import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpMethod
-import io.ktor.http.URLBuilder
-import io.ktor.http.Url
-import io.ktor.http.parameters
-import io.ktor.serialization.kotlinx.json.json
-import io.ktor.util.flattenEntries
-import io.ktor.utils.io.CancellationException
+import io.ktor.client.*
+import io.ktor.client.engine.*
+import io.ktor.client.plugins.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.cookies.*
+import io.ktor.client.request.*
+import io.ktor.client.request.forms.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
+import io.ktor.util.*
+import io.ktor.utils.io.*
 import kotlin.time.Duration.Companion.minutes
 
 /**
@@ -301,12 +293,16 @@ class OAuth2KtorClient(
             ?: throw Exception("no authorizationEndpoint in $oauthMetadata")
         val wrapAsJar =
             oauthMetadata.requestObjectSigningAlgorithmsSupported?.contains(JwsAlgorithm.Signature.ES256) == true
-        val authRequest = oAuth2Client.createAuthRequest(
+        val authRequest = if (wrapAsJar) oAuth2Client.createAuthRequestJar(
             state = state,
             authorizationDetails = if (scope == null) authorizationDetails else null,
             issuerState = issuerState,
             scope = scope,
-            wrapAsJar = wrapAsJar
+        ) else oAuth2Client.createAuthRequest(
+            state = state,
+            authorizationDetails = if (scope == null) authorizationDetails else null,
+            issuerState = issuerState,
+            scope = scope,
         )
         val requiresPar = oauthMetadata.requirePushedAuthorizationRequests == true
         val parEndpointUrl = oauthMetadata.pushedAuthorizationRequestEndpoint
@@ -325,6 +321,7 @@ class OAuth2KtorClient(
         } else {
             URLBuilder(authorizationEndpointUrl).also { builder ->
                 authRequest.encodeToParameters().forEach {
+                    // TODO check if it now contains type
                     builder.parameters.append(it.key, it.value)
                 }
                 builder.parameters.append(OpenIdConstants.PARAMETER_PROMPT, OpenIdConstants.PARAMETER_PROMPT_LOGIN)
@@ -336,18 +333,17 @@ class OAuth2KtorClient(
 
     private suspend fun pushAuthorizationRequest(
         oauthMetadata: OAuth2AuthorizationServerMetadata,
-        authRequest: AuthenticationRequestParameters,
+        authRequest: RequestParameters,
         state: String,
         popAudience: String,
         dpopNonce: String? = null,
         retryCount: Int = 0,
-    ): AuthenticationRequestParameters = oauthMetadata.pushedAuthorizationRequestEndpoint?.let { parEndpointUrl ->
+    ): JarRequestParameters = oauthMetadata.pushedAuthorizationRequestEndpoint?.let { parEndpointUrl ->
         client.request {
             url(parEndpointUrl)
             method = HttpMethod.Post
             setBody(FormDataContent(parameters {
-                authRequest.encodeToParameters<AuthenticationRequestParameters>()
-                    .forEach { append(it.key, it.value) }
+                setAuthRequestIntoParams(authRequest)
                 append(OpenIdConstants.PARAMETER_PROMPT, OpenIdConstants.PARAMETER_PROMPT_LOGIN)
             }))
             applyAuthnForToken(oauthMetadata, popAudience, parEndpointUrl, HttpMethod.Post, false, dpopNonce)()
@@ -356,13 +352,29 @@ class OAuth2KtorClient(
                 pushAuthorizationRequest(oauthMetadata, authRequest, state, popAudience, dpopNonce, retryCount + 1)
             } ?: throw Exception("Error requesting PAR: ${errorDescription ?: error}")
         }.onSuccessPar {
-            AuthenticationRequestParameters(
+            JarRequestParameters(
                 clientId = oAuth2Client.clientId,
                 requestUri = requestUri ?: throw Exception("No request_uri from PAR response at $parEndpointUrl"),
                 state = state,
             )
         }
     } ?: throw Exception("No pushedAuthorizationRequestEndpoint in $oauthMetadata")
+
+    private fun ParametersBuilder.setAuthRequestIntoParams(authRequest: RequestParameters) {
+        when (authRequest) {
+            is AuthenticationRequestParameters -> authRequest.encodeToParameters<AuthenticationRequestParameters>()
+                .forEach { append(it.key, it.value) }
+
+            is JarRequestParameters -> authRequest.encodeToParameters<JarRequestParameters>()
+                .forEach { append(it.key, it.value) }
+
+            is RequestObjectParameters -> authRequest.encodeToParameters<RequestObjectParameters>()
+                .forEach { append(it.key, it.value) }
+
+            is SignatureRequestParameters -> authRequest.encodeToParameters<SignatureRequestParameters>()
+                .forEach { append(it.key, it.value) }
+        }
+    }
 
     /**
      * Sets the appropriate headers when accessing [resourceUrl], by reading data from [tokenResponse],
