@@ -10,6 +10,7 @@ import at.asitplus.openid.ClientNonceResponse
 import at.asitplus.openid.CredentialOffer
 import at.asitplus.openid.CredentialResponseParameters
 import at.asitplus.openid.IssuerMetadata
+import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
@@ -19,6 +20,7 @@ import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SE
 import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.PushedAuthenticationResponseParameters
+import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
@@ -534,13 +536,19 @@ class OpenId4VciClient(
             ?: throw Exception("no authorizationEndpoint in $oauthMetadata")
         val wrapAsJar =
             oauthMetadata.requestObjectSigningAlgorithmsSupported?.contains(JwsAlgorithm.Signature.ES256) == true
-        val authRequest = oid4vciService.oauth2Client.createAuthRequest(
+
+        val authRequest = if (wrapAsJar) oid4vciService.oauth2Client.createAuthRequestJar(
             state = state,
             authorizationDetails = if (scope == null) authorizationDetails else null,
             issuerState = issuerState,
             scope = scope,
-            wrapAsJar = wrapAsJar
+        ) else oid4vciService.oauth2Client.createAuthRequest(
+            state = state,
+            authorizationDetails = if (scope == null) authorizationDetails else null,
+            issuerState = issuerState,
+            scope = scope,
         )
+
         val requiresPar = oauthMetadata.requirePushedAuthorizationRequests == true
         val parEndpointUrl = oauthMetadata.pushedAuthorizationRequestEndpoint
         val authorizationUrl = if (parEndpointUrl != null && requiresPar) {
@@ -552,13 +560,14 @@ class OpenId4VciClient(
                 tokenAuthMethods = oauthMetadata.tokenEndPointAuthMethodsSupported
             )
             URLBuilder(authorizationEndpointUrl).also { builder ->
-                authRequestAfterPar.encodeToParameters<AuthenticationRequestParameters>().forEach {
+                authRequestAfterPar.encodeToParameters<JarRequestParameters>().forEach {
                     builder.parameters.append(it.key, it.value)
                 }
             }.build().toString()
         } else {
             URLBuilder(authorizationEndpointUrl).also { builder ->
-                authRequest.encodeToParameters<AuthenticationRequestParameters>().forEach {
+                authRequest.encodeToParameters<RequestParameters>().forEach {
+                    //TODO Check if it now contains type
                     builder.parameters.append(it.key, it.value)
                 }
                 builder.parameters.append(PARAMETER_PROMPT, PARAMETER_PROMPT_LOGIN)
@@ -576,12 +585,12 @@ class OpenId4VciClient(
 
     @Throws(Exception::class)
     private suspend fun pushAuthorizationRequest(
-        authRequest: AuthenticationRequestParameters,
+        authRequest: RequestParameters,
         state: String,
         url: String,
         credentialIssuer: String,
         tokenAuthMethods: Set<String>?,
-    ): AuthenticationRequestParameters {
+    ): JarRequestParameters {
         val shouldIncludeClientAttestation = tokenAuthMethods?.contains(AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH) == true
         val clientAttestationJwt = if (shouldIncludeClientAttestation) {
             loadClientAttestationJwt?.invoke()
@@ -617,7 +626,7 @@ class OpenId4VciClient(
             throw Exception("No request_uri from PAR response at $url")
         }
 
-        return AuthenticationRequestParameters(
+        return JarRequestParameters(
             clientId = oid4vciService.clientId,
             requestUri = response.requestUri,
             state = state,
@@ -653,7 +662,7 @@ sealed interface CredentialIssuanceResult {
 
     /**
      * Open the [url] in a browser (so the user can authenticate at the AS), and store [context] to use in next call
-     * to [at.asitplus.wallet.lib.ktor.openid.OpenId4VciClient.resumeWithAuthCode].
+     * to [OpenId4VciClient.resumeWithAuthCode].
      */
     data class OpenUrlForAuthnRequest(
         val url: String,
