@@ -137,35 +137,6 @@ data class AuthenticationRequestParameters(
     val idTokenHint: String? = null,
 
     /**
-     * OAuth 2.0 JAR: REQUIRED unless `request_uri` is specified. The Request Object that holds authorization request
-     * parameters stated in Section 4 of RFC6749 (OAuth 2.0). If this parameter is present in the authorization request,
-     * `request_uri` MUST NOT be present.
-     */
-    @SerialName("request")
-    val request: String? = null,
-
-    /**
-     * OAuth 2.0 JAR: REQUIRED unless request is specified. The absolute URI, as defined by RFC3986, that is the
-     * Request Object URI referencing the authorization request parameters stated in Section 4 of RFC6749 (OAuth 2.0).
-     * If this parameter is present in the authorization request, `request` MUST NOT be present.
-     */
-    @SerialName("request_uri")
-    val requestUri: String? = null,
-
-    /**
-     * OpenID4VP: OPTIONAL. A string determining the HTTP method to be used when the [requestUri] parameter is included
-     * in the same request. Two case-sensitive valid values are defined in this specification: `get` and `post`.
-     * If [requestUriMethod] value is `get`, the Wallet MUST send the request to retrieve the Request Object using the
-     * HTTP GET method, i.e., as defined in RFC9101. If [requestUriMethod] value is `post`, a supporting Wallet MUST
-     * send the request using the HTTP POST method as detailed in Section 5.11. If the [requestUriMethod] parameter is
-     * not present, the Wallet MUST process the [requestUri] parameter as defined in RFC9101. Wallets not supporting
-     * the post method will send a GET request to the Request URI (default behavior as defined in RFC9101).
-     * [requestUriMethod] parameter MUST NOT be present if a [requestUri] parameter is not present.
-     */
-    @SerialName("request_uri_method")
-    val requestUriMethod: String? = null,
-
-    /**
      * OIDC SIOPv2: OPTIONAL. Space-separated string that specifies the types of ID Token the RP wants to obtain, with
      * the values appearing in order of preference. The allowed individual values are `subject_signed_id_token` and
      * `attester_signed_id_token`. The default value is `attester_signed_id_token`. The RP determines the type if
@@ -445,9 +416,6 @@ data class AuthenticationRequestParameters(
         if (clientMetadata != other.clientMetadata) return false
         if (clientMetadataUri != other.clientMetadataUri) return false
         if (idTokenHint != other.idTokenHint) return false
-        if (request != other.request) return false
-        if (requestUri != other.requestUri) return false
-        if (requestUriMethod != other.requestUriMethod) return false
         if (idTokenType != other.idTokenType) return false
         if (presentationDefinition != other.presentationDefinition) return false
         if (presentationDefinitionUrl != other.presentationDefinitionUrl) return false
@@ -493,9 +461,6 @@ data class AuthenticationRequestParameters(
         result = 31 * result + (clientMetadata?.hashCode() ?: 0)
         result = 31 * result + (clientMetadataUri?.hashCode() ?: 0)
         result = 31 * result + (idTokenHint?.hashCode() ?: 0)
-        result = 31 * result + (request?.hashCode() ?: 0)
-        result = 31 * result + (requestUri?.hashCode() ?: 0)
-        result = 31 * result + (requestUriMethod?.hashCode() ?: 0)
         result = 31 * result + (idTokenType?.hashCode() ?: 0)
         result = 31 * result + (presentationDefinition?.hashCode() ?: 0)
         result = 31 * result + (presentationDefinitionUrl?.hashCode() ?: 0)
