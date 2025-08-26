@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
+import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JwsSigned
@@ -190,7 +191,7 @@ class PreRegisteredClientTest : FreeSpec({
         val authnRequestUrl = verifierOid4vp.createAuthnRequest(
             defaultRequestOptions, OpenId4VpVerifier.CreationOptions.SignedRequestByValue(walletUrl)
         ).getOrThrow().url
-        val authnRequest: AuthenticationRequestParameters =
+        val authnRequest: JarRequestParameters =
             Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
         authnRequest.clientId shouldBe clientId
         val jar = authnRequest.request
