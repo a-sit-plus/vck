@@ -262,7 +262,7 @@ class OAuth2KtorClient(
             url(tokenEndpointUrl)
             method = HttpMethod.Post
             setBody(FormDataContent(parameters {
-                tokenRequest.encodeToParameters<TokenRequestParameters>().forEach { append(it.key, it.value) }
+                tokenRequest.encodeToParameters().forEach { append(it.key, it.value) }
             }))
             applyAuthnForToken(oauthMetadata, popAudience, tokenEndpointUrl, HttpMethod.Post, true)()
         }.body<TokenResponseParameters>()
@@ -311,13 +311,13 @@ class OAuth2KtorClient(
                 popAudience = authorizationServer,
             )
             URLBuilder(authorizationEndpointUrl).also { builder ->
-                authRequestAfterPar.encodeToParameters<AuthenticationRequestParameters>().forEach {
+                authRequestAfterPar.encodeToParameters().forEach {
                     builder.parameters.append(it.key, it.value)
                 }
             }.build().toString()
         } else {
             URLBuilder(authorizationEndpointUrl).also { builder ->
-                authRequest.encodeToParameters<AuthenticationRequestParameters>().forEach {
+                authRequest.encodeToParameters().forEach {
                     builder.parameters.append(it.key, it.value)
                 }
                 builder.parameters.append(OpenIdConstants.PARAMETER_PROMPT, OpenIdConstants.PARAMETER_PROMPT_LOGIN)

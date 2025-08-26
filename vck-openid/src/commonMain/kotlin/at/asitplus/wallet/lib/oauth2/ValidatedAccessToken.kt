@@ -2,10 +2,10 @@ package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OidcUserInfoExtended
-import at.asitplus.openid.OpenIdAuthorizationDetails
+import at.asitplus.wallet.lib.oidvci.TokenInfo
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
 
+/** Internal class representing issued tokens. */
 @Serializable
 data class ValidatedAccessToken(
     val token: String,
@@ -13,9 +13,10 @@ data class ValidatedAccessToken(
     val authorizationDetails: Set<AuthorizationDetails>? = null,
     val scope: String? = null,
 ) {
-    @Transient
-    val validCredentialIdentifiers = authorizationDetails
-        ?.filterIsInstance<OpenIdAuthorizationDetails>()
-        ?.flatMap { it.credentialIdentifiers ?: setOf() }
-        ?: setOf()
+    fun toTokenInfo() = TokenInfo(
+        token = token,
+        authorizationDetails = authorizationDetails,
+        scope = scope,
+    )
 }
+

@@ -15,6 +15,8 @@ import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_CREDENTIAL_ISSUER
 import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER
 import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION
 import at.asitplus.openid.PushedAuthenticationResponseParameters
+import at.asitplus.openid.TokenIntrospectionRequest
+import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
@@ -236,6 +238,7 @@ class OpenId4VciClientExternalAuthorizationServerTest : FunSpec() {
         val nonceEndpointPath = "/nonce"
         val parEndpointPath = "/par"
         val userInfoEndpointPath = "/userinfo"
+        val introspectionEndpointPath = "/introspection"
         issuerPublicContext = "https://issuer.example.com"
         val authServerPublicContext = "https://auth.example.com"
         externalAuthorizationServer = SimpleAuthorizationService(
@@ -245,6 +248,7 @@ class OpenId4VciClientExternalAuthorizationServerTest : FunSpec() {
             tokenEndpointPath = tokenEndpointPath,
             pushedAuthorizationRequestEndpointPath = parEndpointPath,
             userInfoEndpointPath = userInfoEndpointPath,
+            introspectionEndpointPath = introspectionEndpointPath,
             clientAuthenticationService = ClientAuthenticationService(
                 enforceClientAuthentication = true,
             ),
@@ -316,11 +320,20 @@ class OpenId4VciClientExternalAuthorizationServerTest : FunSpec() {
 
                 request.url.toString() == "$authServerPublicContext$userInfoEndpointPath" -> {
                     val authn = request.headers[HttpHeaders.Authorization]
-                    val result =
-                        // TODO How do we transport credential_configuration_id here?
-                        externalAuthorizationServer.userInfo(authn!!, null, null, request.toRequestInfo()).getOrThrow()
+                    val result = externalAuthorizationServer.getUserInfo(authn!!, request.toRequestInfo()).getOrThrow()
                     respond(
                         vckJsonSerializer.encodeToString<JsonObject>(result),
+                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    )
+                }
+
+                request.url.toString() == "$authServerPublicContext$introspectionEndpointPath" -> {
+                    val requestBody = request.body.toByteArray().decodeToString()
+                    val params = requestBody.decodeFromPostBody<TokenIntrospectionRequest>()
+                    val result =
+                        externalAuthorizationServer.tokenIntrospection(params, request.toRequestInfo()).getOrThrow()
+                    respond(
+                        vckJsonSerializer.encodeToString<TokenIntrospectionResponse>(result),
                         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                     )
                 }

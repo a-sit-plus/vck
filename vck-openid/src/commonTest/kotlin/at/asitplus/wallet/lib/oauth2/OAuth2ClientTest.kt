@@ -74,8 +74,15 @@ class OAuth2ClientTest : FunSpec({
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
             scope = scope
         )
-        val token = server.token(tokenRequest, null, null).getOrThrow()
-        token.authorizationDetails.shouldBeNull()
+        val token = server.token(tokenRequest, null, null).getOrThrow().apply {
+            authorizationDetails.shouldBeNull()
+        }
+        server.tokenIntrospection(
+            TokenIntrospectionRequest(token = token.accessToken),
+            null
+        ).getOrThrow().apply {
+            active shouldBe true
+        }
     }
 
     test("process with authorization code flow, and PAR") {
@@ -96,8 +103,15 @@ class OAuth2ClientTest : FunSpec({
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
             scope = scope
         )
-        val token = server.token(tokenRequest, null, null).getOrThrow()
-        token.authorizationDetails.shouldBeNull()
+        val token = server.token(tokenRequest, null, null).getOrThrow().apply {
+            authorizationDetails.shouldBeNull()
+        }
+        server.tokenIntrospection(
+            TokenIntrospectionRequest(token = token.accessToken),
+            null
+        ).getOrThrow().apply {
+            active shouldBe true
+        }
     }
 
     test("process with authorization code flow, front channel") {
@@ -161,9 +175,17 @@ class OAuth2ClientTest : FunSpec({
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
             scope = null // already specified in authnrequest
         )
-        val token = server.token(tokenRequest, null, null).getOrThrow()
-        token.authorizationDetails.shouldBeNull()
-        token.scope.shouldBe(scope)
+        val token = server.token(tokenRequest, null, null).getOrThrow().apply {
+            authorizationDetails.shouldBeNull()
+            scope.shouldBe(scope)
+        }
+
+        server.tokenIntrospection(
+            TokenIntrospectionRequest(token = token.accessToken),
+            null
+        ).getOrThrow().apply {
+            active shouldBe true
+        }
     }
 
 })

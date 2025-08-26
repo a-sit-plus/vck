@@ -1,9 +1,13 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.KmmResult
+import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
+import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.TokenVerificationService
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import kotlinx.serialization.json.JsonObject
 
 /**
@@ -21,22 +25,46 @@ interface OAuth2AuthorizationServerAdapter {
     val tokenVerificationService: TokenVerificationService
 
     @Deprecated("Use [metadata()] instead")
-    /** Provide necessary [OAuth2AuthorizationServerMetadata] JSON for a client to be able to authenticate. */
+            /** Provide necessary [OAuth2AuthorizationServerMetadata] JSON for a client to be able to authenticate. */
     val metadata: OAuth2AuthorizationServerMetadata
 
     /** Provide necessary [OAuth2AuthorizationServerMetadata] JSON for a client to be able to authenticate. */
     suspend fun metadata(): OAuth2AuthorizationServerMetadata
 
     /**
-     * Obtains [at.asitplus.openid.OidcUserInfoExtended] from the Authorization Server, for which the AS will
-     * verify the access token sent by the client (either directly, or with a token exchange step before).
+     * Obtains information about the token, either by performing token introspection,
+     * or by decoding the access token directly (if it is an [at.asitplus.wallet.lib.oauth2.OpenId4VciAccessToken]).
      */
-    suspend fun userInfo(
+    suspend fun getTokenInfo(
         authorizationHeader: String,
-        credentialIdentifier: String?,
-        credentialConfigurationId: String?,
+        request: RequestInfo?,
+    ): KmmResult<TokenInfo>
+
+    /**
+     * Obtains a JSON object representing [at.asitplus.openid.OidcUserInfo] from the Authorization Server,
+     * with the wallet's access token in [authorizationHeader]
+     * (which the implementation may need to exchange at the AS first).
+     */
+    suspend fun getUserInfo(
+        authorizationHeader: String,
         request: RequestInfo?,
     ): KmmResult<JsonObject>
 
 }
 
+
+/**
+ * Internal data class for a token introspection result
+ */
+@Serializable
+data class TokenInfo(
+    val token: String,
+    val authorizationDetails: Set<AuthorizationDetails>? = null,
+    val scope: String? = null,
+) {
+    @Transient
+    val validCredentialIdentifiers = authorizationDetails
+        ?.filterIsInstance<OpenIdAuthorizationDetails>()
+        ?.flatMap { it.credentialIdentifiers ?: setOf() }
+        ?: setOf()
+}
