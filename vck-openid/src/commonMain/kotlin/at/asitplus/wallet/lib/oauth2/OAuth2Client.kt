@@ -9,6 +9,7 @@ import at.asitplus.openid.CredentialOfferGrantsAuthCode
 import at.asitplus.openid.CredentialOfferGrantsPreAuthCode
 import at.asitplus.openid.CredentialRequestProof
 import at.asitplus.openid.IssuerMetadata
+import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.CODE_CHALLENGE_METHOD_SHA256
@@ -89,17 +90,13 @@ class OAuth2Client(
      * @param resource from RFC 8707 Resource Indicators for OAuth 2.0, in OID4VCI flows the value
      * of [IssuerMetadata.credentialIssuer]
      * @param issuerState for OID4VCI flows the value from [CredentialOfferGrantsAuthCode.issuerState]
-     * @param audience for PAR the value of the `issuer` of the Authorization Server
-     * @param wrapAsJar whether to wrap the request as a JAR (i.e. a signed JWS with the authn request as payload)
      */
     suspend fun createAuthRequest(
         state: String,
         authorizationDetails: Set<AuthorizationDetails>? = null,
         scope: String? = null,
         resource: String? = null,
-        issuerState: String? = null,
-        audience: String? = null,
-        wrapAsJar: Boolean = true,
+        issuerState: String? = null
     ) = AuthenticationRequestParameters(
         responseType = GRANT_TYPE_CODE,
         state = state,
@@ -111,27 +108,30 @@ class OAuth2Client(
         redirectUrl = redirectUrl,
         codeChallenge = generateCodeVerifier(state),
         codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256
-    ).wrapIfNecessary(wrapAsJar, audience)
-
-    private suspend fun AuthenticationRequestParameters.wrapIfNecessary(wrapAsJar: Boolean, audience: String?) =
-        if (signPushedAuthorizationRequest != null && wrapAsJar)
-            wrapInJar(signPushedAuthorizationRequest, audience)
-        else this
-
-    private suspend fun AuthenticationRequestParameters.wrapInJar(
-        signAuthorizationRequest: SignJwtFun<AuthenticationRequestParameters>,
-        audience: String?,
-    ) = AuthenticationRequestParameters(
-        clientId = clientId,
-        request = signAuthorizationRequest(
-            JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST,
-            this.copy(
-                audience = audience,
-                issuer = this.clientId,
-            ),
-            AuthenticationRequestParameters.serializer(),
-        ).getOrThrow().serialize()
     )
+
+    suspend fun createAuthRequestJar(
+        state: String,
+        authorizationDetails: Set<AuthorizationDetails>? = null,
+        scope: String? = null,
+        resource: String? = null,
+        issuerState: String? = null,
+        audience: String? = null,
+    ) = signPushedAuthorizationRequest?.let { signJwtFun ->
+        createAuthRequest(state, authorizationDetails, scope, resource, issuerState).let {
+            JarRequestParameters(
+                clientId = clientId,
+                request = signPushedAuthorizationRequest(
+                    JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST,
+                    it.copy(
+                        audience = audience,
+                        issuer = it.clientId,
+                    ),
+                    AuthenticationRequestParameters.serializer(),
+                ).getOrThrow().serialize()
+            )
+        }
+    } ?: throw Exception("SignPushedAuthorizationRequest is null.")
 
     /**
      * Send the result as parameters to the server at [OAuth2AuthorizationServerMetadata.authorizationEndpoint].
@@ -142,7 +142,7 @@ class OAuth2Client(
      */
     suspend fun createAuthRequestAfterPar(
         parResponse: PushedAuthenticationResponseParameters,
-    ) = AuthenticationRequestParameters(
+    ) = JarRequestParameters(
         clientId = clientId,
         requestUri = parResponse.requestUri,
     )
