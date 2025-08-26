@@ -20,12 +20,10 @@ interface OAuth2AuthorizationServerAdapter {
     /** Used in several fields in [at.asitplus.openid.IssuerMetadata], to provide endpoint URLs to clients. */
     val publicContext: String
 
-    /** How to verify the access tokens that [CredentialIssuer] needs to verify before issuing credentials. */
-    @Deprecated("Use [userInfo] instead")
+    @Deprecated("Use [validateAccessToken] instead")
     val tokenVerificationService: TokenVerificationService
 
     @Deprecated("Use [metadata()] instead")
-            /** Provide necessary [OAuth2AuthorizationServerMetadata] JSON for a client to be able to authenticate. */
     val metadata: OAuth2AuthorizationServerMetadata
 
     /** Provide necessary [OAuth2AuthorizationServerMetadata] JSON for a client to be able to authenticate. */
@@ -37,7 +35,7 @@ interface OAuth2AuthorizationServerAdapter {
      */
     suspend fun getTokenInfo(
         authorizationHeader: String,
-        request: RequestInfo?,
+        httpRequest: RequestInfo?,
     ): KmmResult<TokenInfo>
 
     /**
@@ -47,8 +45,16 @@ interface OAuth2AuthorizationServerAdapter {
      */
     suspend fun getUserInfo(
         authorizationHeader: String,
-        request: RequestInfo?,
+        httpRequest: RequestInfo?,
     ): KmmResult<JsonObject>
+
+    /**
+     * Validates the access token sent to [CredentialIssuer.credential]
+     */
+    suspend fun validateAccessToken(
+        authorizationHeader: String,
+        httpRequest: RequestInfo?,
+    ): KmmResult<Boolean>
 
 }
 

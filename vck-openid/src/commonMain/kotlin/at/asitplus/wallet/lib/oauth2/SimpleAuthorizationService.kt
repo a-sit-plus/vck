@@ -83,7 +83,7 @@ class SimpleAuthorizationService(
     private val pushedAuthorizationRequestEndpointPath: String = "/par",
     /**
      * Used to build [OAuth2AuthorizationServerMetadata.userInfoEndpoint], i.e. implementers need to forward POST or GET
-     * requests to that URI (which starts with [publicContext]) to [getUserInfo].
+     * requests to that URI (which starts with [publicContext]) to [userInfo].
      */
     private val userInfoEndpointPath: String = "/userinfo",
     /**
@@ -117,7 +117,6 @@ class SimpleAuthorizationService(
     ),
 ) : OAuth2AuthorizationServerAdapter, AuthorizationService {
 
-    @Deprecated("Use [validateTokenExtractUser] instead")
     override val tokenVerificationService: TokenVerificationService
         get() = tokenService.verification
 
@@ -504,23 +503,13 @@ class SimpleAuthorizationService(
     override suspend fun userInfo(
         authorizationHeader: String,
         httpRequest: RequestInfo?,
-    ): KmmResult<JsonObject> = catching {
-        clientAuthenticationService.authenticateClient(
-            httpRequest?.clientAttestation,
-            httpRequest?.clientAttestationPop,
-            null, // TODO is this correct?
-        )
-        with(tokenService.verification.validateTokenExtractUser(authorizationHeader, httpRequest)) {
-            userInfoExtended?.jsonObject
-                ?: throw InvalidGrant("no user info found for $authorizationHeader")
-        }
-    }
+    ): KmmResult<JsonObject> = getUserInfo(authorizationHeader, httpRequest)
 
     override suspend fun getUserInfo(
         authorizationHeader: String,
-        request: RequestInfo?,
+        httpRequest: RequestInfo?,
     ): KmmResult<JsonObject> = catching {
-        with(tokenService.verification.validateTokenExtractUser(authorizationHeader, request)) {
+        with(tokenService.validateTokenExtractUser(authorizationHeader, httpRequest)) {
             userInfoExtended?.jsonObject
                 ?: throw InvalidGrant("no user info found for $authorizationHeader")
         }
@@ -528,7 +517,7 @@ class SimpleAuthorizationService(
 
     override suspend fun getTokenInfo(
         authorizationHeader: String,
-        request: RequestInfo?,
+        httpRequest: RequestInfo?,
     ): KmmResult<TokenInfo> = catching {
         tokenService.verification.getTokenInfo(authorizationHeader)
     }
@@ -552,5 +541,12 @@ class SimpleAuthorizationService(
             scope = validated.scope,
             authorizationDetails = validated.authorizationDetails,
         )
+    }
+
+    override suspend fun validateAccessToken(
+        authorizationHeader: String,
+        httpRequest: RequestInfo?,
+    ): KmmResult<Boolean> = catching {
+        tokenService.verification.validateAccessToken(authorizationHeader, httpRequest).isSuccess
     }
 }
