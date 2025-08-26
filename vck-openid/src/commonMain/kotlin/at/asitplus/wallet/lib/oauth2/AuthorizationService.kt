@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.KmmResult
 import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
@@ -54,6 +55,22 @@ interface AuthorizationService {
         httpRequest: RequestInfo? = null,
     ): KmmResult<PushedAuthenticationResponseParameters>
 
+
+    /**
+     * Pushed authorization request endpoint as defined in [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html).
+     * Clients send their authorization request as HTTP `POST` with `application/x-www-form-urlencoded` to the AS.
+     *
+     * Responses have to be sent with HTTP status code `201`.
+     *
+     * @param request as sent from the client as `POST`
+     * @param httpRequest information about the HTTP request from the client to validate authentication
+     * @return [KmmResult] may contain a [OAuth2Exception]
+     */
+    suspend fun par(
+        request: JarRequestParameters,
+        httpRequest: RequestInfo? = null,
+    ): KmmResult<PushedAuthenticationResponseParameters>
+
     /**
      * Pushed authorization request endpoint as defined in [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html).
      * Clients send their authorization request as HTTP `POST` with `application/x-www-form-urlencoded` to the AS.
@@ -74,6 +91,16 @@ interface AuthorizationService {
      * (called when request has been validated).
      * Send this result as HTTP Header `Location` in a 302 response to the client.
      * @return URL built from client's `redirect_uri` with `code` parameter, [KmmResult] may contain a [OAuth2Exception]
+     */
+    suspend fun authorize(
+        input: JarRequestParameters,
+        loadUserFun: OAuth2LoadUserFun,
+    ): KmmResult<AuthenticationResponseResult.Redirect>
+
+    /**
+     * Builds the authentication response for this specific user from [loadUserFun].
+     * Send this result as HTTP Header `Location` in a 302 response to the client.
+     * @return [KmmResult] may contain a [OAuth2Exception]
      */
     suspend fun authorize(
         input: AuthenticationRequestParameters,

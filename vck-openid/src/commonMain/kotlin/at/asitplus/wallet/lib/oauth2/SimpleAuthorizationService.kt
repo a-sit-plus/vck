@@ -11,6 +11,7 @@ import at.asitplus.openid.CredentialOfferGrants
 import at.asitplus.openid.CredentialOfferGrantsAuthCode
 import at.asitplus.openid.CredentialOfferGrantsPreAuthCode
 import at.asitplus.openid.CredentialOfferUrlParameters
+import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
@@ -254,10 +255,35 @@ class SimpleAuthorizationService(
         input: String,
         httpRequest: RequestInfo?,
     ) = catching {
-        requestParser.parseRequestParameters(input).getOrThrow()
-            .let { it.parameters as? AuthenticationRequestParameters }
-            ?.let { par(it, httpRequest).getOrThrow() }
-            ?: throw InvalidRequest("Could not parse request parameters from $input")
+        when (val param = requestParser.parseRequestParameters(input).getOrThrow().parameters) {
+            is JarRequestParameters -> par(param, httpRequest).getOrThrow()
+            is AuthenticationRequestParameters -> par(param, httpRequest).getOrThrow()
+            else -> throw InvalidRequest("Could not parse request parameters from $input")
+        }
+    }
+
+    /**
+     * Pushed authorization request endpoint as defined in [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html).
+     * Clients send their authorization request as HTTP `POST` with `application/x-www-form-urlencoded` to the AS.
+     *
+     * Responses have to be sent with HTTP status code `201`.
+     *
+     * @param request as sent from the client as `POST`
+     * @param httpRequest information about the HTTP request from the client to validate authentication
+     * @return [KmmResult] may contain a [OAuth2Exception]
+     */
+    override suspend fun par(
+        request: JarRequestParameters,
+        httpRequest: RequestInfo?,
+    ) = catching {
+        if (request.requestUri != null) {
+            throw InvalidRequest("request_uri must not be set")
+        }
+        val actualRequest =
+            requestParser.extractRequestParameterFromJAR(request)?.parameters as? AuthenticationRequestParameters
+                ?: throw InvalidRequest("request must contain valid request parameters")
+
+        par(actualRequest, httpRequest).getOrThrow()
     }
 
     /**
@@ -279,15 +305,16 @@ class SimpleAuthorizationService(
             throw InvalidRequest("request_uri must not be set")
         }
         clientAuthenticationService.authenticateClient(httpRequest, request.clientId)
-        val actualRequest = requestParser.extractActualRequest(request).getOrThrow().validate()
+        request.validate()
         val requestUri = "urn:ietf:params:oauth:request_uri:${uuid4()}".also {
-            requestUriToPushedAuthorizationRequest.put(it, actualRequest)
+            requestUriToPushedAuthorizationRequest.put(it, request)
         }
         PushedAuthenticationResponseParameters(
             requestUri = requestUri,
             expires = 5.minutes,
         )
     }
+
 
     /**
      * Builds the authentication response for this specific user from [loadUserFun]
@@ -299,15 +326,51 @@ class SimpleAuthorizationService(
         input: AuthenticationRequestParameters,
         loadUserFun: OAuth2LoadUserFun,
     ) = catching {
+        input.validate()
+        val code = codeService.provideCode().also { code ->
+            val userInfo = loadUserFun(OAuth2LoadUserFunInput(input)).getOrElse {
+                Napier.w("authorize: could not load user info from $input", it)
+                throw InvalidRequest("Could not load user info for request $input", it)
+            }
+            codeToClientAuthRequest.put(
+                code,
+                ClientAuthRequest(
+                    issuedCode = code,
+                    userInfo = userInfo,
+                    scope = input.scope,
+                    authnDetails = input.authorizationDetails,
+                    codeChallenge = input.codeChallenge
+                )
+            )
+        }
+        val response = AuthenticationResponseParameters(
+            code = code,
+            state = input.state,
+        )
+
+        val url = URLBuilder(input.redirectUrl!!)
+            .apply { response.encodeToParameters().forEach { this.parameters.append(it.key, it.value) } }
+            .buildString()
+
+        AuthenticationResponseResult.Redirect(url, response)
+            .also { Napier.i("authorize returns $it") }
+    }
+
+    /**
+     * Builds the authentication response.
+     * Send this result as HTTP Header `Location` in a 302 response to the client.
+     * @param loadUserFun will be called when the request has been validated, and user data is associated with
+     *                    the authorization code.
+     * @return URL build from client's `redirect_uri` with a `code` query parameter containing a fresh authorization
+     * code from [codeService].
+     */
+    override suspend fun authorize(
+        input: JarRequestParameters,
+        loadUserFun: OAuth2LoadUserFun,
+    ) = catching {
         Napier.i("authorize called with $input")
         val request = extractActualRequest(input)
-        val userInfo = loadUserFun(OAuth2LoadUserFunInput(request)).getOrElse {
-            throw InvalidRequest("Could not load user info for request $request", it)
-        }
-        with(request) {
-            issueCodeForUserInfo(userInfo, state, codeChallenge, authorizationDetails, scope, redirectUrl!!)
-                .also { Napier.i("authorize returns $it") }
-        }
+        authorize(request, loadUserFun).getOrThrow()
     }
 
     internal suspend fun issueCodeForUserInfo(
@@ -342,7 +405,7 @@ class SimpleAuthorizationService(
     }
 
     internal suspend fun extractActualRequest(
-        input: AuthenticationRequestParameters,
+        input: JarRequestParameters
     ): AuthenticationRequestParameters = if (input.requestUri != null) {
         requestUriToPushedAuthorizationRequest.remove(input.requestUri!!)?.apply {
             if (clientId != input.clientId) {
@@ -350,7 +413,8 @@ class SimpleAuthorizationService(
             }
         } ?: throw InvalidRequest("request_uri set, but not found")
     } else {
-        requestParser.extractActualRequest(input).getOrThrow()
+        (requestParser.extractRequestParameterFromJAR(input)?.parameters as? AuthenticationRequestParameters)
+            ?: throw InvalidRequest("could not parse request object from request")
     }.validate()
 
     /**
