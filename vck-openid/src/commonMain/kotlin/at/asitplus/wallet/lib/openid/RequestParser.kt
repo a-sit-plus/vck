@@ -5,6 +5,7 @@ import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.dcapi.request.DCAPIRequest
 import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.RequestParameters
@@ -51,7 +52,7 @@ class RequestParser(
         input: String,
         dcApiRequest: DCAPIRequest? = null,
     ): KmmResult<RequestParametersFrom<*>> = catching {
-        input.parseParameters(dcApiRequest).extractRequestObject(dcApiRequest)
+        input.parseParameters(dcApiRequest).extractRequestParameterFromJAR(dcApiRequest)
     }
 
     private suspend fun String.parseParameters(
@@ -62,10 +63,10 @@ class RequestParser(
             ?: parseFromJson(dcApiRequest)
             ?: throw InvalidRequest("parse error: $this")
 
-    private suspend fun RequestParametersFrom<out RequestParameters>.extractRequestObject(
+    private suspend fun RequestParametersFrom<out RequestParameters>.extractRequestParameterFromJAR(
         dcApiRequest: DCAPIRequest?,
     ): RequestParametersFrom<*> =
-        (this.parameters as? AuthenticationRequestParameters)?.extractRequestObject(dcApiRequest) ?: this
+        (this.parameters as? JarRequestParameters)?.let { extractRequestParameterFromJAR(it, dcApiRequest) } ?: this
 
     private fun String.parseFromParameters(): RequestParametersFrom<*>? = catchingUnwrapped {
         Url(this).let {
@@ -86,44 +87,26 @@ class RequestParser(
         RequestParametersFrom.Json(this, params, dcApiRequest)
     }.getOrNull()
 
-    /**
-     * Extracts the actual request, referenced by the passed-in [input],
-     * e.g. extracting [AuthenticationRequestParameters.request]
-     * or [AuthenticationRequestParameters.requestUri] if necessary.
-     */
-    suspend fun extractActualRequest(
-        input: AuthenticationRequestParameters,
-    ): KmmResult<AuthenticationRequestParameters> = catching {
-        input.extractRequest()
-    }
-
-    private suspend fun AuthenticationRequestParameters.extractRequest(
-    ): AuthenticationRequestParameters =
-        request?.let { it.parseAsRequestObjectJws()?.parameters as? AuthenticationRequestParameters }
-            ?: requestUri
-                ?.let { uri -> remoteResourceRetriever.invoke(resourceRetrieverInput(uri)) }
-                ?.let { parseRequestParameters(it).getOrNull()?.parameters as? AuthenticationRequestParameters }
-            ?: this
-
-    private suspend fun AuthenticationRequestParameters.extractRequestObject(
-        dcApiRequest: DCAPIRequest?,
-    ): RequestParametersFrom<*>? = request?.let {
+    suspend fun extractRequestParameterFromJAR(
+        parameters: JarRequestParameters,
+        dcApiRequest: DCAPIRequest? = null,
+    ): RequestParametersFrom<*>? = parameters.request?.let {
         it.parseAsRequestObjectJws(dcApiRequest)
             ?: it.parseFromJson(dcApiRequest)
-    } ?: requestUri
-        ?.let { remoteResourceRetriever.invoke(resourceRetrieverInput(it)) }
+    } ?: parameters.requestUri
+        ?.let { remoteResourceRetriever.invoke(parameters.resourceRetrieverInput(it)) }
         ?.let {
             it.parseAsRequestObjectJws(dcApiRequest)
                 ?: it.parseFromJson(dcApiRequest)
-                ?: throw InvalidRequest("URL not valid: $requestUri")
+                ?: throw InvalidRequest("URL not valid: ${parameters.requestUri}")
         }
 
 
-    private suspend fun AuthenticationRequestParameters.resourceRetrieverInput(
+    private suspend fun JarRequestParameters.resourceRetrieverInput(
         uri: String,
     ): RemoteResourceRetrieverInput = RemoteResourceRetrieverInput(
         url = uri,
-        method = requestUriMethod.toHttpMethod(),
+        method = requestUriMethod?.toHttpMethod() ?: HttpMethod.Get,
         headers = mapOf(HttpHeaders.Accept to MediaTypes.Application.AUTHZ_REQ_JWT),
         requestObjectParameters = buildRequestObjectParameters.invoke()
     )
@@ -142,7 +125,3 @@ class RequestParser(
 
 }
 
-private fun String?.toHttpMethod(): HttpMethod = when (this) {
-    "post" -> HttpMethod.Post
-    else -> HttpMethod.Get
-}
