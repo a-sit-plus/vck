@@ -5,6 +5,7 @@ import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.dcapi.request.DCAPIRequest
 import at.asitplus.openid.*
+import at.asitplus.openid.JarRequestParameters.RequestUriMethod
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
@@ -17,7 +18,6 @@ import at.asitplus.wallet.lib.oidvci.json
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.ktor.util.*
-import kotlinx.serialization.PolymorphicSerializer
 import kotlinx.serialization.json.JsonObject
 
 class RequestParser(
@@ -57,43 +57,26 @@ class RequestParser(
                     matchRequestParameterCases(it, parsed, dcApiRequest)
                 }
             }.onFailure {
-                Napier.d("parseRequestParameters: Failed for $input", it)
+                Napier.v("parseRequestParameters: Failed for $input", it)
             }.getOrNull()
             ?: catching {  // maybe it is already a JSON string
                 val params = vckJsonSerializer.decodeFromString(RequestParameters.serializer(), input)
                 matchRequestParameterCases(input, params, dcApiRequest)
             }.onFailure {
-                Napier.d("parseRequestParameters: Failed for $input", it)
+                Napier.v("parseRequestParameters: Failed for $input", it)
             }.getOrNull()
             ?: throw InvalidRequest("parse error")
                 .also { Napier.w("Could not parse authentication request: $input") }
 
-        (parsedParams.parameters as? AuthenticationRequestParameters)?.let {
-            extractRequestObject(it, dcApiRequest)
+        (parsedParams.parameters as? JarRequestParameters)?.let {
+            extractRequestParameterFromJAR(it, dcApiRequest)
         } ?: parsedParams
             .also { Napier.i("Parsed authentication request: $it") }
     }
 
-    /**
-     * Extracts the actual request, referenced by the passed-in [input],
-     * e.g. extracting [AuthenticationRequestParameters.request]
-     * or [AuthenticationRequestParameters.requestUri] if necessary.
-     */
-    suspend fun extractActualRequest(
-        input: AuthenticationRequestParameters,
-    ): KmmResult<AuthenticationRequestParameters> = catching {
-        input.request?.let {
-            parseRequestObjectJws(it)?.parameters as? AuthenticationRequestParameters
-        } ?: input.requestUri?.let { uri ->
-            remoteResourceRetriever.invoke(input.resourceRetrieverInput(uri))?.let {
-                parseRequestParameters(it).getOrNull()?.parameters as? AuthenticationRequestParameters
-            }
-        } ?: input
-    }
-
-    private suspend fun extractRequestObject(
-        params: AuthenticationRequestParameters,
-        dcApiRequest: DCAPIRequest?
+    suspend fun extractRequestParameterFromJAR(
+        params: JarRequestParameters,
+        dcApiRequest: DCAPIRequest? = null
     ): RequestParametersFrom<*>? =
         params.request?.let { requestObject ->
             parseRequestObjectJws(requestObject, dcApiRequest)
@@ -102,11 +85,11 @@ class RequestParser(
                 ?.let { parseRequestParameters(it).getOrNull() }
         }
 
-    private suspend fun AuthenticationRequestParameters.resourceRetrieverInput(
+    private suspend fun JarRequestParameters.resourceRetrieverInput(
         uri: String,
     ): RemoteResourceRetrieverInput = RemoteResourceRetrieverInput(
         url = uri,
-        method = requestUriMethod.toHttpMethod(),
+        method = if (requestUriMethod == RequestUriMethod.POST) HttpMethod.Post else HttpMethod.Get,
         headers = mapOf(HttpHeaders.Accept to MediaTypes.AUTHZ_REQ_JWT),
         requestObjectParameters = buildRequestObjectParameters.invoke()
     )
@@ -120,7 +103,7 @@ class RequestParser(
             requestObject,
             vckJsonSerializer
         ).onFailure {
-            Napier.d("parseRequestObjectJws: Error for $requestObject", it)
+            Napier.v("parseRequestObjectJws: Error for $requestObject", it)
         }.getOrNull()?.let { jws ->
             if (requestObjectJwsVerifier.invoke(jws)) {
                 RequestParametersFrom.JwsSigned(jws, jws.payload, dcApiRequest)
@@ -146,9 +129,4 @@ class RequestParser(
             is String -> RequestParametersFrom.Json(input, params, dcApiRequest)
             else -> throw Exception("matchRequestParameterCases: unknown type ${input?.let { it::class.simpleName } ?: "null"}")
         }
-}
-
-private fun String?.toHttpMethod(): HttpMethod = when (this) {
-    "post" -> HttpMethod.Post
-    else -> HttpMethod.Get
 }
