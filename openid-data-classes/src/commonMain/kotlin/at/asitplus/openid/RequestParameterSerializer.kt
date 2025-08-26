@@ -14,7 +14,7 @@ object RequestParametersSerializer : JsonContentPolymorphicSerializer<RequestPar
         val parameters = element.jsonObject
         return when {
             "documentDigests" in parameters -> SignatureRequestParameters.serializer()
-            ("request" in parameters) || ("requestUri" in parameters) -> JarRequestParameters.serializer()
+            ("request" in parameters) || ("request_uri" in parameters) -> JarRequestParameters.serializer()
             else -> AuthenticationRequestParameters.serializer()
         }
     }
