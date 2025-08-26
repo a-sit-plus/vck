@@ -10,6 +10,7 @@ import at.asitplus.openid.CredentialOfferGrants
 import at.asitplus.openid.CredentialOfferGrantsAuthCode
 import at.asitplus.openid.CredentialOfferGrantsPreAuthCode
 import at.asitplus.openid.CredentialOfferUrlParameters
+import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
@@ -185,13 +186,31 @@ class SimpleAuthorizationService(
         clientAttestation: String?,
         clientAttestationPop: String?,
     ) = catching {
-        requestParser.parseRequestParameters(input).getOrThrow()
-            .let { it.parameters as? AuthenticationRequestParameters }
-            ?.let { par(it, clientAttestation, clientAttestationPop).getOrThrow() }
-            ?: run {
+        when (val param = requestParser.parseRequestParameters(input).getOrThrow().parameters) {
+            is JarRequestParameters -> par(param, clientAttestation, clientAttestationPop).getOrThrow()
+            is AuthenticationRequestParameters -> par(param, clientAttestation, clientAttestationPop).getOrThrow()
+            else -> run {
                 Napier.w("par: could not parse request parameters from $input")
                 throw InvalidRequest("Could not parse request parameters from $input")
             }
+        }
+    }
+
+
+    override suspend fun par(
+        request: JarRequestParameters,
+        clientAttestation: String?,
+        clientAttestationPop: String?,
+    ) = catching {
+        if (request.requestUri != null) {
+            Napier.w("par: client set request_uri: ${request.requestUri}")
+            throw InvalidRequest("request_uri must not be set")
+        }
+        val actualRequest =
+            requestParser.extractRequestParameterFromJAR(request)?.parameters as? AuthenticationRequestParameters
+                ?: throw InvalidRequest("request must contain valid request parameters")
+
+        par(actualRequest, clientAttestation, clientAttestationPop).getOrThrow()
     }
 
     /**
@@ -211,22 +230,17 @@ class SimpleAuthorizationService(
     ) = catching {
         Napier.i("pushedAuthorization called with $request")
 
-        if (request.requestUri != null) {
-            Napier.w("par: client set request_uri: ${request.requestUri}")
-            throw InvalidRequest("request_uri must not be set")
-        }
-
         clientAuthenticationService.authenticateClient(clientAttestation, clientAttestationPop, request.clientId)
-        val actualRequest = requestParser.extractActualRequest(request).getOrThrow().validate()
-
+        request.validate()
         val requestUri = "urn:ietf:params:oauth:request_uri:${uuid4()}".also {
-            requestUriToPushedAuthorizationRequest.put(it, actualRequest)
+            requestUriToPushedAuthorizationRequest.put(it, request)
         }
         PushedAuthenticationResponseParameters(
             requestUri = requestUri,
             expires = 5.minutes,
         )
     }
+
 
     /**
      * Builds the authentication response.
@@ -238,6 +252,49 @@ class SimpleAuthorizationService(
      */
     override suspend fun authorize(
         input: AuthenticationRequestParameters,
+        loadUserFun: OAuth2LoadUserFun,
+    ) = catching {
+        input.validate()
+
+        val code = codeService.provideCode().also { code ->
+            val userInfo = loadUserFun(OAuth2LoadUserFunInput(input, code)).getOrElse {
+                Napier.w("authorize: could not load user info from $input", it)
+                throw InvalidRequest("Could not load user info for request $input", it)
+            }
+            codeToClientAuthRequest.put(
+                code,
+                ClientAuthRequest(
+                    issuedCode = code,
+                    userInfo = userInfo,
+                    scope = input.scope,
+                    authnDetails = input.authorizationDetails,
+                    codeChallenge = input.codeChallenge
+                )
+            )
+        }
+        val response = AuthenticationResponseParameters(
+            code = code,
+            state = input.state,
+        )
+
+        val url = URLBuilder(input.redirectUrl!!)
+            .apply { response.encodeToParameters().forEach { this.parameters.append(it.key, it.value) } }
+            .buildString()
+
+        AuthenticationResponseResult.Redirect(url, response)
+            .also { Napier.i("authorize returns $it") }
+    }
+
+    /**
+     * Builds the authentication response.
+     * Send this result as HTTP Header `Location` in a 302 response to the client.
+     * @param loadUserFun will be called when the request has been validated, and user data is associated with
+     *                    the authorization code.
+     * @return URL build from client's `redirect_uri` with a `code` query parameter containing a fresh authorization
+     * code from [codeService].
+     */
+    override suspend fun authorize(
+        input: JarRequestParameters,
         loadUserFun: OAuth2LoadUserFun,
     ) = catching {
         Napier.i("authorize called with $input")
@@ -253,36 +310,10 @@ class SimpleAuthorizationService(
                 throw InvalidRequest("request_uri set, but not found")
             }
         } else {
-            requestParser.extractActualRequest(input).getOrThrow()
-        }.validate()
-
-        val code = codeService.provideCode().also { code ->
-            val userInfo = loadUserFun(OAuth2LoadUserFunInput(request, code)).getOrElse {
-                Napier.w("authorize: could not load user info from $request", it)
-                throw InvalidRequest("Could not load user info for request $request", it)
-            }
-            codeToClientAuthRequest.put(
-                code,
-                ClientAuthRequest(
-                    issuedCode = code,
-                    userInfo = userInfo,
-                    scope = request.scope,
-                    authnDetails = request.authorizationDetails,
-                    codeChallenge = request.codeChallenge
-                )
-            )
+            (requestParser.extractRequestParameterFromJAR(input)?.parameters as? AuthenticationRequestParameters)
+                ?: throw InvalidRequest("could not parse request object from request")
         }
-        val response = AuthenticationResponseParameters(
-            code = code,
-            state = request.state,
-        )
-
-        val url = URLBuilder(request.redirectUrl!!)
-            .apply { response.encodeToParameters().forEach { this.parameters.append(it.key, it.value) } }
-            .buildString()
-
-        AuthenticationResponseResult.Redirect(url, response)
-            .also { Napier.i("authorize returns $it") }
+        authorize(request, loadUserFun).getOrThrow()
     }
 
     /**
