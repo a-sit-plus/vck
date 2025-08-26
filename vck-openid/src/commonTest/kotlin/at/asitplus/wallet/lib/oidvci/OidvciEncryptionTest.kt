@@ -38,7 +38,7 @@ class OidvciEncryptionTest : FunSpec({
     lateinit var decryptJwe: DecryptJweFun
 
     suspend fun getToken(scope: String): TokenResponseParameters {
-        val authnRequest = client.oauth2Client.createAuthRequest(
+        val authnRequest = client.oauth2Client.createAuthRequestJar(
             state = state,
             scope = scope,
             resource = issuer.metadata.credentialIssuer

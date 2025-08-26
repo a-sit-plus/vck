@@ -68,7 +68,7 @@ class OidvciCodeFlowTest : FreeSpec({
     }
 
     suspend fun getToken(scope: String, setScopeInTokenRequest: Boolean = true): TokenResponseParameters {
-        val authnRequest = client.oauth2Client.createAuthRequest(
+        val authnRequest = client.oauth2Client.createAuthRequestJar(
             state = state,
             scope = scope,
             resource = issuer.metadata.credentialIssuer
@@ -91,7 +91,7 @@ class OidvciCodeFlowTest : FreeSpec({
         authorizationDetails: Set<AuthorizationDetails>,
         setAuthnDetailsInTokenRequest: Boolean = true,
     ): TokenResponseParameters {
-        val authnRequest = client.oauth2Client.createAuthRequest(
+        val authnRequest = client.oauth2Client.createAuthRequestJar(
             state = state,
             authorizationDetails = authorizationDetails
         )
@@ -293,7 +293,7 @@ class OidvciCodeFlowTest : FreeSpec({
         val tokenScope =
             client.selectSupportedCredentialFormat(RequestOptions(AtomicAttribute2023, ISO_MDOC), issuer.metadata)
                 ?.scope.shouldNotBeNull()
-        val authnRequest = client.oauth2Client.createAuthRequest(
+        val authnRequest = client.oauth2Client.createAuthRequestJar(
             state = state,
             scope = authCodeScope,
             resource = issuer.metadata.credentialIssuer
@@ -377,7 +377,7 @@ class OidvciCodeFlowTest : FreeSpec({
             credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(ISO_MDOC),
             authorizationServers = issuer.metadata.authorizationServers
         )
-        val authnRequest = client.oauth2Client.createAuthRequest(
+        val authnRequest = client.oauth2Client.createAuthRequestJar(
             state = state,
             authorizationDetails = authCodeAuthnDetails
         )

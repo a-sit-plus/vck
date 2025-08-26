@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
@@ -73,7 +74,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
             val authnRequestUrl = verifierOid4vp.createAuthnRequest(
                 reqOptions, OpenId4VpVerifier.CreationOptions.SignedRequestByValue(walletUrl)
             ).getOrThrow().url
-            val interim1: AuthenticationRequestParameters =
+            val interim1: JarRequestParameters =
                 Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
             interim1.clientId shouldBe clientId
 

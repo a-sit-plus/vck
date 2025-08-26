@@ -52,7 +52,7 @@ class OAuth2ClientDPoPTest : FunSpec({
     }
 
     suspend fun getCode(state: String): String {
-        val authnRequest = client.createAuthRequest(
+        val authnRequest = client.createAuthRequestJar(
             state = state,
             scope = scope,
         )

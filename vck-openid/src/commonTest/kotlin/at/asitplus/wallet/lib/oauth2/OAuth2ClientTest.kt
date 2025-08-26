@@ -57,7 +57,7 @@ class OAuth2ClientTest : FunSpec({
 
     test("process with pushed authorization request") {
         val state = uuid4().toString()
-        val authnRequest = client.createAuthRequest(
+        val authnRequest = client.createAuthRequestJar(
             state = state,
             scope = scope,
         )
@@ -80,10 +80,9 @@ class OAuth2ClientTest : FunSpec({
 
     test("process with authorization code flow, and PAR") {
         val state = uuid4().toString()
-        val authnRequest = client.createAuthRequest(
+        val authnRequest = client.createAuthRequestJar(
             state = state,
             scope = scope,
-            wrapAsJar = true
         )
         val authnResponse = server.authorize(authnRequest) { catching { user } }
             .getOrThrow()
@@ -104,8 +103,7 @@ class OAuth2ClientTest : FunSpec({
         val state = uuid4().toString()
         val authnRequest = client.createAuthRequest(
             state = state,
-            scope = scope,
-            wrapAsJar = false
+            scope = scope
         )
         val authnResponse = server.authorize(authnRequest) { catching { user } }
             .getOrThrow()
@@ -124,7 +122,7 @@ class OAuth2ClientTest : FunSpec({
 
     test("process with authorization code flow, authn request must contain scope from token request") {
         val state = uuid4().toString()
-        val authnRequest = client.createAuthRequest(
+        val authnRequest = client.createAuthRequestJar(
             state = state,
             scope = scope,
         )
@@ -146,7 +144,7 @@ class OAuth2ClientTest : FunSpec({
 
     test("process with authorization code flow, no scope in token request") {
         val state = uuid4().toString()
-        val authnRequest = client.createAuthRequest(
+        val authnRequest = client.createAuthRequestJar(
             state = state,
             scope = scope,
         )

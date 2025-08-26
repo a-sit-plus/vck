@@ -76,7 +76,7 @@ class OAuth2ClientAuthenticationTest : FunSpec({
 
     test("pushed authorization request") {
         val state = uuid4().toString()
-        val authnRequest = client.createAuthRequest(
+        val authnRequest = client.createAuthRequestJar(
             state = state,
             scope = scope,
         )
@@ -99,7 +99,7 @@ class OAuth2ClientAuthenticationTest : FunSpec({
 
     test("pushed authorization request with wrong client attestation JWT") {
         val state = uuid4().toString()
-        val authnRequest = client.createAuthRequest(
+        val authnRequest = client.createAuthRequestJar(
             state = state,
             scope = scope,
         )
@@ -122,10 +122,11 @@ class OAuth2ClientAuthenticationTest : FunSpec({
 
     test("pushed authorization request with client attestation JWT not trusted") {
         val state = uuid4().toString()
-        val authnRequest = client.createAuthRequest(
+        val authnRequest = client.createAuthRequestJar(
             state = state,
             scope = scope,
         )
+
         server = SimpleAuthorizationService(
             strategy = DummyAuthorizationServiceStrategy(scope),
             clientAuthenticationService = ClientAuthenticationService(
@@ -145,10 +146,11 @@ class OAuth2ClientAuthenticationTest : FunSpec({
 
     test("pushed authorization request without client authentication") {
         val state = uuid4().toString()
-        val authnRequest = client.createAuthRequest(
+        val authnRequest = client.createAuthRequestJar(
             state = state,
             scope = scope,
         )
+
         shouldThrow<OAuth2Exception> {
             server.par(authnRequest).getOrThrow()
         }
@@ -156,10 +158,11 @@ class OAuth2ClientAuthenticationTest : FunSpec({
 
     test("authorization code flow and client authentication") {
         val state = uuid4().toString()
-        val authnRequest = client.createAuthRequest(
+        val authnRequest = client.createAuthRequestJar(
             state = state,
             scope = scope,
         )
+
         val authnResponse = server.authorize(authnRequest) { catching { user } }
             .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
@@ -172,7 +175,7 @@ class OAuth2ClientAuthenticationTest : FunSpec({
 
     test("authorization code flow without client authentication") {
         val state = uuid4().toString()
-        val authnRequest = client.createAuthRequest(
+        val authnRequest = client.createAuthRequestJar(
             state = state,
             scope = scope,
         )

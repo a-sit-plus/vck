@@ -44,7 +44,7 @@ class OidvciOfferCodeTest : FreeSpec({
         credentialOffer: CredentialOffer,
         scope: String,
     ): TokenResponseParameters {
-        val authnRequest = client.oauth2Client.createAuthRequest(
+        val authnRequest = client.oauth2Client.createAuthRequestJar(
             state = state,
             scope = scope,
             resource = issuer.metadata.credentialIssuer,
@@ -68,7 +68,7 @@ class OidvciOfferCodeTest : FreeSpec({
         credentialOffer: CredentialOffer,
         authorizationDetails: Set<AuthorizationDetails>,
     ): TokenResponseParameters {
-        val authnRequest = client.oauth2Client.createAuthRequest(
+        val authnRequest = client.oauth2Client.createAuthRequestJar(
             state = state,
             authorizationDetails = authorizationDetails,
             issuerState = credentialOffer.grants?.authorizationCode.shouldNotBeNull().issuerState
@@ -114,7 +114,7 @@ class OidvciOfferCodeTest : FreeSpec({
         val credentialIdToRequest = credentialOffer.configurationIds.first()
         val credentialFormat =
             issuer.metadata.supportedCredentialConfigurations!![credentialIdToRequest].shouldNotBeNull()
-        val authnRequest = client.oauth2Client.createAuthRequest(
+        val authnRequest = client.oauth2Client.createAuthRequestJar(
             state = state,
             scope = credentialFormat.scope.shouldNotBeNull(),
             resource = issuer.metadata.credentialIssuer,
