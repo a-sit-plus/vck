@@ -82,11 +82,12 @@ class TokenService(
 
         fun bearer(
             nonceService: NonceService = DefaultNonceService(),
-        ) = BearerTokenGenerationService(nonceService = nonceService).let { generationService ->
+        ) = BearerTokenGenerationService(
+            nonceService = nonceService
+        ).let { generationService ->
             TokenService(
                 generation = generationService,
                 verification = BearerTokenVerificationService(
-                    nonceService = nonceService,
                     tokenGenerationService = generationService
                 ),
                 dpopSigningAlgValuesSupportedStrings = null,

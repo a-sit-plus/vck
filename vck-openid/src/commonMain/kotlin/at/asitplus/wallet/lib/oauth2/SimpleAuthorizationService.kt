@@ -15,6 +15,8 @@ import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
 import at.asitplus.openid.PushedAuthenticationResponseParameters
+import at.asitplus.openid.TokenIntrospectionRequest
+import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -29,6 +31,7 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import at.asitplus.wallet.lib.oidvci.OAuth2LoadUserFun
 import at.asitplus.wallet.lib.oidvci.OAuth2LoadUserFunInput
+import at.asitplus.wallet.lib.oidvci.TokenInfo
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.RequestParser
@@ -80,9 +83,14 @@ class SimpleAuthorizationService(
     private val pushedAuthorizationRequestEndpointPath: String = "/par",
     /**
      * Used to build [OAuth2AuthorizationServerMetadata.userInfoEndpoint], i.e. implementers need to forward POST or GET
-     * requests to that URI (which starts with [publicContext]) to [userInfo].
+     * requests to that URI (which starts with [publicContext]) to [getUserInfo].
      */
     private val userInfoEndpointPath: String = "/userinfo",
+    /**
+     * Used to build [OAuth2AuthorizationServerMetadata.introspectionEndpoint], i.e. implementers need to forward POST or GET
+     * requests to that URI (which starts with [publicContext]) to [getTokenInfo].
+     */
+    private val introspectionEndpointPath: String = "/introspect",
     /** Associates issuer_state with credential offers. */
     private val issuerStateToCredentialOffer: MapStore<String, CredentialOffer> = DefaultMapStore(),
     /** Associates issued codes with the auth request from the client. */
@@ -120,6 +128,8 @@ class SimpleAuthorizationService(
             tokenEndpoint = "$publicContext$tokenEndpointPath",
             pushedAuthorizationRequestEndpoint = "$publicContext$pushedAuthorizationRequestEndpointPath",
             userInfoEndpoint = "$publicContext$userInfoEndpointPath",
+            introspectionEndpoint = "$publicContext$introspectionEndpointPath",
+            introspectionEndpointAuthMethodsSupported = setOf(AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH),
             requirePushedAuthorizationRequests = true, // per OID4VC HAIP
             tokenEndPointAuthMethodsSupported = setOf(AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH), // per OID4VC HAIP
             dpopSigningAlgValuesSupportedStrings = tokenService.dpopSigningAlgValuesSupportedStrings,
@@ -493,27 +503,54 @@ class SimpleAuthorizationService(
 
     override suspend fun userInfo(
         authorizationHeader: String,
-        credentialIdentifier: String?,
-        credentialConfigurationId: String?,
-        request: RequestInfo?,
+        httpRequest: RequestInfo?,
     ): KmmResult<JsonObject> = catching {
-        with(tokenService.verification.validateTokenExtractUser(authorizationHeader, request)) {
-            if (credentialIdentifier != null) {
-                if (authorizationDetails == null)
-                    throw InvalidToken("no authorization details stored for header $authorizationHeader")
-                if (!validCredentialIdentifiers.contains(credentialIdentifier))
-                    throw InvalidToken("credential_identifier $credentialIdentifier expected to be in $this")
-            } else if (credentialConfigurationId != null) {
-                if (scope == null)
-                    throw InvalidToken("no scope stored for header $authorizationHeader")
-                if (!scope.contains(credentialConfigurationId))
-                    throw InvalidToken("credential_configuration_id $credentialConfigurationId expected to be $this")
-            } else {
-                throw InvalidToken("neither credential_identifier nor credential_configuration_id set")
-            }
-
+        clientAuthenticationService.authenticateClient(
+            httpRequest?.clientAttestation,
+            httpRequest?.clientAttestationPop,
+            null, // TODO is this correct?
+        )
+        with(tokenService.verification.validateTokenExtractUser(authorizationHeader, httpRequest)) {
             userInfoExtended?.jsonObject
                 ?: throw InvalidGrant("no user info found for $authorizationHeader")
         }
+    }
+
+    override suspend fun getUserInfo(
+        authorizationHeader: String,
+        request: RequestInfo?,
+    ): KmmResult<JsonObject> = catching {
+        with(tokenService.verification.validateTokenExtractUser(authorizationHeader, request)) {
+            userInfoExtended?.jsonObject
+                ?: throw InvalidGrant("no user info found for $authorizationHeader")
+        }
+    }
+
+    override suspend fun getTokenInfo(
+        authorizationHeader: String,
+        request: RequestInfo?,
+    ): KmmResult<TokenInfo> = catching {
+        tokenService.verification.getTokenInfo(authorizationHeader)
+    }
+
+    override suspend fun tokenIntrospection(
+        request: TokenIntrospectionRequest,
+        httpRequest: RequestInfo?,
+    ): KmmResult<TokenIntrospectionResponse> = catching {
+        clientAuthenticationService.authenticateClient(
+            clientAttestation = httpRequest?.clientAttestation,
+            clientAttestationPop = httpRequest?.clientAttestationPop,
+            clientId = null, // TODO is this correct?
+        )
+        val validated = runCatching {
+            tokenService.verification.getTokenInfo(request.token)
+        }.getOrElse {
+            return@catching TokenIntrospectionResponse(active = false)
+        }
+        TokenIntrospectionResponse(
+            active = true,
+            scope = validated.scope,
+            authorizationDetails = validated.authorizationDetails,
+        )
     }
 }

@@ -3,11 +3,14 @@ package at.asitplus.wallet.lib.oauth2
 import at.asitplus.KmmResult
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.PushedAuthenticationResponseParameters
+import at.asitplus.openid.TokenIntrospectionRequest
+import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2LoadUserFun
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
+import kotlinx.serialization.json.JsonObject
 
 interface AuthorizationService {
 
@@ -76,4 +79,23 @@ interface AuthorizationService {
         authorizationHeader: String? = null,
         httpRequest: RequestInfo? = null,
     ): KmmResult<TokenResponseParameters>
+
+    /**
+     * Returns the user info associated with this access token, when the token in [authorizationHeader] is correct.
+     */
+    suspend fun userInfo(
+        authorizationHeader: String,
+        httpRequest: RequestInfo?,
+    ): KmmResult<JsonObject>
+
+    /**
+     * [RFC7662](https://datatracker.ietf.org/doc/html/rfc7662): OAuth 2.0 Token Introspection
+     *
+     * @param request as sent from the client as form POST
+     * @param httpRequest information about the HTTP request from the client, to validate authentication
+     */
+    suspend fun tokenIntrospection(
+        request: TokenIntrospectionRequest,
+        httpRequest: RequestInfo? = null,
+    ): KmmResult<TokenIntrospectionResponse>
 }

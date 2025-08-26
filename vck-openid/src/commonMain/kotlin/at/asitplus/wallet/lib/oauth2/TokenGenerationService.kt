@@ -167,7 +167,7 @@ class JwtTokenGenerationService(
 class BearerTokenGenerationService(
     /** Used to create nonces for tokens during issuing. */
     internal val nonceService: NonceService = DefaultNonceService(),
-    private val accessTokenToUserInfoExtended: MapStore<String, ValidatedAccessToken> = DefaultMapStore(),
+    private val accessTokenToValidatedAccessToken: MapStore<String, ValidatedAccessToken> = DefaultMapStore(),
 ) : TokenGenerationService {
 
     override suspend fun buildToken(
@@ -182,7 +182,7 @@ class BearerTokenGenerationService(
         authorizationDetails = authorizationDetails,
         scope = scope,
     ).also {
-        accessTokenToUserInfoExtended.put(
+        accessTokenToValidatedAccessToken.put(
             it.accessToken,
             ValidatedAccessToken(
                 token = it.accessToken,
@@ -193,7 +193,10 @@ class BearerTokenGenerationService(
         )
     }
 
-    suspend fun getValidatedAccessToken(accessToken: String) =
-        accessTokenToUserInfoExtended.get(accessToken)
+    suspend fun removeAccessToken(accessToken: String) =
+        accessTokenToValidatedAccessToken.remove(accessToken)
+
+    suspend fun verifyAccessToken(accessToken: String) =
+        accessTokenToValidatedAccessToken.get(accessToken)
 
 }

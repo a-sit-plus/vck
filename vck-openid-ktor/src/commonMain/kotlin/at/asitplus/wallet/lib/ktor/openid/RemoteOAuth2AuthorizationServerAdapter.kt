@@ -3,14 +3,11 @@ package at.asitplus.wallet.lib.ktor.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
-import at.asitplus.openid.OidcUserInfo
-import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER
 import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION
 import at.asitplus.openid.OpenIdConstants.TOKEN_PREFIX_DPOP
-import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_BEARER
-import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
-import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.openid.TokenIntrospectionRequest
+import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.RequestInfo
@@ -18,21 +15,18 @@ import at.asitplus.wallet.lib.oauth2.TokenVerificationService
 import at.asitplus.wallet.lib.oauth2.ValidatedAccessToken
 import at.asitplus.wallet.lib.oidvci.OAuth2AuthorizationServerAdapter
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
-import io.ktor.client.HttpClient
-import io.ktor.client.HttpClientConfig
-import io.ktor.client.call.body
-import io.ktor.client.engine.HttpClientEngine
-import io.ktor.client.plugins.DefaultRequest
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.cookies.CookiesStorage
-import io.ktor.client.request.get
-import io.ktor.client.request.header
-import io.ktor.client.request.request
-import io.ktor.client.request.url
-import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpMethod
-import io.ktor.serialization.kotlinx.json.json
+import at.asitplus.wallet.lib.oidvci.TokenInfo
+import at.asitplus.wallet.lib.oidvci.encodeToParameters
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.engine.*
+import io.ktor.client.plugins.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.cookies.*
+import io.ktor.client.request.*
+import io.ktor.client.request.forms.*
+import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
@@ -112,6 +106,12 @@ class RemoteOAuth2AuthorizationServerAdapter(
             ): ValidatedAccessToken {
                 TODO("Not yet implemented")
             }
+
+            override suspend fun getTokenInfo(
+                tokenOrAuthHeader: String,
+            ): TokenInfo {
+                TODO("Not yet implemented")
+            }
         }
 
     @Deprecated("Use [metadata()] instead")
@@ -123,40 +123,56 @@ class RemoteOAuth2AuthorizationServerAdapter(
 
     override suspend fun metadata(): OAuth2AuthorizationServerMetadata = _metadata.await()
 
-    override suspend fun userInfo(
+    override suspend fun getTokenInfo(
         authorizationHeader: String,
-        credentialIdentifier: String?,
-        credentialConfigurationId: String?,
         request: RequestInfo?,
-    ): KmmResult<JsonObject> = catching {
-        val userInfoEndpoint = _metadata.await().userInfoEndpoint
-            ?: throw InvalidToken("No UserInfo Endpoint found in Authorization Server metadata")
-        if (authorizationHeader.startsWith(TOKEN_TYPE_BEARER, ignoreCase = true)) {
-            callUserInfo(userInfoEndpoint, authorizationHeader)
-        } else if (authorizationHeader.startsWith(TOKEN_TYPE_DPOP, ignoreCase = true)) {
-            // TODO Validate the DPoP from the client!
-            oauth2Client.requestTokenWithTokenExchange(
-                oauthMetadata = _metadata.await(),
-                authorizationServer = publicContext,
-                subjectToken = authorizationHeader.substringAfter(TOKEN_PREFIX_DPOP).trim(),
-                resource = userInfoEndpoint,
-            ).getOrThrow().let {
-                callUserInfo(userInfoEndpoint, it.toHttpHeaderValue(), it)
+    ): KmmResult<TokenInfo> = catching {
+        val oauthMetadata = _metadata.await()
+        val introspectionUrl = oauthMetadata.introspectionEndpoint
+            ?: throw InvalidToken("No introspection endpoint found in Authorization Server metadata")
+        val token = authorizationHeader.let { if (it.contains(" ")) it.split(" ").last() else it }
+        val introspectionRequest = TokenIntrospectionRequest(
+            token = token,
+            tokenTypeHint = authorizationHeader.split(" ").firstOrNull()
+        )
+        client.request {
+            url(introspectionUrl)
+            method = HttpMethod.Post
+            setBody(FormDataContent(parameters {
+                introspectionRequest.encodeToParameters().forEach { append(it.key, it.value) }
+            }))
+            oauth2Client.applyAuthnForToken(oauthMetadata, publicContext, introspectionUrl, HttpMethod.Post, true)()
+        }.body<TokenIntrospectionResponse>().let {
+            if (!it.active) {
+                throw InvalidToken("Introspected token is not active")
             }
-        } else {
-            throw InvalidToken("authorization header not valid: $authorizationHeader")
+            TokenInfo(
+                token = token,
+                scope = it.scope,
+                authorizationDetails = it.authorizationDetails
+            )
         }
     }
 
-    private suspend fun callUserInfo(
-        userInfoEndpoint: String,
+    override suspend fun getUserInfo(
         authorizationHeader: String,
-        tokenResponseParameters: TokenResponseParameters? = null,
-    ): JsonObject = client.request {
-        url(userInfoEndpoint)
-        method = HttpMethod.Get
-        tokenResponseParameters?.let { oauth2Client.applyToken(it, userInfoEndpoint, HttpMethod.Get)() }
-            ?: header(HttpHeaders.Authorization, authorizationHeader)
-    }.body<JsonObject>()
+        request: RequestInfo?,
+    ): KmmResult<JsonObject> = catching {
+        // TODO Validate the DPoP from the client!
+        val userInfoEndpoint = _metadata.await().userInfoEndpoint
+            ?: throw InvalidToken("No UserInfo Endpoint found in Authorization Server metadata")
+        oauth2Client.requestTokenWithTokenExchange(
+            oauthMetadata = _metadata.await(),
+            authorizationServer = publicContext,
+            subjectToken = authorizationHeader.substringAfter(TOKEN_PREFIX_DPOP).trim(),
+            resource = userInfoEndpoint,
+        ).getOrThrow().let {
+            client.request {
+                url(userInfoEndpoint)
+                method = HttpMethod.Get
+                oauth2Client.applyToken(it, userInfoEndpoint, HttpMethod.Get)()
+            }.body<JsonObject>()
+        }
+    }
 
 }

@@ -7,7 +7,6 @@ import at.asitplus.openid.CredentialRequestParameters
 import at.asitplus.openid.CredentialResponseParameters
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.JwtVcIssuerMetadata
-import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.SupportedAlgorithmsContainer
@@ -156,19 +155,13 @@ class CredentialIssuer(
         credentialDataProvider: CredentialDataProviderFun,
         request: RequestInfo? = null,
     ): KmmResult<CredentialResponseParameters> = catching {
+        val userInfo = params.validateTokenLoadUserInfo(authorizationHeader, request)
         proofValidator.validateProofExtractSubjectPublicKeys(params).map { subjectPublicKey ->
             issuer.issueCredential(
                 credentialDataProvider(
                     with(params.extractCredentialRepresentation()) {
                         CredentialDataProviderInput(
-                            userInfo = authorizationService.userInfo(
-                                authorizationHeader = authorizationHeader,
-                                credentialIdentifier = params.credentialIdentifier,
-                                credentialConfigurationId = params.credentialConfigurationId,
-                                request = request
-                            ).getOrThrow().let {
-                                OidcUserInfoExtended.fromJsonObject(it).getOrThrow()
-                            },
+                            userInfo = userInfo,
                             subjectPublicKey = subjectPublicKey,
                             credentialScheme = first,
                             credentialRepresentation = second,
@@ -183,6 +176,42 @@ class CredentialIssuer(
         }.toCredentialResponseParameters(params.encrypter())
             .also { Napier.i("credential returns $it") }
     }
+
+    private suspend fun CredentialRequestParameters.validateTokenLoadUserInfo(
+        authorizationHeader: String,
+        request: RequestInfo?,
+    ): OidcUserInfoExtended = run {
+        validateAgainstToken(authorizationHeader, request)
+        authorizationService.getUserInfo(
+            authorizationHeader = authorizationHeader,
+            request = request
+        ).getOrThrow().let {
+            OidcUserInfoExtended.fromJsonObject(it).getOrThrow()
+        }
+    }
+
+    private suspend fun CredentialRequestParameters.validateAgainstToken(
+        authorizationHeader: String,
+        request: RequestInfo?,
+    ): Unit = authorizationService.getTokenInfo(
+        authorizationHeader = authorizationHeader,
+        request = request
+    ).getOrThrow().let {
+        credentialIdentifier?.let { credentialIdentifier ->
+            if (it.authorizationDetails == null)
+                throw InvalidToken("no authorization details stored for access token $authorizationHeader")
+            if (!it.validCredentialIdentifiers.contains(credentialIdentifier))
+                throw InvalidToken("credential_identifier $credentialIdentifier expected to be in $it")
+        } ?: credentialConfigurationId?.let { credentialConfigurationId ->
+            if (it.scope == null)
+                throw InvalidToken("no scope stored for access token $authorizationHeader")
+            if (!it.scope.contains(credentialConfigurationId))
+                throw InvalidToken("credential_configuration_id $credentialConfigurationId expected to be $it")
+        } ?: authorizationHeader.run {
+            throw InvalidToken("neither credential_identifier nor credential_configuration_id set")
+        }
+    }
+
 
     private fun CredentialRequestParameters.extractCredentialRepresentation()
             : Pair<CredentialScheme, ConstantIndex.CredentialRepresentation> =

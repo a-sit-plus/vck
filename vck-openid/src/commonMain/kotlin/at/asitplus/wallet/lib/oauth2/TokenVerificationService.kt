@@ -19,6 +19,7 @@ import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKeyFun
 import at.asitplus.wallet.lib.oidvci.NonceService
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidDpopProof
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
+import at.asitplus.wallet.lib.oidvci.TokenInfo
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.time.Clock
@@ -52,6 +53,13 @@ interface TokenVerificationService {
     suspend fun validateTokenForTokenExchange(
         subjectToken: String,
     ): ValidatedAccessToken
+
+    /**
+     * Reads information about the token contained in [tokenOrAuthHeader] for token introspection.
+     */
+    suspend fun getTokenInfo(
+        tokenOrAuthHeader: String,
+    ): TokenInfo
 }
 
 /**
@@ -96,28 +104,47 @@ class JwtTokenVerificationService(
             ?: throw InvalidToken("access token not valid: $dpopToken")
         validateDpopJwt(dpopToken, dpopTokenJwt, request)
         with(dpopTokenJwt.payload) {
-            ValidatedAccessToken(
-                token = dpopToken,
-                userInfoExtended = tokenGenerationService.getUserInfoExtended(jwtId),
-                authorizationDetails = authorizationDetails?.filterIsInstance<OpenIdAuthorizationDetails>()?.toSet(),
-                scope = scope
-            )
+            toValidatedAccessToken(dpopToken, jwtId)
         }
     } else {
         throw InvalidToken("authorization header not valid: $authorizationHeader")
     }
 
+    private suspend fun OpenId4VciAccessToken.toValidatedAccessToken(
+        dpopToken: String,
+        jwtId: String,
+    ): ValidatedAccessToken = ValidatedAccessToken(
+        token = dpopToken,
+        userInfoExtended = tokenGenerationService.getUserInfoExtended(jwtId),
+        authorizationDetails = authorizationDetails?.filterIsInstance<OpenIdAuthorizationDetails>()?.toSet(),
+        scope = scope
+    )
+
     override suspend fun validateTokenForTokenExchange(
-        subjectToken: String
+        subjectToken: String,
     ): ValidatedAccessToken = run {
         val dpopTokenJwt = validateDpopToken(subjectToken, JwsContentTypeConstants.OID4VCI_AT_JWT)
         val jwtId = dpopTokenJwt.payload.jwtId
             ?: throw InvalidToken("access token not valid: $subjectToken")
         // can't validate DPoP JWT, as the third party can't forward this
         with(dpopTokenJwt.payload) {
-            ValidatedAccessToken(
-                token = subjectToken,
-                userInfoExtended = tokenGenerationService.getUserInfoExtended(jwtId),
+            toValidatedAccessToken(subjectToken, jwtId)
+        }
+    }
+
+    override suspend fun getTokenInfo(
+        tokenOrAuthHeader: String,
+    ): TokenInfo = run {
+        val dpopToken = if (tokenOrAuthHeader.startsWith(TOKEN_TYPE_DPOP, ignoreCase = true))
+            tokenOrAuthHeader.removePrefix(TOKEN_PREFIX_DPOP).split(" ").last()
+        else tokenOrAuthHeader
+        val dpopTokenJwt = validateDpopToken(dpopToken, JwsContentTypeConstants.OID4VCI_AT_JWT)
+        val jwtId = dpopTokenJwt.payload.jwtId
+            ?: throw InvalidToken("access token not valid: $dpopToken")
+        // No need to validate DPoP JWT, because we are not granting access to anything, just printing infos
+        with(dpopTokenJwt.payload) {
+            TokenInfo(
+                token = dpopToken,
                 authorizationDetails = authorizationDetails?.filterIsInstance<OpenIdAuthorizationDetails>()?.toSet(),
                 scope = scope
             )
@@ -218,8 +245,6 @@ class JwtTokenVerificationService(
  * This does only work for internal authorization servers, because we could not store the actual user data otherwise.
  */
 class BearerTokenVerificationService(
-    /** Used to verify nonces of tokens. */
-    internal val nonceService: NonceService,
     /** Loads the actual user data with [BearerTokenGenerationService.getValidatedAccessToken]. */
     internal val tokenGenerationService: BearerTokenGenerationService,
 ) : TokenVerificationService {
@@ -236,24 +261,26 @@ class BearerTokenVerificationService(
         request: RequestInfo?,
     ): ValidatedAccessToken = if (authorizationHeader.startsWith(TOKEN_TYPE_BEARER, ignoreCase = true)) {
         val token = authorizationHeader.removePrefix(TOKEN_PREFIX_BEARER).split(" ").last()
-        if (!nonceService.verifyNonce(token)) { // when to remove them?
-            Napier.w("validateToken: Nonce not known: $token")
-            throw InvalidToken("access token not valid: $token")
-        }
-        tokenGenerationService.getValidatedAccessToken(token)
+        tokenGenerationService.verifyAccessToken(token) // When to remove them?
             ?: throw InvalidToken("access token not valid: $token")
     } else {
         throw InvalidToken("authorization header not valid: $authorizationHeader")
     }
 
     override suspend fun validateTokenForTokenExchange(
-        subjectToken: String
+        subjectToken: String,
     ): ValidatedAccessToken = run {
-        if (!nonceService.verifyNonce(subjectToken)) { // when to remove them?
-            Napier.w("validateToken: Nonce not known: $subjectToken")
-            throw InvalidToken("access token not valid: $subjectToken")
-        }
-        tokenGenerationService.getValidatedAccessToken(subjectToken)
+        tokenGenerationService.verifyAccessToken(subjectToken)
             ?: throw InvalidToken("access token not valid: $subjectToken")
+    }
+
+    override suspend fun getTokenInfo(
+        tokenOrAuthHeader: String,
+    ): TokenInfo = run {
+        val token = if (tokenOrAuthHeader.startsWith(TOKEN_TYPE_BEARER, ignoreCase = true))
+            tokenOrAuthHeader.removePrefix(TOKEN_PREFIX_BEARER).split(" ").last()
+        else tokenOrAuthHeader
+        tokenGenerationService.verifyAccessToken(token)?.toTokenInfo()
+            ?: throw InvalidToken("authorization header not valid: $tokenOrAuthHeader")
     }
 }

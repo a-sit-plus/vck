@@ -4,6 +4,7 @@ import at.asitplus.catching
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
+import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
@@ -80,6 +81,13 @@ class OAuth2ClientDPoPTest : FunSpec({
             it.tokenType shouldBe TOKEN_TYPE_DPOP
         }
 
+        server.tokenIntrospection(
+            TokenIntrospectionRequest(token = token.accessToken),
+            null
+        ).getOrThrow().apply {
+            active shouldBe true
+        }
+
         val dpopForResource = BuildDPoPHeader(
             signDpop,
             url = resourceUrl,
@@ -89,14 +97,12 @@ class OAuth2ClientDPoPTest : FunSpec({
         // simulate access to protected resource, i.e. verify access token
         server.userInfo(
             token.toHttpHeaderValue(),
-            null,
-            null,
             RequestInfo(
                 url = resourceUrl,
                 method = HttpMethod.Post,
                 dpop = dpopForResource
             )
-        )
+        ).getOrThrow()
     }
 
     test("authorization code flow with DPoP and refresh token") {
@@ -116,6 +122,13 @@ class OAuth2ClientDPoPTest : FunSpec({
             it.refreshToken.shouldNotBeNull()
         }
 
+        server.tokenIntrospection(
+            TokenIntrospectionRequest(token = token.accessToken),
+            null
+        ).getOrThrow().apply {
+            active shouldBe true
+        }
+
         val refreshedAccessToken = server.token(
             request = client.createTokenRequestParameters(
                 state = state,
@@ -127,6 +140,13 @@ class OAuth2ClientDPoPTest : FunSpec({
         ).getOrThrow()
         refreshedAccessToken.accessToken shouldNotBe token.accessToken
 
+        server.tokenIntrospection(
+            TokenIntrospectionRequest(token = refreshedAccessToken.accessToken),
+            null
+        ).getOrThrow().apply {
+            active shouldBe true
+        }
+
         val dpopForResource = BuildDPoPHeader(
             signDpop,
             url = resourceUrl,
@@ -136,14 +156,12 @@ class OAuth2ClientDPoPTest : FunSpec({
         // simulate access to protected resource, i.e. verify access token
         server.userInfo(
             refreshedAccessToken.toHttpHeaderValue(),
-            null,
-            null,
             RequestInfo(
                 url = resourceUrl,
                 method = HttpMethod.Post,
                 dpop = dpopForResource
             )
-        )
+        ).getOrThrow()
     }
 
     test("authorization code flow with DPoP and wrong URL") {
@@ -196,14 +214,19 @@ class OAuth2ClientDPoPTest : FunSpec({
             it.tokenType shouldBe TOKEN_TYPE_DPOP
         }
 
+        server.tokenIntrospection(
+            TokenIntrospectionRequest(token = token.accessToken),
+            null
+        ).getOrThrow().apply {
+            active shouldBe true
+        }
+
         // simulate access to protected resource, i.e. verify access token
         shouldThrow<OAuth2Exception> {
             server.userInfo(
                 token.toHttpHeaderValue(),
-                null,
-                null,
                 null
-            )
+            ).getOrThrow()
         }
     }
 
@@ -220,6 +243,14 @@ class OAuth2ClientDPoPTest : FunSpec({
             authorizationHeader = null,
             httpRequest = RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, tokenUrl))
         ).getOrThrow()
+
+        server.tokenIntrospection(
+            TokenIntrospectionRequest(token = token.accessToken),
+            null
+        ).getOrThrow().apply {
+            active shouldBe true
+        }
+
         val wrongSignDpop = SignJwt<JsonWebToken>(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk())
         val dpopForResource = BuildDPoPHeader(
             wrongSignDpop,
@@ -231,14 +262,12 @@ class OAuth2ClientDPoPTest : FunSpec({
         shouldThrow<OAuth2Exception> {
             server.userInfo(
                 token.toHttpHeaderValue(),
-                null,
-                null,
                 RequestInfo(
                     url = resourceUrl,
                     method = HttpMethod.Post,
                     dpop = dpopForResource
                 )
-            )
+            ).getOrThrow()
         }
     }
 })

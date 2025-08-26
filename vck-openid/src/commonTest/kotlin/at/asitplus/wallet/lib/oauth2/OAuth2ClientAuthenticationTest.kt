@@ -4,6 +4,7 @@ import at.asitplus.catching
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.PushedAuthenticationResponseParameters
+import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsSigned
@@ -23,6 +24,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 
@@ -94,8 +96,21 @@ class OAuth2ClientAuthenticationTest : FunSpec({
         val code = authnResponse.params.code
             .shouldNotBeNull()
 
-        getToken(state, code)
-            .authorizationDetails.shouldBeNull()
+        val token = getToken(state, code).apply {
+            authorizationDetails.shouldBeNull()
+        }
+        server.tokenIntrospection(
+            TokenIntrospectionRequest(token = token.accessToken),
+            RequestInfo(
+                url = "https://example.com/",
+                method = HttpMethod.Get,
+                dpop = null,
+                clientAttestation = clientAttestation.serialize(),
+                clientAttestationPop = clientAttestationPop.serialize()
+            )
+        ).getOrThrow().apply {
+            active shouldBe true
+        }
     }
 
     test("pushed authorization request with wrong client attestation JWT") {
@@ -167,8 +182,22 @@ class OAuth2ClientAuthenticationTest : FunSpec({
         val code = authnResponse.params.code
             .shouldNotBeNull()
 
-        getToken(state, code)
-            .authorizationDetails.shouldBeNull()
+        val token = getToken(state, code).apply {
+            authorizationDetails.shouldBeNull()
+        }
+
+        server.tokenIntrospection(
+            TokenIntrospectionRequest(token = token.accessToken),
+            RequestInfo(
+                url = "https://example.com/",
+                method = HttpMethod.Get,
+                dpop = null,
+                clientAttestation = clientAttestation.serialize(),
+                clientAttestationPop = clientAttestationPop.serialize()
+            )
+        ).getOrThrow().apply {
+            active shouldBe true
+        }
     }
 
     test("authorization code flow without client authentication") {

@@ -51,9 +51,11 @@ class ClientAuthenticationService(
                 Napier.w("auth: client attestation JWT not verified")
                 throw InvalidClient("client attestation JWT not verified")
             }
-            if (clientAttestationJwt.payload.subject != clientId) {
-                Napier.w("auth: subject ${clientAttestationJwt.payload.subject} not matching client_id $clientId")
-                throw InvalidClient("subject not equal to client_id")
+            if (clientId != null) {
+                if (clientAttestationJwt.payload.subject != clientId) {
+                    Napier.w("auth: subject ${clientAttestationJwt.payload.subject} not matching client_id $clientId")
+                    throw InvalidClient("subject not equal to client_id")
+                }
             }
 
             if (!verifyClientAttestationJwt.invoke(clientAttestationJwt)) {
