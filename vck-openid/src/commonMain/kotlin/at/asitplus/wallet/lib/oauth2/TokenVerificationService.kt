@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.oauth2
 
+import at.asitplus.KmmResult
+import at.asitplus.catching
 import at.asitplus.iso.sha256
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.OpenIdConstants.TOKEN_PREFIX_BEARER
@@ -40,26 +42,16 @@ interface TokenVerificationService {
         request: RequestInfo?,
     ): String
 
-    /** Validates that the token sent from the client is actually one issued from the known [TokenGenerationService]. */
-    suspend fun validateTokenExtractUser(
-        authorizationHeader: String,
-        request: RequestInfo?,
-    ): ValidatedAccessToken
-
-    /**
-     * Validates the subject token (that is a token sent by a third party for token exchange) is one issued from
-     * [TokenGenerationService]. Callers need to authenticate the client before calling this method.
-     */
-    suspend fun validateTokenForTokenExchange(
-        subjectToken: String,
-    ): ValidatedAccessToken
-
-    /**
-     * Reads information about the token contained in [tokenOrAuthHeader] for token introspection.
-     */
+    /** Reads information about the token contained in [tokenOrAuthHeader] for token introspection. */
     suspend fun getTokenInfo(
         tokenOrAuthHeader: String,
     ): TokenInfo
+
+    /** Validates the token (either plain token or from an HTTP `Authorization` header, i.e., with prefix). */
+    suspend fun validateAccessToken(
+        tokenOrAuthHeader: String,
+        httpRequest: RequestInfo?,
+    ): KmmResult<Unit>
 }
 
 /**
@@ -81,55 +73,15 @@ class JwtTokenVerificationService(
     private val clock: Clock = System,
     /** Time leeway for verification of timestamps in access tokens and refresh tokens. */
     private val timeLeeway: Duration = 5.minutes,
-    private val tokenGenerationService: JwtTokenGenerationService,
 ) : TokenVerificationService {
 
     override suspend fun validateRefreshToken(
         refreshToken: String,
         request: RequestInfo?,
     ): String {
-        val dpopToken = refreshToken.removePrefix(TOKEN_PREFIX_DPOP).split(" ").last()
-        val dpopTokenJwt = validateDpopToken(dpopToken, JwsContentTypeConstants.RT_JWT)
+        val dpopTokenJwt = validateDpopToken(refreshToken, JwsContentTypeConstants.RT_JWT)
         validateDpopJwt(null, dpopTokenJwt, request)
-        return dpopToken
-    }
-
-    override suspend fun validateTokenExtractUser(
-        authorizationHeader: String,
-        request: RequestInfo?,
-    ): ValidatedAccessToken = if (authorizationHeader.startsWith(TOKEN_TYPE_DPOP, ignoreCase = true)) {
-        val dpopToken = authorizationHeader.removePrefix(TOKEN_PREFIX_DPOP).split(" ").last()
-        val dpopTokenJwt = validateDpopToken(dpopToken, JwsContentTypeConstants.OID4VCI_AT_JWT)
-        val jwtId = dpopTokenJwt.payload.jwtId
-            ?: throw InvalidToken("access token not valid: $dpopToken")
-        validateDpopJwt(dpopToken, dpopTokenJwt, request)
-        with(dpopTokenJwt.payload) {
-            toValidatedAccessToken(dpopToken, jwtId)
-        }
-    } else {
-        throw InvalidToken("authorization header not valid: $authorizationHeader")
-    }
-
-    private suspend fun OpenId4VciAccessToken.toValidatedAccessToken(
-        dpopToken: String,
-        jwtId: String,
-    ): ValidatedAccessToken = ValidatedAccessToken(
-        token = dpopToken,
-        userInfoExtended = tokenGenerationService.getUserInfoExtended(jwtId),
-        authorizationDetails = authorizationDetails?.filterIsInstance<OpenIdAuthorizationDetails>()?.toSet(),
-        scope = scope
-    )
-
-    override suspend fun validateTokenForTokenExchange(
-        subjectToken: String,
-    ): ValidatedAccessToken = run {
-        val dpopTokenJwt = validateDpopToken(subjectToken, JwsContentTypeConstants.OID4VCI_AT_JWT)
-        val jwtId = dpopTokenJwt.payload.jwtId
-            ?: throw InvalidToken("access token not valid: $subjectToken")
-        // can't validate DPoP JWT, as the third party can't forward this
-        with(dpopTokenJwt.payload) {
-            toValidatedAccessToken(subjectToken, jwtId)
-        }
+        return refreshToken
     }
 
     override suspend fun getTokenInfo(
@@ -151,16 +103,27 @@ class JwtTokenVerificationService(
         }
     }
 
-    private suspend fun validateDpopJwt(
+    override suspend fun validateAccessToken(
+        tokenOrAuthHeader: String,
+        httpRequest: RequestInfo?,
+    ) = catching {
+        val dpopToken = if (tokenOrAuthHeader.startsWith(TOKEN_TYPE_DPOP, ignoreCase = true))
+            tokenOrAuthHeader.removePrefix(TOKEN_PREFIX_DPOP).split(" ").last()
+        else tokenOrAuthHeader
+        val dpopTokenJwt = validateDpopToken(dpopToken, JwsContentTypeConstants.OID4VCI_AT_JWT)
+        validateDpopJwt(null, dpopTokenJwt, httpRequest)
+    }
+
+    internal suspend fun validateDpopJwt(
         dpopToken: String?,
         dpopTokenJwt: JwsSigned<OpenId4VciAccessToken>,
-        request: RequestInfo?,
+        httpRequest: RequestInfo?,
     ) {
-        if (request?.dpop.isNullOrEmpty()) {
+        if (httpRequest?.dpop.isNullOrEmpty()) {
             Napier.w("validateDpopJwt: No dpop proof in header")
             throw InvalidDpopProof("no dpop proof")
         }
-        val jwt = parseAndValidate(request.dpop)
+        val jwt = parseAndValidate(httpRequest.dpop)
         if (dpopTokenJwt.payload.confirmationClaim == null ||
             jwt.header.jsonWebKey == null ||
             jwt.header.jsonWebKey!!.jwkThumbprintPlain != dpopTokenJwt.payload.confirmationClaim!!.jsonWebKeyThumbprint
@@ -169,12 +132,12 @@ class JwtTokenVerificationService(
             throw InvalidDpopProof("DPoP JWT JWK not matching cnf.jkt")
         }
         // Verify nonce, but where to get it?
-        if (jwt.payload.httpTargetUrl != request.url) {
-            Napier.w("validateDpopJwt: htu ${jwt.payload.httpTargetUrl} not matching requestUrl ${request.url}")
+        if (jwt.payload.httpTargetUrl != httpRequest.url) {
+            Napier.w("validateDpopJwt: htu ${jwt.payload.httpTargetUrl} not matching requestUrl ${httpRequest.url}")
             throw InvalidDpopProof("DPoP JWT htu incorrect")
         }
-        if (jwt.payload.httpMethod != request.method.value.uppercase()) {
-            Napier.w("validateDpopJwt: htm ${jwt.payload.httpMethod} not matching requestMethod ${request.method}")
+        if (jwt.payload.httpMethod != httpRequest.method.value.uppercase()) {
+            Napier.w("validateDpopJwt: htm ${jwt.payload.httpMethod} not matching requestMethod ${httpRequest.method}")
             throw InvalidDpopProof("DPoP JWT htm incorrect")
         }
         dpopToken?.let {
@@ -198,7 +161,7 @@ class JwtTokenVerificationService(
                 }
             }
 
-    private suspend fun validateDpopToken(
+    internal suspend fun validateDpopToken(
         dpopToken: String,
         expectedType: String,
     ): JwsSigned<OpenId4VciAccessToken> {
@@ -256,23 +219,10 @@ class BearerTokenVerificationService(
         throw InvalidToken("Refresh tokens are not supported by this verifier")
     }
 
-    override suspend fun validateTokenExtractUser(
-        authorizationHeader: String,
-        request: RequestInfo?,
-    ): ValidatedAccessToken = if (authorizationHeader.startsWith(TOKEN_TYPE_BEARER, ignoreCase = true)) {
-        val token = authorizationHeader.removePrefix(TOKEN_PREFIX_BEARER).split(" ").last()
-        tokenGenerationService.verifyAccessToken(token) // When to remove them?
-            ?: throw InvalidToken("access token not valid: $token")
-    } else {
-        throw InvalidToken("authorization header not valid: $authorizationHeader")
-    }
-
-    override suspend fun validateTokenForTokenExchange(
-        subjectToken: String,
-    ): ValidatedAccessToken = run {
-        tokenGenerationService.verifyAccessToken(subjectToken)
-            ?: throw InvalidToken("access token not valid: $subjectToken")
-    }
+    override suspend fun validateAccessToken(
+        tokenOrAuthHeader: String,
+        httpRequest: RequestInfo?,
+    ): KmmResult<Unit> = catching { getTokenInfo(tokenOrAuthHeader) }
 
     override suspend fun getTokenInfo(
         tokenOrAuthHeader: String,

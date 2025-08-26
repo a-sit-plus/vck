@@ -241,6 +241,11 @@ class OpenId4VciClientExternalAuthorizationServerTest : FunSpec() {
         val introspectionEndpointPath = "/introspection"
         issuerPublicContext = "https://issuer.example.com"
         val authServerPublicContext = "https://auth.example.com"
+        val tokenService = TokenService.jwt(
+            nonceService = DefaultNonceService(),
+            keyMaterial = EphemeralKeyWithoutCert(),
+            issueRefreshTokens = true
+        )
         externalAuthorizationServer = SimpleAuthorizationService(
             strategy = CredentialAuthorizationServiceStrategy(credentialSchemes),
             publicContext = authServerPublicContext,
@@ -252,11 +257,7 @@ class OpenId4VciClientExternalAuthorizationServerTest : FunSpec() {
             clientAuthenticationService = ClientAuthenticationService(
                 enforceClientAuthentication = true,
             ),
-            tokenService = TokenService.jwt(
-                nonceService = DefaultNonceService(),
-                keyMaterial = EphemeralKeyWithoutCert(),
-                issueRefreshTokens = true
-            ),
+            tokenService = tokenService,
         )
         val issuer = IssuerAgent(
             keyMaterial = EphemeralKeyWithSelfSignedCert(),
@@ -320,7 +321,7 @@ class OpenId4VciClientExternalAuthorizationServerTest : FunSpec() {
 
                 request.url.toString() == "$authServerPublicContext$userInfoEndpointPath" -> {
                     val authn = request.headers[HttpHeaders.Authorization]
-                    val result = externalAuthorizationServer.getUserInfo(authn!!, request.toRequestInfo()).getOrThrow()
+                    val result = externalAuthorizationServer.userInfo(authn!!, request.toRequestInfo()).getOrThrow()
                     respond(
                         vckJsonSerializer.encodeToString<JsonObject>(result),
                         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
@@ -407,8 +408,9 @@ class OpenId4VciClientExternalAuthorizationServerTest : FunSpec() {
                     signClientAttestationPop = SignJwt(issuerClientAuthKeyMaterial, JwsHeaderNone()),
                     signDpop = SignJwt(issuerDpopKeyMaterial, JwsHeaderCertOrJwk()),
                     dpopAlgorithm = issuerDpopKeyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
-                    oAuth2Client = OAuth2Client(clientId = issuerPublicContext)
-                )
+                    oAuth2Client = OAuth2Client(clientId = issuerPublicContext),
+                ),
+                internalTokenVerificationService = tokenService.verification,
             ),
             issuer = issuer,
             credentialSchemes = credentialSchemes,

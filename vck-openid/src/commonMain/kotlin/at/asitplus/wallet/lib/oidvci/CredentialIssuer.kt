@@ -75,7 +75,7 @@ class CredentialIssuer(
         publicContext = publicContext,
         requireKeyAttestation = requireKeyAttestation,
     ),
-    @Deprecated("[OAuth2AuthorizationServerAdapter.userInfo] is been used now, which validates tokens")
+    @Suppress("DEPRECATION") @Deprecated("[OAuth2AuthorizationServerAdapter] is been used now, which validates tokens")
     private val tokenVerificationService: TokenVerificationService = authorizationService.tokenVerificationService,
 ) {
     private val supportedSigningAlgorithms = cryptoAlgorithms
@@ -155,7 +155,10 @@ class CredentialIssuer(
         credentialDataProvider: CredentialDataProviderFun,
         request: RequestInfo? = null,
     ): KmmResult<CredentialResponseParameters> = catching {
-        val userInfo = params.validateTokenLoadUserInfo(authorizationHeader, request)
+        Napier.i("credential called")
+        Napier.d("credential called with $authorizationHeader, $params")
+        authorizationService.validateAccessToken(authorizationHeader, request)
+        val userInfo = params.introspectTokenLoadUserInfo(authorizationHeader, request)
         proofValidator.validateProofExtractSubjectPublicKeys(params).map { subjectPublicKey ->
             issuer.issueCredential(
                 credentialDataProvider(
@@ -174,17 +177,17 @@ class CredentialIssuer(
                 throw CredentialRequestDenied("No credential from issuer", it)
             }
         }.toCredentialResponseParameters(params.encrypter())
-            .also { Napier.i("credential returns $it") }
+            .also { Napier.i("credential returns"); Napier.d("credential returns $it") }
     }
 
-    private suspend fun CredentialRequestParameters.validateTokenLoadUserInfo(
+    private suspend fun CredentialRequestParameters.introspectTokenLoadUserInfo(
         authorizationHeader: String,
         request: RequestInfo?,
     ): OidcUserInfoExtended = run {
         validateAgainstToken(authorizationHeader, request)
         authorizationService.getUserInfo(
             authorizationHeader = authorizationHeader,
-            request = request
+            httpRequest = request
         ).getOrThrow().let {
             OidcUserInfoExtended.fromJsonObject(it).getOrThrow()
         }
@@ -195,7 +198,7 @@ class CredentialIssuer(
         request: RequestInfo?,
     ): Unit = authorizationService.getTokenInfo(
         authorizationHeader = authorizationHeader,
-        request = request
+        httpRequest = request
     ).getOrThrow().let {
         credentialIdentifier?.let { credentialIdentifier ->
             if (it.authorizationDetails == null)

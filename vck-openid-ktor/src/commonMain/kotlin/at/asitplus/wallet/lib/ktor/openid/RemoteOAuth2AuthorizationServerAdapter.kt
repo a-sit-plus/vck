@@ -44,14 +44,14 @@ class RemoteOAuth2AuthorizationServerAdapter(
     /** Base URL of the remote Authorization Server. */
     override val publicContext: String,
     /** ktor engine to make requests to the verifier. */
-    engine: HttpClientEngine,
+    private val engine: HttpClientEngine,
     /**
      * Callers are advised to implement a persistent cookie storage,
      * to keep the session at the issuing service alive after receiving the auth code.
      */
-    cookiesStorage: CookiesStorage? = null,
+    private val cookiesStorage: CookiesStorage? = null,
     /** Additional configuration for building the HTTP client, e.g., callers may enable logging. */
-    httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
+    private val httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
     /** [CoroutineScope] to fetch the authorization server's metadata. */
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO),
     /** OAuth 2.0 client to use when exchanging Wallet's token for a fresh access token. */
@@ -61,6 +61,8 @@ class RemoteOAuth2AuthorizationServerAdapter(
         httpClientConfig = httpClientConfig,
         oAuth2Client = OAuth2Client(),
     ),
+    /** Validates access tokens received in [validateAccessToken]. */
+    val internalTokenVerificationService: TokenVerificationService,
 ) : OAuth2AuthorizationServerAdapter {
 
     private val client: HttpClient = HttpClient(engine) {
@@ -84,7 +86,7 @@ class RemoteOAuth2AuthorizationServerAdapter(
         }
     }
 
-    @Deprecated("Use [validateTokenExtractUser] instead")
+    @Deprecated("Use [validateAccessToken] instead")
     override val tokenVerificationService: TokenVerificationService
         get() = object : TokenVerificationService {
             override suspend fun validateRefreshToken(
@@ -94,22 +96,16 @@ class RemoteOAuth2AuthorizationServerAdapter(
                 TODO("Not yet implemented")
             }
 
-            override suspend fun validateTokenExtractUser(
-                authorizationHeader: String,
-                request: RequestInfo?,
-            ): ValidatedAccessToken {
-                TODO("Not yet implemented")
-            }
-
-            override suspend fun validateTokenForTokenExchange(
-                subjectToken: String,
-            ): ValidatedAccessToken {
-                TODO("Not yet implemented")
-            }
-
             override suspend fun getTokenInfo(
                 tokenOrAuthHeader: String,
             ): TokenInfo {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun validateAccessToken(
+                tokenOrAuthHeader: String,
+                httpRequest: RequestInfo?,
+            ): KmmResult<Unit> {
                 TODO("Not yet implemented")
             }
         }
@@ -125,7 +121,7 @@ class RemoteOAuth2AuthorizationServerAdapter(
 
     override suspend fun getTokenInfo(
         authorizationHeader: String,
-        request: RequestInfo?,
+        httpRequest: RequestInfo?,
     ): KmmResult<TokenInfo> = catching {
         val oauthMetadata = _metadata.await()
         val introspectionUrl = oauthMetadata.introspectionEndpoint
@@ -156,15 +152,14 @@ class RemoteOAuth2AuthorizationServerAdapter(
 
     override suspend fun getUserInfo(
         authorizationHeader: String,
-        request: RequestInfo?,
+        httpRequest: RequestInfo?,
     ): KmmResult<JsonObject> = catching {
-        // TODO Validate the DPoP from the client!
         val userInfoEndpoint = _metadata.await().userInfoEndpoint
             ?: throw InvalidToken("No UserInfo Endpoint found in Authorization Server metadata")
         oauth2Client.requestTokenWithTokenExchange(
             oauthMetadata = _metadata.await(),
             authorizationServer = publicContext,
-            subjectToken = authorizationHeader.substringAfter(TOKEN_PREFIX_DPOP).trim(),
+            subjectToken = authorizationHeader.split(" ").last(),
             resource = userInfoEndpoint,
         ).getOrThrow().let {
             client.request {
@@ -175,4 +170,10 @@ class RemoteOAuth2AuthorizationServerAdapter(
         }
     }
 
+    override suspend fun validateAccessToken(
+        authorizationHeader: String,
+        httpRequest: RequestInfo?,
+    ): KmmResult<Boolean> = catching {
+        internalTokenVerificationService.validateAccessToken(authorizationHeader, httpRequest).isSuccess
+    }
 }
