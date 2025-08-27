@@ -159,10 +159,7 @@ class JwtTokenGenerationService(
 }
 
 /**
- * Simple bearer token generation for an OAuth 2.0 authorization server.
- *
- * Implemented from
- * [OAuth 2.0 Demonstrating Proof of Possession (DPoP)](https://datatracker.ietf.org/doc/html/rfc9449)
+ * Simple bearer token generation (just a nonce) for an OAuth 2.0 authorization server.
  */
 class BearerTokenGenerationService(
     /** Used to create nonces for tokens during issuing. */

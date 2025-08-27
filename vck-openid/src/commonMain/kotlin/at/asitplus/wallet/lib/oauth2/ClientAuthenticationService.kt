@@ -1,11 +1,15 @@
 package at.asitplus.wallet.lib.oauth2
 
-import at.asitplus.signum.indispensable.josef.*
+import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.jws.*
+import at.asitplus.wallet.lib.jws.VerifyJwsObject
+import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnf
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnfFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidClient
 import io.github.aakira.napier.Napier
-import kotlin.String
+import kotlin.coroutines.cancellation.CancellationException
 
 
 /**
@@ -26,27 +30,30 @@ class ClientAuthenticationService(
 ) {
 
     /**
-     * Authenticates the client as defined in OpenID4VC HAIP, i.e. with client attestation JWT
+     * Authenticates the client as defined in OpenID4VC HAIP, i.e. with client attestation JWT.
+     * Throws an exception if authentication fails. Honors [enforceClientAuthentication].
      */
+    @Throws(InvalidClient::class, CancellationException::class)
     suspend fun authenticateClient(
-        clientAttestation: String?,
-        clientAttestationPop: String?,
+        httpRequest: RequestInfo?,
         clientId: String?,
     ) {
         // Enforce client authentication once all clients implement it
         if (enforceClientAuthentication) {
-            if (clientAttestation == null || clientAttestationPop == null) {
+            if (httpRequest?.clientAttestation == null || httpRequest.clientAttestationPop == null) {
                 Napier.w("auth: client not sent client attestation")
                 throw InvalidClient("client attestation headers missing")
             }
         }
-        if (clientAttestation != null && clientAttestationPop != null) {
-            val clientAttestationJwt = JwsSigned
-                .deserialize<JsonWebToken>(JsonWebToken.serializer(), clientAttestation, vckJsonSerializer)
-                .getOrElse {
-                    Napier.w("auth: could not parse client attestation JWT", it)
-                    throw InvalidClient("could not parse client attestation", it)
-                }
+        if (httpRequest?.clientAttestation != null && httpRequest.clientAttestationPop != null) {
+            val clientAttestationJwt = JwsSigned.deserialize<JsonWebToken>(
+                JsonWebToken.serializer(),
+                httpRequest.clientAttestation,
+                vckJsonSerializer
+            ).getOrElse {
+                Napier.w("auth: could not parse client attestation JWT", it)
+                throw InvalidClient("could not parse client attestation", it)
+            }
             if (!verifyJwsObject(clientAttestationJwt)) {
                 Napier.w("auth: client attestation JWT not verified")
                 throw InvalidClient("client attestation JWT not verified")
@@ -63,12 +70,14 @@ class ClientAuthenticationService(
                 throw InvalidClient("client attestation not verified")
             }
 
-            val clientAttestationPopJwt = JwsSigned
-                .deserialize<JsonWebToken>(JsonWebToken.serializer(), clientAttestationPop, vckJsonSerializer)
-                .getOrElse {
-                    Napier.w("auth: could not parse client attestation PoP JWT", it)
-                    throw InvalidClient("could not parse client attestation PoP", it)
-                }
+            val clientAttestationPopJwt = JwsSigned.deserialize<JsonWebToken>(
+                JsonWebToken.serializer(),
+                httpRequest.clientAttestationPop,
+                vckJsonSerializer
+            ).getOrElse {
+                Napier.w("auth: could not parse client attestation PoP JWT", it)
+                throw InvalidClient("could not parse client attestation PoP", it)
+            }
             val cnf = clientAttestationJwt.payload.confirmationClaim
                 ?: throw InvalidClient("client attestation has no cnf")
             if (!verifyJwsSignatureWithCnf(clientAttestationPopJwt, cnf)) {

@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.oauth2
 
-import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants.TokenTypes
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
@@ -15,6 +14,8 @@ import io.github.aakira.napier.Napier
 /**
  * Access token service that combines generation and verification,
  * i.e., it is suitable to be used in an implementation of an OAuth 2.0 Authorization Server.
+ *
+ * Also implements [OAuth 2.0 Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693).
  */
 interface TokenService {
     val generation: TokenGenerationService
@@ -29,7 +30,7 @@ interface TokenService {
     ): ValidatedAccessToken
 
     /**
-     * Validates the subject token (that is a token sent by a third party for token exchange) is one issued from
+     * Validates the subject token (that is a token sent by a third party) for token exchange) is one issued from
      * [TokenGenerationService]. Callers need to authenticate the client before calling this method.
      */
     suspend fun validateTokenForTokenExchange(
@@ -37,14 +38,14 @@ interface TokenService {
     ): ValidatedAccessToken
 
     /**
-     * Performs token exchange: Validate the received token from [TokenRequestParameters.subjectToken]
-     * and issue a fresh access token.
+     * [OAuth 2.0 Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693):
+     * Validate the received token from [TokenRequestParameters.subjectToken] and issue a fresh access token.
      * Callers need to make sure that the client has been authenticated before calling this method.
      */
     suspend fun tokenExchange(
         request: TokenRequestParameters,
+        expectedResource: String,
         httpRequest: RequestInfo?,
-        metadata: OAuth2AuthorizationServerMetadata,
     ): TokenResponseParameters {
         Napier.i("tokenExchange: called")
         Napier.d("tokenExchange: called with $request")
@@ -52,8 +53,8 @@ interface TokenService {
         if (request.subjectTokenType == null || request.subjectToken == null) {
             throw InvalidGrant("subject_token or subject_token_type is null")
         }
-        if (request.resource != metadata.userInfoEndpoint) {
-            throw InvalidGrant("resource is not valid, is not for ${metadata.userInfoEndpoint}")
+        if (request.resource != expectedResource) {
+            throw InvalidGrant("resource is not valid, is not for $expectedResource")
         }
         if (request.requestedTokenType != TokenTypes.ACCESS_TOKEN) {
             throw InvalidGrant("requested_token_type is not valid, must be ${TokenTypes.ACCESS_TOKEN}")
@@ -69,10 +70,11 @@ interface TokenService {
             httpRequest = httpRequest,
             authorizationDetails = validated.authorizationDetails,
             scope = validated.scope
-        ).also { Napier.i("tokenExchange returns: $it") }
+        ).also { Napier.i("tokenExchange returns"); Napier.d("tokenExchange returns $it") }
     }
 
     companion object {
+        /** Build a [TokenService] combining [JwtTokenGenerationService] and [JwtTokenVerificationService]. */
         fun jwt(
             publicContext: String = "https://wallet.a-sit.at/authorization-server",
             nonceService: NonceService = DefaultNonceService(),
@@ -94,6 +96,7 @@ interface TokenService {
             supportsRefreshTokens = true,
         )
 
+        /** Build a [TokenService] combining [BearerTokenGenerationService] and [BearerTokenVerificationService]. */
         fun bearer(
             nonceService: NonceService = DefaultNonceService(),
         ) = BearerTokenGenerationService(

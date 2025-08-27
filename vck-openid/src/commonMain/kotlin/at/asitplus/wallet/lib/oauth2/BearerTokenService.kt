@@ -3,6 +3,9 @@ package at.asitplus.wallet.lib.oauth2
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 
+/**
+ * Combines simple bearer tokens from [BearerTokenGenerationService] and [BearerTokenVerificationService].
+ */
 class BearerTokenService(
     override val generation: BearerTokenGenerationService,
     override val verification: BearerTokenVerificationService,
