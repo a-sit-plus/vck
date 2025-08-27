@@ -84,7 +84,7 @@ class OidvciCodeFlowTest : FreeSpec({
             scope = if (setScopeInTokenRequest) scope else null,
             resource = issuer.metadata.credentialIssuer
         )
-        return authorizationService.token(tokenRequest, null, null).getOrThrow()
+        return authorizationService.token(tokenRequest, null).getOrThrow()
     }
 
     suspend fun getToken(
@@ -105,7 +105,7 @@ class OidvciCodeFlowTest : FreeSpec({
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
             authorizationDetails = if (setAuthnDetailsInTokenRequest) authorizationDetails else null,
         )
-        return authorizationService.token(tokenRequest, null, null).getOrThrow()
+        return authorizationService.token(tokenRequest, null).getOrThrow()
     }
 
     fun defectMapStore() = object : MapStore<String, ClientAuthRequest> {
@@ -310,7 +310,7 @@ class OidvciCodeFlowTest : FreeSpec({
             resource = issuer.metadata.credentialIssuer
         )
         shouldThrow<OAuth2Exception> {
-            authorizationService.token(tokenRequest, null, null).getOrThrow()
+            authorizationService.token(tokenRequest, null).getOrThrow()
         }
     }
 
@@ -392,7 +392,7 @@ class OidvciCodeFlowTest : FreeSpec({
             authorizationDetails = tokenAuthnDetails // this is wrong, should be same as in authn request
         )
         shouldThrow<OAuth2Exception> {
-            authorizationService.token(tokenRequest, null, null).getOrThrow()
+            authorizationService.token(tokenRequest, null).getOrThrow()
         }
     }
 

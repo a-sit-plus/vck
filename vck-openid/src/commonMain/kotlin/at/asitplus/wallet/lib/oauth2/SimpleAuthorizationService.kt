@@ -199,24 +199,60 @@ class SimpleAuthorizationService(
         )
     )
 
+    @Deprecated(
+        "Use par with RequestInfo instead",
+        ReplaceWith("par(input, RequestInfo(clientAttestation = clientAttestation, clientAttestationPop = clientAttestationPop))")
+    )
+    override suspend fun par(
+        input: String,
+        clientAttestation: String?,
+        clientAttestationPop: String?,
+    ) = par(
+        input,
+        RequestInfo(
+            "url",
+            HttpMethod.Get,
+            clientAttestation = clientAttestation,
+            clientAttestationPop = clientAttestationPop
+        )
+    )
+
+    @Deprecated(
+        "Use par with RequestInfo instead",
+        ReplaceWith("par(request, RequestInfo(clientAttestation = clientAttestation, clientAttestationPop = clientAttestationPop))")
+    )
+    override suspend fun par(
+        request: AuthenticationRequestParameters,
+        clientAttestation: String?,
+        clientAttestationPop: String?,
+    ) = par(
+        request,
+        RequestInfo(
+            "url",
+            HttpMethod.Get,
+            clientAttestation = clientAttestation,
+            clientAttestationPop = clientAttestationPop
+        )
+    )
+
+
     /**
      * Pushed authorization request endpoint as defined in [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html).
      * Clients send their authorization request as HTTP `POST` with `application/x-www-form-urlencoded` to the AS.
      *
      * Responses have to be sent with HTTP status code `201`.
      *
-     * @param input as sent from the client as `POST`
-     * @param clientAttestation value of the header `OAuth-Client-Attestation`
-     * @param clientAttestationPop value of the header `OAuth-Client-Attestation-PoP`
+     * @param input as sent from the client as `POST` body
+     * @param httpRequest information about the HTTP request from the client to validate authentication
+     * @return [KmmResult] may contain a [OAuth2Exception]
      */
     override suspend fun par(
         input: String,
-        clientAttestation: String?,
-        clientAttestationPop: String?,
+        httpRequest: RequestInfo?,
     ) = catching {
         requestParser.parseRequestParameters(input).getOrThrow()
             .let { it.parameters as? AuthenticationRequestParameters }
-            ?.let { par(it, clientAttestation, clientAttestationPop).getOrThrow() }
+            ?.let { par(it, httpRequest).getOrThrow() }
             ?: run {
                 Napier.w("par: could not parse request parameters from $input")
                 throw InvalidRequest("Could not parse request parameters from $input")
@@ -230,13 +266,12 @@ class SimpleAuthorizationService(
      * Responses have to be sent with HTTP status code `201`.
      *
      * @param request as sent from the client as `POST`
-     * @param clientAttestation value of the header `OAuth-Client-Attestation`
-     * @param clientAttestationPop value of the header `OAuth-Client-Attestation-PoP`
+     * @param httpRequest information about the HTTP request from the client to validate authentication
+     * @return [KmmResult] may contain a [OAuth2Exception]
      */
     override suspend fun par(
         request: AuthenticationRequestParameters,
-        clientAttestation: String?,
-        clientAttestationPop: String?,
+        httpRequest: RequestInfo?,
     ) = catching {
         Napier.i("pushedAuthorization called with $request")
 
@@ -245,7 +280,11 @@ class SimpleAuthorizationService(
             throw InvalidRequest("request_uri must not be set")
         }
 
-        clientAuthenticationService.authenticateClient(clientAttestation, clientAttestationPop, request.clientId)
+        clientAuthenticationService.authenticateClient(
+            httpRequest?.clientAttestation,
+            httpRequest?.clientAttestationPop,
+            request.clientId
+        )
         val actualRequest = requestParser.extractActualRequest(request).getOrThrow().validate()
 
         val requestUri = "urn:ietf:params:oauth:request_uri:${uuid4()}".also {
@@ -364,11 +403,6 @@ class SimpleAuthorizationService(
         return this
     }
 
-    override suspend fun token(
-        request: TokenRequestParameters,
-        httpRequest: RequestInfo?,
-    ) = token(request, null, httpRequest)
-
     /**
      * Verifies the authorization code sent by the client and issues an access token, uses [tokenService].
      * Send this value JSON-serialized back to the client.
@@ -380,7 +414,6 @@ class SimpleAuthorizationService(
      */
     override suspend fun token(
         request: TokenRequestParameters,
-        authorizationHeader: String?,
         httpRequest: RequestInfo?,
     ): KmmResult<TokenResponseParameters> = catching {
         Napier.i("token called with $request")

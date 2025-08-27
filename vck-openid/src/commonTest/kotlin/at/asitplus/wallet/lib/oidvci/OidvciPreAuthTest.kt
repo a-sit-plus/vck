@@ -58,7 +58,7 @@ class OidvciPreAuthTest : FreeSpec({
                 issuer.metadata.authorizationServers
             )
         )
-        return authorizationService.token(tokenRequest, null, null).getOrThrow()
+        return authorizationService.token(tokenRequest, null).getOrThrow()
     }
 
     "process with pre-authorized code, credential offer, and authorization details for one credential" {
@@ -140,7 +140,7 @@ class OidvciPreAuthTest : FreeSpec({
             scope = scope,
             resource = issuer.metadata.credentialIssuer,
         )
-        val token = authorizationService.token(tokenRequest, null, null).getOrThrow()
+        val token = authorizationService.token(tokenRequest, null).getOrThrow()
         val clientNonce = issuer.nonce().getOrThrow().clientNonce
 
         val credentialRequest = client.createCredentialRequest(

@@ -274,11 +274,7 @@ class OpenId4VciClientTest : FunSpec() {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val authnRequest: AuthenticationRequestParameters =
                         requestBody.decodeFromPostBody<AuthenticationRequestParameters>()
-                    val result = authorizationService.par(
-                        authnRequest,
-                        request.headers["OAuth-Client-Attestation"],
-                        request.headers["OAuth-Client-Attestation-PoP"]
-                    ).getOrThrow()
+                    val result = authorizationService.par(authnRequest, request.toRequestInfo()).getOrThrow()
                     respond(
                         vckJsonSerializer.encodeToString<PushedAuthenticationResponseParameters>(result),
                         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
@@ -298,9 +294,8 @@ class OpenId4VciClientTest : FunSpec() {
 
                 request.url.fullPath.startsWith(tokenEndpointPath) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
-                    val authn = request.headers[HttpHeaders.Authorization]
                     val params: TokenRequestParameters = requestBody.decodeFromPostBody<TokenRequestParameters>()
-                    val result = authorizationService.token(params, authn, request.toRequestInfo()).getOrThrow()
+                    val result = authorizationService.token(params, request.toRequestInfo()).getOrThrow()
                     respond(
                         vckJsonSerializer.encodeToString<TokenResponseParameters>(result),
                         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())

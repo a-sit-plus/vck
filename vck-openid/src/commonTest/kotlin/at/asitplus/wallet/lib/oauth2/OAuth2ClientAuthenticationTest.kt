@@ -67,7 +67,6 @@ class OAuth2ClientAuthenticationTest : FunSpec({
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
             scope = scope
         ),
-        authorizationHeader = null,
         httpRequest = RequestInfo(
             url = "https://example.com/",
             method = HttpMethod.Post,
@@ -85,8 +84,12 @@ class OAuth2ClientAuthenticationTest : FunSpec({
         )
         val parResponse = server.par(
             authnRequest,
-            clientAttestation.serialize(),
-            clientAttestationPop.serialize()
+            RequestInfo(
+                url = "https://example.com/",
+                method = HttpMethod.Post,
+                clientAttestation = clientAttestation.serialize(),
+                clientAttestationPop = clientAttestationPop.serialize()
+            )
         ).getOrThrow()
             .shouldBeInstanceOf<PushedAuthenticationResponseParameters>()
         val authnResponse = server
@@ -130,8 +133,12 @@ class OAuth2ClientAuthenticationTest : FunSpec({
         shouldThrow<OAuth2Exception> {
             server.par(
                 authnRequest,
-                clientAttestation.serialize(),
-                clientAttestationPop.serialize()
+                RequestInfo(
+                    url = "https://example.com/",
+                    method = HttpMethod.Post,
+                    clientAttestation = clientAttestation.serialize(),
+                    clientAttestationPop = clientAttestationPop.serialize()
+                )
             ).getOrThrow()
         }
     }
@@ -153,8 +160,12 @@ class OAuth2ClientAuthenticationTest : FunSpec({
         shouldThrow<OAuth2Exception> {
             server.par(
                 authnRequest,
-                clientAttestation.serialize(),
-                clientAttestationPop.serialize()
+                RequestInfo(
+                    url = "https://example.com/",
+                    method = HttpMethod.Post,
+                    clientAttestation = clientAttestation.serialize(),
+                    clientAttestationPop = clientAttestationPop.serialize()
+                )
             ).getOrThrow()
         }
     }
@@ -217,7 +228,7 @@ class OAuth2ClientAuthenticationTest : FunSpec({
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
             scope = scope
         )
-        shouldThrow<OAuth2Exception> { server.token(tokenRequest, null, null).getOrThrow() }
+        shouldThrow<OAuth2Exception> { server.token(tokenRequest, null).getOrThrow() }
     }
 
 })
