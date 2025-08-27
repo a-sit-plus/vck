@@ -5,6 +5,9 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 
+/**
+ * Combines sender-constrained JWT tokens from [JwtTokenGenerationService] and [JwtTokenVerificationService].
+ */
 class JwtTokenService(
     override val generation: JwtTokenGenerationService,
     override val verification: JwtTokenVerificationService,
@@ -12,6 +15,10 @@ class JwtTokenService(
     override val supportsRefreshTokens: Boolean,
 ) : TokenService {
 
+    /**
+     * Validates that the token sent from the client is actually one issued from [generation],
+     * and that the client presented a valid proof-of-possession for the key the token is bound to.
+     */
     override suspend fun validateTokenExtractUser(
         authorizationHeader: String,
         request: RequestInfo?,
@@ -28,6 +35,11 @@ class JwtTokenService(
         throw OAuth2Exception.InvalidToken("authorization header not valid: $authorizationHeader")
     }
 
+    /**
+     * Validates the subject token (that is a token sent by a third party) for token exchange) is one issued from
+     * [generation], and that the client presented a valid proof-of-possession for the key the token is bound to.
+     * Callers need to authenticate the client before calling this method.
+     */
     override suspend fun validateTokenForTokenExchange(
         subjectToken: String,
     ): ValidatedAccessToken = run {

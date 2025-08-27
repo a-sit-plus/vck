@@ -46,7 +46,7 @@ import kotlin.time.Duration.Companion.minutes
 
 /**
  * Simple authorization server implementation, to be used for [CredentialIssuer],
- * with the actual authentication and authorization logic implemented in [strategy].
+ * with the actual authentication and authorization logic for credential schemes implemented in [strategy].
  *
  * Implemented from
  * [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
@@ -58,6 +58,8 @@ import kotlin.time.Duration.Companion.minutes
  * [Proof Key for Code Exchange by OAuth Public Clients](https://datatracker.ietf.org/doc/html/rfc7636),
  * [OAuth 2.0 Demonstrating Proof of Possession (DPoP)](https://datatracker.ietf.org/doc/html/rfc9449),
  * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-05.html)
+ * [OAuth 2.0 Token Introspection](https://datatracker.ietf.org/doc/html/rfc7662)
+ * [OAuth 2.0 Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693)
  */
 class SimpleAuthorizationService(
     /** Used to filter authorization details and scopes. */
@@ -118,6 +120,7 @@ class SimpleAuthorizationService(
     ),
 ) : OAuth2AuthorizationServerAdapter, AuthorizationService {
 
+    @Deprecated("Use [validateAccessToken] instead")
     override val tokenVerificationService: TokenVerificationService
         get() = tokenService.verification
 
@@ -142,15 +145,15 @@ class SimpleAuthorizationService(
         )
     }
 
+    @Deprecated("Use [metadata()] instead")
+    override val metadata: OAuth2AuthorizationServerMetadata by lazy { _metadata }
+
     /**
      * Serve this result JSON-serialized under `/.well-known/openid-configuration`,
      * see [OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION],
      * and under `/.well-known/oauth-authorization-server`,
      * see [OpenIdConstants.PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER]
      */
-    @Deprecated("Use [metadata()] instead")
-    override val metadata: OAuth2AuthorizationServerMetadata by lazy { _metadata }
-
     override suspend fun metadata(): OAuth2AuthorizationServerMetadata = _metadata
 
     /**
@@ -274,19 +277,12 @@ class SimpleAuthorizationService(
         httpRequest: RequestInfo?,
     ) = catching {
         Napier.i("pushedAuthorization called with $request")
-
         if (request.requestUri != null) {
             Napier.w("par: client set request_uri: ${request.requestUri}")
             throw InvalidRequest("request_uri must not be set")
         }
-
-        clientAuthenticationService.authenticateClient(
-            httpRequest?.clientAttestation,
-            httpRequest?.clientAttestationPop,
-            request.clientId
-        )
+        clientAuthenticationService.authenticateClient(httpRequest, request.clientId)
         val actualRequest = requestParser.extractActualRequest(request).getOrThrow().validate()
-
         val requestUri = "urn:ietf:params:oauth:request_uri:${uuid4()}".also {
             requestUriToPushedAuthorizationRequest.put(it, actualRequest)
         }
@@ -297,12 +293,10 @@ class SimpleAuthorizationService(
     }
 
     /**
-     * Builds the authentication response.
+     * Builds the authentication response for this specific user from [loadUserFun]
+     * (called when request has been validated).
      * Send this result as HTTP Header `Location` in a 302 response to the client.
-     * @param loadUserFun will be called when the request has been validated, and user data is associated with
-     *                    the authorization code.
-     * @return URL build from client's `redirect_uri` with a `code` query parameter containing a fresh authorization
-     * code from [codeService].
+     * @return URL built from client's `redirect_uri` with `code` parameter, [KmmResult] may contain a [OAuth2Exception]
      */
     override suspend fun authorize(
         input: AuthenticationRequestParameters,
@@ -320,7 +314,7 @@ class SimpleAuthorizationService(
         }
     }
 
-    suspend fun issueCodeForUserInfo(
+    internal suspend fun issueCodeForUserInfo(
         userInfo: OidcUserInfoExtended,
         state: String?,
         codeChallenge: String?,
@@ -417,28 +411,21 @@ class SimpleAuthorizationService(
         httpRequest: RequestInfo?,
     ): KmmResult<TokenResponseParameters> = catching {
         Napier.i("token called with $request")
-
-        clientAuthenticationService.authenticateClient(
-            httpRequest?.clientAttestation,
-            httpRequest?.clientAttestationPop,
-            request.clientId
-        )
-
+        clientAuthenticationService.authenticateClient(httpRequest, request.clientId)
         if (request.grantType == OpenIdConstants.GRANT_TYPE_TOKEN_EXCHANGE) {
-            return@catching tokenService.tokenExchange(request, httpRequest, metadata())
+            val userInfoEndpoint = metadata().userInfoEndpoint
+                ?: throw InvalidGrant("token_exchange requires userInfoEndpoint")
+            return@catching tokenService.tokenExchange(request, userInfoEndpoint, httpRequest)
         }
-
         val clientAuthRequest = request.loadClientAuthnRequest(httpRequest) ?: run {
             Napier.w("token: could not load user info for $request}")
             throw InvalidGrant("could not load user info for $request")
         }
-
         request.code?.let { code ->
             clientAuthRequest.codeChallenge?.let {
                 validateCodeChallenge(code, request.codeVerifier, clientAuthRequest.codeChallenge)
             }
         }
-
         val token = if (request.authorizationDetails != null) {
             tokenService.generation.buildToken(
                 httpRequest = httpRequest,
@@ -535,25 +522,24 @@ class SimpleAuthorizationService(
         }
     }
 
-    suspend fun providePreAuthorizedCode(user: OidcUserInfoExtended): String =
-        codeService.provideCode().also {
-            codeToClientAuthRequest.put(
-                it,
-                ClientAuthRequest(
-                    issuedCode = it,
-                    userInfo = user,
-                    scope = strategy.validScopes(),
-                    authnDetails = strategy.validAuthorizationDetails()
-                )
+    suspend fun providePreAuthorizedCode(
+        userInfo: OidcUserInfoExtended,
+    ): String = codeService.provideCode().also {
+        codeToClientAuthRequest.put(
+            it,
+            ClientAuthRequest(
+                issuedCode = it,
+                userInfo = userInfo,
+                scope = strategy.validScopes(),
+                authnDetails = strategy.validAuthorizationDetails()
             )
-        }
+        )
+    }
 
+    /**
+     * Returns the user info associated with this access token, when the token in [authorizationHeader] is correct.
+     */
     override suspend fun userInfo(
-        authorizationHeader: String,
-        httpRequest: RequestInfo?,
-    ): KmmResult<JsonObject> = getUserInfo(authorizationHeader, httpRequest)
-
-    override suspend fun getUserInfo(
         authorizationHeader: String,
         httpRequest: RequestInfo?,
     ): KmmResult<JsonObject> = catching {
@@ -563,6 +549,19 @@ class SimpleAuthorizationService(
         }
     }
 
+    /**
+     * Obtains a JSON object representing [at.asitplus.openid.OidcUserInfo] from the Authorization Server, and
+     * since we're implementing [OAuth2AuthorizationServerAdapter] here, this is the same as [userInfo].
+     */
+    override suspend fun getUserInfo(
+        authorizationHeader: String,
+        httpRequest: RequestInfo?,
+    ): KmmResult<JsonObject> = userInfo(authorizationHeader, httpRequest)
+
+    /**
+     * Obtains information about the token, since we're in-memory here (as an [OAuth2AuthorizationServerAdapter],
+     * we can directly access our [tokenService].
+     */
     override suspend fun getTokenInfo(
         authorizationHeader: String,
         httpRequest: RequestInfo?,
@@ -574,11 +573,8 @@ class SimpleAuthorizationService(
         request: TokenIntrospectionRequest,
         httpRequest: RequestInfo?,
     ): KmmResult<TokenIntrospectionResponse> = catching {
-        clientAuthenticationService.authenticateClient(
-            clientAttestation = httpRequest?.clientAttestation,
-            clientAttestationPop = httpRequest?.clientAttestationPop,
-            clientId = null, // TODO is this correct?
-        )
+        // TODO Which client_id to pass?
+        clientAuthenticationService.authenticateClient(httpRequest, null)
         val validated = runCatching {
             tokenService.verification.getTokenInfo(request.token)
         }.getOrElse {

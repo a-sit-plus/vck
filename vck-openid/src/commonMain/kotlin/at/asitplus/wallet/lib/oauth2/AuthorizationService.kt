@@ -70,9 +70,10 @@ interface AuthorizationService {
     ): KmmResult<PushedAuthenticationResponseParameters>
 
     /**
-     * Builds the authentication response for this specific user from [loadUserFun].
+     * Builds the authentication response for this specific user from [loadUserFun]
+     * (called when request has been validated).
      * Send this result as HTTP Header `Location` in a 302 response to the client.
-     * @return [KmmResult] may contain a [OAuth2Exception]
+     * @return URL built from client's `redirect_uri` with `code` parameter, [KmmResult] may contain a [OAuth2Exception]
      */
     suspend fun authorize(
         input: AuthenticationRequestParameters,
