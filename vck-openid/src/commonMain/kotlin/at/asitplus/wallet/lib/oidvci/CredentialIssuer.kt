@@ -15,6 +15,7 @@ import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JweHeader
+import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
@@ -23,6 +24,9 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
 import at.asitplus.wallet.lib.jws.EncryptJwe
 import at.asitplus.wallet.lib.jws.EncryptJweFun
+import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
+import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.TokenVerificationService
 import at.asitplus.wallet.lib.oidvci.CredentialSchemeMapping.decodeFromCredentialIdentifier
@@ -77,6 +81,8 @@ class CredentialIssuer(
     ),
     @Suppress("DEPRECATION") @Deprecated("[OAuth2AuthorizationServerAdapter] is been used now, which validates tokens")
     private val tokenVerificationService: TokenVerificationService = authorizationService.tokenVerificationService,
+    /** Used to provide signed metadata in [signedMetadata]. */
+    private val signMetadata: SignJwtFun<IssuerMetadata> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk()),
 ) {
     private val supportedSigningAlgorithms = cryptoAlgorithms
         .mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }.toSet()
@@ -90,8 +96,12 @@ class CredentialIssuer(
         }
 
     /**
-     * Serve this result JSON-serialized under `/.well-known/openid-credential-issuer`
-     * (see [OpenIdConstants.PATH_WELL_KNOWN_CREDENTIAL_ISSUER])
+     * Serve this result serialized at the path formed by inserting the string `/.well-known/openid-credential-issuer`
+     * (see [OpenIdConstants.PATH_WELL_KNOWN_CREDENTIAL_ISSUER]) into the Credential Issuer Identifier between the host
+     * component and the path component, if any.
+     * Use `application/json` (see [at.asitplus.wallet.lib.data.MediaTypes.Application.JSON]) as the `Content-Type`
+     * header (see [io.ktor.http.HttpHeaders.ContentType]) in the response.
+     * See also [signedMetadata].
      */
     val metadata: IssuerMetadata by lazy {
         IssuerMetadata(
@@ -109,6 +119,16 @@ class CredentialIssuer(
             )
         )
     }
+
+    /**
+     * Serve this result serialized at the path formed by inserting the string `/.well-known/openid-credential-issuer`
+     * (see [OpenIdConstants.PATH_WELL_KNOWN_CREDENTIAL_ISSUER]) into the Credential Issuer Identifier between the host
+     * component and the path component, if any.
+     * Use this only when the client accepts (see `Accept` header [io.ktor.http.HttpHeaders.Accept]) the media type
+     * `application/jwt` (see [at.asitplus.wallet.lib.data.MediaTypes.Application.JWT]), otherwise serve [metadata].
+     */
+    suspend fun signedMetadata(): KmmResult<JwsSigned<IssuerMetadata>> =
+        signMetadata(null, metadata, IssuerMetadata.serializer())
 
     /**
      * Metadata about the credential issuer in

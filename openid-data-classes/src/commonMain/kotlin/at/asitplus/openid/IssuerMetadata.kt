@@ -7,7 +7,9 @@ import kotlinx.serialization.Serializable
  * Metadata about the credential issuer in
  * [OpenID4VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
  *
- * To be serialized into `/.well-known/openid-credential-issuer`.
+ * Credential Issuers publishing metadata MUST make a JSON document available at the path formed by inserting the string
+ * `/.well-known/openid-credential-issuer` into the Credential Issuer Identifier between the host component and the path
+ * component, if any.
  */
 @Serializable
 data class IssuerMetadata(

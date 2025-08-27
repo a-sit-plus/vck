@@ -49,6 +49,8 @@ Release 5.9.0 (unreleased):
    - Implement `RemoteOAuth2AuthorizationServerAdapter` so that credential issuers may be connected to external OAuth2.0 authorization servers
  - Cryptography:
    - Use [secure random](https://github.com/KotlinCrypto/random) for source of nonces by default, but also expose constructor parameters to override it
+ - Update implementation of [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html) to draft 17:
+   - Offer `signedMetadata` in `CredentialIssuer`
 
 Release 5.8.0:
  - Refactor `AuthorizationServiceStrategy`
