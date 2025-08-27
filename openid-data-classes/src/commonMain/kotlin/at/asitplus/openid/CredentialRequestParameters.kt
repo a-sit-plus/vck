@@ -26,7 +26,7 @@ data class CredentialRequestParameters(
     val credentialConfigurationId: String? = null,
 
     /**
-     * OID4VCI:  OPTIONAL. Object containing information for encrypting the Credential Response. If this request element
+     * OID4VCI: OPTIONAL. Object containing information for encrypting the Credential Response. If this request element
      * is not present, the corresponding credential response returned is not encrypted.
      */
     @SerialName("credential_response_encryption")
@@ -39,18 +39,15 @@ data class CredentialRequestParameters(
     @SerialName("credential_definition")
     val credentialDefinition: SupportedCredentialFormatDefinition? = null,
 
-    /**
-     * OID4VCI: OPTIONAL. Object providing a single proof of possession of the cryptographic key material to which the
-     * issued Credential instance will be bound to. [proof] parameter MUST NOT be present if [proofs] parameter is used.
-     */
     @SerialName("proof")
+    @Deprecated("Removed in OID4VCI draft 16, use `proofs` instead", ReplaceWith("proofs"))
     val proof: CredentialRequestProof? = null,
 
     /**
      * OID4VCI: OPTIONAL. Object providing one or more proof of possessions of the cryptographic key material to which
-     * the issued Credential instances will be bound to. The [proofs] parameter MUST NOT be present if [proof] parameter
-     * is used. [proofs] object contains exactly one parameter named as the proof type in Section 7.2.1, the value set
-     * for this parameter is an array containing parameters as defined by the corresponding proof type.
+     * the issued Credential instances will be bound to. The [proofs] parameter contains exactly one parameter named as
+     * the proof type in Appendix F, the value set for this parameter is a non-empty array containing parameters as
+     * defined by the corresponding proof type.
      */
     @SerialName("proofs")
     val proofs: CredentialRequestProofContainer? = null,

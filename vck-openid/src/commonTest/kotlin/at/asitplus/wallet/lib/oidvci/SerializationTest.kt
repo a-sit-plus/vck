@@ -55,6 +55,7 @@ class SerializationTest : FunSpec({
         interval = Random.nextInt(1, Int.MAX_VALUE).seconds,
     )
 
+    @Suppress("DEPRECATION")
     fun createCredentialRequest() = CredentialRequestParameters(
         credentialIdentifier = randomString(),
         credentialConfigurationId = randomString(),
@@ -63,7 +64,13 @@ class SerializationTest : FunSpec({
         ),
         proof = CredentialRequestProof(
             proofType = OpenIdConstants.ProofType.Other(randomString()),
-            jwt = randomString()
+            jwt = randomString(),
+            attestation = randomString(),
+        ),
+        proofs = CredentialRequestProofContainer(
+            proofType = OpenIdConstants.ProofType.Other(randomString()),
+            jwt = setOf(randomString()),
+            attestation = setOf(randomString()),
         )
     )
 

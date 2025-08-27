@@ -187,6 +187,7 @@ class WalletService(
      * @param previouslyRequestedScope the `scope` value requested in the token request, since the authorization server
      * may not set it in [tokenResponse]
      */
+    @Suppress("DEPRECATION")
     suspend fun createCredentialRequest(
         tokenResponse: TokenResponseParameters,
         metadata: IssuerMetadata,
@@ -205,19 +206,28 @@ class WalletService(
             throw IllegalArgumentException("Can't parse tokenResponse: $tokenResponse")
         }
         requests.map {
-            it.copy(
-                proof = createCredentialRequestProof(
-                    metadata = metadata,
-                    credentialFormat = credentialFormat,
-                    clientNonce = clientNonce,
-                    clock = clock
-                ),
-                credentialResponseEncryption = metadata.credentialResponseEncryption()
-            )
+            createCredentialRequestProof(
+                metadata = metadata,
+                credentialFormat = credentialFormat,
+                clientNonce = clientNonce,
+                clock = clock
+            ).let { proof ->
+                it.copy(
+                    proof = proof,
+                    proofs = proof.toProofs(),
+                    credentialResponseEncryption = metadata.credentialResponseEncryption()
+                )
+            }
         }.also {
             Napier.i("createCredentialRequest returns $it")
         }
     }
+
+    private fun CredentialRequestProof.toProofs() = CredentialRequestProofContainer(
+        proofType = proofType,
+        jwt = jwt?.let { setOf(it) },
+        attestation = attestation?.let { setOf(it) },
+    )
 
     private fun Set<AuthorizationDetails>.toCredentialRequest(): List<CredentialRequestParameters> =
         filterIsInstance<OpenIdAuthorizationDetails>().flatMap {
