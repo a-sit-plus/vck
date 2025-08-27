@@ -5,6 +5,7 @@ import at.asitplus.catching
 import at.asitplus.iso.sha256
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
+import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.CredentialOffer
 import at.asitplus.openid.CredentialOfferGrants
 import at.asitplus.openid.CredentialOfferGrantsAuthCode
@@ -260,49 +261,63 @@ class SimpleAuthorizationService(
         loadUserFun: OAuth2LoadUserFun,
     ) = catching {
         Napier.i("authorize called with $input")
-
-        val request = if (input.requestUri != null) {
-            requestUriToPushedAuthorizationRequest.remove(input.requestUri!!)?.apply {
-                if (clientId != input.clientId) {
-                    Napier.w("authorize: invalid client_id: ${input.clientId} vs par ${clientId}")
-                    throw InvalidRequest("client_id not matching from par")
-                }
-            } ?: run {
-                Napier.w("authorize: client sent invalid request_uri: ${input.requestUri}")
-                throw InvalidRequest("request_uri set, but not found")
-            }
-        } else {
-            requestParser.extractActualRequest(input).getOrThrow()
-        }.validate()
-
-        val code = codeService.provideCode().also { code ->
-            val userInfo = loadUserFun(OAuth2LoadUserFunInput(request, code)).getOrElse {
-                Napier.w("authorize: could not load user info from $request", it)
-                throw InvalidRequest("Could not load user info for request $request", it)
-            }
-            codeToClientAuthRequest.put(
-                code,
-                ClientAuthRequest(
-                    issuedCode = code,
-                    userInfo = userInfo,
-                    scope = request.scope,
-                    authnDetails = request.authorizationDetails,
-                    codeChallenge = request.codeChallenge
-                )
-            )
+        val request = extractActualRequest(input)
+        val userInfo = loadUserFun(OAuth2LoadUserFunInput(request)).getOrElse {
+            Napier.w("authorize: could not load user info from $request", it)
+            throw InvalidRequest("Could not load user info for request $request", it)
         }
+        with(request) {
+            issueCodeForUserInfo(userInfo, state, codeChallenge, authorizationDetails, scope, redirectUrl!!)
+                .also { Napier.i("authorize returns $it") }
+        }
+    }
+
+    suspend fun issueCodeForUserInfo(
+        userInfo: OidcUserInfoExtended,
+        state: String?,
+        codeChallenge: String?,
+        authorizationDetails: Set<AuthorizationDetails>?,
+        scope: String?,
+        redirectUrl: String,
+    ): AuthenticationResponseResult.Redirect {
         val response = AuthenticationResponseParameters(
-            code = code,
-            state = request.state,
+            code = codeService.provideCode().also { code ->
+                codeToClientAuthRequest.put(
+                    code,
+                    ClientAuthRequest(
+                        issuedCode = code,
+                        userInfo = userInfo,
+                        scope = scope,
+                        authnDetails = authorizationDetails,
+                        codeChallenge = codeChallenge
+                    )
+                )
+            },
+            state = state,
         )
 
-        val url = URLBuilder(request.redirectUrl!!)
+        val url = URLBuilder(redirectUrl)
             .apply { response.encodeToParameters().forEach { this.parameters.append(it.key, it.value) } }
             .buildString()
 
-        AuthenticationResponseResult.Redirect(url, response)
-            .also { Napier.i("authorize returns $it") }
+        return AuthenticationResponseResult.Redirect(url, response)
     }
+
+    internal suspend fun extractActualRequest(
+        input: AuthenticationRequestParameters,
+    ): AuthenticationRequestParameters = if (input.requestUri != null) {
+        requestUriToPushedAuthorizationRequest.remove(input.requestUri!!)?.apply {
+            if (clientId != input.clientId) {
+                Napier.w("authorize: invalid client_id: ${input.clientId} vs par $clientId")
+                throw InvalidRequest("client_id not matching from par")
+            }
+        } ?: run {
+            Napier.w("authorize: client sent invalid request_uri: ${input.requestUri}")
+            throw InvalidRequest("request_uri set, but not found")
+        }
+    } else {
+        requestParser.extractActualRequest(input).getOrThrow()
+    }.validate()
 
     /**
      * Validates basic requirements to [AuthenticationRequestParameters]:
@@ -421,7 +436,7 @@ class SimpleAuthorizationService(
         Napier.i("token returns $token")
         token
     }
-    
+
     private fun validateCodeChallenge(code: String, codeVerifier: String?, codeChallenge: String) {
         if (codeVerifier == null) {
             Napier.w("token: client did not provide any code verifier: $codeVerifier for $code")

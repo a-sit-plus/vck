@@ -16,5 +16,4 @@ fun interface OAuth2LoadUserFun {
 
 data class OAuth2LoadUserFunInput(
     val request: AuthenticationRequestParameters,
-    val code: String,
 )
