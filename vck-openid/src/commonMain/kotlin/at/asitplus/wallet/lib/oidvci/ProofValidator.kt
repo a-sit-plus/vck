@@ -79,6 +79,7 @@ class ProofValidator(
         )
     }
 
+    @Suppress("DEPRECATION")
     suspend fun validateProofExtractSubjectPublicKeys(
         params: CredentialRequestParameters,
     ): Collection<CryptoPublicKey> = params.proof?.validateProof()
