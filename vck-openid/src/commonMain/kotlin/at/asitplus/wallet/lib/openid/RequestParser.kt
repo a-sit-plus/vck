@@ -107,7 +107,7 @@ class RequestParser(
     ): RemoteResourceRetrieverInput = RemoteResourceRetrieverInput(
         url = uri,
         method = requestUriMethod.toHttpMethod(),
-        headers = mapOf(HttpHeaders.Accept to MediaTypes.AUTHZ_REQ_JWT),
+        headers = mapOf(HttpHeaders.Accept to MediaTypes.Application.AUTHZ_REQ_JWT),
         requestObjectParameters = buildRequestObjectParameters.invoke()
     )
 
