@@ -54,7 +54,7 @@ class OidvciAttestationTest : FunSpec({
             scope = scope,
             resource = issuer.metadata.credentialIssuer
         )
-        return authorizationService.token(tokenRequest, null, null).getOrThrow()
+        return authorizationService.token(tokenRequest, null).getOrThrow()
     }
 
     beforeEach {

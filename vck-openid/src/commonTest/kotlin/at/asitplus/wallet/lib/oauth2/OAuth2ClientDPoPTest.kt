@@ -75,7 +75,6 @@ class OAuth2ClientDPoPTest : FunSpec({
                 authorization = OAuth2Client.AuthorizationForToken.Code(code),
                 scope = scope
             ),
-            authorizationHeader = null,
             httpRequest = RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, tokenUrl))
         ).getOrThrow().also {
             it.tokenType shouldBe TOKEN_TYPE_DPOP
@@ -115,7 +114,6 @@ class OAuth2ClientDPoPTest : FunSpec({
                 authorization = OAuth2Client.AuthorizationForToken.Code(code),
                 scope = scope
             ),
-            authorizationHeader = null,
             httpRequest = RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, tokenUrl))
         ).getOrThrow().also {
             it.tokenType shouldBe TOKEN_TYPE_DPOP
@@ -135,7 +133,6 @@ class OAuth2ClientDPoPTest : FunSpec({
                 authorization = OAuth2Client.AuthorizationForToken.RefreshToken(token.refreshToken!!),
                 scope = scope
             ),
-            authorizationHeader = null,
             httpRequest = RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, tokenUrl))
         ).getOrThrow()
         refreshedAccessToken.accessToken shouldNotBe token.accessToken
@@ -175,7 +172,6 @@ class OAuth2ClientDPoPTest : FunSpec({
                     authorization = OAuth2Client.AuthorizationForToken.Code(code),
                     scope = scope
                 ),
-                authorizationHeader = null,
                 httpRequest = RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, "https://somethingelse.com/"))
             ).getOrThrow()
         }
@@ -192,7 +188,6 @@ class OAuth2ClientDPoPTest : FunSpec({
                     authorization = OAuth2Client.AuthorizationForToken.Code(code),
                     scope = scope
                 ),
-                authorizationHeader = null,
                 httpRequest = null
             ).getOrThrow()
         }
@@ -208,7 +203,6 @@ class OAuth2ClientDPoPTest : FunSpec({
                 authorization = OAuth2Client.AuthorizationForToken.Code(code),
                 scope = scope
             ),
-            authorizationHeader = null,
             httpRequest = RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, tokenUrl))
         ).getOrThrow().also {
             it.tokenType shouldBe TOKEN_TYPE_DPOP
@@ -240,7 +234,6 @@ class OAuth2ClientDPoPTest : FunSpec({
                 authorization = OAuth2Client.AuthorizationForToken.Code(code),
                 scope = scope
             ),
-            authorizationHeader = null,
             httpRequest = RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, tokenUrl))
         ).getOrThrow()
 

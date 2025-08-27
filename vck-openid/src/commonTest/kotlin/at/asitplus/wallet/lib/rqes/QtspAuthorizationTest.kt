@@ -50,7 +50,7 @@ class QtspAuthorizationTest : FreeSpec({
             ),
             authorizationDetails = credentialAuthReq.authorizationDetails
         )
-        qtspAuthenticationService.token(credentialTokenReq, null, null).getOrThrow()
+        qtspAuthenticationService.token(credentialTokenReq, null).getOrThrow()
     }
 
 })
