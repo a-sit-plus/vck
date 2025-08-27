@@ -129,8 +129,10 @@ class OidvciCodeFlowTest : FreeSpec({
                 it.supportedSigningAlgorithms.shouldNotBeNull().shouldNotBeEmpty()
                 it.supportedProofTypes.shouldNotBeNull().shouldNotBeEmpty()
                 it.supportedBindingMethods.shouldNotBeNull().shouldNotBeEmpty()
-                if (it.format != CredentialFormatEnum.JWT_VC)
+                if (it.format != CredentialFormatEnum.JWT_VC) {
                     it.claimDescription.shouldNotBeNull().shouldNotBeEmpty()
+                    it.credentialMetadata.shouldNotBeNull().claimDescription.shouldNotBeNull().shouldNotBeEmpty()
+                }
             }
         }
         strategy.validAuthorizationDetails().shouldNotBeEmpty().forEach {

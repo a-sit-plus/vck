@@ -4,8 +4,8 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * OID4VCI: OPTIONAL. Array of objects, where each object contains the display properties of the supported Credential
- * for a certain language.
+ * OID4VCI: OPTIONAL. A non-empty array of objects, where each object contains the display properties of the
+ * supported Credential for a certain language.
  */
 @Serializable
 data class DisplayProperties(
@@ -16,8 +16,9 @@ data class DisplayProperties(
     val name: String? = null,
 
     /**
-     * OID4VCI: OPTIONAL. String value that identifies language of this object represented as language tag values
-     * defined in BCP47 (RFC5646). There MUST be only one object with the same language identifier.
+     * OID4VCI: OPTIONAL. String value that identifies the language of this object represented as a language tag taken
+     * from values defined in BCP47 (RFC5646). Multiple display objects MAY be included for separate languages. There
+     * MUST be only one object for each language identifier.
      */
     @SerialName("locale")
     val locale: String? = null,

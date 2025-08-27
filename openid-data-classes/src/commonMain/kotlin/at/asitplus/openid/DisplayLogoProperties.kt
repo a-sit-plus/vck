@@ -8,20 +8,13 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class DisplayLogoProperties(
-    /**
-     * OID4VCI: REQUIRED. String value that contains a URI where the Wallet can obtain the logo of the Credential from
-     * the Credential Issuer.
-     *
-     * Due to inconsistent examples, we've also implemented [uri].
-     */
     @SerialName("url")
+    @Deprecated("Use `uri` instead", ReplaceWith("uri"))
     val url: String? = null,
 
     /**
      * OID4VCI: REQUIRED. String value that contains a URI where the Wallet can obtain the logo of the Credential from
      * the Credential Issuer.
-     *
-     * Due to inconsistent examples, we've also implemented [url].
      */
     @SerialName("uri")
     val uri: String? = null,
