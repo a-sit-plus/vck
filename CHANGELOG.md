@@ -48,6 +48,7 @@ Release 5.9.0 (unreleased):
    - Use [secure random](https://github.com/KotlinCrypto/random) for source of nonces by default, but also expose constructor parameters to override it
  - Update implementation of [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html) to draft 17:
    - Offer `signedMetadata` in `CredentialIssuer`
+   - In `OpenIdAuthorizationDetails` deprecate properties that have been dropped from the spec: `format`, `docType`, `sdJwtVcType` and `credentialDefinition`
 
 Release 5.8.0:
  - Refactor `AuthorizationServiceStrategy`

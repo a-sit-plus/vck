@@ -25,28 +25,19 @@ sealed class AuthorizationDetails
 @SerialName("openid_credential")
 data class OpenIdAuthorizationDetails(
     /**
-     * OID4VCI: REQUIRED when [format] parameter is not present. String specifying a unique identifier of the
+     * OID4VCI: REQUIRED. String specifying a unique identifier of the
      * Credential being described in [IssuerMetadata.supportedCredentialConfigurations].
      * The referenced object in [IssuerMetadata.supportedCredentialConfigurations] conveys the details, such as the
-     * format, for issuance of the requested Credential.
+     * format and format-specific parameters like `vct` for SD-JWT VC or `doctype` for ISO mdoc.
      */
     @SerialName("credential_configuration_id")
     val credentialConfigurationId: String? = null,
 
-    /**
-     * OID4VCI: REQUIRED when [credentialConfigurationId] parameter is not present.
-     * String identifying the format of the Credential the Wallet needs.
-     * This Credential format identifier determines further claims in the authorization details object needed to
-     * identify the Credential type in the requested format.
-     */
+    @Deprecated("Removed in OID4VCI draft 16")
     @SerialName("format")
     val format: CredentialFormatEnum? = null,
 
-    /**
-     * OID4VCI: ISO mDL: OPTIONAL. This claim contains the type value the Wallet requests authorization for at the
-     * Credential Issuer. It MUST only be present if the [format] claim is present. It MUST not be present
-     * otherwise.
-     */
+    @Deprecated("Removed in OID4VCI draft 16")
     @SerialName("doctype")
     val docType: String? = null,
 
@@ -57,18 +48,11 @@ data class OpenIdAuthorizationDetails(
     @SerialName("claims")
     val claims: JsonElement? = null,
 
-    /**
-     * OID4VCI: W3C VC: OPTIONAL. Object containing a detailed description of the Credential consisting of the
-     * following parameters, see [SupportedCredentialFormatDefinition].
-     */
+    @Deprecated("Removed in OID4VCI draft 16")
     @SerialName("credential_definition")
     val credentialDefinition: SupportedCredentialFormatDefinition? = null,
 
-    /**
-     * OID4VCI: IETF SD-JWT VC: REQUIRED. String as defined in Appendix A.3.2. This claim contains the type values
-     * the Wallet requests authorization for at the Credential Issuer.
-     * It MUST only be present if the [format] claim is present. It MUST not be present otherwise.
-     */
+    @Deprecated("Removed in OID4VCI draft 16")
     @SerialName("vct")
     val sdJwtVcType: String? = null,
 
