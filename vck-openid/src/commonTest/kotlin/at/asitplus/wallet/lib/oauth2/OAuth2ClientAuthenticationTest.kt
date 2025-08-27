@@ -10,6 +10,7 @@ import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -58,7 +59,12 @@ class OAuth2ClientAuthenticationTest : FunSpec({
         )
 
         val signClientAttestationPop: SignJwtFun<JsonWebToken> = SignJwt(clientKey, JwsHeaderNone())
-        clientAttestationPop = BuildClientAttestationPoPJwt(signClientAttestationPop, client.clientId, "some server")
+        clientAttestationPop = BuildClientAttestationPoPJwt(
+            signJwt = signClientAttestationPop,
+            clientId = client.clientId,
+            audience = "some server",
+            randomSource = RandomSource.Default
+        )
     }
 
     suspend fun getToken(state: String, code: String): TokenResponseParameters = server.token(

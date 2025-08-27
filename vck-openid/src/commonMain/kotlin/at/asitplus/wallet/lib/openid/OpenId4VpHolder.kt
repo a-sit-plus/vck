@@ -36,6 +36,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
@@ -93,11 +94,25 @@ class OpenId4VpHolder(
      */
     private val requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _ -> true },
     private val walletNonceMapStore: MapStore<String, String> = DefaultMapStore(),
+    /** Source for random bytes, i.e., nonces for encrypted responses. */
+    private val randomSource: RandomSource = RandomSource.Secure,
 ) {
 
     private val supportedAlgorithmsStrings = supportedAlgorithms.map { it.identifier }.toSet()
     private val authorizationRequestValidator = AuthorizationRequestValidator(walletNonceMapStore)
-    private val authenticationResponseFactory = AuthenticationResponseFactory(signJarm, signError, encryptJarm)
+    private val authenticationResponseFactory = AuthenticationResponseFactory(
+        signJarm = signJarm,
+        signError = signError,
+        encryptJarm = encryptJarm,
+        randomSource = randomSource
+    )
+    private val presentationFactory = PresentationFactory(
+        supportedAlgorithms = supportedAlgorithms,
+        signDeviceAuthDetached = signDeviceAuthDetached,
+        signDeviceAuthFallback = signDeviceAuthFallback,
+        signIdToken = signIdToken,
+        randomSource = randomSource
+    )
 
     val metadata: OAuth2AuthorizationServerMetadata by lazy {
         OAuth2AuthorizationServerMetadata(
@@ -264,8 +279,6 @@ class OpenId4VpHolder(
         val clientJsonWebKeySet = clientMetadata?.loadJsonWebKeySet()
         val dcApiRequest = request.extractDcApiRequest() as? Oid4vpDCAPIRequest?
         val audience = request.parameters.extractAudience(clientJsonWebKeySet, dcApiRequest)
-        val presentationFactory =
-            PresentationFactory(supportedAlgorithms, signDeviceAuthDetached, signDeviceAuthFallback, signIdToken)
         val jsonWebKeys = clientJsonWebKeySet?.keys?.combine(certKey)
         val idToken =
             presentationFactory.createSignedIdToken(clock, keyMaterial.publicKey, request).getOrNull()?.serialize()

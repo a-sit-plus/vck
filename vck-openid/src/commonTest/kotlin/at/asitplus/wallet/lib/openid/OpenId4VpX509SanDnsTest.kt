@@ -46,19 +46,22 @@ class OpenId4VpX509SanDnsTest : FreeSpec({
         verifierKeyMaterial = EphemeralKeyWithSelfSignedCert(extensions = extensions)
         holderAgent = HolderAgent(holderKeyMaterial)
         holderAgent.storeCredential(
-            IssuerAgent(identifier = "https://issuer.example.com/".toUri())
-                .issueCredential(
-                    DummyCredentialDataProvider.getCredential(
-                        holderKeyMaterial.publicKey,
-                        AtomicAttribute2023,
-                        SD_JWT,
-                    ).getOrThrow()
-                ).getOrThrow().toStoreCredentialInput()
+            IssuerAgent(
+                identifier = "https://issuer.example.com/".toUri(),
+                randomSource = RandomSource.Default
+            ).issueCredential(
+                DummyCredentialDataProvider.getCredential(
+                    holderKeyMaterial.publicKey,
+                    AtomicAttribute2023,
+                    SD_JWT,
+                ).getOrThrow()
+            ).getOrThrow().toStoreCredentialInput()
         )
 
         holderOid4vp = OpenId4VpHolder(
             keyMaterial = holderKeyMaterial,
             holder = holderAgent,
+            randomSource = RandomSource.Default,
         )
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
@@ -85,11 +88,13 @@ class OpenId4VpX509SanDnsTest : FreeSpec({
         jar.shouldNotBeNull()
 
         holderOid4vp = OpenId4VpHolder(
-            holderKeyMaterial,
-            holderAgent,
+            keyMaterial = holderKeyMaterial,
+            holder = holderAgent,
             remoteResourceRetriever = {
                 if (it.url == requestUrl) jar.invoke(it.requestObjectParameters).getOrThrow() else null
-            })
+            },
+            randomSource = RandomSource.Default,
+        )
 
         val authnResponse = holderOid4vp.createAuthnResponse(walletUrl).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
@@ -116,11 +121,13 @@ class OpenId4VpX509SanDnsTest : FreeSpec({
         jar.shouldNotBeNull()
 
         holderOid4vp = OpenId4VpHolder(
-            holderKeyMaterial,
-            holderAgent,
+            keyMaterial = holderKeyMaterial,
+            holder = holderAgent,
             remoteResourceRetriever = {
                 if (it.url == requestUrl) jar.invoke(it.requestObjectParameters).getOrThrow() else null
-            })
+            },
+            randomSource = RandomSource.Default,
+        )
 
         val authnResponse = holderOid4vp.createAuthnResponse(walletUrl).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Post>()

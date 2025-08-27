@@ -306,7 +306,8 @@ class OpenId4VpWalletTest : FunSpec() {
     ) = storeCredential(
         IssuerAgent(
             keyMaterial = EphemeralKeyWithSelfSignedCert(),
-            identifier = "https://issuer.example.com/".toUri()
+            identifier = "https://issuer.example.com/".toUri(),
+            randomSource = RandomSource.Default
         ).issueCredential(
             representation.toCredentialToBeIssued(scheme, attributes)
         ).getOrThrow().toStoreCredentialInput()

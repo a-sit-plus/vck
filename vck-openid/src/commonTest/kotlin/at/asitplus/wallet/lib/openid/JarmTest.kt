@@ -28,13 +28,19 @@ class JarmTest : FreeSpec({
         holderAgent = HolderAgent(holderKeyMaterial)
 
         holderAgent.storeCredential(
-            IssuerAgent(identifier = "https://issuer.example.com/".toUri()).issueCredential(
+            IssuerAgent(
+                identifier = "https://issuer.example.com/".toUri(),
+                randomSource = RandomSource.Default
+            ).issueCredential(
                 DummyCredentialDataProvider.getCredential(holderKeyMaterial.publicKey, AtomicAttribute2023, SD_JWT)
                     .getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         )
         holderAgent.storeCredential(
-            IssuerAgent(identifier = "https://issuer.example.com/".toUri()).issueCredential(
+            IssuerAgent(
+                identifier = "https://issuer.example.com/".toUri(),
+                randomSource = RandomSource.Default
+            ).issueCredential(
                 DummyCredentialDataProvider.getCredential(holderKeyMaterial.publicKey, EuPidScheme, SD_JWT)
                     .getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
@@ -42,6 +48,7 @@ class JarmTest : FreeSpec({
 
         holderOid4vp = OpenId4VpHolder(
             holder = holderAgent,
+            randomSource = RandomSource.Default,
         )
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,

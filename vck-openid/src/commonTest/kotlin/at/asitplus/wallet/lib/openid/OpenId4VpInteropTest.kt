@@ -13,6 +13,7 @@ import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.SdJwtDecoded
 import at.asitplus.wallet.lib.agent.ValidatorSdJwt
 import at.asitplus.wallet.lib.agent.VerifierAgent
@@ -57,7 +58,10 @@ class OpenId4VpInteropTest : FreeSpec({
         issuerKeyId = uuid4().toString()
         issuerIdentifier = "https://issuer.example.com"
         val issuerKeyMaterial = EphemeralKeyWithoutCert(customKeyId = issuerKeyId)
-        val issuerAgent = IssuerAgent(issuerKeyMaterial, identifier = issuerIdentifier.toUri())
+        val issuerAgent = IssuerAgent(
+            issuerKeyMaterial, identifier = issuerIdentifier.toUri(),
+            randomSource = RandomSource.Default
+        )
 
         holderKeyMaterial = EphemeralKeyWithoutCert()
         holderAgent = HolderAgent(
@@ -75,7 +79,7 @@ class OpenId4VpInteropTest : FreeSpec({
                 ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         )
-        holderOid4vp = OpenId4VpHolder(holderKeyMaterial, holderAgent)
+        holderOid4vp = OpenId4VpHolder(holderKeyMaterial, holderAgent, randomSource = RandomSource.Default)
 
         verifierKeyId = uuid4().toString()
         verifierClientId = "AT-GV-EGIZ-CUSTOMVERIFIER"
@@ -127,11 +131,13 @@ class OpenId4VpInteropTest : FreeSpec({
         requestUrlForWallet shouldStartWith "haip://"
 
         holderOid4vp = OpenId4VpHolder(
-            holderKeyMaterial,
-            holderAgent,
+            keyMaterial = holderKeyMaterial,
+            holder = holderAgent,
             remoteResourceRetriever = {
                 if (it.url == requestUrl) requestObject.invoke(it.requestObjectParameters).getOrThrow() else null
-            })
+            },
+            randomSource = RandomSource.Default,
+        )
 
         val parameters = holderOid4vp.parseAuthenticationRequestParameters(requestUrlForWallet).getOrThrow()
         parameters.shouldBeInstanceOf<RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>>()

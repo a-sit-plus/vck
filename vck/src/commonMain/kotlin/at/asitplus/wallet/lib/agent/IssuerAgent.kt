@@ -57,6 +57,8 @@ class IssuerAgent(
     private val signIssuedVc: SignJwtFun<VerifiableCredentialJws> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     private val signMobileSecurityObject: SignCoseFun<MobileSecurityObject> =
         SignCose(keyMaterial, CoseHeaderNone(), CoseHeaderCertificate()),
+    /** Source for random bytes, i.e., salts for selective-disclosure items. */
+    private val randomSource: RandomSource = RandomSource.Secure,
 ) : Issuer {
 
     /**
@@ -185,7 +187,7 @@ class IssuerAgent(
                 uri = UniformResourceIdentifier(getRevocationListUrlFor(timePeriod)),
             )
         )
-        val (sdJwt, disclosures) = credential.claims.toSdJsonObject()
+        val (sdJwt, disclosures) = credential.claims.toSdJsonObject(randomSource)
         val cnf = ConfirmationClaim(jsonWebKey = credential.subjectPublicKey.toJsonWebKey())
         val vcSdJwt = VerifiableCredentialSdJwt(
             subject = subjectId,

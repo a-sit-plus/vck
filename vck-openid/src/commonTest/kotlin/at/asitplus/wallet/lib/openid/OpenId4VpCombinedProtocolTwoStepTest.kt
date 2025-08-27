@@ -8,6 +8,7 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.PresentationExchangeCredentialDisclosure
+import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -45,6 +46,7 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
         holderOid4vp = OpenId4VpHolder(
             keyMaterial = holderKeyMaterial,
             holder = holderAgent,
+            randomSource = RandomSource.Default,
         )
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
@@ -280,14 +282,16 @@ private suspend fun Holder.storeSdJwtCredential(
     credentialScheme: ConstantIndex.CredentialScheme,
 ) {
     storeCredential(
-        IssuerAgent(identifier = "https://issuer.example.com/".toUri())
-            .issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    holderKeyMaterial.publicKey,
-                    credentialScheme,
-                    SD_JWT,
-                ).getOrThrow()
-            ).getOrThrow().toStoreCredentialInput()
+        IssuerAgent(
+            identifier = "https://issuer.example.com/".toUri(),
+            randomSource = RandomSource.Default
+        ).issueCredential(
+            DummyCredentialDataProvider.getCredential(
+                holderKeyMaterial.publicKey,
+                credentialScheme,
+                SD_JWT,
+            ).getOrThrow()
+        ).getOrThrow().toStoreCredentialInput()
     )
 }
 
@@ -297,7 +301,8 @@ private suspend fun Holder.storeIsoCredential(
 ) = storeCredential(
     IssuerAgent(
         keyMaterial = EphemeralKeyWithSelfSignedCert(),
-        identifier = "https://issuer.example.com/".toUri()
+        identifier = "https://issuer.example.com/".toUri(),
+        randomSource = RandomSource.Default
     ).issueCredential(
         DummyCredentialDataProvider.getCredential(
             holderKeyMaterial.publicKey,

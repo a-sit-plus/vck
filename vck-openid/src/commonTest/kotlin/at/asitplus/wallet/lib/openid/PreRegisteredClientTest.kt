@@ -11,6 +11,7 @@ import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -57,18 +58,21 @@ class PreRegisteredClientTest : FreeSpec({
         holderAgent = HolderAgent(holderKeyMaterial)
 
         holderAgent.storeCredential(
-            IssuerAgent(identifier = "https://issuer.example.com/".toUri())
-                .issueCredential(
-                    DummyCredentialDataProvider.getCredential(
-                        holderKeyMaterial.publicKey,
-                        ConstantIndex.AtomicAttribute2023,
-                        ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-                    ).getOrThrow()
-                ).getOrThrow().toStoreCredentialInput()
+            IssuerAgent(
+                identifier = "https://issuer.example.com/".toUri(),
+                randomSource = RandomSource.Default
+            ).issueCredential(
+                DummyCredentialDataProvider.getCredential(
+                    holderKeyMaterial.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                ).getOrThrow()
+            ).getOrThrow().toStoreCredentialInput()
         )
 
         holderOid4vp = OpenId4VpHolder(
             holder = holderAgent,
+            randomSource = RandomSource.Default,
         )
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
@@ -319,7 +323,8 @@ class PreRegisteredClientTest : FreeSpec({
             holder = holderAgent,
             remoteResourceRetriever = {
                 if (it.url == requestUrl) authnRequest else null
-            }
+            },
+            randomSource = RandomSource.Default,
         )
 
         val authnResponse = holderOid4vp.createAuthnResponse(authRequestUrlWithRequestUri).getOrThrow()
@@ -345,7 +350,8 @@ class PreRegisteredClientTest : FreeSpec({
             holder = holderAgent,
             remoteResourceRetriever = {
                 if (it.url == requestUrl) jar.invoke(it.requestObjectParameters).getOrThrow() else null
-            }
+            },
+            randomSource = RandomSource.Default,
         )
 
         val authnResponse = holderOid4vp.createAuthnResponse(authRequestUrlWithRequestUri).getOrThrow()
@@ -388,7 +394,8 @@ class PreRegisteredClientTest : FreeSpec({
                     }
                 } else null
             },
-            walletNonceMapStore = walletNonceMapStore
+            walletNonceMapStore = walletNonceMapStore,
+            randomSource = RandomSource.Default,
         )
 
         shouldThrow<OAuth2Exception> {
@@ -409,7 +416,8 @@ class PreRegisteredClientTest : FreeSpec({
             remoteResourceRetriever = {
                 if (it.url == requestUrl) jar.invoke(it.requestObjectParameters).getOrThrow() else null
             },
-            requestObjectJwsVerifier = { _ -> false }
+            requestObjectJwsVerifier = { _ -> false },
+            randomSource = RandomSource.Default,
         )
 
         shouldThrow<OAuth2Exception> {

@@ -48,7 +48,10 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
     beforeEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         holderAgent = HolderAgent(holderKeyMaterial)
-        val issuerAgent = IssuerAgent(identifier = "https://issuer.example.com/".toUri())
+        val issuerAgent = IssuerAgent(
+            identifier = "https://issuer.example.com/".toUri(),
+            randomSource = RandomSource.Default
+        )
         holderAgent.storeCredential(
             issuerAgent.issueCredential(
                 DummyCredentialDataProvider.getCredential(
@@ -67,7 +70,7 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
                 ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         )
-        holderOid4vp = OpenId4VpHolder(holderKeyMaterial, holderAgent)
+        holderOid4vp = OpenId4VpHolder(holderKeyMaterial, holderAgent, randomSource = RandomSource.Default)
     }
 
     "EUDI from URL 2024-05-17" {
@@ -173,7 +176,8 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
             holder = holderAgent,
             remoteResourceRetriever = {
                 if (it.url == jwksUrl) jwkset else if (it.url == requestUrl) requestObject else null
-            }
+            },
+            randomSource = RandomSource.Default,
         )
 
         holderOid4vp.parseAuthenticationRequestParameters(url).getOrThrow()
@@ -300,7 +304,8 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
         val wallet = OpenId4VpHolder(
             remoteResourceRetriever = {
                 if (it.url == "https://example.com/d15b5b6f-7821-4031-9a18-ebe491b720a6") jws else null
-            }
+            },
+            randomSource = RandomSource.Default,
         )
 
         val parsed = wallet.parseAuthenticationRequestParameters(input).getOrThrow()
@@ -353,12 +358,16 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
         jar.shouldNotBeNull()
 
         holderOid4vp = OpenId4VpHolder(
-            holderKeyMaterial,
-            holderAgent,
-            remoteResourceRetriever = { if (it.url == requestUrl) jar.invoke(it.requestObjectParameters).getOrThrow() else null }
+            keyMaterial = holderKeyMaterial,
+            holder = holderAgent,
+            remoteResourceRetriever = {
+                if (it.url == requestUrl) jar.invoke(it.requestObjectParameters).getOrThrow() else null
+            },
+            randomSource = RandomSource.Default,
         )
 
-        val parameters: RequestParametersFrom<AuthenticationRequestParameters> = holderOid4vp.parseAuthenticationRequestParameters(walletUrl).getOrThrow()
+        val parameters: RequestParametersFrom<AuthenticationRequestParameters> =
+            holderOid4vp.parseAuthenticationRequestParameters(walletUrl).getOrThrow()
         val response = holderOid4vp.createAuthnResponse(parameters).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
         verifierOid4vp.validateAuthnResponse(response.params)

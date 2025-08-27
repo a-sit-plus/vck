@@ -42,27 +42,30 @@ class OpenId4VpComplexSdJwtProtocolTest : FreeSpec({
         holderAgent = HolderAgent(holderKeyMaterial)
 
         holderAgent.storeCredential(
-            IssuerAgent(identifier = "https://issuer.example.com/".toUri())
-                .issueCredential(
-                    CredentialToBeIssued.VcSd(
-                        listOf(
-                            ClaimToBeIssued(
-                                CLAIM_ADDRESS, listOf(
-                                    ClaimToBeIssued(CLAIM_ADDRESS_REGION, randomRegion),
-                                    ClaimToBeIssued(CLAIM_ADDRESS_COUNTRY, randomCountry)
-                                )
+            IssuerAgent(
+                identifier = "https://issuer.example.com/".toUri(),
+                randomSource = RandomSource.Default
+            ).issueCredential(
+                CredentialToBeIssued.VcSd(
+                    listOf(
+                        ClaimToBeIssued(
+                            CLAIM_ADDRESS, listOf(
+                                ClaimToBeIssued(CLAIM_ADDRESS_REGION, randomRegion),
+                                ClaimToBeIssued(CLAIM_ADDRESS_COUNTRY, randomCountry)
                             )
-                        ),
-                        Clock.System.now().plus(5.minutes),
-                        AtomicAttribute2023,
-                        holderKeyMaterial.publicKey,
-                        DummyUserProvider.user,
-                    )
-                ).getOrThrow().toStoreCredentialInput()
+                        )
+                    ),
+                    Clock.System.now().plus(5.minutes),
+                    AtomicAttribute2023,
+                    holderKeyMaterial.publicKey,
+                    DummyUserProvider.user,
+                )
+            ).getOrThrow().toStoreCredentialInput()
         )
 
         holderOid4vp = OpenId4VpHolder(
             holder = holderAgent,
+            randomSource = RandomSource.Default,
         )
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,

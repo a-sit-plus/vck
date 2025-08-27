@@ -31,7 +31,8 @@ class StoreEntrySerializationTest : FreeSpec({
         issuer = IssuerAgent(
             keyMaterial = EphemeralKeyWithSelfSignedCert(),
             issuerCredentialStore = issuerCredentialStore,
-            identifier = "https://issuer.example.com/".toUri()
+            identifier = "https://issuer.example.com/".toUri(),
+            randomSource = RandomSource.Default
         )
         holderKeyMaterial = EphemeralKeyWithoutCert()
         holder = HolderAgent(holderKeyMaterial, holderCredentialStore)
