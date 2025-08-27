@@ -47,6 +47,8 @@ Release 5.9.0 (unreleased):
    - `SimpleAuthorizationService` supports token exchange acc. to [RFC 8693](https://datatracker.ietf.org/doc/html/rfc8693)
    - `SimpleAuthorizationService` supports token introspection acc. to [RFC 7662](https://datatracker.ietf.org/doc/html/rfc7662)
    - Implement `RemoteOAuth2AuthorizationServerAdapter` so that credential issuers may be connected to external OAuth2.0 authorization servers
+ - Cryptography:
+   - Use [secure random](https://github.com/KotlinCrypto/random) for source of nonces by default, but also expose constructor parameters to override it
 
 Release 5.8.0:
  - Refactor `AuthorizationServiceStrategy`

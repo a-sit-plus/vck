@@ -25,6 +25,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.ValidatorSdJwt
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -243,7 +244,8 @@ class OpenId4VciClientTest : FunSpec() {
         )
         val issuer = IssuerAgent(
             keyMaterial = EphemeralKeyWithSelfSignedCert(),
-            identifier = "https://issuer.example.com/".toUri()
+            identifier = "https://issuer.example.com/".toUri(),
+            randomSource = RandomSource.Default
         )
         credentialIssuer = CredentialIssuer(
             authorizationService = authorizationService,
@@ -351,9 +353,8 @@ class OpenId4VciClientTest : FunSpec() {
                 signClientAttestationPop = SignJwt(clientAuthKeyMaterial, JwsHeaderNone()),
                 signDpop = SignJwt(dpopKeyMaterial, JwsHeaderCertOrJwk()),
                 dpopAlgorithm = dpopKeyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
-                oAuth2Client = OAuth2Client(
-                    clientId = clientId,
-                )
+                oAuth2Client = OAuth2Client(clientId = clientId,),
+                randomSource = RandomSource.Default,
             )
         )
     }

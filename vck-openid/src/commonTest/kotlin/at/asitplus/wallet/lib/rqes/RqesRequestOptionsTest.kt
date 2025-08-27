@@ -39,11 +39,13 @@ class RqesRequestOptionsTest : FreeSpec({
         holderAgent = HolderAgent(holderKeyMaterial)
 
         holderAgent.storeCredential(
-            IssuerAgent(identifier = "https://issuer.example.com/".toUri())
-                .issueCredential(
-                    DummyCredentialDataProvider.getCredential(holderKeyMaterial.publicKey, EuPidScheme, SD_JWT)
-                        .getOrThrow()
-                ).getOrThrow().toStoreCredentialInput()
+            IssuerAgent(
+                identifier = "https://issuer.example.com/".toUri(),
+                randomSource = RandomSource.Default
+            ).issueCredential(
+                DummyCredentialDataProvider.getCredential(holderKeyMaterial.publicKey, EuPidScheme, SD_JWT)
+                    .getOrThrow()
+            ).getOrThrow().toStoreCredentialInput()
         )
     }
 

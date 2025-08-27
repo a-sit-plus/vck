@@ -3,13 +3,7 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
-import at.asitplus.openid.OpenIdConstants.ResponseMode.DcApi
-import at.asitplus.openid.OpenIdConstants.ResponseMode.DcApiJwt
-import at.asitplus.openid.OpenIdConstants.ResponseMode.DirectPost
-import at.asitplus.openid.OpenIdConstants.ResponseMode.DirectPostJwt
-import at.asitplus.openid.OpenIdConstants.ResponseMode.Fragment
-import at.asitplus.openid.OpenIdConstants.ResponseMode.Other
-import at.asitplus.openid.OpenIdConstants.ResponseMode.Query
+import at.asitplus.openid.OpenIdConstants.ResponseMode.*
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JsonWebKey
@@ -17,6 +11,7 @@ import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.JwkType
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.EncryptJweFun
 import at.asitplus.wallet.lib.jws.SignJwtFun
@@ -26,14 +21,14 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.github.aakira.napier.Napier
-import io.ktor.http.URLBuilder
+import io.ktor.http.*
 import kotlin.coroutines.cancellation.CancellationException
-import kotlin.random.Random
 
 internal class AuthenticationResponseFactory(
     val signJarm: SignJwtFun<AuthenticationResponseParameters>,
     val signError: SignJwtFun<OAuth2Error>,
     val encryptJarm: EncryptJweFun,
+    val randomSource: RandomSource = RandomSource.Secure
 ) {
     @Throws(OAuth2Exception::class, CancellationException::class)
     internal suspend fun createAuthenticationResponse(
@@ -183,9 +178,9 @@ internal class AuthenticationResponseFactory(
         val encryption = response.clientMetadata.authorizationEncryptedResponseEncoding!!
         val recipientKey = response.jsonWebKeys!!.getEcdhEsKey()
         val apv = request.parameters.nonce?.encodeToByteArray()
-            ?: Random.nextBytes(16)
+            ?: randomSource.nextBytes(16)
         val apu = response.mdocGeneratedNonce?.encodeToByteArray()
-            ?: Random.nextBytes(16)
+            ?: randomSource.nextBytes(16)
         val header = JweHeader(
             algorithm = algorithm,
             encryption = encryption,

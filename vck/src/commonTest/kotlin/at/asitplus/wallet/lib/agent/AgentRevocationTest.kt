@@ -38,7 +38,8 @@ class AgentRevocationTest : FreeSpec({
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         issuer = IssuerAgent(
             issuerCredentialStore = issuerCredentialStore,
-            identifier = "https://issuer.example.com/".toUri()
+            identifier = "https://issuer.example.com/".toUri(),
+            randomSource = RandomSource.Default
         )
         statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
         verifierKeyMaterial = EphemeralKeyWithoutCert()
@@ -152,7 +153,8 @@ class AgentRevocationTest : FreeSpec({
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         issuer = IssuerAgent(
             issuerCredentialStore = issuerCredentialStore,
-            identifier = "https://issuer.example.com/".toUri()
+            identifier = "https://issuer.example.com/".toUri(),
+            randomSource = RandomSource.Default
         )
         statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
         expectedRevokedIndexes = listOf(1U, 2U, 4U, 6U, 7U, 9U, 10U, 12U, 13U, 14U)

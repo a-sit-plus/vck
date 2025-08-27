@@ -37,7 +37,8 @@ class AgentComplexSdJwtTest : FreeSpec({
         holderCredentialStore = InMemorySubjectCredentialStore()
         issuer = IssuerAgent(
             issuerCredentialStore = issuerCredentialStore,
-            identifier = "https://issuer.example.com/".toUri()
+            identifier = "https://issuer.example.com/".toUri(),
+            randomSource = RandomSource.Default
         )
         holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
         holder = HolderAgent(holderKeyMaterial, holderCredentialStore)

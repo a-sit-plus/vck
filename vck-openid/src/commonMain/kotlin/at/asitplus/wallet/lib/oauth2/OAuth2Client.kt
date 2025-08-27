@@ -19,6 +19,7 @@ import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
+import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -27,7 +28,6 @@ import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.MapStore
 import at.asitplus.wallet.lib.oidvci.WalletService
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlin.random.Random
 
 /**
  * Simple OAuth 2.0 client to authorize the client against an OAuth 2.0 Authorization Server and request tokens.
@@ -52,6 +52,7 @@ class OAuth2Client(
     /** Set this variable to use JAR (JWT-secured authorization requests, RFC 9101), as mandated by OpenID4VC HAIP. */
     val signPushedAuthorizationRequest: SignJwtFun<AuthenticationRequestParameters>? =
         SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
+    private val randomSource: RandomSource = RandomSource.Default
 ) {
 
     /**
@@ -148,7 +149,7 @@ class OAuth2Client(
 
     @OptIn(ExperimentalStdlibApi::class)
     suspend fun generateCodeVerifier(state: String): String =
-        Random.nextBytes(32).toHexString(HexFormat.Default)
+        randomSource.nextBytes(32).toHexString(HexFormat.Default)
             .also { stateToCodeStore.put(state, it) }
             .encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
 

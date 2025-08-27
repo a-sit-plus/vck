@@ -38,7 +38,8 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
 
         val issuerAgent = IssuerAgent(
             keyMaterial = EphemeralKeyWithSelfSignedCert(),
-            identifier = "https://issuer.example.com/".toUri()
+            identifier = "https://issuer.example.com/".toUri(),
+            randomSource = RandomSource.Default
         )
         holderAgent.storeCredential(
             issuerAgent.issueCredential(
@@ -62,7 +63,8 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
 
         holderOid4vp = OpenId4VpHolder(
             holder = holderAgent,
-            keyMaterial = holderKeyMaterial
+            keyMaterial = holderKeyMaterial,
+            randomSource = RandomSource.Default,
         )
     }
 

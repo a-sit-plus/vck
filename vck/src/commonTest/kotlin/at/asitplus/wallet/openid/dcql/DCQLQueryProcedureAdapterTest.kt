@@ -19,7 +19,8 @@ class DCQLQueryProcedureAdapterTest : FreeSpec({
         val issuerIdentifier = "https://issuer.example.com/"
         val issuer = IssuerAgent(
             issuerCredentialStore = issuerCredentialStore,
-            identifier = issuerIdentifier.toUri()
+            identifier = issuerIdentifier.toUri(),
+            randomSource = RandomSource.Default
         )
 
         val holderKeyMaterial = EphemeralKeyWithSelfSignedCert()

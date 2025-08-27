@@ -5,12 +5,12 @@ import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.time.Clock
-import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
@@ -25,10 +25,11 @@ object BuildDPoPHeader {
         httpMethod: String = "POST",
         accessToken: String? = null,
         nonce: String? = null,
+        randomSource: RandomSource = RandomSource.Secure
     ) = signDpop(
         JwsContentTypeConstants.DPOP_JWT,
         JsonWebToken(
-            jwtId = Random.Default.nextBytes(12).encodeToString(Base64UrlStrict),
+            jwtId = randomSource.nextBytes(12).encodeToString(Base64UrlStrict),
             httpMethod = httpMethod,
             httpTargetUrl = url,
             accessTokenHash = accessToken?.encodeToByteArray()?.sha256()?.encodeToString(Base64UrlStrict),
@@ -102,12 +103,13 @@ object BuildClientAttestationPoPJwt {
         nonce: String? = null,
         lifetime: Duration = 10.minutes,
         clockSkew: Duration = 5.minutes,
+        randomSource: RandomSource = RandomSource.Secure
     ) = signJwt(
         JwsContentTypeConstants.CLIENT_ATTESTATION_POP_JWT,
         JsonWebToken(
             issuer = clientId,
             audience = audience,
-            jwtId = Random.Default.nextBytes(12).encodeToString(Base64UrlStrict),
+            jwtId = randomSource.nextBytes(12).encodeToString(Base64UrlStrict),
             nonce = nonce,
             issuedAt = Clock.System.now() - clockSkew,
             expiration = Clock.System.now() - clockSkew + lifetime,

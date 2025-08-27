@@ -5,6 +5,7 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
@@ -24,6 +25,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
     val holderOid4vp = OpenId4VpHolder(
         keyMaterial = holderKeyMaterial,
         holder = HolderAgent(holderKeyMaterial),
+        randomSource = RandomSource.Default,
     )
     val verifierOid4vp = OpenId4VpVerifier(
         clientIdScheme = ClientIdScheme.PreRegistered(clientId, redirectUrl),

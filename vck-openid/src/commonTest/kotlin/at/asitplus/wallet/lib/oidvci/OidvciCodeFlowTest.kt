@@ -13,6 +13,7 @@ import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
@@ -60,7 +61,10 @@ class OidvciCodeFlowTest : FreeSpec({
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
-            issuer = IssuerAgent(identifier = "https://issuer.example.com".toUri()),
+            issuer = IssuerAgent(
+                identifier = "https://issuer.example.com".toUri(),
+                randomSource = RandomSource.Default
+            ),
             credentialSchemes = setOf(AtomicAttribute2023, MobileDrivingLicenceScheme),
         )
         client = WalletService()
@@ -231,7 +235,10 @@ class OidvciCodeFlowTest : FreeSpec({
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
-            issuer = IssuerAgent(identifier = "https://issuer.example.com".toUri()),
+            issuer = IssuerAgent(
+                identifier = "https://issuer.example.com".toUri(),
+                randomSource = RandomSource.Default
+            ),
             credentialSchemes = setOf(AtomicAttribute2023),
         )
         val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)

@@ -9,6 +9,7 @@ import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
@@ -49,6 +50,8 @@ class OpenId4VpWallet(
     httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
     keyMaterial: KeyMaterial,
     holderAgent: HolderAgent,
+    /** Source for random bytes, i.e., nonces for encrypted responses. */
+    randomSource: RandomSource = RandomSource.Secure
 ) {
 
     sealed interface AuthenticationResult
@@ -96,6 +99,7 @@ class OpenId4VpWallet(
                 }
             }
         },
+        randomSource = randomSource,
         requestObjectJwsVerifier = { _ -> true }, // unsure about this one?
     )
 

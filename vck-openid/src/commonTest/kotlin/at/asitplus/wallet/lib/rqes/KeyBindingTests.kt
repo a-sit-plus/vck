@@ -40,13 +40,15 @@ class KeyBindingTests : FreeSpec({
         holderKeyMaterial = EphemeralKeyWithoutCert()
         holderAgent = HolderAgent(holderKeyMaterial)
         holderAgent.storeCredential(
-            IssuerAgent(identifier = "https://issuer.example.com/".toUri())
-                .issueCredential(
-                    DummyCredentialDataProvider.getCredential(holderKeyMaterial.publicKey, EuPidScheme, SD_JWT)
-                        .getOrThrow()
-                ).getOrThrow().toStoreCredentialInput()
+            IssuerAgent(
+                identifier = "https://issuer.example.com/".toUri(),
+                randomSource = RandomSource.Default
+            ).issueCredential(
+                DummyCredentialDataProvider.getCredential(holderKeyMaterial.publicKey, EuPidScheme, SD_JWT)
+                    .getOrThrow()
+            ).getOrThrow().toStoreCredentialInput()
         )
-        holderOid4vp = OpenId4VpHolder(holder = holderAgent)
+        holderOid4vp = OpenId4VpHolder(holder = holderAgent, randomSource = RandomSource.Default)
     }
 
     "Rqes Request with EU PID credential" - {

@@ -7,6 +7,7 @@ import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
@@ -38,7 +39,10 @@ class OidvciPreAuthTest : FreeSpec({
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
-            issuer = IssuerAgent(identifier = "https://issuer.example.com".toUri()),
+            issuer = IssuerAgent(
+                identifier = "https://issuer.example.com".toUri(),
+                randomSource = RandomSource.Default
+            ),
             credentialSchemes = setOf(AtomicAttribute2023, MobileDrivingLicenceScheme),
         )
         client = WalletService()

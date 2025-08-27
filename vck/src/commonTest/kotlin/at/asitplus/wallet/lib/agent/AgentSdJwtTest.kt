@@ -76,7 +76,8 @@ class AgentSdJwtTest : FreeSpec({
         holderCredentialStore = InMemorySubjectCredentialStore()
         issuer = IssuerAgent(
             issuerCredentialStore = issuerCredentialStore,
-            identifier = "https://issuer.example.com/".toUri()
+            identifier = "https://issuer.example.com/".toUri(),
+            randomSource = RandomSource.Default
         )
         statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
         holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
@@ -321,7 +322,10 @@ suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): S
     val holderKeyMaterial = EphemeralKeyWithoutCert()
     val holder = HolderAgent(holderKeyMaterial)
     holder.storeCredential(
-        IssuerAgent(identifier = "https://issuer.example.com/".toUri()).issueCredential(
+        IssuerAgent(
+            identifier = "https://issuer.example.com/".toUri(),
+            randomSource = RandomSource.Default
+        ).issueCredential(
             DummyCredentialDataProvider.getCredential(
                 holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,

@@ -51,7 +51,8 @@ class ValidatorMdocTest : FreeSpec() {
             issuer = IssuerAgent(
                 keyMaterial = issuerKeyMaterial,
                 issuerCredentialStore = issuerCredentialStore,
-                identifier = "https://issuer.example.com/".toUri()
+                identifier = "https://issuer.example.com/".toUri(),
+                randomSource = RandomSource.Default
             )
             statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
             verifierKeyMaterial = EphemeralKeyWithoutCert()

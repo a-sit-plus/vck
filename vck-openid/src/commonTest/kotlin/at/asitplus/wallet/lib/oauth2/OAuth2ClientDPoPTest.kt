@@ -8,6 +8,7 @@ import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
@@ -75,7 +76,13 @@ class OAuth2ClientDPoPTest : FunSpec({
                 authorization = OAuth2Client.AuthorizationForToken.Code(code),
                 scope = scope
             ),
-            httpRequest = RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, tokenUrl))
+            httpRequest = RequestInfo(
+                tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(
+                    signDpop = signDpop,
+                    url = tokenUrl,
+                    randomSource = RandomSource.Default,
+                )
+            )
         ).getOrThrow().also {
             it.tokenType shouldBe TOKEN_TYPE_DPOP
         }
@@ -90,7 +97,8 @@ class OAuth2ClientDPoPTest : FunSpec({
         val dpopForResource = BuildDPoPHeader(
             signDpop,
             url = resourceUrl,
-            accessToken = token.accessToken
+            accessToken = token.accessToken,
+            randomSource = RandomSource.Default,
         )
 
         // simulate access to protected resource, i.e. verify access token
@@ -114,7 +122,13 @@ class OAuth2ClientDPoPTest : FunSpec({
                 authorization = OAuth2Client.AuthorizationForToken.Code(code),
                 scope = scope
             ),
-            httpRequest = RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, tokenUrl))
+            httpRequest = RequestInfo(
+                tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(
+                    signDpop = signDpop,
+                    url = tokenUrl,
+                    randomSource = RandomSource.Default,
+                )
+            )
         ).getOrThrow().also {
             it.tokenType shouldBe TOKEN_TYPE_DPOP
             it.refreshToken.shouldNotBeNull()
@@ -133,7 +147,13 @@ class OAuth2ClientDPoPTest : FunSpec({
                 authorization = OAuth2Client.AuthorizationForToken.RefreshToken(token.refreshToken!!),
                 scope = scope
             ),
-            httpRequest = RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, tokenUrl))
+            httpRequest = RequestInfo(
+                tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(
+                    signDpop = signDpop,
+                    url = tokenUrl,
+                    randomSource = RandomSource.Default,
+                )
+            )
         ).getOrThrow()
         refreshedAccessToken.accessToken shouldNotBe token.accessToken
 
@@ -147,7 +167,8 @@ class OAuth2ClientDPoPTest : FunSpec({
         val dpopForResource = BuildDPoPHeader(
             signDpop,
             url = resourceUrl,
-            accessToken = refreshedAccessToken.accessToken
+            accessToken = refreshedAccessToken.accessToken,
+            randomSource = RandomSource.Default,
         )
 
         // simulate access to protected resource, i.e. verify access token
@@ -172,7 +193,15 @@ class OAuth2ClientDPoPTest : FunSpec({
                     authorization = OAuth2Client.AuthorizationForToken.Code(code),
                     scope = scope
                 ),
-                httpRequest = RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, "https://somethingelse.com/"))
+                httpRequest = RequestInfo(
+                    tokenUrl,
+                    HttpMethod.Post,
+                    dpop = BuildDPoPHeader(
+                        signDpop = signDpop,
+                        url = "https://somethingelse.com/",
+                        randomSource = RandomSource.Default,
+                    )
+                )
             ).getOrThrow()
         }
     }
@@ -203,7 +232,13 @@ class OAuth2ClientDPoPTest : FunSpec({
                 authorization = OAuth2Client.AuthorizationForToken.Code(code),
                 scope = scope
             ),
-            httpRequest = RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, tokenUrl))
+            httpRequest = RequestInfo(
+                tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(
+                    signDpop = signDpop,
+                    url = tokenUrl,
+                    randomSource = RandomSource.Default,
+                )
+            )
         ).getOrThrow().also {
             it.tokenType shouldBe TOKEN_TYPE_DPOP
         }
@@ -234,7 +269,11 @@ class OAuth2ClientDPoPTest : FunSpec({
                 authorization = OAuth2Client.AuthorizationForToken.Code(code),
                 scope = scope
             ),
-            httpRequest = RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(signDpop, tokenUrl))
+            httpRequest = RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(
+                signDpop = signDpop,
+                url = tokenUrl,
+                randomSource = RandomSource.Default,
+            ))
         ).getOrThrow()
 
         server.tokenIntrospection(
@@ -246,9 +285,10 @@ class OAuth2ClientDPoPTest : FunSpec({
 
         val wrongSignDpop = SignJwt<JsonWebToken>(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk())
         val dpopForResource = BuildDPoPHeader(
-            wrongSignDpop,
-            resourceUrl,
-            accessToken = token.accessToken
+            signDpop = wrongSignDpop,
+            url = resourceUrl,
+            accessToken = token.accessToken,
+            randomSource = RandomSource.Default,
         )
 
         // simulate access to protected resource, i.e. verify access token

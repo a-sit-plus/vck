@@ -42,18 +42,21 @@ class VerifierAttestationTest : FreeSpec({
         holderAgent = HolderAgent(holderKeyMaterial)
 
         holderAgent.storeCredential(
-            IssuerAgent(identifier = "https://issuer.example.com/".toUri())
-                .issueCredential(
-                    DummyCredentialDataProvider.getCredential(
-                        holderKeyMaterial.publicKey,
-                        ConstantIndex.AtomicAttribute2023,
-                        ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-                    ).getOrThrow()
-                ).getOrThrow().toStoreCredentialInput()
+            IssuerAgent(
+                identifier = "https://issuer.example.com/".toUri(),
+                randomSource = RandomSource.Default
+            ).issueCredential(
+                DummyCredentialDataProvider.getCredential(
+                    holderKeyMaterial.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                ).getOrThrow()
+            ).getOrThrow().toStoreCredentialInput()
         )
 
         holderOid4vp = OpenId4VpHolder(
             holder = holderAgent,
+            randomSource = RandomSource.Default,
         )
     }
 
@@ -70,7 +73,8 @@ class VerifierAttestationTest : FreeSpec({
 
         holderOid4vp = OpenId4VpHolder(
             holder = holderAgent,
-            requestObjectJwsVerifier = attestationJwtVerifier(sprsKeyMaterial.jsonWebKey)
+            requestObjectJwsVerifier = attestationJwtVerifier(sprsKeyMaterial.jsonWebKey),
+            randomSource = RandomSource.Default,
         )
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
@@ -96,7 +100,8 @@ class VerifierAttestationTest : FreeSpec({
 
         holderOid4vp = OpenId4VpHolder(
             holder = holderAgent,
-            requestObjectJwsVerifier = attestationJwtVerifier(EphemeralKeyWithoutCert().jsonWebKey)
+            requestObjectJwsVerifier = attestationJwtVerifier(EphemeralKeyWithoutCert().jsonWebKey),
+            randomSource = RandomSource.Default,
         )
         shouldThrow<OAuth2Exception> {
             holderOid4vp.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()

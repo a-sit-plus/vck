@@ -15,6 +15,7 @@ import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
@@ -38,7 +39,6 @@ import io.ktor.client.plugins.cookies.CookiesStorage
 import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.forms.FormDataContent
-import io.ktor.client.request.forms.submitForm
 import io.ktor.client.request.header
 import io.ktor.client.request.headers
 import io.ktor.client.request.request
@@ -49,7 +49,6 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.URLBuilder
 import io.ktor.http.Url
-import io.ktor.http.headers
 import io.ktor.http.parameters
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.util.flattenEntries
@@ -92,6 +91,8 @@ class OAuth2KtorClient(
      * back from browser works
      */
     val oAuth2Client: OAuth2Client,
+    /** Source for random bytes, i.e., nonces for proof-of-possession of key material for sender-constrained tokens. */
+    private val randomSource: RandomSource = RandomSource.Secure,
 ) {
 
     private val client: HttpClient = HttpClient(engine) {
@@ -378,7 +379,8 @@ class OAuth2KtorClient(
                 signDpop = signDpop,
                 url = resourceUrl,
                 accessToken = tokenResponse.accessToken,
-                httpMethod = httpMethod.value
+                httpMethod = httpMethod.value,
+                randomSource = randomSource
             )
         else null
         return {
@@ -414,7 +416,12 @@ class OAuth2KtorClient(
             } else null
 
         val dpopHeader = if (oauthMetadata.hasMatchingDpopAlgorithm() && useDpop) {
-            BuildDPoPHeader(signDpop = signDpop, url = resourceUrl, httpMethod = httpMethod.value)
+            BuildDPoPHeader(
+                signDpop = signDpop,
+                url = resourceUrl,
+                httpMethod = httpMethod.value,
+                randomSource = randomSource
+            )
         } else null
 
         return {

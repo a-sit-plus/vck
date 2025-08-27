@@ -43,18 +43,21 @@ class RedirectUriClientTest : FreeSpec({
         holderAgent = HolderAgent(holderKeyMaterial)
 
         holderAgent.storeCredential(
-            IssuerAgent(identifier = "https://issuer.example.com/".toUri())
-                .issueCredential(
-                    DummyCredentialDataProvider.getCredential(
-                        holderKeyMaterial.publicKey,
-                        ConstantIndex.AtomicAttribute2023,
-                        ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-                    ).getOrThrow()
-                ).getOrThrow().toStoreCredentialInput()
+            IssuerAgent(
+                identifier = "https://issuer.example.com/".toUri(),
+                randomSource = RandomSource.Default
+            ).issueCredential(
+                DummyCredentialDataProvider.getCredential(
+                    holderKeyMaterial.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                ).getOrThrow()
+            ).getOrThrow().toStoreCredentialInput()
         )
 
         holderOid4vp = OpenId4VpHolder(
             holder = holderAgent,
+            randomSource = RandomSource.Default,
         )
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
@@ -269,7 +272,8 @@ class RedirectUriClientTest : FreeSpec({
             holder = holderAgent,
             remoteResourceRetriever = {
                 if (it.url == requestUrl) authnRequest else null
-            }
+            },
+            randomSource = RandomSource.Default,
         )
 
         val authnResponse = holderOid4vp.createAuthnResponse(authRequestUrlWithRequestUri).getOrThrow()

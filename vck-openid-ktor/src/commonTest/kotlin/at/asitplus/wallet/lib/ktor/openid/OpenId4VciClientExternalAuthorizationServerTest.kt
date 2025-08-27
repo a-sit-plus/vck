@@ -29,6 +29,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.ValidatorSdJwt
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -261,7 +262,8 @@ class OpenId4VciClientExternalAuthorizationServerTest : FunSpec() {
         )
         val issuer = IssuerAgent(
             keyMaterial = EphemeralKeyWithSelfSignedCert(),
-            identifier = "https://issuer.example.com/".toUri()
+            identifier = "https://issuer.example.com/".toUri(),
+            randomSource = RandomSource.Default
         )
 
         mockEngine = MockEngine { request ->
@@ -383,7 +385,8 @@ class OpenId4VciClientExternalAuthorizationServerTest : FunSpec() {
                 signClientAttestationPop = SignJwt(walletClientAuthKeyMaterial, JwsHeaderNone()),
                 signDpop = SignJwt(walletDpopKeyMaterial, JwsHeaderCertOrJwk()),
                 dpopAlgorithm = walletDpopKeyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
-                oAuth2Client = OAuth2Client(clientId = walletClientId)
+                oAuth2Client = OAuth2Client(clientId = walletClientId),
+                randomSource = RandomSource.Default,
             )
         )
         credentialIssuer = CredentialIssuer(
@@ -404,6 +407,7 @@ class OpenId4VciClientExternalAuthorizationServerTest : FunSpec() {
                     signDpop = SignJwt(issuerDpopKeyMaterial, JwsHeaderCertOrJwk()),
                     dpopAlgorithm = issuerDpopKeyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
                     oAuth2Client = OAuth2Client(clientId = issuerPublicContext),
+                    randomSource = RandomSource.Default,
                 ),
                 internalTokenVerificationService = tokenService.verification,
             ),

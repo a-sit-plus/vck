@@ -65,7 +65,8 @@ class AgentTest : FreeSpec({
         issuerIdentifier = "https://issuer.example.com/${uuid4()}"
         issuer = IssuerAgent(
             issuerCredentialStore = issuerCredentialStore,
-            identifier = issuerIdentifier.toUri()
+            identifier = issuerIdentifier.toUri(),
+            randomSource = RandomSource.Default
         )
         statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
 

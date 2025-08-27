@@ -2,11 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.signum.supreme.signature
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.*
@@ -18,14 +14,12 @@ import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
-import at.asitplus.wallet.lib.jws.JwsHeaderIdentifierFun
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlin.random.Random
@@ -71,7 +65,8 @@ class ValidatorVcTest : FreeSpec() {
             issuer = IssuerAgent(
                 keyMaterial = issuerKeyMaterial,
                 issuerCredentialStore = issuerCredentialStore,
-                identifier = issuerIdentifier.toUri()
+                identifier = issuerIdentifier.toUri(),
+                randomSource = RandomSource.Default
             )
             statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
             issuerSignVc = SignJwt(issuerKeyMaterial, JwsHeaderCertOrJwk())

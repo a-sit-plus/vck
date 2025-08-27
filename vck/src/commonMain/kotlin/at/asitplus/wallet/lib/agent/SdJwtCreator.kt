@@ -6,8 +6,11 @@ import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import at.asitplus.wallet.lib.data.fromAnyValue
-import kotlinx.serialization.json.*
-import kotlin.random.Random
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.addAll
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.putJsonArray
 
 
 /**
@@ -28,17 +31,18 @@ object SdJwtCreator {
      *
      * @return The encoded JSON object and the disclosure strings
      */
-    fun Collection<ClaimToBeIssued>.toSdJsonObject()
-            : Pair<JsonObject, Collection<String>> = mutableListOf<String>().let { disclosures ->
+    fun Collection<ClaimToBeIssued>.toSdJsonObject(
+        randomSource: RandomSource = RandomSource.Secure,
+    ): Pair<JsonObject, Collection<String>> = mutableListOf<String>().let { disclosures ->
         buildJsonObject {
             with(honorNotDisclosableClaims().customPartition()) {
                 val objectClaimDigests: Collection<String> = recursiveClaims.mapNotNull { claim ->
                     claim.value as Collection<*>
-                    (claim.value.filterIsInstance<ClaimToBeIssued>()).toSdJsonObject().let {
+                    (claim.value.filterIsInstance<ClaimToBeIssued>()).toSdJsonObject(randomSource).let {
                         if (claim.selectivelyDisclosable) {
                             disclosures.addAll(it.second)
                             put(claim.name, it.first)
-                            claim.toSdItem(it.first).toDisclosure()
+                            claim.toSdItem(it.first, randomSource).toDisclosure()
                                 .also { disclosures.add(it) }
                                 .hashDisclosure()
                         } else {
@@ -49,17 +53,17 @@ object SdJwtCreator {
                     }
                 }
                 val dotNotationClaims: Collection<String> = dotNotation.groupByDots().mapNotNull { (key, claims) ->
-                    claims.toSdJsonObject().let {
+                    claims.toSdJsonObject(randomSource).let {
                         disclosures.addAll(it.second)
                         put(key, it.first)
-                        key.toSdItem(it.first).toDisclosure()
+                        key.toSdItem(it.first, randomSource).toDisclosure()
                             .also { disclosures.add(it) }
                             .hashDisclosure()
                     }
                 }
                 val dotNotationClaimsPlain: Collection<String> =
                     dotNotationPlain.groupByDots().mapNotNull { (key, claims) ->
-                        claims.toSdJsonObject().let {
+                        claims.toSdJsonObject(randomSource).let {
                             disclosures.addAll(it.second)
                             put(key, it.first)
                             null
@@ -67,7 +71,7 @@ object SdJwtCreator {
                     }
                 val singleClaimsDigests: Collection<String> = claimsWithSimpleValue.mapNotNull { claim ->
                     if (claim.selectivelyDisclosable) {
-                        claim.toSdItem().toDisclosure()
+                        claim.toSdItem(randomSource).toDisclosure()
                             .also { disclosures.add(it) }
                             .hashDisclosure()
                     } else {
@@ -165,13 +169,30 @@ object SdJwtCreator {
         )
     }
 
-    private fun String.toSdItem(claimValue: JsonElement) =
-        SelectiveDisclosureItem(Random.nextBytes(32), this, claimValue)
+    private fun String.toSdItem(
+        claimValue: JsonElement,
+        randomSource: RandomSource = RandomSource.Secure,
+    ) = SelectiveDisclosureItem(
+        salt = randomSource.nextBytes(32),
+        claimName = this,
+        claimValue = claimValue
+    )
 
-    private fun ClaimToBeIssued.toSdItem(claimValue: JsonObject) =
-        SelectiveDisclosureItem(Random.nextBytes(32), name, claimValue)
+    private fun ClaimToBeIssued.toSdItem(
+        claimValue: JsonObject,
+        randomSource: RandomSource = RandomSource.Secure,
+    ) = SelectiveDisclosureItem(
+        salt = randomSource.nextBytes(32),
+        claimName = name,
+        claimValue = claimValue
+    )
 
-    private fun ClaimToBeIssued.toSdItem() =
-        SelectiveDisclosureItem.fromAnyValue(Random.nextBytes(32), name, value)
+    private fun ClaimToBeIssued.toSdItem(
+        randomSource: RandomSource = RandomSource.Secure,
+    ) = SelectiveDisclosureItem.fromAnyValue(
+        salt = randomSource.nextBytes(32),
+        claimName = name,
+        claimValue = value
+    )
 
 }

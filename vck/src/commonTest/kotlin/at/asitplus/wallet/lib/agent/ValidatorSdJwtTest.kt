@@ -43,7 +43,10 @@ class ValidatorSdJwtTest : FreeSpec() {
     init {
         beforeEach {
             validator = ValidatorSdJwt()
-            issuer = IssuerAgent(identifier = "https://issuer.example.com/".toUri())
+            issuer = IssuerAgent(
+                identifier = "https://issuer.example.com/".toUri(),
+                randomSource = RandomSource.Default
+            )
             holderKeyMaterial = EphemeralKeyWithoutCert()
         }
 
@@ -137,7 +140,7 @@ private suspend fun issueVcSd(
     val vcId = "urn:uuid:${uuid4()}"
     val expirationDate = credential.expiration
     val subjectId = credential.subjectPublicKey.didEncoded
-    val (sdJwt, disclosures) = credential.claims.toSdJsonObject()
+    val (sdJwt, disclosures) = credential.claims.toSdJsonObject(RandomSource.Default)
     val vcSdJwt = VerifiableCredentialSdJwt(
         subject = if (scrambleSubject) subjectId.reversed() else subjectId,
         notBefore = issuanceDate,

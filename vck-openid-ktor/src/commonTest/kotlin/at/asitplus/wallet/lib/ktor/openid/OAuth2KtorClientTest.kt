@@ -13,6 +13,7 @@ import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
@@ -157,7 +158,8 @@ class OAuth2KtorClientTest : FunSpec() {
             signClientAttestationPop = SignJwt(clientAuthKeyMaterial, JwsHeaderNone()),
             signDpop = SignJwt(dpopKeyMaterial, JwsHeaderCertOrJwk()),
             dpopAlgorithm = dpopKeyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
-            oAuth2Client = OAuth2Client(clientId = clientId)
+            oAuth2Client = OAuth2Client(clientId = clientId),
+            randomSource = RandomSource.Default,
         )
     }
 

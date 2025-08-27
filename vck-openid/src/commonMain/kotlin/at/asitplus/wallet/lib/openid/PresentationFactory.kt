@@ -36,6 +36,7 @@ import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.PresentationException
 import at.asitplus.wallet.lib.agent.PresentationRequestParameters
 import at.asitplus.wallet.lib.agent.PresentationResponseParameters
+import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
 import at.asitplus.wallet.lib.cbor.SignCoseFun
 import at.asitplus.wallet.lib.data.CredentialPresentation
@@ -49,7 +50,6 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.encodeToByteArray
 import kotlin.coroutines.cancellation.CancellationException
-import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 
@@ -58,6 +58,7 @@ internal class PresentationFactory(
     private val signDeviceAuthDetached: SignCoseDetachedFun<ByteArray>,
     private val signDeviceAuthFallback: SignCoseFun<ByteArray>,
     private val signIdToken: SignJwtFun<IdToken>,
+    private val randomSource: RandomSource = RandomSource.Secure
 ) {
     suspend fun createPresentation(
         holder: Holder,
@@ -79,7 +80,7 @@ internal class PresentationFactory(
         val responseUrl = request.responseUrl
         val transactionData = request.transactionData
         val mdocGeneratedNonce = if (clientId != null && responseUrl != null) {
-            if (responseWillBeEncrypted) Random.nextBytes(16).encodeToString(Base64UrlStrict) else ""
+            if (responseWillBeEncrypted) randomSource.nextBytes(16).encodeToString(Base64UrlStrict) else ""
         } else null
         val vpRequestParams = PresentationRequestParameters(
             nonce = nonce,
