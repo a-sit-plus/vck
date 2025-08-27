@@ -47,16 +47,6 @@ data class TokenResponseParameters(
 
     /**
      * OID4VCI:
-     * OPTIONAL String containing a nonce to be used to create a proof of possession of key material when requesting a
-     * Credential. When received, the Wallet MUST use this nonce value for its subsequent credential requests until the
-     * Credential Issuer provides a fresh nonce.
-     */
-    @SerialName("c_nonce")
-    @Deprecated("Removed in OID4VCI draft 14, see ClientNonceResponse")
-    val clientNonce: String? = null,
-
-    /**
-     * OID4VCI:
      * OPTIONAL, In the Pre-Authorized Code Flow, the Token Request is still pending as the Credential Issuer is waiting
      * for the End-User interaction to complete. The client SHOULD repeat the Token Request. Before each new request,
      * the client MUST wait at least the number of seconds specified by the interval response parameter.

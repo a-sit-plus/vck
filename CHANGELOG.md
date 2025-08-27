@@ -53,6 +53,7 @@ Release 5.9.0 (unreleased):
    - Offer `signedMetadata` in `CredentialIssuer`
    - In `OpenIdAuthorizationDetails` deprecate properties that have been dropped from the spec: `format`, `docType`, `sdJwtVcType` and `credentialDefinition`
    - In `SupportedCredentialFormat` add new property about `CredentialMetadata`, moving `display` and `claims`
+   - In `TokenResponseParameters` remove `clientNonce` that has been dropped in OID4VCI draft 14
 
 Release 5.8.0:
  - Refactor `AuthorizationServiceStrategy`

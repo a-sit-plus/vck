@@ -205,12 +205,11 @@ class WalletService(
             throw IllegalArgumentException("Can't parse tokenResponse: $tokenResponse")
         }
         requests.map {
-            @Suppress("DEPRECATION")
             it.copy(
                 proof = createCredentialRequestProof(
                     metadata = metadata,
                     credentialFormat = credentialFormat,
-                    clientNonce = clientNonce ?: tokenResponse.clientNonce,
+                    clientNonce = clientNonce,
                     clock = clock
                 ),
                 credentialResponseEncryption = metadata.credentialResponseEncryption()
