@@ -9,6 +9,7 @@ import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromJsonElement
 
@@ -46,7 +47,7 @@ data class OpenIdAuthorizationDetails(
      * OID4VCI: IETF SD-JWT VC: OPTIONAL. An array of claims description objects as defined in Appendix B.2.
      */
     @SerialName("claims")
-    val claims: JsonElement? = null,
+    val claimDescription: Set<ClaimDescription>? = null,
 
     @Deprecated("Removed in OID4VCI draft 16")
     @SerialName("credential_definition")
@@ -74,12 +75,9 @@ data class OpenIdAuthorizationDetails(
     val credentialIdentifiers: Set<String>? = null,
 ) : AuthorizationDetails() {
 
-    val claimDescription: Set<ClaimDescription>?
-        get() = claims?.let {
-            catchingUnwrapped {
-                joseCompliantSerializer.decodeFromJsonElement<Set<ClaimDescription>>(it)
-            }.getOrNull()
-        }
+    @Transient
+    @Deprecated("Use claimDescription instead")
+    val claims: JsonElement? = null
 
 }
 

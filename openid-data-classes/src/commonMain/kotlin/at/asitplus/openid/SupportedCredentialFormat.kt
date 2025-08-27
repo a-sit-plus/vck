@@ -82,34 +82,30 @@ data class SupportedCredentialFormat private constructor(
     @SerialName("doctype")
     val docType: String? = null,
 
-    /**
-     * OID4VCI:
-     * ISO mDL: OPTIONAL. Object containing a list of name/value pairs, where the name is a certain namespace as
-     * defined in (ISO.18013-5) (or any profile of it), and the value is an object. This object also contains a list
-     * of name/value pairs, where the name is a claim name value that is defined in the respective namespace and is
-     * offered in the Credential.
-     */
     @SerialName("claims")
+    @Deprecated("Moved in OID4VCI draft 16 to credentialMetadata")
     private var claims: JsonElement? = null,
 
-    /**
-     * OID4VCI:
-     * ISO mDL: OPTIONAL.
-     * W3C VC: OPTIONAL.
-     *
-     * An array of `claims.display.name` values that lists them in the order they should be displayed by the Wallet.
-     */
     @SerialName("order")
+    @Deprecated("Removed in OID4VCI draft 16")
     val order: List<String>? = null,
 
-    /**
-     * OID4VCI: OPTIONAL. Array of objects, where each object contains the display properties of the supported
-     * Credential for a certain language. Below is a non-exhaustive list of parameters that MAY be included.
-     */
     @SerialName("display")
+    @Deprecated("Moved in OID4VCI draft 16 to credentialMetadata")
     val display: Set<DisplayProperties>? = null,
+
+    /**
+     * OID4VCI: OPTIONAL. Object containing information relevant to the usage and display of issued Credentials.
+     * Credential Format-specific mechanisms can overwrite the information in this object to convey Credential metadata.
+     * Format-specific mechanisms, such as SD-JWT VC display metadata are always preferred by the Wallet over the
+     * information in this object, which serves as the default fallback.
+     */
+    @SerialName("credential_metadata")
+    val credentialMetadata: CredentialMetadata? = null,
 ) {
 
+    @Suppress("DEPRECATION")
+    @Deprecated("Moved in OID4VCI draft 16 to credentialMetadata")
     val claimDescription: Set<ClaimDescription>?
         get() = claims?.let {
             catchingUnwrapped {
@@ -146,7 +142,11 @@ data class SupportedCredentialFormat private constructor(
             docType = docType,
             claims = joseCompliantSerializer.encodeToJsonElement(isoClaims),
             order = order,
-            display = display
+            display = display,
+            credentialMetadata = CredentialMetadata(
+                claimDescription = isoClaims,
+                display = display,
+            )
         )
 
         fun forSdJwt(
@@ -170,7 +170,11 @@ data class SupportedCredentialFormat private constructor(
             sdJwtVcType = sdJwtVcType,
             claims = joseCompliantSerializer.encodeToJsonElement(sdJwtClaims),
             order = order,
-            display = display
+            display = display,
+            credentialMetadata = CredentialMetadata(
+                claimDescription = sdJwtClaims,
+                display = display,
+            )
         )
 
         fun forVcJwt(
@@ -191,7 +195,10 @@ data class SupportedCredentialFormat private constructor(
             credentialDefinition = credentialDefinition,
             claims = null,
             order = order,
-            display = display
+            display = display,
+            credentialMetadata = display?.let {
+                CredentialMetadata(display = display)
+            }
         )
 
     }
