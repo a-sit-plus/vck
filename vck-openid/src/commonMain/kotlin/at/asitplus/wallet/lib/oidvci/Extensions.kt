@@ -47,9 +47,6 @@ suspend fun Issuer.IssuedCredential.toCredentialResponseParameters(
 /**
  * @param transformer may be used to encrypt the credentials before serializing
  */
-// TODO In 5.4.0, use DC_SD_JWT instead of VC_SD_JWT
-// TODO After 5.5.0, drop "credential", use only "credentials"
-@Suppress("DEPRECATION")
 suspend fun Collection<Issuer.IssuedCredential>.toCredentialResponseParameters(
     transformer: (suspend (String) -> String) = { it },
 ) = if (size == 1) {
