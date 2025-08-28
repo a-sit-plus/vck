@@ -71,10 +71,22 @@ sealed class OAuth2Exception(
     ) : OAuth2Exception(OpenIdConstants.Errors.INVALID_DPOP_PROOF, description)
 
     @Serializable
-    class UnsupportedCredentialType(
+    class InvalidCredentialRequest(
         @Transient val description: String? = null,
         @Transient override val cause: Throwable? = null
-    ) : OAuth2Exception(OpenIdConstants.Errors.UNSUPPORTED_CREDENTIAL_TYPE, description)
+    ) : OAuth2Exception(OpenIdConstants.Errors.INVALID_CREDENTIAL_REQUEST, description)
+
+    @Serializable
+    class UnknownCredentialConfiguration(
+        @Transient val description: String? = null,
+        @Transient override val cause: Throwable? = null
+    ) : OAuth2Exception(OpenIdConstants.Errors.UNKNOWN_CREDENTIAL_CONFIGURATION, description)
+
+    @Serializable
+    class UnknownCredentialIdentifier(
+        @Transient val description: String? = null,
+        @Transient override val cause: Throwable? = null
+    ) : OAuth2Exception(OpenIdConstants.Errors.UNKNOWN_CREDENTIAL_IDENTIFIER, description)
 
     @Serializable
     class CredentialRequestDenied(

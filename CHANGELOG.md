@@ -52,6 +52,7 @@ Release 5.9.0 (unreleased):
    - In `SupportedCredentialFormat` add new property about `CredentialMetadata`, moving `display` and `claims`
    - In `TokenResponseParameters` remove `clientNonce` that has been dropped in OID4VCI draft 14
    - In `CredentialRequestParameters` deprecate `proof`, use `proofs` instead
+   - Use correct error values for `unknown_credential_configuration` and `unknown_credential_identifier`
 
 Release 5.8.0:
  - Refactor `AuthorizationServiceStrategy`

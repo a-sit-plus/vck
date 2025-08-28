@@ -179,17 +179,16 @@ class CredentialIssuer(
         Napier.d("credential called with $authorizationHeader, $params")
         authorizationService.validateAccessToken(authorizationHeader, request)
         val userInfo = params.introspectTokenLoadUserInfo(authorizationHeader, request)
+        val (scheme, representation) = params.extractCredentialRepresentation()
         proofValidator.validateProofExtractSubjectPublicKeys(params).map { subjectPublicKey ->
             issuer.issueCredential(
                 credentialDataProvider(
-                    with(params.extractCredentialRepresentation()) {
-                        CredentialDataProviderInput(
-                            userInfo = userInfo,
-                            subjectPublicKey = subjectPublicKey,
-                            credentialScheme = first,
-                            credentialRepresentation = second,
-                        )
-                    }
+                    CredentialDataProviderInput(
+                        userInfo = userInfo,
+                        subjectPublicKey = subjectPublicKey,
+                        credentialScheme = scheme,
+                        credentialRepresentation = representation,
+                    )
                 ).getOrElse {
                     throw CredentialRequestDenied("No credential from provider", it)
                 }
@@ -238,9 +237,13 @@ class CredentialIssuer(
 
     private fun CredentialRequestParameters.extractCredentialRepresentation()
             : Pair<CredentialScheme, ConstantIndex.CredentialRepresentation> =
-        (credentialIdentifier?.let { decodeFromCredentialIdentifier(it) }
-            ?: credentialConfigurationId?.let { extractFromCredentialConfigurationId(it) }
-            ?: throw UnsupportedCredentialType("credential scheme not known from ${this}"))
+        credentialIdentifier?.let {
+            decodeFromCredentialIdentifier(it)
+                ?: throw UnknownCredentialIdentifier(it)
+        } ?: credentialConfigurationId?.let {
+            extractFromCredentialConfigurationId(it)
+                ?: throw UnknownCredentialConfiguration(it)
+        } ?: throw InvalidCredentialRequest("Neither credential_identifier nor credential_configuration_id set")
 
     private fun extractFromCredentialConfigurationId(
         credentialConfigurationId: String,
