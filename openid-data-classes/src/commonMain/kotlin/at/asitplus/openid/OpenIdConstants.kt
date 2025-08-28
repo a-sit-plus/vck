@@ -436,6 +436,9 @@ object OpenIdConstants {
         /** Credential request denied in OpenID4VCI: `credential_request_denied`. */
         const val CREDENTIAL_REQUEST_DENIED = "credential_request_denied"
 
+        /** Encryption parameters invalid or missing on OpenID4VCI: `invalid_encryption_parameters`. */
+        const val INVALID_ENCRYPTION_PARAMETERS = "invalid_encryption_parameters"
+
         /** Invalid client nonce in OpenID4VCI: `invalid_nonce`. */
         const val INVALID_NONCE = "invalid_nonce"
 

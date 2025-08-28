@@ -2,8 +2,6 @@ package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.catchingUnwrapped
-import at.asitplus.iso.IssuerSigned
 import at.asitplus.openid.ClientNonceResponse
 import at.asitplus.openid.CredentialOffer
 import at.asitplus.openid.CredentialResponseParameters
@@ -12,29 +10,22 @@ import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER
 import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION
-import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.openid.TokenResponseParameters
-import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.Holder.StoreCredentialInput.*
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.IsoMdocFallbackCredentialScheme
 import at.asitplus.wallet.lib.data.SdJwtFallbackCredentialScheme
 import at.asitplus.wallet.lib.data.VcFallbackCredentialScheme
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
-import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
-import at.asitplus.wallet.lib.oidvci.BuildDPoPHeader
 import at.asitplus.wallet.lib.oidvci.WalletService
 import at.asitplus.wallet.lib.oidvci.toRepresentation
 import com.benasher44.uuid.uuid4
@@ -48,10 +39,7 @@ import io.ktor.client.plugins.cookies.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
-import io.matthewnelson.encoding.base64.Base64
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromByteArray
 
 
 /**
@@ -338,10 +326,11 @@ class OpenId4VciClient(
                 setBody(credentialRequest)
                 oauth2Client.applyToken(tokenResponse, credentialEndpointUrl, HttpMethod.Post)()
             }.body()
-
-            credentialResponse.extractCredentials()
-                .ifEmpty { throw Exception("No credential was received") }
-                .map { it.toStoreCredentialInput(credentialFormat.format.toRepresentation(), credentialScheme) }
+            oid4vciService.parseCredentialResponse(
+                credentialResponse,
+                credentialFormat.format.toRepresentation(),
+                credentialScheme
+            ).getOrThrow()
         }
         return CredentialIssuanceResult.Success(
             storeCredentialInputs,
@@ -433,31 +422,6 @@ class OpenId4VciClient(
                 )
             }
         } ?: throw Exception("No offer grants received in ${credentialOffer.grants}")
-    }
-
-    @Throws(Exception::class)
-    private fun String.toStoreCredentialInput(
-        credentialRepresentation: ConstantIndex.CredentialRepresentation,
-        credentialScheme: ConstantIndex.CredentialScheme,
-    ): Holder.StoreCredentialInput = when (credentialRepresentation) {
-        ConstantIndex.CredentialRepresentation.PLAIN_JWT -> Vc(
-            signedVcJws = JwsSigned.deserialize(VerifiableCredentialJws.serializer(), this).getOrThrow(),
-            vcJws = this,
-            scheme = credentialScheme
-        )
-
-        ConstantIndex.CredentialRepresentation.SD_JWT -> SdJwt(
-            signedSdJwtVc = SdJwtSigned.parse(this)!!,
-            vcSdJwt = this,
-            scheme = credentialScheme
-        )
-
-        ConstantIndex.CredentialRepresentation.ISO_MDOC -> catchingUnwrapped {
-            Iso(
-                issuerSigned = coseCompliantSerializer.decodeFromByteArray<IssuerSigned>(decodeToByteArray(Base64())),
-                scheme = credentialScheme
-            )
-        }.getOrElse { throw Exception("Invalid credential format: $this", it) }
     }
 
 }

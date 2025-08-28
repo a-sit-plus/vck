@@ -32,11 +32,8 @@ data class CredentialRequestParameters(
     @SerialName("credential_response_encryption")
     val credentialResponseEncryption: CredentialResponseEncryption? = null,
 
-    /**
-     * OID4VCI: W3C VC: OPTIONAL. Object containing a detailed description of the Credential consisting of the
-     * following parameters. see [SupportedCredentialFormatDefinition].
-     */
     @SerialName("credential_definition")
+    @Deprecated("Removed in OID4VCI draft 16")
     val credentialDefinition: SupportedCredentialFormatDefinition? = null,
 
     @SerialName("proof")

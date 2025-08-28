@@ -3,19 +3,28 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
+import at.asitplus.iso.IssuerSigned
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ProofType
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.Holder.StoreCredentialInput.Iso
+import at.asitplus.wallet.lib.agent.Holder.StoreCredentialInput.SdJwt
+import at.asitplus.wallet.lib.agent.Holder.StoreCredentialInput.Vc
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
@@ -24,8 +33,13 @@ import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.ktor.util.*
+import io.matthewnelson.encoding.base64.Base64
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import kotlinx.serialization.decodeFromByteArray
 import kotlin.time.Clock
 import kotlinx.serialization.json.decodeFromJsonElement
+import kotlin.collections.ifEmpty
+import kotlin.collections.map
 
 /**
  * Client service to retrieve credentials using OID4VCI
@@ -52,23 +66,29 @@ class WalletService(
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
     /** Load key attestation to create [CredentialRequestProof], if required by the credential issuer. */
     private val loadKeyAttestation: (suspend (KeyAttestationInput) -> KmmResult<JwsSigned<KeyAttestationJwt>>)? = null,
-    /** Whether to request encryption of credentials, if the issuer supports it. */
+    @Deprecated("Use [encryptionService] instead")
     private val requestEncryption: Boolean = false,
-    /** Optional key material to advertise for credential response encryption, see [requestEncryption]. */
+    @Deprecated("Use [encryptionService] instead")
     private val decryptionKeyMaterial: KeyMaterial? = null,
-    /** Algorithm to decrypt credential response encryption, see [requestEncryption]. */
+    @Deprecated("Use [encryptionService] instead")
     private val supportedJweAlgorithm: JweAlgorithm = JweAlgorithm.ECDH_ES,
-    /** Algorithm to decrypt credential response encryption, see [requestEncryption]. */
+    @Deprecated("Use [encryptionService] instead")
     private val supportedJweEncryptionAlgorithm: JweEncryption = JweEncryption.A256GCM,
     /** OAuth2 client to build authorization requests */
     val oauth2Client: OAuth2Client = OAuth2Client(
         clientId = clientId,
         redirectUrl = redirectUrl
     ),
+    /** Handles credential request encryption and credential response decryption. */
+    private val encryptionService: WalletEncryptionService = WalletEncryptionService(
+        requestEncryption = requestEncryption,
+        decryptionKeyMaterial = decryptionKeyMaterial,
+        supportedJweAlgorithm = supportedJweAlgorithm,
+        supportedJweEncryptionAlgorithm = supportedJweEncryptionAlgorithm,
+    ),
 ) {
 
     data class KeyAttestationInput(val clientNonce: String?, val supportedAlgorithms: Collection<String>?)
-
 
     data class RequestOptions(
         /**
@@ -153,32 +173,14 @@ class WalletService(
     }
 
     /**
-     * Send the result as JSON-serialized content to the server at `/credential` (or more specific
-     * [IssuerMetadata.credentialEndpointUrl]).
-     *
+     * Creates the credential request to be sent to the credential issuer.
+     * Send the result as JSON-serialized content to the server at [IssuerMetadata.credentialEndpointUrl] with media
+     * type `application/json` (see [at.asitplus.wallet.lib.data.MediaTypes.Application.JSON]).
      * Also send along the [TokenResponseParameters.accessToken] from the token response in HTTP header `Authorization`
      * see [TokenResponseParameters.toHttpHeaderValue].
-     *
      * Be sure to include a DPoP header if [TokenResponseParameters.tokenType] is `DPoP`,
      * see [at.asitplus.wallet.lib.oidvci.BuildDPoPHeader].
-     *
-     * See [OAuth2Client.createTokenRequestParameters].
-     *
-     * Sample ktor code:
-     * ```
-     * val tokenResponse = ...
-     * val credentialRequest = client.createCredentialRequest(
-     *     tokenResponse = tokenResponse,
-     *     credentialIssuer = issuerMetadata.credentialIssuer
-     * ).getOrThrow()
-     *
-     * val credentialResponse = httpClient.post(issuerMetadata.credentialEndpointUrl) {
-     *     setBody(credentialRequest)
-     *     headers {
-     *         append(HttpHeaders.Authorization, tokenResponse.toHttpHeaderValue())
-     *     }
-     * }
-     * ```
+     * For sample ktor code see `OpenId4VciClient` in `vck-openid-ktor`.
      *
      * @param tokenResponse from the authorization server token endpoint
      * @param metadata the issuer's metadata, see [IssuerMetadata]
@@ -216,12 +218,62 @@ class WalletService(
                 it.copy(
                     proof = proof,
                     proofs = proof.toProofs(),
-                    credentialResponseEncryption = metadata.credentialResponseEncryption()
+                    credentialResponseEncryption = encryptionService.credentialResponseEncryption(metadata)
                 )
             }
         }.also {
             Napier.i("createCredentialRequest returns $it")
         }
+    }
+
+    /**
+     * Creates the encrypted credential request to be sent to the credential issuer.
+     * Send the result as JWE-serialized content to the server at [IssuerMetadata.credentialEndpointUrl] with media type
+     * `application/jwt` (see [at.asitplus.wallet.lib.data.MediaTypes.Application.JWT]).
+     * Also send along the [TokenResponseParameters.accessToken] from the token response in HTTP header `Authorization`
+     * see [TokenResponseParameters.toHttpHeaderValue].
+     * Be sure to include a DPoP header if [TokenResponseParameters.tokenType] is `DPoP`,
+     * see [at.asitplus.wallet.lib.oidvci.BuildDPoPHeader].
+     * For sample ktor code see `OpenId4VciClient` in `vck-openid-ktor`.
+     *
+     * @param tokenResponse from the authorization server token endpoint
+     * @param metadata the issuer's metadata, see [IssuerMetadata]
+     * @param credentialFormat which credential to request (needed to build the correct proof)
+     * @param clientNonce if required by the issuer (see [IssuerMetadata.nonceEndpointUrl]),
+     * the value from there, exactly [ClientNonceResponse.clientNonce]
+     * @param previouslyRequestedScope the `scope` value requested in the token request, since the authorization server
+     * may not set it in [tokenResponse]
+     */
+    suspend fun createEncryptedCredentialRequest(
+        tokenResponse: TokenResponseParameters,
+        metadata: IssuerMetadata,
+        credentialFormat: SupportedCredentialFormat,
+        clientNonce: String? = null,
+        previouslyRequestedScope: String? = null,
+        clock: Clock = Clock.System,
+    ): KmmResult<Collection<String>> = catching {
+        createCredentialRequest(
+            tokenResponse = tokenResponse,
+            metadata = metadata,
+            credentialFormat = credentialFormat,
+            clientNonce = clientNonce,
+            previouslyRequestedScope = previouslyRequestedScope,
+            clock = clock
+        ).getOrThrow().map {
+            encryptionService.encrypt(it, metadata).getOrThrow().serialize()
+        }.also {
+            Napier.i("createEncryptedCredentialRequest returns $it")
+        }
+    }
+
+    public suspend fun parseCredentialResponse(
+        credentialResponse: CredentialResponseParameters,
+        credentialRepresentation: CredentialRepresentation,
+        credentialScheme: ConstantIndex.CredentialScheme,
+    ): KmmResult<Collection<Holder.StoreCredentialInput>> = catching {
+        credentialResponse.extractCredentials()
+            .map { encryptionService.decrypt(it).getOrThrow() }
+            .map { it.toStoreCredentialInput(credentialRepresentation, credentialScheme) }
     }
 
     private fun CredentialRequestProof.toProofs() = CredentialRequestProofContainer(
@@ -240,21 +292,12 @@ class WalletService(
         }
 
     private fun String.toCredentialRequest(metadata: IssuerMetadata): Set<CredentialRequestParameters> =
-        trim().split(" ").mapNotNull { scope ->
+        trim().split(" ").map { scope ->
             metadata.supportedCredentialConfigurations
                 ?.entries?.firstOrNull { it.value.scope == scope }?.key
                 ?.let { CredentialRequestParameters(credentialConfigurationId = it) }
                 ?: throw OAuth2Exception.UnknownCredentialConfiguration(scope)
         }.toSet()
-
-    private fun IssuerMetadata.credentialResponseEncryption(): CredentialResponseEncryption? =
-        if (requestEncryption && decryptionKeyMaterial != null && credentialResponseEncryption != null) {
-            CredentialResponseEncryption(
-                jsonWebKey = decryptionKeyMaterial.jsonWebKey,
-                jweAlgorithm = supportedJweAlgorithm,
-                jweEncryptionString = supportedJweEncryptionAlgorithm.identifier,
-            )
-        } else null
 
     internal suspend fun createCredentialRequestProof(
         metadata: IssuerMetadata,
@@ -307,13 +350,38 @@ class WalletService(
     private fun addKeyAttestationToJwsHeader(
         clientNonce: String?,
         addKeyAttestation: Boolean = false,
-    ): suspend (JwsHeader, KeyMaterial) -> JwsHeader =
-        { it: JwsHeader, key: KeyMaterial ->
-            val keyAttestation = if (addKeyAttestation) {
-                this.loadKeyAttestation?.invoke(KeyAttestationInput(clientNonce, null))?.getOrThrow()?.serialize()
-                    ?: throw IllegalArgumentException("Key attestation required, none provided")
-            } else null
-            it.copy(jsonWebKey = key.jsonWebKey, keyAttestation = keyAttestation)
-        }
+    ): suspend (JwsHeader, KeyMaterial) -> JwsHeader = { header: JwsHeader, key: KeyMaterial ->
+        val keyAttestation = if (addKeyAttestation) {
+            this.loadKeyAttestation?.invoke(KeyAttestationInput(clientNonce, null))?.getOrThrow()?.serialize()
+                ?: throw IllegalArgumentException("Key attestation required, none provided")
+        } else null
+        header.copy(jsonWebKey = key.jsonWebKey, keyAttestation = keyAttestation)
+    }
+
+    @Throws(Exception::class)
+    private fun String.toStoreCredentialInput(
+        credentialRepresentation: CredentialRepresentation,
+        credentialScheme: ConstantIndex.CredentialScheme,
+    ): Holder.StoreCredentialInput = when (credentialRepresentation) {
+        PLAIN_JWT -> Vc(
+            signedVcJws = JwsSigned.deserialize(VerifiableCredentialJws.serializer(), this, vckJsonSerializer)
+                .getOrThrow(),
+            vcJws = this,
+            scheme = credentialScheme
+        )
+
+        SD_JWT -> SdJwt(
+            signedSdJwtVc = SdJwtSigned.parse(this)!!,
+            vcSdJwt = this,
+            scheme = credentialScheme
+        )
+
+        ISO_MDOC -> catchingUnwrapped {
+            Iso(
+                issuerSigned = coseCompliantSerializer.decodeFromByteArray<IssuerSigned>(decodeToByteArray(Base64())),
+                scheme = credentialScheme
+            )
+        }.getOrElse { throw Exception("Invalid credential format: $this", it) }
+    }
 
 }

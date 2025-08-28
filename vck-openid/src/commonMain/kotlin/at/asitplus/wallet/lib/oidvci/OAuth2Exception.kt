@@ -8,6 +8,7 @@ import at.asitplus.openid.OpenIdConstants.Errors.INVALID_CLIENT
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_CODE
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_CREDENTIAL_REQUEST
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_DPOP_PROOF
+import at.asitplus.openid.OpenIdConstants.Errors.INVALID_ENCRYPTION_PARAMETERS
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_GRANT
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_NONCE
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_PROOF
@@ -121,6 +122,12 @@ sealed class OAuth2Exception(
         @Transient val description: String? = null,
         @Transient override val cause: Throwable? = null
     ) : OAuth2Exception(CREDENTIAL_REQUEST_DENIED, description)
+
+    @Serializable
+    class InvalidEncryptionParameters(
+        @Transient val description: String? = null,
+        @Transient override val cause: Throwable? = null
+    ) : OAuth2Exception(INVALID_ENCRYPTION_PARAMETERS, description)
 
     @Serializable
     class InvalidNonce(
