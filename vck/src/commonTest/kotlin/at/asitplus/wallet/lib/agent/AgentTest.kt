@@ -35,7 +35,7 @@ class AgentTest : FreeSpec({
     lateinit var statusListIssuer: StatusListIssuer
     lateinit var holder: Holder
     lateinit var verifier: Verifier
-    lateinit var holderKeyMaterial: SignKeyMaterial
+    lateinit var holderKeyMaterial: KeyMaterial
     lateinit var issuerCredentialStore: IssuerCredentialStore
     lateinit var holderCredentialStore: SubjectCredentialStore
     lateinit var challenge: String

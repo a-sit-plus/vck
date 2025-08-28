@@ -4,7 +4,7 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.SignKeyMaterial
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
@@ -14,8 +14,8 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 
 class OpenId4VpErrorResponseTest : FreeSpec({
     lateinit var clientId: String
-    lateinit var holderKeyMaterial: SignKeyMaterial
-    lateinit var verifierKeyMaterial: SignKeyMaterial
+    lateinit var holderKeyMaterial: KeyMaterial
+    lateinit var verifierKeyMaterial: KeyMaterial
     lateinit var holderAgent: Holder
     lateinit var holderOid4vp: OpenId4VpHolder
     lateinit var verifierOid4vp: OpenId4VpVerifier

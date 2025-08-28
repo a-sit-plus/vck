@@ -9,7 +9,7 @@ import java.security.KeyStore
 import kotlin.random.Random
 
 /**
- * [SignKeyMaterial] based on an initialized, loaded [KeyStore] object.
+ * [KeyMaterial] based on an initialized, loaded [KeyStore] object.
  * @param keyAlias non-null alias of the private key used for signing
  * @param providerName optional name of the JCA provider to use
  * @param privateKeyPassword optional private key password
@@ -41,7 +41,7 @@ class KeyStoreMaterial
 }
 
 /**
- * [SignKeyMaterial] based on an initialized, loaded [KeyStore] object, which will use [PublishedKeyMaterial].
+ * [KeyMaterial] based on an initialized, loaded [KeyStore] object, which will use [PublishedKeyMaterial].
  * @param keyAlias non-null alias of the private key used for signing
  * @param providerName optional name of the JCA provider to use
  * @param privateKeyPassword optional private key password

@@ -50,7 +50,7 @@ class AgentSdJwtTest : FreeSpec({
     lateinit var verifier: Verifier
     lateinit var issuerCredentialStore: IssuerCredentialStore
     lateinit var holderCredentialStore: SubjectCredentialStore
-    lateinit var holderKeyMaterial: SignKeyMaterial
+    lateinit var holderKeyMaterial: KeyMaterial
     lateinit var challenge: String
     lateinit var verifierId: String
 

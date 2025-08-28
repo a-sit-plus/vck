@@ -24,7 +24,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.SignKeyMaterial
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.ValidatorSdJwt
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -65,9 +65,9 @@ import kotlin.time.Clock
 
 class OpenId4VciClientTest : FunSpec() {
 
-    lateinit var credentialKeyMaterial: SignKeyMaterial
-    lateinit var dpopKeyMaterial: SignKeyMaterial
-    lateinit var clientAuthKeyMaterial: SignKeyMaterial
+    lateinit var credentialKeyMaterial: KeyMaterial
+    lateinit var dpopKeyMaterial: KeyMaterial
+    lateinit var clientAuthKeyMaterial: KeyMaterial
     lateinit var refreshTokenStore: RefreshTokenInfo
 
     lateinit var mockEngine: MockEngine

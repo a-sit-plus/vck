@@ -13,5 +13,5 @@ data class DeviceAuth(
     @SerialName("deviceSignature")
     val deviceSignature: CoseSigned<ByteArray>? = null,
     @SerialName("deviceMac")
-    val deviceMac: CoseMac<ByteArray>? = null, // TODO is COSE_Mac0
+    val deviceMac: CoseMac<ByteArray>? = null,
 )

@@ -6,7 +6,7 @@ import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.SignKeyMaterial
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
@@ -30,7 +30,7 @@ class OAuth2ClientDPoPTest : FunSpec({
     lateinit var client: OAuth2Client
     lateinit var user: OidcUserInfoExtended
     lateinit var server: SimpleAuthorizationService
-    lateinit var clientKey: SignKeyMaterial
+    lateinit var clientKey: KeyMaterial
     lateinit var signDpop: SignJwtFun<JsonWebToken>
     val tokenUrl = "https://example.com/token"
     val resourceUrl = "https://example.com/resource"

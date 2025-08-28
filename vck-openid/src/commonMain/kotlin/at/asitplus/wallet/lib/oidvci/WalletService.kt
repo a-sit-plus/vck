@@ -12,7 +12,7 @@ import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.SignKeyMaterial
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
@@ -39,7 +39,7 @@ class WalletService(
     /** Used to create [AuthenticationRequestParameters] and [TokenRequestParameters]. */
     private val redirectUrl: String = "$clientId/callback",
     /** Used to prove possession of the key material to create [CredentialRequestProof], i.e. the holder key. */
-    private val keyMaterial: SignKeyMaterial = EphemeralKeyWithoutCert(),
+    private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     /**
      * Need to implement if resources are defined by reference, i.e. the URL for a [JsonWebKeySet],
      * or the authentication request itself as `request_uri`, or `presentation_definition_uri`.
@@ -52,7 +52,7 @@ class WalletService(
     /** Whether to request encryption of credentials, if the issuer supports it. */
     private val requestEncryption: Boolean = false,
     /** Optional key material to advertise for credential response encryption, see [requestEncryption]. */
-    private val decryptionKeyMaterial: SignKeyMaterial? = null,
+    private val decryptionKeyMaterial: KeyMaterial? = null,
     /** Algorithm to decrypt credential response encryption, see [requestEncryption]. */
     private val supportedJweAlgorithm: JweAlgorithm = JweAlgorithm.ECDH_ES,
     /** Algorithm to decrypt credential response encryption, see [requestEncryption]. */
@@ -292,8 +292,8 @@ class WalletService(
     private fun addKeyAttestationToJwsHeader(
         clientNonce: String?,
         addKeyAttestation: Boolean = false,
-    ): suspend (JwsHeader, SignKeyMaterial) -> JwsHeader =
-        { it: JwsHeader, key: SignKeyMaterial ->
+    ): suspend (JwsHeader, KeyMaterial) -> JwsHeader =
+        { it: JwsHeader, key: KeyMaterial ->
             val keyAttestation = if (addKeyAttestation) {
                 this.loadKeyAttestation?.invoke(KeyAttestationInput(clientNonce, null))?.getOrThrow()?.serialize()
                     ?: throw IllegalArgumentException("Key attestation required, none provided")

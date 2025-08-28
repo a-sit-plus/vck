@@ -34,8 +34,8 @@ class ValidatorVcTest : FreeSpec() {
     private lateinit var statusListIssuer: StatusListIssuer
     private lateinit var issuerCredentialStore: IssuerCredentialStore
     private lateinit var issuerSignVc: SignJwtFun<VerifiableCredentialJws>
-    private lateinit var issuerKeyMaterial: SignKeyMaterial
-    private lateinit var verifierKeyMaterial: SignKeyMaterial
+    private lateinit var issuerKeyMaterial: KeyMaterial
+    private lateinit var verifierKeyMaterial: KeyMaterial
     private lateinit var validator: ValidatorVcJws
 
     private val revocationListUrl: String = "https://wallet.a-sit.at/backend/credentials/status/1"
@@ -410,7 +410,7 @@ class ValidatorVcTest : FreeSpec() {
     private suspend fun wrapVcInJwsWrongKey(vcJws: VerifiableCredentialJws) =
         SignJwt<VerifiableCredentialJws>(
             issuerKeyMaterial
-        ) { header: JwsHeader, keyMaterial: SignKeyMaterial ->
+        ) { header: JwsHeader, keyMaterial: KeyMaterial ->
             // this should be issuerKeyMaterial.jsonWebKey, but is a wrong key
             header.copy(jsonWebKey = EphemeralKeyWithoutCert().jsonWebKey)
         }(

@@ -26,7 +26,7 @@ interface Holder {
     /**
      * The public key for this agent, i.e. the "holder key" that the credentials get bound to.
      */
-    val keyMaterial: SignKeyMaterial
+    val keyMaterial: KeyMaterial
 
     sealed class StoreCredentialInput {
         data class Vc(

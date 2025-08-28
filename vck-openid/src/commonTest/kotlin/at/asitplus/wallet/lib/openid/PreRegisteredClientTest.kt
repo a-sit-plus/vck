@@ -10,7 +10,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.SignKeyMaterial
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -42,8 +42,8 @@ class PreRegisteredClientTest : FreeSpec({
     lateinit var clientId: String
     lateinit var walletUrl: String
     lateinit var redirectUrl: String
-    lateinit var holderKeyMaterial: SignKeyMaterial
-    lateinit var verifierKeyMaterial: SignKeyMaterial
+    lateinit var holderKeyMaterial: KeyMaterial
+    lateinit var verifierKeyMaterial: KeyMaterial
     lateinit var holderAgent: Holder
     lateinit var holderOid4vp: OpenId4VpHolder
     lateinit var verifierOid4vp: OpenId4VpVerifier

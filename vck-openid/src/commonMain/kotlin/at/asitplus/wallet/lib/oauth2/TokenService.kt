@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.SignKeyMaterial
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.oidvci.DefaultNonceService
 import at.asitplus.wallet.lib.oidvci.NonceService
 
@@ -16,7 +16,7 @@ data class TokenService(
         fun jwt(
             publicContext: String = "https://wallet.a-sit.at/authorization-server",
             nonceService: NonceService = DefaultNonceService(),
-            keyMaterial: SignKeyMaterial = EphemeralKeyWithoutCert(),
+            keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
             issueRefreshTokens: Boolean = false,
             verificationAlgorithms: Collection<JwsAlgorithm.Signature> = setOf(JwsAlgorithm.Signature.ES256), // per OID4VC HAIP
         ) = TokenService(

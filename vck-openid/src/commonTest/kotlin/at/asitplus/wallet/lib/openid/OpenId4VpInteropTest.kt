@@ -12,7 +12,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.SignKeyMaterial
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.SdJwtDecoded
 import at.asitplus.wallet.lib.agent.ValidatorSdJwt
 import at.asitplus.wallet.lib.agent.VerifierAgent
@@ -43,14 +43,14 @@ import kotlinx.serialization.json.jsonPrimitive
 class OpenId4VpInteropTest : FreeSpec({
     lateinit var issuerKeyId: String
     lateinit var issuerIdentifier: String
-    lateinit var holderKeyMaterial: SignKeyMaterial
+    lateinit var holderKeyMaterial: KeyMaterial
     lateinit var holderAgent: Holder
     lateinit var holderOid4vp: OpenId4VpHolder
     lateinit var verifierClientId: String
     lateinit var verifierRedirectUrl: String
     lateinit var verifierIssuerUrl: String
     lateinit var verifierKeyId: String
-    lateinit var verifierKeyMaterial: SignKeyMaterial
+    lateinit var verifierKeyMaterial: KeyMaterial
     lateinit var verifierOid4vp: OpenId4VpVerifier
 
     beforeEach {

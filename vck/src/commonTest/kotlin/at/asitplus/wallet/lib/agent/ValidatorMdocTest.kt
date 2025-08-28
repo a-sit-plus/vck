@@ -23,8 +23,8 @@ class ValidatorMdocTest : FreeSpec() {
     private lateinit var issuer: Issuer
     private lateinit var statusListIssuer: StatusListIssuer
     private lateinit var issuerCredentialStore: IssuerCredentialStore
-    private lateinit var issuerKeyMaterial: SignKeyMaterial
-    private lateinit var verifierKeyMaterial: SignKeyMaterial
+    private lateinit var issuerKeyMaterial: KeyMaterial
+    private lateinit var verifierKeyMaterial: KeyMaterial
     private lateinit var validator: ValidatorMdoc
 
     init {

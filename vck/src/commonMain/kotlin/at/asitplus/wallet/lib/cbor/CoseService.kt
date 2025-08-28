@@ -9,9 +9,9 @@ import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.supreme.asKmmResult
 import at.asitplus.signum.supreme.sign.Verifier
+import at.asitplus.wallet.lib.agent.CoseKeyMaterial
 import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.SignKeyMaterial
-import at.asitplus.wallet.lib.agent.MacKeyMaterial
+import at.asitplus.wallet.lib.agent.SymmetricKeyMaterial
 import at.asitplus.wallet.lib.agent.VerifyMac
 import at.asitplus.wallet.lib.agent.VerifyMacFun
 import at.asitplus.wallet.lib.agent.VerifySignature
@@ -29,32 +29,32 @@ import kotlin.byteArrayOf
 fun interface CoseHeaderIdentifierFun {
     suspend operator fun invoke(
         it: CoseHeader?,
-        keyMaterial: KeyMaterial,
+        keyMaterial: CoseKeyMaterial,
     ): CoseHeader?
 }
 
-/** Don't identify [SignKeyMaterial] in [CoseHeader]. */
+/** Don't identify [KeyMaterial] in [CoseHeader]. */
 class CoseHeaderNone : CoseHeaderIdentifierFun {
     override suspend operator fun invoke(
         it: CoseHeader?,
-        keyMaterial: KeyMaterial,
+        keyMaterial: CoseKeyMaterial,
     ): CoseHeader? = it
 }
 
-/** Identify [SignKeyMaterial] with it's [SignKeyMaterial.identifier] in (protected) [CoseHeader.keyId]. */
+/** Identify [KeyMaterial] with it's [KeyMaterial.identifier] in (protected) [CoseHeader.keyId]. */
 class CoseHeaderKeyId : CoseHeaderIdentifierFun {
     override suspend operator fun invoke(
         it: CoseHeader?,
-        keyMaterial: KeyMaterial,
+        keyMaterial: CoseKeyMaterial,
     ): CoseHeader? = it?.copy(kid = keyMaterial.identifier.encodeToByteArray())
 }
 
-/** Identify [SignKeyMaterial] with it's [SignKeyMaterial.getCertificate] in (unprotected) [CoseHeader.certificateChain]. */
+/** Identify [KeyMaterial] with it's [KeyMaterial.getCertificate] in (unprotected) [CoseHeader.certificateChain]. */
 class CoseHeaderCertificate : CoseHeaderIdentifierFun {
     override suspend operator fun invoke(
         it: CoseHeader?,
-        keyMaterial: KeyMaterial,
-    ) = it?.copy(certificateChain = (keyMaterial as SignKeyMaterial).getCertificate()?.let { listOf(it.encodeToDer()) })
+        keyMaterial: CoseKeyMaterial,
+    ) = it?.copy(certificateChain = (keyMaterial as KeyMaterial).getCertificate()?.let { listOf(it.encodeToDer()) })
 }
 
 fun interface SignCoseFun<P> {
@@ -68,7 +68,7 @@ fun interface SignCoseFun<P> {
 
 /** Create a [CoseSigned], setting protected and unprotected headers, and applying [CoseHeaderIdentifierFun]. */
 class SignCose<P : Any>(
-    val keyMaterial: SignKeyMaterial,
+    val keyMaterial: KeyMaterial,
     val protectedHeaderModifier: CoseHeaderIdentifierFun? = null,
     val unprotectedHeaderModifier: CoseHeaderIdentifierFun? = null,
 ) : SignCoseFun<P> {
@@ -105,7 +105,7 @@ fun interface MacCoseFun<P> {
 }
 
 class MacCose<P : Any>(
-    val keyMaterial: MacKeyMaterial,
+    val keyMaterial: SymmetricKeyMaterial,
     val protectedHeaderModifier: CoseHeaderIdentifierFun? = null,
     val unprotectedHeaderModifier: CoseHeaderIdentifierFun? = null,
 ) : MacCoseFun<P> {
@@ -145,7 +145,7 @@ fun interface SignCoseDetachedFun<P> {
  * Create a [CoseSigned] with detached payload,
  * setting protected and unprotected headers, and applying [CoseHeaderIdentifierFun]. */
 class SignCoseDetached<P : Any>(
-    val keyMaterial: SignKeyMaterial,
+    val keyMaterial: KeyMaterial,
     val protectedHeaderModifier: CoseHeaderIdentifierFun? = null,
     val unprotectedHeaderModifier: CoseHeaderIdentifierFun? = null,
 ) : SignCoseDetachedFun<P> {
@@ -182,7 +182,7 @@ fun interface MacCoseDetachedFun<P> {
 }
 
 class MacCoseDetached<P : Any>(
-    val keyMaterial: MacKeyMaterial,
+    val keyMaterial: SymmetricKeyMaterial,
     val protectedHeaderModifier: CoseHeaderIdentifierFun? = null,
     val unprotectedHeaderModifier: CoseHeaderIdentifierFun? = null,
 ) : MacCoseDetachedFun<P> {
@@ -216,7 +216,7 @@ object CoseUtils {
      */
     @Throws(Throwable::class)
     suspend fun <P : Any> calcSignature(
-        keyMaterial: SignKeyMaterial,
+        keyMaterial: KeyMaterial,
         protectedHeader: CoseHeader,
         payload: P?,
         serializer: KSerializer<P>,
@@ -240,7 +240,7 @@ object CoseUtils {
      */
     @Throws(Throwable::class)
     suspend fun <P : Any> calcMac(
-        keyMaterial: MacKeyMaterial,
+        keyMaterial: SymmetricKeyMaterial,
         protectedHeader: CoseHeader,
         payload: P?,
         serializer: KSerializer<P>,

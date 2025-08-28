@@ -64,7 +64,7 @@ import kotlin.time.Duration.Companion.minutes
 class OpenId4VpWalletTest : FunSpec() {
 
     lateinit var countdownLatch: Mutex
-    lateinit var keyMaterial: SignKeyMaterial
+    lateinit var keyMaterial: KeyMaterial
     lateinit var holderAgent: HolderAgent
 
     init {

@@ -8,7 +8,7 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.SignKeyMaterial
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
@@ -47,7 +47,7 @@ class OpenId4VpWallet(
     engine: HttpClientEngine,
     /** Additional configuration for building the HTTP client, e.g. callers may enable logging. */
     httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
-    keyMaterial: SignKeyMaterial,
+    keyMaterial: KeyMaterial,
     holderAgent: HolderAgent,
 ) {
 

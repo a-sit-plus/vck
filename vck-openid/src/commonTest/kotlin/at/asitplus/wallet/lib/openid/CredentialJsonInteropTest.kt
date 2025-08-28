@@ -18,7 +18,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 
 class CredentialJsonInteropTest : FreeSpec({
-    lateinit var holderKeyMaterial: SignKeyMaterial
+    lateinit var holderKeyMaterial: KeyMaterial
     lateinit var issuerAgent: Issuer
     lateinit var subjectCredentialStore: SubjectCredentialStore
     lateinit var holderAgent: Holder

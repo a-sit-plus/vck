@@ -68,7 +68,7 @@ interface Issuer : ReferencedTokenIssuer<CredentialToBeIssued, KmmResult<Issuer.
     /**
      * The public key for this agent, i.e. the public part of the key that signs issued credentials.
      */
-    val keyMaterial: SignKeyMaterial
+    val keyMaterial: KeyMaterial
 
     /**
      * The cryptographic algorithms supported by this issuer, i.e. the ones from its cryptographic service,

@@ -39,10 +39,10 @@ import kotlin.time.Instant
  */
 @Suppress("DEPRECATION")
 class OpenId4VpEuRefInteropTest : FreeSpec({
-    lateinit var holderKeyMaterial: SignKeyMaterial
+    lateinit var holderKeyMaterial: KeyMaterial
     lateinit var holderAgent: Holder
     lateinit var holderOid4vp: OpenId4VpHolder
-    lateinit var verifierKeyMaterial: SignKeyMaterial
+    lateinit var verifierKeyMaterial: KeyMaterial
     lateinit var verifierOid4vp: OpenId4VpVerifier
 
     beforeEach {

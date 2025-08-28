@@ -18,7 +18,7 @@ import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
-import at.asitplus.wallet.lib.agent.SignKeyMaterial
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
 import at.asitplus.wallet.lib.jws.EncryptJwe
@@ -43,7 +43,7 @@ class CredentialIssuer(
     /** Used to actually issue the credential. */
     private val issuer: Issuer,
     /** Key material used to sign credentials in [credential]. */
-    private val keyMaterial: Set<SignKeyMaterial> = setOf(issuer.keyMaterial),
+    private val keyMaterial: Set<KeyMaterial> = setOf(issuer.keyMaterial),
     /** Supported crypto algorithms of the key material used to sign credential in [credential]. */
     private val cryptoAlgorithms: Set<SignatureAlgorithm> = keyMaterial.map { it.signatureAlgorithm }.toSet(),
     /** List of supported credential schemes. */
