@@ -11,33 +11,48 @@ import kotlin.time.Duration
 data class CredentialResponseParameters(
 
     /**
-     * OID4VCI: Contains an array of one or more issued Credentials. It MUST NOT be used if the `transaction_id`
+     * OID4VCI: Contains an array of one or more issued Credentials. It MUST NOT be used if the [transactionId]
      * parameter is present. The elements of the array MUST be objects.
      */
     @SerialName("credentials")
     val credentials: Set<CredentialResponseSingleCredential>? = null,
 
     /**
-     * OID4CI:
-     * OPTIONAL. A JSON string containing a security token subsequently used to obtain a Credential. MUST be present
-     * when credential is not returned.
+     * OID4VCI: OPTIONAL. String identifying a Deferred Issuance transaction. This parameter is contained in the
+     * response if the Credential Issuer cannot immediately issue the Credential. The value is subsequently used to
+     * obtain the respective Credential with the Deferred Credential Endpoint (see Section 9). It MUST not be used if
+     * the [credentials] parameter is present. It MUST be invalidated after the Credential for which it was meant has
+     * been obtained by the Wallet.
      */
+    @SerialName("transaction_id")
+    val transactionId: String? = null,
+
+    /**
+     * OID4VCI: REQUIRED if [transactionId] is present. Contains a positive number that represents the minimum amount
+     * of time in seconds that the Wallet SHOULD wait after receiving the response before sending a new request to the
+     * Deferred Credential Endpoint. It MUST NOT be used if the [credentials] parameter is present.
+     */
+    @SerialName("interval")
+    @Serializable(with = DurationSecondsIntSerializer::class)
+    val interval: Duration? = null,
+
+    /**
+     * OID4VCI: OPTIONAL. String identifying one or more Credentials issued in one Credential Response.
+     * It MUST be included in the Notification Request as defined in Section 10.1.
+     * It MUST not be used if the [credentials] parameter is not present.
+     */
+    @SerialName("notificationId")
+    val notificationId: String? = null,
+
+    @Deprecated("Removed in OID4VCI draft 12")
     @SerialName("acceptance_token")
     val acceptanceToken: String? = null,
 
-    /**
-     * OID4VCI:
-     * OPTIONAL. JSON string containing a nonce to be used to create a proof of possession of key material when
-     * requesting a Credential. When received, the Wallet MUST use this nonce value for its subsequent credential
-     * requests until the Credential Issuer provides a fresh nonce.
-     */
+    @Deprecated("Removed in OID4VCI draft 15")
     @SerialName("c_nonce")
     val clientNonce: String? = null,
 
-    /**
-     * OID4VCI:
-     * OPTIONAL. JSON integer denoting the lifetime in seconds of the c_nonce.
-     */
+    @Deprecated("Removed in OID4VCI draft 15")
     @SerialName("c_nonce_expires_in")
     @Serializable(with = DurationSecondsIntSerializer::class)
     val clientNonceExpiresIn: Duration? = null,

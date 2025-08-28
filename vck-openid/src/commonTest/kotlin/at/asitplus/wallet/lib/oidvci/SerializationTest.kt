@@ -76,9 +76,8 @@ class SerializationTest : FunSpec({
 
     fun createCredentialResponse() = CredentialResponseParameters(
         credentials = setOf(CredentialResponseSingleCredential(JsonPrimitive(randomString()))),
-        acceptanceToken = randomString(),
-        clientNonce = randomString(),
-        clientNonceExpiresIn = Random.nextInt(1, Int.MAX_VALUE).seconds,
+        transactionId = randomString(),
+        notificationId = randomString(),
     )
 
     test("createAuthorizationRequest as GET") {

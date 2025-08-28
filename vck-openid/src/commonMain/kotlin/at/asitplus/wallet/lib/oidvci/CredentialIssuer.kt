@@ -162,13 +162,17 @@ class CredentialIssuer(
      * and issues credentials to the client.
      *
      * Callers need to send the result JSON-serialized back to the client.
-     * HTTP status code MUST be 202.
+     * HTTP status code MUST be 200.
      *
      * @param authorizationHeader value of HTTP header `Authorization` sent by the client, with all prefixes
      * @param params Parameters the client sent JSON-serialized in the HTTP body
      * @param request information about the HTTP request the client has made, to validate authentication
      * @param credentialDataProvider Extract data from the authenticated user and prepares it for issuing
+     *
+     * @return If the result is an instance of [OAuth2Exception] send [OAuth2Exception.toOAuth2Error] back to the
+     * client, except for instances of [OAuthAuthorizationError]
      */
+    // TODO they may be encrypted by the wallet
     suspend fun credential(
         authorizationHeader: String,
         params: CredentialRequestParameters,
@@ -177,7 +181,7 @@ class CredentialIssuer(
     ): KmmResult<CredentialResponseParameters> = catching {
         Napier.i("credential called")
         Napier.d("credential called with $authorizationHeader, $params")
-        authorizationService.validateAccessToken(authorizationHeader, request)
+        authorizationService.validateAccessToken(authorizationHeader, request).getOrThrow()
         val userInfo = params.introspectTokenLoadUserInfo(authorizationHeader, request)
         val (scheme, representation) = params.extractCredentialRepresentation()
         proofValidator.validateProofExtractSubjectPublicKeys(params).map { subjectPublicKey ->

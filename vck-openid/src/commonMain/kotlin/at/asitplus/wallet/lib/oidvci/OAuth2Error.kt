@@ -8,7 +8,6 @@ import kotlinx.serialization.Serializable
  * OpenID for Verifiable Credential Issuance
  * Published: 3 February 2023
  */
-
 @Serializable
 data class OAuth2Error(
     @SerialName("error")
