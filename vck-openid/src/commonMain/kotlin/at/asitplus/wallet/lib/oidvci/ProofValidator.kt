@@ -18,6 +18,9 @@ import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidNonce
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidProof
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import io.github.aakira.napier.Napier
 import kotlin.time.Clock
 import kotlin.time.Duration
@@ -41,7 +44,7 @@ class ProofValidator(
     private val clock: Clock = Clock.System,
     /** Time leeway for verification of timestamps in proof elements in credential requests. */
     private val timeLeeway: Duration = 5.minutes,
-    /** Callback to verify a received [at.asitplus.signum.indispensable.josef.KeyAttestationJwt] proof in credential requests. */
+    /** Callback to verify a received [KeyAttestationJwt] proof in credential requests. */
     private val verifyAttestationProof: (JwsSigned<KeyAttestationJwt>) -> Boolean = { true },
     /** Turn on to require key attestation support in the [validProofTypes]. */
     private val requireKeyAttestation: Boolean = false,
@@ -84,7 +87,7 @@ class ProofValidator(
         params: CredentialRequestParameters,
     ): Collection<CryptoPublicKey> = params.proof?.validateProof()
         ?: params.proofs?.validateProof()
-        ?: throw OAuth2Exception.InvalidRequest("invalid proof")
+        ?: throw InvalidRequest("invalid proof")
             .also { Napier.w("credential: client did not provide proof of possession in $params") }
 
     private suspend fun CredentialRequestProof.validateProof() = when (proofType) {
@@ -103,30 +106,31 @@ class ProofValidator(
     private suspend fun JwsSigned<JsonWebToken>.validateJwtProof(): Collection<CryptoPublicKey> {
         if (header.type != OpenIdConstants.PROOF_JWT_TYPE) {
             Napier.w("validateJwtProof: invalid typ: $header")
-            throw OAuth2Exception.InvalidProof("invalid typ: ${header.type}")
+            throw InvalidProof("invalid typ: ${header.type}")
         }
-
         if (payload.nonce == null || !clientNonceService.verifyNonce(payload.nonce!!)) {
             Napier.w("validateJwtProof: invalid nonce: ${payload.nonce}")
-            throw OAuth2Exception.InvalidNonce("invalid nonce: ${payload.nonce}")
+            throw InvalidNonce("invalid nonce: ${payload.nonce}")
         }
-
         if (payload.audience == null || payload.audience != publicContext) {
             Napier.w("validateJwtProof: invalid audience: ${payload.audience}")
-            throw OAuth2Exception.InvalidProof("invalid audience: ${payload.audience}")
+            throw InvalidProof("invalid audience: ${payload.audience}")
         }
-
+        if (payload.issuedAt == null || payload.issuedAt!! > (clock.now() + timeLeeway)) {
+            Napier.w("validateJwtProof: issuedAt in future: ${payload.issuedAt}")
+            throw InvalidProof("issuedAt in future: ${payload.issuedAt}")
+        }
         if (!verifyJwsObject(this)) {
             Napier.w("validateJwtProof: invalid signature: $this")
-            throw OAuth2Exception.InvalidProof("invalid signature: $this")
+            throw InvalidProof("invalid signature: $this")
         }
-        // OID4VCI 8.2.1.1: The Credential Issuer SHOULD issue a Credential for each cryptographic public key specified
+        // OID4VCI F.1.: The Credential Issuer SHOULD issue a Credential for each cryptographic public key specified
         // in the attested_keys claim within the key_attestation parameter.
         val additionalKeys = header.keyAttestationParsed?.validateAttestationProof() ?: listOf()
 
         val headerPublicKey = header.publicKey ?: run {
             Napier.w("validateJwtProof: No valid key in header: $header")
-            throw OAuth2Exception.InvalidProof("could not extract public key")
+            throw InvalidProof("could not extract public key")
         }
 
         return additionalKeys + headerPublicKey
@@ -139,25 +143,23 @@ class ProofValidator(
     private suspend fun JwsSigned<KeyAttestationJwt>.validateAttestationProof(): Collection<CryptoPublicKey> {
         if (header.type != OpenIdConstants.KEY_ATTESTATION_JWT_TYPE) {
             Napier.w("validateAttestationProof: invalid typ: $header")
-            throw OAuth2Exception.InvalidProof("invalid typ: ${header.type}")
+            throw InvalidProof("invalid typ: ${header.type}")
         }
         if (payload.nonce == null || !clientNonceService.verifyNonce(payload.nonce!!)) {
             Napier.w("validateAttestationProof: invalid nonce: ${payload.nonce}")
-            throw OAuth2Exception.InvalidNonce("invalid nonce: ${payload.nonce}")
+            throw InvalidNonce("invalid nonce: ${payload.nonce}")
         }
         if (payload.issuedAt > (clock.now() + timeLeeway)) {
             Napier.w("validateAttestationProof: issuedAt in future: ${payload.issuedAt}")
-            throw OAuth2Exception.InvalidProof("issuedAt in future: ${payload.issuedAt}")
+            throw InvalidProof("issuedAt in future: ${payload.issuedAt}")
         }
-
         if (payload.expiration != null && payload.expiration!! < (clock.now() - timeLeeway)) {
             Napier.w("validateAttestationProof: expiration in past: ${payload.expiration}")
-            throw OAuth2Exception.InvalidProof("expiration in past: ${payload.expiration}")
+            throw InvalidProof("expiration in past: ${payload.expiration}")
         }
-
         if (!verifyAttestationProof.invoke(this)) {
             Napier.w("validateAttestationProof: Key attestation not verified by callback: $this")
-            throw OAuth2Exception.InvalidProof("key attestation not verified: $this")
+            throw InvalidProof("key attestation not verified: $this")
         }
         return payload.attestedKeys.mapNotNull {
             it.toCryptoPublicKey()
