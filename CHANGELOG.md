@@ -1,6 +1,9 @@
 # Changelog
 
 Release 5.9.0 (unreleased):
+ - Remove Generics from `OpenId4VpHolder` functions and work directly with `AuthorizationRequestParameters`
+ - In `PresentationFactory` replace `RequestParameters` in function signatures to work directly with `AuthorizationRequestParameters`
+ - Remove all parameters from `RequestParameters`. Moved into their respective implementing class.
  - Change dependency structure of modules
  - Remove `vck-rqes` module
    - Relevant classes now in `vck-openid` 
