@@ -74,10 +74,7 @@ data class RequestOptions(
     /** Opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]. */
     val state: String = uuid4().toString(),
 
-    /**
-     * Optional URL to include metadata by reference (see [AuthenticationRequestParameters.clientMetadataUri])
-     * instead of by value (see [AuthenticationRequestParameters.clientMetadata])
-     */
+    @Deprecated("Removed in OpenID4VP Draft 21")
     val clientMetadataUrl: String? = null,
 
     /**

@@ -119,11 +119,7 @@ data class AuthenticationRequestParameters(
     @SerialName("client_metadata")
     val clientMetadata: RelyingPartyMetadata? = null,
 
-    /**
-     * OIDC SIOPv2: OPTIONAL. This parameter is used by the RP to provide information about itself to a Self-Issued OP
-     * that would normally be provided to an OP during Dynamic RP Registration.
-     * It MUST not be present if the RP uses OpenID Federation 1.0 Automatic Registration to pass its metadata.
-     */
+    @Deprecated("Removed from OpenID4VP Draft 21")
     @SerialName("client_metadata_uri")
     val clientMetadataUri: String? = null,
 
@@ -166,12 +162,13 @@ data class AuthenticationRequestParameters(
     val presentationDefinitionUrl: String? = null,
 
     /**
-     * OID4VP: dcql_query: A string containing a JSON-encoded DCQL query as defined in Section 6.
+     * OID4VP 1.0: dcql_query: A string containing a JSON-encoded DCQL query as defined in Section 6.
+     * Either a [dcqlQuery] or a [scope] parameter representing a DCQL Query MUST be present in the Authorization
+     * Request, but not both.
      */
     @SerialName("dcql_query")
     @Serializable(with = BackwardsCompatibleDCQLQuerySerializer::class)
     val dcqlQuery: DCQLQuery? = null,
-
 
     /**
      * RFC9396: The request parameter `authorization_details` contains, in JSON notation, an array of objects.
@@ -242,6 +239,8 @@ data class AuthenticationRequestParameters(
      * OAuth 2.0 JAR: If signed, the Authorization Request Object SHOULD contain the Claims `iss` (issuer) and `aud`
      * (audience) as members with their semantics being the same as defined in the JWT (RFC7519) specification. The
      * value of `aud` should be the value of the authorization server (AS) `issuer`, as defined in RFC 8414.
+     *
+     * OpenID4VP 1.0: The iss claim MAY be present in the Request Object. However, even if it is present, the Wallet MUST ignore it
      */
     @SerialName("iss")
     val issuer: String? = null,
@@ -398,7 +397,7 @@ data class AuthenticationRequestParameters(
         get() = redirectUrl
             ?: (clientIdSchemeExtracted as? OpenIdConstants.ClientIdScheme.RedirectUri)?.let { clientIdWithoutPrefix }
 
-
+    @Suppress("DEPRECATION")
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
@@ -445,10 +444,15 @@ data class AuthenticationRequestParameters(
         if (accountToken != other.accountToken) return false
         if (clientData != other.clientData) return false
         if (transactionData != other.transactionData) return false
+        if (expectedOrigins != other.expectedOrigins) return false
+        if (clientIdSchemeExtracted != other.clientIdSchemeExtracted) return false
+        if (clientIdWithoutPrefix != other.clientIdWithoutPrefix) return false
+        if (redirectUrlExtracted != other.redirectUrlExtracted) return false
 
         return true
     }
 
+    @Suppress("DEPRECATION")
     override fun hashCode(): Int {
         var result = responseType?.hashCode() ?: 0
         result = 31 * result + (clientId?.hashCode() ?: 0)
@@ -487,6 +491,10 @@ data class AuthenticationRequestParameters(
         result = 31 * result + (accountToken?.hashCode() ?: 0)
         result = 31 * result + (clientData?.hashCode() ?: 0)
         result = 31 * result + (transactionData?.hashCode() ?: 0)
+        result = 31 * result + (expectedOrigins?.hashCode() ?: 0)
+        result = 31 * result + (clientIdSchemeExtracted?.hashCode() ?: 0)
+        result = 31 * result + (clientIdWithoutPrefix?.hashCode() ?: 0)
+        result = 31 * result + (redirectUrlExtracted?.hashCode() ?: 0)
         return result
     }
 

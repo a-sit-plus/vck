@@ -330,6 +330,7 @@ class OpenId4VpVerifier(
         requestObjectParameters: RequestObjectParameters? = null,
     ) = requestOptions.toAuthnRequest(requestObjectParameters)
 
+    @Suppress("DEPRECATION")
     private suspend fun RequestOptions.toAuthnRequest(
         requestObjectParameters: RequestObjectParameters?,
     ): AuthenticationRequestParameters = AuthenticationRequestParameters(
@@ -364,6 +365,7 @@ class OpenId4VpVerifier(
     )
 
     // OpenID4VP: Metadata MUST be passed as parameter if client_id_scheme is "redirect_uri"
+    @Suppress("DEPRECATION")
     private fun clientMetadata(options: RequestOptions): RelyingPartyMetadata? =
         if (options.clientMetadataUrl != null && clientIdScheme !is ClientIdScheme.RedirectUri) {
             null

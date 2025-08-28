@@ -70,9 +70,11 @@ internal class AuthorizationRequestValidator(
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun OpenIdConstants.ClientIdScheme?.isAnyX509() =
         (this == OpenIdConstants.ClientIdScheme.X509SanDns) || (this == OpenIdConstants.ClientIdScheme.X509SanUri)
 
+    @Suppress("DEPRECATION")
     @Throws(OAuth2Exception::class)
     private fun AuthenticationRequestParameters.verifyClientMetadata() {
         if (clientMetadata == null && clientMetadataUri == null) {

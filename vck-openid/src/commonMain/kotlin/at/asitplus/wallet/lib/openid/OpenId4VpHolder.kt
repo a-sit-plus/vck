@@ -131,8 +131,7 @@ class OpenId4VpHolder(
                 ClientIdScheme.PreRegistered,
                 ClientIdScheme.RedirectUri,
                 ClientIdScheme.VerifierAttestation,
-                ClientIdScheme.X509SanDns,
-                ClientIdScheme.X509SanUri,
+                ClientIdScheme.X509SanDns
             ).map { it.stringRepresentation }.toSet(),
             vpFormatsSupported = VpFormatsSupported(
                 vcJwt = SupportedAlgorithmsContainer(supportedAlgorithmsStrings = supportedAlgorithmsStrings),
@@ -389,6 +388,7 @@ class OpenId4VpHolder(
             ?.let { remoteResourceRetriever(RemoteResourceRetrieverInput(it)) }
             ?.let { vckJsonSerializer.decodeFromString(it) }
 
+    @Suppress("DEPRECATION")
     private suspend fun AuthenticationRequestParameters.loadClientMetadata(): RelyingPartyMetadata? =
         clientMetadata ?: clientMetadataUri
             ?.let { remoteResourceRetriever(RemoteResourceRetrieverInput(it)) }
