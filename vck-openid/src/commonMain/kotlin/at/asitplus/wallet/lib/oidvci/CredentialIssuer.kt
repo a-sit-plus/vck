@@ -220,6 +220,42 @@ class CredentialIssuer(
         hasBeenEncrypted = false,
     )
 
+    /**
+     * Verifies the [authorizationHeader] to contain a token from [authorizationService],
+     * verifies the proof sent by the client (must contain a nonce sent from [authorizationService]),
+     * and issues credentials to the client.
+     *
+     * Callers need to send the result JSON-serialized back to the client.
+     * HTTP status code MUST be 200.
+     *
+     * @param authorizationHeader value of HTTP header `Authorization` sent by the client, with all prefixes
+     * @param params Parameters the client sent JSON-serialized in the HTTP body
+     * @param request information about the HTTP request the client has made, to validate authentication
+     * @param credentialDataProvider Extract data from the authenticated user and prepares it for issuing
+     *
+     * @return If the result is an instance of [OAuth2Exception] send [OAuth2Exception.toOAuth2Error] back to the
+     * client, except for instances of [OAuthAuthorizationError]
+     */
+    suspend fun credential(
+        authorizationHeader: String,
+        params: WalletService.CredentialRequest,
+        credentialDataProvider: CredentialDataProviderFun,
+        request: RequestInfo? = null,
+    ): KmmResult<CredentialResponseParameters> = catching {
+        credentialInternal(
+            authorizationHeader = authorizationHeader,
+            params = params.decryptIfNeeded(),
+            credentialDataProvider = credentialDataProvider,
+            request = request,
+            hasBeenEncrypted = false,
+        ).getOrThrow()
+    }
+
+    private suspend fun WalletService.CredentialRequest.decryptIfNeeded() = when (this) {
+        is WalletService.CredentialRequest.Encrypted -> encryptionService.decrypt(request.serialize()).getOrThrow()
+        is WalletService.CredentialRequest.Plain -> request
+    }
+
     private suspend fun credentialInternal(
         authorizationHeader: String,
         params: CredentialRequestParameters,
@@ -307,3 +343,4 @@ class CredentialIssuer(
         }
 
 }
+

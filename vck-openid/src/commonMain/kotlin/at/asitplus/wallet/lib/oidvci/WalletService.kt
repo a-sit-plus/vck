@@ -38,7 +38,6 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.decodeFromByteArray
 import kotlin.time.Clock
 import kotlinx.serialization.json.decodeFromJsonElement
-import kotlin.collections.ifEmpty
 import kotlin.collections.map
 
 /**
@@ -89,6 +88,20 @@ class WalletService(
 ) {
 
     data class KeyAttestationInput(val clientNonce: String?, val supportedAlgorithms: Collection<String>?)
+
+    sealed interface CredentialRequest {
+        /**
+         * Send [request] as JSON-serialized content to the server at [IssuerMetadata.credentialEndpointUrl] with media
+         * type `application/json` (see [at.asitplus.wallet.lib.data.MediaTypes.Application.JSON]).
+         */
+        data class Plain(val request: CredentialRequestParameters) : CredentialRequest
+
+        /**
+         * Send [request] as JWE-serialized content to the server at [IssuerMetadata.credentialEndpointUrl] with media
+         * type `application/jwt` (see [at.asitplus.wallet.lib.data.MediaTypes.Application.JWT]).
+         */
+        data class Encrypted(val request: JweEncrypted) : CredentialRequest
+    }
 
     data class RequestOptions(
         /**
@@ -174,8 +187,6 @@ class WalletService(
 
     /**
      * Creates the credential request to be sent to the credential issuer.
-     * Send the result as JSON-serialized content to the server at [IssuerMetadata.credentialEndpointUrl] with media
-     * type `application/json` (see [at.asitplus.wallet.lib.data.MediaTypes.Application.JSON]).
      * Also send along the [TokenResponseParameters.accessToken] from the token response in HTTP header `Authorization`
      * see [TokenResponseParameters.toHttpHeaderValue].
      * Be sure to include a DPoP header if [TokenResponseParameters.tokenType] is `DPoP`,
@@ -191,7 +202,56 @@ class WalletService(
      * may not set it in [tokenResponse]
      */
     @Suppress("DEPRECATION")
+    suspend fun createCredential(
+        tokenResponse: TokenResponseParameters,
+        metadata: IssuerMetadata,
+        credentialFormat: SupportedCredentialFormat,
+        clientNonce: String? = null,
+        previouslyRequestedScope: String? = null,
+        clock: Clock = Clock.System,
+    ): KmmResult<Collection<CredentialRequest>> = catching {
+        createCredentialRequestInternal(
+            tokenResponse = tokenResponse,
+            metadata = metadata,
+            credentialFormat = credentialFormat,
+            clientNonce = clientNonce,
+            previouslyRequestedScope = previouslyRequestedScope,
+            clock = clock
+        ).getOrThrow().map {
+            if (metadata.shouldEncryptRequest()) {
+                CredentialRequest.Encrypted(encryptionService.encrypt(it, metadata).getOrThrow())
+            } else {
+                CredentialRequest.Plain(it)
+            }
+        }
+    }
+
+    private fun IssuerMetadata.shouldEncryptRequest(): Boolean =
+        credentialRequestEncryption?.encryptionRequired == true ||
+                (encryptionService.requestEncryption && credentialRequestEncryption?.jsonWebKeySet != null)
+
+    @Deprecated(
+        "Use [createCredential] instead to handle encryption",
+        ReplaceWith("createCredential(tokenResponse, metadata, credentialFormat, clientNonce, previouslyRequestedScope, clock)")
+    )
+    @Suppress("DEPRECATION")
     suspend fun createCredentialRequest(
+        tokenResponse: TokenResponseParameters,
+        metadata: IssuerMetadata,
+        credentialFormat: SupportedCredentialFormat,
+        clientNonce: String? = null,
+        previouslyRequestedScope: String? = null,
+        clock: Clock = Clock.System,
+    ): KmmResult<Collection<CredentialRequestParameters>> = createCredentialRequestInternal(
+        tokenResponse = tokenResponse,
+        metadata = metadata,
+        credentialFormat = credentialFormat,
+        clientNonce = clientNonce,
+        previouslyRequestedScope = previouslyRequestedScope,
+        clock = clock
+    )
+
+    private suspend fun createCredentialRequestInternal(
         tokenResponse: TokenResponseParameters,
         metadata: IssuerMetadata,
         credentialFormat: SupportedCredentialFormat,
@@ -227,53 +287,17 @@ class WalletService(
     }
 
     /**
-     * Creates the encrypted credential request to be sent to the credential issuer.
-     * Send the result as JWE-serialized content to the server at [IssuerMetadata.credentialEndpointUrl] with media type
-     * `application/jwt` (see [at.asitplus.wallet.lib.data.MediaTypes.Application.JWT]).
-     * Also send along the [TokenResponseParameters.accessToken] from the token response in HTTP header `Authorization`
-     * see [TokenResponseParameters.toHttpHeaderValue].
-     * Be sure to include a DPoP header if [TokenResponseParameters.tokenType] is `DPoP`,
-     * see [at.asitplus.wallet.lib.oidvci.BuildDPoPHeader].
-     * For sample ktor code see `OpenId4VciClient` in `vck-openid-ktor`.
-     *
-     * @param tokenResponse from the authorization server token endpoint
-     * @param metadata the issuer's metadata, see [IssuerMetadata]
-     * @param credentialFormat which credential to request (needed to build the correct proof)
-     * @param clientNonce if required by the issuer (see [IssuerMetadata.nonceEndpointUrl]),
-     * the value from there, exactly [ClientNonceResponse.clientNonce]
-     * @param previouslyRequestedScope the `scope` value requested in the token request, since the authorization server
-     * may not set it in [tokenResponse]
+     * Parses [response] received from the credential issuer, mapping to [Holder.StoreCredentialInput],
+     * decrypting the response if required.
      */
-    suspend fun createEncryptedCredentialRequest(
-        tokenResponse: TokenResponseParameters,
-        metadata: IssuerMetadata,
-        credentialFormat: SupportedCredentialFormat,
-        clientNonce: String? = null,
-        previouslyRequestedScope: String? = null,
-        clock: Clock = Clock.System,
-    ): KmmResult<Collection<String>> = catching {
-        createCredentialRequest(
-            tokenResponse = tokenResponse,
-            metadata = metadata,
-            credentialFormat = credentialFormat,
-            clientNonce = clientNonce,
-            previouslyRequestedScope = previouslyRequestedScope,
-            clock = clock
-        ).getOrThrow().map {
-            encryptionService.encrypt(it, metadata).getOrThrow().serialize()
-        }.also {
-            Napier.i("createEncryptedCredentialRequest returns $it")
-        }
-    }
-
     public suspend fun parseCredentialResponse(
-        credentialResponse: CredentialResponseParameters,
-        credentialRepresentation: CredentialRepresentation,
-        credentialScheme: ConstantIndex.CredentialScheme,
+        response: CredentialResponseParameters,
+        representation: CredentialRepresentation,
+        scheme: ConstantIndex.CredentialScheme,
     ): KmmResult<Collection<Holder.StoreCredentialInput>> = catching {
-        credentialResponse.extractCredentials()
+        response.extractCredentials()
             .map { encryptionService.decrypt(it).getOrThrow() }
-            .map { it.toStoreCredentialInput(credentialRepresentation, credentialScheme) }
+            .map { it.toStoreCredentialInput(representation, scheme) }
     }
 
     private fun CredentialRequestProof.toProofs() = CredentialRequestProofContainer(

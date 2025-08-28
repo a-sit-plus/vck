@@ -98,7 +98,7 @@ class OidvciOfferCodeTest : FreeSpec({
         val token = getToken(credentialOffer, credentialFormat.scope.shouldNotBeNull())
         val clientNonce = issuer.nonce().getOrThrow().clientNonce
 
-        val credentialRequest = client.createCredentialRequest(
+        val credentialRequest = client.createCredential(
             tokenResponse = token,
             metadata = issuer.metadata,
             credentialFormat = credentialFormat,
@@ -145,7 +145,7 @@ class OidvciOfferCodeTest : FreeSpec({
 
         val clientNonce = issuer.nonce().getOrThrow().clientNonce
 
-        val credentialRequest = client.createCredentialRequest(
+        val credentialRequest = client.createCredential(
             tokenResponse = token,
             metadata = issuer.metadata,
             credentialFormat = credentialFormat,

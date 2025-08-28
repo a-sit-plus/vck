@@ -32,7 +32,7 @@ import io.github.aakira.napier.Napier
  */
 class WalletEncryptionService(
     /** Whether to request credential response encryption */
-    private val requestEncryption: Boolean = false,
+    internal val requestEncryption: Boolean = false,
     /** Encrypt credential request, if requested by the issuer or [requestEncryption] is set. */
     private val encryptCredentialRequest: EncryptJweFun = EncryptJwe(EphemeralKeyWithoutCert()),
     /** Algorithms to indicate support for credential response encryption. */
