@@ -61,7 +61,7 @@ data class QCertCreationAcceptance(
      * Credentials for transaction authorization.
      */
     @SerialName("credential_ids")
-    override val credentialIds: Set<String>? = null,
+    override val credentialIds: Set<String>,
 
     /**
      * OID4VP: OPTIONAL. Array of strings each representing a hash algorithm identifier, one of which MUST be used

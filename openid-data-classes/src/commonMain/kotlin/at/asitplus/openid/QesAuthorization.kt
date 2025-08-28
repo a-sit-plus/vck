@@ -63,7 +63,7 @@ data class QesAuthorization(
      * Credentials for transaction authorization.
      */
     @SerialName("credential_ids")
-    override val credentialIds: Set<String>? = null,
+    override val credentialIds: Set<String>,
 
     /**
      * OID4VP: OPTIONAL. Array of strings each representing a hash algorithm identifier, one of which MUST be used
@@ -94,7 +94,7 @@ data class QesAuthorization(
             signatureQualifier: SignatureQualifier? = null,
             credentialId: String? = null,
             processID: String? = null,
-            credentialIds: Set<String>? = null,
+            credentialIds: Set<String>,
             transactionDataHashAlgorithms: Set<String>? = null,
         ): KmmResult<TransactionData> = catching {
             QesAuthorization(

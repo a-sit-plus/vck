@@ -4,6 +4,7 @@ import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.supreme.hash.digest
 import io.ktor.utils.io.charsets.*
 import io.ktor.utils.io.core.*
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -33,7 +34,8 @@ sealed class TransactionData {
      * If there is more than one element in the array, the Wallet MUST use only one of the referenced Credentials for
      * transaction authorization.
      */
-    abstract val credentialIds: Set<String>?
+    @SerialName("credential_ids")
+    abstract val credentialIds: Set<String>
 
     /**
      * OID4VP: OPTIONAL. Array of strings each representing a hash algorithm identifier, one of which MUST be used to
