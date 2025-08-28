@@ -77,7 +77,7 @@ class OidvciPreAuthTest : FreeSpec({
             .first().shouldBeInstanceOf<OpenIdAuthorizationDetails>()
         val clientNonce = issuer.nonce().getOrThrow().clientNonce
 
-        val credentialRequest = client.createCredentialRequest(
+        val credentialRequest = client.createCredential(
             tokenResponse = token,
             metadata = issuer.metadata,
             credentialFormat = credentialFormat,
@@ -109,7 +109,7 @@ class OidvciPreAuthTest : FreeSpec({
             it.shouldBeInstanceOf<OpenIdAuthorizationDetails>()
             val credentialFormat =
                 issuer.metadata.supportedCredentialConfigurations!![it.credentialIdentifiers!!.first()].shouldNotBeNull()
-            val credentialRequest = client.createCredentialRequest(
+            val credentialRequest = client.createCredential(
                 tokenResponse = token,
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
@@ -147,7 +147,7 @@ class OidvciPreAuthTest : FreeSpec({
         val token = authorizationService.token(tokenRequest, null).getOrThrow()
         val clientNonce = issuer.nonce().getOrThrow().clientNonce
 
-        val credentialRequest = client.createCredentialRequest(
+        val credentialRequest = client.createCredential(
             tokenResponse = token,
             metadata = issuer.metadata,
             credentialFormat = supportedCredentialFormat,

@@ -85,15 +85,16 @@ class OidvciEncryptionTest : FunSpec({
         val scope = credentialFormat.scope.shouldNotBeNull()
         val token = getToken(scope)
 
-        client.createEncryptedCredentialRequest(
+        client.createCredential(
             tokenResponse = token,
             metadata = issuer.metadata,
             credentialFormat = credentialFormat,
             clientNonce = issuer.nonce().getOrThrow().clientNonce
         ).getOrThrow().forEach {
+            it.shouldBeInstanceOf<WalletService.CredentialRequest.Encrypted>()
             issuer.credentialEncryptedRequest(
                 authorizationHeader = token.toHttpHeaderValue(),
-                input = it,
+                input = it.request.serialize(),
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow().let { credential ->
                 client.parseCredentialResponse(credential, PLAIN_JWT, ConstantIndex.AtomicAttribute2023)
@@ -110,7 +111,7 @@ class OidvciEncryptionTest : FunSpec({
         val scope = credentialFormat.scope.shouldNotBeNull()
         val token = getToken(scope)
 
-        client.createCredentialRequest(
+        client.createCredential(
             tokenResponse = token,
             metadata = issuer.metadata,
             credentialFormat = credentialFormat,
@@ -149,7 +150,7 @@ class OidvciEncryptionTest : FunSpec({
         val scope = credentialFormat.scope.shouldNotBeNull()
         val token = getToken(scope)
 
-        client.createCredentialRequest(
+        client.createCredential(
             tokenResponse = token,
             metadata = issuer.metadata,
             credentialFormat = credentialFormat,
@@ -191,7 +192,7 @@ class OidvciEncryptionTest : FunSpec({
         val scope = credentialFormat.scope.shouldNotBeNull()
         val token = getToken(scope)
 
-        client.createCredentialRequest(
+        client.createCredential(
             tokenResponse = token,
             metadata = issuer.metadata,
             credentialFormat = credentialFormat,

@@ -19,6 +19,7 @@ import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.IsoMdocFallbackCredentialScheme
+import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.data.SdJwtFallbackCredentialScheme
 import at.asitplus.wallet.lib.data.VcFallbackCredentialScheme
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -312,7 +313,7 @@ class OpenId4VciClient(
             }
         }
 
-        val credentialRequests = oid4vciService.createCredentialRequest(
+        val credentialRequests = oid4vciService.createCredential(
             tokenResponse = tokenResponse,
             metadata = issuerMetadata,
             credentialFormat = credentialFormat,
@@ -321,11 +322,20 @@ class OpenId4VciClient(
         ).getOrThrow()
 
         val storeCredentialInputs = credentialRequests.flatMap { credentialRequest ->
-            val credentialResponse: CredentialResponseParameters = client.post(credentialEndpointUrl) {
-                contentType(ContentType.Application.Json)
-                setBody(credentialRequest)
+            val credentialResponse = client.post(credentialEndpointUrl) {
+                when (credentialRequest) {
+                    is WalletService.CredentialRequest.Encrypted -> {
+                        contentType(ContentType.parse(MediaTypes.Application.JWT))
+                        setBody(credentialRequest.request.serialize())
+                    }
+                    is WalletService.CredentialRequest.Plain -> {
+                        contentType(ContentType.Application.Json)
+                        setBody(credentialRequest.request)
+                    }
+                }
                 oauth2Client.applyToken(tokenResponse, credentialEndpointUrl, HttpMethod.Post)()
-            }.body()
+            }.body<CredentialResponseParameters>()
+            // TODO handle errors?
             oid4vciService.parseCredentialResponse(
                 credentialResponse,
                 credentialFormat.format.toRepresentation(),

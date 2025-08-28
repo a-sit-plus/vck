@@ -24,6 +24,7 @@ import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -90,10 +91,16 @@ class OidvciAttestationTest : FunSpec({
         val scope = credentialFormat.scope.shouldNotBeNull()
         val token = getToken(scope)
         val clientNonce = issuer.nonce().getOrThrow().clientNonce
-        client.createCredentialRequest(token, issuer.metadata, credentialFormat, clientNonce).getOrThrow().forEach {
+        client.createCredential(
+            tokenResponse = token,
+            metadata = issuer.metadata,
+            credentialFormat = credentialFormat,
+            clientNonce = clientNonce
+        ).getOrThrow().forEach {
+            it.shouldBeInstanceOf<WalletService.CredentialRequest.Plain>()
             val credential = issuer.credential(
                 token.toHttpHeaderValue(),
-                it,
+                it.request,
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
             val serializedCredential = credential.credentials.shouldNotBeEmpty()
@@ -131,11 +138,17 @@ class OidvciAttestationTest : FunSpec({
         val scope = credentialFormat.scope.shouldNotBeNull()
         val token = getToken(scope)
         val clientNonce = issuer.nonce().getOrThrow().clientNonce
-        client.createCredentialRequest(token, issuer.metadata, credentialFormat, clientNonce).getOrThrow().forEach {
+        client.createCredential(
+            tokenResponse = token,
+            metadata = issuer.metadata,
+            credentialFormat = credentialFormat,
+            clientNonce = clientNonce
+        ).getOrThrow().forEach {
+            it.shouldBeInstanceOf<WalletService.CredentialRequest.Plain>()
             shouldThrow<OAuth2Exception> {
                 issuer.credential(
                     token.toHttpHeaderValue(),
-                    it,
+                    it.request,
                     credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
                 ).getOrThrow()
             }
@@ -154,7 +167,14 @@ class OidvciAttestationTest : FunSpec({
         val token = getToken(scope)
         val clientNonce = issuer.nonce().getOrThrow().clientNonce
 
-        client.createCredentialRequest(token, issuer.metadata, credentialFormat, clientNonce).isFailure shouldBe true
+        shouldThrowAny {
+            client.createCredential(
+                tokenResponse = token,
+                metadata = issuer.metadata,
+                credentialFormat = credentialFormat,
+                clientNonce = clientNonce
+            ).getOrThrow()
+        }
     }
 
 

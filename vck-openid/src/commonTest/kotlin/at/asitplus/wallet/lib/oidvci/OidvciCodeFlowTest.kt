@@ -150,8 +150,8 @@ class OidvciCodeFlowTest : FreeSpec({
         val scope = credentialFormat.scope.shouldNotBeNull()
         val token = getToken(scope)
         val credential = issuer.credential(
-            token.toHttpHeaderValue(),
-            client.createCredentialRequest(
+            authorizationHeader = token.toHttpHeaderValue(),
+            params = client.createCredential(
                 tokenResponse = token,
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
@@ -181,8 +181,8 @@ class OidvciCodeFlowTest : FreeSpec({
 
         requestOptions.forEach {
             issuer.credential(
-                token.toHttpHeaderValue(),
-                client.createCredentialRequest(
+                authorizationHeader = token.toHttpHeaderValue(),
+                params = client.createCredential(
                     tokenResponse = token,
                     metadata = issuer.metadata,
                     credentialFormat = it.key,
@@ -258,8 +258,8 @@ class OidvciCodeFlowTest : FreeSpec({
         val token = getToken(scope)
 
         val credential = issuer.credential(
-            token.toHttpHeaderValue(),
-            client.createCredentialRequest(
+            authorizationHeader = token.toHttpHeaderValue(),
+            params = client.createCredential(
                 tokenResponse = token,
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
@@ -279,8 +279,8 @@ class OidvciCodeFlowTest : FreeSpec({
         val token = getToken(scope, false) // do not set scope in token request, only in authn request
 
         val credential = issuer.credential(
-            token.toHttpHeaderValue(),
-            client.createCredentialRequest(
+            authorizationHeader = token.toHttpHeaderValue(),
+            params = client.createCredential(
                 tokenResponse = token,
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
@@ -333,8 +333,8 @@ class OidvciCodeFlowTest : FreeSpec({
         val token = getToken(authorizationService, authorizationDetails)
 
         val credential = issuer.credential(
-            token.toHttpHeaderValue(),
-            client.createCredentialRequest(
+            authorizationHeader = token.toHttpHeaderValue(),
+            params = client.createCredential(
                 tokenResponse = token,
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
@@ -356,11 +356,12 @@ class OidvciCodeFlowTest : FreeSpec({
         val credentialFormat = issuer.metadata.supportedCredentialConfigurations
             .shouldNotBeNull()[credentialConfigurationId]
             .shouldNotBeNull()
-        val token = getToken(authorizationService, authorizationDetails, false) // do not set authn details in token request
+        val token =
+            getToken(authorizationService, authorizationDetails, false) // do not set authn details in token request
 
         val credential = issuer.credential(
-            token.toHttpHeaderValue(),
-            client.createCredentialRequest(
+            authorizationHeader = token.toHttpHeaderValue(),
+            params = client.createCredential(
                 tokenResponse = token,
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
@@ -424,8 +425,8 @@ class OidvciCodeFlowTest : FreeSpec({
 
         shouldThrow<OAuth2Exception.UnknownCredentialConfiguration> {
             issuer.credential(
-                token.toHttpHeaderValue(),
-                client.createCredentialRequest(
+                authorizationHeader = token.toHttpHeaderValue(),
+                params = client.createCredential(
                     tokenResponse = token,
                     metadata = issuer.metadata,
                     credentialFormat = credentialFormat,
@@ -443,20 +444,16 @@ class OidvciCodeFlowTest : FreeSpec({
             ?.scope.shouldNotBeNull()
         val token = getToken(scope)
 
+        val first = client.createCredential(
+            tokenResponse = token,
+            metadata = issuer.metadata,
+            credentialFormat = credentialFormat,
+            clientNonce = issuer.nonce().getOrThrow().clientNonce,
+        ).getOrThrow().first()
         shouldThrow<OAuth2Exception> {
             issuer.credential(
-                token.toHttpHeaderValue(),
-                client.createCredentialRequest(
-                    tokenResponse = token,
-                    metadata = issuer.metadata,
-                    credentialFormat = credentialFormat,
-                    clientNonce = issuer.nonce().getOrThrow().clientNonce,
-                ).getOrThrow().first().copy(
-                    // enforces error on client, setting credential_identifier, although access token was for scope
-                    // (which should be credential_configuration_id in credential request)
-                    credentialIdentifier = AtomicAttribute2023.toCredentialIdentifier(SD_JWT),
-                    credentialConfigurationId = null,
-                ),
+                authorizationHeader = token.toHttpHeaderValue(),
+                params = first.wrongCredentialIdentifier(),
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
         }
@@ -475,22 +472,18 @@ class OidvciCodeFlowTest : FreeSpec({
 
         shouldThrow<OAuth2Exception> {
             issuer.credential(
-                token.toHttpHeaderValue(),
-                client.createCredentialRequest(
+                authorizationHeader = token.toHttpHeaderValue(),
+                params = client.createCredential(
                     tokenResponse = token,
                     metadata = issuer.metadata,
                     credentialFormat = credentialFormat,
                     clientNonce = issuer.nonce().getOrThrow().clientNonce,
-                ).getOrThrow().first().copy(
-                    // enforces error on client, setting credential_configuration_id, although access token was for
-                    // authorization details (which should be credential_identifier in credential request)
-                    credentialConfigurationId = scope,
-                    credentialIdentifier = null
-                ),
+                ).getOrThrow().first().wrongCredentialConfigurationId(scope),
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
         }
     }
+
 
     "request credential in ISO MDOC, using scope" {
         val requestOptions = RequestOptions(MobileDrivingLicenceScheme, ISO_MDOC)
@@ -499,8 +492,8 @@ class OidvciCodeFlowTest : FreeSpec({
         val token = getToken(scope)
 
         val credential = issuer.credential(
-            token.toHttpHeaderValue(),
-            client.createCredentialRequest(
+            authorizationHeader = token.toHttpHeaderValue(),
+            params = client.createCredential(
                 tokenResponse = token,
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
@@ -530,4 +523,28 @@ private fun String.assertSdJwtReceived() {
     ).getOrThrow().payload.disclosureDigests
         .shouldNotBeNull()
         .size shouldBeGreaterThan 1
+}
+
+private fun WalletService.CredentialRequest.wrongCredentialIdentifier() = when (this) {
+    is WalletService.CredentialRequest.Encrypted -> this
+    is WalletService.CredentialRequest.Plain -> WalletService.CredentialRequest.Plain(
+        this.request.copy(
+            // enforces error on client, setting credential_identifier, although access token was for scope
+            // (which should be credential_configuration_id in credential request)
+            credentialIdentifier = AtomicAttribute2023.toCredentialIdentifier(SD_JWT),
+            credentialConfigurationId = null,
+        )
+    )
+}
+
+private fun WalletService.CredentialRequest.wrongCredentialConfigurationId(scope: String) = when (this) {
+    is WalletService.CredentialRequest.Encrypted -> this
+    is WalletService.CredentialRequest.Plain -> WalletService.CredentialRequest.Plain(
+        this.request.copy(
+            // enforces error on client, setting credential_configuration_id, although access token was for
+            // authorization details (which should be credential_identifier in credential request)
+            credentialConfigurationId = scope,
+            credentialIdentifier = null
+        )
+    )
 }
