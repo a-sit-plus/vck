@@ -87,7 +87,7 @@ class ProofValidator(
         params: CredentialRequestParameters,
     ): Collection<CryptoPublicKey> = params.proof?.validateProof()
         ?: params.proofs?.validateProof()
-        ?: throw InvalidRequest("invalid proof")
+        ?: throw InvalidProof("proof not contained in request")
             .also { Napier.w("credential: client did not provide proof of possession in $params") }
 
     private suspend fun CredentialRequestProof.validateProof() = when (proofType) {
