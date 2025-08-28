@@ -242,10 +242,11 @@ class OpenId4VpHolder(
         val presentationDefinition = params.parameters.loadCredentialRequest()
         authorizationRequestValidator.validateAuthorizationRequest(params)
         AuthorizationResponsePreparationState(
-            presentationDefinition,
-            clientMetadata,
-            params.extractDcApiRequest() as? Oid4vpDCAPIRequest?,
-            (params as? RequestParametersFrom.JwsSigned)?.verified,
+            credentialPresentationRequest = presentationDefinition,
+            clientMetadata = clientMetadata,
+            oid4vpDCAPIRequest = params.extractDcApiRequest() as? Oid4vpDCAPIRequest?,
+            requestObjectVerified = (params as? RequestParametersFrom.JwsSigned)?.verified,
+            verifierInfo = params.parameters.verifierInfo
         )
     }
 

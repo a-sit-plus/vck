@@ -3,8 +3,13 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
+import at.asitplus.openid.VerifierInfo
 import kotlinx.serialization.Serializable
 
+/**
+ * Intermediate result class to display information about the authentication process to the user,
+ * e.g. to let them make an informed decision.
+ */
 @Serializable
 data class AuthorizationResponsePreparationState(
     val credentialPresentationRequest: CredentialPresentationRequest?,
@@ -12,4 +17,5 @@ data class AuthorizationResponsePreparationState(
     val oid4vpDCAPIRequest: Oid4vpDCAPIRequest?,
     /** Whether the request object has been verified (if it was signed at all) */
     val requestObjectVerified: Boolean?,
+    val verifierInfo: List<VerifierInfo>?,
 )

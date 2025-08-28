@@ -79,6 +79,7 @@ Release 5.9.0 (unreleased):
    - In `AuthenticationRequestParameters` deprecate member `client_metadata_uri`
    - In `RequestOptions` deprecate member `clientMetadataUrl`
    - In `OpenIdConstants` deprecate member `X509SanUri`
+   - In `AuthenticationRequestParameters` and `AuthorizationResponsePreparationState` add `VerifierInfo` to display to user
 
 Release 5.8.0:
  - Refactor `AuthorizationServiceStrategy`

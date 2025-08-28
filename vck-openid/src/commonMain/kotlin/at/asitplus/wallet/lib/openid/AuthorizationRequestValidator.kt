@@ -1,15 +1,14 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.pki.leaf
-import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
 import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.MapStore
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
-import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import kotlin.coroutines.cancellation.CancellationException
 
