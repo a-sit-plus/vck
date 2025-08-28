@@ -135,20 +135,24 @@ class OpenId4VpVerifier(
         )
     }
 
+    private val supportedFormats = FormatHolder(
+        msoMdoc = containerJwt,
+        jwtVp = containerJwt,
+        jwtSd = containerSdJwt,
+        sdJwt = containerSdJwt
+    )
+
     /**
      * Creates the [at.asitplus.openid.RelyingPartyMetadata], without encryption (see [metadataWithEncryption])
      */
+    @Suppress("DEPRECATION")
     val metadata by lazy {
         RelyingPartyMetadata(
             redirectUris = listOfNotNull((clientIdScheme as? ClientIdScheme.RedirectUri)?.redirectUri),
             jsonWebKeySet = JsonWebKeySet(listOf(keyMaterial.publicKey.toJsonWebKey())),
             authorizationSignedResponseAlgString = supportedSignatureVerificationAlgorithm,
-            vpFormats = FormatHolder(
-                msoMdoc = containerJwt,
-                jwtVp = containerJwt,
-                jwtSd = containerSdJwt,
-                sdJwt = containerSdJwt
-            )
+            vpFormats = supportedFormats,
+            vpFormatsSupported = supportedFormats
         )
     }
 

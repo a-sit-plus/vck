@@ -112,7 +112,16 @@ data class RelyingPartyMetadata(
      * and Verifiers all understand the new format.
      */
     @SerialName("vp_formats")
+    @Deprecated("Renamed to vp_formats_supported in OID4VP Draft 27", ReplaceWith("vpFormatsSupported"))
     val vpFormats: FormatHolder? = null,
+
+    /**
+     * OID4VP 1.0: REQUIRED when not available to the Wallet via another mechanism. As defined in Section 11.1.
+     * An object containing a list of name/value pairs, where the name is a Credential Format Identifier and the value
+     * defines format-specific parameters that a Verifier supports.
+     */
+    @SerialName("vp_formats_supported")
+    val vpFormatsSupported: FormatHolder? = null,
 
     /**
      * OID4VP: OPTIONAL. JSON String identifying the Client Identifier scheme. The value range defined by this

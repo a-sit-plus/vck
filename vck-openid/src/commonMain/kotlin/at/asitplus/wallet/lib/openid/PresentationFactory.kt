@@ -37,6 +37,8 @@ import at.asitplus.wallet.lib.agent.PresentationException
 import at.asitplus.wallet.lib.agent.PresentationRequestParameters
 import at.asitplus.wallet.lib.agent.PresentationResponseParameters
 import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.agent.PresentationResponseParameters.DCQLParameters
+import at.asitplus.wallet.lib.agent.PresentationResponseParameters.PresentationExchangeParameters
 import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
 import at.asitplus.wallet.lib.cbor.SignCoseFun
 import at.asitplus.wallet.lib.data.CredentialPresentation
@@ -108,13 +110,18 @@ internal class PresentationFactory(
         ).getOrElse {
             throw AccessDenied("Could not create presentation", it)
         }.also { presentation ->
-            clientMetadata?.vpFormats?.let {
-                when (presentation) {
-                    is PresentationResponseParameters.DCQLParameters -> presentation.verifyFormatSupport(it)
-                    is PresentationResponseParameters.PresentationExchangeParameters ->
-                        presentation.verifyFormatSupport(it)
-                }
-            }
+            @Suppress("DEPRECATION")
+            clientMetadata?.vpFormats?.verifyFormatSupport(presentation)
+            clientMetadata?.vpFormatsSupported?.verifyFormatSupport(presentation)
+        }
+    }
+
+    private fun FormatHolder.verifyFormatSupport(
+        presentation: PresentationResponseParameters,
+    ) {
+        when (presentation) {
+            is DCQLParameters -> presentation.verifyFormatSupport(this)
+            is PresentationExchangeParameters -> presentation.verifyFormatSupport(this)
         }
     }
 
@@ -269,7 +276,7 @@ internal class PresentationFactory(
     }
 
     @Throws(OAuth2Exception::class)
-    private fun PresentationResponseParameters.PresentationExchangeParameters.verifyFormatSupport(
+    private fun PresentationExchangeParameters.verifyFormatSupport(
         supportedFormats: FormatHolder,
     ) = presentationSubmission.descriptorMap?.mapIndexed { _, descriptor ->
         if (!supportedFormats.supportsAlgorithm(descriptor.format)) {
@@ -278,7 +285,7 @@ internal class PresentationFactory(
     }
 
     @Throws(OAuth2Exception::class)
-    private fun PresentationResponseParameters.DCQLParameters.verifyFormatSupport(supportedFormats: FormatHolder) =
+    private fun DCQLParameters.verifyFormatSupport(supportedFormats: FormatHolder) =
         verifiablePresentations.entries.mapIndexed { _, descriptor ->
             val format = this.verifiablePresentations.entries.first().value.toFormat()
             if (!supportedFormats.supportsAlgorithm(format)) {
