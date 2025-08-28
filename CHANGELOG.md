@@ -80,6 +80,7 @@ Release 5.9.0 (unreleased):
    - In `RequestOptions` deprecate member `clientMetadataUrl`
    - In `OpenIdConstants` deprecate member `X509SanUri`
    - In `AuthenticationRequestParameters` and `AuthorizationResponsePreparationState` add `VerifierInfo` to display to user
+   - In `RelyingPartyMetadata` deprecate `vp_formats`, replace with `vp_formats_supported`
 
 Release 5.8.0:
  - Refactor `AuthorizationServiceStrategy`
