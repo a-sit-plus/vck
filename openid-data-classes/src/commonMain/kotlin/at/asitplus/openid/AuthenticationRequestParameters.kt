@@ -124,6 +124,7 @@ data class AuthenticationRequestParameters(
      * that would normally be provided to an OP during Dynamic RP Registration.
      * It MUST not be present if the RP uses OpenID Federation 1.0 Automatic Registration to pass its metadata.
      */
+    @Deprecated("Removed from OpenId4Vp Draft 21")
     @SerialName("client_metadata_uri")
     val clientMetadataUri: String? = null,
 
@@ -271,6 +272,8 @@ data class AuthenticationRequestParameters(
      * OAuth 2.0 JAR: If signed, the Authorization Request Object SHOULD contain the Claims `iss` (issuer) and `aud`
      * (audience) as members with their semantics being the same as defined in the JWT (RFC7519) specification. The
      * value of `aud` should be the value of the authorization server (AS) `issuer`, as defined in RFC 8414.
+     *
+     * OpenID4VP 1.0: The iss claim MAY be present in the Request Object. However, even if it is present, the Wallet MUST ignore it
      */
     @SerialName("iss")
     val issuer: String? = null,
@@ -427,7 +430,6 @@ data class AuthenticationRequestParameters(
         get() = redirectUrl
             ?: (clientIdSchemeExtracted as? OpenIdConstants.ClientIdScheme.RedirectUri)?.let { clientIdWithoutPrefix }
 
-
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
@@ -477,6 +479,10 @@ data class AuthenticationRequestParameters(
         if (accountToken != other.accountToken) return false
         if (clientData != other.clientData) return false
         if (transactionData != other.transactionData) return false
+        if (expectedOrigins != other.expectedOrigins) return false
+        if (clientIdSchemeExtracted != other.clientIdSchemeExtracted) return false
+        if (clientIdWithoutPrefix != other.clientIdWithoutPrefix) return false
+        if (redirectUrlExtracted != other.redirectUrlExtracted) return false
 
         return true
     }
@@ -522,6 +528,10 @@ data class AuthenticationRequestParameters(
         result = 31 * result + (accountToken?.hashCode() ?: 0)
         result = 31 * result + (clientData?.hashCode() ?: 0)
         result = 31 * result + (transactionData?.hashCode() ?: 0)
+        result = 31 * result + (expectedOrigins?.hashCode() ?: 0)
+        result = 31 * result + (clientIdSchemeExtracted?.hashCode() ?: 0)
+        result = 31 * result + (clientIdWithoutPrefix?.hashCode() ?: 0)
+        result = 31 * result + (redirectUrlExtracted?.hashCode() ?: 0)
         return result
     }
 

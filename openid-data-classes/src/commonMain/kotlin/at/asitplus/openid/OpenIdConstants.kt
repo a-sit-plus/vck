@@ -201,6 +201,7 @@ object OpenIdConstants {
          * the Client Identifier is contained in a list of trusted Client Identifiers, it may allow the client to
          * freely choose the `redirect_uri` value. If not, the `redirect_uri` value MUST match the Client Identifier.
          */
+        @Deprecated("Removed in OpenID4VP Draft 25")
         object X509SanUri : ClientIdScheme(STRING_X509_SAN_URI)
 
         /**
