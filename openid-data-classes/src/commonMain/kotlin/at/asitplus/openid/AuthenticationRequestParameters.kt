@@ -115,6 +115,10 @@ data class AuthenticationRequestParameters(
      * OIDC SIOPv2: OPTIONAL. This parameter is used by the RP to provide information about itself to a Self-Issued OP
      * that would normally be provided to an OP during Dynamic RP Registration.
      * It MUST not be present if the RP uses OpenID Federation 1.0 Automatic Registration to pass its metadata.
+     *
+     * OID4VP 1.0: OPTIONAL. Authoritative data the Wallet is able to obtain about the
+     * Client from other sources, for example those from an OpenID Federation
+     * Entity Statement, take precedence over the values passed in client_metadata.
      */
     @SerialName("client_metadata")
     val clientMetadata: RelyingPartyMetadata? = null,
@@ -351,10 +355,10 @@ data class AuthenticationRequestParameters(
     val clientData: String? = null,
 
     /**
-     * OID4VP: OPTIONAL. Array of strings, where each string is a base64url encoded JSON object that contains a typed
-     * parameter set with details about the transaction that the Verifier is requesting the End-User to authorize.
-     * The Wallet MUST return an error if a request contains even one unrecognized transaction data type or transaction
-     * data not conforming to the respective type definition.
+     * OID4VP: OPTIONAL. Non-empty array of strings, where each string is a base64url-encoded JSON object that contains
+     * a typed parameter set with details about the transaction that the Verifier is requesting
+     * the End-User to authorize. The Wallet MUST return an error if a request contains even one unrecognized
+     * transaction data type or transaction data not conforming to the respective type definition.
      */
     @SerialName("transaction_data")
     val transactionData: List<TransactionDataBase64Url>? = null,
@@ -370,6 +374,16 @@ data class AuthenticationRequestParameters(
      */
     @SerialName("expected_origins")
     val expectedOrigins: List<String>? = null,
+
+    /**
+     * OID4VP 1.0: OPTIONAL.
+     * A non-empty array of attestations about the Verifier relevant to the Credential Request.
+     * These attestations MAY include Verifier metadata, policies, trust status, or authorizations.
+     * Attestations are intended to support authorization decisions, inform Wallet policy enforcement, or enrich the
+     * End-User consent dialog
+     */
+    @SerialName("verifier_info")
+    val verifierInfo: List<VerifierInfo>? = null
 ) : RequestParameters() {
 
     /**
