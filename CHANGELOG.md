@@ -74,6 +74,10 @@ Release 5.9.0 (unreleased):
    - In `CreatePresentationResult.Signed` add property containing `JwsSigned<VerifiablePresentationJws>`
    - In `CreatePresentationResult.SdJwt` add property containing `SdJwtSigned`
    - Deprecate `SdJwtSigned.parse()`, please migrate to `SdJwtSigned.parseCatching()`
+ - OpenID for Verifiable Presentations: Update implementation to [draft 29](https://openid.net/specs/openid-4-verifiable-presentations-1_0-29.html#name-document-history):
+   - In `AuthenticationRequestParameters` deprecate member `client_metadata_uri`
+   - In `RequestOptions` deprecate member `clientMetadataUrl`
+   - In `OpenIdConstants` deprecate member `X509SanUri`
 
 Release 5.8.0:
  - Refactor `AuthorizationServiceStrategy`

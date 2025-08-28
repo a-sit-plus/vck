@@ -187,6 +187,7 @@ object OpenIdConstants {
             private const val STRING_DID = "did"
             private const val STRING_VERIFIER_ATTESTATION = "verifier_attestation"
 
+            @Suppress("DEPRECATION")
             fun decodeFromClientId(clientId: String) = when (clientId.substringBefore(":")) {
                 STRING_REDIRECT_URI -> RedirectUri
                 STRING_X509_SAN_DNS -> X509SanDns
@@ -241,6 +242,7 @@ object OpenIdConstants {
          * the Client Identifier is contained in a list of trusted Client Identifiers, it may allow the client to
          * freely choose the `redirect_uri` value. If not, the `redirect_uri` value MUST match the Client Identifier.
          */
+        @Deprecated("Removed in OpenID4VP Draft 25")
         object X509SanUri : ClientIdScheme(STRING_X509_SAN_URI)
 
         /**
@@ -287,6 +289,7 @@ object OpenIdConstants {
         object Serializer : KSerializer<ClientIdScheme> {
             override val descriptor = PrimitiveSerialDescriptor("ClientIdScheme", PrimitiveKind.STRING)
 
+            @Suppress("DEPRECATION")
             override fun deserialize(decoder: Decoder): ClientIdScheme = when (val string = decoder.decodeString()) {
                 STRING_PRE_REGISTERED -> PreRegistered
                 STRING_REDIRECT_URI -> RedirectUri

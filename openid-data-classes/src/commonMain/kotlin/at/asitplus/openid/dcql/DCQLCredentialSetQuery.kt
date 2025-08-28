@@ -36,6 +36,7 @@ data class DCQLCredentialSetQuery(
      * the query to the Wallet. The Wallet MAY use this information to show the user the reason
      * for the request.
      */
+    @Deprecated("Removed in OpenID4VP Draft 26")
     @SerialName("purpose")
     val purpose: DCQLCredentialSetQueryPurpose? = null,
 )
