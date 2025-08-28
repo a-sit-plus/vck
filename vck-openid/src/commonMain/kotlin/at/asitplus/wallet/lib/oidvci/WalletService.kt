@@ -19,6 +19,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
@@ -196,14 +197,14 @@ class WalletService(
         previouslyRequestedScope: String? = null,
         clock: Clock = Clock.System,
     ): KmmResult<Collection<CredentialRequestParameters>> = catching {
-        val requests = (tokenResponse.authorizationDetails?.toCredentialRequest()
-            ?: tokenResponse.scope?.toCredentialRequest(metadata)).let {
-            if (it.isNullOrEmpty())
-                previouslyRequestedScope?.toCredentialRequest(metadata)
-            else it
-        }
-        if (requests == null || requests.isEmpty()) {
-            throw IllegalArgumentException("Can't parse tokenResponse: $tokenResponse")
+        val requests = if (tokenResponse.authorizationDetails != null) {
+            tokenResponse.authorizationDetails!!.toCredentialRequest()
+        } else if (tokenResponse.scope != null) {
+            tokenResponse.scope!!.toCredentialRequest(metadata)
+        } else if (previouslyRequestedScope != null) {
+            previouslyRequestedScope.toCredentialRequest(metadata)
+        } else {
+            throw InvalidToken("Can't parse token: $tokenResponse")
         }
         requests.map {
             createCredentialRequestProof(
@@ -231,11 +232,11 @@ class WalletService(
 
     private fun Set<AuthorizationDetails>.toCredentialRequest(): List<CredentialRequestParameters> =
         filterIsInstance<OpenIdAuthorizationDetails>().flatMap {
-            it.credentialIdentifiers?.let {
-                it.map { CredentialRequestParameters(credentialIdentifier = it) }
-            } ?: it.credentialConfigurationId?.let {
-                listOf(CredentialRequestParameters(credentialConfigurationId = it))
-            } ?: throw IllegalArgumentException("Authorization details can't be parsed: $it")
+            if (it.credentialIdentifiers != null && it.credentialIdentifiers?.isNotEmpty() == true) {
+                it.credentialIdentifiers!!.map { CredentialRequestParameters(credentialIdentifier = it) }
+            } else if (it.credentialConfigurationId != null && it.credentialConfigurationId?.isNotEmpty() == true) {
+                listOf(CredentialRequestParameters(credentialConfigurationId = it.credentialConfigurationId!!))
+            } else throw InvalidToken("Invalid authorization details: $it")
         }
 
     private fun String.toCredentialRequest(metadata: IssuerMetadata): Set<CredentialRequestParameters> =
@@ -243,7 +244,7 @@ class WalletService(
             metadata.supportedCredentialConfigurations
                 ?.entries?.firstOrNull { it.value.scope == scope }?.key
                 ?.let { CredentialRequestParameters(credentialConfigurationId = it) }
-                ?: null.also { Napier.w("createCredentialRequest unknown scope $scope") }
+                ?: throw OAuth2Exception.UnknownCredentialConfiguration(scope)
         }.toSet()
 
     private fun IssuerMetadata.credentialResponseEncryption(): CredentialResponseEncryption? =

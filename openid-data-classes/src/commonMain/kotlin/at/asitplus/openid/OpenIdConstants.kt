@@ -424,8 +424,14 @@ object OpenIdConstants {
         /** RFC9396 Invalid Authorization Details */
         const val INVALID_AUTHDETAILS = "invalid_authorization_details"
 
-        /** Unsupported credential type in OpenID4VCI: `unsupported_credential_type`. */
-        const val UNSUPPORTED_CREDENTIAL_TYPE = "unsupported_credential_type"
+        /** Credential request is malformed  in OpenID4VCI: `invalid_credential_request`. */
+        const val INVALID_CREDENTIAL_REQUEST = "invalid_credential_request"
+
+        /** Requested credential configuration is unknown in OpenID4VCI: `unknown_credential_configuration`. */
+        const val UNKNOWN_CREDENTIAL_CONFIGURATION = "unknown_credential_configuration"
+
+        /** Requested credential identifier is unknown in OpenID4VCI: `unknown_credential_identifier`. */
+        const val UNKNOWN_CREDENTIAL_IDENTIFIER = "unknown_credential_identifier"
 
         /** Credential request denied in OpenID4VCI: `credential_request_denied`. */
         const val CREDENTIAL_REQUEST_DENIED = "credential_request_denied"

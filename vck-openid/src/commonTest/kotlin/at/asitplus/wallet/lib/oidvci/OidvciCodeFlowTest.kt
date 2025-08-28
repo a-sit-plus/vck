@@ -12,6 +12,7 @@ import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
@@ -92,6 +93,7 @@ class OidvciCodeFlowTest : FreeSpec({
     }
 
     suspend fun getToken(
+        service: SimpleAuthorizationService,
         authorizationDetails: Set<AuthorizationDetails>,
         setAuthnDetailsInTokenRequest: Boolean = true,
     ): TokenResponseParameters {
@@ -99,7 +101,7 @@ class OidvciCodeFlowTest : FreeSpec({
             state = state,
             authorizationDetails = authorizationDetails
         )
-        val authnResponse = authorizationService.authorize(authnRequest) { catching { DummyUserProvider.user } }
+        val authnResponse = service.authorize(authnRequest) { catching { DummyUserProvider.user } }
             .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code
@@ -109,7 +111,7 @@ class OidvciCodeFlowTest : FreeSpec({
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
             authorizationDetails = if (setAuthnDetailsInTokenRequest) authorizationDetails else null,
         )
-        return authorizationService.token(tokenRequest, null).getOrThrow()
+        return service.token(tokenRequest, null).getOrThrow()
     }
 
     fun defectMapStore() = object : MapStore<String, ClientAuthRequest> {
@@ -147,14 +149,13 @@ class OidvciCodeFlowTest : FreeSpec({
         val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata).shouldNotBeNull()
         val scope = credentialFormat.scope.shouldNotBeNull()
         val token = getToken(scope)
-        val clientNonce = issuer.nonce().getOrThrow().clientNonce
         val credential = issuer.credential(
             token.toHttpHeaderValue(),
             client.createCredentialRequest(
                 tokenResponse = token,
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
-                clientNonce = clientNonce,
+                clientNonce = issuer.nonce().getOrThrow().clientNonce,
             ).getOrThrow().first(),
             credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
         ).getOrThrow()
@@ -177,7 +178,6 @@ class OidvciCodeFlowTest : FreeSpec({
         }
         val scope = requestOptions.keys.joinToString(" ") { it.scope.shouldNotBeNull() }
         val token = getToken(scope)
-        val clientNonce = issuer.nonce().getOrThrow().clientNonce
 
         requestOptions.forEach {
             issuer.credential(
@@ -186,7 +186,7 @@ class OidvciCodeFlowTest : FreeSpec({
                     tokenResponse = token,
                     metadata = issuer.metadata,
                     credentialFormat = it.key,
-                    clientNonce = clientNonce,
+                    clientNonce = issuer.nonce().getOrThrow().clientNonce,
                 ).getOrThrow().first(),
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow().credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
@@ -256,7 +256,6 @@ class OidvciCodeFlowTest : FreeSpec({
         val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata).shouldNotBeNull()
         val scope = credentialFormat.scope.shouldNotBeNull()
         val token = getToken(scope)
-        val clientNonce = issuer.nonce().getOrThrow().clientNonce
 
         val credential = issuer.credential(
             token.toHttpHeaderValue(),
@@ -264,7 +263,7 @@ class OidvciCodeFlowTest : FreeSpec({
                 tokenResponse = token,
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
-                clientNonce = clientNonce,
+                clientNonce = issuer.nonce().getOrThrow().clientNonce,
             ).getOrThrow().first(),
             credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
         ).getOrThrow()
@@ -278,7 +277,6 @@ class OidvciCodeFlowTest : FreeSpec({
         val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata).shouldNotBeNull()
         val scope = credentialFormat.scope.shouldNotBeNull()
         val token = getToken(scope, false) // do not set scope in token request, only in authn request
-        val clientNonce = issuer.nonce().getOrThrow().clientNonce
 
         val credential = issuer.credential(
             token.toHttpHeaderValue(),
@@ -286,7 +284,7 @@ class OidvciCodeFlowTest : FreeSpec({
                 tokenResponse = token,
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
-                clientNonce = clientNonce,
+                clientNonce = issuer.nonce().getOrThrow().clientNonce,
             ).getOrThrow().first(),
             credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
         ).getOrThrow()
@@ -332,8 +330,7 @@ class OidvciCodeFlowTest : FreeSpec({
         val credentialFormat = issuer.metadata.supportedCredentialConfigurations
             .shouldNotBeNull()[credentialConfigurationId]
             .shouldNotBeNull()
-        val token = getToken(authorizationDetails)
-        val clientNonce = issuer.nonce().getOrThrow().clientNonce
+        val token = getToken(authorizationService, authorizationDetails)
 
         val credential = issuer.credential(
             token.toHttpHeaderValue(),
@@ -341,7 +338,7 @@ class OidvciCodeFlowTest : FreeSpec({
                 tokenResponse = token,
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
-                clientNonce = clientNonce,
+                clientNonce = issuer.nonce().getOrThrow().clientNonce,
             ).getOrThrow().first(),
             credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
         ).getOrThrow()
@@ -359,8 +356,7 @@ class OidvciCodeFlowTest : FreeSpec({
         val credentialFormat = issuer.metadata.supportedCredentialConfigurations
             .shouldNotBeNull()[credentialConfigurationId]
             .shouldNotBeNull()
-        val token = getToken(authorizationDetails, false) // do not set authn details in token request
-        val clientNonce = issuer.nonce().getOrThrow().clientNonce
+        val token = getToken(authorizationService, authorizationDetails, false) // do not set authn details in token request
 
         val credential = issuer.credential(
             token.toHttpHeaderValue(),
@@ -368,7 +364,7 @@ class OidvciCodeFlowTest : FreeSpec({
                 tokenResponse = token,
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
-                clientNonce = clientNonce,
+                clientNonce = issuer.nonce().getOrThrow().clientNonce,
             ).getOrThrow().first(),
             credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
         ).getOrThrow()
@@ -405,13 +401,47 @@ class OidvciCodeFlowTest : FreeSpec({
         }
     }
 
+    "request credential with unknown configuration_id" {
+        // that credential format (from which credential_configuration_id will be derived) is not known to our issuer
+        val credentialFormat = with(
+            CredentialIssuer(
+                authorizationService = SimpleAuthorizationService(
+                    strategy = CredentialAuthorizationServiceStrategy(setOf(EuPidScheme)),
+                ),
+                issuer = IssuerAgent(
+                    identifier = "https://secondissuer.example.com".toUri(),
+                    randomSource = RandomSource.Default
+                ),
+                credentialSchemes = setOf(EuPidScheme),
+            )
+        ) {
+            client.selectSupportedCredentialFormat(RequestOptions(EuPidScheme, SD_JWT), metadata)
+        }
+
+        val scope = credentialFormat
+            ?.scope.shouldNotBeNull()
+        val token = getToken(scope)
+
+        shouldThrow<OAuth2Exception.UnknownCredentialConfiguration> {
+            issuer.credential(
+                token.toHttpHeaderValue(),
+                client.createCredentialRequest(
+                    tokenResponse = token,
+                    metadata = issuer.metadata,
+                    credentialFormat = credentialFormat,
+                    clientNonce = issuer.nonce().getOrThrow().clientNonce,
+                ).getOrThrow().first(),
+                credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+            ).getOrThrow()
+        }
+    }
+
     "request credential in SD-JWT, using scope in token, but authorization details in credential request" {
         val credentialFormat =
             client.selectSupportedCredentialFormat(RequestOptions(AtomicAttribute2023, SD_JWT), issuer.metadata)
         val scope = credentialFormat
             ?.scope.shouldNotBeNull()
         val token = getToken(scope)
-        val clientNonce = issuer.nonce().getOrThrow().clientNonce
 
         shouldThrow<OAuth2Exception> {
             issuer.credential(
@@ -420,7 +450,7 @@ class OidvciCodeFlowTest : FreeSpec({
                     tokenResponse = token,
                     metadata = issuer.metadata,
                     credentialFormat = credentialFormat,
-                    clientNonce = clientNonce,
+                    clientNonce = issuer.nonce().getOrThrow().clientNonce,
                 ).getOrThrow().first().copy(
                     // enforces error on client, setting credential_identifier, although access token was for scope
                     // (which should be credential_configuration_id in credential request)
@@ -441,8 +471,7 @@ class OidvciCodeFlowTest : FreeSpec({
             credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(SD_JWT),
             authorizationServers = issuer.metadata.authorizationServers
         )
-        val token = getToken(authorizationDetails)
-        val clientNonce = issuer.nonce().getOrThrow().clientNonce
+        val token = getToken(authorizationService, authorizationDetails)
 
         shouldThrow<OAuth2Exception> {
             issuer.credential(
@@ -451,7 +480,7 @@ class OidvciCodeFlowTest : FreeSpec({
                     tokenResponse = token,
                     metadata = issuer.metadata,
                     credentialFormat = credentialFormat,
-                    clientNonce = clientNonce,
+                    clientNonce = issuer.nonce().getOrThrow().clientNonce,
                 ).getOrThrow().first().copy(
                     // enforces error on client, setting credential_configuration_id, although access token was for
                     // authorization details (which should be credential_identifier in credential request)
@@ -468,7 +497,6 @@ class OidvciCodeFlowTest : FreeSpec({
         val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata).shouldNotBeNull()
         val scope = credentialFormat?.scope.shouldNotBeNull()
         val token = getToken(scope)
-        val clientNonce = issuer.nonce().getOrThrow().clientNonce
 
         val credential = issuer.credential(
             token.toHttpHeaderValue(),
@@ -476,7 +504,7 @@ class OidvciCodeFlowTest : FreeSpec({
                 tokenResponse = token,
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
-                clientNonce = clientNonce,
+                clientNonce = issuer.nonce().getOrThrow().clientNonce,
             ).getOrThrow().first(),
             credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
         ).getOrThrow()
