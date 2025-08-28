@@ -9,12 +9,10 @@ import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.JwtVcIssuerMetadata
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
-import at.asitplus.openid.SupportedAlgorithmsContainer
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
-import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -39,7 +37,7 @@ import io.github.aakira.napier.Napier
  *
  * Implemented from
  * [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
- * , Draft 15, 2024-12-19.
+ * , Draft 17, 2025-08-17.
  */
 class CredentialIssuer(
     /** Used to get the user data, and access tokens. */
@@ -66,13 +64,13 @@ class CredentialIssuer(
     private val nonceEndpointPath: String = "/nonce",
     /** Turn on to require key attestation support in the [metadata]. */
     private val requireKeyAttestation: Boolean = false,
-    /** Used to optionally encrypt the credential response, if requested by the client. */
+    @Deprecated("Use [encryptionService] instead")
     private val encryptCredentialRequest: EncryptJweFun = EncryptJwe(EphemeralKeyWithoutCert()),
-    /** Whether to indicate in [metadata] if credential response encryption is required. */
+    @Deprecated("Use [encryptionService] instead")
     private val requireEncryption: Boolean = false,
-    /** Algorithms to indicate support for credential response encryption. */
+    @Deprecated("Use [encryptionService] instead")
     private val supportedJweAlgorithms: Set<JweAlgorithm> = setOf(JweAlgorithm.ECDH_ES),
-    /** Algorithms to indicate support for credential response encryption. */
+    @Deprecated("Use [encryptionService] instead")
     private val supportedJweEncryptionAlgorithms: Set<JweEncryption> = setOf(JweEncryption.A256GCM),
     /** Used to verify proof of posession of key material in credential requests. */
     private val proofValidator: ProofValidator = ProofValidator(
@@ -83,8 +81,16 @@ class CredentialIssuer(
     private val tokenVerificationService: TokenVerificationService = authorizationService.tokenVerificationService,
     /** Used to provide signed metadata in [signedMetadata]. */
     private val signMetadata: SignJwtFun<IssuerMetadata> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk()),
+    /** Handles credential request decryption and credential response encryption. */
+    private val encryptionService: IssuerEncryptionService = IssuerEncryptionService(
+        encryptCredentialResponse = encryptCredentialRequest, // yes, that name was wrong
+        supportedJweAlgorithms = supportedJweAlgorithms,
+        supportedJweEncryptionAlgorithms = supportedJweEncryptionAlgorithms,
+        requireResponseEncryption = requireEncryption
+    ),
 ) {
     private val supportedSigningAlgorithms = cryptoAlgorithms
+        // TODO they now may be -7 or -9 for mdocs with COSE
         .mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }.toSet()
 
     private val supportedCredentialConfigurations = credentialSchemes
@@ -112,11 +118,8 @@ class CredentialIssuer(
             nonceEndpointUrl = "$publicContext$nonceEndpointPath",
             supportedCredentialConfigurations = supportedCredentialConfigurations,
             batchCredentialIssuance = BatchCredentialIssuanceMetadata(1),
-            credentialResponseEncryption = SupportedAlgorithmsContainer(
-                supportedAlgorithmsStrings = supportedJweAlgorithms.map { it.identifier }.toSet(),
-                supportedEncryptionAlgorithmsStrings = supportedJweEncryptionAlgorithms.map { it.identifier }.toSet(),
-                encryptionRequired = requireEncryption,
-            )
+            credentialResponseEncryption = encryptionService.metadataCredentialResponseEncryption,
+            credentialRequestEncryption = encryptionService.metadataCredentialRequestEncryption,
         )
     }
 
@@ -154,7 +157,39 @@ class CredentialIssuer(
      *
      * MUST be delivered with `Cache-Control: no-store` as HTTP header.
      */
+    // TODO Maybe return DPoP-Nonce from RFC 9449, as stated in OID4VCI 7.2. Nonce Response
     suspend fun nonce() = proofValidator.nonce()
+
+    /**
+     * Verifies the [authorizationHeader] to contain a token from [authorizationService],
+     * verifies the proof sent by the client (must contain a nonce sent from [authorizationService]),
+     * and issues credentials to the client.
+     *
+     * Callers need to send the result JSON-serialized back to the client.
+     * HTTP status code MUST be 200.
+     *
+     * @param authorizationHeader value of HTTP header `Authorization` sent by the client, with all prefixes
+     * @param input Input sent by the client, probably encrypted
+     * @param request information about the HTTP request the client has made, to validate authentication
+     * @param credentialDataProvider Extract data from the authenticated user and prepares it for issuing
+     *
+     * @return If the result is an instance of [OAuth2Exception] send [OAuth2Exception.toOAuth2Error] back to the
+     * client, except for instances of [OAuthAuthorizationError]
+     */
+    suspend fun credentialEncryptedRequest(
+        authorizationHeader: String,
+        input: String,
+        credentialDataProvider: CredentialDataProviderFun,
+        request: RequestInfo? = null,
+    ): KmmResult<CredentialResponseParameters> = catching {
+        credentialInternal(
+            authorizationHeader = authorizationHeader,
+            params = encryptionService.decrypt(input).getOrThrow(),
+            credentialDataProvider = credentialDataProvider,
+            request = request,
+            hasBeenEncrypted = true,
+        ).getOrThrow()
+    }
 
     /**
      * Verifies the [authorizationHeader] to contain a token from [authorizationService],
@@ -172,15 +207,30 @@ class CredentialIssuer(
      * @return If the result is an instance of [OAuth2Exception] send [OAuth2Exception.toOAuth2Error] back to the
      * client, except for instances of [OAuthAuthorizationError]
      */
-    // TODO they may be encrypted by the wallet
     suspend fun credential(
         authorizationHeader: String,
         params: CredentialRequestParameters,
         credentialDataProvider: CredentialDataProviderFun,
         request: RequestInfo? = null,
+    ): KmmResult<CredentialResponseParameters> = credentialInternal(
+        authorizationHeader = authorizationHeader,
+        params = params,
+        credentialDataProvider = credentialDataProvider,
+        request = request,
+        hasBeenEncrypted = false,
+    )
+
+    private suspend fun credentialInternal(
+        authorizationHeader: String,
+        params: CredentialRequestParameters,
+        credentialDataProvider: CredentialDataProviderFun,
+        request: RequestInfo? = null,
+        hasBeenEncrypted: Boolean = false,
     ): KmmResult<CredentialResponseParameters> = catching {
         Napier.i("credential called")
         Napier.d("credential called with $authorizationHeader, $params")
+        if (!hasBeenEncrypted && encryptionService.requireRequestEncryption)
+            throw InvalidEncryptionParameters("Credential request has not been encrypted")
         authorizationService.validateAccessToken(authorizationHeader, request).getOrThrow()
         val userInfo = params.introspectTokenLoadUserInfo(authorizationHeader, request)
         val (scheme, representation) = params.extractCredentialRepresentation()
@@ -199,7 +249,7 @@ class CredentialIssuer(
             ).getOrElse {
                 throw CredentialRequestDenied("No credential from issuer", it)
             }
-        }.toCredentialResponseParameters(params.encrypter())
+        }.toCredentialResponseParameters(encryptionService.encryptResponseIfNecessary(params))
             .also { Napier.i("credential returns"); Napier.d("credential returns $it") }
     }
 
@@ -255,22 +305,5 @@ class CredentialIssuer(
         supportedCredentialConfigurations[credentialConfigurationId]?.let {
             decodeFromCredentialIdentifier(credentialConfigurationId)
         }
-
-    /** Encrypts the issued credential, if requested so by the client. */
-    private fun CredentialRequestParameters.encrypter(): (suspend (String) -> String) = { input: String ->
-        credentialResponseEncryption?.let {
-            it.jweEncryption?.let { jweEncryption ->
-                encryptCredentialRequest(
-                    header = JweHeader(
-                        algorithm = it.jweAlgorithm,
-                        encryption = jweEncryption,
-                        keyId = it.jsonWebKey.keyId,
-                    ),
-                    payload = input,
-                    recipientKey = it.jsonWebKey,
-                ).getOrThrow().serialize()
-            } ?: throw IllegalArgumentException("Unsupported encryption requested: ${it.jweEncryptionString}")
-        } ?: input
-    }
 
 }

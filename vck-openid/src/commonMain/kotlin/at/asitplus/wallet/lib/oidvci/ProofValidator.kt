@@ -31,7 +31,7 @@ import kotlin.time.Duration.Companion.minutes
  *
  * Implemented from
  * [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
- * , Draft 15, 2024-12-19.
+ * , Draft 17, 2025-08-17.
  */
 class ProofValidator(
     /** Used in several fields in [IssuerMetadata], to provide endpoint URLs to clients. */

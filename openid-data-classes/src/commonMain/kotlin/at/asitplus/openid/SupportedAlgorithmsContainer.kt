@@ -1,7 +1,9 @@
 package at.asitplus.openid
 
 import at.asitplus.signum.indispensable.josef.JsonWebAlgorithm
+import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
+import at.asitplus.signum.indispensable.josef.JweEncryption
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
@@ -32,6 +34,16 @@ data class SupportedAlgorithmsContainer(
      */
     @SerialName("encryption_required")
     val encryptionRequired: Boolean? = null,
+
+    /**
+     * OID4VCI: REQUIRED for [IssuerMetadata.credentialRequestEncryption].
+     * A JSON Web Key Set, as defined in [RFC7591](https://datatracker.ietf.org/doc/html/rfc7591),
+     * that contains one or more public keys, to be used by the Wallet as an input to a key agreement for encryption
+     * of the Credential Request.
+     * Each JWK in the set MUST have a kid (Key ID) parameter that uniquely identifies the key.
+     */
+    @SerialName("jwks")
+    val jsonWebKeySet: JsonWebKeySet? = null,
 ) {
 
     /**
@@ -49,6 +61,6 @@ data class SupportedAlgorithmsContainer(
      * in a JWT (RFC7519).
      */
     @Transient
-    val supportedEncryptionAlgorithms: Set<JweAlgorithm>? = supportedEncryptionAlgorithmsStrings
-        ?.mapNotNull { s -> JweAlgorithm.entries.firstOrNull { it.identifier == s } }?.toSet()
+    val supportedEncryptionAlgorithms: Set<JweEncryption>? = supportedEncryptionAlgorithmsStrings
+        ?.mapNotNull { s -> JweEncryption.entries.firstOrNull { it.identifier == s } }?.toSet()
 }

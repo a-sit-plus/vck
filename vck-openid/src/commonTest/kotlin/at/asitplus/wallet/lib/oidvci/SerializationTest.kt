@@ -59,9 +59,6 @@ class SerializationTest : FunSpec({
     fun createCredentialRequest() = CredentialRequestParameters(
         credentialIdentifier = randomString(),
         credentialConfigurationId = randomString(),
-        credentialDefinition = SupportedCredentialFormatDefinition(
-            types = setOf(randomString(), randomString()),
-        ),
         proof = CredentialRequestProof(
             proofType = OpenIdConstants.ProofType.Other(randomString()),
             jwt = randomString(),
@@ -128,18 +125,6 @@ class SerializationTest : FunSpec({
         json shouldContain "\"token_type\":"
         json shouldContain "\"expires_in\":"
         val parsed: TokenResponseParameters = vckJsonSerializer.decodeFromString(json)
-        parsed shouldBe params
-    }
-
-    test("createCredentialRequest as JSON") {
-        val params = createCredentialRequest()
-
-        val json = vckJsonSerializer.encodeToString(params)
-
-        json shouldContain "\"type\":["
-        json shouldContain "\"${params.credentialDefinition?.types?.first()}\""
-        val parsed: CredentialRequestParameters =
-            vckJsonSerializer.decodeFromString<CredentialRequestParameters>(json)
         parsed shouldBe params
     }
 

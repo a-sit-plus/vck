@@ -78,6 +78,13 @@ data class IssuerMetadata(
     val credentialResponseEncryption: SupportedAlgorithmsContainer? = null,
 
     /**
+     * OID4VCI: OPTIONAL. Object containing information about whether the Credential Issuer supports encryption of the
+     * Credential Request on top of TLS.
+     */
+    @SerialName("credential_request_encryption")
+    val credentialRequestEncryption: SupportedAlgorithmsContainer? = null,
+
+    /**
      * OID4VCI: OPTIONAL. Object containing information about the Credential Issuer's supports for batch issuance of
      * Credentials on the Credential Endpoint. The presence of this parameter means that the issuer supports the proofs
      * parameter in the Credential Request so can issue more than one Verifiable Credential for the same Credential
@@ -85,22 +92,6 @@ data class IssuerMetadata(
      */
     @SerialName("batch_credential_issuance")
     val batchCredentialIssuance: BatchCredentialIssuanceMetadata? = null,
-
-    /**
-     * OPTIONAL. String that is a signed JWT. This JWT contains Credential Issuer metadata parameters as claims. The
-     * signed metadata MUST be secured using JSON Web Signature (JWS) (`RFC7515`) and MUST contain an `iat` (Issued At)
-     * claim, an `iss` (Issuer) claim denoting the party attesting to the claims in the signed metadata, and `sub`
-     * (Subject) claim matching the Credential Issuer identifier. If the Wallet supports signed metadata, metadata
-     * values conveyed in the signed JWT MUST take precedence over the corresponding values conveyed using plain JSON
-     * elements. If the Credential Issuer wants to enforce use of signed metadata, it omits the respective metadata
-     * parameters from the unsigned part of the Credential Issuer metadata. A [signedMetadata] metadata value MUST NOT
-     * appear as a claim in the JWT. The Wallet MUST establish trust in the signer of the metadata, and obtain the keys
-     * to validate the signature before processing the metadata. The concrete mechanism how to do that is out of scope
-     * of this specification and MAY be defined in the profiles of this specification.
-     */
-    // TODO Analyze usage
-    @SerialName("signed_metadata")
-    val signedMetadata: String? = null,
 
     /**
      * OID4VCI: OPTIONAL. An array of objects, where each object contains display properties of a Credential Issuer for
@@ -117,4 +108,6 @@ data class IssuerMetadata(
      */
     @SerialName("credential_configurations_supported")
     val supportedCredentialConfigurations: Map<String, SupportedCredentialFormat>? = null,
+
+
 )
