@@ -16,6 +16,7 @@ import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
 import at.asitplus.openid.PushedAuthenticationResponseParameters
+import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -185,33 +186,13 @@ class SimpleAuthorizationService(
         input: String,
         clientAttestation: String?,
         clientAttestationPop: String?,
-    ) = catching {
-        when (val param = requestParser.parseRequestParameters(input).getOrThrow().parameters) {
-            is JarRequestParameters -> par(param, clientAttestation, clientAttestationPop).getOrThrow()
-            is AuthenticationRequestParameters -> par(param, clientAttestation, clientAttestationPop).getOrThrow()
-            else -> run {
-                Napier.w("par: could not parse request parameters from $input")
-                throw InvalidRequest("Could not parse request parameters from $input")
-            }
-        }
-    }
+    ) =
+        par(
+            requestParser.parseRequestParameters(input).getOrThrow().parameters,
+            clientAttestation,
+            clientAttestationPop
+        )
 
-
-    override suspend fun par(
-        request: JarRequestParameters,
-        clientAttestation: String?,
-        clientAttestationPop: String?,
-    ) = catching {
-        if (request.requestUri != null) {
-            Napier.w("par: client set request_uri: ${request.requestUri}")
-            throw InvalidRequest("request_uri must not be set")
-        }
-        val actualRequest =
-            requestParser.extractRequestParameterFromJAR(request)?.parameters as? AuthenticationRequestParameters
-                ?: throw InvalidRequest("request must contain valid request parameters")
-
-        par(actualRequest, clientAttestation, clientAttestationPop).getOrThrow()
-    }
 
     /**
      * Pushed authorization request endpoint as defined in [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html).
@@ -224,23 +205,35 @@ class SimpleAuthorizationService(
      * @param clientAttestationPop value of the header `OAuth-Client-Attestation-PoP`
      */
     override suspend fun par(
-        request: AuthenticationRequestParameters,
+        request: RequestParameters,
         clientAttestation: String?,
         clientAttestationPop: String?,
     ) = catching {
-        Napier.i("pushedAuthorization called with $request")
+        val actualRequest: AuthenticationRequestParameters = when (request) {
+            is JarRequestParameters -> run {
+                if (request.requestUri != null) {
+                    Napier.w("par: client set request_uri: ${request.requestUri}")
+                    throw InvalidRequest("request_uri must not be set")
+                }
+                requestParser.extractRequestParameterFromJAR(request)?.parameters as? AuthenticationRequestParameters
+                    ?: throw InvalidRequest("request must contain valid authorization request parameters")
+            }
 
-        clientAuthenticationService.authenticateClient(clientAttestation, clientAttestationPop, request.clientId)
-        request.validate()
+            is AuthenticationRequestParameters -> request
+            else -> throw InvalidRequest("Request be authorization request or JAR")
+        }
+        Napier.i("pushedAuthorization called with $actualRequest")
+
+        clientAuthenticationService.authenticateClient(clientAttestation, clientAttestationPop, actualRequest.clientId)
+        actualRequest.validate()
         val requestUri = "urn:ietf:params:oauth:request_uri:${uuid4()}".also {
-            requestUriToPushedAuthorizationRequest.put(it, request)
+            requestUriToPushedAuthorizationRequest.put(it, actualRequest)
         }
         PushedAuthenticationResponseParameters(
             requestUri = requestUri,
             expires = 5.minutes,
         )
     }
-
 
     /**
      * Builds the authentication response.

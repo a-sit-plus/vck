@@ -4,6 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.PushedAuthenticationResponseParameters
+import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
@@ -29,7 +30,6 @@ interface AuthorizationService {
         clientAttestationPop: String? = null,
     ): KmmResult<PushedAuthenticationResponseParameters>
 
-
     /**
      * Pushed authorization request endpoint as defined in [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html).
      * Clients send their authorization request as HTTP `POST` with `application/x-www-form-urlencoded` to the AS.
@@ -42,24 +42,7 @@ interface AuthorizationService {
      * @return [KmmResult] may contain a [OAuth2Exception]
      */
     suspend fun par(
-        request: JarRequestParameters,
-        clientAttestation: String? = null,
-        clientAttestationPop: String? = null,
-    ): KmmResult<PushedAuthenticationResponseParameters>
-
-    /**
-     * Pushed authorization request endpoint as defined in [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html).
-     * Clients send their authorization request as HTTP `POST` with `application/x-www-form-urlencoded` to the AS.
-     *
-     * Responses have to be sent with HTTP status code `201`.
-     *
-     * @param request as sent from the client as `POST`
-     * @param clientAttestation value of the header `OAuth-Client-Attestation`
-     * @param clientAttestationPop value of the header `OAuth-Client-Attestation-PoP`
-     * @return [KmmResult] may contain a [OAuth2Exception]
-     */
-    suspend fun par(
-        request: AuthenticationRequestParameters,
+        request: RequestParameters,
         clientAttestation: String? = null,
         clientAttestationPop: String? = null,
     ): KmmResult<PushedAuthenticationResponseParameters>
