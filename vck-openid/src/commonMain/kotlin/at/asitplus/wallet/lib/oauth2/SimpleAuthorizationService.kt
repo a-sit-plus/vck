@@ -19,6 +19,7 @@ import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
+import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -231,7 +232,7 @@ class SimpleAuthorizationService(
         clientAttestation: String?,
         clientAttestationPop: String?,
     ) = par(
-        request,
+        request as RequestParameters,
         RequestInfo(
             "url",
             HttpMethod.Get,
@@ -254,13 +255,10 @@ class SimpleAuthorizationService(
     override suspend fun par(
         input: String,
         httpRequest: RequestInfo?,
-    ) = catching {
-        when (val param = requestParser.parseRequestParameters(input).getOrThrow().parameters) {
-            is JarRequestParameters -> par(param, httpRequest).getOrThrow()
-            is AuthenticationRequestParameters -> par(param, httpRequest).getOrThrow()
-            else -> throw InvalidRequest("Could not parse request parameters from $input")
-        }
-    }
+    ) = par(
+        requestParser.parseRequestParameters(input).getOrThrow().parameters,
+        httpRequest
+    )
 
     /**
      * Pushed authorization request endpoint as defined in [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html).
@@ -273,41 +271,15 @@ class SimpleAuthorizationService(
      * @return [KmmResult] may contain a [OAuth2Exception]
      */
     override suspend fun par(
-        request: JarRequestParameters,
+        request: RequestParameters,
         httpRequest: RequestInfo?,
     ) = catching {
-        if (request.requestUri != null) {
-            throw InvalidRequest("request_uri must not be set")
-        }
-        val actualRequest =
-            requestParser.extractRequestParameterFromJAR(request)?.parameters as? AuthenticationRequestParameters
-                ?: throw InvalidRequest("request must contain valid request parameters")
-
-        par(actualRequest, httpRequest).getOrThrow()
-    }
-
-    /**
-     * Pushed authorization request endpoint as defined in [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html).
-     * Clients send their authorization request as HTTP `POST` with `application/x-www-form-urlencoded` to the AS.
-     *
-     * Responses have to be sent with HTTP status code `201`.
-     *
-     * @param request as sent from the client as `POST`
-     * @param httpRequest information about the HTTP request from the client to validate authentication
-     * @return [KmmResult] may contain a [OAuth2Exception]
-     */
-    override suspend fun par(
-        request: AuthenticationRequestParameters,
-        httpRequest: RequestInfo?,
-    ) = catching {
-        Napier.i("pushedAuthorization called with $request")
-        if (request.requestUri != null) {
-            throw InvalidRequest("request_uri must not be set")
-        }
-        clientAuthenticationService.authenticateClient(httpRequest, request.clientId)
-        request.validate()
+        val actualRequest = request.extractRequestParameters()
+        Napier.i("par called with $actualRequest")
+        clientAuthenticationService.authenticateClient(httpRequest, actualRequest.clientId)
+        actualRequest.validate()
         val requestUri = "urn:ietf:params:oauth:request_uri:${uuid4()}".also {
-            requestUriToPushedAuthorizationRequest.put(it, request)
+            requestUriToPushedAuthorizationRequest.put(it, actualRequest)
         }
         PushedAuthenticationResponseParameters(
             requestUri = requestUri,
@@ -315,6 +287,16 @@ class SimpleAuthorizationService(
         )
     }
 
+    private suspend fun RequestParameters.extractRequestParameters() = when (this) {
+        is JarRequestParameters -> run {
+            require(requestUri == null) { "request_uri must not be set for JAR request" }
+            requestParser.extractRequestParameterFromJAR(this)?.parameters as? AuthenticationRequestParameters
+                ?: throw InvalidRequest("request must contain valid authorization request parameters")
+        }
+
+        is AuthenticationRequestParameters -> this
+        else -> throw InvalidRequest("Request is neither plain nor JAR")
+    }
 
     /**
      * Builds the authentication response for this specific user from [loadUserFun]
@@ -327,33 +309,13 @@ class SimpleAuthorizationService(
         loadUserFun: OAuth2LoadUserFun,
     ) = catching {
         input.validate()
-        val code = codeService.provideCode().also { code ->
-            val userInfo = loadUserFun(OAuth2LoadUserFunInput(input)).getOrElse {
-                Napier.w("authorize: could not load user info from $input", it)
-                throw InvalidRequest("Could not load user info for request $input", it)
-            }
-            codeToClientAuthRequest.put(
-                code,
-                ClientAuthRequest(
-                    issuedCode = code,
-                    userInfo = userInfo,
-                    scope = input.scope,
-                    authnDetails = input.authorizationDetails,
-                    codeChallenge = input.codeChallenge
-                )
-            )
+        val userInfo = loadUserFun(OAuth2LoadUserFunInput(input)).getOrElse {
+            throw InvalidRequest("Could not load user info for request $input", it)
         }
-        val response = AuthenticationResponseParameters(
-            code = code,
-            state = input.state,
-        )
-
-        val url = URLBuilder(input.redirectUrl!!)
-            .apply { response.encodeToParameters().forEach { this.parameters.append(it.key, it.value) } }
-            .buildString()
-
-        AuthenticationResponseResult.Redirect(url, response)
-            .also { Napier.i("authorize returns $it") }
+        with(input) {
+            issueCodeForUserInfo(userInfo, state, codeChallenge, authorizationDetails, scope, redirectUrl!!)
+                .also { Napier.i("authorize returns $it") }
+        }
     }
 
     /**
@@ -405,7 +367,7 @@ class SimpleAuthorizationService(
     }
 
     internal suspend fun extractActualRequest(
-        input: JarRequestParameters
+        input: JarRequestParameters,
     ): AuthenticationRequestParameters = if (input.requestUri != null) {
         requestUriToPushedAuthorizationRequest.remove(input.requestUri!!)?.apply {
             if (clientId != input.clientId) {

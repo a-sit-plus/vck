@@ -1,9 +1,11 @@
 package at.asitplus.wallet.lib.oauth2
 
+
 import at.asitplus.KmmResult
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.PushedAuthenticationResponseParameters
+import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenRequestParameters
@@ -67,22 +69,7 @@ interface AuthorizationService {
      * @return [KmmResult] may contain a [OAuth2Exception]
      */
     suspend fun par(
-        request: JarRequestParameters,
-        httpRequest: RequestInfo? = null,
-    ): KmmResult<PushedAuthenticationResponseParameters>
-
-    /**
-     * Pushed authorization request endpoint as defined in [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html).
-     * Clients send their authorization request as HTTP `POST` with `application/x-www-form-urlencoded` to the AS.
-     *
-     * Responses have to be sent with HTTP status code `201`.
-     *
-     * @param request as sent from the client as `POST`
-     * @param httpRequest information about the HTTP request from the client to validate authentication
-     * @return [KmmResult] may contain a [OAuth2Exception]
-     */
-    suspend fun par(
-        request: AuthenticationRequestParameters,
+        request: RequestParameters,
         httpRequest: RequestInfo? = null,
     ): KmmResult<PushedAuthenticationResponseParameters>
 
