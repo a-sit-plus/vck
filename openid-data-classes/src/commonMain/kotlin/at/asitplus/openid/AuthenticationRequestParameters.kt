@@ -37,6 +37,7 @@ data class AuthenticationRequestParameters(
     val responseType: String? = null,
 
     /**
+     * OID4VP 1.0: REQUIRED. As in OIDC
      * OIDC: REQUIRED. OAuth 2.0 Client Identifier valid at the Authorization Server.
      *
      * DC API: The client_id parameter MUST be omitted in unsigned requests defined in Appendix
@@ -72,6 +73,7 @@ data class AuthenticationRequestParameters(
     val redirectUrl: String? = null,
 
     /**
+     * OID4VP 1.0: OPTIONAL
      * OIDC: REQUIRED. OpenID Connect requests MUST contain the openid scope value. If the openid scope value is not
      * present, the behavior is entirely unspecified. Other scope values MAY be present. Scope values used that are not
      * understood by an implementation SHOULD be ignored.
@@ -81,6 +83,7 @@ data class AuthenticationRequestParameters(
     val scope: String? = null,
 
     /**
+     * OID4VP 1.0: REQUIRED.
      * OIDC: RECOMMENDED. Opaque value used to maintain state between the request and the callback. Typically,
      * Cross-Site Request Forgery (CSRF, XSRF) mitigation is done by cryptographically binding the value of this
      * parameter with a browser cookie.
@@ -89,7 +92,9 @@ data class AuthenticationRequestParameters(
     val state: String? = null,
 
     /**
-     * OIDC: OPTIONAL. String value used to associate a Client session with an ID Token, and to mitigate replay attacks.
+     * OID4VP 1.0: REQUIRED.
+     * OIDC: OPTIONAL.
+     * String value used to associate a Client session with an ID Token, and to mitigate replay attacks.
      * The value is passed through unmodified from the Authentication Request to the ID Token. Sufficient entropy MUST
      * be present in the nonce values used to prevent attackers from guessing values.
      */
@@ -244,12 +249,15 @@ data class AuthenticationRequestParameters(
     val issuerState: String? = null,
 
     /**
+     * OID4VP 1.0: REQUIRED (Defined as in OAuth2.0 Responses)
+     *
      * OAuth 2.0 Responses: OPTIONAL. Informs the Authorization Server of the mechanism to be used for returning
      * Authorization Response parameters from the Authorization Endpoint. This use of this parameter is NOT RECOMMENDED
      * with a value that specifies the same Response Mode as the default Response Mode for the Response Type used.
      *
      * OIDC SIOPv2: This response mode `post` is used to request the Self-Issued OP to deliver the result of the
      * authentication process to a certain endpoint using the HTTP POST method.
+     *
      */
     @SerialName("response_mode")
     val responseMode: OpenIdConstants.ResponseMode? = null,
