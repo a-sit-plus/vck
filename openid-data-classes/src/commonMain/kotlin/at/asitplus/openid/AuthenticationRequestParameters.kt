@@ -83,7 +83,7 @@ data class AuthenticationRequestParameters(
     val scope: String? = null,
 
     /**
-     * OID4VP 1.0: REQUIRED.
+     * OID4VP 1.0: OPTIONAL.
      * OIDC: RECOMMENDED. Opaque value used to maintain state between the request and the callback. Typically,
      * Cross-Site Request Forgery (CSRF, XSRF) mitigation is done by cryptographically binding the value of this
      * parameter with a browser cookie.
@@ -163,7 +163,7 @@ data class AuthenticationRequestParameters(
     val requestUri: String? = null,
 
     /**
-     * OpenID4VP: OPTIONAL. A string determining the HTTP method to be used when the [requestUri] parameter is included
+     * OID4VP 1.0: OPTIONAL. A string determining the HTTP method to be used when the [requestUri] parameter is included
      * in the same request. Two case-sensitive valid values are defined in this specification: `get` and `post`.
      * If [requestUriMethod] value is `get`, the Wallet MUST send the request to retrieve the Request Object using the
      * HTTP GET method, i.e., as defined in RFC9101. If [requestUriMethod] value is `post`, a supporting Wallet MUST
@@ -397,7 +397,7 @@ data class AuthenticationRequestParameters(
     val clientData: String? = null,
 
     /**
-     * OID4VP: OPTIONAL. Non-empty array of strings, where each string is a base64url-encoded JSON object that contains
+     * OID4VP 1.0: OPTIONAL. Non-empty array of strings, where each string is a base64url-encoded JSON object that contains
      * a typed parameter set with details about the transaction that the Verifier is requesting
      * the End-User to authorize. The Wallet MUST return an error if a request contains even one unrecognized
      * transaction data type or transaction data not conforming to the respective type definition.
