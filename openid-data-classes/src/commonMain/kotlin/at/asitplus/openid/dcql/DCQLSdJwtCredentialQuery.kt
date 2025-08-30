@@ -18,11 +18,17 @@ data class DCQLSdJwtCredentialQuery(
     @SerialName(DCQLCredentialQuery.SerialNames.FORMAT)
     override val format: CredentialFormatEnum,
     @SerialName(DCQLCredentialQuery.SerialNames.META)
-    override val meta: DCQLSdJwtCredentialMetadataAndValidityConstraints? = null,
+    override val meta: DCQLSdJwtCredentialMetadataAndValidityConstraints,
     @SerialName(DCQLCredentialQuery.SerialNames.CLAIMS)
     override val claims: DCQLClaimsQueryList<DCQLJsonClaimsQuery>? = null,
     @SerialName(DCQLCredentialQuery.SerialNames.CLAIM_SETS)
     override val claimSets: NonEmptyList<List<DCQLClaimsQueryIdentifier>>? = null,
+    @SerialName(DCQLCredentialQuery.SerialNames.MULTIPLE)
+    override val multiple: Boolean? = false,
+    @SerialName(DCQLCredentialQuery.SerialNames.TRUSTED_AUTHORITIES)
+    override val trustedAuthorities: List<String>?,
+    @SerialName(DCQLCredentialQuery.SerialNames.REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING)
+    override val requireCryptographicHolderBinding: Boolean? = true,
 ) : DCQLCredentialQuery {
     init {
         validate(this)
