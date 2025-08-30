@@ -426,7 +426,7 @@ data class AuthenticationRequestParameters(
      */
     //TODO: Implement usage described in OID4VP Section 5.11
     @SerialName("verifier_info")
-    val verifierInfo: List<VerifierInfo>
+    val verifierInfo: List<VerifierInfo>? = null
 ) : RequestParameters() {
 
     /**
