@@ -54,7 +54,10 @@ class VerifyMac() : VerifyMacFun {
         key: ByteArray
     ): KmmResult<VerifyMacFun.Success> = catching {
         val realTag = algorithm.mac(key, input).getOrThrow()
-        return@catching if (realTag.contentEquals(tag)) VerifyMacFun.Success else throw InvalidMac("Mac is invalid.")
+        if (realTag.contentEquals(tag))
+            VerifyMacFun.Success
+        else
+            throw InvalidMac("Mac is invalid.")
     }
 
 }

@@ -54,7 +54,7 @@ class CoseHeaderCertificate : CoseHeaderIdentifierFun {
     override suspend operator fun invoke(
         it: CoseHeader?,
         keyMaterial: CoseKeyMaterial,
-    ) = it?.copy(certificateChain = (keyMaterial as KeyMaterial).getCertificate()?.let { listOf(it.encodeToDer()) })
+    ) = it?.copy(certificateChain = (keyMaterial as? KeyMaterial)?.getCertificate()?.let { listOf(it.encodeToDer()) })
 }
 
 fun interface SignCoseFun<P> {
@@ -253,7 +253,7 @@ object CoseUtils {
         ).let { macInput ->
             val serialized = coseCompliantSerializer.encodeToByteArray(macInput)
             Napier.d("COSE Mac input is ${serialized.encodeToString(Base16())}")
-            keyMaterial.encrypt(serialized)
+            keyMaterial.mac(serialized)
         }
 
 }

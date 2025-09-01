@@ -43,7 +43,7 @@ interface SymmetricKeyMaterial : CoseKeyMaterial {
     val key: ByteArray
     val algorithm: HMAC
 
-    suspend fun encrypt(data: ByteArray) : ByteArray
+    suspend fun mac(data: ByteArray) : ByteArray
 }
 
 class EphemeralHmacKey(
@@ -51,7 +51,7 @@ class EphemeralHmacKey(
     override val algorithm: HMAC = HMAC.SHA256,
     override val key: ByteArray
 ) : SymmetricKeyMaterial {
-    override suspend fun encrypt(data: ByteArray): ByteArray = algorithm.mac(key, data).getOrThrow()
+    override suspend fun mac(data: ByteArray): ByteArray = algorithm.mac(key, data).getOrThrow()
 }
 
 /**
