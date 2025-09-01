@@ -29,6 +29,7 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import io.ktor.util.hex
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -375,17 +376,29 @@ class CoseServiceTest : FreeSpec({
     }
 
     // https://github.com/cose-wg/Examples/tree/master/mac0-tests
-    // test fails because protected header is 0x40 -> byte string of length 0 so it failes to decode not sure if that is bug in our CoseHeader implementation, since test says it should deserialize
-//    "MAC0 sample 02 can be verified" {
-//        val input = """
-//            D18440A1010554546869732069732074686520636F6E74656E742E58200FECAEC59BB46CC8A488AACA4B205E322DD52696B75A45768D3C302DD4BAE2F7
-//        """.trimIndent()
-//
-//        val maced = CoseMac.deserialize(ByteArraySerializer(), input.decodeToByteArray(Base16())).getOrThrow()
-//
-//        maced.payload shouldBe "546869732069732074686520636F6E74656E742E".decodeToByteArray(Base16())
-//        maced.prepareCoseMacInput()
-//            .encodeToString(Base16Strict) shouldBe "84644D414330404EFF00EE11DD22CC33BB44AA55996654546869732069732074686520636F6E74656E742E"
-//    }
+    "MAC0 sample 02 can be verified" {
+        val input = """
+            D18440A1010554546869732069732074686520636F6E74656E742E58200FECAEC59BB46CC8A488AACA4B205E322DD52696B75A45768D3C302DD4BAE2F7
+        """.trimIndent()
+
+        val maced = CoseMac.deserialize(ByteArraySerializer(), input.decodeToByteArray(Base16())).getOrThrow()
+
+        maced.payload shouldBe "546869732069732074686520636F6E74656E742E".decodeToByteArray(Base16())
+        maced.prepareCoseMacInput(hex("ff00ee11dd22cc33bb44aa559966"))
+            .encodeToString(Base16Strict) shouldBe "84644D414330404EFF00EE11DD22CC33BB44AA55996654546869732069732074686520636F6E74656E742E"
+    }
+
+    // https://github.com/cose-wg/Examples/tree/master/mac0-tests
+    "MAC0 sample 03 can be verified" {
+        val input = """
+            8440A1010554546869732069732074686520636F6E74656E742E5820176DCE14C1E57430C13658233F41DC89AA4FA0FF9B8783F23B0EF51CA6B026BC
+        """.trimIndent()
+
+        val maced = CoseMac.deserialize(ByteArraySerializer(), input.decodeToByteArray(Base16())).getOrThrow()
+
+        maced.payload shouldBe "546869732069732074686520636F6E74656E742E".decodeToByteArray(Base16())
+        maced.prepareCoseMacInput()
+            .encodeToString(Base16Strict) shouldBe "84644D414330404054546869732069732074686520636F6E74656E742E"
+    }
 })
 
