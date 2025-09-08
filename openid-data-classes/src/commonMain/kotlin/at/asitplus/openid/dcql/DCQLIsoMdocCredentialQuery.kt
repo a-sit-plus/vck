@@ -20,7 +20,7 @@ data class DCQLIsoMdocCredentialQuery(
     @SerialName(DCQLCredentialQuery.SerialNames.MULTIPLE)
     override val multiple: Boolean? = false,
     @SerialName(DCQLCredentialQuery.SerialNames.TRUSTED_AUTHORITIES)
-    override val trustedAuthorities: List<String>?,
+    override val trustedAuthorities: List<String>? = null,
     @SerialName(DCQLCredentialQuery.SerialNames.REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING)
     override val requireCryptographicHolderBinding: Boolean? = true,
 ) : DCQLCredentialQuery {
