@@ -39,8 +39,9 @@ sealed interface DCQLCredentialQuery {
      * this object are defined per Credential Format. Examples of those are in Appendix B.3.5 and
      * Appendix B.2.3. If empty, no specific constraints are placed on the metadata or validity
      * of the requested Credential.
+     *
+     * Compare: https://github.com/openid/OpenID4VP/issues/590
      */
-    //TODO: Add empty constraints?
     val meta: DCQLCredentialMetadataAndValidityConstraints
 
     /**
@@ -144,15 +145,13 @@ sealed interface DCQLCredentialQuery {
             throw IllegalArgumentException("Incompatible credential format")
         }
 
-        meta?.let {
-            Procedures.validateCredentialMetadataAndValidityConstraints(
-                credential = credential,
-                credentialFormatIdentifier = credentialFormatExtractor(credential),
-                credentialMetadataAndValidityConstraints = it,
-                mdocCredentialDoctypeExtractor = mdocCredentialDoctypeExtractor,
-                sdJwtCredentialTypeExtractor = sdJwtCredentialTypeExtractor,
-            ).getOrThrow()
-        }
+        Procedures.validateCredentialMetadataAndValidityConstraints(
+            credential = credential,
+            credentialFormatIdentifier = credentialFormatExtractor(credential),
+            credentialMetadataAndValidityConstraints = meta,
+            mdocCredentialDoctypeExtractor = mdocCredentialDoctypeExtractor,
+            sdJwtCredentialTypeExtractor = sdJwtCredentialTypeExtractor,
+        ).getOrThrow()
 
         val claimQueries = claims
             ?: return KmmResult.success(DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult)
