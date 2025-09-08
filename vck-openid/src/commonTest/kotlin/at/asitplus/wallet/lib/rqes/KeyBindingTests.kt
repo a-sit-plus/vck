@@ -196,6 +196,7 @@ class KeyBindingTests : FreeSpec({
                     authnRequest.copy(
                         transactionData = listOf(
                             QCertCreationAcceptance(
+                                credentialIds = setOf(),
                                 qcTermsConditionsUri = uuid4().toString(),
                                 qcHash = uuid4().bytes,
                                 qcHashAlgorithmOid = Digest.SHA256.oid,
@@ -230,6 +231,7 @@ class KeyBindingTests : FreeSpec({
                     authnRequest.copy(
                         transactionData = listOf(
                             QCertCreationAcceptance(
+                                credentialIds = setOf(),
                                 qcTermsConditionsUri = uuid4().toString(),
                                 qcHash = uuid4().bytes,
                                 qcHashAlgorithmOid = Digest.SHA256.oid,
