@@ -11,6 +11,7 @@ import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialQueryList
 import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
 import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
@@ -24,11 +25,11 @@ import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.rfc3986.toUri
+import at.asitplus.wallet.lib.extensions.sdHashInput
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
-import at.asitplus.wallet.lib.extensions.sdHashInput
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContain
@@ -36,9 +37,9 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldNotBeInstanceOf
 import kotlinx.serialization.json.JsonObject
-import kotlin.time.Clock
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
+import kotlin.time.Clock
 
 
 class AgentSdJwtTest : FreeSpec({
@@ -106,7 +107,7 @@ class AgentSdJwtTest : FreeSpec({
         val credential = holderCredentialStore.getCredentials().getOrThrow()
             .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>().first()
         val sdJwt = createSdJwtPresentation(
-            signKeyBindingJws = SignJwt(holderKeyMaterial, { header, keyMaterial ->
+            signKeyBindingJws = SignJwt(holderKeyMaterial, { header, _ ->
                 header.copy(keyId = "definitely not matching")
             }),
             audienceId = verifierId,
@@ -114,7 +115,7 @@ class AgentSdJwtTest : FreeSpec({
             validSdJwtCredential = credential,
             claimName = CLAIM_GIVEN_NAME
         )
-        verifier.verifyPresentationSdJwt(sdJwt.sdJwt!!, challenge)
+        verifier.verifyPresentationSdJwt(sdJwt.sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                 reconstructedJsonObject.keys shouldContain CLAIM_GIVEN_NAME
                 freshnessSummary.tokenStatusValidationResult
@@ -132,7 +133,7 @@ class AgentSdJwtTest : FreeSpec({
             val vp = presentationParameters.presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+            verifier.verifyPresentationSdJwt(vp.sdJwt, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     reconstructedJsonObject[CLAIM_GIVEN_NAME]?.jsonPrimitive?.content shouldBe "Susanne"
                     reconstructedJsonObject[CLAIM_DATE_OF_BIRTH]?.jsonPrimitive?.content shouldBe "1990-01-01"
@@ -167,7 +168,7 @@ class AgentSdJwtTest : FreeSpec({
             val vp = presentationParameters.presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+            verifier.verifyPresentationSdJwt(vp.sdJwt, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
         }
 
@@ -188,7 +189,7 @@ class AgentSdJwtTest : FreeSpec({
                         it.sdJwt.credentialStatus!!.statusList.index
                     ) shouldBe true
                 }
-            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+            verifier.verifyPresentationSdJwt(vp.sdJwt, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
                 .freshnessSummary.tokenStatusValidationResult
                 .shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
@@ -214,7 +215,7 @@ class AgentSdJwtTest : FreeSpec({
             val vp = presentationParameters.verifiablePresentations.values.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+            verifier.verifyPresentationSdJwt(vp.sdJwt, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     reconstructedJsonObject[CLAIM_GIVEN_NAME]?.jsonPrimitive?.content shouldBe "Susanne"
                     reconstructedJsonObject[CLAIM_DATE_OF_BIRTH]?.jsonPrimitive?.content shouldBe "1990-01-01"
@@ -264,7 +265,7 @@ class AgentSdJwtTest : FreeSpec({
             val vp = presentationParameters.verifiablePresentations.values.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+            verifier.verifyPresentationSdJwt(vp.sdJwt, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
         }
 
@@ -291,7 +292,7 @@ class AgentSdJwtTest : FreeSpec({
                         it.sdJwt.credentialStatus!!.statusList.index,
                     ) shouldBe true
                 }
-            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+            verifier.verifyPresentationSdJwt(vp.sdJwt, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
                 .freshnessSummary.tokenStatusValidationResult
                 .shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
@@ -306,6 +307,9 @@ private fun buildDCQLQuery(vararg claimsQueries: DCQLJsonClaimsQuery) = DCQLQuer
             format = CredentialFormatEnum.DC_SD_JWT,
             claims = DCQLClaimsQueryList(
                 claimsQueries.toList().toNonEmptyList(),
+            ),
+            meta = DCQLSdJwtCredentialMetadataAndValidityConstraints(
+                vctValues = listOf(ConstantIndex.AtomicAttribute2023.sdJwtType)
             )
         )
     )
@@ -313,7 +317,7 @@ private fun buildDCQLQuery(vararg claimsQueries: DCQLJsonClaimsQuery) = DCQLQuer
 
 private fun buildPresentationDefinition(vararg attributeName: String) = PresentationExchangePresentation(
     CredentialPresentationRequest.PresentationExchangeRequest
-        .forAttributeNames(*attributeName.map { it -> "$['$it']" }.toTypedArray())
+        .forAttributeNames(*attributeName.map { "$['$it']" }.toTypedArray())
 )
 
 suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): String {

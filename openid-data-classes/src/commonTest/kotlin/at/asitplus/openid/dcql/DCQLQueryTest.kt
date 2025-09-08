@@ -1309,7 +1309,10 @@ class DCQLQueryTest : FreeSpec({
                                 "path": ["value"],
                                 "values": ${testVector.first}
                               }
-                          ]
+                          ],
+                          "meta": {
+                              "vct_values": [ "my_credential" ]
+                          }
                         }
                       ]
                     }
@@ -1318,7 +1321,7 @@ class DCQLQueryTest : FreeSpec({
                 }
                 val buildSdJwtValueCredential: (Any?) -> TestCredential.SdJwtCredential = {
                     TestCredential.SdJwtCredential(
-                        type = "",
+                        type = "my_credential",
                         claimStructure = buildJsonObject {
                             if (it != null) {
                                 put(
@@ -1346,7 +1349,10 @@ class DCQLQueryTest : FreeSpec({
                                 "${DCQLIsoMdocClaimsQuery.SerialNames.CLAIM_NAME}": "claimName",
                                 "${DCQLClaimsQuery.SerialNames.VALUES}": ${testVector.first}
                               }
-                          ]
+                          ],
+                          "meta": {
+                              "doctype_value": "mDL"
+                          }
                         }
                       ]
                     }
@@ -1355,7 +1361,7 @@ class DCQLQueryTest : FreeSpec({
                 }
                 val buildMdocValueCredential: (Any?) -> TestCredential.MdocCredential = { value ->
                     TestCredential.MdocCredential(
-                        documentType = "",
+                        documentType = "mDL",
                         namespaces = mapOf(
                             "namespace" to run {
                                 if (value != null) {
@@ -1369,9 +1375,10 @@ class DCQLQueryTest : FreeSpec({
                 }
 
                 withData(testVector.second) {
+                    val test = buildSdJwtValueCredential(it)
                     shouldNotThrowAny {
                         TestCredentialQueryAdapter(sdJwtDcqlQuery).execute(
-                            listOf(buildSdJwtValueCredential(it))
+                            listOf(test)
                         ).getOrThrow()
                     }
                 }
