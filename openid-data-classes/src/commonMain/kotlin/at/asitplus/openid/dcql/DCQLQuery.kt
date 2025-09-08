@@ -12,16 +12,15 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class DCQLQuery(
     /**
-     * OID4VP draft 23: REQUIRED. A non-empty array of Credential Queries as defined in Section 6.1 that
-     * specify the requested Verifiable Credentials.
+     * OID4VP 1.0: REQUIRED. A non-empty array of Credential Queries as defined in Section 6.1 that
+     * specify the requested credentials.
      */
     @SerialName(SerialNames.CREDENTIALS)
     val credentials: DCQLCredentialQueryList<DCQLCredentialQuery>,
 
     /**
-     * OID4VP draft 23: OPTIONAL. A non-empty array of credential set queries as defined in Section
-     * 6.2 that specifies additional constraints on which of the requested Verifiable Credentials
-     * to return.
+     * OID4VP 1.0: OPTIONAL. A non-empty array of credential set queries as defined in Section
+     * 6.2 that specifies additional constraints on which of the requested Credentials to return.
      */
     @SerialName(SerialNames.CREDENTIAL_SETS)
     val credentialSets: NonEmptyList<DCQLCredentialSetQuery>? = null,
