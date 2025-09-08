@@ -3,6 +3,7 @@ package at.asitplus.openid
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialQueryList
 import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
@@ -17,6 +18,7 @@ class BackwardsCompatibleDCQLQuerySerializerTest : FreeSpec({
                 DCQLSdJwtCredentialQuery(
                     id = DCQLCredentialQueryIdentifier(uuid4().toString()),
                     format = CredentialFormatEnum.DC_SD_JWT,
+                    meta = DCQLSdJwtCredentialMetadataAndValidityConstraints(vctValues = listOf()),
                 )
             )
         )

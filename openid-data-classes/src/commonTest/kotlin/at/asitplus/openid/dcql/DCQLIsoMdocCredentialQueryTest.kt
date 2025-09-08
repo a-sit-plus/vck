@@ -14,12 +14,15 @@ class DCQLIsoMdocCredentialQueryTest : FreeSpec({
         val value = DCQLIsoMdocCredentialQuery(
             id = DCQLCredentialQueryIdentifier("test"),
             format = CredentialFormatEnum.MSO_MDOC,
+            meta = DCQLIsoMdocCredentialMetadataAndValidityConstraints(
+                doctypeValue = "test"
+            ),
         )
 
         val base: DCQLCredentialQuery = value
         val serialized = Json.encodeToJsonElement(base)
         serialized shouldBe Json.encodeToJsonElement(value)
-        serialized.jsonObject.entries shouldHaveSize 2
+        serialized.jsonObject.entries shouldHaveSize 3
 
         DCQLCredentialQuery.SerialNames.ID shouldBeIn serialized.jsonObject.keys
         DCQLCredentialQuery.SerialNames.FORMAT shouldBeIn serialized.jsonObject.keys
