@@ -1,6 +1,8 @@
 # Changelog
 
 Release 5.9.0 (unreleased):
+ - Change `DCQLCredentialQuery.meta` to be mandatory
+   - Add `DCQLEmptyCredentialMetadataAndValidityConstraints`
  - Remove Generics from `OpenId4VpHolder` functions and work directly with `AuthorizationRequestParameters`
  - In `PresentationFactory` replace `RequestParameters` in function signatures to work directly with `AuthorizationRequestParameters`
  - Remove all parameters from `RequestParameters`. Moved into their respective implementing class.
