@@ -463,6 +463,7 @@ private fun buildDCQLQuery(vararg claimsQueries: DCQLJsonClaimsQuery) = DCQLQuer
             id = DCQLCredentialQueryIdentifier(uuid4().toString()),
             format = CredentialFormatEnum.DC_SD_JWT,
             claims = DCQLClaimsQueryList(claimsQueries.toList().toNonEmptyList()),
+            meta = DCQLSdJwtCredentialMetadataAndValidityConstraints( listOf(AtomicAttribute2023.sdJwtType))
         )
     )
 )

@@ -25,7 +25,8 @@ class DCQLSdJwtCredentialQueryTest : FreeSpec({
                 DCQLJsonClaimsQuery(
                     path = DCQLClaimsPathPointer(null)
                 )
-            )
+            ),
+            meta = DCQLSdJwtCredentialMetadataAndValidityConstraints(listOf())
         )
 
         val expectedJsonObject = buildJsonObject {
@@ -34,6 +35,10 @@ class DCQLSdJwtCredentialQueryTest : FreeSpec({
                 DCQLCredentialQuery.SerialNames.FORMAT,
                 JsonPrimitive(CredentialFormatEnum.DC_SD_JWT.text)
             )
+            put(DCQLCredentialQuery.SerialNames.META,
+                buildJsonObject {
+                    put(DCQLSdJwtCredentialMetadataAndValidityConstraints.SerialNames.VCT_VALUES, buildJsonArray {})
+                })
             put(DCQLCredentialQuery.SerialNames.CLAIMS, buildJsonArray {
                 add(buildJsonObject {
                     put(DCQLJsonClaimsQuery.SerialNames.PATH, buildJsonArray {

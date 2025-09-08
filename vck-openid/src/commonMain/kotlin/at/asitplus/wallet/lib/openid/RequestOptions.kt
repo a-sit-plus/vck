@@ -25,6 +25,7 @@ import at.asitplus.openid.dcql.DCQLClaimsQueryList
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialQueryInstance
 import at.asitplus.openid.dcql.DCQLCredentialQueryList
+import at.asitplus.openid.dcql.DCQLEmptyCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLIsoMdocClaimsQuery
 import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
@@ -127,7 +128,7 @@ data class RequestOptions(
                     CredentialRepresentation.ISO_MDOC -> CredentialFormatEnum.MSO_MDOC
                 }
                 val meta = when (credential.representation) {
-                    CredentialRepresentation.PLAIN_JWT -> null
+                    CredentialRepresentation.PLAIN_JWT -> DCQLEmptyCredentialMetadataAndValidityConstraints
                     CredentialRepresentation.SD_JWT -> DCQLSdJwtCredentialMetadataAndValidityConstraints(
                         vctValues = listOf(credential.credentialScheme.sdJwtType!!)
                     )

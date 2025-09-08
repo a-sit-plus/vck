@@ -11,6 +11,7 @@ import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialQueryList
 import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
 import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
@@ -25,11 +26,11 @@ import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.rfc3986.toUri
+import at.asitplus.wallet.lib.extensions.sdHashInput
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
-import at.asitplus.wallet.lib.extensions.sdHashInput
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
@@ -37,9 +38,9 @@ import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldNotBeInstanceOf
-import kotlin.time.Clock
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
+import kotlin.time.Clock
 
 
 class AgentSdJwtTest : FreeSpec({
@@ -307,7 +308,8 @@ private fun buildDCQLQuery(vararg claimsQueries: DCQLJsonClaimsQuery) = DCQLQuer
             format = CredentialFormatEnum.DC_SD_JWT,
             claims = DCQLClaimsQueryList(
                 claimsQueries.toList().toNonEmptyList(),
-            )
+            ),
+            meta = DCQLSdJwtCredentialMetadataAndValidityConstraints( listOf(ConstantIndex.AtomicAttribute2023.sdJwtType))
         )
     )
 )
