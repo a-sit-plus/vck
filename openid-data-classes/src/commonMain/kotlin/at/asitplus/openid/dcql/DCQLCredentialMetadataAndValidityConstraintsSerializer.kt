@@ -12,6 +12,7 @@ object DCQLCredentialMetadataAndValidityConstraintsSerializer :
     override fun selectDeserializer(element: JsonElement): DeserializationStrategy<DCQLCredentialMetadataAndValidityConstraints> {
         val parameters = element.jsonObject
         return when {
+            parameters.isEmpty() -> DCQLEmptyCredentialMetadataAndValidityConstraints.serializer()
             DCQLSdJwtCredentialMetadataAndValidityConstraints.SerialNames.VCT_VALUES in parameters -> DCQLSdJwtCredentialMetadataAndValidityConstraints.serializer()
             DCQLIsoMdocCredentialMetadataAndValidityConstraints.SerialNames.DOCTYPE_VALUE in parameters -> DCQLIsoMdocCredentialMetadataAndValidityConstraints.serializer()
             else -> throw IllegalArgumentException("Deserializer not found")

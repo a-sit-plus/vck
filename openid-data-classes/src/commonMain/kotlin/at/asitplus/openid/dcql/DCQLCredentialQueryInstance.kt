@@ -12,7 +12,7 @@ data class DCQLCredentialQueryInstance(
     @SerialName(DCQLCredentialQuery.SerialNames.FORMAT)
     override val format: CredentialFormatEnum,
     @SerialName(DCQLCredentialQuery.SerialNames.META)
-    override val meta: DCQLCredentialMetadataAndValidityConstraints,
+    override val meta: DCQLCredentialMetadataAndValidityConstraints = DCQLEmptyCredentialMetadataAndValidityConstraints,
     @SerialName(DCQLCredentialQuery.SerialNames.CLAIMS)
     override val claims: DCQLClaimsQueryList<DCQLClaimsQuery>? = null,
     @SerialName(DCQLCredentialQuery.SerialNames.CLAIM_SETS)
@@ -20,7 +20,7 @@ data class DCQLCredentialQueryInstance(
     @SerialName(DCQLCredentialQuery.SerialNames.MULTIPLE)
     override val multiple: Boolean? = false,
     @SerialName(DCQLCredentialQuery.SerialNames.TRUSTED_AUTHORITIES)
-    override val trustedAuthorities: List<String>?,
+    override val trustedAuthorities: List<String>? = null,
     @SerialName(DCQLCredentialQuery.SerialNames.REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING)
     override val requireCryptographicHolderBinding: Boolean? = true,
 ) : DCQLCredentialQuery {
