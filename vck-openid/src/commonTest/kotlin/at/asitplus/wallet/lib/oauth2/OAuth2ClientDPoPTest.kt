@@ -13,7 +13,6 @@ import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidvci.BuildDPoPHeader
-import at.asitplus.wallet.lib.oidvci.DefaultNonceService
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.randomString
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
@@ -158,6 +157,7 @@ class OAuth2ClientDPoPTest : FunSpec({
                 dpop = BuildDPoPHeader(
                     signDpop = signDpop,
                     url = tokenUrl,
+                    accessToken = token.refreshToken,
                     nonce = server.getDpopNonce(),
                     randomSource = RandomSource.Default,
                 )

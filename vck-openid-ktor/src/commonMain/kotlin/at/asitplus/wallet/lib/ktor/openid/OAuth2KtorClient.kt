@@ -378,8 +378,8 @@ class OAuth2KtorClient(
             BuildDPoPHeader(
                 signDpop = signDpop,
                 url = resourceUrl,
-                accessToken = tokenResponse.accessToken,
                 httpMethod = httpMethod.value,
+                accessToken = tokenResponse.accessToken,
                 nonce = dpopNonce,
                 randomSource = randomSource
             )

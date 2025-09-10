@@ -88,24 +88,25 @@ class JwtTokenVerificationService(
         httpRequest: RequestInfo?,
         validatedClientKey: JsonWebKey?,
     ): String {
-        val dpopTokenJwt = validateDpopToken(refreshToken, JwsContentTypeConstants.RT_JWT)
-        validateDpopJwt(null, dpopTokenJwt, httpRequest, dpopNonceService, validatedClientKey)
+        val tokenJwt = validateToken(refreshToken, JwsContentTypeConstants.RT_JWT)
+        // ath is not required on /token endpoints
+        validateDpopProof(null, tokenJwt, httpRequest, dpopNonceService, validatedClientKey)
         return refreshToken
     }
 
     override suspend fun getTokenInfo(
         tokenOrAuthHeader: String,
     ): TokenInfo = run {
-        val dpopToken = if (tokenOrAuthHeader.startsWith(TOKEN_TYPE_DPOP, ignoreCase = true))
+        val accessToken = if (tokenOrAuthHeader.startsWith(TOKEN_TYPE_DPOP, ignoreCase = true))
             tokenOrAuthHeader.removePrefix(TOKEN_PREFIX_DPOP).split(" ").last()
         else tokenOrAuthHeader
-        val dpopTokenJwt = validateDpopToken(dpopToken, JwsContentTypeConstants.OID4VCI_AT_JWT)
+        val dpopTokenJwt = validateToken(accessToken, JwsContentTypeConstants.OID4VCI_AT_JWT)
         val jwtId = dpopTokenJwt.payload.jwtId
-            ?: throw InvalidToken("access token not valid: $dpopToken")
+            ?: throw InvalidToken("access token not valid: $accessToken")
         // No need to validate DPoP JWT, because we are not granting access to anything, just printing infos
         with(dpopTokenJwt.payload) {
             TokenInfo(
-                token = dpopToken,
+                token = accessToken,
                 authorizationDetails = authorizationDetails?.filterIsInstance<OpenIdAuthorizationDetails>()?.toSet(),
                 scope = scope
             )
@@ -117,11 +118,11 @@ class JwtTokenVerificationService(
         httpRequest: RequestInfo?,
         dpopNonceService: NonceService?,
     ) = catching {
-        val dpopToken = if (tokenOrAuthHeader.startsWith(TOKEN_TYPE_DPOP, ignoreCase = true))
+        val accessToken = if (tokenOrAuthHeader.startsWith(TOKEN_TYPE_DPOP, ignoreCase = true))
             tokenOrAuthHeader.removePrefix(TOKEN_PREFIX_DPOP).split(" ").last()
         else tokenOrAuthHeader
-        val dpopTokenJwt = validateDpopToken(dpopToken, JwsContentTypeConstants.OID4VCI_AT_JWT)
-        validateDpopJwt(null, dpopTokenJwt, httpRequest, dpopNonceService ?: this.dpopNonceService, null)
+        val dpopTokenJwt = validateToken(accessToken, JwsContentTypeConstants.OID4VCI_AT_JWT)
+        validateDpopProof(accessToken, dpopTokenJwt, httpRequest, dpopNonceService ?: this.dpopNonceService, null)
     }
 
     override suspend fun extractValidatedClientKey(
@@ -130,27 +131,27 @@ class JwtTokenVerificationService(
         if (httpRequest?.dpop.isNullOrEmpty()) {
             throw InvalidDpopProof("no dpop proof in header")
         }
-        val jwt = httpRequest.dpop.parseAndValidate()
-        if (jwt.header.type != JwsContentTypeConstants.DPOP_JWT) {
-            throw InvalidDpopProof("invalid type: ${jwt.header.type}")
+        val dpopProof = httpRequest.dpop.parseDpopProof()
+        if (dpopProof.header.type != JwsContentTypeConstants.DPOP_JWT) {
+            throw InvalidDpopProof("invalid type: ${dpopProof.header.type}")
         }
-        if (jwt.payload.nonce == null || !dpopNonceService.verifyAndRemoveNonce(jwt.payload.nonce!!)) {
-            throw UseDpopNonce(dpopNonceService.provideNonce(), "DPoP JWT nonce not valid: ${jwt.payload.nonce}")
+        if (dpopProof.payload.nonce == null || !dpopNonceService.verifyAndRemoveNonce(dpopProof.payload.nonce!!)) {
+            throw UseDpopNonce(dpopNonceService.provideNonce(), "DPoP JWT nonce not valid: ${dpopProof.payload.nonce}")
         }
-        if (jwt.payload.httpTargetUrl != httpRequest.url) {
-            throw InvalidDpopProof("DPoP JWT htu incorrect: ${jwt.payload.httpTargetUrl}")
+        if (dpopProof.payload.httpTargetUrl != httpRequest.url) {
+            throw InvalidDpopProof("DPoP JWT htu incorrect: ${dpopProof.payload.httpTargetUrl}")
         }
-        if (jwt.payload.httpMethod != httpRequest.method.value.uppercase()) {
-            throw InvalidDpopProof("DPoP JWT htm incorrect: ${jwt.payload.httpMethod}")
+        if (dpopProof.payload.httpMethod != httpRequest.method.value.uppercase()) {
+            throw InvalidDpopProof("DPoP JWT htm incorrect: ${dpopProof.payload.httpMethod}")
         }
-        jwt.header.jsonWebKey ?: run {
+        dpopProof.header.jsonWebKey ?: run {
             throw InvalidDpopProof("DPoP JWT contains no public key")
         }
     }
 
-    internal suspend fun validateDpopJwt(
-        dpopToken: String?, // TODO when to set this
-        dpopTokenJwt: JwsSigned<OpenId4VciAccessToken>,
+    internal suspend fun validateDpopProof(
+        accessToken: String?,
+        tokenJwt: JwsSigned<OpenId4VciAccessToken>,
         httpRequest: RequestInfo?,
         dpopNonceService: NonceService,
         validatedClientKey: JsonWebKey?,
@@ -158,34 +159,34 @@ class JwtTokenVerificationService(
         if (httpRequest?.dpop.isNullOrEmpty()) {
             throw InvalidDpopProof("no dpop proof in header")
         }
-        val jwt = httpRequest.dpop.parseAndValidate()
-        if (dpopTokenJwt.payload.confirmationClaim == null ||
-            jwt.header.jsonWebKey == null ||
-            jwt.header.jsonWebKey!!.jwkThumbprintPlain != dpopTokenJwt.payload.confirmationClaim!!.jsonWebKeyThumbprint
+        val dpopProof = httpRequest.dpop.parseDpopProof()
+        if (tokenJwt.payload.confirmationClaim == null ||
+            dpopProof.header.jsonWebKey == null ||
+            dpopProof.header.jsonWebKey!!.jwkThumbprintPlain != tokenJwt.payload.confirmationClaim!!.jsonWebKeyThumbprint
         ) {
             throw InvalidDpopProof("DPoP JWT JWK not matching cnf.jkt")
         }
         if (validatedClientKey == null) {
             // DPoP-JWT has already been verified, so we can't check for the nonce twice
-            if (jwt.payload.nonce == null || !dpopNonceService.verifyAndRemoveNonce(jwt.payload.nonce!!)) {
-                throw UseDpopNonce(dpopNonceService.provideNonce(), "DPoP JWT nonce not valid: ${jwt.payload.nonce}")
+            if (dpopProof.payload.nonce == null || !dpopNonceService.verifyAndRemoveNonce(dpopProof.payload.nonce!!)) {
+                throw UseDpopNonce(dpopNonceService.provideNonce(), "DPoP JWT nonce not valid: ${dpopProof.payload.nonce}")
             }
         }
-        if (jwt.payload.httpTargetUrl != httpRequest.url) {
-            throw InvalidDpopProof("DPoP JWT htu incorrect: ${jwt.payload.httpTargetUrl}")
+        if (dpopProof.payload.httpTargetUrl != httpRequest.url) {
+            throw InvalidDpopProof("DPoP JWT htu incorrect: ${dpopProof.payload.httpTargetUrl}")
         }
-        if (jwt.payload.httpMethod != httpRequest.method.value.uppercase()) {
-            throw InvalidDpopProof("DPoP JWT htm incorrect: ${jwt.payload.httpMethod}")
+        if (dpopProof.payload.httpMethod != httpRequest.method.value.uppercase()) {
+            throw InvalidDpopProof("DPoP JWT htm incorrect: ${dpopProof.payload.httpMethod}")
         }
-        dpopToken?.let {
-            val ath = dpopToken.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
-            if (!jwt.payload.accessTokenHash.equals(ath)) {
-                throw InvalidDpopProof("DPoP JWT ath not correct: ${jwt.payload.accessTokenHash}, expected $ath")
+        accessToken?.let {
+            val ath = accessToken.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
+            if (!dpopProof.payload.accessTokenHash.equals(ath)) {
+                throw InvalidDpopProof("DPoP JWT ath not correct: ${dpopProof.payload.accessTokenHash}, expected $ath")
             }
         }
     }
 
-    private suspend fun String.parseAndValidate(): JwsSigned<JsonWebToken> =
+    private suspend fun String.parseDpopProof(): JwsSigned<JsonWebToken> =
         JwsSigned.deserialize(JsonWebToken.serializer(), this, vckJsonSerializer).getOrElse {
             throw InvalidDpopProof("could not parse DPoP JWT", it)
         }.also {
@@ -194,15 +195,12 @@ class JwtTokenVerificationService(
             }
         }
 
-    internal suspend fun validateDpopToken(
-        dpopToken: String,
+    internal suspend fun validateToken(
+        accessToken: String,
         expectedType: String,
     ): JwsSigned<OpenId4VciAccessToken> {
-        val jwt = JwsSigned
-            .deserialize<OpenId4VciAccessToken>(OpenId4VciAccessToken.serializer(), dpopToken, vckJsonSerializer)
-            .getOrElse {
-                throw InvalidToken("could not parse DPoP Token", it)
-            }
+        val jwt = JwsSigned.deserialize(OpenId4VciAccessToken.serializer(), accessToken, vckJsonSerializer)
+            .getOrElse { throw InvalidToken("could not parse DPoP Token", it) }
         if (!verifyJwsSignatureWithKey(jwt, issuerKey)) {
             throw InvalidToken("DPoP Token not verified")
         }

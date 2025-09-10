@@ -5,9 +5,7 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
-import io.github.aakira.napier.Napier
 
 /**
  * Combines sender-constrained JWT tokens from [JwtTokenGenerationService] and [JwtTokenVerificationService].
@@ -51,7 +49,7 @@ class JwtTokenService(
     override suspend fun validateTokenForTokenExchange(
         subjectToken: String,
     ): ValidatedAccessToken = run {
-        val dpopTokenJwt = verification.validateDpopToken(subjectToken, JwsContentTypeConstants.OID4VCI_AT_JWT)
+        val dpopTokenJwt = verification.validateToken(subjectToken, JwsContentTypeConstants.OID4VCI_AT_JWT)
         val jwtId = dpopTokenJwt.payload.jwtId
             ?: throw InvalidToken("access token not valid: $subjectToken")
         // can't validate DPoP JWT, as the third party can't forward this
