@@ -33,7 +33,7 @@ class VerifySignature() : VerifySignatureFun {
     }
 }
 
-class InvalidMac(message: String, cause: Throwable? = null): Throwable(message, cause)
+class InvalidMacException(message: String, cause: Throwable? = null): Throwable(message, cause)
 
 fun interface VerifyMacFun {
     data object Success
@@ -57,7 +57,7 @@ class VerifyMac() : VerifyMacFun {
         if (realTag.contentEquals(tag))
             VerifyMacFun.Success
         else
-            throw InvalidMac("Mac is invalid.")
+            throw InvalidMacException("Mac is invalid.")
     }
 
 }

@@ -172,10 +172,7 @@ class CoseServiceJvmTest : FreeSpec({
                         CoseInput.serializer(),
                         CoseInput(
                             contextString = "Signature1",
-                            protectedHeader = coseCompliantSerializer.encodeToByteArray(
-                                CoseHeader.serializer(),
-                                CoseHeader(algorithm = coseAlgorithm)
-                            ),
+                            protectedHeader = CoseHeader(algorithm = coseAlgorithm),
                             externalAad = byteArrayOf(),
                             payload = randomPayload.encodeToByteArray(),
                         )
