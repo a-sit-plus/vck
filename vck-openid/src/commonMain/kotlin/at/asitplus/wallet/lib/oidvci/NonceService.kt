@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.oidvci
 
 import com.benasher44.uuid.uuid4
-import io.github.aakira.napier.Napier
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -10,7 +9,6 @@ import kotlinx.coroutines.sync.withLock
  * presentation of credentials.
  * Can be implemented to provide replication across different instances of the enclosing application.
  */
-// TODO Rename "nonce" to "challenge" in next major release
 interface NonceService {
 
     /**
@@ -41,10 +39,9 @@ class DefaultNonceService : NonceService {
     private val values = mutableListOf<String>()
 
     override suspend fun provideNonce() = uuid4().toString().also { mutex.withLock { values += it } }
-        .also { Napier.i("${this.hashCode()} provideNonce: after values $values"); }
 
-    override suspend fun verifyNonce(nonce: String) = values.contains(nonce).also { Napier.i("${this.hashCode()} verifyNonce: input $nonce, values $values"); }
+    override suspend fun verifyNonce(it: String) = values.contains(it)
 
-    override suspend fun verifyAndRemoveNonce(nonce: String) =
-        mutex.withLock { Napier.i("${this.hashCode()} verifyAndRemoveNonce: input $nonce, values $values"); values.remove(nonce) }
+    override suspend fun verifyAndRemoveNonce(it: String) =
+        mutex.withLock { values.remove(it) }
 }
