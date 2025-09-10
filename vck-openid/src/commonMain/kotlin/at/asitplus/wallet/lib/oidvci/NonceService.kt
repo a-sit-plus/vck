@@ -43,8 +43,8 @@ class DefaultNonceService : NonceService {
     override suspend fun provideNonce() = uuid4().toString().also { mutex.withLock { values += it } }
         .also { Napier.i("${this.hashCode()} provideNonce: after values $values"); }
 
-    override suspend fun verifyNonce(it: String) = values.contains(it).also { Napier.i("${this.hashCode()} verifyNonce: values $values"); }
+    override suspend fun verifyNonce(nonce: String) = values.contains(nonce).also { Napier.i("${this.hashCode()} verifyNonce: input $nonce, values $values"); }
 
-    override suspend fun verifyAndRemoveNonce(it: String) =
-        mutex.withLock { Napier.i("${this.hashCode()} verifyAndRemoveNonce: input $it, values $values"); values.remove(it) }
+    override suspend fun verifyAndRemoveNonce(nonce: String) =
+        mutex.withLock { Napier.i("${this.hashCode()} verifyAndRemoveNonce: input $nonce, values $values"); values.remove(nonce) }
 }

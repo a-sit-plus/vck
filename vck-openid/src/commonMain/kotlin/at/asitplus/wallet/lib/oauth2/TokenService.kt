@@ -60,6 +60,7 @@ interface TokenService {
         if (request.requestedTokenType != TokenTypes.ACCESS_TOKEN) {
             throw InvalidGrant("requested_token_type is not valid, must be ${TokenTypes.ACCESS_TOKEN}")
         }
+        val validatedClientKey = verification.extractValidatedClientKey(httpRequest).getOrThrow()
         val validated = validateTokenForTokenExchange(
             subjectToken = request.subjectToken!!,
         ).apply {
@@ -71,7 +72,7 @@ interface TokenService {
             httpRequest = httpRequest,
             authorizationDetails = validated.authorizationDetails,
             scope = validated.scope,
-            validatedClientKey = verification.extractValidatedClientKey(httpRequest).getOrThrow(),
+            validatedClientKey = validatedClientKey,
         ).also { Napier.i("tokenExchange returns"); Napier.d("tokenExchange returns $it") }
     }
 

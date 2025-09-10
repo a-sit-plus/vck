@@ -317,7 +317,7 @@ class OpenId4VciClientExternalAuthorizationServerTest : FunSpec() {
                     externalAuthorizationServer.token(params, request.toRequestInfo()).fold(
                         onSuccess = {
                             respond(
-                                vckJsonSerializer.encodeToString<TokenResponseParameters>(it),
+                                vckJsonSerializer.encodeToString(it),
                                 headers = headers {
                                     append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                                 }
@@ -446,13 +446,14 @@ class OpenId4VciClientExternalAuthorizationServerTest : FunSpec() {
     }
 
     private fun MockRequestHandleScope.respondOAuth2Error(throwable: Throwable): HttpResponseData = respond(
-        vckJsonSerializer.encodeToString<OAuth2Error>(throwable.toOAuth2Error(null)),
+        vckJsonSerializer.encodeToString(throwable.toOAuth2Error(null)),
         headers = headers {
             append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             (throwable as? OAuth2Exception.UseDpopNonce)?.dpopNonce
                 ?.let { append(HttpHeaders.DPoPNonce, it) }
-        }
-    )
+        },
+        status = HttpStatusCode.BadRequest
+    ).also { Napier.w("Server error: ${throwable.message}", throwable) }
 
     private fun HttpRequestData.toRequestInfo(): RequestInfo = RequestInfo(
         url = url.toString(),

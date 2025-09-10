@@ -384,8 +384,9 @@ class OpenId4VciClientTest : FunSpec() {
             append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             (throwable as? OAuth2Exception.UseDpopNonce)?.dpopNonce
                 ?.let { append(HttpHeaders.DPoPNonce, it) }
-        }
-    )
+        },
+        status = HttpStatusCode.BadRequest
+    ).also { Napier.w("Server error: ${throwable.message}", throwable) }
 
     private fun HttpRequestData.toRequestInfo(): RequestInfo = RequestInfo(
         url = url.toString(),

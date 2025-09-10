@@ -113,10 +113,14 @@ class OAuth2KtorClientTest : FunSpec() {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val authnRequest: AuthenticationRequestParameters =
                         requestBody.decodeFromPostBody<AuthenticationRequestParameters>()
-                    val result = authorizationService.par(authnRequest, request.toRequestInfo()).getOrThrow()
-                    respond(
-                        vckJsonSerializer.encodeToString<PushedAuthenticationResponseParameters>(result),
-                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    authorizationService.par(authnRequest, request.toRequestInfo()).fold(
+                        onSuccess = {
+                            respond(
+                                vckJsonSerializer.encodeToString<PushedAuthenticationResponseParameters>(it),
+                                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                            )
+                        },
+                        onFailure = { respondOAuth2Error(it) }
                     )
                 }
 
@@ -127,8 +131,10 @@ class OAuth2KtorClientTest : FunSpec() {
                     val authnRequest: AuthenticationRequestParameters =
                         if (requestBody.isEmpty()) queryParameters.decodeFromUrlQuery<AuthenticationRequestParameters>()
                         else requestBody.decodeFromPostBody<AuthenticationRequestParameters>()
-                    val result = authorizationService.authorize(authnRequest) { catching { dummyUser() } }.getOrThrow()
-                    respondRedirect(result.url)
+                    authorizationService.authorize(authnRequest) { catching { dummyUser() } }.fold(
+                        onSuccess = { respondRedirect(it.url) },
+                        onFailure = { respondOAuth2Error(it) }
+                    )
                 }
 
                 request.url.fullPath.startsWith(tokenEndpointPath) -> {
@@ -143,16 +149,7 @@ class OAuth2KtorClientTest : FunSpec() {
                                 }
                             )
                         },
-                        onFailure = {
-                            respond(
-                                vckJsonSerializer.encodeToString<OAuth2Error>(it.toOAuth2Error(null)),
-                                headers = headers {
-                                    append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                                    (it as? OAuth2Exception.UseDpopNonce)?.dpopNonce
-                                        ?.let { append(HttpHeaders.DPoPNonce, it) }
-                                }
-                            )
-                        }
+                        onFailure = { respondOAuth2Error(it) },
                     )
                 }
 
@@ -178,6 +175,17 @@ class OAuth2KtorClientTest : FunSpec() {
             randomSource = RandomSource.Default,
         )
     }
+
+    private fun MockRequestHandleScope.respondOAuth2Error(throwable: Throwable): HttpResponseData = respond(
+        vckJsonSerializer.encodeToString(throwable.toOAuth2Error(null)),
+        headers = headers {
+            append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+            (throwable as? OAuth2Exception.UseDpopNonce)?.dpopNonce
+                ?.let { append(HttpHeaders.DPoPNonce, it) }
+        },
+        status = HttpStatusCode.BadRequest
+    ).also { Napier.w("Server error: ${throwable.message}", throwable) }
+
 
     private fun HttpRequestData.toRequestInfo(): RequestInfo = RequestInfo(
         url = url.toString(),

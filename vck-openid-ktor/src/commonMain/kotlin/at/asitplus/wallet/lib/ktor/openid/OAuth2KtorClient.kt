@@ -7,7 +7,6 @@ import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.OpenIdConstants
-import at.asitplus.openid.OpenIdConstants.Errors.USE_DPOP_NONCE
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.SupportedCredentialFormat
@@ -26,14 +25,12 @@ import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.OAuth2Client.AuthorizationForToken
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationPoPJwt
 import at.asitplus.wallet.lib.oidvci.BuildDPoPHeader
-import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
-import io.ktor.client.call.body
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.plugins.DefaultRequest
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -46,6 +43,7 @@ import io.ktor.client.request.headers
 import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.client.request.url
+import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
@@ -258,31 +256,24 @@ class OAuth2KtorClient(
         tokenRequest: TokenRequestParameters,
         popAudience: String,
         dpopNonce: String? = null,
-        retryCounter: Int = 0,
-    ): TokenResponseWithDpopNonce {
-        val tokenEndpointUrl = oauthMetadata.tokenEndpoint
-            ?: throw IllegalArgumentException("No tokenEndpoint in $oauthMetadata")
+        retryCount: Int = 0,
+    ): TokenResponseWithDpopNonce = oauthMetadata.tokenEndpoint?.let { tokenEndpointUrl ->
         Napier.i("postToken: $tokenEndpointUrl with $tokenRequest")
-        return client.request {
+        client.request {
             url(tokenEndpointUrl)
             method = HttpMethod.Post
             setBody(FormDataContent(parameters {
                 tokenRequest.encodeToParameters().forEach { append(it.key, it.value) }
             }))
             applyAuthnForToken(oauthMetadata, popAudience, tokenEndpointUrl, HttpMethod.Post, true, dpopNonce)()
-        }.let { resp ->
-            val useFreshNonce: String? = runCatching {
-                resp.body<OAuth2Error>().error.takeIf { it == USE_DPOP_NONCE }
-                    ?.let { resp.headers[HttpHeaders.DPoPNonce] }
-            }.getOrNull()
-
-            useFreshNonce?.takeIf { retryCounter == 0 }?.let {
-                postToken(oauthMetadata, tokenRequest, popAudience, it, retryCounter + 1)
-            } ?: run {
-                TokenResponseWithDpopNonce(resp.body(), resp.headers[HttpHeaders.DPoPNonce])
-            }
+        }.onFailure { response ->
+            dpopNonce(response)?.takeIf { retryCount == 0 }?.let { dpopNonce ->
+                postToken(oauthMetadata, tokenRequest, popAudience, dpopNonce, retryCount + 1)
+            } ?: throw Exception("Error requesting Token: ${errorDescription ?: error}")
+        }.onSuccessToken { response ->
+            TokenResponseWithDpopNonce(this, response.headers[HttpHeaders.DPoPNonce])
         }
-    }
+    } ?: throw IllegalArgumentException("No tokenEndpoint in $oauthMetadata")
 
     /**
      * Builds the authorization request ([AuthenticationRequestParameters]) to start authentication at the
@@ -349,43 +340,29 @@ class OAuth2KtorClient(
         state: String,
         popAudience: String,
         dpopNonce: String? = null,
-        retryCounter: Int = 0,
-    ): AuthenticationRequestParameters {
-        val parEndpointUrl = oauthMetadata.pushedAuthorizationRequestEndpoint
-            ?: throw Exception("No pushedAuthorizationRequestEndpoint in $oauthMetadata")
-
-        val resp = client.request {
+        retryCount: Int = 0,
+    ): AuthenticationRequestParameters = oauthMetadata.pushedAuthorizationRequestEndpoint?.let { parEndpointUrl ->
+        client.request {
             url(parEndpointUrl)
             method = HttpMethod.Post
             setBody(FormDataContent(parameters {
-                authRequest.encodeToParameters().forEach { append(it.key, it.value) }
+                authRequest.encodeToParameters<AuthenticationRequestParameters>()
+                    .forEach { append(it.key, it.value) }
                 append(OpenIdConstants.PARAMETER_PROMPT, OpenIdConstants.PARAMETER_PROMPT_LOGIN)
             }))
             applyAuthnForToken(oauthMetadata, popAudience, parEndpointUrl, HttpMethod.Post, false, dpopNonce)()
-        }
-        runCatching {
-            resp.body<OAuth2Error>()
-        }.getOrNull()?.let {
-            throw Exception(it.error + it.errorDescription?.let { ": $it" })
-        }
-        val useFreshNonce: String? = runCatching {
-            resp.body<OAuth2Error>().error.takeIf { it == USE_DPOP_NONCE }
-                ?.let { resp.headers[HttpHeaders.DPoPNonce] }
-        }.getOrNull()
-
-        return useFreshNonce?.takeIf { retryCounter == 0 }?.let {
-            pushAuthorizationRequest(oauthMetadata, authRequest, state, popAudience, it, retryCounter + 1)
-        } ?: resp.body<PushedAuthenticationResponseParameters>().let { params ->
-            if (params.requestUri == null) {
-                throw Exception("No request_uri from PAR response at $parEndpointUrl")
-            }
+        }.onFailure { response ->
+            dpopNonce(response)?.takeIf { retryCount == 0 }?.let { dpopNonce ->
+                pushAuthorizationRequest(oauthMetadata, authRequest, state, popAudience, dpopNonce, retryCount + 1)
+            } ?: throw Exception("Error requesting PAR: ${errorDescription ?: error}")
+        }.onSuccessPar {
             AuthenticationRequestParameters(
                 clientId = oAuth2Client.clientId,
-                requestUri = params.requestUri,
+                requestUri = requestUri ?: throw Exception("No request_uri from PAR response at $parEndpointUrl"),
                 state = state,
             )
         }
-    }
+    } ?: throw Exception("No pushedAuthorizationRequestEndpoint in $oauthMetadata")
 
     /**
      * Sets the appropriate headers when accessing [resourceUrl], by reading data from [tokenResponse],
@@ -483,3 +460,11 @@ data class TokenResponseWithDpopNonce(
     val params: TokenResponseParameters,
     val dpopNonce: String?,
 )
+
+private suspend inline fun <R> IntermediateResult<R>.onSuccessPar(
+    block: PushedAuthenticationResponseParameters.(httpResponse: HttpResponse) -> R,
+) = onSuccess<PushedAuthenticationResponseParameters, R>(block)
+
+private suspend inline fun <R> IntermediateResult<R>.onSuccessToken(
+    block: TokenResponseParameters.(httpResponse: HttpResponse) -> R,
+) = onSuccess<TokenResponseParameters, R>(block)

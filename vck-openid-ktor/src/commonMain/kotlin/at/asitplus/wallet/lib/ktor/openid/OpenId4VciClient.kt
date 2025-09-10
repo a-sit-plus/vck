@@ -8,7 +8,6 @@ import at.asitplus.openid.CredentialResponseParameters
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants
-import at.asitplus.openid.OpenIdConstants.Errors.USE_DPOP_NONCE
 import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER
 import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION
 import at.asitplus.openid.SupportedCredentialFormat
@@ -27,7 +26,6 @@ import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
-import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.WalletService
 import at.asitplus.wallet.lib.oidvci.toRepresentation
 import com.benasher44.uuid.uuid4
@@ -39,6 +37,7 @@ import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.cookies.*
 import io.ktor.client.request.*
+import io.ktor.client.statement.HttpResponse
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
@@ -372,21 +371,13 @@ class OpenId4VciClient(
             httpMethod = HttpMethod.Post,
             dpopNonce = dpopNonce ?: tokenResponse.dpopNonce
         )()
-    }.let { resp ->
-        val useFreshNonce: String? = runCatching {
-            resp.body<OAuth2Error>().error.takeIf { it == USE_DPOP_NONCE }
-                ?.let { resp.headers[HttpHeaders.DPoPNonce] }
-        }.getOrNull()
-
-        useFreshNonce?.takeIf { retryCount == 0 }?.let {
-            fetchCredential(url, request, tokenResponse, credentialFormat, credentialScheme, it, retryCount + 1)
-        } ?: run {
-            oid4vciService.parseCredentialResponse(
-                resp.body<CredentialResponseParameters>(),
-                credentialFormat.format.toRepresentation(),
-                credentialScheme
-            ).getOrThrow()
-        }
+    }.onFailure { response ->
+        dpopNonce(response)?.takeIf { retryCount == 0 }?.let { dpopNonce ->
+            fetchCredential(url, request, tokenResponse, credentialFormat, credentialScheme, dpopNonce, retryCount + 1)
+        } ?: throw Exception("Error requesting credential: ${errorDescription ?: error}")
+    }.onSuccessCredential { response ->
+        oid4vciService.parseCredentialResponse(this, credentialFormat.format.toRepresentation(), credentialScheme)
+            .getOrThrow()
     }
 
     /**
@@ -528,3 +519,7 @@ data class RefreshTokenInfo(
     val credentialIdentifier: String,
 )
 
+
+private suspend inline fun <R> IntermediateResult<R>.onSuccessCredential(
+    block: CredentialResponseParameters.(httpResponse: HttpResponse) -> R,
+) = onSuccess<CredentialResponseParameters, R>(block)
