@@ -54,7 +54,7 @@ interface TokenVerificationService {
         dpopNonceService: NonceService? = null,
     ): KmmResult<Unit>
 
-    /** Validate a DPoP proof and extract the client's key, if the proof exits at all. */
+    /** Validate a DPoP proof and extract the client's key if the proof exists at all. */
     suspend fun extractValidatedClientKey(
         httpRequest: RequestInfo?,
     ): KmmResult<JsonWebKey?>
@@ -100,11 +100,11 @@ class JwtTokenVerificationService(
         val accessToken = if (tokenOrAuthHeader.startsWith(TOKEN_TYPE_DPOP, ignoreCase = true))
             tokenOrAuthHeader.removePrefix(TOKEN_PREFIX_DPOP).split(" ").last()
         else tokenOrAuthHeader
-        val dpopTokenJwt = validateToken(accessToken, JwsContentTypeConstants.OID4VCI_AT_JWT)
-        val jwtId = dpopTokenJwt.payload.jwtId
-            ?: throw InvalidToken("access token not valid: $accessToken")
+        val tokenJwt = validateToken(accessToken, JwsContentTypeConstants.OID4VCI_AT_JWT)
+        if (tokenJwt.payload.jwtId == null)
+            throw InvalidToken("access token not valid: $accessToken")
         // No need to validate DPoP JWT, because we are not granting access to anything, just printing infos
-        with(dpopTokenJwt.payload) {
+        with(tokenJwt.payload) {
             TokenInfo(
                 token = accessToken,
                 authorizationDetails = authorizationDetails?.filterIsInstance<OpenIdAuthorizationDetails>()?.toSet(),
@@ -121,10 +121,11 @@ class JwtTokenVerificationService(
         val accessToken = if (tokenOrAuthHeader.startsWith(TOKEN_TYPE_DPOP, ignoreCase = true))
             tokenOrAuthHeader.removePrefix(TOKEN_PREFIX_DPOP).split(" ").last()
         else tokenOrAuthHeader
-        val dpopTokenJwt = validateToken(accessToken, JwsContentTypeConstants.OID4VCI_AT_JWT)
-        validateDpopProof(accessToken, dpopTokenJwt, httpRequest, dpopNonceService ?: this.dpopNonceService, null)
+        val tokenJwt = validateToken(accessToken, JwsContentTypeConstants.OID4VCI_AT_JWT)
+        validateDpopProof(accessToken, tokenJwt, httpRequest, dpopNonceService ?: this.dpopNonceService, null)
     }
 
+    /** Validate a DPoP proof and extract the client's key if the proof exists at all. */
     override suspend fun extractValidatedClientKey(
         httpRequest: RequestInfo?,
     ): KmmResult<JsonWebKey?> = catching {
@@ -149,6 +150,7 @@ class JwtTokenVerificationService(
         }
     }
 
+    /** @param validatedClientKey the key from the extracted DPoP proof */
     internal suspend fun validateDpopProof(
         accessToken: String?,
         tokenJwt: JwsSigned<OpenId4VciAccessToken>,
@@ -160,16 +162,31 @@ class JwtTokenVerificationService(
             throw InvalidDpopProof("no dpop proof in header")
         }
         val dpopProof = httpRequest.dpop.parseDpopProof()
+        if (dpopProof.header.type != JwsContentTypeConstants.DPOP_JWT) {
+            throw InvalidDpopProof("invalid type: ${dpopProof.header.type}")
+        }
+
+        val jwkThumbprintFromToken = tokenJwt.payload.confirmationClaim!!.jsonWebKeyThumbprint
         if (tokenJwt.payload.confirmationClaim == null ||
             dpopProof.header.jsonWebKey == null ||
-            dpopProof.header.jsonWebKey!!.jwkThumbprintPlain != tokenJwt.payload.confirmationClaim!!.jsonWebKeyThumbprint
+            dpopProof.header.jsonWebKey!!.jwkThumbprintPlain != jwkThumbprintFromToken
         ) {
             throw InvalidDpopProof("DPoP JWT JWK not matching cnf.jkt")
         }
-        if (validatedClientKey == null) {
+        if (validatedClientKey != null) {
+            if (jwkThumbprintFromToken != validatedClientKey.jwkThumbprintPlain) {
+                throw InvalidDpopProof(
+                    "Key from client ${validatedClientKey.jwkThumbprintPlain}" +
+                            "not matching key from token $jwkThumbprintFromToken"
+                )
+            }
+        } else {
             // DPoP-JWT has already been verified, so we can't check for the nonce twice
             if (dpopProof.payload.nonce == null || !dpopNonceService.verifyAndRemoveNonce(dpopProof.payload.nonce!!)) {
-                throw UseDpopNonce(dpopNonceService.provideNonce(), "DPoP JWT nonce not valid: ${dpopProof.payload.nonce}")
+                throw UseDpopNonce(
+                    dpopNonceService.provideNonce(),
+                    "DPoP JWT nonce not valid: ${dpopProof.payload.nonce}"
+                )
             }
         }
         if (dpopProof.payload.httpTargetUrl != httpRequest.url) {

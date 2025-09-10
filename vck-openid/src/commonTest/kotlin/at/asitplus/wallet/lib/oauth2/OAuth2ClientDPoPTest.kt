@@ -33,6 +33,7 @@ class OAuth2ClientDPoPTest : FunSpec({
     lateinit var server: SimpleAuthorizationService
     lateinit var clientKey: KeyMaterial
     lateinit var signDpop: SignJwtFun<JsonWebToken>
+    lateinit var state: String
     val tokenUrl = "https://example.com/token"
     val resourceUrl = "https://example.com/resource"
 
@@ -48,6 +49,7 @@ class OAuth2ClientDPoPTest : FunSpec({
         )
         clientKey = EphemeralKeyWithoutCert()
         signDpop = SignJwt(clientKey, JwsHeaderCertOrJwk())
+        state = uuid4().toString()
     }
 
     suspend fun getCode(state: String): String {
@@ -64,7 +66,6 @@ class OAuth2ClientDPoPTest : FunSpec({
     }
 
     test("authorization code flow with DPoP") {
-        val state = uuid4().toString()
         val code = getCode(state)
 
         val token = server.token(
@@ -114,7 +115,6 @@ class OAuth2ClientDPoPTest : FunSpec({
     }
 
     test("authorization code flow with DPoP and refresh token") {
-        val state = uuid4().toString()
         val code = getCode(state)
 
         val token = server.token(
@@ -191,8 +191,61 @@ class OAuth2ClientDPoPTest : FunSpec({
         ).getOrThrow()
     }
 
+    test("authorization code flow with DPoP and refresh token, but wrong key in DPoP proof") {
+        val code = getCode(state)
+
+        val token = server.token(
+            request = client.createTokenRequestParameters(
+                state = state,
+                authorization = OAuth2Client.AuthorizationForToken.Code(code),
+                scope = scope
+            ),
+            httpRequest = RequestInfo(
+                url = tokenUrl,
+                method = HttpMethod.Post,
+                dpop = BuildDPoPHeader(
+                    signDpop = signDpop,
+                    url = tokenUrl,
+                    nonce = server.getDpopNonce(),
+                    randomSource = RandomSource.Default,
+                )
+            )
+        ).getOrThrow().also {
+            it.tokenType shouldBe TOKEN_TYPE_DPOP
+            it.refreshToken.shouldNotBeNull()
+        }
+
+        server.tokenIntrospection(
+            TokenIntrospectionRequest(token = token.accessToken),
+            null
+        ).getOrThrow().apply {
+            active shouldBe true
+        }
+
+        val wrongSignDpop = SignJwt<JsonWebToken>(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk())
+        shouldThrow<OAuth2Exception.InvalidDpopProof> {
+            server.token(
+                request = client.createTokenRequestParameters(
+                    state = state,
+                    authorization = OAuth2Client.AuthorizationForToken.RefreshToken(token.refreshToken!!),
+                    scope = scope
+                ),
+                httpRequest = RequestInfo(
+                    url = tokenUrl,
+                    method = HttpMethod.Post,
+                    dpop = BuildDPoPHeader(
+                        signDpop = wrongSignDpop,
+                        url = tokenUrl,
+                        accessToken = token.refreshToken,
+                        nonce = server.getDpopNonce(),
+                        randomSource = RandomSource.Default,
+                    )
+                )
+            ).getOrThrow()
+        }
+    }
+
     test("authorization code flow with DPoP and wrong URL") {
-        val state = uuid4().toString()
         val code = getCode(state)
 
         shouldThrow<OAuth2Exception> {
@@ -217,7 +270,6 @@ class OAuth2ClientDPoPTest : FunSpec({
     }
 
     test("authorization code flow with DPoP and wrong nonce") {
-        val state = uuid4().toString()
         val code = getCode(state)
 
         shouldThrow<OAuth2Exception> {
@@ -242,7 +294,6 @@ class OAuth2ClientDPoPTest : FunSpec({
     }
 
     test("authorization code flow without DPoP for token") {
-        val state = uuid4().toString()
         val code = getCode(state)
 
         shouldThrow<OAuth2Exception> {
@@ -258,7 +309,6 @@ class OAuth2ClientDPoPTest : FunSpec({
     }
 
     test("authorization code flow without DPoP for resource") {
-        val state = uuid4().toString()
         val code = getCode(state)
 
         val token = server.token(
@@ -298,7 +348,6 @@ class OAuth2ClientDPoPTest : FunSpec({
     }
 
     test("authorization code flow with DPoP from other key") {
-        val state = uuid4().toString()
         val code = getCode(state)
 
         val token = server.token(

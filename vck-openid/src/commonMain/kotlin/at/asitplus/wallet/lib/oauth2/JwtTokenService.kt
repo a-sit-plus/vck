@@ -18,24 +18,21 @@ class JwtTokenService(
 ) : TokenService {
 
     /**
-     * Validates that the token sent from the client is actually one issued from [generation],
-     * and that the client presented a valid proof-of-possession for the key the token is bound to.
+     * Provides information about the access token from [authorizationHeader], if it has been issued by [generation].
+     * **Access token needs to be validated before (see [TokenVerificationService.validateAccessToken])**
      */
-    override suspend fun validateTokenExtractUser(
+    override suspend fun readUserInfo(
         authorizationHeader: String,
         request: RequestInfo?,
-        hasBeenValidated: Boolean,
     ): ValidatedAccessToken = if (authorizationHeader.startsWith(OpenIdConstants.TOKEN_TYPE_DPOP, ignoreCase = true)) {
-        val dpopToken = authorizationHeader.removePrefix(OpenIdConstants.TOKEN_PREFIX_DPOP).split(" ").last()
-        if (!hasBeenValidated)
-            verification.validateAccessToken(dpopToken, request).getOrThrow()
-        val dpopTokenJwt = JwsSigned
-            .deserialize<OpenId4VciAccessToken>(OpenId4VciAccessToken.serializer(), dpopToken, vckJsonSerializer)
+        val accessToken = authorizationHeader.removePrefix(OpenIdConstants.TOKEN_PREFIX_DPOP).split(" ").last()
+        val tokenJwt = JwsSigned
+            .deserialize<OpenId4VciAccessToken>(OpenId4VciAccessToken.serializer(), accessToken, vckJsonSerializer)
             .getOrElse { throw InvalidToken("could not parse DPoP Token", it) }
-        val jwtId = dpopTokenJwt.payload.jwtId
-            ?: throw InvalidToken("access token not valid: $dpopToken")
-        with(dpopTokenJwt.payload) {
-            toValidatedAccessToken(dpopToken, jwtId)
+        val jwtId = tokenJwt.payload.jwtId
+            ?: throw InvalidToken("access token not valid: $accessToken")
+        with(tokenJwt.payload) {
+            toValidatedAccessToken(accessToken, jwtId)
         }
     } else {
         throw InvalidToken("authorization header not valid: $authorizationHeader")
@@ -49,20 +46,20 @@ class JwtTokenService(
     override suspend fun validateTokenForTokenExchange(
         subjectToken: String,
     ): ValidatedAccessToken = run {
-        val dpopTokenJwt = verification.validateToken(subjectToken, JwsContentTypeConstants.OID4VCI_AT_JWT)
-        val jwtId = dpopTokenJwt.payload.jwtId
+        val tokenJwt = verification.validateToken(subjectToken, JwsContentTypeConstants.OID4VCI_AT_JWT)
+        val jwtId = tokenJwt.payload.jwtId
             ?: throw InvalidToken("access token not valid: $subjectToken")
         // can't validate DPoP JWT, as the third party can't forward this
-        with(dpopTokenJwt.payload) {
+        with(tokenJwt.payload) {
             toValidatedAccessToken(subjectToken, jwtId)
         }
     }
 
     private suspend fun OpenId4VciAccessToken.toValidatedAccessToken(
-        dpopToken: String,
+        accessToken: String,
         jwtId: String,
     ): ValidatedAccessToken = ValidatedAccessToken(
-        token = dpopToken,
+        token = accessToken,
         userInfoExtended = generation.getUserInfoExtended(jwtId),
         authorizationDetails = authorizationDetails?.filterIsInstance<OpenIdAuthorizationDetails>()?.toSet(),
         scope = scope

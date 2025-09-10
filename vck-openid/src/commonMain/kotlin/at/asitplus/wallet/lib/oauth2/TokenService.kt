@@ -23,11 +23,13 @@ interface TokenService {
     val dpopSigningAlgValuesSupportedStrings: Set<String>?
     val supportsRefreshTokens: Boolean
 
-    /** Validates that the token sent from the client is actually one issued from the known [TokenGenerationService]. */
-    suspend fun validateTokenExtractUser(
+    /**
+     * Provides information about the access token from [authorizationHeader], if it has been issued by [generation].
+     * **Access token needs to be validated before (see [TokenVerificationService.validateAccessToken])**
+     */
+    suspend fun readUserInfo(
         authorizationHeader: String,
         request: RequestInfo?,
-        hasBeenValidated: Boolean = false,
     ): ValidatedAccessToken
 
     /**

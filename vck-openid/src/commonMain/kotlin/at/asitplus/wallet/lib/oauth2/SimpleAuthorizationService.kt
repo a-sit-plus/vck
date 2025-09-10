@@ -553,7 +553,8 @@ class SimpleAuthorizationService(
         authorizationHeader: String,
         httpRequest: RequestInfo?,
     ): KmmResult<JsonObject> = catching {
-        with(tokenService.validateTokenExtractUser(authorizationHeader, httpRequest)) {
+        tokenService.verification.validateAccessToken(authorizationHeader, httpRequest).getOrThrow()
+        with(tokenService.readUserInfo(authorizationHeader, httpRequest)) {
             userInfoExtended?.jsonObject
                 ?: throw InvalidGrant("no user info found for $authorizationHeader")
         }
@@ -567,7 +568,7 @@ class SimpleAuthorizationService(
         authorizationHeader: String,
         httpRequest: RequestInfo?,
     ): KmmResult<JsonObject> = catching {
-        with(tokenService.validateTokenExtractUser(authorizationHeader, httpRequest, hasBeenValidated = true)) {
+        with(tokenService.readUserInfo(authorizationHeader, httpRequest)) {
             userInfoExtended?.jsonObject
                 ?: throw InvalidGrant("no user info found for $authorizationHeader")
         }

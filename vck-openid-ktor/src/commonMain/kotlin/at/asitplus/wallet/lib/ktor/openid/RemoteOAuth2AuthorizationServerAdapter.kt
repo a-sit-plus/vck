@@ -188,6 +188,11 @@ class RemoteOAuth2AuthorizationServerAdapter(
         )
     }
 
+    /**
+     * Obtains a JSON object representing [at.asitplus.openid.OidcUserInfo] from the Authorization Server,
+     * where we need to exchange the the wallet's access token in [authorizationHeader] first
+     * to get a valid access token to call the user info endpoint.
+     */
     override suspend fun getUserInfo(
         authorizationHeader: String,
         httpRequest: RequestInfo?,
