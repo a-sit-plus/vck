@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.oidvci
 
 import com.benasher44.uuid.uuid4
+import io.github.aakira.napier.Napier
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -40,8 +41,10 @@ class DefaultNonceService : NonceService {
     private val values = mutableListOf<String>()
 
     override suspend fun provideNonce() = uuid4().toString().also { mutex.withLock { values += it } }
+        .also { Napier.i("${this.hashCode()} provideNonce: after values $values"); }
 
-    override suspend fun verifyNonce(it: String) = values.contains(it)
+    override suspend fun verifyNonce(it: String) = values.contains(it).also { Napier.i("${this.hashCode()} verifyNonce: values $values"); }
 
-    override suspend fun verifyAndRemoveNonce(it: String) = mutex.withLock { values.remove(it) }
+    override suspend fun verifyAndRemoveNonce(it: String) =
+        mutex.withLock { Napier.i("${this.hashCode()} verifyAndRemoveNonce: input $it, values $values"); values.remove(it) }
 }

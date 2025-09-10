@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.Errors.ACCESS_DENIED
 import at.asitplus.openid.OpenIdConstants.Errors.CREDENTIAL_REQUEST_DENIED
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_AUTHDETAILS
@@ -19,6 +18,7 @@ import at.asitplus.openid.OpenIdConstants.Errors.REGISTRATION_VALUE_NOT_SUPPORTE
 import at.asitplus.openid.OpenIdConstants.Errors.UNKNOWN_CREDENTIAL_CONFIGURATION
 import at.asitplus.openid.OpenIdConstants.Errors.UNKNOWN_CREDENTIAL_IDENTIFIER
 import at.asitplus.openid.OpenIdConstants.Errors.USER_CANCELLED
+import at.asitplus.openid.OpenIdConstants.Errors.USE_DPOP_NONCE
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.Serializable
@@ -98,6 +98,14 @@ sealed class OAuth2Exception(
         @Transient val description: String? = null,
         @Transient override val cause: Throwable? = null
     ) : OAuth2Exception(INVALID_DPOP_PROOF, description), OAuthAuthorizationError
+
+    @Serializable
+    class UseDpopNonce(
+        /** Set this as the value for HTTP header `DPoP-Nonce` in the response. */
+        val dpopNonce: String,
+        @Transient val description: String? = null,
+        @Transient override val cause: Throwable? = null
+    ) : OAuth2Exception(USE_DPOP_NONCE, description), OAuthAuthorizationError
 
     @Serializable
     class InvalidCredentialRequest(

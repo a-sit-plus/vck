@@ -27,6 +27,7 @@ interface TokenService {
     suspend fun validateTokenExtractUser(
         authorizationHeader: String,
         request: RequestInfo?,
+        hasBeenValidated: Boolean = false,
     ): ValidatedAccessToken
 
     /**
@@ -69,27 +70,33 @@ interface TokenService {
             userInfo = validated.userInfoExtended!!,
             httpRequest = httpRequest,
             authorizationDetails = validated.authorizationDetails,
-            scope = validated.scope
+            scope = validated.scope,
+            validatedClientKey = verification.extractValidatedClientKey(httpRequest).getOrThrow(),
         ).also { Napier.i("tokenExchange returns"); Napier.d("tokenExchange returns $it") }
     }
+
+    suspend fun dpopNonce() = generation.dpopNonce()
 
     companion object {
         /** Build a [TokenService] combining [JwtTokenGenerationService] and [JwtTokenVerificationService]. */
         fun jwt(
             publicContext: String = "https://wallet.a-sit.at/authorization-server",
             nonceService: NonceService = DefaultNonceService(),
+            dpopNonceService: NonceService = DefaultNonceService(),
             keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
             issueRefreshTokens: Boolean = false,
             verificationAlgorithms: Collection<Signature> = setOf(Signature.ES256), // per OID4VC HAIP
         ) = JwtTokenService(
             generation = JwtTokenGenerationService(
                 nonceService = nonceService,
+                dpopNonceService = dpopNonceService,
                 publicContext = publicContext,
                 keyMaterial = keyMaterial,
                 issueRefreshToken = issueRefreshTokens,
             ),
             verification = JwtTokenVerificationService(
                 nonceService = nonceService,
+                dpopNonceService = dpopNonceService,
                 issuerKey = keyMaterial.jsonWebKey,
             ),
             dpopSigningAlgValuesSupportedStrings = verificationAlgorithms.map { it.identifier }.toSet(),

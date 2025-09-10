@@ -16,6 +16,7 @@ class BearerTokenService(
     override suspend fun validateTokenExtractUser(
         authorizationHeader: String,
         request: RequestInfo?,
+        hasBeenValidated: Boolean,
     ): ValidatedAccessToken =
         if (authorizationHeader.startsWith(OpenIdConstants.TOKEN_TYPE_BEARER, ignoreCase = true)) {
             val token = authorizationHeader.removePrefix(OpenIdConstants.TOKEN_PREFIX_BEARER).split(" ").last()

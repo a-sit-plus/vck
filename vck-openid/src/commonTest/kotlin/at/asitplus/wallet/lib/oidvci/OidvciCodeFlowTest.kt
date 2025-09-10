@@ -155,7 +155,7 @@ class OidvciCodeFlowTest : FreeSpec({
                 tokenResponse = token,
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
-                clientNonce = issuer.nonce().getOrThrow().clientNonce,
+                clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
             ).getOrThrow().first(),
             credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
         ).getOrThrow()
@@ -186,7 +186,7 @@ class OidvciCodeFlowTest : FreeSpec({
                     tokenResponse = token,
                     metadata = issuer.metadata,
                     credentialFormat = it.key,
-                    clientNonce = issuer.nonce().getOrThrow().clientNonce,
+                    clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
                 ).getOrThrow().first(),
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow().credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
@@ -196,7 +196,7 @@ class OidvciCodeFlowTest : FreeSpec({
     "proof over different keys leads to different credentials" {
         val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
         val scope = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata)?.scope.shouldNotBeNull()
-        val clientNonce = issuer.nonce().getOrThrow().clientNonce
+        val clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce
         val token = getToken(scope)
         val proof = client.createCredentialRequestProofJwt(
             clientNonce = clientNonce,
@@ -263,7 +263,7 @@ class OidvciCodeFlowTest : FreeSpec({
                 tokenResponse = token,
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
-                clientNonce = issuer.nonce().getOrThrow().clientNonce,
+                clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
             ).getOrThrow().first(),
             credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
         ).getOrThrow()
@@ -284,7 +284,7 @@ class OidvciCodeFlowTest : FreeSpec({
                 tokenResponse = token,
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
-                clientNonce = issuer.nonce().getOrThrow().clientNonce,
+                clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
             ).getOrThrow().first(),
             credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
         ).getOrThrow()
@@ -338,7 +338,7 @@ class OidvciCodeFlowTest : FreeSpec({
                 tokenResponse = token,
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
-                clientNonce = issuer.nonce().getOrThrow().clientNonce,
+                clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
             ).getOrThrow().first(),
             credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
         ).getOrThrow()
@@ -365,7 +365,7 @@ class OidvciCodeFlowTest : FreeSpec({
                 tokenResponse = token,
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
-                clientNonce = issuer.nonce().getOrThrow().clientNonce,
+                clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
             ).getOrThrow().first(),
             credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
         ).getOrThrow()
@@ -430,7 +430,7 @@ class OidvciCodeFlowTest : FreeSpec({
                     tokenResponse = token,
                     metadata = issuer.metadata,
                     credentialFormat = credentialFormat,
-                    clientNonce = issuer.nonce().getOrThrow().clientNonce,
+                    clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
                 ).getOrThrow().first(),
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
@@ -448,7 +448,7 @@ class OidvciCodeFlowTest : FreeSpec({
             tokenResponse = token,
             metadata = issuer.metadata,
             credentialFormat = credentialFormat,
-            clientNonce = issuer.nonce().getOrThrow().clientNonce,
+            clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
         ).getOrThrow().first()
         shouldThrow<OAuth2Exception> {
             issuer.credential(
@@ -477,7 +477,7 @@ class OidvciCodeFlowTest : FreeSpec({
                     tokenResponse = token,
                     metadata = issuer.metadata,
                     credentialFormat = credentialFormat,
-                    clientNonce = issuer.nonce().getOrThrow().clientNonce,
+                    clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
                 ).getOrThrow().first().wrongCredentialConfigurationId(scope),
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
@@ -497,7 +497,7 @@ class OidvciCodeFlowTest : FreeSpec({
                 tokenResponse = token,
                 metadata = issuer.metadata,
                 credentialFormat = credentialFormat,
-                clientNonce = issuer.nonce().getOrThrow().clientNonce,
+                clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
             ).getOrThrow().first(),
             credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
         ).getOrThrow()

@@ -75,7 +75,7 @@ class OidvciPreAuthTest : FreeSpec({
         val token = getToken(credentialOffer, setOf(credentialIdToRequest))
         token.authorizationDetails.shouldNotBeNull()
             .first().shouldBeInstanceOf<OpenIdAuthorizationDetails>()
-        val clientNonce = issuer.nonce().getOrThrow().clientNonce
+        val clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce
 
         val credentialRequest = client.createCredential(
             tokenResponse = token,
@@ -100,7 +100,7 @@ class OidvciPreAuthTest : FreeSpec({
             .toSet()
 
         val token = getToken(credentialOffer, credentialIdsToRequest)
-        val clientNonce = issuer.nonce().getOrThrow().clientNonce
+        val clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce
         val authnDetails = token.authorizationDetails
             .shouldNotBeNull()
             .shouldHaveSize(4)
@@ -145,7 +145,7 @@ class OidvciPreAuthTest : FreeSpec({
             resource = issuer.metadata.credentialIssuer,
         )
         val token = authorizationService.token(tokenRequest, null).getOrThrow()
-        val clientNonce = issuer.nonce().getOrThrow().clientNonce
+        val clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce
 
         val credentialRequest = client.createCredential(
             tokenResponse = token,
@@ -173,7 +173,7 @@ class OidvciPreAuthTest : FreeSpec({
             .filterIsInstance<OpenIdAuthorizationDetails>()
             .first().credentialIdentifiers.shouldNotBeNull().first()
 
-        val clientNonce = issuer.nonce().getOrThrow().clientNonce
+        val clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce
         val proof = client.createCredentialRequestProofJwt(
             clientNonce = clientNonce,
             credentialIssuer = issuer.metadata.credentialIssuer,

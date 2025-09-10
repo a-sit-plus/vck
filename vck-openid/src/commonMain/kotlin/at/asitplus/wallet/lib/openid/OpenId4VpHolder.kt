@@ -417,8 +417,22 @@ private fun Collection<JsonWebKey>?.combine(certKey: JsonWebKey?): Collection<Js
 
 fun Throwable.toOAuth2Error(
     request: RequestParametersFrom<AuthenticationRequestParameters>,
-): OAuth2Error = OAuth2Error(
-    error = INVALID_REQUEST,
-    errorDescription = message,
-    state = request.parameters.state
-)
+): OAuth2Error = when (this) {
+    is OAuth2Exception -> this.toOAuth2Error().copy(state = request.parameters.state)
+    else -> OAuth2Error(
+        error = INVALID_REQUEST,
+        errorDescription = message,
+        state = request.parameters.state
+    )
+}
+
+fun Throwable.toOAuth2Error(
+    state: String?,
+): OAuth2Error = when (this) {
+    is OAuth2Exception -> this.toOAuth2Error().copy(state = state)
+    else -> OAuth2Error(
+        error = INVALID_REQUEST,
+        errorDescription = message,
+        state = state
+    )
+}

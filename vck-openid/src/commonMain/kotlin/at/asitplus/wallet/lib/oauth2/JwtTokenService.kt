@@ -2,8 +2,12 @@ package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.OpenIdConstants
+import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
+import io.github.aakira.napier.Napier
 
 /**
  * Combines sender-constrained JWT tokens from [JwtTokenGenerationService] and [JwtTokenVerificationService].
@@ -22,17 +26,21 @@ class JwtTokenService(
     override suspend fun validateTokenExtractUser(
         authorizationHeader: String,
         request: RequestInfo?,
+        hasBeenValidated: Boolean,
     ): ValidatedAccessToken = if (authorizationHeader.startsWith(OpenIdConstants.TOKEN_TYPE_DPOP, ignoreCase = true)) {
         val dpopToken = authorizationHeader.removePrefix(OpenIdConstants.TOKEN_PREFIX_DPOP).split(" ").last()
-        val dpopTokenJwt = verification.validateDpopToken(dpopToken, JwsContentTypeConstants.OID4VCI_AT_JWT)
+        if (!hasBeenValidated)
+            verification.validateAccessToken(dpopToken, request).getOrThrow()
+        val dpopTokenJwt = JwsSigned
+            .deserialize<OpenId4VciAccessToken>(OpenId4VciAccessToken.serializer(), dpopToken, vckJsonSerializer)
+            .getOrElse { throw InvalidToken("could not parse DPoP Token", it) }
         val jwtId = dpopTokenJwt.payload.jwtId
-            ?: throw OAuth2Exception.InvalidToken("access token not valid: $dpopToken")
-        verification.validateDpopJwt(dpopToken, dpopTokenJwt, request)
+            ?: throw InvalidToken("access token not valid: $dpopToken")
         with(dpopTokenJwt.payload) {
             toValidatedAccessToken(dpopToken, jwtId)
         }
     } else {
-        throw OAuth2Exception.InvalidToken("authorization header not valid: $authorizationHeader")
+        throw InvalidToken("authorization header not valid: $authorizationHeader")
     }
 
     /**
@@ -45,7 +53,7 @@ class JwtTokenService(
     ): ValidatedAccessToken = run {
         val dpopTokenJwt = verification.validateDpopToken(subjectToken, JwsContentTypeConstants.OID4VCI_AT_JWT)
         val jwtId = dpopTokenJwt.payload.jwtId
-            ?: throw OAuth2Exception.InvalidToken("access token not valid: $subjectToken")
+            ?: throw InvalidToken("access token not valid: $subjectToken")
         // can't validate DPoP JWT, as the third party can't forward this
         with(dpopTokenJwt.payload) {
             toValidatedAccessToken(subjectToken, jwtId)

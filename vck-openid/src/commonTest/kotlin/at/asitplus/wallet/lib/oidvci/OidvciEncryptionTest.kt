@@ -89,7 +89,7 @@ class OidvciEncryptionTest : FunSpec({
             tokenResponse = token,
             metadata = issuer.metadata,
             credentialFormat = credentialFormat,
-            clientNonce = issuer.nonce().getOrThrow().clientNonce
+            clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
         ).getOrThrow().forEach {
             it.shouldBeInstanceOf<WalletService.CredentialRequest.Encrypted>()
             issuer.credentialEncryptedRequest(
@@ -115,7 +115,7 @@ class OidvciEncryptionTest : FunSpec({
             tokenResponse = token,
             metadata = issuer.metadata,
             credentialFormat = credentialFormat,
-            clientNonce = issuer.nonce().getOrThrow().clientNonce
+            clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
         ).getOrThrow().forEach {
             issuer.credential(
                 authorizationHeader = token.toHttpHeaderValue(),
@@ -154,7 +154,7 @@ class OidvciEncryptionTest : FunSpec({
             tokenResponse = token,
             metadata = issuer.metadata,
             credentialFormat = credentialFormat,
-            clientNonce = issuer.nonce().getOrThrow().clientNonce
+            clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
         ).getOrThrow().forEach {
             shouldThrow<OAuth2Exception.InvalidEncryptionParameters> {
                 issuer.credential(
@@ -196,7 +196,7 @@ class OidvciEncryptionTest : FunSpec({
             tokenResponse = token,
             metadata = issuer.metadata,
             credentialFormat = credentialFormat,
-            clientNonce = issuer.nonce().getOrThrow().clientNonce
+            clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
         ).getOrThrow().forEach {
             shouldThrowAny {
                 issuer.credential(

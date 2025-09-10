@@ -8,10 +8,10 @@ import at.asitplus.openid.CredentialResponseParameters
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.OpenIdConstants.Errors.USE_DPOP_NONCE
 import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER
 import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION
 import at.asitplus.openid.SupportedCredentialFormat
-import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -27,6 +27,7 @@ import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
+import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.WalletService
 import at.asitplus.wallet.lib.oidvci.toRepresentation
 import com.benasher44.uuid.uuid4
@@ -296,7 +297,7 @@ class OpenId4VciClient(
     @Throws(Exception::class)
     private suspend fun postCredentialRequestAndStore(
         issuerMetadata: IssuerMetadata,
-        tokenResponse: TokenResponseParameters,
+        tokenResponse: TokenResponseWithDpopNonce,
         credentialFormat: SupportedCredentialFormat,
         credentialScheme: ConstantIndex.CredentialScheme,
         oauthMetadata: OAuth2AuthorizationServerMetadata,
@@ -307,52 +308,85 @@ class OpenId4VciClient(
         Napier.i("postCredentialRequestAndStore: $credentialEndpointUrl")
         Napier.d("postCredentialRequestAndStore: $tokenResponse")
 
-        val clientNonce = issuerMetadata.nonceEndpointUrl?.let { nonceUrl ->
-            client.post(nonceUrl).body<ClientNonceResponse>().clientNonce.also {
-                Napier.i("postCredentialRequestAndStore: $it from $nonceUrl")
+        val (clientNonce, dpopNonce) = (issuerMetadata.nonceEndpointUrl?.let { nonceUrl ->
+            client.post(nonceUrl).let {
+                it.body<ClientNonceResponse>().clientNonce to it.headers.get(HttpHeaders.DPoPNonce)
             }
-        }
+        } ?: (null to null))
+            .also { Napier.i("postCredentialRequestAndStore: uses nonce $it") }
 
-        val credentialRequests = oid4vciService.createCredential(
-            tokenResponse = tokenResponse,
+        val requests = oid4vciService.createCredential(
+            tokenResponse = tokenResponse.params,
             metadata = issuerMetadata,
             credentialFormat = credentialFormat,
             clientNonce = clientNonce,
             previouslyRequestedScope = previouslyRequestedScope
         ).getOrThrow()
 
-        val storeCredentialInputs = credentialRequests.flatMap { credentialRequest ->
-            val credentialResponse = client.post(credentialEndpointUrl) {
-                when (credentialRequest) {
-                    is WalletService.CredentialRequest.Encrypted -> {
-                        contentType(ContentType.parse(MediaTypes.Application.JWT))
-                        setBody(credentialRequest.request.serialize())
-                    }
-                    is WalletService.CredentialRequest.Plain -> {
-                        contentType(ContentType.Application.Json)
-                        setBody(credentialRequest.request)
-                    }
-                }
-                oauth2Client.applyToken(tokenResponse, credentialEndpointUrl, HttpMethod.Post)()
-            }.body<CredentialResponseParameters>()
-            // TODO handle errors?
-            oid4vciService.parseCredentialResponse(
-                credentialResponse,
-                credentialFormat.format.toRepresentation(),
-                credentialScheme
-            ).getOrThrow()
+        val storeCredentialInputs = requests.flatMap {
+            fetchCredential(
+                url = credentialEndpointUrl,
+                request = it,
+                tokenResponse = tokenResponse,
+                credentialFormat = credentialFormat,
+                credentialScheme = credentialScheme,
+                dpopNonce = dpopNonce
+            )
         }
         return CredentialIssuanceResult.Success(
             storeCredentialInputs,
-            tokenResponse.refreshToken?.let {
+            tokenResponse.params.refreshToken?.let {
                 RefreshTokenInfo(
-                    refreshToken = tokenResponse.refreshToken!!,
+                    refreshToken = tokenResponse.params.refreshToken!!,
                     issuerMetadata = issuerMetadata,
                     oauthMetadata = oauthMetadata,
                     credentialFormat = credentialFormat,
                     credentialIdentifier = credentialIdentifier,
                 )
             })
+    }
+
+    private suspend fun fetchCredential(
+        url: String,
+        request: WalletService.CredentialRequest,
+        tokenResponse: TokenResponseWithDpopNonce,
+        credentialFormat: SupportedCredentialFormat,
+        credentialScheme: ConstantIndex.CredentialScheme,
+        dpopNonce: String?,
+        retryCount: Int = 0,
+    ): Collection<Holder.StoreCredentialInput> = client.post(url) {
+        when (request) {
+            is WalletService.CredentialRequest.Encrypted -> {
+                contentType(ContentType.parse(MediaTypes.Application.JWT))
+                setBody(request.request.serialize())
+            }
+
+            is WalletService.CredentialRequest.Plain -> {
+                contentType(ContentType.Application.Json)
+                setBody(request.request)
+            }
+        }
+        oauth2Client.applyToken(
+            tokenResponse = tokenResponse.params,
+            resourceUrl = url,
+            httpMethod = HttpMethod.Post,
+            dpopNonce = dpopNonce ?: tokenResponse.dpopNonce
+        )()
+    }.let { resp ->
+        val useFreshNonce: String? = runCatching {
+            resp.body<OAuth2Error>().error.takeIf { it == USE_DPOP_NONCE }
+                ?.let { resp.headers[HttpHeaders.DPoPNonce] }
+        }.getOrNull()
+
+        useFreshNonce?.takeIf { retryCount == 0 }?.let {
+            fetchCredential(url, request, tokenResponse, credentialFormat, credentialScheme, it, retryCount + 1)
+        } ?: run {
+            oid4vciService.parseCredentialResponse(
+                resp.body<CredentialResponseParameters>(),
+                credentialFormat.format.toRepresentation(),
+                credentialScheme
+            ).getOrThrow()
+        }
     }
 
     /**

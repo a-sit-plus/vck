@@ -403,6 +403,9 @@ object OpenIdConstants {
         /** Invalid DPoP proof (RFC 9449): `invalid_dpop_proof`.*/
         const val INVALID_DPOP_PROOF = "invalid_dpop_proof"
 
+        /** Use a fresh DPoP nonce (RFC 9449): `use_dpop_nonce`.*/
+        const val USE_DPOP_NONCE = "use_dpop_nonce"
+
         /** Invalid request in general: `invalid_request`. */
         const val INVALID_REQUEST = "invalid_request"
 

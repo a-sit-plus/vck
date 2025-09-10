@@ -21,6 +21,7 @@ import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.wallet.lib.oidvci.CodeService
 import at.asitplus.wallet.lib.oidvci.CredentialIssuer
 import at.asitplus.wallet.lib.oidvci.DefaultCodeService
@@ -404,7 +405,7 @@ class SimpleAuthorizationService(
      * @param request as sent from the client as `POST`
      * @param httpRequest information about the HTTP request from the client, to validate authentication
      *
-     * @return [KmmResult] may contain a [OAuth2Exception]
+     * @return [KmmResult] may contain a [OAuth2Exception], especially a [UseDpopNonce]
      */
     override suspend fun token(
         request: TokenRequestParameters,
@@ -417,7 +418,9 @@ class SimpleAuthorizationService(
                 ?: throw InvalidGrant("token_exchange requires userInfoEndpoint")
             return@catching tokenService.tokenExchange(request, userInfoEndpoint, httpRequest)
         }
-        val clientAuthRequest = request.loadClientAuthnRequest(httpRequest) ?: run {
+        val validatedClientKey = tokenService.verification.extractValidatedClientKey(httpRequest).getOrThrow()
+
+        val clientAuthRequest = request.loadClientAuthnRequest(httpRequest, validatedClientKey) ?: run {
             Napier.w("token: could not load user info for $request}")
             throw InvalidGrant("could not load user info for $request")
         }
@@ -431,21 +434,24 @@ class SimpleAuthorizationService(
                 httpRequest = httpRequest,
                 userInfo = clientAuthRequest.userInfo,
                 authorizationDetails = strategy.matchAuthorizationDetails(clientAuthRequest, request),
-                scope = null
+                scope = null,
+                validatedClientKey = validatedClientKey,
             )
         } else if (request.scope != null) {
             tokenService.generation.buildToken(
                 httpRequest = httpRequest,
                 userInfo = clientAuthRequest.userInfo,
                 authorizationDetails = null,
-                scope = request.validatedScope(clientAuthRequest)
+                scope = request.validatedScope(clientAuthRequest),
+                validatedClientKey = validatedClientKey,
             )
         } else if (clientAuthRequest.authnDetails != null) {
             tokenService.generation.buildToken(
                 httpRequest = httpRequest,
                 userInfo = clientAuthRequest.userInfo,
                 authorizationDetails = strategy.validateAuthorizationDetails(clientAuthRequest.authnDetails),
-                scope = null
+                scope = null,
+                validatedClientKey = validatedClientKey,
             )
         } else if (clientAuthRequest.scope != null) {
             tokenService.generation.buildToken(
@@ -453,7 +459,8 @@ class SimpleAuthorizationService(
                 userInfo = clientAuthRequest.userInfo,
                 authorizationDetails = null,
                 scope = strategy.filterScope(clientAuthRequest.scope)
-                    ?: throw InvalidScope("No valid scope in ${clientAuthRequest.scope}")
+                    ?: throw InvalidScope("No valid scope in ${clientAuthRequest.scope}"),
+                validatedClientKey = validatedClientKey,
             )
         } else {
             Napier.w("token: request can not be parsed: $request")
@@ -489,7 +496,8 @@ class SimpleAuthorizationService(
     }
 
     internal suspend fun TokenRequestParameters.loadClientAuthnRequest(
-        httpRequest: RequestInfo? = null,
+        httpRequest: RequestInfo?,
+        validatedClientKey: JsonWebKey?,
     ): ClientAuthRequest? = when (grantType) {
         OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE -> {
             if (code == null || !codeService.verifyAndRemove(code!!)) {
@@ -512,7 +520,7 @@ class SimpleAuthorizationService(
                 Napier.w("token: refresh_token is null")
                 throw InvalidGrant("refresh_token is null")
             }
-            tokenService.verification.validateRefreshToken(refreshToken!!, httpRequest)
+            tokenService.verification.validateRefreshToken(refreshToken!!, httpRequest, validatedClientKey)
             refreshToken?.let { refreshTokenToAuthRequest.remove(it) }
         }
 
@@ -538,6 +546,8 @@ class SimpleAuthorizationService(
 
     /**
      * Returns the user info associated with this access token, when the token in [authorizationHeader] is correct.
+     *
+     * @return [KmmResult] may contain a [OAuth2Exception], especially a [UseDpopNonce]
      */
     override suspend fun userInfo(
         authorizationHeader: String,
@@ -556,7 +566,12 @@ class SimpleAuthorizationService(
     override suspend fun getUserInfo(
         authorizationHeader: String,
         httpRequest: RequestInfo?,
-    ): KmmResult<JsonObject> = userInfo(authorizationHeader, httpRequest)
+    ): KmmResult<JsonObject> = catching {
+        with(tokenService.validateTokenExtractUser(authorizationHeader, httpRequest, hasBeenValidated = true)) {
+            userInfoExtended?.jsonObject
+                ?: throw InvalidGrant("no user info found for $authorizationHeader")
+        }
+    }
 
     /**
      * Obtains information about the token, since we're in-memory here (as an [OAuth2AuthorizationServerAdapter],
@@ -593,4 +608,6 @@ class SimpleAuthorizationService(
     ): KmmResult<Boolean> = catching {
         tokenService.verification.validateAccessToken(authorizationHeader, httpRequest).isSuccess
     }
+
+    override suspend fun getDpopNonce() = tokenService.dpopNonce()
 }

@@ -48,10 +48,12 @@ import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.CredentialDataProviderFun
 import at.asitplus.wallet.lib.oidvci.CredentialIssuer
-import at.asitplus.wallet.lib.oidvci.DefaultNonceService
+import at.asitplus.wallet.lib.oidvci.OAuth2Error
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.WalletService
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
+import at.asitplus.wallet.lib.openid.toOAuth2Error
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FunSpec
@@ -243,8 +245,6 @@ class OpenId4VciClientExternalAuthorizationServerTest : FunSpec() {
         issuerPublicContext = "https://issuer.example.com"
         val authServerPublicContext = "https://auth.example.com"
         val tokenService = TokenService.jwt(
-            nonceService = DefaultNonceService(),
-            keyMaterial = EphemeralKeyWithoutCert(),
             issueRefreshTokens = true
         )
         externalAuthorizationServer = SimpleAuthorizationService(
@@ -287,10 +287,14 @@ class OpenId4VciClientExternalAuthorizationServerTest : FunSpec() {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val authnRequest: AuthenticationRequestParameters =
                         requestBody.decodeFromPostBody<AuthenticationRequestParameters>()
-                    val result = externalAuthorizationServer.par(authnRequest, request.toRequestInfo()).getOrThrow()
-                    respond(
-                        vckJsonSerializer.encodeToString<PushedAuthenticationResponseParameters>(result),
-                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    externalAuthorizationServer.par(authnRequest, request.toRequestInfo()).fold(
+                        onSuccess = {
+                            respond(
+                                vckJsonSerializer.encodeToString<PushedAuthenticationResponseParameters>(it),
+                                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                            )
+                        },
+                        onFailure = { respondOAuth2Error(it) }
                     )
                 }
 
@@ -301,46 +305,65 @@ class OpenId4VciClientExternalAuthorizationServerTest : FunSpec() {
                     val authnRequest: AuthenticationRequestParameters =
                         if (requestBody.isEmpty()) queryParameters.decodeFromUrlQuery<AuthenticationRequestParameters>()
                         else requestBody.decodeFromPostBody<AuthenticationRequestParameters>()
-                    val result =
-                        externalAuthorizationServer.authorize(authnRequest) { catching { dummyUser() } }.getOrThrow()
-                    respondRedirect(result.url)
+                    externalAuthorizationServer.authorize(authnRequest) { catching { dummyUser() } }.fold(
+                        onSuccess = { respondRedirect(it.url) },
+                        onFailure = { respondOAuth2Error(it) }
+                    )
                 }
 
                 request.url.toString() == "$authServerPublicContext$tokenEndpointPath" -> {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val params: TokenRequestParameters = requestBody.decodeFromPostBody<TokenRequestParameters>()
-                    val result = externalAuthorizationServer.token(params, request.toRequestInfo()).getOrThrow()
-                    respond(
-                        vckJsonSerializer.encodeToString<TokenResponseParameters>(result),
-                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    externalAuthorizationServer.token(params, request.toRequestInfo()).fold(
+                        onSuccess = {
+                            respond(
+                                vckJsonSerializer.encodeToString<TokenResponseParameters>(it),
+                                headers = headers {
+                                    append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                                }
+                            )
+                        },
+                        onFailure = { respondOAuth2Error(it) }
                     )
                 }
 
                 request.url.toString() == "$authServerPublicContext$userInfoEndpointPath" -> {
                     val authn = request.headers[HttpHeaders.Authorization]
-                    val result = externalAuthorizationServer.userInfo(authn!!, request.toRequestInfo()).getOrThrow()
-                    respond(
-                        vckJsonSerializer.encodeToString<JsonObject>(result),
-                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    externalAuthorizationServer.userInfo(authn!!, request.toRequestInfo()).fold(
+                        onSuccess = {
+                            respond(
+                                vckJsonSerializer.encodeToString<JsonObject>(it),
+                                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                            )
+                        },
+                        onFailure = { respondOAuth2Error(it) }
                     )
+
                 }
 
                 request.url.toString() == "$authServerPublicContext$introspectionEndpointPath" -> {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val params = requestBody.decodeFromPostBody<TokenIntrospectionRequest>()
-                    val result =
-                        externalAuthorizationServer.tokenIntrospection(params, request.toRequestInfo()).getOrThrow()
-                    respond(
-                        vckJsonSerializer.encodeToString<TokenIntrospectionResponse>(result),
-                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    externalAuthorizationServer.tokenIntrospection(params, request.toRequestInfo()).fold(
+                        onSuccess = {
+                            respond(
+                                vckJsonSerializer.encodeToString<TokenIntrospectionResponse>(it),
+                                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                            )
+                        },
+                        onFailure = { respondOAuth2Error(it) }
                     )
+
                 }
 
                 request.url.toString() == "$issuerPublicContext$nonceEndpointPath" -> {
-                    val result = credentialIssuer.nonce().getOrThrow()
+                    val result = credentialIssuer.nonceWithDpopNonce().getOrThrow()
                     respond(
-                        vckJsonSerializer.encodeToString<ClientNonceResponse>(result),
-                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                        vckJsonSerializer.encodeToString<ClientNonceResponse>(result.response),
+                        headers = headers {
+                            append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                            result.dpopNonce?.let { append(HttpHeaders.DPoPNonce, it) }
+                        }
                     )
                 }
 
@@ -348,17 +371,20 @@ class OpenId4VciClientExternalAuthorizationServerTest : FunSpec() {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val authn = request.headers[HttpHeaders.Authorization].shouldNotBeNull()
                     val params = vckJsonSerializer.decodeFromString<CredentialRequestParameters>(requestBody)
-                    val result = credentialIssuer.credential(
+                    credentialIssuer.credential(
                         authorizationHeader = authn,
                         params = params,
                         credentialDataProvider = credentialDataProvider,
                         request = request.toRequestInfo(),
-                    ).getOrThrow()
-                    respond(
-                        vckJsonSerializer.encodeToString<CredentialResponseParameters>(result),
-                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    ).fold(
+                        onSuccess = {
+                            respond(
+                                vckJsonSerializer.encodeToString<CredentialResponseParameters>(it),
+                                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                            )
+                        },
+                        onFailure = { respondOAuth2Error(it) }
                     )
-
                 }
 
                 else -> respondError(HttpStatusCode.NotFound)
@@ -418,6 +444,15 @@ class OpenId4VciClientExternalAuthorizationServerTest : FunSpec() {
             nonceEndpointPath = nonceEndpointPath,
         )
     }
+
+    private fun MockRequestHandleScope.respondOAuth2Error(throwable: Throwable): HttpResponseData = respond(
+        vckJsonSerializer.encodeToString<OAuth2Error>(throwable.toOAuth2Error(null)),
+        headers = headers {
+            append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+            (throwable as? OAuth2Exception.UseDpopNonce)?.dpopNonce
+                ?.let { append(HttpHeaders.DPoPNonce, it) }
+        }
+    )
 
     private fun HttpRequestData.toRequestInfo(): RequestInfo = RequestInfo(
         url = url.toString(),

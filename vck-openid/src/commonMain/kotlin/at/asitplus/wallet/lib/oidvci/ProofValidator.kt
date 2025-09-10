@@ -76,11 +76,9 @@ class ProofValidator(
      *
      * MUST be delivered with `Cache-Control: no-store` as HTTP header.
      */
-    suspend fun nonce() = catching {
-        ClientNonceResponse(
-            clientNonce = clientNonceService.provideNonce()
-        )
-    }
+    suspend fun nonce() = ClientNonceResponse(
+        clientNonce = clientNonceService.provideNonce()
+    )
 
     @Suppress("DEPRECATION")
     suspend fun validateProofExtractSubjectPublicKeys(

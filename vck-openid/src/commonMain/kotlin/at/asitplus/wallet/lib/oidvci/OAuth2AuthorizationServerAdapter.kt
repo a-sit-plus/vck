@@ -48,13 +48,14 @@ interface OAuth2AuthorizationServerAdapter {
         httpRequest: RequestInfo?,
     ): KmmResult<JsonObject>
 
-    /**
-     * Validates the access token sent to [CredentialIssuer.credential]
-     */
+    /** Validates the access token sent to [CredentialIssuer.credential]. */
     suspend fun validateAccessToken(
         authorizationHeader: String,
         httpRequest: RequestInfo?,
     ): KmmResult<Boolean>
+
+    /** If this is an internal AS, provide a fresh DPoP nonce for clients. */
+    suspend fun getDpopNonce(): String?
 
 }
 

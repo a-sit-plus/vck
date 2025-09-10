@@ -45,9 +45,12 @@ import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.CredentialDataProviderFun
 import at.asitplus.wallet.lib.oidvci.CredentialIssuer
 import at.asitplus.wallet.lib.oidvci.DefaultNonceService
+import at.asitplus.wallet.lib.oidvci.OAuth2Error
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.WalletService
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
+import at.asitplus.wallet.lib.openid.toOAuth2Error
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FunSpec
@@ -237,8 +240,6 @@ class OpenId4VciClientTest : FunSpec() {
                 enforceClientAuthentication = true,
             ),
             tokenService = TokenService.jwt(
-                nonceService = DefaultNonceService(),
-                keyMaterial = EphemeralKeyWithoutCert(),
                 issueRefreshTokens = true
             ),
         )
@@ -276,10 +277,14 @@ class OpenId4VciClientTest : FunSpec() {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val authnRequest: AuthenticationRequestParameters =
                         requestBody.decodeFromPostBody<AuthenticationRequestParameters>()
-                    val result = authorizationService.par(authnRequest, request.toRequestInfo()).getOrThrow()
-                    respond(
-                        vckJsonSerializer.encodeToString<PushedAuthenticationResponseParameters>(result),
-                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    authorizationService.par(authnRequest, request.toRequestInfo()).fold(
+                        onSuccess = {
+                            respond(
+                                vckJsonSerializer.encodeToString<PushedAuthenticationResponseParameters>(it),
+                                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                            )
+                        },
+                        onFailure = { respondOAuth2Error(it) }
                     )
                 }
 
@@ -290,25 +295,36 @@ class OpenId4VciClientTest : FunSpec() {
                     val authnRequest: AuthenticationRequestParameters =
                         if (requestBody.isEmpty()) queryParameters.decodeFromUrlQuery<AuthenticationRequestParameters>()
                         else requestBody.decodeFromPostBody<AuthenticationRequestParameters>()
-                    val result = authorizationService.authorize(authnRequest) { catching { dummyUser() } }.getOrThrow()
-                    respondRedirect(result.url)
+                    authorizationService.authorize(authnRequest) { catching { dummyUser() } }.fold(
+                        onSuccess = { respondRedirect(it.url) },
+                        onFailure = { respondOAuth2Error(it) }
+                    )
                 }
 
                 request.url.fullPath.startsWith(tokenEndpointPath) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val params: TokenRequestParameters = requestBody.decodeFromPostBody<TokenRequestParameters>()
-                    val result = authorizationService.token(params, request.toRequestInfo()).getOrThrow()
-                    respond(
-                        vckJsonSerializer.encodeToString<TokenResponseParameters>(result),
-                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    authorizationService.token(params, request.toRequestInfo()).fold(
+                        onSuccess = {
+                            respond(
+                                vckJsonSerializer.encodeToString<TokenResponseParameters>(it),
+                                headers = headers {
+                                    append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                                }
+                            )
+                        },
+                        onFailure = { respondOAuth2Error(it) }
                     )
                 }
 
                 request.url.fullPath.startsWith(nonceEndpointPath) -> {
-                    val result = credentialIssuer.nonce().getOrThrow()
+                    val result = credentialIssuer.nonceWithDpopNonce().getOrThrow()
                     respond(
-                        vckJsonSerializer.encodeToString<ClientNonceResponse>(result),
-                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                        vckJsonSerializer.encodeToString<ClientNonceResponse>(result.response),
+                        headers = headers {
+                            append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                            result.dpopNonce?.let { set(HttpHeaders.DPoPNonce, it) }
+                        }
                     )
                 }
 
@@ -316,17 +332,20 @@ class OpenId4VciClientTest : FunSpec() {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val authn = request.headers[HttpHeaders.Authorization].shouldNotBeNull()
                     val params = vckJsonSerializer.decodeFromString<CredentialRequestParameters>(requestBody)
-                    val result = credentialIssuer.credential(
+                    credentialIssuer.credential(
                         authorizationHeader = authn,
                         params = params,
                         credentialDataProvider = credentialDataProvider,
                         request = request.toRequestInfo(),
-                    ).getOrThrow()
-                    respond(
-                        vckJsonSerializer.encodeToString<CredentialResponseParameters>(result),
-                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    ).fold(
+                        onSuccess = {
+                            respond(
+                                vckJsonSerializer.encodeToString<CredentialResponseParameters>(it),
+                                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                            )
+                        },
+                        onFailure = { respondOAuth2Error(it) }
                     )
-
                 }
 
                 else -> respondError(HttpStatusCode.NotFound)
@@ -353,11 +372,20 @@ class OpenId4VciClientTest : FunSpec() {
                 signClientAttestationPop = SignJwt(clientAuthKeyMaterial, JwsHeaderNone()),
                 signDpop = SignJwt(dpopKeyMaterial, JwsHeaderCertOrJwk()),
                 dpopAlgorithm = dpopKeyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
-                oAuth2Client = OAuth2Client(clientId = clientId,),
+                oAuth2Client = OAuth2Client(clientId = clientId),
                 randomSource = RandomSource.Default,
             )
         )
     }
+
+    private fun MockRequestHandleScope.respondOAuth2Error(throwable: Throwable): HttpResponseData = respond(
+        vckJsonSerializer.encodeToString<OAuth2Error>(throwable.toOAuth2Error(null)),
+        headers = headers {
+            append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+            (throwable as? OAuth2Exception.UseDpopNonce)?.dpopNonce
+                ?.let { append(HttpHeaders.DPoPNonce, it) }
+        }
+    )
 
     private fun HttpRequestData.toRequestInfo(): RequestInfo = RequestInfo(
         url = url.toString(),

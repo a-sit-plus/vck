@@ -44,8 +44,6 @@ class OAuth2ClientDPoPTest : FunSpec({
         server = SimpleAuthorizationService(
             strategy = DummyAuthorizationServiceStrategy(scope),
             tokenService = TokenService.jwt(
-                nonceService = DefaultNonceService(),
-                keyMaterial = EphemeralKeyWithoutCert(),
                 issueRefreshTokens = true
             ),
         )
@@ -77,9 +75,12 @@ class OAuth2ClientDPoPTest : FunSpec({
                 scope = scope
             ),
             httpRequest = RequestInfo(
-                tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(
+                url = tokenUrl,
+                method = HttpMethod.Post,
+                dpop = BuildDPoPHeader(
                     signDpop = signDpop,
                     url = tokenUrl,
+                    nonce = server.getDpopNonce(),
                     randomSource = RandomSource.Default,
                 )
             )
@@ -95,9 +96,10 @@ class OAuth2ClientDPoPTest : FunSpec({
         }
 
         val dpopForResource = BuildDPoPHeader(
-            signDpop,
+            signDpop = signDpop,
             url = resourceUrl,
             accessToken = token.accessToken,
+            nonce = server.getDpopNonce(),
             randomSource = RandomSource.Default,
         )
 
@@ -123,9 +125,12 @@ class OAuth2ClientDPoPTest : FunSpec({
                 scope = scope
             ),
             httpRequest = RequestInfo(
-                tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(
+                url = tokenUrl,
+                method = HttpMethod.Post,
+                dpop = BuildDPoPHeader(
                     signDpop = signDpop,
                     url = tokenUrl,
+                    nonce = server.getDpopNonce(),
                     randomSource = RandomSource.Default,
                 )
             )
@@ -148,9 +153,12 @@ class OAuth2ClientDPoPTest : FunSpec({
                 scope = scope
             ),
             httpRequest = RequestInfo(
-                tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(
+                url = tokenUrl,
+                method = HttpMethod.Post,
+                dpop = BuildDPoPHeader(
                     signDpop = signDpop,
                     url = tokenUrl,
+                    nonce = server.getDpopNonce(),
                     randomSource = RandomSource.Default,
                 )
             )
@@ -165,9 +173,10 @@ class OAuth2ClientDPoPTest : FunSpec({
         }
 
         val dpopForResource = BuildDPoPHeader(
-            signDpop,
+            signDpop = signDpop,
             url = resourceUrl,
             accessToken = refreshedAccessToken.accessToken,
+            nonce = server.getDpopNonce(),
             randomSource = RandomSource.Default,
         )
 
@@ -194,11 +203,37 @@ class OAuth2ClientDPoPTest : FunSpec({
                     scope = scope
                 ),
                 httpRequest = RequestInfo(
-                    tokenUrl,
-                    HttpMethod.Post,
+                    url = tokenUrl,
+                    method = HttpMethod.Post,
                     dpop = BuildDPoPHeader(
                         signDpop = signDpop,
                         url = "https://somethingelse.com/",
+                        nonce = server.getDpopNonce(),
+                        randomSource = RandomSource.Default,
+                    )
+                )
+            ).getOrThrow()
+        }
+    }
+
+    test("authorization code flow with DPoP and wrong nonce") {
+        val state = uuid4().toString()
+        val code = getCode(state)
+
+        shouldThrow<OAuth2Exception> {
+            server.token(
+                request = client.createTokenRequestParameters(
+                    state = state,
+                    authorization = OAuth2Client.AuthorizationForToken.Code(code),
+                    scope = scope
+                ),
+                httpRequest = RequestInfo(
+                    url = tokenUrl,
+                    method = HttpMethod.Post,
+                    dpop = BuildDPoPHeader(
+                        signDpop = signDpop,
+                        url = tokenUrl,
+                        nonce = server.getDpopNonce()!!.reversed(),
                         randomSource = RandomSource.Default,
                     )
                 )
@@ -233,9 +268,12 @@ class OAuth2ClientDPoPTest : FunSpec({
                 scope = scope
             ),
             httpRequest = RequestInfo(
-                tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(
+                url = tokenUrl,
+                method = HttpMethod.Post,
+                dpop = BuildDPoPHeader(
                     signDpop = signDpop,
                     url = tokenUrl,
+                    nonce = server.getDpopNonce(),
                     randomSource = RandomSource.Default,
                 )
             )
@@ -269,11 +307,16 @@ class OAuth2ClientDPoPTest : FunSpec({
                 authorization = OAuth2Client.AuthorizationForToken.Code(code),
                 scope = scope
             ),
-            httpRequest = RequestInfo(tokenUrl, HttpMethod.Post, dpop = BuildDPoPHeader(
-                signDpop = signDpop,
+            httpRequest = RequestInfo(
                 url = tokenUrl,
-                randomSource = RandomSource.Default,
-            ))
+                method = HttpMethod.Post,
+                dpop = BuildDPoPHeader(
+                    signDpop = signDpop,
+                    url = tokenUrl,
+                    nonce = server.getDpopNonce(),
+                    randomSource = RandomSource.Default,
+                )
+            )
         ).getOrThrow()
 
         server.tokenIntrospection(
@@ -288,6 +331,7 @@ class OAuth2ClientDPoPTest : FunSpec({
             signDpop = wrongSignDpop,
             url = resourceUrl,
             accessToken = token.accessToken,
+            nonce = server.getDpopNonce(),
             randomSource = RandomSource.Default,
         )
 

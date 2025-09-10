@@ -18,9 +18,9 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKeyFun
+import at.asitplus.wallet.lib.oidvci.DefaultNonceService
 import at.asitplus.wallet.lib.oidvci.NonceService
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidDpopProof
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import at.asitplus.wallet.lib.oidvci.TokenInfo
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -39,7 +39,8 @@ interface TokenVerificationService {
     /** Validates that this refresh token was actually issued by the known [TokenGenerationService]. */
     suspend fun validateRefreshToken(
         refreshToken: String,
-        request: RequestInfo?,
+        httpRequest: RequestInfo?,
+        validatedClientKey: JsonWebKey?,
     ): String
 
     /** Reads information about the token contained in [tokenOrAuthHeader] for token introspection. */
@@ -51,7 +52,13 @@ interface TokenVerificationService {
     suspend fun validateAccessToken(
         tokenOrAuthHeader: String,
         httpRequest: RequestInfo?,
+        dpopNonceService: NonceService? = null,
     ): KmmResult<Unit>
+
+    /** Validate a DPoP proof and extract the client's key, if the proof exits at all. */
+    suspend fun extractValidatedClientKey(
+        httpRequest: RequestInfo?,
+    ): KmmResult<JsonWebKey?>
 }
 
 /**
@@ -61,8 +68,10 @@ interface TokenVerificationService {
  * [OAuth 2.0 Demonstrating Proof of Possession (DPoP)](https://datatracker.ietf.org/doc/html/rfc9449)
  */
 class JwtTokenVerificationService(
-    /** Used to verify nonces of tokens. */
+    /** Used to verify nonces of tokens created by the token generation service. */
     private val nonceService: NonceService,
+    /** Used to verify nonces for DPoP proofs of clients. */
+    internal val dpopNonceService: NonceService = DefaultNonceService(),
     /** Used to verify the signature of the DPoP access token. */
     private val issuerKey: JsonWebKey,
     /** Used to verify client attestation JWTs */
@@ -77,10 +86,11 @@ class JwtTokenVerificationService(
 
     override suspend fun validateRefreshToken(
         refreshToken: String,
-        request: RequestInfo?,
+        httpRequest: RequestInfo?,
+        validatedClientKey: JsonWebKey?
     ): String {
         val dpopTokenJwt = validateDpopToken(refreshToken, JwsContentTypeConstants.RT_JWT)
-        validateDpopJwt(null, dpopTokenJwt, request)
+        validateDpopJwt(null, dpopTokenJwt, httpRequest, dpopNonceService, validatedClientKey)
         return refreshToken
     }
 
@@ -106,18 +116,54 @@ class JwtTokenVerificationService(
     override suspend fun validateAccessToken(
         tokenOrAuthHeader: String,
         httpRequest: RequestInfo?,
+        dpopNonceService: NonceService?,
     ) = catching {
         val dpopToken = if (tokenOrAuthHeader.startsWith(TOKEN_TYPE_DPOP, ignoreCase = true))
             tokenOrAuthHeader.removePrefix(TOKEN_PREFIX_DPOP).split(" ").last()
         else tokenOrAuthHeader
         val dpopTokenJwt = validateDpopToken(dpopToken, JwsContentTypeConstants.OID4VCI_AT_JWT)
-        validateDpopJwt(null, dpopTokenJwt, httpRequest)
+        validateDpopJwt(null, dpopTokenJwt, httpRequest, dpopNonceService ?: this.dpopNonceService, null)
+    }
+
+    override suspend fun extractValidatedClientKey(
+        httpRequest: RequestInfo?,
+    ): KmmResult<JsonWebKey?> = catching {
+        // TODO unify with other method
+        if (httpRequest?.dpop.isNullOrEmpty()) {
+            Napier.w("validateDpopJwtForToken: No dpop proof in header")
+            throw InvalidDpopProof("no dpop proof")
+        }
+        val jwt = parseAndValidate(httpRequest.dpop)
+
+        if (jwt.header.type != JwsContentTypeConstants.DPOP_JWT) {
+            Napier.w("validateDpopJwtForToken: invalid header type ${jwt.header.type} ")
+            throw InvalidDpopProof("invalid type")
+        }
+        Napier.i("validateDpopJwtForToken calls verifyAndRemoveNonce ${jwt.payload.nonce}")
+        if (jwt.payload.nonce == null || !dpopNonceService.verifyAndRemoveNonce(jwt.payload.nonce!!)) {
+            Napier.w("validateDpopJwtForToken: nonce  ${jwt.payload.nonce} not valid")
+            throw UseDpopNonce(dpopNonceService.provideNonce(), "DPoP JWT nonce incorrect")
+        }
+        if (jwt.payload.httpTargetUrl != httpRequest.url) {
+            Napier.w("validateDpopJwtForToken: htu ${jwt.payload.httpTargetUrl} not matching ${httpRequest.url}")
+            throw InvalidDpopProof("DPoP JWT htu incorrect")
+        }
+        if (jwt.payload.httpMethod != httpRequest.method.value.uppercase()) {
+            Napier.w("validateDpopJwtForToken: htm ${jwt.payload.httpMethod} not matching ${httpRequest.method}")
+            throw InvalidDpopProof("DPoP JWT htm incorrect")
+        }
+        jwt.header.jsonWebKey ?: run {
+            Napier.w("validateDpopJwtForToken: no client key in $jwt")
+            throw InvalidDpopProof("DPoP JWT contains no public key")
+        }
     }
 
     internal suspend fun validateDpopJwt(
-        dpopToken: String?,
+        dpopToken: String?, // TODO when to set this
         dpopTokenJwt: JwsSigned<OpenId4VciAccessToken>,
         httpRequest: RequestInfo?,
+        dpopNonceService: NonceService,
+        validatedClientKey: JsonWebKey?,
     ) {
         if (httpRequest?.dpop.isNullOrEmpty()) {
             Napier.w("validateDpopJwt: No dpop proof in header")
@@ -131,7 +177,14 @@ class JwtTokenVerificationService(
             Napier.w("validateDpopJwt: jwk not matching cnf.jkt")
             throw InvalidDpopProof("DPoP JWT JWK not matching cnf.jkt")
         }
-        // Verify nonce, but where to get it?
+        if (validatedClientKey == null) {
+            // DPoP-JWT has already been verified, so we can't check for the nonce twice
+            Napier.i("validateDpopJwt calls verifyAndRemoveNonce ${jwt.payload.nonce}")
+            if (jwt.payload.nonce == null || !dpopNonceService.verifyAndRemoveNonce(jwt.payload.nonce!!)) {
+                Napier.w("validateDpopJwt: nonce  ${jwt.payload.nonce} not valid")
+                throw UseDpopNonce(dpopNonceService.provideNonce(), "DPoP JWT nonce incorrect")
+            }
+        }
         if (jwt.payload.httpTargetUrl != httpRequest.url) {
             Napier.w("validateDpopJwt: htu ${jwt.payload.httpTargetUrl} not matching requestUrl ${httpRequest.url}")
             throw InvalidDpopProof("DPoP JWT htu incorrect")
@@ -214,14 +267,19 @@ class BearerTokenVerificationService(
 
     override suspend fun validateRefreshToken(
         refreshToken: String,
-        request: RequestInfo?,
+        httpRequest: RequestInfo?,
+        validatedClientKey: JsonWebKey?,
     ): String {
         throw InvalidToken("Refresh tokens are not supported by this verifier")
     }
 
+    /** Not supported for Bearer tokens. */
+    override suspend fun extractValidatedClientKey(httpRequest: RequestInfo?) = catching { null }
+
     override suspend fun validateAccessToken(
         tokenOrAuthHeader: String,
         httpRequest: RequestInfo?,
+        dpopNonceService: NonceService?,
     ): KmmResult<Unit> = catching { getTokenInfo(tokenOrAuthHeader) }
 
     override suspend fun getTokenInfo(

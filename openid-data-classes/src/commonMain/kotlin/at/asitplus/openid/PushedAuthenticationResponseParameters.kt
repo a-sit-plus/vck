@@ -27,10 +27,4 @@ data class PushedAuthenticationResponseParameters(
     @SerialName("expires_in")
     @Serializable(with = DurationSecondsIntSerializer::class)
     val expires: Duration? = null,
-
-    @SerialName("error")
-    val error: String? = null,
-
-    @SerialName("error_description")
-    val errorDescription: String? = null,
 )

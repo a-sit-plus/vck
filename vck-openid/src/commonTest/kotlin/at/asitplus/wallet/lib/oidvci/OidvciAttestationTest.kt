@@ -90,7 +90,7 @@ class OidvciAttestationTest : FunSpec({
         val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata).shouldNotBeNull()
         val scope = credentialFormat.scope.shouldNotBeNull()
         val token = getToken(scope)
-        val clientNonce = issuer.nonce().getOrThrow().clientNonce
+        val clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce
         client.createCredential(
             tokenResponse = token,
             metadata = issuer.metadata,
@@ -137,7 +137,7 @@ class OidvciAttestationTest : FunSpec({
         val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata).shouldNotBeNull()
         val scope = credentialFormat.scope.shouldNotBeNull()
         val token = getToken(scope)
-        val clientNonce = issuer.nonce().getOrThrow().clientNonce
+        val clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce
         client.createCredential(
             tokenResponse = token,
             metadata = issuer.metadata,
@@ -165,7 +165,7 @@ class OidvciAttestationTest : FunSpec({
         val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata).shouldNotBeNull()
         val scope = credentialFormat.scope.shouldNotBeNull()
         val token = getToken(scope)
-        val clientNonce = issuer.nonce().getOrThrow().clientNonce
+        val clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce
 
         shouldThrowAny {
             client.createCredential(

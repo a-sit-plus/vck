@@ -5,16 +5,14 @@ import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_BEARER
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.TokenResponseParameters
-import at.asitplus.signum.indispensable.josef.*
+import at.asitplus.signum.indispensable.josef.ConfirmationClaim
+import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
-import at.asitplus.wallet.lib.jws.VerifyJwsObject
-import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.DefaultNonceService
 import at.asitplus.wallet.lib.oidvci.MapStore
@@ -34,7 +32,10 @@ interface TokenGenerationService {
         userInfo: OidcUserInfoExtended,
         authorizationDetails: Set<AuthorizationDetails>?,
         scope: String?,
+        validatedClientKey: JsonWebKey?,
     ): TokenResponseParameters
+
+    suspend fun dpopNonce(): String?
 }
 
 /**
@@ -46,10 +47,10 @@ interface TokenGenerationService {
 class JwtTokenGenerationService(
     /** Used to create nonces for tokens during issuing. */
     internal val nonceService: NonceService = DefaultNonceService(),
+    /** Used to create nonces for DPoP proofs of clients. */
+    internal val dpopNonceService: NonceService = DefaultNonceService(),
     /** Used as issuer for issued DPoP tokens. */
     internal val publicContext: String = "https://wallet.a-sit.at/authorization-server",
-    /** Used to verify client attestation JWTs. */
-    private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
     /** Key material used to sign the DPoP tokens in [signToken]. */
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     /** Used to sign DPoP (RFC 9449) access tokens, if supported by the client. */
@@ -67,11 +68,11 @@ class JwtTokenGenerationService(
         userInfo: OidcUserInfoExtended,
         authorizationDetails: Set<AuthorizationDetails>?,
         scope: String?,
+        validatedClientKey: JsonWebKey?,
     ): TokenResponseParameters = if (httpRequest?.dpop == null) {
         Napier.w("dpop: no JWT provided, but enforced")
         throw InvalidDpopProof("no DPoP header value")
     } else {
-        val clientKey = validateDpopJwtForToken(httpRequest)
         TokenResponseParameters(
             expires = 5.minutes,
             tokenType = TOKEN_TYPE_DPOP,
@@ -84,9 +85,11 @@ class JwtTokenGenerationService(
                     },
                     notBefore = clock.now(),
                     expiration = clock.now().plus(30.days),
-                    confirmationClaim = ConfirmationClaim(
-                        jsonWebKeyThumbprint = clientKey.jwkThumbprintPlain
-                    ),
+                    confirmationClaim = validatedClientKey?.let {
+                        ConfirmationClaim(
+                            jsonWebKeyThumbprint = it.jwkThumbprintPlain
+                        )
+                    },
                     scope = scope,
                     authorizationDetails = authorizationDetails,
                 ),
@@ -101,9 +104,11 @@ class JwtTokenGenerationService(
                     },
                     notBefore = clock.now(),
                     expiration = clock.now().plus(5.minutes),
-                    confirmationClaim = ConfirmationClaim(
-                        jsonWebKeyThumbprint = clientKey.jwkThumbprintPlain
-                    ),
+                    confirmationClaim = validatedClientKey?.let {
+                        ConfirmationClaim(
+                            jsonWebKeyThumbprint = it.jwkThumbprintPlain
+                        )
+                    },
                     scope = scope,
                     authorizationDetails = authorizationDetails,
                 ),
@@ -114,48 +119,13 @@ class JwtTokenGenerationService(
         )
     }
 
-    private suspend fun validateDpopJwtForToken(
-        httpRequest: RequestInfo,
-    ): JsonWebKey {
-        val jwt = httpRequest.dpop?.parseAndValidate()
-            ?: throw InvalidDpopProof("no DPoP header value")
-
-        if (jwt.header.type != JwsContentTypeConstants.DPOP_JWT) {
-            Napier.w("validateDpopJwtForToken: invalid header type ${jwt.header.type} ")
-            throw InvalidDpopProof("invalid type")
-        }
-        // Verify nonce, but where to get it?
-        if (jwt.payload.httpTargetUrl != httpRequest.url) {
-            Napier.w("validateDpopJwt: htu ${jwt.payload.httpTargetUrl} not matching requestUrl ${httpRequest.url}")
-            throw InvalidDpopProof("DPoP JWT htu incorrect")
-        }
-        if (jwt.payload.httpMethod != httpRequest.method.value.uppercase()) {
-            Napier.w("validateDpopJwt: htm ${jwt.payload.httpMethod} not matching requestMethod ${httpRequest.method}")
-            throw InvalidDpopProof("DPoP JWT htm incorrect")
-        }
-        val clientKey = jwt.header.jsonWebKey ?: run {
-            Napier.w("validateDpopJwtForToken: no client key in $jwt")
-            throw InvalidDpopProof("DPoP JWT contains no public key")
-        }
-        return clientKey
-    }
-
-    private suspend fun String.parseAndValidate(): JwsSigned<JsonWebToken> =
-        JwsSigned.deserialize(JsonWebToken.serializer(), this, vckJsonSerializer)
-            .getOrElse {
-                Napier.w("parse: could not parse DPoP JWT", it)
-                throw InvalidDpopProof("could not parse DPoP JWT", it)
-            }.also {
-                if (!verifyJwsObject(it)) {
-                    Napier.w("parse: DPoP not verified")
-                    throw InvalidDpopProof("DPoP JWT not verified")
-                }
-            }
 
     private val JsonWebKey.jwkThumbprintPlain
         get() = this.jwkThumbprint.removePrefix("urn:ietf:params:oauth:jwk-thumbprint:sha256:")
 
     suspend fun getUserInfoExtended(jwtId: String) = jwtIdToUserInfoExtended.remove(jwtId)
+
+    override suspend fun dpopNonce() = dpopNonceService.provideNonce()
 }
 
 /**
@@ -172,6 +142,7 @@ class BearerTokenGenerationService(
         userInfo: OidcUserInfoExtended,
         authorizationDetails: Set<AuthorizationDetails>?,
         scope: String?,
+        validatedClientKey: JsonWebKey?
     ): TokenResponseParameters = TokenResponseParameters(
         expires = 5.minutes,
         tokenType = TOKEN_TYPE_BEARER,
@@ -196,4 +167,5 @@ class BearerTokenGenerationService(
     suspend fun verifyAccessToken(accessToken: String) =
         accessTokenToValidatedAccessToken.get(accessToken)
 
+    override suspend fun dpopNonce() = null
 }

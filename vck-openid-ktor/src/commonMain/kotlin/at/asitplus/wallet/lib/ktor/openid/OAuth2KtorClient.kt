@@ -7,6 +7,7 @@ import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.OpenIdConstants.Errors.USE_DPOP_NONCE
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.SupportedCredentialFormat
@@ -25,6 +26,7 @@ import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.OAuth2Client.AuthorizationForToken
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationPoPJwt
 import at.asitplus.wallet.lib.oidvci.BuildDPoPHeader
+import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import com.benasher44.uuid.uuid4
@@ -52,6 +54,7 @@ import io.ktor.http.Url
 import io.ktor.http.parameters
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.util.flattenEntries
+import io.ktor.utils.io.CancellationException
 import kotlin.time.Duration.Companion.minutes
 
 /**
@@ -129,12 +132,11 @@ class OAuth2KtorClient(
         transactionCode: String?,
         scope: String?,
         authorizationDetails: Set<OpenIdAuthorizationDetails>,
-    ): KmmResult<TokenResponseParameters> = catching {
+    ): KmmResult<TokenResponseWithDpopNonce> = catching {
         Napier.i("requestTokenWithPreAuthorizedCode")
         val state = uuid4().toString()
-
         val hasScope = scope != null
-        val tokenResponse = postToken(
+        postToken(
             oauthMetadata = oauthMetadata,
             tokenRequest = oAuth2Client.createTokenRequestParameters(
                 state = state,
@@ -143,10 +145,10 @@ class OAuth2KtorClient(
                 authorizationDetails = if (!hasScope) authorizationDetails else null
             ),
             popAudience = authorizationServer
-        )
-        Napier.i("Received token response")
-        Napier.d("Received token response: $tokenResponse")
-        tokenResponse
+        ).also {
+            Napier.i("Received token response")
+            Napier.d("Received token response: $it")
+        }
     }
 
     /**
@@ -165,9 +167,9 @@ class OAuth2KtorClient(
         state: String,
         scope: String? = null,
         authorizationDetails: Set<OpenIdAuthorizationDetails>? = null,
-    ): KmmResult<TokenResponseParameters> = catching {
-        Napier.i("resumeWithAuthCode")
-        Napier.d("resumeWithAuthCode: $url")
+    ): KmmResult<TokenResponseWithDpopNonce> = catching {
+        Napier.i("requestTokenWithAuthCode")
+        Napier.d("requestTokenWithAuthCode: $url")
 
         val authnResponse = Url(url).parameters.flattenEntries().toMap()
             .decodeFromUrlQuery<AuthenticationResponseParameters>()
@@ -175,7 +177,7 @@ class OAuth2KtorClient(
             ?: throw Exception("No authn code in $url")
 
         val hasScope = scope != null
-        val tokenResponse = postToken(
+        postToken(
             oauthMetadata = oauthMetadata,
             tokenRequest = oAuth2Client.createTokenRequestParameters(
                 authorization = AuthorizationForToken.Code(code),
@@ -184,10 +186,10 @@ class OAuth2KtorClient(
                 authorizationDetails = if (!hasScope) authorizationDetails else null
             ),
             popAudience = authorizationServer,
-        )
-        Napier.i("Received token response")
-        Napier.d("Received token response $tokenResponse")
-        tokenResponse
+        ).also {
+            Napier.i("Received token response")
+            Napier.d("Received token response $it")
+        }
     }
 
     /**
@@ -203,7 +205,7 @@ class OAuth2KtorClient(
         refreshToken: String,
         scope: String?,
         authorizationDetails: Set<OpenIdAuthorizationDetails>,
-    ): KmmResult<TokenResponseParameters> = catching {
+    ): KmmResult<TokenResponseWithDpopNonce> = catching {
         Napier.i("refreshCredential")
         Napier.d("refreshCredential: $refreshToken")
         val hasScope = scope != null
@@ -231,7 +233,7 @@ class OAuth2KtorClient(
         authorizationServer: String,
         subjectToken: String,
         resource: String?,
-    ): KmmResult<TokenResponseParameters> = catching {
+    ): KmmResult<TokenResponseWithDpopNonce> = catching {
         Napier.i("requestTokenWithTokenExchange")
         Napier.d("requestTokenWithTokenExchange: $subjectToken")
         val tokenResponse = postToken(
@@ -250,14 +252,16 @@ class OAuth2KtorClient(
         tokenResponse
     }
 
-    @Throws(Exception::class)
+    @Throws(IllegalArgumentException::class, CancellationException::class)
     private suspend fun postToken(
         oauthMetadata: OAuth2AuthorizationServerMetadata,
         tokenRequest: TokenRequestParameters,
         popAudience: String,
-    ): TokenResponseParameters {
+        dpopNonce: String? = null,
+        retryCounter: Int = 0,
+    ): TokenResponseWithDpopNonce {
         val tokenEndpointUrl = oauthMetadata.tokenEndpoint
-            ?: throw Exception("No tokenEndpoint in $oauthMetadata")
+            ?: throw IllegalArgumentException("No tokenEndpoint in $oauthMetadata")
         Napier.i("postToken: $tokenEndpointUrl with $tokenRequest")
         return client.request {
             url(tokenEndpointUrl)
@@ -265,8 +269,19 @@ class OAuth2KtorClient(
             setBody(FormDataContent(parameters {
                 tokenRequest.encodeToParameters().forEach { append(it.key, it.value) }
             }))
-            applyAuthnForToken(oauthMetadata, popAudience, tokenEndpointUrl, HttpMethod.Post, true)()
-        }.body<TokenResponseParameters>()
+            applyAuthnForToken(oauthMetadata, popAudience, tokenEndpointUrl, HttpMethod.Post, true, dpopNonce)()
+        }.let { resp ->
+            val useFreshNonce: String? = runCatching {
+                resp.body<OAuth2Error>().error.takeIf { it == USE_DPOP_NONCE }
+                    ?.let { resp.headers[HttpHeaders.DPoPNonce] }
+            }.getOrNull()
+
+            useFreshNonce?.takeIf { retryCounter == 0 }?.let {
+                postToken(oauthMetadata, tokenRequest, popAudience, it, retryCounter + 1)
+            } ?: run {
+                TokenResponseWithDpopNonce(resp.body(), resp.headers[HttpHeaders.DPoPNonce])
+            }
+        }
     }
 
     /**
@@ -328,41 +343,48 @@ class OAuth2KtorClient(
         OpenUrlForAuthnRequest(authorizationUrl, state)
     }
 
-    @Throws(Exception::class)
     private suspend fun pushAuthorizationRequest(
         oauthMetadata: OAuth2AuthorizationServerMetadata,
         authRequest: AuthenticationRequestParameters,
         state: String,
         popAudience: String,
+        dpopNonce: String? = null,
+        retryCounter: Int = 0,
     ): AuthenticationRequestParameters {
         val parEndpointUrl = oauthMetadata.pushedAuthorizationRequestEndpoint
             ?: throw Exception("No pushedAuthorizationRequestEndpoint in $oauthMetadata")
 
-        val response = client.request {
+        val resp = client.request {
             url(parEndpointUrl)
             method = HttpMethod.Post
             setBody(FormDataContent(parameters {
                 authRequest.encodeToParameters().forEach { append(it.key, it.value) }
                 append(OpenIdConstants.PARAMETER_PROMPT, OpenIdConstants.PARAMETER_PROMPT_LOGIN)
             }))
-            applyAuthnForToken(oauthMetadata, popAudience, parEndpointUrl, HttpMethod.Post, false)()
-        }.body<PushedAuthenticationResponseParameters>()
+            applyAuthnForToken(oauthMetadata, popAudience, parEndpointUrl, HttpMethod.Post, false, dpopNonce)()
+        }
+        runCatching {
+            resp.body<OAuth2Error>()
+        }.getOrNull()?.let {
+            throw Exception(it.error + it.errorDescription?.let { ": $it" })
+        }
+        val useFreshNonce: String? = runCatching {
+            resp.body<OAuth2Error>().error.takeIf { it == USE_DPOP_NONCE }
+                ?.let { resp.headers[HttpHeaders.DPoPNonce] }
+        }.getOrNull()
 
-        if (response.errorDescription != null) {
-            throw Exception(response.errorDescription)
+        return useFreshNonce?.takeIf { retryCounter == 0 }?.let {
+            pushAuthorizationRequest(oauthMetadata, authRequest, state, popAudience, it, retryCounter + 1)
+        } ?: resp.body<PushedAuthenticationResponseParameters>().let { params ->
+            if (params.requestUri == null) {
+                throw Exception("No request_uri from PAR response at $parEndpointUrl")
+            }
+            AuthenticationRequestParameters(
+                clientId = oAuth2Client.clientId,
+                requestUri = params.requestUri,
+                state = state,
+            )
         }
-        if (response.error != null) {
-            throw Exception(response.error)
-        }
-        if (response.requestUri == null) {
-            throw Exception("No request_uri from PAR response at $parEndpointUrl")
-        }
-
-        return AuthenticationRequestParameters(
-            clientId = oAuth2Client.clientId,
-            requestUri = response.requestUri,
-            state = state,
-        )
     }
 
     /**
@@ -373,6 +395,7 @@ class OAuth2KtorClient(
         tokenResponse: TokenResponseParameters,
         resourceUrl: String,
         httpMethod: HttpMethod,
+        dpopNonce: String? = null,
     ): HttpRequestBuilder.() -> Unit {
         val dpopHeader = if (tokenResponse.tokenType.equals(TOKEN_TYPE_DPOP, true))
             BuildDPoPHeader(
@@ -380,6 +403,7 @@ class OAuth2KtorClient(
                 url = resourceUrl,
                 accessToken = tokenResponse.accessToken,
                 httpMethod = httpMethod.value,
+                nonce = dpopNonce,
                 randomSource = randomSource
             )
         else null
@@ -393,7 +417,7 @@ class OAuth2KtorClient(
 
     /**
      * Sets the appropriate headers when accessing a token endpoint,
-     * i.e., performs client authentication.
+     * i.e., performs client authentication, also sign DPoP proof when [useDpop] is set.
      */
     suspend fun applyAuthnForToken(
         oauthMetadata: OAuth2AuthorizationServerMetadata,
@@ -401,33 +425,35 @@ class OAuth2KtorClient(
         resourceUrl: String,
         httpMethod: HttpMethod,
         useDpop: Boolean,
+        dpopNonce: String? = null,
     ): HttpRequestBuilder.() -> Unit {
-        val clientAttestationJwt = if (oauthMetadata.useClientAuth()) {
-            loadClientAttestationJwt?.invoke()
-        } else null
-        val clientAttestationPoPJwt =
-            if (oauthMetadata.useClientAuth() && signClientAttestationPop != null && clientAttestationJwt != null) {
-                BuildClientAttestationPoPJwt(
-                    signClientAttestationPop,
-                    clientId = oAuth2Client.clientId,
-                    audience = popAudience,
-                    lifetime = 10.minutes,
-                ).serialize()
-            } else null
+        val (clientAttJwt, clientAttPop) = oauthMetadata.useClientAuth().takeIf { it }?.let {
+            loadClientAttestationJwt?.invoke()?.let { clientAttestationJwt ->
+                clientAttestationJwt to signClientAttestationPop?.let {
+                    BuildClientAttestationPoPJwt(
+                        signClientAttestationPop,
+                        clientId = oAuth2Client.clientId,
+                        audience = popAudience,
+                        lifetime = 10.minutes,
+                    ).serialize()
+                }
+            }
+        } ?: (null to null)
 
-        val dpopHeader = if (oauthMetadata.hasMatchingDpopAlgorithm() && useDpop) {
+        val dpopHeader = oauthMetadata.hasMatchingDpopAlgorithm().takeIf { it && useDpop }?.let {
             BuildDPoPHeader(
                 signDpop = signDpop,
                 url = resourceUrl,
                 httpMethod = httpMethod.value,
-                randomSource = randomSource
+                nonce = dpopNonce,
+                randomSource = randomSource,
             )
-        } else null
+        }
 
         return {
             headers {
-                clientAttestationJwt?.let { append(HttpHeaders.OAuthClientAttestation, it) }
-                clientAttestationPoPJwt?.let { append(HttpHeaders.OAuthClientAttestationPop, it) }
+                clientAttJwt?.let { append(HttpHeaders.OAuthClientAttestation, it) }
+                clientAttPop?.let { append(HttpHeaders.OAuthClientAttestationPop, it) }
                 dpopHeader?.let { append(HttpHeaders.DPoP, it) }
             }
         }
@@ -449,3 +475,11 @@ val HttpHeaders.OAuthClientAttestationPop: String
 val HttpHeaders.DPoP: String
     get() = "DPoP"
 
+val HttpHeaders.DPoPNonce: String
+    get() = "DPoP-Nonce"
+
+
+data class TokenResponseWithDpopNonce(
+    val params: TokenResponseParameters,
+    val dpopNonce: String?,
+)

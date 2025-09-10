@@ -58,6 +58,8 @@ Release 5.9.0 (unreleased):
    - Use correct error values for `unknown_credential_configuration` and `unknown_credential_identifier`
    - In `CredentialIssuer` deprecate constructor parameters `encryptCredentialRequest`, `requireEncryption`, `supportedJweAlgorithms`, `supportedJweEncryptionAlgorithms`
    - In `CredentialIssuer` introduce constructor parameter `encryptionService` which handles credential request decryption and credential response encryption
+   - In `CredentialIssuer` deprecate method `nonce()`
+   - In `CredentialIssuer` add method `nonceWithDpopNonce()` to provide a DPoP nonce to clients (only when the AS is internal)
    - In `WalletService` deprecate constructor parameters `requestEncryption`, `decryptionKeyMaterial`, `supportedJweAlgorithm`, `supportedJweEncryptionAlgorithm`
    - In `WalletService` introduce constructor parameter `encryptionService` which handles credential request encryption and credential response decryption
    - In `WalletService` add method `parseCredentialResponse` to transform the received credential response from the issuer into `StoreCredentialInput`

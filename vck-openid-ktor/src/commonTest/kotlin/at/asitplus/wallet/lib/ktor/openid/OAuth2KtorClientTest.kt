@@ -26,8 +26,11 @@ import at.asitplus.wallet.lib.oauth2.TokenService
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.DefaultNonceService
+import at.asitplus.wallet.lib.oidvci.OAuth2Error
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
+import at.asitplus.wallet.lib.openid.toOAuth2Error
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -68,7 +71,7 @@ class OAuth2KtorClientTest : FunSpec() {
                     scope = requestedScope,
                     authorizationDetails = setOf()
                 ).getOrThrow().also {
-                    it.accessToken.shouldNotBeNull()
+                    it.params.accessToken.shouldNotBeNull()
                 }
             }
         }
@@ -91,8 +94,6 @@ class OAuth2KtorClientTest : FunSpec() {
                 enforceClientAuthentication = true,
             ),
             tokenService = TokenService.jwt(
-                nonceService = DefaultNonceService(),
-                keyMaterial = EphemeralKeyWithoutCert(),
                 issueRefreshTokens = true
             ),
         )
@@ -133,10 +134,25 @@ class OAuth2KtorClientTest : FunSpec() {
                 request.url.fullPath.startsWith(tokenEndpointPath) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val params: TokenRequestParameters = requestBody.decodeFromPostBody<TokenRequestParameters>()
-                    val result = authorizationService.token(params, request.toRequestInfo()).getOrThrow()
-                    respond(
-                        vckJsonSerializer.encodeToString<TokenResponseParameters>(result),
-                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    authorizationService.token(params, request.toRequestInfo()).fold(
+                        onSuccess = {
+                            respond(
+                                vckJsonSerializer.encodeToString<TokenResponseParameters>(it),
+                                headers = headers {
+                                    append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                                }
+                            )
+                        },
+                        onFailure = {
+                            respond(
+                                vckJsonSerializer.encodeToString<OAuth2Error>(it.toOAuth2Error(null)),
+                                headers = headers {
+                                    append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                                    (it as? OAuth2Exception.UseDpopNonce)?.dpopNonce
+                                        ?.let { append(HttpHeaders.DPoPNonce, it) }
+                                }
+                            )
+                        }
                     )
                 }
 

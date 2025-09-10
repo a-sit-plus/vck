@@ -3,17 +3,20 @@ package at.asitplus.wallet.lib.ktor.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
+import at.asitplus.openid.OpenIdConstants.Errors.USE_DPOP_NONCE
 import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER
 import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION
-import at.asitplus.openid.OpenIdConstants.TOKEN_PREFIX_DPOP
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
+import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.TokenVerificationService
-import at.asitplus.wallet.lib.oauth2.ValidatedAccessToken
+import at.asitplus.wallet.lib.oidvci.DefaultNonceService
+import at.asitplus.wallet.lib.oidvci.NonceService
 import at.asitplus.wallet.lib.oidvci.OAuth2AuthorizationServerAdapter
+import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 import at.asitplus.wallet.lib.oidvci.TokenInfo
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
@@ -63,6 +66,8 @@ class RemoteOAuth2AuthorizationServerAdapter(
     ),
     /** Validates access tokens received in [validateAccessToken]. */
     val internalTokenVerificationService: TokenVerificationService,
+    /** Used to provide DPoP nonces for credential requests, which will be verified by [internalTokenVerificationService]. */
+    val dpopNonceService: NonceService = DefaultNonceService(),
 ) : OAuth2AuthorizationServerAdapter {
 
     private val client: HttpClient = HttpClient(engine) {
@@ -89,12 +94,6 @@ class RemoteOAuth2AuthorizationServerAdapter(
     @Deprecated("Use [validateAccessToken] instead")
     override val tokenVerificationService: TokenVerificationService
         get() = object : TokenVerificationService {
-            override suspend fun validateRefreshToken(
-                refreshToken: String,
-                request: RequestInfo?,
-            ): String {
-                TODO("Not yet implemented")
-            }
 
             override suspend fun getTokenInfo(
                 tokenOrAuthHeader: String,
@@ -105,7 +104,20 @@ class RemoteOAuth2AuthorizationServerAdapter(
             override suspend fun validateAccessToken(
                 tokenOrAuthHeader: String,
                 httpRequest: RequestInfo?,
+                dpopNonceService: NonceService?,
             ): KmmResult<Unit> {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun validateRefreshToken(
+                refreshToken: String,
+                httpRequest: RequestInfo?,
+                validatedClientKey: JsonWebKey?,
+            ): String {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun extractValidatedClientKey(httpRequest: RequestInfo?): KmmResult<JsonWebKey?> {
                 TODO("Not yet implemented")
             }
         }
@@ -127,18 +139,49 @@ class RemoteOAuth2AuthorizationServerAdapter(
         val introspectionUrl = oauthMetadata.introspectionEndpoint
             ?: throw InvalidToken("No introspection endpoint found in Authorization Server metadata")
         val token = authorizationHeader.let { if (it.contains(" ")) it.split(" ").last() else it }
-        val introspectionRequest = TokenIntrospectionRequest(
+        val request = TokenIntrospectionRequest(
             token = token,
             tokenTypeHint = authorizationHeader.split(" ").firstOrNull()
         )
-        client.request {
-            url(introspectionUrl)
-            method = HttpMethod.Post
-            setBody(FormDataContent(parameters {
-                introspectionRequest.encodeToParameters().forEach { append(it.key, it.value) }
-            }))
-            oauth2Client.applyAuthnForToken(oauthMetadata, publicContext, introspectionUrl, HttpMethod.Post, true)()
-        }.body<TokenIntrospectionResponse>().let {
+        callTokenIntrospection(
+            url = introspectionUrl,
+            request = request,
+            oauthMetadata = oauthMetadata,
+            token = token,
+            dpopNonce = null
+        )
+    }
+
+    private suspend fun callTokenIntrospection(
+        url: String,
+        request: TokenIntrospectionRequest,
+        oauthMetadata: OAuth2AuthorizationServerMetadata,
+        token: String,
+        dpopNonce: String? = null,
+        retryCounter: Int = 0,
+    ): TokenInfo = client.request {
+        url(url)
+        method = HttpMethod.Post
+        setBody(FormDataContent(parameters {
+            request.encodeToParameters().forEach { append(it.key, it.value) }
+        }))
+        oauth2Client.applyAuthnForToken(
+            oauthMetadata = oauthMetadata,
+            popAudience = publicContext,
+            resourceUrl = url,
+            httpMethod = HttpMethod.Post,
+            useDpop = true,
+            dpopNonce = dpopNonce
+        )()
+    }.let { resp ->
+        val useFreshNonce: String? = runCatching {
+            resp.body<OAuth2Error>().error.takeIf { it == USE_DPOP_NONCE }
+                ?.let { resp.headers[HttpHeaders.DPoPNonce] }
+        }.getOrNull()
+
+        useFreshNonce?.takeIf { retryCounter == 0 }?.let {
+            callTokenIntrospection(url, request, oauthMetadata, token, it, retryCounter + 1)
+        } ?: resp.body<TokenIntrospectionResponse>().let {
             if (!it.active) {
                 throw InvalidToken("Introspected token is not active")
             }
@@ -148,6 +191,7 @@ class RemoteOAuth2AuthorizationServerAdapter(
                 authorizationDetails = it.authorizationDetails
             )
         }
+
     }
 
     override suspend fun getUserInfo(
@@ -165,7 +209,7 @@ class RemoteOAuth2AuthorizationServerAdapter(
             client.request {
                 url(userInfoEndpoint)
                 method = HttpMethod.Get
-                oauth2Client.applyToken(it, userInfoEndpoint, HttpMethod.Get)()
+                oauth2Client.applyToken(it.params, userInfoEndpoint, HttpMethod.Get, it.dpopNonce)()
             }.body<JsonObject>()
         }
     }
@@ -174,6 +218,12 @@ class RemoteOAuth2AuthorizationServerAdapter(
         authorizationHeader: String,
         httpRequest: RequestInfo?,
     ): KmmResult<Boolean> = catching {
-        internalTokenVerificationService.validateAccessToken(authorizationHeader, httpRequest).isSuccess
+        internalTokenVerificationService.validateAccessToken(
+            tokenOrAuthHeader = authorizationHeader,
+            httpRequest = httpRequest,
+            dpopNonceService = dpopNonceService
+        ).isSuccess
     }
+
+    override suspend fun getDpopNonce() = dpopNonceService.provideNonce()
 }

@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.BatchCredentialIssuanceMetadata
+import at.asitplus.openid.ClientNonceResponse
 import at.asitplus.openid.CredentialRequestParameters
 import at.asitplus.openid.CredentialResponseParameters
 import at.asitplus.openid.IssuerMetadata
@@ -59,7 +60,7 @@ class CredentialIssuer(
     private val credentialEndpointPath: String = "/credential",
     /**
      * Used to build [IssuerMetadata.nonceEndpointUrl], i.e. implementers need to forward requests
-     * to that URI (which starts with [publicContext]) to [nonce].
+     * to that URI (which starts with [publicContext]) to [nonceWithDpopNonce].
      */
     private val nonceEndpointPath: String = "/nonce",
     /** Turn on to require key attestation support in the [metadata]. */
@@ -100,6 +101,16 @@ class CredentialIssuer(
                 .withSupportedSigningAlgorithms(supportedSigningAlgorithms)
                 .withSupportedProofTypes(proofValidator.validProofTypes())
         }
+
+
+    /**
+     * MUST be delivered with HTTP header `Cache-Control: no-store` (see [io.ktor.http.HttpHeaders.CacheControl]).
+     * Include [response] as the JSON-serialized body, and [dpopNonce] in HTTP header `DPoP-Nonce` when present.
+     */
+    data class Nonce(
+        val response: ClientNonceResponse,
+        val dpopNonce: String? = null,
+    )
 
     /**
      * Serve this result serialized at the path formed by inserting the string `/.well-known/openid-credential-issuer`
@@ -152,13 +163,18 @@ class CredentialIssuer(
 
     /**
      * Provides a fresh nonce to the clients, for incorporating them into the credential proofs.
-     *
      * Requests from the client are HTTP POST.
-     *
-     * MUST be delivered with `Cache-Control: no-store` as HTTP header.
      */
-    // TODO Maybe return DPoP-Nonce from RFC 9449, as stated in OID4VCI 7.2. Nonce Response
-    suspend fun nonce() = proofValidator.nonce()
+    @Deprecated("Use [nonceWithDpopNonce] instead", ReplaceWith("nonceWithDpopNonce()"))
+    suspend fun nonce(): KmmResult<ClientNonceResponse> = catching { proofValidator.nonce() }
+
+    /**
+     * Provides a fresh nonce for credential proofs and a DPoP nonce for DPoP proofs.
+     * Requests from the client are HTTP POST.
+     */
+    suspend fun nonceWithDpopNonce(): KmmResult<Nonce> = catching {
+        Nonce(proofValidator.nonce(), authorizationService.getDpopNonce())
+    }
 
     /**
      * Verifies the [authorizationHeader] to contain a token from [authorizationService],
@@ -307,7 +323,7 @@ class CredentialIssuer(
         request: RequestInfo?,
     ): Unit = authorizationService.getTokenInfo(
         authorizationHeader = authorizationHeader,
-        httpRequest = request
+        httpRequest = request,
     ).getOrThrow().let {
         credentialIdentifier?.let { credentialIdentifier ->
             if (it.authorizationDetails == null)
