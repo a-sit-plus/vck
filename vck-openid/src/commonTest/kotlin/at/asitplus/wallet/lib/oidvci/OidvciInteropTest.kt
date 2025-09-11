@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
+import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
@@ -178,7 +179,7 @@ class OidvciInteropTest : FunSpec({
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
         credential.scope shouldBe "eu.europa.ec.eudi.pid_vc_sd_jwt"
         credential.supportedBindingMethods!!.shouldHaveSingleElement("jwk")
-        credential.supportedSigningAlgorithms!!.shouldHaveSingleElement("ES256")
+        credential.supportedSigningAlgorithms!!.shouldHaveSingleElement(SignatureAlgorithm.ECDSAwithSHA256)
         credential.supportedProofTypes!!["jwt"]!!.supportedSigningAlgorithms?.shouldContainAll("RS256", "ES256")
         credential.sdJwtVcType shouldBe "eu.europa.ec.eudi.pid.1"
         // this is still wrong in EUDIW's metadata:

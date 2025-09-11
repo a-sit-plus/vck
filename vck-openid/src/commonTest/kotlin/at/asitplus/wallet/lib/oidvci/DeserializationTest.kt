@@ -3,9 +3,12 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.IssuerMetadata
+import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldBeSingleton
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.maps.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -13,7 +16,7 @@ import io.kotest.matchers.shouldBe
 
 class DeserializationTest : FunSpec({
 
-    test("OID4VCI  A.1.1. VC Signed as a JWT, Not Using JSON-LD") {
+    test("OID4VCI A.1.1.2. VC Signed as a JWT, Not Using JSON-LD") {
         val input = """
         {
             "credential_issuer": "test",
@@ -34,38 +37,6 @@ class DeserializationTest : FunSpec({
                       "UniversityDegreeCredential"
                     ]
                   },
-                  "claims": [
-                    {
-                      "path": ["credentialSubject", "given_name"],
-                      "display": [
-                        {
-                          "name": "Given Name",
-                          "locale": "en-US"
-                        }
-                      ]
-                    },
-                    {
-                      "path": ["credentialSubject", "family_name"],
-                      "display": [
-                        {
-                          "name": "Surname",
-                          "locale": "en-US"
-                        }
-                      ]
-                    },
-                    {
-                      "path": ["credentialSubject", "degree"]
-                    },
-                    {
-                      "path": ["credentialSubject", "gpa"],
-                      "mandatory": true,
-                      "display": [
-                        {
-                          "name": "GPA"
-                        }
-                      ]
-                    }
-                  ],
                   "proof_types_supported": {
                     "jwt": {
                       "proof_signing_alg_values_supported": [
@@ -73,31 +44,90 @@ class DeserializationTest : FunSpec({
                       ]
                     }
                   },
-                  "display": [
-                    {
-                      "name": "University Credential",
-                      "locale": "en-US",
-                      "logo": {
-                        "uri": "https://university.example.edu/public/logo.png",
-                        "alt_text": "a square logo of a university"
+                  "credential_metadata": {
+                    "claims": [
+                      {
+                        "path": ["credentialSubject", "given_name"],
+                        "display": [
+                          {
+                            "name": "Given Name",
+                            "locale": "en-US"
+                          }
+                        ]
                       },
-                      "background_color": "#12107c",
-                      "text_color": "#FFFFFF"
-                    }
-                  ]
+                      {
+                        "path": ["credentialSubject", "family_name"],
+                        "display": [
+                          {
+                            "name": "Surname",
+                            "locale": "en-US"
+                          }
+                        ]
+                      },
+                      {"path": ["credentialSubject", "degree"]},
+                      {
+                        "path": ["credentialSubject", "gpa"],
+                        "mandatory": true,
+                        "display": [
+                          {
+                            "name": "GPA"
+                          }
+                        ]
+                      }
+                    ],
+                    "display": [
+                      {
+                        "name": "University Credential",
+                        "locale": "en-US",
+                        "logo": {
+                          "uri": "https://university.example.edu/public/logo.png",
+                          "alt_text": "a square logo of a university"
+                        },
+                        "background_color": "#12107c",
+                        "text_color": "#FFFFFF"
+                      }
+                    ]
+                  }
                 }
               }
         }
         """.trimIndent()
-        val deserialized = joseCompliantSerializer.decodeFromString<IssuerMetadata>(input)
 
-        val credentials = deserialized.supportedCredentialConfigurations.shouldNotBeNull()
-        credentials.shouldNotBeEmpty()
-        val credential = credentials["UniversityDegreeCredential"].shouldNotBeNull()
-        credential.format shouldBe CredentialFormatEnum.JWT_VC
+        joseCompliantSerializer.decodeFromString<IssuerMetadata>(input).apply {
+            supportedCredentialConfigurations.shouldNotBeNull().apply {
+                shouldNotBeEmpty()
+                get("UniversityDegreeCredential").shouldNotBeNull().apply {
+                    format shouldBe CredentialFormatEnum.JWT_VC
+                    scope shouldBe "UniversityDegree"
+                    supportedBindingMethods.shouldNotBeNull().shouldBeSingleton().shouldContain("did:example")
+                    supportedSigningAlgorithms.shouldNotBeNull().apply {
+                        shouldContain(SignatureAlgorithm.ECDSAwithSHA256)
+                    }
+                    supportedProofTypes.shouldNotBeNull().apply {
+                        get("jwt").shouldNotBeNull().apply {
+                            supportedSigningAlgorithmsParsed.shouldNotBeNull().apply {
+                                shouldContain(SignatureAlgorithm.ECDSAwithSHA256)
+                            }
+                        }
+                    }
+                    credentialMetadata.shouldNotBeNull().apply {
+                        display.shouldNotBeNull().apply {
+                            shouldNotBeEmpty()
+                            firstOrNull { it.locale == "en-US" }.shouldNotBeNull().apply {
+                                name shouldBe "University Credential"
+                                logo.shouldNotBeNull().uri shouldBe "https://university.example.edu/public/logo.png"
+                                logo.shouldNotBeNull().altText shouldBe "a square logo of a university"
+                                backgroundColor shouldBe "#12107c"
+                                textColor shouldBe "#FFFFFF"
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
-    test("OID4VCI  A.2. ISO mDL") {
+    test("OID4VCI A.2.2. ISO mDL") {
         val input = """
         {
             "credential_issuer": "test",
@@ -110,183 +140,237 @@ class DeserializationTest : FunSpec({
                     "cose_key"
                   ],
                   "credential_signing_alg_values_supported": [
-                    "ES256", "ES384", "ES512"
+                    -7, -9
                   ],
-                  "display": [
-                    {
-                      "name": "Mobile Driving License",
-                      "locale": "en-US",
-                      "logo": {
-                        "uri": "https://state.example.org/public/mdl.png",
-                        "alt_text": "state mobile driving license"
-                      },
-                      "background_color": "#12107c",
-                      "text_color": "#FFFFFF"
-                    },
-                    {
-                      "name": "モバイル運転免許証",
-                      "locale": "ja-JP",
-                      "logo": {
-                        "uri": "https://state.example.org/public/mdl.png",
-                        "alt_text": "米国州発行のモバイル運転免許証"
-                      },
-                      "background_color": "#12107c",
-                      "text_color": "#FFFFFF"
-                    }
-                  ],
-                  "claims": [
-                    {
-                      "path": ["org.iso.18013.5.1","given_name"],
-                      "display": [
-                        {
-                          "name": "Given Name",
-                          "locale": "en-US"
+                  "credential_metadata": {
+                    "display": [
+                      {
+                        "name": "Mobile Driving License",
+                        "locale": "en-US",
+                        "logo": {
+                          "uri": "https://state.example.org/public/mdl.png",
+                          "alt_text": "state mobile driving license"
                         },
-                        {
-                          "name": "名前",
-                          "locale": "ja-JP"
+                        "background_color": "#12107c",
+                        "text_color": "#FFFFFF"
+                      },
+                      {
+                        "name": "モバイル運転免許証",
+                        "locale": "ja-JP",
+                        "logo": {
+                          "uri": "https://state.example.org/public/mdl.png",
+                          "alt_text": "米国州発行のモバイル運転免許証"
+                        },
+                        "background_color": "#12107c",
+                        "text_color": "#FFFFFF"
+                      }
+                    ],
+                    "claims": [
+                      {
+                        "path": ["org.iso.18013.5.1", "given_name"],
+                        "display": [
+                          {
+                            "name": "Given Name",
+                            "locale": "en-US"
+                          },
+                          {
+                            "name": "名前",
+                            "locale": "ja-JP"
+                          }
+                        ]
+                      },
+                      {
+                        "path": ["org.iso.18013.5.1", "family_name"],
+                        "display": [
+                          {
+                            "name": "Surname",
+                            "locale": "en-US"
+                          }
+                        ]
+                      },
+                      {
+                        "path": ["org.iso.18013.5.1", "birth_date"],
+                        "mandatory": true
+                      },
+                      {"path": ["org.iso.18013.5.1.aamva", "organ_donor"]}
+                    ]
+                  }
+                }
+              }
+        }
+        """.trimIndent()
+
+        joseCompliantSerializer.decodeFromString<IssuerMetadata>(input).apply {
+            supportedCredentialConfigurations.shouldNotBeNull().apply {
+                shouldNotBeEmpty()
+                get("org.iso.18013.5.1.mDL").shouldNotBeNull().apply {
+                    format shouldBe CredentialFormatEnum.MSO_MDOC
+                    docType shouldBe "org.iso.18013.5.1.mDL"
+                    supportedBindingMethods.shouldNotBeNull().shouldBeSingleton().shouldContain("cose_key")
+                    supportedSigningAlgorithms.shouldNotBeNull().apply {
+                        shouldContain(SignatureAlgorithm.ECDSAwithSHA256) // both -7 and -9 shall map to this
+                    }
+                    credentialMetadata.shouldNotBeNull().apply {
+                        display.shouldNotBeNull().apply {
+                            shouldNotBeEmpty()
+                            firstOrNull { it.locale == "en-US" }.shouldNotBeNull().apply {
+                                name shouldBe "Mobile Driving License"
+                                logo.shouldNotBeNull().uri shouldBe "https://state.example.org/public/mdl.png"
+                                logo.shouldNotBeNull().altText shouldBe "state mobile driving license"
+                                backgroundColor shouldBe "#12107c"
+                                textColor shouldBe "#FFFFFF"
+                            }
                         }
-                      ]
-                    },
-                    {
-                      "path": ["org.iso.18013.5.1","family_name"],
-                      "display": [
-                        {
-                          "name": "Surname",
-                          "locale": "en-US"
+                        claimDescription.shouldNotBeNull().apply {
+                            shouldNotBeEmpty()
+                            firstOrNull { it.path == listOf("org.iso.18013.5.1", "given_name") }.shouldNotBeNull()
+                                .also {
+                                    it.display.shouldNotBeNull().firstOrNull { it.locale == "en-US" }.shouldNotBeNull()
+                                    it.display.shouldNotBeNull().firstOrNull { it.locale == "ja-JP" }.shouldNotBeNull()
+                                }
+                            firstOrNull { it.path == listOf("org.iso.18013.5.1", "family_name") }.shouldNotBeNull()
                         }
-                      ]
-                    },
-                    {
-                      "path": ["org.iso.18013.5.1","birth_date"],
-                      "mandatory": true
-                    },
-                    {"path": ["org.iso.18013.5.1.aamva","organ_donor"]}
-                  ]
+                    }
                 }
             }
         }
-        """.trimIndent()
-        val deserialized = joseCompliantSerializer.decodeFromString<IssuerMetadata>(input)
 
-        val credentials = deserialized.supportedCredentialConfigurations.shouldNotBeNull()
-        credentials.shouldNotBeEmpty()
-        val credential = credentials["org.iso.18013.5.1.mDL"].shouldNotBeNull()
-        credential.format shouldBe CredentialFormatEnum.MSO_MDOC
-        @Suppress("DEPRECATION")
-        val claims = credential.claimDescription.shouldNotBeNull().shouldNotBeEmpty()
-        claims.firstOrNull { it.path == listOf("org.iso.18013.5.1", "given_name") }.shouldNotBeNull().also {
-            it.display.shouldNotBeNull().firstOrNull { it.locale == "en-US" }.shouldNotBeNull()
-        }
-        claims.firstOrNull { it.path == listOf("org.iso.18013.5.1", "family_name") }.shouldNotBeNull().also {
-            it.display.shouldNotBeNull().firstOrNull { it.locale == "en-US" }.shouldNotBeNull()
-        }
-        claims.firstOrNull { it.path == listOf("org.iso.18013.5.1", "birth_date") }.shouldNotBeNull()
+
     }
 
-    test("OID4VCI  A.3. IETF SD-JWT VC") {
+    test("OID4VCI A.3.2. IETF SD-JWT VC") {
         val input = """
         {
             "credential_issuer": "test",
             "credential_endpoint": "test",
             "credential_configurations_supported": {
-            "SD_JWT_VC_example_in_OpenID4VCI": {
-              "format": "dc+sd-jwt",
-              "scope": "SD_JWT_VC_example_in_OpenID4VCI",
-              "cryptographic_binding_methods_supported": [
-                "jwk"
-              ],
-              "credential_signing_alg_values_supported": [
-                "ES256"
-              ],
-              "display": [
-                {
-                  "name": "IdentityCredential",
-                  "logo": {
-                    "uri": "https://university.example.edu/public/logo.png",
-                    "alt_text": "a square logo of a university"
-                  },
-                  "locale": "en-US",
-                  "background_color": "#12107c",
-                  "text_color": "#FFFFFF"
-                }
-              ],
-              "proof_types_supported": {
-                "jwt": {
-                  "proof_signing_alg_values_supported": [
+                "SD_JWT_VC_example_in_OpenID4VCI": {
+                  "format": "dc+sd-jwt",
+                  "scope": "SD_JWT_VC_example_in_OpenID4VCI",
+                  "cryptographic_binding_methods_supported": [
+                    "jwk"
+                  ],
+                  "credential_signing_alg_values_supported": [
                     "ES256"
-                  ]
+                  ],
+                  "proof_types_supported": {
+                    "jwt": {
+                      "proof_signing_alg_values_supported": [
+                        "ES256"
+                      ],
+                      "key_attestations_required": {
+                        "key_storage": [ "iso_18045_moderate" ],
+                        "user_authentication": [ "iso_18045_moderate" ]
+                      }
+                    }
+                  },
+                  "vct": "SD_JWT_VC_example_in_OpenID4VCI",
+                  "credential_metadata": {
+                    "display": [
+                      {
+                        "name": "IdentityCredential",
+                        "logo": {
+                          "uri": "https://university.example.edu/public/logo.png",
+                          "alt_text": "a square logo of a university"
+                        },
+                        "locale": "en-US",
+                        "background_color": "#12107c",
+                        "text_color": "#FFFFFF"
+                      }
+                    ],
+                    "claims": [
+                      {
+                        "path": ["given_name"],
+                        "display": [
+                          {
+                            "name": "Given Name",
+                            "locale": "en-US"
+                          },
+                          {
+                            "name": "Vorname",
+                            "locale": "de-DE"
+                          }
+                        ]
+                      },
+                      {
+                        "path": ["family_name"],
+                        "display": [
+                          {
+                            "name": "Surname",
+                            "locale": "en-US"
+                          },
+                          {
+                            "name": "Nachname",
+                            "locale": "de-DE"
+                          }
+                        ]
+                      },
+                      {"path": ["email"]},
+                      {"path": ["phone_number"]},
+                      {
+                        "path": ["address"],
+                        "display": [
+                          {
+                            "name": "Place of residence",
+                            "locale": "en-US"
+                          },
+                          {
+                            "name": "Wohnsitz",
+                            "locale": "de-DE"
+                          }
+                        ]
+                      },
+                      {"path": ["address", "street_address"]},
+                      {"path": ["address", "locality"]},
+                      {"path": ["address", "region"]},
+                      {"path": ["address", "country"]},
+                      {"path": ["birthdate"]},
+                      {"path": ["is_over_18"]},
+                      {"path": ["is_over_21"]},
+                      {"path": ["is_over_65"]}
+                    ]
+                  }
                 }
-              },
-              "vct": "SD_JWT_VC_example_in_OpenID4VCI",
-              "claims": [
-                {
-                  "path": ["given_name"],
-                  "display": [
-                    {
-                      "name": "Given Name",
-                      "locale": "en-US"
-                    },
-                    {
-                      "name": "Vorname",
-                      "locale": "de-DE"
-                    }
-                  ]
-                },
-                {
-                  "path": ["family_name"],
-                  "display": [
-                    {
-                      "name": "Surname",
-                      "locale": "en-US"
-                    },
-                    {
-                      "name": "Nachname",
-                      "locale": "de-DE"
-                    }
-                  ]
-                },
-                {"path": ["email"]},
-                {"path": ["phone_number"]},
-                {
-                  "path": ["address"],
-                  "display": [
-                    {
-                      "name": "Place of residence",
-                      "locale": "en-US"
-                    },
-                    {
-                      "name": "Wohnsitz",
-                      "locale": "de-DE"
-                    }
-                  ]
-                },
-                {"path": ["address", "street_address"]},
-                {"path": ["address", "locality"]},
-                {"path": ["address", "region"]},
-                {"path": ["address", "country"]},
-                {"path": ["birthdate"]},
-                {"path": ["is_over_18"]},
-                {"path": ["is_over_21"]},
-                {"path": ["is_over_65"]}
-              ]
-            }
-          }
+              }
         }
         """.trimIndent()
-        val deserialized = joseCompliantSerializer.decodeFromString<IssuerMetadata>(input)
 
-        val credentials = deserialized.supportedCredentialConfigurations.shouldNotBeNull()
-        credentials.shouldNotBeEmpty()
-        val credential = credentials["SD_JWT_VC_example_in_OpenID4VCI"].shouldNotBeNull()
-        credential.format shouldBe CredentialFormatEnum.DC_SD_JWT
-        val claims = credential.claimDescription.shouldNotBeNull().shouldNotBeEmpty()
-        claims.firstOrNull {it.path == listOf("given_name") }.shouldNotBeNull()
-        claims.firstOrNull {it.path == listOf("family_name") }.shouldNotBeNull()
-        claims.firstOrNull {it.path == listOf("email") }.shouldNotBeNull()
-        claims.firstOrNull {it.path == listOf("phone_number") }.shouldNotBeNull()
-        claims.firstOrNull {it.path == listOf("address") }.shouldNotBeNull()
-        claims.firstOrNull {it.path == listOf("address", "street_address") }.shouldNotBeNull()
+        joseCompliantSerializer.decodeFromString<IssuerMetadata>(input).apply {
+            supportedCredentialConfigurations.shouldNotBeNull().apply {
+                shouldNotBeEmpty()
+                get("SD_JWT_VC_example_in_OpenID4VCI").shouldNotBeNull().apply {
+                    format shouldBe CredentialFormatEnum.DC_SD_JWT
+                    scope shouldBe "SD_JWT_VC_example_in_OpenID4VCI"
+                    sdJwtVcType shouldBe "SD_JWT_VC_example_in_OpenID4VCI"
+                    supportedBindingMethods.shouldNotBeNull().shouldBeSingleton().shouldContain("jwk")
+                    supportedSigningAlgorithms.shouldNotBeNull().apply {
+                        shouldContain(SignatureAlgorithm.ECDSAwithSHA256)
+                    }
+                    supportedProofTypes.shouldNotBeNull().apply {
+                        get("jwt").shouldNotBeNull().apply {
+                            supportedSigningAlgorithmsParsed.shouldNotBeNull().apply {
+                                shouldContain(SignatureAlgorithm.ECDSAwithSHA256)
+                            }
+                            keyAttestationRequired.shouldNotBeNull().apply {
+                                keyStorage.shouldNotBeNull().shouldContain("iso_18045_moderate")
+                                userAuthentication.shouldNotBeNull().shouldContain("iso_18045_moderate")
+                            }
+                        }
+                    }
+                    credentialMetadata.shouldNotBeNull().apply {
+                        claimDescription.shouldNotBeNull().shouldNotBeEmpty().apply {
+                            firstOrNull { it.path == listOf("given_name") }.shouldNotBeNull()
+                            firstOrNull { it.path == listOf("family_name") }.shouldNotBeNull()
+                            firstOrNull { it.path == listOf("email") }.shouldNotBeNull()
+                            firstOrNull { it.path == listOf("phone_number") }.shouldNotBeNull()
+                            firstOrNull { it.path == listOf("address") }.shouldNotBeNull()
+                            firstOrNull { it.path == listOf("address", "street_address") }.shouldNotBeNull()
+                        }
+                    }
+                }
+            }
+        }
+
     }
 
     test("Idemia Interop Request") {

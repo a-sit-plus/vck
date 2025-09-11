@@ -1,5 +1,6 @@
 package at.asitplus.openid
 
+import at.asitplus.signum.indispensable.SignatureAlgorithm
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -20,4 +21,11 @@ data class CredentialRequestProofSupported(
      */
     @SerialName("key_attestations_required")
     val keyAttestationRequired: KeyAttestationRequired? = null,
-)
+) {
+    val supportedSigningAlgorithmsParsed: Set<SignatureAlgorithm>?
+        get() = supportedSigningAlgorithms?.mapNotNull {
+            it.toIntOrNull()?.toCoseAlgorithm()?.toSignatureAlgorithm()
+                ?: it.toJwsAlgorithm()?.toSignatureAlgorithm()
+        }?.toSet()
+
+}

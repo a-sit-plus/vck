@@ -150,8 +150,7 @@ data class RelyingPartyMetadata(
      * element from OpenID Connect Discovery 1.0.
      */
     @Transient
-    val idTokenSignedResponseAlg: JwsAlgorithm? = idTokenSignedResponseAlgString
-        ?.let { s -> JwsAlgorithm.entries.firstOrNull { it.identifier == s } }
+    val idTokenSignedResponseAlg: JwsAlgorithm? = idTokenSignedResponseAlgString?.toJwsAlgorithm()
 
     /**
      * OID JARM: JWS (RFC7515) `alg` algorithm JWA (RFC7518). REQUIRED for signing authorization responses.
@@ -159,8 +158,7 @@ data class RelyingPartyMetadata(
      * The algorithm `none` is not allowed. The default, if omitted, is RS256.
      */
     @Transient
-    val authorizationSignedResponseAlg: JwsAlgorithm? = authorizationSignedResponseAlgString
-        ?.let { s -> JwsAlgorithm.entries.firstOrNull { it.identifier == s } }
+    val authorizationSignedResponseAlg: JwsAlgorithm? = authorizationSignedResponseAlgString?.toJwsAlgorithm()
 
     /**
      * OID JARM: JWE (RFC7516) `enc` algorithm JWA (RFC7518). REQUIRED for encrypting authorization responses.

@@ -15,7 +15,6 @@ import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.KeyMaterial
@@ -90,18 +89,14 @@ class CredentialIssuer(
         requireResponseEncryption = requireEncryption
     ),
 ) {
-    private val supportedSigningAlgorithms = cryptoAlgorithms
-        // TODO they now may be -7 or -9 for mdocs with COSE
-        .mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }.toSet()
 
     private val supportedCredentialConfigurations = credentialSchemes
         .flatMap { it.toSupportedCredentialFormat().entries }
         .associate {
             it.key to it.value
-                .withSupportedSigningAlgorithms(supportedSigningAlgorithms)
+                .withSupportedSigningAlgorithms(cryptoAlgorithms.toSet())
                 .withSupportedProofTypes(proofValidator.validProofTypes())
         }
-
 
     /**
      * MUST be delivered with HTTP header `Cache-Control: no-store` (see [io.ktor.http.HttpHeaders.CacheControl]).

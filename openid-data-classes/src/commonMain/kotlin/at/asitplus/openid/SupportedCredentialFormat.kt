@@ -1,10 +1,14 @@
 package at.asitplus.openid
 
 import at.asitplus.catchingUnwrapped
+import at.asitplus.signum.indispensable.SignatureAlgorithm
+import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 
@@ -52,7 +56,7 @@ data class SupportedCredentialFormat private constructor(
      * issued Credential. Algorithm names used are determined by the Credential format and are defined in Appendix A.
      */
     @SerialName("credential_signing_alg_values_supported")
-    val supportedSigningAlgorithms: Set<String>? = null,
+    val supportedSigningAlgorithmsJson: Set<JsonElement>? = null,
 
     /**
      * OID4VCI: OPTIONAL. Object that describes specifics of the key proof(s) that the Credential Issuer supports.
@@ -113,11 +117,30 @@ data class SupportedCredentialFormat private constructor(
             }.getOrNull()
         }
 
+    /**
+     * OID4VCI: OPTIONAL. Array of case sensitive strings that identify the algorithms that the Issuer uses to sign the
+     * issued Credential. Algorithm names used are determined by the Credential format and are defined in Appendix A.
+     */
+    val supportedSigningAlgorithms: Set<SignatureAlgorithm>?
+        get() = supportedSigningAlgorithmsJson?.mapNotNull {
+            (it as? JsonPrimitive)?.content?.let { str ->
+                str.toIntOrNull()?.toCoseAlgorithm()?.toSignatureAlgorithm()
+                    ?: str.toJwsAlgorithm()?.toSignatureAlgorithm()
+            }
+        }?.toSet()
+
     fun withSupportedProofTypes(supportedProofTypes: Map<String, CredentialRequestProofSupported>) =
         copy(supportedProofTypes = supportedProofTypes)
 
-    fun withSupportedSigningAlgorithms(supportedSigningAlgorithms: Set<String>) =
-        copy(supportedSigningAlgorithms = supportedSigningAlgorithms)
+    fun withSupportedSigningAlgorithms(supportedSigningAlgorithms: Set<SignatureAlgorithm>) =
+        copy(
+            supportedSigningAlgorithmsJson = supportedSigningAlgorithms.mapNotNull {
+                if (format == CredentialFormatEnum.MSO_MDOC)
+                    it.toCoseAlgorithm().getOrNull()?.coseValue?.let { JsonPrimitive(it) }
+                else
+                    it.toJwsAlgorithm().getOrNull()?.identifier?.let { JsonPrimitive(it) }
+            }.toSet()
+        )
 
     companion object {
 
@@ -125,7 +148,6 @@ data class SupportedCredentialFormat private constructor(
             format: CredentialFormatEnum,
             scope: String,
             supportedBindingMethods: Set<String>? = null,
-            supportedSigningAlgorithms: Set<String>? = null,
             supportedProofTypes: Map<String, CredentialRequestProofSupported>? = null,
             credentialDefinition: SupportedCredentialFormatDefinition? = null,
             docType: String,
@@ -136,7 +158,6 @@ data class SupportedCredentialFormat private constructor(
             format = format,
             scope = scope,
             supportedBindingMethods = supportedBindingMethods,
-            supportedSigningAlgorithms = supportedSigningAlgorithms,
             supportedProofTypes = supportedProofTypes,
             credentialDefinition = credentialDefinition,
             docType = docType,
@@ -153,7 +174,6 @@ data class SupportedCredentialFormat private constructor(
             format: CredentialFormatEnum,
             scope: String,
             supportedBindingMethods: Set<String>? = null,
-            supportedSigningAlgorithms: Set<String>? = null,
             supportedProofTypes: Map<String, CredentialRequestProofSupported>? = null,
             credentialDefinition: SupportedCredentialFormatDefinition? = null,
             sdJwtVcType: String,
@@ -164,7 +184,6 @@ data class SupportedCredentialFormat private constructor(
             format = format,
             scope = scope,
             supportedBindingMethods = supportedBindingMethods,
-            supportedSigningAlgorithms = supportedSigningAlgorithms,
             supportedProofTypes = supportedProofTypes,
             credentialDefinition = credentialDefinition,
             sdJwtVcType = sdJwtVcType,
@@ -181,7 +200,6 @@ data class SupportedCredentialFormat private constructor(
             format: CredentialFormatEnum,
             scope: String,
             supportedBindingMethods: Set<String>? = null,
-            supportedSigningAlgorithms: Set<String>? = null,
             supportedProofTypes: Map<String, CredentialRequestProofSupported>? = null,
             credentialDefinition: SupportedCredentialFormatDefinition,
             order: List<String>? = null,
@@ -190,7 +208,6 @@ data class SupportedCredentialFormat private constructor(
             format = format,
             scope = scope,
             supportedBindingMethods = supportedBindingMethods,
-            supportedSigningAlgorithms = supportedSigningAlgorithms,
             supportedProofTypes = supportedProofTypes,
             credentialDefinition = credentialDefinition,
             claims = null,

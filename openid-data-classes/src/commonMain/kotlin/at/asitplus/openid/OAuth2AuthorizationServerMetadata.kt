@@ -376,7 +376,7 @@ data class OAuth2AuthorizationServerMetadata(
      */
     @Transient
     val idTokenSigningAlgorithmsSupported: Set<JwsAlgorithm>? = idTokenSigningAlgorithmsSupportedStrings
-        ?.mapNotNull { s -> JwsAlgorithm.entries.firstOrNull { it.identifier == s } }?.toSet()
+        ?.mapNotNull { it.toJwsAlgorithm() }?.toSet()
 
     /**
      * OIDC SIOPv2: REQUIRED. A JSON array containing a list of the JWS signing algorithms (alg values) supported by the
@@ -385,7 +385,7 @@ data class OAuth2AuthorizationServerMetadata(
      */
     @Transient
     val requestObjectSigningAlgorithmsSupported: Set<JwsAlgorithm>? = requestObjectSigningAlgorithmsSupportedStrings
-        ?.mapNotNull { s -> JwsAlgorithm.entries.firstOrNull { it.identifier == s } }?.toSet()
+        ?.mapNotNull { it.toJwsAlgorithm() }?.toSet()
 
     /**
      * RFC 9449: A JSON array containing a list of the JWS alg values (from the `IANA.JOSE.ALGS` registry) supported
