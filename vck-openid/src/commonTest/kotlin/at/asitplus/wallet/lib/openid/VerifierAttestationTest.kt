@@ -141,11 +141,11 @@ private fun attestationJwtVerifier(trustedKey: JsonWebKey) =
             ).getOrThrow()
         } ?: return@RequestObjectJwsVerifier false
         val verifyJwsSignatureWithKey = VerifyJwsSignatureWithKey()
-        if (!verifyJwsSignatureWithKey(attestationJwt, trustedKey))
+        if (!verifyJwsSignatureWithKey(attestationJwt, trustedKey).isSuccess)
             return@RequestObjectJwsVerifier false
         val verifierPublicKey = attestationJwt.payload.confirmationClaim?.jsonWebKey
             ?: return@RequestObjectJwsVerifier false
-        verifyJwsSignatureWithKey(jws, verifierPublicKey)
+        verifyJwsSignatureWithKey(jws, verifierPublicKey).isSuccess
     }
 
 

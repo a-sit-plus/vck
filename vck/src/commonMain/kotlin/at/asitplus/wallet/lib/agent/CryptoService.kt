@@ -19,7 +19,7 @@ fun interface VerifySignatureFun {
     ): KmmResult<Verifier.Success>
 }
 
-class VerifySignature() : VerifySignatureFun {
+class VerifySignature : VerifySignatureFun {
     override suspend operator fun invoke(
         input: ByteArray,
         signature: CryptoSignature,

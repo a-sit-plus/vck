@@ -218,7 +218,7 @@ class JwtTokenVerificationService(
     ): JwsSigned<OpenId4VciAccessToken> {
         val jwt = JwsSigned.deserialize(OpenId4VciAccessToken.serializer(), accessToken, vckJsonSerializer)
             .getOrElse { throw InvalidToken("could not parse DPoP Token", it) }
-        if (!verifyJwsSignatureWithKey(jwt, issuerKey)) {
+        verifyJwsSignatureWithKey(jwt, issuerKey).getOrElse {
             throw InvalidToken("DPoP Token not verified")
         }
         if (jwt.header.type != expectedType) {

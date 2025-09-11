@@ -31,7 +31,6 @@ import at.asitplus.signum.indispensable.symmetric.SymmetricEncryptionAlgorithm
 import at.asitplus.signum.indispensable.symmetric.SymmetricKey
 import at.asitplus.signum.indispensable.symmetric.authTag
 import at.asitplus.signum.indispensable.symmetric.hasDedicatedMac
-import at.asitplus.signum.indispensable.symmetric.hasDedicatedMacKey
 import at.asitplus.signum.indispensable.symmetric.hasNonce
 import at.asitplus.signum.indispensable.symmetric.isAuthenticated
 import at.asitplus.signum.indispensable.symmetric.isIntegrated
@@ -44,6 +43,7 @@ import at.asitplus.signum.supreme.agree.keyAgreement
 import at.asitplus.signum.supreme.asKmmResult
 import at.asitplus.signum.supreme.hash.digest
 import at.asitplus.signum.supreme.sign.Signer
+import at.asitplus.signum.supreme.sign.Verifier
 import at.asitplus.signum.supreme.symmetric.decrypt
 import at.asitplus.signum.supreme.symmetric.encrypt
 import at.asitplus.wallet.lib.agent.KeyMaterial
@@ -51,7 +51,6 @@ import at.asitplus.wallet.lib.agent.PublishedKeyMaterial
 import at.asitplus.wallet.lib.agent.VerifySignature
 import at.asitplus.wallet.lib.agent.VerifySignatureFun
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
 import kotlinx.serialization.SerializationStrategy
 
@@ -465,7 +464,7 @@ fun interface VerifyJwsSignatureFun {
     suspend operator fun invoke(
         jwsObject: JwsSigned<*>,
         publicKey: CryptoPublicKey,
-    ): Boolean
+    ): KmmResult<Verifier.Success>
 }
 
 class VerifyJwsSignature(
@@ -483,19 +482,14 @@ class VerifyJwsSignature(
             jwsAlgorithm.algorithm,
             publicKey,
         ).getOrThrow()
-    }.fold(
-        onSuccess = { true },
-        onFailure = {
-            Napier.w("No verification from native code", it)
-            false
-        })
+    }
 }
 
 fun interface VerifyJwsSignatureWithKeyFun {
     suspend operator fun invoke(
         jwsObject: JwsSigned<*>,
         signer: JsonWebKey,
-    ): Boolean
+    ): KmmResult<Verifier.Success>
 }
 
 class VerifyJwsSignatureWithKey(
@@ -504,9 +498,7 @@ class VerifyJwsSignatureWithKey(
     override suspend operator fun invoke(
         jwsObject: JwsSigned<*>,
         signer: JsonWebKey,
-    ) = signer.toCryptoPublicKey().getOrNull()?.let {
-        verifyJwsSignature(jwsObject, it)
-    } ?: false.also { Napier.w("Could not convert signer to public key: $signer") }
+    ) = verifyJwsSignature(jwsObject, signer.toCryptoPublicKey().getOrThrow())
 }
 
 fun interface VerifyJwsSignatureWithCnfFun {
@@ -527,7 +519,7 @@ class VerifyJwsSignatureWithCnf(
     override suspend operator fun invoke(
         jwsObject: JwsSigned<*>,
         cnf: ConfirmationClaim,
-    ) = cnf.loadPublicKeys().any { verifyJwsSignature(jwsObject, it) }
+    ) = cnf.loadPublicKeys().any { verifyJwsSignature(jwsObject, it).isSuccess }
 
     /**
      * Loads all referenced [JsonWebKey]s, i.e. from [ConfirmationClaim.jsonWebKey] and [ConfirmationClaim.jsonWebKeySetUrl].
@@ -552,7 +544,9 @@ class VerifyJwsSignatureWithCnf(
 }
 
 fun interface VerifyJwsObjectFun {
-    suspend operator fun invoke(jwsObject: JwsSigned<*>): Boolean
+    suspend operator fun invoke(
+        jwsObject: JwsSigned<*>,
+    ): Boolean
 }
 
 class VerifyJwsObject(
@@ -566,7 +560,7 @@ class VerifyJwsObject(
     val publicKeyLookup: PublicJsonWebKeyLookup = PublicJsonWebKeyLookup { null },
 ) : VerifyJwsObjectFun {
     override suspend operator fun invoke(jwsObject: JwsSigned<*>) =
-        jwsObject.loadPublicKeys().any { verifyJwsSignature(jwsObject, it) }
+        jwsObject.loadPublicKeys().any { verifyJwsSignature(jwsObject, it).isSuccess }
 
     /**
      * Returns a list of public keys that may have been used to sign this [JwsSigned]

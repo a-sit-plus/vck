@@ -161,7 +161,7 @@ class OpenId4VpInteropTest : FreeSpec({
         if (jar.header.keyId != null) { // web-based key lookup is optional in profile 2.0
             val verifierJwks = verifierJarMetadata.jsonWebKeySet.shouldNotBeNull()
             val verifierRequestSigningKey = verifierJwks.keys.first { it.keyId == jar.header.keyId }
-            VerifyJwsSignatureWithKey()(jar, verifierRequestSigningKey) shouldBe true
+            VerifyJwsSignatureWithKey()(jar, verifierRequestSigningKey).isSuccess shouldBe true
         } else {
             VerifyJwsObject()(jar) shouldBe true
         }
