@@ -254,39 +254,6 @@ class RedirectUriClientTest : FreeSpec({
         }
     }
 
-    "test with request object from request_uri as URL query parameters" {
-        val authnRequest = verifierOid4vp.createAuthnRequest(
-            requestOptionsAtomicAttribute(),
-            OpenId4VpVerifier.CreationOptions.Query(walletUrl)
-        ).getOrThrow().url
-
-        val clientId = Url(authnRequest).parameters["client_id"]!!
-        val requestUrl = "https://www.example.com/request/${uuid4()}"
-
-        val authRequestUrlWithRequestUri = URLBuilder(walletUrl).apply {
-            parameters.append("client_id", clientId)
-            parameters.append("request_uri", requestUrl)
-        }.buildString()
-
-        holderOid4vp = OpenId4VpHolder(
-            holder = holderAgent,
-            remoteResourceRetriever = {
-                if (it.url == requestUrl) authnRequest else null
-            },
-            randomSource = RandomSource.Default,
-        )
-
-        val authnResponse = holderOid4vp.createAuthnResponse(authRequestUrlWithRequestUri).getOrThrow()
-            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
-            .shouldBeInstanceOf<AuthnResponseResult.Success>()
-        result.vp.freshVerifiableCredentials.shouldNotBeEmpty()
-        result.vp.freshVerifiableCredentials.map { it.vcJws }.forEach {
-            it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
-        }
-    }
-
 })
 
 private fun requestOptionsAtomicAttribute() = RequestOptions(

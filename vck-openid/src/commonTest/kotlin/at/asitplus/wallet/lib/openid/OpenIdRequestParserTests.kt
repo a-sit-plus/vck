@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.oidc.helper
+package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RequestParametersFrom
@@ -6,7 +6,9 @@ import at.asitplus.wallet.lib.openid.RequestParser
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 
 
 /**
@@ -20,8 +22,7 @@ class OpenIdRequestParserTests : FreeSpec({
     }
 
     // https://verifier.funke.wwwallet.org/verifier/public/definitions/presentation-request/PID
-    "funke wallet" {
-        val input = """
+    val jws = """
             eyJhbGciOiJSUzI1NiIsIng1YyI6WyJNSUlFQURDQ0F1aWdBd0lCQWdJVVFpVk9NVXllNS9OWGtUbWhnZ0RzS1hHNE9QZ3dEUVlKS29aSWh2
             Y05BUUVMQlFBd2NURUxNQWtHQTFVRUJoTUNSMUl4RHpBTkJnTlZCQWdNQmtGMGFHVnVjekVRTUE0R0ExVUVCd3dIU1d4c2FYTnBZVEVPTUF3
             R0ExVUVDZ3dGUjFWdVpYUXhFVEFQQmdOVkJBc01DRWxrWlc1MGFYUjVNUnd3R2dZRFZRUUREQk4zZDNkaGJHeGxkQzFsYm5SbGNuQnlhWE5s
@@ -85,18 +86,53 @@ class OpenIdRequestParserTests : FreeSpec({
             2ZU7cmhJ6gRHOaQxYGx6vqEElQsyJulLtp_odiDcmywk8VC9ra5WTztEZycyH5Bjv6gPQ1-GXxl6A9_0aUMnxiCdUCTu9a7J9hXfM8WbblJa
             DZ00OUisOli-I5lDlmfSASgc10jPdlsmKDNa1ZW1dVezHDukUCAH5EPUsdC7HHXj_fDTkgICvVbBykq6-zWLda7kC0LvyXiQzuEeIFEzlP9u
             m0LQZeO-00GBYNI0PQ
-        """.trimIndent()
+        """.trimIndent().replace("\n", "")
 
-        @Suppress("UNCHECKED_CAST") val parsed = requestParser.parseRequestParameters(input)
-            .getOrThrow() as RequestParametersFrom<AuthenticationRequestParameters>
-        val params = (parsed.parameters)
-        val fields = params.presentationDefinition!!.inputDescriptors.first().constraints!!.fields!!
+    "direct JWS" {
+        requestParser.parseRequestParameters(jws).getOrThrow().apply {
+            shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
+            shouldBeInstanceOf<RequestParametersFrom.JwsSigned<*>>()
+            parameters.assertParams()
+        }
+    }
 
-        params.responseUrl shouldBe "https://verifier.funke.wwwallet.org/verification/direct_post"
-        params.clientId shouldBe "verifier.funke.wwwallet.org"
-        params.clientIdWithoutPrefix shouldBe "verifier.funke.wwwallet.org"
-        fields shouldHaveSize 20
-        val vctField = fields.first { it.path == listOf("$.vct") }
-        vctField.filter!!.enum!! shouldContain "urn:eu.europa.ec.eudi:pid:1"
+    "request by reference" {
+        val input = "https://example.com?request_uri=https%3A%2F%2Fclient.example.org%2Freq%2F1234567890"
+        requestParser = RequestParser(
+            remoteResourceRetriever = {
+                if (it.url == "https://client.example.org/req/1234567890") jws else null
+            }
+        )
+
+        requestParser.parseRequestParameters(input).getOrThrow().apply {
+            shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
+            shouldBeInstanceOf<RequestParametersFrom.JwsSigned<*>>()
+            parameters.assertParams()
+        }
+    }
+
+    "request by value" {
+        val input = "https://example.com?request=" + jws
+
+        requestParser.parseRequestParameters(input).getOrThrow().apply {
+            shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
+            shouldBeInstanceOf<RequestParametersFrom.JwsSigned<*>>()
+            parameters.assertParams()
+        }
     }
 })
+
+private fun AuthenticationRequestParameters.assertParams() {
+    responseUrl shouldBe "https://verifier.funke.wwwallet.org/verification/direct_post"
+    clientId shouldBe "verifier.funke.wwwallet.org"
+    clientIdWithoutPrefix shouldBe "verifier.funke.wwwallet.org"
+    presentationDefinition.shouldNotBeNull()
+        .inputDescriptors.first()
+        .constraints.shouldNotBeNull()
+        .fields.shouldNotBeNull().apply {
+            this shouldHaveSize 20
+            val vctField = first { it.path == listOf("$.vct") }
+            vctField.filter!!.enum!! shouldContain "urn:eu.europa.ec.eudi:pid:1"
+        }
+
+}

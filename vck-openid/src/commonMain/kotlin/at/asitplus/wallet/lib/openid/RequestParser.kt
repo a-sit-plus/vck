@@ -4,7 +4,11 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.dcapi.request.DCAPIRequest
-import at.asitplus.openid.*
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.RequestObjectParameters
+import at.asitplus.openid.RequestParameters
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
@@ -14,14 +18,14 @@ import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.json
-import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.ktor.util.*
 import kotlinx.serialization.json.JsonObject
 
 class RequestParser(
     /**
-     * Need to implement if resources are defined by reference, i.e. the URL for a [at.asitplus.signum.indispensable.josef.JsonWebKeySet],
+     * Need to implement if resources are defined by reference, i.e. the URL for a
+     * [at.asitplus.signum.indispensable.josef.JsonWebKeySet],
      * or the request itself as `request_uri`, or `presentation_definition_uri`.
      * Implementations need to fetch the url passed in, and return either the body, if there is one,
      * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
@@ -47,30 +51,40 @@ class RequestParser(
         input: String,
         dcApiRequest: DCAPIRequest? = null,
     ): KmmResult<RequestParametersFrom<*>> = catching {
-        // maybe it is a request JWS
-        val parsedParams = run { parseRequestObjectJws(input, dcApiRequest) }
-            ?: catchingUnwrapped { // maybe it's in the URL parameters
-                Url(input).let {
-                    val params = it.parameters.flattenEntries().toMap().decodeFromUrlQuery<JsonObject>()
-                    val parsed = json.decodeFromJsonElement(RequestParameters.serializer(), params)
-                    matchRequestParameterCases(it, parsed, dcApiRequest)
-                }
-            }.onFailure {
-                Napier.d("parseRequestParameters: Failed for $input", it)
-            }.getOrNull()
-            ?: catching {  // maybe it is already a JSON string
-                val params = vckJsonSerializer.decodeFromString(RequestParameters.serializer(), input)
-                matchRequestParameterCases(input, params, dcApiRequest)
-            }.onFailure {
-                Napier.d("parseRequestParameters: Failed for $input", it)
-            }.getOrNull()
-            ?: throw InvalidRequest("parse error: $input")
-
-        (parsedParams.parameters as? AuthenticationRequestParameters)?.let {
-            it.extractRequestObject(dcApiRequest)
-        } ?: parsedParams
-            .also { Napier.i("Parsed authentication request: $it") }
+        input.parseParameters(dcApiRequest).extractRequestObject(dcApiRequest)
     }
+
+    private suspend fun String.parseParameters(
+        dcApiRequest: DCAPIRequest?,
+    ): RequestParametersFrom<out RequestParameters> =
+        parseAsRequestObjectJws(dcApiRequest)
+            ?: parseFromParameters()
+            ?: parseFromJson(dcApiRequest)
+            ?: throw InvalidRequest("parse error: $this")
+
+    private suspend fun RequestParametersFrom<out RequestParameters>.extractRequestObject(
+        dcApiRequest: DCAPIRequest?,
+    ): RequestParametersFrom<*> =
+        (this.parameters as? AuthenticationRequestParameters)?.extractRequestObject(dcApiRequest) ?: this
+
+    private fun String.parseFromParameters(): RequestParametersFrom<*>? = catchingUnwrapped {
+        Url(this).let {
+            RequestParametersFrom.Uri(
+                url = it,
+                parameters = json.decodeFromJsonElement(
+                    RequestParameters.serializer(),
+                    it.parameters.flattenEntries().toMap().decodeFromUrlQuery<JsonObject>()
+                )
+            )
+        }
+    }.getOrNull()
+
+    private fun String.parseFromJson(
+        dcApiRequest: DCAPIRequest?,
+    ): RequestParametersFrom<*>? = catching {
+        val params = vckJsonSerializer.decodeFromString(RequestParameters.serializer(), this)
+        RequestParametersFrom.Json(this, params, dcApiRequest)
+    }.getOrNull()
 
     /**
      * Extracts the actual request, referenced by the passed-in [input],
@@ -85,7 +99,7 @@ class RequestParser(
 
     private suspend fun AuthenticationRequestParameters.extractRequest(
     ): AuthenticationRequestParameters =
-        request?.let { parseRequestObjectJws(it)?.parameters as? AuthenticationRequestParameters }
+        request?.let { it.parseAsRequestObjectJws()?.parameters as? AuthenticationRequestParameters }
             ?: requestUri
                 ?.let { uri -> remoteResourceRetriever.invoke(resourceRetrieverInput(uri)) }
                 ?.let { parseRequestParameters(it).getOrNull()?.parameters as? AuthenticationRequestParameters }
@@ -93,10 +107,16 @@ class RequestParser(
 
     private suspend fun AuthenticationRequestParameters.extractRequestObject(
         dcApiRequest: DCAPIRequest?,
-    ): RequestParametersFrom<*>? = request?.let { parseRequestObjectJws(it, dcApiRequest) }
-        ?: requestUri
-            ?.let { remoteResourceRetriever.invoke(resourceRetrieverInput(it)) }
-            ?.let { parseRequestParameters(it).getOrNull() }
+    ): RequestParametersFrom<*>? = request?.let {
+        it.parseAsRequestObjectJws(dcApiRequest)
+            ?: it.parseFromJson(dcApiRequest)
+    } ?: requestUri
+        ?.let { remoteResourceRetriever.invoke(resourceRetrieverInput(it)) }
+        ?.let {
+            it.parseAsRequestObjectJws(dcApiRequest)
+                ?: it.parseFromJson(dcApiRequest)
+                ?: throw InvalidRequest("URL not valid: $requestUri")
+        }
 
 
     private suspend fun AuthenticationRequestParameters.resourceRetrieverInput(
@@ -108,41 +128,18 @@ class RequestParser(
         requestObjectParameters = buildRequestObjectParameters.invoke()
     )
 
-    private suspend fun parseRequestObjectJws(
-        requestObject: String,
+    private suspend fun String.parseAsRequestObjectJws(
         dcApiRequest: DCAPIRequest? = null,
-    ): RequestParametersFrom<*>? = JwsSigned.deserialize<RequestParameters>(
-        RequestParameters.serializer(),
-        requestObject,
-        vckJsonSerializer
-    ).onFailure {
-        Napier.d("parseRequestObjectJws: Error for $requestObject", it)
-    }.getOrNull()?.let { jws ->
-        if (requestObjectJwsVerifier.invoke(jws)) {
-            RequestParametersFrom.JwsSigned(jws, jws.payload, dcApiRequest)
-        } else {
-            Napier.w("parseRequestObjectJws: Signature not verified for $jws")
-            null
-        }
-    }
+    ): RequestParametersFrom<*>? =
+        JwsSigned.deserialize(RequestParameters.serializer(), this, vckJsonSerializer)
+            .getOrNull()?.let { jws ->
+                if (requestObjectJwsVerifier.invoke(jws)) {
+                    RequestParametersFrom.JwsSigned(jws, jws.payload, dcApiRequest)
+                } else {
+                    null
+                }
+            }
 
-    @Suppress("UNCHECKED_CAST")
-    private fun <T> matchRequestParameterCases(
-        input: T,
-        params: RequestParameters,
-        dcApiRequest: DCAPIRequest? = null,
-    ): RequestParametersFrom<*> =
-        when (input) {
-            is Url -> RequestParametersFrom.Uri(input, params)
-            is JwsSigned<*> -> RequestParametersFrom.JwsSigned(
-                input as JwsSigned<RequestParameters>,
-                params,
-                dcApiRequest
-            )
-
-            is String -> RequestParametersFrom.Json(input, params, dcApiRequest)
-            else -> throw Exception("matchRequestParameterCases: unknown type ${input?.let { it::class.simpleName } ?: "null"}")
-        }
 }
 
 private fun String?.toHttpMethod(): HttpMethod = when (this) {
