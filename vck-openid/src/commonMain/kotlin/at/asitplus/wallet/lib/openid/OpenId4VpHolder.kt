@@ -20,7 +20,6 @@ import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestObjectParameters
-import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.SupportedAlgorithmsContainer
 import at.asitplus.openid.VpFormatsSupported
@@ -82,7 +81,7 @@ class OpenId4VpHolder(
     private val clock: Clock = Clock.System,
     private val clientId: String = "https://wallet.a-sit.at/",
     /**
-     * Need to implement if resources are defined by reference, i.e. the URL for a [at.asitplus.signum.indispensable.josef.JsonWebKeySet],
+     * Need to implement if resources are defined by reference, i.e. the URL for a [JsonWebKeySet],
      * or the authentication request itself as `request_uri`, or `presentation_definition_uri`.
      * Implementations need to fetch the url passed in, and return either the body, if there is one,
      * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
@@ -142,14 +141,14 @@ class OpenId4VpHolder(
     }
 
     /**
-     * Used to resolve [at.asitplus.openid.RequestParameters] by reference and also matches them to the correct [at.asitplus.openid.RequestParametersFrom]
+     * Used to resolve [at.asitplus.openid.RequestParameters] by reference and also matches them to the correct [RequestParametersFrom]
      */
     private val requestParser: RequestParser = RequestParser(remoteResourceRetriever, requestObjectJwsVerifier) {
         RequestObjectParameters(metadata, uuid4().toString().also { walletNonceMapStore.put(it, it) })
     }
 
     /**
-     * Pass in the URL sent by the Verifier (containing the [at.asitplus.openid.AuthenticationRequestParameters] as query parameters),
+     * Pass in the URL sent by the Verifier (containing the [AuthenticationRequestParameters] as query parameters),
      * to create [AuthenticationResponseResult] that can be sent back to the Verifier, see
      * [AuthenticationResponseResult].
      */
@@ -162,8 +161,8 @@ class OpenId4VpHolder(
     }
 
     /**
-     * Pass in the URL sent by the Verifier (containing the [at.asitplus.openid.AuthenticationRequestParameters] as query parameters),
-     * to create [at.asitplus.openid.AuthenticationResponseParameters] that can be sent back to the Verifier, see
+     * Pass in the URL sent by the Verifier (containing the [AuthenticationRequestParameters] as query parameters),
+     * to create [AuthenticationResponseParameters] that can be sent back to the Verifier, see
      * [AuthenticationResponseResult].
      */
     suspend fun parseAuthenticationRequestParameters(
@@ -368,47 +367,27 @@ class OpenId4VpHolder(
             ?.let { it.keyId ?: it.didEncoded ?: it.jwkThumbprint }
         ?: throw InvalidRequest("could not parse audience")
 
-    private suspend fun RelyingPartyMetadata.loadJsonWebKeySet() =
-        jsonWebKeySet
-            ?: jsonWebKeySetUrl?.let {
-                remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(it))
-                    ?.let {
-                        catchingUnwrapped {
-                            joseCompliantSerializer.decodeFromString<JsonWebKeySet>(it)
-                        }.onFailure { ex ->
-                            Napier.w("Can't parse JsonWebKeySet from $jsonWebKeySetUrl", ex)
-                        }.getOrNull()
-                    }
-            }
+    private suspend fun RelyingPartyMetadata.loadJsonWebKeySet(): JsonWebKeySet? =
+        jsonWebKeySet ?: jsonWebKeySetUrl
+            ?.let { remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(it)) }
+            ?.let { joseCompliantSerializer.decodeFromString(it) }
 
     private suspend fun AuthenticationRequestParameters.loadCredentialRequest(): CredentialPresentationRequest? =
         if (responseType?.contains(VP_TOKEN) == true) {
-            run {
-                presentationDefinition ?: presentationDefinitionUrl
-                    ?.let { remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(it)) }
-                    ?.let {
-                        catchingUnwrapped { vckJsonSerializer.decodeFromString<PresentationDefinition>(it) }
-                            .onFailure { ex ->
-                                Napier.w("Can't parse presentation definition from $presentationDefinitionUrl", ex)
-                            }.getOrNull()
-                    }
-            }?.let {
-                CredentialPresentationRequest.PresentationExchangeRequest(it)
-            } ?: dcqlQuery?.let { CredentialPresentationRequest.DCQLRequest(it) }
+            loadPresentationDefinition()?.let { CredentialPresentationRequest.PresentationExchangeRequest(it) }
+                ?: dcqlQuery?.let { CredentialPresentationRequest.DCQLRequest(it) }
         } else null
 
-    private suspend fun AuthenticationRequestParameters.loadClientMetadata() =
-        clientMetadata
-            ?: clientMetadataUri?.let {
-                remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(it))
-                    ?.let {
-                        catchingUnwrapped {
-                            joseCompliantSerializer.decodeFromString<RelyingPartyMetadata>(it)
-                        }.onFailure { ex ->
-                            Napier.w("Can't parse RelyingPartyMetadata from $clientMetadataUri", ex)
-                        }.getOrNull()
-                    }
-            }
+    private suspend fun AuthenticationRequestParameters.loadPresentationDefinition(): PresentationDefinition? =
+        presentationDefinition ?: presentationDefinitionUrl
+            ?.let { remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(it)) }
+            ?.let { vckJsonSerializer.decodeFromString(it) }
+
+    private suspend fun AuthenticationRequestParameters.loadClientMetadata(): RelyingPartyMetadata? =
+        clientMetadata ?: clientMetadataUri
+            ?.let { remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(it)) }
+            ?.let { joseCompliantSerializer.decodeFromString(it) }
+
 }
 
 private fun Collection<JsonWebKey>?.combine(certKey: JsonWebKey?): Collection<JsonWebKey> =

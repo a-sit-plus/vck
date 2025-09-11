@@ -124,18 +124,24 @@ class WalletService(
      */
     suspend fun parseCredentialOffer(input: String): KmmResult<CredentialOffer> = catching {
         catching {
-            val params = Url(input).parameters.flattenEntries().toMap()
-                .decodeFromUrlQuery<CredentialOfferUrlParameters>()
-            params.credentialOffer?.let {
-                joseCompliantSerializer.decodeFromJsonElement<CredentialOffer>(it)
-            } ?: params.credentialOfferUrl?.let { uri ->
-                remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(uri))
-                    ?.let { parseCredentialOffer(it).getOrNull() }
-            }
+            input.extractParams().fetchCredentialOffer()
         }.getOrNull() ?: catchingUnwrapped {
             joseCompliantSerializer.decodeFromString<CredentialOffer>(input)
-        }.getOrNull() ?: throw InvalidRequest("could not parse credential offer")
+        }.getOrElse {
+            throw InvalidRequest("could not parse credential offer", it)
+        }
     }
+
+    private fun String.extractParams(): CredentialOfferUrlParameters =
+        Url(this).parameters.flattenEntries().toMap().decodeFromUrlQuery<CredentialOfferUrlParameters>()
+
+    private suspend fun CredentialOfferUrlParameters.fetchCredentialOffer(
+
+    ): CredentialOffer? = credentialOffer?.let { joseCompliantSerializer.decodeFromJsonElement<CredentialOffer>(it) }
+        ?: credentialOfferUrl
+            ?.let { remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(it)) }
+            ?.let { parseCredentialOffer(it).getOrNull() }
+
 
     /**
      * Build authorization details for use in [OAuth2Client.createAuthRequest].

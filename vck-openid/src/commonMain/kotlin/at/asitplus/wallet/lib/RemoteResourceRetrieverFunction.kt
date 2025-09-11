@@ -10,7 +10,7 @@ import io.ktor.http.*
 typealias RemoteResourceRetrieverFunction = suspend (RemoteResourceRetrieverInput) -> String?
 
 /**
- * Fetch the [url] with the [method], optionally sending [requestObjectParameters] or setting [headers] into HTTP request.
+ * Fetch the [url] with the [method], send [requestObjectParameters] and set [headers] for that HTTP request.
  *
  * Example for ktor (`data` being this object):
  *

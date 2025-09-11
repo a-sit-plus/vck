@@ -17,7 +17,6 @@ import at.asitplus.wallet.lib.oidvci.json
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.ktor.util.*
-import kotlinx.serialization.PolymorphicSerializer
 import kotlinx.serialization.json.JsonObject
 
 class RequestParser(
@@ -68,7 +67,7 @@ class RequestParser(
             ?: throw InvalidRequest("parse error: $input")
 
         (parsedParams.parameters as? AuthenticationRequestParameters)?.let {
-            extractRequestObject(it, dcApiRequest)
+            it.extractRequestObject(dcApiRequest)
         } ?: parsedParams
             .also { Napier.i("Parsed authentication request: $it") }
     }
@@ -81,25 +80,24 @@ class RequestParser(
     suspend fun extractActualRequest(
         input: AuthenticationRequestParameters,
     ): KmmResult<AuthenticationRequestParameters> = catching {
-        input.request?.let {
-            parseRequestObjectJws(it)?.parameters as? AuthenticationRequestParameters
-        } ?: input.requestUri?.let { uri ->
-            remoteResourceRetriever.invoke(input.resourceRetrieverInput(uri))?.let {
-                parseRequestParameters(it).getOrNull()?.parameters as? AuthenticationRequestParameters
-            }
-        } ?: input
+        input.extractRequest()
     }
 
-    private suspend fun extractRequestObject(
-        params: AuthenticationRequestParameters,
+    private suspend fun AuthenticationRequestParameters.extractRequest(
+    ): AuthenticationRequestParameters =
+        request?.let { parseRequestObjectJws(it)?.parameters as? AuthenticationRequestParameters }
+            ?: requestUri
+                ?.let { uri -> remoteResourceRetriever.invoke(resourceRetrieverInput(uri)) }
+                ?.let { parseRequestParameters(it).getOrNull()?.parameters as? AuthenticationRequestParameters }
+            ?: this
+
+    private suspend fun AuthenticationRequestParameters.extractRequestObject(
         dcApiRequest: DCAPIRequest?,
-    ): RequestParametersFrom<*>? =
-        params.request?.let { requestObject ->
-            parseRequestObjectJws(requestObject, dcApiRequest)
-        } ?: params.requestUri?.let { uri ->
-            remoteResourceRetriever.invoke(params.resourceRetrieverInput(uri))
-                ?.let { parseRequestParameters(it).getOrNull() }
-        }
+    ): RequestParametersFrom<*>? = request?.let { parseRequestObjectJws(it, dcApiRequest) }
+        ?: requestUri
+            ?.let { remoteResourceRetriever.invoke(resourceRetrieverInput(it)) }
+            ?.let { parseRequestParameters(it).getOrNull() }
+
 
     private suspend fun AuthenticationRequestParameters.resourceRetrieverInput(
         uri: String,
