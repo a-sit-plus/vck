@@ -47,17 +47,10 @@ class ValidatorMdoc(
         deviceResponse: DeviceResponse,
         verifyDocumentCallback: suspend (MobileSecurityObject, Document) -> Boolean,
     ): VerifyPresentationResult {
-        if (deviceResponse.status != 0U) {
-            Napier.w("Status invalid: ${deviceResponse.status}")
-            throw IllegalArgumentException("status")
-        }
-        val documents = deviceResponse.documents
-        if (documents == null) {
-            Napier.w("No documents: $deviceResponse")
-            throw IllegalArgumentException("documents")
-        }
+        require(deviceResponse.status == 0U) { "status: ${deviceResponse.status}" }
+        require(deviceResponse.documents != null) { "documents are null" }
         return VerifyPresentationResult.SuccessIso(
-            documents = documents.map {
+            documents = deviceResponse.documents!!.map {
                 verifyDocument(it, verifyDocumentCallback)
             }
         )
@@ -71,44 +64,31 @@ class ValidatorMdoc(
         document: Document,
         verifyDocumentCallback: suspend (MobileSecurityObject, Document) -> Boolean,
     ): IsoDocumentParsed {
-        if (document.errors != null) {
-            Napier.w("Document has errors: ${document.errors}")
-            throw IllegalArgumentException("errors")
-        }
+        require(document.errors == null) { "Errors: ${document.errors}" }
         val issuerSigned = document.issuerSigned
         val issuerAuth = issuerSigned.issuerAuth
 
         val certificateHead = issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull() ?: run {
-            Napier.w("Got no issuer certificate in $issuerAuth")
-            throw IllegalArgumentException("issuerKey")
+            throw IllegalArgumentException("No issuer certificate in header")
         }
         val x509Certificate = X509Certificate.decodeFromDerSafe(certificateHead).getOrElse {
-            Napier.w("Could not parse issuer certificate in ${certificateHead.encodeToString(Base64())}}", it)
-            throw IllegalArgumentException("issuerKey")
+            throw IllegalArgumentException("Could not parse issuer certificate from header", it)
         }
         val issuerKey = x509Certificate.decodedPublicKey.getOrThrow().toCoseKey().getOrElse {
-            Napier.w("Could not parse key from certificate in $x509Certificate", it)
-            throw IllegalArgumentException("issuerKey")
+            throw IllegalArgumentException("Could not parse key from certificate", it)
         }
 
         verifyCoseSignatureWithKey(issuerAuth, issuerKey, byteArrayOf(), null).onFailure {
-            Napier.w("IssuerAuth not verified: $issuerAuth", it)
-            throw IllegalArgumentException("issuerAuth")
+            throw IllegalArgumentException("IssuerAuth not verified", it)
         }
 
         val mso: MobileSecurityObject? = issuerSigned.issuerAuth.payload
-        if (mso == null) {
-            Napier.w("MSO is null: $issuerAuth")
-            throw IllegalArgumentException("mso")
+        require(mso != null) { "mso is null" }
+        require(mso.docType == document.docType) {
+            "mso.docType '${mso.docType}' does not match Doc docType '${document.docType}'"
         }
-
-        if (mso.docType != document.docType) {
-            Napier.w("Invalid MSO docType '${mso.docType}' does not match Doc docType '${document.docType}")
-            throw IllegalArgumentException("mso.docType")
-        }
-
-        if (!verifyDocumentCallback.invoke(mso, document)) {
-            throw IllegalArgumentException("document callback failed: $document")
+        require(verifyDocumentCallback.invoke(mso, document)) {
+            "document callback failed: $document"
         }
 
         val validItems = mutableListOf<IssuerSignedItem>()
@@ -143,11 +123,7 @@ class ValidatorMdoc(
             .encodeToByteArray(ByteArraySerializer(), serialized)
             .wrapInCborTag(24)
             .sha256()
-        if (!verifierHash.contentEquals(issuerHash.value)) {
-            Napier.w("Could not verify hash of value for ${value.elementIdentifier}")
-            return false
-        }
-        return true
+        return verifierHash.contentEquals(issuerHash.value)
     }
 
     /**

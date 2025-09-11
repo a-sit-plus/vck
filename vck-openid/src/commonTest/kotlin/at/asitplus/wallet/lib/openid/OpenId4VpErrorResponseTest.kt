@@ -50,7 +50,7 @@ class OpenId4VpErrorResponseTest : FreeSpec({
         val response = holderOid4vp.createAuthnResponse(vckJsonSerializer.encodeToString(authnRequest))
         response.getOrNull().shouldBeInstanceOf<AuthenticationResponseResult.Post>().params.shouldContain(
             "error_description",
-            "response_url is null"
+            "response_url is null, but response_mode is DirectPost(direct_post)"
         )
     }
 })

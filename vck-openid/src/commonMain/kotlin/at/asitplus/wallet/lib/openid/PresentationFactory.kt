@@ -58,7 +58,7 @@ internal class PresentationFactory(
     private val signDeviceAuthDetached: SignCoseDetachedFun<ByteArray>,
     private val signDeviceAuthFallback: SignCoseFun<ByteArray>,
     private val signIdToken: SignJwtFun<IdToken>,
-    private val randomSource: RandomSource = RandomSource.Secure
+    private val randomSource: RandomSource = RandomSource.Secure,
 ) {
     suspend fun createPresentation(
         holder: Holder,
@@ -106,7 +106,6 @@ internal class PresentationFactory(
             request = vpRequestParams,
             credentialPresentation = credentialPresentation,
         ).getOrElse {
-            Napier.w("Could not create presentation", it)
             throw AccessDenied("Could not create presentation", it)
         }.also { presentation ->
             clientMetadata?.vpFormats?.let {
@@ -170,7 +169,6 @@ internal class PresentationFactory(
                     payload = deviceAuthenticationBytes,
                     serializer = ByteArraySerializer()
                 ).getOrElse {
-                    Napier.w("Could not create DeviceAuth for presentation", it)
                     throw PresentationException(it)
                 }
             }
@@ -182,7 +180,6 @@ internal class PresentationFactory(
                 payload = nonce.encodeToByteArray(),
                 serializer = ByteArraySerializer()
             ).getOrElse {
-                Napier.w("Could not create DeviceAuth for presentation", it)
                 throw PresentationException(it)
             }
         }
@@ -242,7 +239,6 @@ internal class PresentationFactory(
             return@catching null
         }
         val nonce = request.parameters.nonce ?: run {
-            Napier.w("nonce is null in ${request.parameters}")
             throw InvalidRequest("nonce is null")
         }
         val now = clock.now()
@@ -261,7 +257,6 @@ internal class PresentationFactory(
             nonce = nonce,
         )
         signIdToken(null, idToken, IdToken.serializer()).getOrElse {
-            Napier.w("Could not sign id_token", it)
             throw AccessDenied("Could not sign id_token", it)
         }
     }
@@ -269,8 +264,7 @@ internal class PresentationFactory(
     @Throws(OAuth2Exception::class)
     private fun AuthenticationRequestParameters.verifyResponseType() {
         if (responseType == null || !responseType!!.contains(VP_TOKEN)) {
-            Napier.w("vp_token not requested in response_type='$responseType'")
-            throw InvalidRequest("response_type invalid")
+            throw InvalidRequest("response_type invalid: $responseType")
         }
     }
 
@@ -279,8 +273,7 @@ internal class PresentationFactory(
         supportedFormats: FormatHolder,
     ) = presentationSubmission.descriptorMap?.mapIndexed { _, descriptor ->
         if (!supportedFormats.supportsAlgorithm(descriptor.format)) {
-            Napier.w("Incompatible JWT algorithms for claim format ${descriptor.format}: $supportedFormats")
-            throw RegistrationValueNotSupported("incompatible algorithms")
+            throw RegistrationValueNotSupported("incompatible algorithms: $supportedFormats")
         }
     }
 
@@ -289,8 +282,7 @@ internal class PresentationFactory(
         verifiablePresentations.entries.mapIndexed { _, descriptor ->
             val format = this.verifiablePresentations.entries.first().value.toFormat()
             if (!supportedFormats.supportsAlgorithm(format)) {
-                Napier.w("Incompatible JWT algorithms for claim format $format: $supportedFormats")
-                throw RegistrationValueNotSupported("incompatible algorithms")
+                throw RegistrationValueNotSupported("incompatible algorithms: $supportedFormats")
             }
         }
 

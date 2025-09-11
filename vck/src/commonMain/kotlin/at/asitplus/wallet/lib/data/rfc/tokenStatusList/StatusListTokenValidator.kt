@@ -74,7 +74,6 @@ object StatusListTokenValidator {
                     throw IllegalStateException("The Status List Token is expired.")
                 }
             }
-                ?: Napier.w("No status list token resolved timestamp was found despite the existence of a time to live claim. Assuming token to be fresh.")
         }
     }
 

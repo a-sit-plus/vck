@@ -28,7 +28,7 @@ internal class AuthenticationResponseFactory(
     val signJarm: SignJwtFun<AuthenticationResponseParameters>,
     val signError: SignJwtFun<OAuth2Error>,
     val encryptJarm: EncryptJweFun,
-    val randomSource: RandomSource = RandomSource.Secure
+    val randomSource: RandomSource = RandomSource.Secure,
 ) {
     @Throws(OAuth2Exception::class, CancellationException::class)
     internal suspend fun createAuthenticationResponse(
@@ -153,22 +153,12 @@ internal class AuthenticationResponseFactory(
     private suspend fun sign(payload: AuthenticationResponseParameters): String =
         signJarm(null, payload, AuthenticationResponseParameters.serializer())
             .map { it.serialize() }
-            .getOrElse {
-                Napier.w("sign: error", it)
-                throw InvalidRequest("sign: error", it)
-            }.also {
-                Napier.d("sign: signed $payload")
-            }
+            .getOrElse { throw InvalidRequest("sign: error", it) }
 
     private suspend fun signError(payload: OAuth2Error): String =
         signError(null, payload, OAuth2Error.serializer())
             .map { it.serialize() }
-            .getOrElse {
-                Napier.w("signError: error", it)
-                throw InvalidRequest("signError: error", it)
-            }.also {
-                Napier.d("signError: signed $payload")
-            }
+            .getOrElse { throw InvalidRequest("signError: error", it) }
 
     private suspend fun encrypt(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
@@ -206,10 +196,9 @@ internal class AuthenticationResponseFactory(
                     .also { Napier.d("encrypt: using $header to encrypt ${vckJsonSerializer.encodeToString(response.error)}") }
             } ?: throw InvalidRequest("encrypt: nothing to encrypt")
         }
-        return jwe?.map { it.serialize() }?.getOrElse {
-            Napier.w("encrypt error", it)
-            throw InvalidRequest("encrypt error", it)
-        } ?: throw InvalidRequest("encrypt: nothing to serialize")
+        return jwe?.map { it.serialize() }
+            ?.getOrElse { throw InvalidRequest("encrypt error", it) }
+            ?: throw InvalidRequest("encrypt: nothing to serialize")
     }
 
     @Throws(OAuth2Exception::class)

@@ -15,7 +15,6 @@ class SdJwtTimelinessValidator {
             evaluationTime = now,
             jwsExpiredError = with(sdJwt.expiration) {
                 if (this != null && this.isTooEarly()) {
-                    Napier.w("exp invalid: $this, now is $now")
                     EntityExpiredError(
                         expirationTime = this,
                         earliestAcceptedExpirationTime = earliestTime,
@@ -24,7 +23,6 @@ class SdJwtTimelinessValidator {
             },
             jwsNotYetValidError = with(sdJwt.notBefore) {
                 if (this != null && this.isTooLate()) {
-                    Napier.w("nbf invalid: $this, now is $now")
                     EntityNotYetValidError(
                         notBeforeTime = this,
                         latestAcceptedNotBeforeTime = latestTime,

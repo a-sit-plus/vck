@@ -14,14 +14,12 @@ class MobileSecurityObjectTimelinessValidator {
         MobileSecurityObjectTimelinessValidationSummary(
             evaluationTime = now,
             mdocExpiredError = if (mobileSecurityObject.validityInfo.validUntil.isTooEarly()) {
-                Napier.w("MSO is expired: ${mobileSecurityObject.validityInfo.validUntil}, now is $now")
                 EntityExpiredError(
                     expirationTime = mobileSecurityObject.validityInfo.validUntil,
                     earliestAcceptedExpirationTime = earliestTime,
                 )
             } else null,
             mdocNotYetValidError = if (mobileSecurityObject.validityInfo.validFrom.isTooLate()) {
-                Napier.w("MSO is not yet valid: ${mobileSecurityObject.validityInfo.validFrom}, now is $now")
                 EntityNotYetValidError(
                     notBeforeTime = mobileSecurityObject.validityInfo.validFrom,
                     latestAcceptedNotBeforeTime = latestTime,

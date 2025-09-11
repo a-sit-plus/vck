@@ -83,8 +83,7 @@ class IssuerAgent(
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
         val reference = issuerCredentialStore.createStatusListIndex(credential, timePeriod).getOrThrow()
         val coseKey = credential.subjectPublicKey.toCoseKey()
-            .onFailure { Napier.w("issueMdoc error", it) }
-            .getOrThrow()
+            .getOrElse { throw IllegalStateException("Could not create subject COSE key", it) }
         val deviceKeyInfo = DeviceKeyInfo(coseKey)
         val credentialStatus = Status(
             statusList = StatusListInfo(
@@ -157,9 +156,9 @@ class IssuerAgent(
             type = JwsContentTypeConstants.JWT,
             payload = vc.toJws(),
             serializer = VerifiableCredentialJws.serializer(),
-        ).onFailure {
-            Napier.w("issueVc error", it)
-        }.getOrThrow()
+        ).getOrElse {
+            throw IllegalStateException("Could not sign VC", it)
+        }
         Napier.i("issueVc: $vcInJws")
         return Issuer.IssuedCredential.VcJwt(
             vc = vc,
@@ -215,9 +214,9 @@ class IssuerAgent(
             entireObject,
             JsonObject.serializer(),
             credential.modifyHeader,
-        ).onFailure {
-            Napier.w("issueVcSd error", it)
-        }.getOrThrow()
+        ).getOrElse {
+            throw IllegalStateException("Could not sign SD-JWT", it)
+        }
         val sdJwtSigned = SdJwtSigned.issued(jws, disclosures.toList())
             .also { Napier.i("issueVcSd: $it") }
         return Issuer.IssuedCredential.VcSdJwt(

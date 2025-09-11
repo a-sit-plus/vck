@@ -70,7 +70,6 @@ class JwtTokenGenerationService(
         scope: String?,
         validatedClientKey: JsonWebKey?,
     ): TokenResponseParameters = if (httpRequest?.dpop == null) {
-        Napier.w("dpop: no JWT provided, but enforced")
         throw InvalidDpopProof("no DPoP header value")
     } else {
         TokenResponseParameters(

@@ -131,9 +131,7 @@ object PresentationExchangeInputEvaluator {
                 // TODO: RequirementEnum.NONE is not a valid field value, maybe change member type to new Enum?
                 RequirementEnum.NONE -> fieldQueryResult
                 RequirementEnum.PREFERRED -> fieldQueryResult
-                RequirementEnum.REQUIRED -> throw MissingFeatureSupportException("Predicate feature from https://identity.foundation/presentation-exchange/spec/v2.0.0/#predicate-feature").also {
-                    Napier.w("evaluateFieldQueryResult failed", it)
-                }
+                RequirementEnum.REQUIRED -> throw MissingFeatureSupportException("Predicate feature from https://identity.foundation/presentation-exchange/spec/v2.0.0/#predicate-feature")
             }
         } ?: fieldQueryResult
     }

@@ -362,7 +362,6 @@ private suspend fun createSdJwtPresentation(
         VerifiableCredentialSdJwt.serializer(),
         sdJwtSerialized
     ).getOrElse {
-        Napier.w("Could not re-create JWS from stored SD-JWT", it)
         throw PresentationException(it)
     }
     val sdJwt = SdJwtSigned.serializePresentation(jwsFromIssuer, filteredDisclosures, keyBinding)
@@ -384,6 +383,5 @@ private suspend fun createKeyBindingJws(
     ),
     KeyBindingJws.serializer(),
 ).getOrElse {
-    Napier.w("Could not create JWS for presentation", it)
     throw PresentationException(it)
 }

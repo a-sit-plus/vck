@@ -41,7 +41,6 @@ class ClientAuthenticationService(
         // Enforce client authentication once all clients implement it
         if (enforceClientAuthentication) {
             if (httpRequest?.clientAttestation == null || httpRequest.clientAttestationPop == null) {
-                Napier.w("auth: client not sent client attestation")
                 throw InvalidClient("client attestation headers missing")
             }
         }
@@ -51,22 +50,18 @@ class ClientAuthenticationService(
                 httpRequest.clientAttestation,
                 vckJsonSerializer
             ).getOrElse {
-                Napier.w("auth: could not parse client attestation JWT", it)
                 throw InvalidClient("could not parse client attestation", it)
             }
             if (!verifyJwsObject(clientAttestationJwt)) {
-                Napier.w("auth: client attestation JWT not verified")
                 throw InvalidClient("client attestation JWT not verified")
             }
             if (clientId != null) {
                 if (clientAttestationJwt.payload.subject != clientId) {
-                    Napier.w("auth: subject ${clientAttestationJwt.payload.subject} not matching client_id $clientId")
                     throw InvalidClient("subject not equal to client_id")
                 }
             }
 
             if (!verifyClientAttestationJwt.invoke(clientAttestationJwt)) {
-                Napier.w("auth: client attestation not verified by callback: $clientAttestationJwt")
                 throw InvalidClient("client attestation not verified")
             }
 
@@ -75,13 +70,11 @@ class ClientAuthenticationService(
                 httpRequest.clientAttestationPop,
                 vckJsonSerializer
             ).getOrElse {
-                Napier.w("auth: could not parse client attestation PoP JWT", it)
                 throw InvalidClient("could not parse client attestation PoP", it)
             }
             val cnf = clientAttestationJwt.payload.confirmationClaim
                 ?: throw InvalidClient("client attestation has no cnf")
             if (!verifyJwsSignatureWithCnf(clientAttestationPopJwt, cnf)) {
-                Napier.w("auth: client attestation PoP JWT not verified")
                 throw InvalidClient("client attestation PoP JWT not verified")
             }
         }

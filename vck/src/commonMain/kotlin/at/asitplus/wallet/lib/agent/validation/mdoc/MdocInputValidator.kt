@@ -14,11 +14,9 @@ class MdocInputValidator(
 ) {
     suspend operator fun invoke(it: IssuerSigned, issuerKey: CoseKey?) = MdocInputValidationSummary(
         integrityValidationSummary = if (issuerKey == null) {
-            Napier.w("MdocInputValidator: No issuer key")
             IntegrityValidationSummary.IntegrityNotValidated
         } else {
             val verifyCoseSignatureWithKey = verifyCoseSignatureWithKey(it.issuerAuth, issuerKey, byteArrayOf(), null)
-                .onFailure { Napier.w("MdocInputValidator: Could not verify credential", it) }
             IntegrityValidationSummary.IntegrityValidationResult(
                 issuerKey = issuerKey,
                 isSuccess = verifyCoseSignatureWithKey.isSuccess,

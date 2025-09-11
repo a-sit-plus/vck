@@ -3,10 +3,12 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.dif.ClaimFormat
+import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.FormatHolder
 import at.asitplus.dif.InputDescriptor
 import at.asitplus.dif.PresentationSubmission
 import at.asitplus.dif.PresentationSubmissionDescriptor
+import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.dcql.DCQLQuery
@@ -91,7 +93,8 @@ class HolderAgent(
             is Holder.StoreCredentialInput.Iso -> {
                 val issuerKey: CoseKey? =
                     credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull()?.let {
-                        runCatching { X509Certificate.decodeFromDer(it) }.getOrNull()?.decodedPublicKey?.getOrNull()?.toCoseKey()
+                        runCatching { X509Certificate.decodeFromDer(it) }.getOrNull()?.decodedPublicKey?.getOrNull()
+                            ?.toCoseKey()
                             ?.getOrNull()
                     }
                 val validated = validatorMdoc.verifyIsoCred(credential.issuerSigned, issuerKey)
@@ -109,10 +112,8 @@ class HolderAgent(
     /**
      * Gets a list of all stored credentials, with a revocation status.
      */
-    override suspend fun getCredentials(): Collection<StoreEntry>? {
-        return subjectCredentialStore.getCredentials().getOrNull()
-            ?: null.also { Napier.w("Got no credentials from subjectCredentialStore") }
-    }
+    override suspend fun getCredentials(): Collection<StoreEntry>? =
+        subjectCredentialStore.getCredentials().getOrNull()
 
     /**
      * Gets a list of all valid stored credentials sorted by preference, possibly filtered by
@@ -392,19 +393,15 @@ class HolderAgent(
         credentialSubmissions: Map<String, PresentationExchangeCredentialDisclosure>,
     ) = catching {
         val validator = PresentationSubmissionValidator.createInstance(presentationDefinition).getOrThrow()
-        if (!validator.isValidSubmission(credentialSubmissions.keys)) {
-            Napier.w("submission requirements are not satisfied")
-            throw IllegalArgumentException("Submission requirements are not satisfied")
+        require(validator.isValidSubmission(credentialSubmissions.keys)) {
+            "Submission requirements are not satisfied"
         }
 
         // making sure, that all the submissions actually match the corresponding input descriptor requirements
         credentialSubmissions.forEach { submission ->
-            val inputDescriptor = presentationDefinition.inputDescriptors.firstOrNull {
-                it.id == submission.key
-            } ?: run {
-                Napier.w("Invalid input descriptor id")
-                throw IllegalArgumentException("Invalid input descriptor id")
-            }
+            val inputDescriptor = presentationDefinition.inputDescriptors
+                .firstOrNull { it.id == submission.key }
+                ?: throw IllegalArgumentException("Invalid input descriptor id: ${submission.key}")
 
             val constraintFieldMatches = evaluateInputDescriptorAgainstCredential(
                 inputDescriptor = inputDescriptor,
@@ -423,14 +420,18 @@ class HolderAgent(
                 val allowedPaths = constraintField.value.map {
                     it.normalizedJsonPath.toString()
                 }
-                disclosedAttributes.firstOrNull { allowedPaths.contains(it) } ?: run {
-                    val keyId = constraintField.key.id?.let { " Missing field: $it" }
-                    Napier.w("Input descriptor constraints are not satisfied: ${inputDescriptor.id}.$keyId")
-                    throw IllegalArgumentException("Input descriptor constraints are not satisfied: ${inputDescriptor.id}.$keyId")
-                }
+                disclosedAttributes.firstOrNull { allowedPaths.contains(it) }
+                    ?: throw IllegalArgumentException(inputDescriptor.errorMessage(constraintField))
             }
             // TODO: maybe we also want to validate, whether there are any redundant disclosed attributes?
             //  this would be the case if there is only one constraint field with path "$['name']", but two attributes are disclosed
         }
     }
+
+    private fun InputDescriptor.errorMessage(field: Map.Entry<ConstraintField, NodeList>): String =
+        "Input descriptor constraints are not satisfied: ${details(field)}"
+
+    private fun InputDescriptor.details(field: Map.Entry<ConstraintField, NodeList>): String =
+        "${id}.${field.key.id?.let { " Missing field: $it" }}"
+
 }

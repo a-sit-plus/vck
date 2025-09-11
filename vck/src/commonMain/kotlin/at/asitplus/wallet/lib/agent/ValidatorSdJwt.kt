@@ -11,6 +11,7 @@ import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.ValidationEr
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.agent.validation.sdJwt.SdJwtInputValidator
 import at.asitplus.wallet.lib.data.KeyBindingJws
+import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.jws.*
 import io.github.aakira.napier.Napier
@@ -49,50 +50,40 @@ class ValidatorSdJwt(
         Napier.d("verifyVpSdJwt: '$input', '$challenge', '$clientId', '$transactionData'")
         val sdJwtResult = verifySdJwt(input, null)
         if (sdJwtResult !is SuccessSdJwt) {
-            Napier.w("verifyVpSdJwt: Could not verify SD-JWT: $sdJwtResult")
             val error = (sdJwtResult as? ValidationError)?.cause
-                ?: Throwable("SD-JWT not verified")
+                ?: Throwable("SD-JWT not verified: $sdJwtResult")
             return VerifyPresentationResult.ValidationError(error)
         }
         val keyBindingSigned = sdJwtResult.sdJwtSigned.keyBindingJws ?: run {
-            Napier.w("verifyVpSdJwt: No key binding JWT")
             return VerifyPresentationResult.ValidationError("No key binding JWT")
         }
         val vcSdJwt = sdJwtResult.verifiableCredentialSdJwt
         vcSdJwt.confirmationClaim?.let {
             if (!verifyJwsSignatureWithCnf(keyBindingSigned, it)) {
-                Napier.w("verifyVpSdJwt: Key binding JWT not verified with keys from cnf")
                 return VerifyPresentationResult.ValidationError("Key binding JWT not verified (from cnf)")
             }
         } ?: run {
             if (!verifyJwsObject(keyBindingSigned)) {
-                Napier.w("verifyVpSdJwt: Key binding JWT not verified")
                 return VerifyPresentationResult.ValidationError("Key binding JWT not verified")
             }
         }
         val keyBinding = keyBindingSigned.payload
-
         if (keyBinding.challenge != challenge) {
-            Napier.w("verifyVpSdJwt: Challenge not correct: ${keyBinding.challenge}, expected $clientId")
             return VerifyPresentationResult.ValidationError("Challenge not correct: ${keyBinding.challenge}")
         }
         if (keyBinding.audience != clientId) {
-            Napier.w("verifyVpSdJwt: Audience not correct: ${keyBinding.audience}, expected $clientId")
             return VerifyPresentationResult.ValidationError("Audience not correct: ${keyBinding.audience}")
         }
         if (!keyBinding.sdHash.contentEquals(input.hashInput.encodeToByteArray().sha256())) {
-            Napier.w("verifyVpSdJwt: Key Binding does not contain correct sd_hash")
             return VerifyPresentationResult.ValidationError("Key Binding does not contain correct sd_hash")
         }
         if (verifyTransactionData) {
             transactionData?.let { data ->
                 //TODO support more hash algorithms
-                if (keyBinding.transactionDataHashesAlgorithm != "sha-256") {
-                    Napier.w("verifyVpSdJwt: Key Binding uses unsupported hashing algorithm. Please use sha256")
-                    return VerifyPresentationResult.ValidationError("verifyVpSdJwt: Key Binding uses unsupported hashing algorithm. Please use sha256")
+                if (keyBinding.transactionDataHashesAlgorithm != SdJwtConstants.SHA_256) {
+                    return VerifyPresentationResult.ValidationError("Unsupported hashing algorithm: ${keyBinding.transactionDataHashesAlgorithm}")
                 }
                 if (keyBinding.transactionDataHashes?.contentEquals(data.map { it.sha256() }) == false) {
-                    Napier.w("verifyVpSdJwt: Key Binding does not contain correct transaction data hashes")
                     return VerifyPresentationResult.ValidationError("Key Binding does not contain correct transaction data hashes")
                 }
             }

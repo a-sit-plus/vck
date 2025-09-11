@@ -135,7 +135,6 @@ class WalletService(
         }.getOrNull() ?: catchingUnwrapped {
             joseCompliantSerializer.decodeFromString<CredentialOffer>(input)
         }.getOrNull() ?: throw InvalidRequest("could not parse credential offer")
-            .also { Napier.w("Could not parse credential offer from $input") }
     }
 
     /**

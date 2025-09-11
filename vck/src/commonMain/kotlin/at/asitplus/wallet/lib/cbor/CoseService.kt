@@ -151,8 +151,7 @@ object CoseUtils {
             val serialized = coseCompliantSerializer.encodeToByteArray(signatureInput)
             Napier.d("COSE Signature input is ${serialized.encodeToString(Base16())}")
             keyMaterial.sign(serialized).asKmmResult().getOrElse {
-                Napier.w("No signature from native code", it)
-                throw it
+                throw IllegalStateException("No signature from native code", it)
             }
         }
 
@@ -211,9 +210,8 @@ class VerifyCoseSignatureWithKey<P : Any>(
         val algorithm = coseSigned.protectedHeader.algorithm
             ?: throw IllegalArgumentException("Algorithm not specified")
         require(algorithm is CoseAlgorithm.Signature) { "CoseAlgorithm not supported: $algorithm" }
-        val publicKey = signer.toCryptoPublicKey().getOrElse { ex ->
-            throw IllegalArgumentException("Signer not convertible", ex)
-                .also { Napier.w("Could not convert signer to public key: $signer", ex) }
+        val publicKey = signer.toCryptoPublicKey().getOrElse {
+            throw IllegalArgumentException("Signer not convertible", it)
         }
         verifySignature(
             signatureInput,

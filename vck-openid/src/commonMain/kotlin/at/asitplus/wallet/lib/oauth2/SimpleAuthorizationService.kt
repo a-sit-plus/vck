@@ -257,10 +257,7 @@ class SimpleAuthorizationService(
         requestParser.parseRequestParameters(input).getOrThrow()
             .let { it.parameters as? AuthenticationRequestParameters }
             ?.let { par(it, httpRequest).getOrThrow() }
-            ?: run {
-                Napier.w("par: could not parse request parameters from $input")
-                throw InvalidRequest("Could not parse request parameters from $input")
-            }
+            ?: throw InvalidRequest("Could not parse request parameters from $input")
     }
 
     /**
@@ -279,7 +276,6 @@ class SimpleAuthorizationService(
     ) = catching {
         Napier.i("pushedAuthorization called with $request")
         if (request.requestUri != null) {
-            Napier.w("par: client set request_uri: ${request.requestUri}")
             throw InvalidRequest("request_uri must not be set")
         }
         clientAuthenticationService.authenticateClient(httpRequest, request.clientId)
@@ -306,7 +302,6 @@ class SimpleAuthorizationService(
         Napier.i("authorize called with $input")
         val request = extractActualRequest(input)
         val userInfo = loadUserFun(OAuth2LoadUserFunInput(request)).getOrElse {
-            Napier.w("authorize: could not load user info from $request", it)
             throw InvalidRequest("Could not load user info for request $request", it)
         }
         with(request) {
@@ -351,13 +346,9 @@ class SimpleAuthorizationService(
     ): AuthenticationRequestParameters = if (input.requestUri != null) {
         requestUriToPushedAuthorizationRequest.remove(input.requestUri!!)?.apply {
             if (clientId != input.clientId) {
-                Napier.w("authorize: invalid client_id: ${input.clientId} vs par $clientId")
-                throw InvalidRequest("client_id not matching from par")
+                throw InvalidRequest("client_id not matching from par: ${input.clientId} vs $clientId")
             }
-        } ?: run {
-            Napier.w("authorize: client sent invalid request_uri: ${input.requestUri}")
-            throw InvalidRequest("request_uri set, but not found")
-        }
+        } ?: throw InvalidRequest("request_uri set, but not found")
     } else {
         requestParser.extractActualRequest(input).getOrThrow()
     }.validate()
@@ -371,24 +362,17 @@ class SimpleAuthorizationService(
      */
     private suspend fun AuthenticationRequestParameters.validate(): AuthenticationRequestParameters {
         if (redirectUrl == null) {
-            Napier.w("authorize: client did not set redirect_uri in $this")
             throw InvalidRequest("redirect_uri not set")
         }
 
         if (scope != null) {
-            strategy.filterScope(scope!!) ?: run {
-                Napier.w("authorize: scope $scope does not contain a valid credential id")
-                throw InvalidScope("No matching scope in $scope")
-            }
+            strategy.filterScope(scope!!) ?: throw InvalidScope("No matching scope in $scope")
         }
 
         if (issuerState != null) {
             if (!codeService.verifyAndRemove(issuerState!!)
                 || issuerStateToCredentialOffer.remove(issuerState!!) == null
-            ) {
-                Napier.w("authorize: issuer_state invalid: $issuerState")
-                throw InvalidGrant("issuer_state invalid: $issuerState")
-            }
+            ) throw InvalidGrant("issuer_state invalid: $issuerState")
             // the actual credential offer is irrelevant, because we're always offering all credentials
         }
 
@@ -420,10 +404,9 @@ class SimpleAuthorizationService(
         }
         val validatedClientKey = tokenService.verification.extractValidatedClientKey(httpRequest).getOrThrow()
 
-        val clientAuthRequest = request.loadClientAuthnRequest(httpRequest, validatedClientKey) ?: run {
-            Napier.w("token: could not load user info for $request}")
-            throw InvalidGrant("could not load user info for $request")
-        }
+        val clientAuthRequest = request.loadClientAuthnRequest(httpRequest, validatedClientKey)
+            ?: throw InvalidGrant("could not load user info for $request")
+
         request.code?.let { code ->
             clientAuthRequest.codeChallenge?.let {
                 validateCodeChallenge(code, request.codeVerifier, clientAuthRequest.codeChallenge)
@@ -463,7 +446,6 @@ class SimpleAuthorizationService(
                 validatedClientKey = validatedClientKey,
             )
         } else {
-            Napier.w("token: request can not be parsed: $request")
             throw InvalidRequest("neither authorization details nor scope in request")
         }
         token.refreshToken?.let {
@@ -475,12 +457,10 @@ class SimpleAuthorizationService(
 
     private fun validateCodeChallenge(code: String, codeVerifier: String?, codeChallenge: String) {
         if (codeVerifier == null) {
-            Napier.w("token: client did not provide any code verifier: $codeVerifier for $code")
             throw InvalidGrant("code verifier invalid: $codeVerifier for $code")
         }
         val codeChallengeCalculated = codeVerifier.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
         if (codeChallenge != codeChallengeCalculated) {
-            Napier.w("token: client did not provide correct code verifier: $codeVerifier for $code")
             throw InvalidGrant("code verifier invalid: $codeVerifier for $code")
         }
     }
@@ -501,7 +481,6 @@ class SimpleAuthorizationService(
     ): ClientAuthRequest? = when (grantType) {
         OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE -> {
             if (code == null || !codeService.verifyAndRemove(code!!)) {
-                Napier.w("token: client did not provide correct code: $code")
                 throw InvalidCode("code not valid: $code")
             }
             code?.let { codeToClientAuthRequest.remove(it) }
@@ -509,7 +488,6 @@ class SimpleAuthorizationService(
 
         OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE -> {
             if (preAuthorizedCode == null || !codeService.verifyAndRemove(preAuthorizedCode!!)) {
-                Napier.w("token: pre-authorized code not valid: $preAuthorizedCode")
                 throw InvalidGrant("pre-authorized code not valid: $preAuthorizedCode")
             }
             preAuthorizedCode?.let { codeToClientAuthRequest.remove(it) }
@@ -517,17 +495,13 @@ class SimpleAuthorizationService(
 
         OpenIdConstants.GRANT_TYPE_REFRESH_TOKEN -> {
             if (refreshToken == null) {
-                Napier.w("token: refresh_token is null")
                 throw InvalidGrant("refresh_token is null")
             }
             tokenService.verification.validateRefreshToken(refreshToken!!, httpRequest, validatedClientKey)
             refreshToken?.let { refreshTokenToAuthRequest.remove(it) }
         }
 
-        else -> run {
-            Napier.w("token: client did not provide valid grant_type: $grantType")
-            throw InvalidRequest("grant_type invalid")
-        }
+        else -> throw InvalidRequest("grant_type invalid")
     }
 
     suspend fun providePreAuthorizedCode(

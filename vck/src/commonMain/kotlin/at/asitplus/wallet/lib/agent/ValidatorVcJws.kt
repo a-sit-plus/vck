@@ -57,10 +57,7 @@ class ValidatorVcJws(
         clientId: String,
     ): VerifyPresentationResult {
         Napier.d("Verifying VP $input with $challenge and $clientId")
-        if (!verifyJwsObject(input)) {
-            Napier.w("VP: Signature invalid")
-            throw IllegalArgumentException("signature")
-        }
+        require (verifyJwsObject(input)) { "signature invalid" }
         val vpJws = input.payload.validate(challenge, clientId)
         val vcValidationResults = vpJws.vp.verifiableCredential
             .map { it to verifyVcJws(it, null, input) }
@@ -104,22 +101,10 @@ class ValidatorVcJws(
         challenge: String,
         clientId: String,
     ): VerifiablePresentationJws {
-        if (this.challenge != challenge) {
-            Napier.w("nonce invalid")
-            throw IllegalArgumentException("nonce invalid")
-        }
-        if (clientId != audience) {
-            Napier.w("aud invalid: ${audience}, expected $clientId}")
-            throw IllegalArgumentException("aud invalid: $audience")
-        }
-        if (jwtId != vp.id) {
-            Napier.w("jti invalid: ${jwtId}, expected ${vp.id}")
-            throw IllegalArgumentException("jti invalid: $jwtId")
-        }
-        if (vp.type != VERIFIABLE_PRESENTATION) {
-            Napier.w("type invalid: ${vp.type}, expected $VERIFIABLE_PRESENTATION")
-            throw IllegalArgumentException("type invalid: ${vp.type}")
-        }
+        require(this.challenge == challenge) { "nonce invalid: ${this.challenge}, expected $challenge" }
+        require(this.audience == clientId) { "aud invalid: ${this.audience}, expected $clientId" }
+        require(this.jwtId == this.vp.id) { "jti invalid: ${this.jwtId}, expected ${this.vp.id}" }
+        require(this.vp.type == VERIFIABLE_PRESENTATION) { "type invalid: ${this.vp.type}" }
         Napier.d("VP is valid")
         return this
     }

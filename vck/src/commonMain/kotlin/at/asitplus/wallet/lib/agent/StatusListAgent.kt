@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.signum.indispensable.cosef.CoseHeader
-import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.cbor.CoseHeaderCertificate
@@ -13,7 +12,6 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.MediaTypes
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListAggregation
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListView
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.PositiveDuration
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
@@ -52,11 +50,10 @@ class StatusListAgent(
      */
     override suspend fun issueStatusListJwt(time: Instant?) =
         signStatusListJwt(
-            MediaTypes.STATUSLIST_JWT,
-            buildStatusListTokenPayload(time.toTimePeriod()),
-            StatusListTokenPayload.serializer(),
+            type = MediaTypes.STATUSLIST_JWT,
+            payload = buildStatusListTokenPayload(time.toTimePeriod()),
+            serializer = StatusListTokenPayload.serializer(),
         ).getOrElse {
-            Napier.w("issueStatusListJwt error", it)
             throw IllegalStateException("Status token could not be created.", it)
         }
 
@@ -65,11 +62,14 @@ class StatusListAgent(
      * returns a CWS representation of that.
      */
     override suspend fun issueStatusListCwt(time: Instant?) =
-        issueStatusListCwt(time.toTimePeriod())
-            ?: throw IllegalStateException("Status token could not be created.")
-
-    suspend fun issueStatusListCwt(timePeriod: Int?): CoseSigned<StatusListTokenPayload>? =
-        wrapStatusListTokenInCoseSigned(buildStatusListTokenPayload(timePeriod))
+        signStatusListCwt(
+            protectedHeader = CoseHeader(type = MediaTypes.Application.STATUSLIST_CWT),
+            unprotectedHeader = null,
+            payload = buildStatusListTokenPayload(time.toTimePeriod()),
+            serializer = StatusListTokenPayload.serializer(),
+        ).getOrElse {
+            throw IllegalStateException("Status token could not be created", it)
+        }
 
     /**
      * Wraps the revocation information from [issuerCredentialStore] into a Token Payload
@@ -90,10 +90,8 @@ class StatusListAgent(
      * Returns a status list, where the entry at "revocationListIndex" (of the credential) is INVALID if it is revoked
      */
     override fun buildStatusList(timePeriod: Int?): StatusList =
-        buildStatusListView(timePeriod).toStatusList(zlibService, statusListAggregationUrl)
-
-    private fun buildStatusListView(timePeriod: Int?): StatusListView =
         issuerCredentialStore.getStatusListView(timePeriod ?: timePeriodProvider.getCurrentTimePeriod(clock))
+            .toStatusList(zlibService, statusListAggregationUrl)
 
     /**
      * Sets the status of one specific credential to [TokenStatus.Invalid].
@@ -139,19 +137,6 @@ class StatusListAgent(
         }
         return list
     }
-
-    private suspend fun wrapStatusListTokenInCoseSigned(
-        statusListTokenPayload: StatusListTokenPayload,
-    ): CoseSigned<StatusListTokenPayload>? =
-        signStatusListCwt(
-            protectedHeader = CoseHeader(type = MediaTypes.Application.STATUSLIST_CWT),
-            unprotectedHeader = null,
-            payload = statusListTokenPayload,
-            serializer = StatusListTokenPayload.serializer(),
-        ).getOrElse {
-            Napier.w("Could not wrapStatusListInJws", it)
-            return null
-        }
 
     private fun getRevocationListUrlFor(timePeriod: Int) = statusListBaseUrl.let {
         it + (if (!it.endsWith('/')) "/" else "") + timePeriod

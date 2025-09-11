@@ -218,11 +218,8 @@ class VerifiablePresentationFactory(
         val keyBinding = createKeyBindingJws(request, issuerJwtPlusDisclosures)
         val issuerSignedJwsSerialized = validSdJwtCredential.vcSerialized.substringBefore("~")
         val issuerSignedJws =
-            JwsSigned.deserialize<JsonElement>(JsonElement.serializer(), issuerSignedJwsSerialized, vckJsonSerializer)
-                .getOrElse {
-                    Napier.w("Could not re-create JWS from stored SD-JWT", it)
-                    throw PresentationException(it)
-                }
+            JwsSigned.deserialize(JsonElement.serializer(), issuerSignedJwsSerialized, vckJsonSerializer)
+                .getOrElse { throw PresentationException(it) }
         val sdJwt = SdJwtSigned.serializePresentation(issuerSignedJws, allDisclosures, keyBinding)
         return CreatePresentationResult.SdJwt(sdJwt)
     }
@@ -255,7 +252,6 @@ class VerifiablePresentationFactory(
         ),
         KeyBindingJws.serializer(),
     ).getOrElse {
-        Napier.w("Could not create JWS for presentation", it)
         throw PresentationException(it)
     }
 
@@ -277,7 +273,6 @@ class VerifiablePresentationFactory(
             ),
             VerifiablePresentationJws.serializer(),
         ).getOrElse {
-            Napier.w("Could not create JWS for presentation", it)
             throw PresentationException(it)
         }.serialize()
     )

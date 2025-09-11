@@ -46,14 +46,14 @@ class RequestParser(
      */
     suspend fun parseRequestParameters(
         input: String,
-        dcApiRequest: DCAPIRequest? = null
+        dcApiRequest: DCAPIRequest? = null,
     ): KmmResult<RequestParametersFrom<*>> = catching {
         // maybe it is a request JWS
         val parsedParams = run { parseRequestObjectJws(input, dcApiRequest) }
             ?: catchingUnwrapped { // maybe it's in the URL parameters
                 Url(input).let {
                     val params = it.parameters.flattenEntries().toMap().decodeFromUrlQuery<JsonObject>()
-                    val parsed = json.decodeFromJsonElement(RequestParameters.serializer(),params)
+                    val parsed = json.decodeFromJsonElement(RequestParameters.serializer(), params)
                     matchRequestParameterCases(it, parsed, dcApiRequest)
                 }
             }.onFailure {
@@ -65,8 +65,7 @@ class RequestParser(
             }.onFailure {
                 Napier.d("parseRequestParameters: Failed for $input", it)
             }.getOrNull()
-            ?: throw InvalidRequest("parse error")
-                .also { Napier.w("Could not parse authentication request: $input") }
+            ?: throw InvalidRequest("parse error: $input")
 
         (parsedParams.parameters as? AuthenticationRequestParameters)?.let {
             extractRequestObject(it, dcApiRequest)
@@ -93,7 +92,7 @@ class RequestParser(
 
     private suspend fun extractRequestObject(
         params: AuthenticationRequestParameters,
-        dcApiRequest: DCAPIRequest?
+        dcApiRequest: DCAPIRequest?,
     ): RequestParametersFrom<*>? =
         params.request?.let { requestObject ->
             parseRequestObjectJws(requestObject, dcApiRequest)
@@ -113,28 +112,27 @@ class RequestParser(
 
     private suspend fun parseRequestObjectJws(
         requestObject: String,
-        dcApiRequest: DCAPIRequest? = null
-    ): RequestParametersFrom<*>? =
-        JwsSigned.deserialize<RequestParameters>(
-            RequestParameters.serializer(),
-            requestObject,
-            vckJsonSerializer
-        ).onFailure {
-            Napier.d("parseRequestObjectJws: Error for $requestObject", it)
-        }.getOrNull()?.let { jws ->
-            if (requestObjectJwsVerifier.invoke(jws)) {
-                RequestParametersFrom.JwsSigned(jws, jws.payload, dcApiRequest)
-            } else {
-                Napier.w("parseRequestObjectJws: Signature not verified for $jws")
-                null
-            }
+        dcApiRequest: DCAPIRequest? = null,
+    ): RequestParametersFrom<*>? = JwsSigned.deserialize<RequestParameters>(
+        RequestParameters.serializer(),
+        requestObject,
+        vckJsonSerializer
+    ).onFailure {
+        Napier.d("parseRequestObjectJws: Error for $requestObject", it)
+    }.getOrNull()?.let { jws ->
+        if (requestObjectJwsVerifier.invoke(jws)) {
+            RequestParametersFrom.JwsSigned(jws, jws.payload, dcApiRequest)
+        } else {
+            Napier.w("parseRequestObjectJws: Signature not verified for $jws")
+            null
         }
+    }
 
     @Suppress("UNCHECKED_CAST")
     private fun <T> matchRequestParameterCases(
         input: T,
         params: RequestParameters,
-        dcApiRequest: DCAPIRequest? = null
+        dcApiRequest: DCAPIRequest? = null,
     ): RequestParametersFrom<*> =
         when (input) {
             is Url -> RequestParametersFrom.Uri(input, params)
@@ -143,6 +141,7 @@ class RequestParser(
                 params,
                 dcApiRequest
             )
+
             is String -> RequestParametersFrom.Json(input, params, dcApiRequest)
             else -> throw Exception("matchRequestParameterCases: unknown type ${input?.let { it::class.simpleName } ?: "null"}")
         }

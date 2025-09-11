@@ -82,11 +82,13 @@ data class SdJwtSigned(
 
         fun parse(input: String): SdJwtSigned? {
             if (!input.contains("~")) {
-                return null.also { Napier.w("Could not parse SD-JWT: $input") }
+                Napier.w("Could not parse SD-JWT: $input")
+                return null
             }
             val stringList = input.replace("[^A-Za-z0-9-_.~]".toRegex(), "").split("~")
             if (stringList.isEmpty()) {
-                return null.also { Napier.w("Could not parse SD-JWT: $input") }
+                Napier.w("Could not parse SD-JWT: $input")
+                return null
             }
             val jws = JwsSigned.deserialize<JsonElement>(
                 deserializationStrategy = JsonElement.serializer(),

@@ -48,8 +48,7 @@ class ResponseParser(
             input.decodeFromPostBody<AuthenticationResponseParameters>().let {
                 ResponseParametersFrom.Post(it)
             }
-        } else throw IllegalArgumentException("Can't parse input")
-            .also { Napier.w("Could not parse authentication response: $input") }
+        } else throw IllegalArgumentException("Can't parse input: $input")
         return extractAuthnResponse(paramsFrom)
     }
 
@@ -62,8 +61,7 @@ class ResponseParser(
         input.parameters.response?.let { encodedResponse ->
             encodedResponse.fromJws()?.let { jarm ->
                 if (!verifyJwsObject(jarm)) {
-                    Napier.w("JWS of response not verified: $encodedResponse")
-                    throw IllegalArgumentException("JWS not verified")
+                    throw IllegalArgumentException("JWS not verified: $encodedResponse")
                 }
                 ResponseParametersFrom.JwsSigned(jarm, input, jarm.payload)
             } ?: encodedResponse.fromJwe()?.let { jarm ->
@@ -72,8 +70,7 @@ class ResponseParser(
                 val nested = jarm.payload.fromJws()
                     ?: throw IllegalArgumentException("JWS inside JWE not verified")
                 if (!verifyJwsObject(nested)) {
-                    Napier.w("JWS inside JWE of response not verified: $encodedResponse")
-                    throw IllegalArgumentException("JWS inside JWE not verified")
+                    throw IllegalArgumentException("JWS inside JWE not verified: $encodedResponse")
                 }
                 ResponseParametersFrom.JwsSigned(
                     nested,

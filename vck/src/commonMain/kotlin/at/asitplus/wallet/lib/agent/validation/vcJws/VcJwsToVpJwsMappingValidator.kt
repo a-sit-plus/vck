@@ -12,7 +12,6 @@ class VcJwsToVpJwsMappingValidator {
         vpJws: JwsSigned<VerifiablePresentationJws>,
     ) = VcJwsToVpJwsMappingValidationSummary(
         inconsistentIssuerError = if (vpJws.payload.issuer != vcJws.subject) {
-            Napier.w("vp.iss invalid: ${vpJws.payload.issuer}, but in VC is ${vcJws.subject}")
             VcJwsToVpJwsMappingValidationSummary.InconsistentIssuerError(
                 vcSubject = vcJws.subject,
                 vpIssuer = vpJws.payload.issuer,
@@ -20,7 +19,6 @@ class VcJwsToVpJwsMappingValidator {
         } else null,
         inconsistentPublicKeyError = vpJws.header.publicKey?.let {
             if (!vpJws.header.publicKey!!.matchesIdentifier(vcJws.subject)) {
-                Napier.w("vp.key invalid: ${vpJws.header.publicKey}, but in VC is ${vcJws.subject}")
                 VcJwsToVpJwsMappingValidationSummary.InconsistentPublicKeyError(
                     vcSubject = vcJws.subject,
                     vpPublicKey = vpJws.header.publicKey!!,

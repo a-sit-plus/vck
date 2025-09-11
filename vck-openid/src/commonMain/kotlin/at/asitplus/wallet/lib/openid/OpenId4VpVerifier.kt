@@ -376,8 +376,7 @@ class OpenId4VpVerifier(
         catchingUnwrapped {
             ResponseParametersFrom.Post(input.decode<AuthenticationResponseParameters>())
         }.getOrElse {
-            Napier.w("Could not parse authentication response: $input", it)
-            return AuthnResponseResult.Error("Can't parse input", null, it)
+            return AuthnResponseResult.Error("Can't parse input: $input", null, it)
         }.let { validateAuthnResponse(it) }
 
     /**
@@ -390,8 +389,7 @@ class OpenId4VpVerifier(
         catchingUnwrapped {
             responseParser.parseAuthnResponse(input)
         }.getOrElse {
-            Napier.w("Could not parse authentication response: $input", it)
-            return AuthnResponseResult.Error("Can't parse input", null, it)
+            return AuthnResponseResult.Error("Can't parse input: $input", null, it)
         }.let {
             validateAuthnResponse(it)
         }
@@ -404,10 +402,8 @@ class OpenId4VpVerifier(
         val params = input.parameters
         val state = params.state
             ?: return AuthnResponseResult.ValidationError("state", params.state)
-                .also { Napier.w("Invalid state: ${params.state}") }
         val authnRequest = stateToAuthnRequestStore.get(state)
             ?: return AuthnResponseResult.ValidationError("state", state)
-                .also { Napier.w("State not associated with authn request: $state") }
 
         // TODO: support concurrent presentation of ID token and VP token?
         val responseType = authnRequest.responseType
@@ -427,7 +423,6 @@ class OpenId4VpVerifier(
                     return AuthnResponseResult.ValidationError("idToken", state, it)
                 }
             } ?: return AuthnResponseResult.ValidationError("idToken", state)
-                .also { Napier.w("State not associated with response type: $state") }
             return AuthnResponseResult.IdToken(idToken, state)
         }
 
@@ -439,9 +434,9 @@ class OpenId4VpVerifier(
         val jwsSigned = JwsSigned.Companion.deserialize<IdToken>(
             IdToken.Companion.serializer(), idTokenJws,
             vckJsonSerializer
-        ).getOrNull()
-            ?: throw IllegalArgumentException("idToken")
-                .also { Napier.w("Could not parse JWS from idToken: $idTokenJws") }
+        ).getOrElse {
+            throw IllegalArgumentException("idToken", it)
+        }
         if (!verifyJwsObject(jwsSigned))
             throw IllegalArgumentException("idToken")
                 .also { Napier.w { "JWS of idToken not verified: $idTokenJws" } }
@@ -484,10 +479,8 @@ class OpenId4VpVerifier(
         val params = responseParameters.parameters
         val expectedNonce = authnRequest.nonce
             ?: return AuthnResponseResult.ValidationError("state", state)
-                .also { Napier.w("State not associated with nonce: $state") }
         val verifiablePresentation = params.vpToken
-            ?: return AuthnResponseResult.ValidationError("vp_token is null", state)
-                .also { Napier.w("No VP in response") }
+            ?: return AuthnResponseResult.ValidationError("vp_token", state)
 
         authnRequest.presentationDefinition?.let { presentationDefinition ->
             val presentationSubmission = params.presentationSubmission
@@ -507,7 +500,6 @@ class OpenId4VpVerifier(
                         authnRequest.transactionData
                     )
                 }.getOrElse {
-                    Napier.w("Invalid presentation format: $relatedPresentation", it)
                     return AuthnResponseResult.ValidationError("Invalid presentation", state, it)
                 }
                 result.mapToAuthnResponseResult(state)
@@ -633,8 +625,7 @@ class OpenId4VpVerifier(
                     " responseUrl='$responseUrl', expectedNonce='$expectedNonce'"
         )
         val deviceSignature = document.deviceSigned.deviceAuth.deviceSignature ?: run {
-            Napier.w("DeviceSignature is null: ${document.deviceSigned.deviceAuth}")
-            throw IllegalArgumentException("deviceSignature")
+            throw IllegalArgumentException("deviceSignature is null")
         }
 
         val walletKey = mso.deviceKeyInfo.deviceKey
@@ -647,21 +638,17 @@ class OpenId4VpVerifier(
                 .also { Napier.d("Device authentication for verification is ${it.encodeToString(Base16())}") }
             verifyCoseSignature(deviceSignature, walletKey, byteArrayOf(), expectedPayload).onFailure {
                 val expectedBytes = expectedPayload.encodeToString(Base16)
-                Napier.w("DeviceSignature not verified: $deviceSignature for detached payload $expectedBytes", it)
-                throw IllegalArgumentException("deviceSignature", it)
+                throw IllegalArgumentException("deviceSignature not verified", it)
             }
         } else {
             verifyCoseSignature(deviceSignature, walletKey, byteArrayOf(), null).onFailure {
-                Napier.w("DeviceSignature not verified: ${document.deviceSigned.deviceAuth}", it)
-                throw IllegalArgumentException("deviceSignature")
+                throw IllegalArgumentException("deviceSignature not verified", it)
             }
             val deviceSignaturePayload = deviceSignature.payload ?: run {
-                Napier.w("DeviceSignature does not contain challenge")
-                throw IllegalArgumentException("challenge")
+                throw IllegalArgumentException("challenge null")
             }
             if (!deviceSignaturePayload.contentEquals(expectedNonce.encodeToByteArray())) {
-                Napier.w("DeviceSignature does not contain correct challenge")
-                throw IllegalArgumentException("challenge")
+                throw IllegalArgumentException("challenge invalid: ${deviceSignaturePayload.encodeToString(Base16)}")
             }
         }
         true
@@ -696,14 +683,8 @@ class OpenId4VpVerifier(
 
     private fun VerifyPresentationResult.mapToAuthnResponseResult(state: String) = when (this) {
         is VerifyPresentationResult.ValidationError -> AuthnResponseResult.ValidationError("vpToken", state, cause)
-            .also { Napier.w("VP error: $this", cause) }
-
         is VerifyPresentationResult.Success -> AuthnResponseResult.Success(vp, state)
-            .also { Napier.i("VP success: $this") }
-
         is VerifyPresentationResult.SuccessIso -> AuthnResponseResult.SuccessIso(documents, state)
-            .also { Napier.i("VP success: $this") }
-
         is VerifyPresentationResult.SuccessSdJwt -> AuthnResponseResult.SuccessSdJwt(
             sdJwtSigned = sdJwtSigned,
             verifiableCredentialSdJwt = verifiableCredentialSdJwt,
@@ -711,7 +692,7 @@ class OpenId4VpVerifier(
             disclosures = disclosures,
             state = state,
             freshnessSummary = freshnessSummary,
-        ).also { Napier.i("VP success: $this") }
+        )
     }
 }
 

@@ -367,7 +367,6 @@ class OpenId4VpHolder(
         ?: clientJsonWebKeySet?.keys?.firstOrNull()
             ?.let { it.keyId ?: it.didEncoded ?: it.jwkThumbprint }
         ?: throw InvalidRequest("could not parse audience")
-            .also { Napier.w("Could not parse audience") }
 
     private suspend fun RelyingPartyMetadata.loadJsonWebKeySet() =
         jsonWebKeySet

@@ -15,7 +15,6 @@ class VcJwsTimelinessValidator {
             evaluationTime = now,
             jwsExpiredError = with(vcJws.expiration) {
                 if (this != null && this.isTooEarly()) {
-                    Napier.w("exp invalid: $this, now is $now")
                     EntityExpiredError(
                         expirationTime = this,
                         earliestAcceptedExpirationTime = earliestTime,
@@ -24,7 +23,6 @@ class VcJwsTimelinessValidator {
             },
             credentialExpiredError = with(vcJws.vc.expirationDate) {
                 if (this != null && this.isTooEarly()) {
-                    Napier.w("expirationDate invalid: ${this}, now is $now")
                     EntityExpiredError(
                         expirationTime = this,
                         earliestAcceptedExpirationTime = earliestTime,
@@ -32,14 +30,12 @@ class VcJwsTimelinessValidator {
                 } else null
             },
             jwsNotYetValidError = if (vcJws.notBefore.isTooLate()) {
-                Napier.w("nbf invalid: ${vcJws.notBefore}, now is $now")
                 EntityNotYetValidError(
                     notBeforeTime = vcJws.notBefore,
                     latestAcceptedNotBeforeTime = latestTime,
                 )
             } else null,
             credentialNotYetValidError = if (vcJws.vc.issuanceDate.isTooLate()) {
-                Napier.w("issuanceDate invalid: ${vcJws.vc.issuanceDate}, now is $now")
                 EntityNotYetValidError(
                     notBeforeTime = vcJws.vc.issuanceDate,
                     latestAcceptedNotBeforeTime = latestTime,

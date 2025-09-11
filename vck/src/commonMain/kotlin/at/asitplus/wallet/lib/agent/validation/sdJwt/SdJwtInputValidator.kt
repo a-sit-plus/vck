@@ -34,14 +34,10 @@ data class SdJwtInputValidator(
                     )
                 }
             )
-        }.onFailure { ex ->
-            Napier.w("verifySdJwt: Could not parse payload", ex)
         }
 
         val payloadJsonValidationSummary = sdJwtSigned.getPayloadAsJsonObject().map { jsonObject ->
             SdJwtDecoded(sdJwtSigned)
-        }.onFailure { ex ->
-            Napier.w("verifySdJwt: Could not parse payload", ex)
         }
 
         val credentialPayload = payloadCredentialValidationSummary.getOrNull()
@@ -69,11 +65,7 @@ data class SdJwtInputValidator(
 
         return SdJwtInputValidationResult(
             input = sdJwtSigned,
-            isIntegrityGood = verifyJwsObject(sdJwtSigned.jws).also {
-                if (!it) {
-                    Napier.w("verifySdJwt: Signature invalid")
-                }
-            },
+            isIntegrityGood = verifyJwsObject(sdJwtSigned.jws),
             payloadCredentialValidationSummary = payloadCredentialValidationSummary,
             payloadJsonValidationSummary = payloadJsonValidationSummary,
             payload = payloadValidationSummary,

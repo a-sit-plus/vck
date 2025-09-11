@@ -169,7 +169,6 @@ private suspend fun issueVcSd(
         entireObject,
         JsonObject.serializer(),
     ).getOrElse {
-        Napier.w("Could not wrap credential in SD-JWT", it)
         throw RuntimeException("Signing failed", it)
     }
     val sdJwtSigned = SdJwtSigned.issued(jws, disclosures.toList())
