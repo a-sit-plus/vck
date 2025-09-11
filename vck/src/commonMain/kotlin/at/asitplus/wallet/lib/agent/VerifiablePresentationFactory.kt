@@ -220,8 +220,8 @@ class VerifiablePresentationFactory(
         val issuerSignedJws =
             JwsSigned.deserialize(JsonElement.serializer(), issuerSignedJwsSerialized, vckJsonSerializer)
                 .getOrElse { throw PresentationException(it) }
-        val sdJwt = SdJwtSigned.serializePresentation(issuerSignedJws, allDisclosures, keyBinding)
-        return CreatePresentationResult.SdJwt(sdJwt)
+        val sdJwt = SdJwtSigned.presented(issuerSignedJws, allDisclosures, keyBinding)
+        return CreatePresentationResult.SdJwt(sdJwt.serialize(), sdJwt)
     }
 
     private fun Map.Entry<String, SelectiveDisclosureItem?>.asHashedDisclosure(): String? =
@@ -263,7 +263,7 @@ class VerifiablePresentationFactory(
     suspend fun createVcPresentation(
         validCredentials: List<SubjectCredentialStore.StoreEntry.Vc>,
         request: PresentationRequestParameters,
-    ) = CreatePresentationResult.Signed(
+    ): CreatePresentationResult.Signed = with(
         signVerifiablePresentation(
             JwsContentTypeConstants.JWT,
             VerifiablePresentation(validCredentials.map { it.vcSerialized }).toJws(
@@ -274,6 +274,7 @@ class VerifiablePresentationFactory(
             VerifiablePresentationJws.serializer(),
         ).getOrElse {
             throw PresentationException(it)
-        }.serialize()
-    )
+        }) {
+        CreatePresentationResult.Signed(serialize(), this)
+    }
 }

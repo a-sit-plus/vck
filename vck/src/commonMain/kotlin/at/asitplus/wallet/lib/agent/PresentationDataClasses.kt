@@ -101,22 +101,23 @@ sealed interface PresentationResponseParameters {
             is CreatePresentationResult.Signed -> JsonPrimitive(presentationResult.serialized)
             is CreatePresentationResult.SdJwt -> JsonPrimitive(presentationResult.serialized)
             is CreatePresentationResult.DeviceResponse -> JsonPrimitive(
-                coseCompliantSerializer.encodeToByteArray(presentationResult.deviceResponse).encodeToString(Base64UrlStrict)
+                coseCompliantSerializer.encodeToByteArray(presentationResult.deviceResponse)
+                    .encodeToString(Base64UrlStrict)
             )
         }
     }
 }
 
 sealed class CreatePresentationResult {
-    data class Signed(val serialized: String) : CreatePresentationResult() {
-        val jwsSigned: KmmResult<JwsSigned<VerifiablePresentationJws>> by lazy {
-            JwsSigned.deserialize(VerifiablePresentationJws.serializer(), serialized, vckJsonSerializer)
-        }
-    }
+    data class Signed(
+        val serialized: String,
+        val jwsSigned: JwsSigned<VerifiablePresentationJws>,
+    ) : CreatePresentationResult()
 
-    data class SdJwt(val serialized: String) : CreatePresentationResult() {
-        val sdJwt: SdJwtSigned? by lazy { SdJwtSigned.parse(serialized) }
-    }
+    data class SdJwt(
+        val serialized: String,
+        val sdJwt: SdJwtSigned,
+    ) : CreatePresentationResult()
 
     data class DeviceResponse(
         val deviceResponse: at.asitplus.iso.DeviceResponse,

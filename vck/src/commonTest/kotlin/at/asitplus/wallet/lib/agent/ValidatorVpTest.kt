@@ -111,7 +111,7 @@ class ValidatorVpTest : FreeSpec({
 
         val vp = presentationParameters.presentationResults.first()
             .shouldBeInstanceOf<CreatePresentationResult.Signed>()
-        verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
+        verifier.verifyPresentationVcJwt(vp.jwsSigned, challenge)
             .shouldBeInstanceOf<VerifyPresentationResult.Success>()
     }
 
@@ -136,7 +136,7 @@ class ValidatorVpTest : FreeSpec({
             PresentationRequestParameters(nonce = challenge, audience = verifierId)
         ).shouldBeInstanceOf<CreatePresentationResult.Signed>()
 
-        verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge).also {
+        verifier.verifyPresentationVcJwt(vp.jwsSigned, challenge).also {
             it.shouldBeInstanceOf<VerifyPresentationResult.Success>()
             it.vp.freshVerifiableCredentials.shouldBeEmpty()
             it.vp.notVerifiablyFreshVerifiableCredentials.shouldBeEmpty()
@@ -152,7 +152,7 @@ class ValidatorVpTest : FreeSpec({
 
         val vp = presentationParameters.presentationResults.firstOrNull()
             .shouldBeInstanceOf<CreatePresentationResult.Signed>()
-        verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
+        verifier.verifyPresentationVcJwt(vp.jwsSigned, challenge)
             .shouldBeInstanceOf<VerifyPresentationResult.ValidationError>()
     }
 
@@ -164,7 +164,7 @@ class ValidatorVpTest : FreeSpec({
 
         val vp = presentationParameters.presentationResults.first()
             .shouldBeInstanceOf<CreatePresentationResult.Signed>()
-        verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
+        verifier.verifyPresentationVcJwt(vp.jwsSigned, challenge)
             .shouldBeInstanceOf<VerifyPresentationResult.ValidationError>()
     }
 
@@ -187,7 +187,7 @@ class ValidatorVpTest : FreeSpec({
                 ) shouldBe true
             }
 
-        verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge).also {
+        verifier.verifyPresentationVcJwt(vp.jwsSigned, challenge).also {
             it.shouldBeInstanceOf<VerifyPresentationResult.Success>()
             it.vp.freshVerifiableCredentials.shouldBeEmpty()
         }

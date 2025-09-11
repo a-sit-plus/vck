@@ -40,7 +40,7 @@ class SdJwtVerificationTest : FreeSpec({
             ~
         """.trimIndent().replace("\n", "").replace(" ", "")
 
-        val sdJwtSigned = SdJwtSigned.parse(input)!!
+        val sdJwtSigned = SdJwtSigned.parseThrowing(input).getOrThrow()
         val sdJwtDecoded = SdJwtDecoded(sdJwtSigned)
         val reconstructed = sdJwtDecoded.reconstructedJsonObject.shouldNotBeNull()
         sdJwtDecoded.validDisclosures.shouldNotBeEmpty()
@@ -97,7 +97,7 @@ class SdJwtVerificationTest : FreeSpec({
             ~
         """.trimIndent().replace("\n", "").replace(" ", "")
 
-        val sdJwtSigned = SdJwtSigned.parse(input)!!
+        val sdJwtSigned = SdJwtSigned.parseThrowing(input).getOrThrow()
         val sdJwtDecoded = SdJwtDecoded(sdJwtSigned)
         val reconstructed = sdJwtDecoded.reconstructedJsonObject.shouldNotBeNull()
         sdJwtDecoded.validDisclosures.shouldNotBeEmpty()
@@ -197,7 +197,7 @@ class SdJwtVerificationTest : FreeSpec({
             ~WyJlSzVvNXBIZmd1cFBwbHRqMXFoQUp3IiwgIjY1IiwgZmFsc2Vd~
         """.trimIndent().replace("\n", "").replace(" ", "")
 
-        val sdJwtSigned = SdJwtSigned.parse(input)!!
+        val sdJwtSigned = SdJwtSigned.parseThrowing(input).getOrThrow()
         val sdJwtDecoded = SdJwtDecoded(sdJwtSigned)
         val reconstructed = sdJwtDecoded.reconstructedJsonObject.shouldNotBeNull()
         sdJwtDecoded.validDisclosures.shouldNotBeEmpty()

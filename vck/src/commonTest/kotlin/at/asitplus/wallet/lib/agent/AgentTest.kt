@@ -115,7 +115,7 @@ class AgentTest : FreeSpec({
 
             val vp = presentationParameters.presentationResults.first()
                 .shouldBeInstanceOf<CreatePresentationResult.Signed>()
-            verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
+            verifier.verifyPresentationVcJwt(vp.jwsSigned, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
         }
 
@@ -141,7 +141,7 @@ class AgentTest : FreeSpec({
 
             val vp = presentationParameters.presentationResults.first()
                 .shouldBeInstanceOf<CreatePresentationResult.Signed>()
-            verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
+            verifier.verifyPresentationVcJwt(vp.jwsSigned, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
         }
 
@@ -233,7 +233,7 @@ class AgentTest : FreeSpec({
                 .shouldNotBeNull()
                 .shouldBeInstanceOf<CreatePresentationResult.Signed>()
 
-            verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
+            verifier.verifyPresentationVcJwt(vp.jwsSigned, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
                 .also {
                     it.vp.notVerifiablyFreshVerifiableCredentials.shouldBeEmpty()
@@ -274,7 +274,7 @@ class AgentTest : FreeSpec({
                 credentialToRevoke.vc.credentialStatus!!.statusList.index
             ) shouldBe true
 
-            verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
+            verifier.verifyPresentationVcJwt(vp.jwsSigned, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
         }
     }
@@ -308,7 +308,7 @@ class AgentTest : FreeSpec({
             ).getOrThrow() as PresentationResponseParameters.DCQLParameters
             val vp = presentationParameters.verifiablePresentations.values.first()
                 .shouldBeInstanceOf<CreatePresentationResult.Signed>()
-            verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
+            verifier.verifyPresentationVcJwt(vp.jwsSigned, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
         }
 
@@ -332,7 +332,7 @@ class AgentTest : FreeSpec({
             ).getOrThrow() as PresentationResponseParameters.DCQLParameters
             val vp = presentationParameters.verifiablePresentations.values.first()
                 .shouldBeInstanceOf<CreatePresentationResult.Signed>()
-            verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
+            verifier.verifyPresentationVcJwt(vp.jwsSigned, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
         }
 
@@ -364,7 +364,7 @@ class AgentTest : FreeSpec({
                 .shouldNotBeNull()
                 .shouldBeInstanceOf<CreatePresentationResult.Signed>()
 
-            verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
+            verifier.verifyPresentationVcJwt(vp.jwsSigned, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
                 .also {
                     it.vp.notVerifiablyFreshVerifiableCredentials.shouldBeEmpty()
@@ -404,7 +404,7 @@ class AgentTest : FreeSpec({
                 credentialToRevoke.vc.credentialStatus!!.statusList.index
             ) shouldBe true
 
-            verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
+            verifier.verifyPresentationVcJwt(vp.jwsSigned, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
         }
     }

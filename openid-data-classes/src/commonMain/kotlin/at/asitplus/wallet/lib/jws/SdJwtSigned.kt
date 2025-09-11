@@ -6,7 +6,6 @@ import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
-import io.github.aakira.napier.Napier
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
@@ -80,40 +79,43 @@ data class SdJwtSigned(
             hashInput = (listOf(jws.serialize()) + disclosures).joinToString("~", postfix = "~")
         )
 
-        fun parse(input: String): SdJwtSigned? {
-            if (!input.contains("~")) {
-                Napier.w("Could not parse SD-JWT: $input")
-                return null
-            }
+        fun presented(
+            jws: JwsSigned<JsonElement>,
+            disclosures: Set<String>,
+            keyBinding: JwsSigned<KeyBindingJws>,
+        ) = SdJwtSigned(
+            jws = jws,
+            rawDisclosures = disclosures.toList(),
+            keyBindingJws = keyBinding,
+            hashInput = (listOf(jws.serialize()) + disclosures).joinToString("~", postfix = "~")
+        )
+
+        @Deprecated("Use parseThrowing() instead", ReplaceWith("parseThrowing(input)"))
+        fun parse(input: String): SdJwtSigned? = parseThrowing(input).getOrNull()
+
+        fun parseThrowing(input: String): KmmResult<SdJwtSigned> = catching {
+            require(input.contains("~")) { "Could not parse SD-JWT: $input" }
             val stringList = input.replace("[^A-Za-z0-9-_.~]".toRegex(), "").split("~")
-            if (stringList.isEmpty()) {
-                Napier.w("Could not parse SD-JWT: $input")
-                return null
-            }
+            require(stringList.isNotEmpty()) { "Could not parse SD-JWT: $input" }
             val jws = JwsSigned.deserialize<JsonElement>(
                 deserializationStrategy = JsonElement.serializer(),
                 it = stringList.first(),
                 json = joseCompliantSerializer
-            ).onFailure {
-                Napier.w("Could not parse JWS from SD-JWT: $input", it)
-            }.getOrNull()
-                ?: return null
+            ).getOrThrow()
             val stringListWithoutJws = stringList.drop(1)
             val rawDisclosures = stringListWithoutJws
                 .filterNot { it.contains(".") }
                 .filterNot { it.isEmpty() }
             val keyBindingString = stringList.drop(1 + rawDisclosures.size).firstOrNull()
-            val keyBindingJws = keyBindingString?.let {
+            val keyBindingJws = keyBindingString?.takeIf { it.isNotEmpty() }?.let {
                 JwsSigned.deserialize<KeyBindingJws>(
                     deserializationStrategy = KeyBindingJws.serializer(),
                     it = it,
                     json = joseCompliantSerializer
-                ).onFailure {
-                    Napier.w("Could not parse KB-JWS from SD-JWT: $keyBindingString", it)
-                }.getOrNull()
+                ).getOrThrow()
             }
             val hashInput = input.substringBeforeLast("~") + "~"
-            return SdJwtSigned(jws, rawDisclosures, keyBindingJws, hashInput)
+            SdJwtSigned(jws, rawDisclosures, keyBindingJws, hashInput)
         }
 
         /**

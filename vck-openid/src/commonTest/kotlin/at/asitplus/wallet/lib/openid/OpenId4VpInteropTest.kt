@@ -170,7 +170,7 @@ class OpenId4VpInteropTest : FreeSpec({
             .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
         response.params.entries.firstOrNull { it.key == "vp_token" }.shouldNotBeNull().value.let { vpToken ->
-            val sdJwt = SdJwtSigned.parse(vpToken).shouldNotBeNull()
+            val sdJwt = SdJwtSigned.parseThrowing(vpToken).getOrThrow()
             sdJwt.keyBindingJws.shouldNotBeNull().also {
                 it.header.also {
                     it.algorithm shouldBe JwsAlgorithm.Signature.ES256
@@ -272,7 +272,7 @@ class OpenId4VpInteropTest : FreeSpec({
             ~WyJlbHVWNU9nM2dTTklJOEVZbnN4QV9BIiwgImZhbWlseV9uYW1lIiwgIkRvZSJd~
         """.trimIndent()
 
-        val sdJwt = SdJwtSigned.parse(input).shouldNotBeNull().also {
+        val sdJwt = SdJwtSigned.parseThrowing(input).getOrThrow().also {
             it.keyBindingJws.shouldBeNull()
             it.getPayloadAsVerifiableCredentialSdJwt().getOrThrow().also {
                 it.issuer shouldBe "https://rvig.nl/jwk"

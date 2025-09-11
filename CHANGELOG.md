@@ -66,6 +66,10 @@ Release 5.9.0 (unreleased):
    - In `WalletService` introduce constructor parameter `encryptionService` which handles credential request encryption and credential response decryption
    - In `WalletService` add method `parseCredentialResponse` to transform the received credential response from the issuer into `StoreCredentialInput`
    - In `WalletService` deprecate method `createCredentialRequest` and replace it with `createCredential` to handle encryption
+  - Presentation classes:
+   - In `CreatePresentationResult.Signed` add property containing `JwsSigned<VerifiablePresentationJws>`
+   - In `CreatePresentationResult.SdJwt` add property containing `SdJwtSigned`
+   - Deprecate `SdJwtSigned.parse()`, please migrate to `SdJwtSigned.parseThrowing()`
 
 Release 5.8.0:
  - Refactor `AuthorizationServiceStrategy`

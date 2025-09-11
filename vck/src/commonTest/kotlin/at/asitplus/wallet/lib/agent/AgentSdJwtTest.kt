@@ -37,6 +37,7 @@ import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldNotBeInstanceOf
+import kotlinx.serialization.json.JsonObject
 import kotlin.time.Clock
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
@@ -154,7 +155,7 @@ class AgentSdJwtTest : FreeSpec({
             val freshKbJwt = createFreshSdJwtKeyBinding(challenge, verifierId)
             val malformedVpSdJwt = vp.serialized.replaceAfterLast("~", freshKbJwt.substringAfterLast("~"))
 
-            verifier.verifyPresentationSdJwt(SdJwtSigned.parse(malformedVpSdJwt)!!, challenge)
+            verifier.verifyPresentationSdJwt(SdJwtSigned.parseThrowing(malformedVpSdJwt).getOrThrow(), challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
         }
 
@@ -240,10 +241,9 @@ class AgentSdJwtTest : FreeSpec({
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
             // replace key binding of original vp.sdJwt (i.e. the part after the last `~`)
             val freshKbJwt = createFreshSdJwtKeyBinding(challenge, verifierId)
-            val malformedVpSdJwt =
-                vp.serialized.replaceAfterLast("~", freshKbJwt.substringAfterLast("~"))
+            val malformedVpSdJwt = vp.serialized.replaceAfterLast("~", freshKbJwt.substringAfterLast("~"))
 
-            verifier.verifyPresentationSdJwt(SdJwtSigned.parse(malformedVpSdJwt)!!, challenge)
+            verifier.verifyPresentationSdJwt(SdJwtSigned.parseThrowing(malformedVpSdJwt).getOrThrow(), challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
         }
 
@@ -358,14 +358,11 @@ private suspend fun createSdJwtPresentation(
     val issuerJwtPlusDisclosures = SdJwtSigned.sdHashInput(validSdJwtCredential, filteredDisclosures)
     val keyBinding = createKeyBindingJws(signKeyBindingJws, audienceId, challenge, issuerJwtPlusDisclosures)
     val sdJwtSerialized = validSdJwtCredential.vcSerialized.substringBefore("~")
-    val jwsFromIssuer = JwsSigned.deserialize<VerifiableCredentialSdJwt>(
-        VerifiableCredentialSdJwt.serializer(),
-        sdJwtSerialized
-    ).getOrElse {
+    val jwsFromIssuer = JwsSigned.deserialize(JsonObject.serializer(), sdJwtSerialized).getOrElse {
         throw PresentationException(it)
     }
-    val sdJwt = SdJwtSigned.serializePresentation(jwsFromIssuer, filteredDisclosures, keyBinding)
-    return CreatePresentationResult.SdJwt(sdJwt)
+    val sdJwt = SdJwtSigned.presented(jwsFromIssuer, filteredDisclosures, keyBinding)
+    return CreatePresentationResult.SdJwt(sdJwt.serialize(), sdJwt)
 }
 
 private suspend fun createKeyBindingJws(

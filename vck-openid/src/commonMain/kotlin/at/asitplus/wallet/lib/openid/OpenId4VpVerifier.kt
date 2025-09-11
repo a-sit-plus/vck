@@ -572,8 +572,9 @@ class OpenId4VpVerifier(
         transactionData: List<TransactionDataBase64Url>?,
     ) = when (claimFormat) {
         ClaimFormat.JWT_SD, ClaimFormat.SD_JWT -> verifier.verifyPresentationSdJwt(
-            input = SdJwtSigned.Companion.parse(relatedPresentation.jsonPrimitive.content)
-                ?: throw IllegalArgumentException("relatedPresentation"),
+            input = SdJwtSigned.parseThrowing(relatedPresentation.jsonPrimitive.content).getOrElse {
+                throw IllegalArgumentException("relatedPresentation")
+            },
             challenge = expectedNonce,
             transactionData = transactionData
         )
