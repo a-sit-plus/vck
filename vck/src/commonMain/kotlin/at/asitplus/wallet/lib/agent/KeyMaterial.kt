@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.ECCurve
-import at.asitplus.signum.indispensable.HMAC
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
@@ -10,7 +9,6 @@ import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.signum.supreme.asKmmResult
-import at.asitplus.signum.supreme.mac.mac
 import at.asitplus.signum.supreme.sign.EphemeralKey
 import at.asitplus.signum.supreme.sign.Signer
 import io.github.aakira.napier.Napier
@@ -19,14 +17,12 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.random.Random
 
-interface CoseKeyMaterial {
-    val identifier: String
-}
-
 /**
  * Abstracts the management of key material away from cryptographic functions.
  */
-interface KeyMaterial : CoseKeyMaterial, Signer {
+interface KeyMaterial : Signer {
+    val identifier: String
+
     fun getUnderLyingSigner(): Signer
 
     /**
@@ -37,21 +33,6 @@ interface KeyMaterial : CoseKeyMaterial, Signer {
 
     val jsonWebKey: JsonWebKey
         get() = publicKey.toJsonWebKey(null)
-}
-
-interface SymmetricKeyMaterial : CoseKeyMaterial {
-    val key: ByteArray
-    val algorithm: HMAC
-
-    suspend fun mac(data: ByteArray) : ByteArray
-}
-
-class EphemeralHmacKey(
-    override val identifier: String = Random.nextBytes(8).encodeToString(Base16Strict).lowercase(),
-    override val algorithm: HMAC = HMAC.SHA256,
-    override val key: ByteArray
-) : SymmetricKeyMaterial {
-    override suspend fun mac(data: ByteArray): ByteArray = algorithm.mac(key, data).getOrThrow()
 }
 
 /**

@@ -8,10 +8,9 @@ import at.asitplus.signum.indispensable.cosef.*
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.supreme.asKmmResult
+import at.asitplus.signum.supreme.mac.mac
 import at.asitplus.signum.supreme.sign.Verifier
-import at.asitplus.wallet.lib.agent.CoseKeyMaterial
 import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.SymmetricKeyMaterial
 import at.asitplus.wallet.lib.agent.VerifyMac
 import at.asitplus.wallet.lib.agent.VerifyMacFun
 import at.asitplus.wallet.lib.agent.VerifySignature
@@ -23,38 +22,44 @@ import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.encodeToByteArray
-import kotlin.byteArrayOf
 
 /** How to identify the key material in a [CoseHeader] */
-fun interface CoseHeaderIdentifierFun {
+fun interface CoseHeaderIdentifierFun<T> {
     suspend operator fun invoke(
         it: CoseHeader?,
-        keyMaterial: CoseKeyMaterial,
+        keyMaterial: T,
     ): CoseHeader?
 }
 
 /** Don't identify [KeyMaterial] in [CoseHeader]. */
-class CoseHeaderNone : CoseHeaderIdentifierFun {
-    override suspend operator fun invoke(
+class CoseHeaderNone<T> : CoseHeaderIdentifierFun<T> {
+    override suspend fun invoke(
         it: CoseHeader?,
-        keyMaterial: CoseKeyMaterial,
+        keyMaterial: T,
     ): CoseHeader? = it
 }
 
 /** Identify [KeyMaterial] with it's [KeyMaterial.identifier] in (protected) [CoseHeader.keyId]. */
-class CoseHeaderKeyId : CoseHeaderIdentifierFun {
+class CoseHeaderKeyIdForKeyMaterial : CoseHeaderIdentifierFun<KeyMaterial> {
     override suspend operator fun invoke(
         it: CoseHeader?,
-        keyMaterial: CoseKeyMaterial,
+        keyMaterial: KeyMaterial,
     ): CoseHeader? = it?.copy(kid = keyMaterial.identifier.encodeToByteArray())
 }
 
-/** Identify [KeyMaterial] with it's [KeyMaterial.getCertificate] in (unprotected) [CoseHeader.certificateChain]. */
-class CoseHeaderCertificate : CoseHeaderIdentifierFun {
+class CoseHeaderKeyIdForCoseKey : CoseHeaderIdentifierFun<CoseKey> {
     override suspend operator fun invoke(
         it: CoseHeader?,
-        keyMaterial: CoseKeyMaterial,
-    ) = it?.copy(certificateChain = (keyMaterial as? KeyMaterial)?.getCertificate()?.let { listOf(it.encodeToDer()) })
+        keyMaterial: CoseKey,
+    ): CoseHeader? = it?.copy(kid = keyMaterial.keyId)
+}
+
+/** Identify [KeyMaterial] with it's [KeyMaterial.getCertificate] in (unprotected) [CoseHeader.certificateChain]. */
+class CoseHeaderCertificate : CoseHeaderIdentifierFun<KeyMaterial> {
+    override suspend operator fun invoke(
+        it: CoseHeader?,
+        keyMaterial: KeyMaterial,
+    ) = it?.copy(certificateChain = keyMaterial.getCertificate()?.let { listOf(it.encodeToDer()) })
 }
 
 fun interface SignCoseFun<P> {
@@ -69,8 +74,8 @@ fun interface SignCoseFun<P> {
 /** Create a [CoseSigned], setting protected and unprotected headers, and applying [CoseHeaderIdentifierFun]. */
 class SignCose<P : Any>(
     val keyMaterial: KeyMaterial,
-    val protectedHeaderModifier: CoseHeaderIdentifierFun? = null,
-    val unprotectedHeaderModifier: CoseHeaderIdentifierFun? = null,
+    val protectedHeaderModifier: CoseHeaderIdentifierFun<KeyMaterial>? = null,
+    val unprotectedHeaderModifier: CoseHeaderIdentifierFun<KeyMaterial>? = null,
 ) : SignCoseFun<P> {
     override suspend operator fun invoke(
         protectedHeader: CoseHeader?,
@@ -105,9 +110,9 @@ fun interface MacCoseFun<P> {
 }
 
 class MacCose<P : Any>(
-    val keyMaterial: SymmetricKeyMaterial,
-    val protectedHeaderModifier: CoseHeaderIdentifierFun? = null,
-    val unprotectedHeaderModifier: CoseHeaderIdentifierFun? = null,
+    val keyMaterial: CoseKey,
+    val protectedHeaderModifier: CoseHeaderIdentifierFun<CoseKey>? = null,
+    val unprotectedHeaderModifier: CoseHeaderIdentifierFun<CoseKey>? = null,
 ) : MacCoseFun<P> {
     override suspend fun invoke(
         protectedHeader: CoseHeader?,
@@ -115,7 +120,7 @@ class MacCose<P : Any>(
         payload: P?,
         serializer: KSerializer<P>
     ): KmmResult<CoseMac<P>> = catching {
-        val algorithm = keyMaterial.algorithm.toCoseAlgorithm().getOrThrow()
+        val algorithm = keyMaterial.algorithm
         val headerWithAlg = (protectedHeader ?: CoseHeader()).copy(algorithm = algorithm)
         val protectedHeader = protectedHeaderModifier?.invoke(headerWithAlg, keyMaterial) ?: headerWithAlg
         val unprotectedHeader = unprotectedHeaderModifier?.invoke(unprotectedHeader ?: CoseHeader(), keyMaterial)
@@ -146,8 +151,8 @@ fun interface SignCoseDetachedFun<P> {
  * setting protected and unprotected headers, and applying [CoseHeaderIdentifierFun]. */
 class SignCoseDetached<P : Any>(
     val keyMaterial: KeyMaterial,
-    val protectedHeaderModifier: CoseHeaderIdentifierFun? = null,
-    val unprotectedHeaderModifier: CoseHeaderIdentifierFun? = null,
+    val protectedHeaderModifier: CoseHeaderIdentifierFun<KeyMaterial>? = null,
+    val unprotectedHeaderModifier: CoseHeaderIdentifierFun<KeyMaterial>? = null,
 ) : SignCoseDetachedFun<P> {
     override suspend operator fun invoke(
         protectedHeader: CoseHeader?,
@@ -182,9 +187,9 @@ fun interface MacCoseDetachedFun<P> {
 }
 
 class MacCoseDetached<P : Any>(
-    val keyMaterial: SymmetricKeyMaterial,
-    val protectedHeaderModifier: CoseHeaderIdentifierFun? = null,
-    val unprotectedHeaderModifier: CoseHeaderIdentifierFun? = null,
+    val keyMaterial: CoseKey,
+    val protectedHeaderModifier: CoseHeaderIdentifierFun<CoseKey>? = null,
+    val unprotectedHeaderModifier: CoseHeaderIdentifierFun<CoseKey>? = null,
 ) : MacCoseDetachedFun<P> {
     override suspend fun invoke(
         protectedHeader: CoseHeader?,
@@ -192,7 +197,7 @@ class MacCoseDetached<P : Any>(
         payload: P?,
         serializer: KSerializer<P>
     ): KmmResult<CoseMac<P>> = catching {
-        val algorithm = keyMaterial.algorithm.toCoseAlgorithm().getOrThrow()
+        val algorithm = keyMaterial.algorithm
         val headerWithAlg = (protectedHeader ?: CoseHeader()).copy(algorithm = algorithm)
         val protectedHeader = protectedHeaderModifier?.invoke(headerWithAlg, keyMaterial) ?: headerWithAlg
         val unprotectedHeader = unprotectedHeaderModifier?.invoke(unprotectedHeader ?: CoseHeader(), keyMaterial)
@@ -240,7 +245,7 @@ object CoseUtils {
      */
     @Throws(Throwable::class)
     suspend fun <P : Any> calcMac(
-        keyMaterial: SymmetricKeyMaterial,
+        keyMaterial: CoseKey,
         protectedHeader: CoseHeader,
         payload: P?,
         serializer: KSerializer<P>,
@@ -253,7 +258,8 @@ object CoseUtils {
         ).let { macInput ->
             val serialized = coseCompliantSerializer.encodeToByteArray(macInput)
             Napier.d("COSE Mac input is ${serialized.encodeToString(Base16())}")
-            keyMaterial.mac(serialized)
+            val key = (keyMaterial.keyParams as CoseKeyParams.SymmKeyParams).k
+            (keyMaterial.algorithm as CoseAlgorithm.MAC).algorithm.mac(key, serialized).getOrThrow()
         }
 
 }

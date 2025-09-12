@@ -5,7 +5,7 @@ import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.cbor.CoseHeaderCertificate
-import at.asitplus.wallet.lib.cbor.CoseHeaderKeyId
+import at.asitplus.wallet.lib.cbor.CoseHeaderKeyIdForKeyMaterial
 import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.cbor.SignCoseFun
 import at.asitplus.wallet.lib.data.StatusListToken
@@ -43,7 +43,7 @@ class StatusListAgent(
     private val timePeriodProvider: TimePeriodProvider = FixedTimePeriodProvider,
     private val signStatusListJwt: SignJwtFun<StatusListTokenPayload> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     private val signStatusListCwt: SignCoseFun<StatusListTokenPayload> =
-        SignCose(keyMaterial, CoseHeaderKeyId(), CoseHeaderCertificate()),
+        SignCose(keyMaterial, CoseHeaderKeyIdForKeyMaterial(), CoseHeaderCertificate()),
 ) : StatusListIssuer {
 
     /**

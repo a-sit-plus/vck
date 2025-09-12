@@ -6,8 +6,6 @@ import at.asitplus.iso.ValidityInfo
 import at.asitplus.iso.ValueDigest
 import at.asitplus.iso.ValueDigestList
 import at.asitplus.signum.indispensable.HMAC
-import at.asitplus.signum.indispensable.MessageAuthenticationCode
-import at.asitplus.signum.indispensable.asn1.encoding.encodeTo4Bytes
 import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseEllipticCurve
 import at.asitplus.signum.indispensable.cosef.CoseHeader
@@ -19,11 +17,6 @@ import at.asitplus.signum.indispensable.cosef.CoseMac
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.toCoseKey
-import at.asitplus.signum.indispensable.misc.bit
-import at.asitplus.signum.indispensable.misc.bytes
-import at.asitplus.signum.indispensable.symmetric.SymmetricEncryptionAlgorithm
-import at.asitplus.signum.indispensable.symmetric.randomKey
-import at.asitplus.wallet.lib.agent.EphemeralHmacKey
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -33,11 +26,11 @@ import io.ktor.util.hex
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlin.time.Clock
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.builtins.NothingSerializer
 import kotlin.random.Random
+import kotlin.time.Clock
 
 @OptIn(ExperimentalSerializationApi::class)
 class CoseServiceTest : FreeSpec({
@@ -65,12 +58,12 @@ class CoseServiceTest : FreeSpec({
         signCoseKey = signKeyMaterial.publicKey.toCoseKey().getOrThrow()
 
         val macAlgorithm = HMAC.SHA256
-        val macKeyMaterial = EphemeralHmacKey(algorithm = macAlgorithm, key = Random.nextBytes(32))
-        macCose = MacCose(macKeyMaterial)
-        macCoseMso = MacCose(macKeyMaterial)
-        macCoseNothing = MacCose(macKeyMaterial)
-        macCoseDetached = MacCoseDetached(macKeyMaterial)
-        macCoseKey = CoseKey.forMacKey(macAlgorithm, macKeyMaterial.key, null, CoseKeyOperation.MAC_CREATE, CoseKeyOperation.MAC_VERIFY)
+        val rawKey = Random.nextBytes(32)
+        macCoseKey = CoseKey.forMacKey(macAlgorithm, rawKey, null, CoseKeyOperation.MAC_CREATE, CoseKeyOperation.MAC_VERIFY)
+        macCose = MacCose(macCoseKey)
+        macCoseMso = MacCose(macCoseKey)
+        macCoseNothing = MacCose(macCoseKey)
+        macCoseDetached = MacCoseDetached(macCoseKey)
     }
 
     // "T" translates to 54 hex = "bytes(20)" in CBOR meaning,
