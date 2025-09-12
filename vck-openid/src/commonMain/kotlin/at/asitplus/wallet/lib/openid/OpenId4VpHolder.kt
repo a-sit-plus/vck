@@ -10,6 +10,7 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.IdToken
 import at.asitplus.openid.IdTokenType
+import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_JWK
@@ -20,7 +21,9 @@ import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestObjectParameters
+import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.openid.SignatureRequestParameters
 import at.asitplus.openid.SupportedAlgorithmsContainer
 import at.asitplus.openid.VpFormatsSupported
 import at.asitplus.openid.extractDcApiRequest
@@ -56,7 +59,6 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import com.benasher44.uuid.uuid4
-import io.github.aakira.napier.Napier
 import kotlin.time.Clock
 
 /**
@@ -372,16 +374,31 @@ class OpenId4VpHolder(
             ?.let { remoteResourceRetriever(RemoteResourceRetrieverInput(it)) }
             ?.let { joseCompliantSerializer.decodeFromString(it) }
 
+    private suspend fun RequestParameters.loadCredentialRequest(): CredentialPresentationRequest? = when (this) {
+        is AuthenticationRequestParameters -> this.loadCredentialRequest()
+        else -> null
+    }
+
     private suspend fun AuthenticationRequestParameters.loadCredentialRequest(): CredentialPresentationRequest? =
         if (responseType?.contains(VP_TOKEN) == true) {
             loadPresentationDefinition()?.let { CredentialPresentationRequest.PresentationExchangeRequest(it) }
                 ?: dcqlQuery?.let { CredentialPresentationRequest.DCQLRequest(it) }
         } else null
 
+    private suspend fun RequestParameters.loadPresentationDefinition(): PresentationDefinition? = when(this) {
+        is AuthenticationRequestParameters -> this.loadPresentationDefinition()
+        else -> null
+    }
+
     private suspend fun AuthenticationRequestParameters.loadPresentationDefinition(): PresentationDefinition? =
         presentationDefinition ?: presentationDefinitionUrl
             ?.let { remoteResourceRetriever(RemoteResourceRetrieverInput(it)) }
             ?.let { vckJsonSerializer.decodeFromString(it) }
+
+    private suspend fun RequestParameters.loadClientMetadata(): RelyingPartyMetadata? = when (this) {
+        is AuthenticationRequestParameters -> this.loadClientMetadata()
+        else -> null
+    }
 
     private suspend fun AuthenticationRequestParameters.loadClientMetadata(): RelyingPartyMetadata? =
         clientMetadata ?: clientMetadataUri
@@ -394,14 +411,21 @@ private fun Collection<JsonWebKey>?.combine(certKey: JsonWebKey?): Collection<Js
     certKey?.let { (this ?: listOf()) + certKey } ?: this ?: listOf()
 
 fun Throwable.toOAuth2Error(
-    request: RequestParametersFrom<AuthenticationRequestParameters>,
+    request: RequestParametersFrom<*>,
 ): OAuth2Error = when (this) {
-    is OAuth2Exception -> this.toOAuth2Error().copy(state = request.parameters.state)
+    is OAuth2Exception -> this.toOAuth2Error().copy(state = request.parameters.state())
     else -> OAuth2Error(
         error = INVALID_REQUEST,
         errorDescription = message,
-        state = request.parameters.state
+        state = request.parameters.state()
     )
+}
+
+private fun RequestParameters.state() = when (this) {
+    is AuthenticationRequestParameters -> this.state
+    is JarRequestParameters -> this.state
+    is RequestObjectParameters -> null
+    is SignatureRequestParameters -> this.state
 }
 
 fun Throwable.toOAuth2Error(

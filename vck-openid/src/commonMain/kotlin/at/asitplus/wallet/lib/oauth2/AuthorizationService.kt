@@ -73,24 +73,31 @@ interface AuthorizationService {
         httpRequest: RequestInfo? = null,
     ): KmmResult<PushedAuthenticationResponseParameters>
 
-    /**
-     * Builds the authentication response for this specific user from [loadUserFun]
-     * (called when request has been validated).
-     * Send this result as HTTP Header `Location` in a 302 response to the client.
-     * @return URL built from client's `redirect_uri` with `code` parameter, [KmmResult] may contain a [OAuth2Exception]
-     */
+    @Deprecated(
+        "Use authorize with RequestParameters instead",
+        ReplaceWith("authorize(input, RequestInfo(loadUserFun))")
+    )
     suspend fun authorize(
         input: JarRequestParameters,
+        loadUserFun: OAuth2LoadUserFun,
+    ): KmmResult<AuthenticationResponseResult.Redirect>
+
+    @Deprecated(
+        "Use authorize with RequestParameters instead",
+        ReplaceWith("authorize(input, RequestInfo(loadUserFun))")
+    )
+    suspend fun authorize(
+        input: AuthenticationRequestParameters,
         loadUserFun: OAuth2LoadUserFun,
     ): KmmResult<AuthenticationResponseResult.Redirect>
 
     /**
      * Builds the authentication response for this specific user from [loadUserFun].
      * Send this result as HTTP Header `Location` in a 302 response to the client.
-     * @return [KmmResult] may contain a [OAuth2Exception]
+     * @return URL built from client's `redirect_uri` with `code` parameter, [KmmResult] may contain a [OAuth2Exception]
      */
     suspend fun authorize(
-        input: AuthenticationRequestParameters,
+        input: RequestParameters,
         loadUserFun: OAuth2LoadUserFun,
     ): KmmResult<AuthenticationResponseResult.Redirect>
 
