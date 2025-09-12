@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.catching
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.CredentialOffer
+import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
@@ -54,7 +55,8 @@ class OidvciOfferCodeTest : FreeSpec({
             resource = issuer.metadata.credentialIssuer,
             issuerState = credentialOffer.grants?.authorizationCode.shouldNotBeNull().issuerState
         )
-        val authnResponse = authorizationService.authorize(authnRequest) { catching { DummyUserProvider.user } }
+        val input = authnRequest as RequestParameters
+        val authnResponse = authorizationService.authorize(input) { catching { DummyUserProvider.user } }
             .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code
@@ -77,7 +79,8 @@ class OidvciOfferCodeTest : FreeSpec({
             authorizationDetails = authorizationDetails,
             issuerState = credentialOffer.grants?.authorizationCode.shouldNotBeNull().issuerState
         )
-        val authnResponse = authorizationService.authorize(authnRequest) { catching { DummyUserProvider.user } }
+        val input = authnRequest as RequestParameters
+        val authnResponse = authorizationService.authorize(input) { catching { DummyUserProvider.user } }
             .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code
@@ -126,7 +129,7 @@ class OidvciOfferCodeTest : FreeSpec({
         )
         shouldThrow<OAuth2Exception> {
             authorizationService
-                .authorize(authnRequest) { catching { DummyUserProvider.user } }
+                .authorize(authnRequest as RequestParameters) { catching { DummyUserProvider.user } }
                 .getOrThrow()
         }
     }

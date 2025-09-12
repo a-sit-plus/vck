@@ -15,6 +15,7 @@ import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_CREDENTIAL_ISSUER
 import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER
 import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION
 import at.asitplus.openid.PushedAuthenticationResponseParameters
+import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenRequestParameters
@@ -302,9 +303,9 @@ class OpenId4VciClientExternalAuthorizationServerTest : FunSpec() {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val queryParameters: Map<String, String> =
                         request.url.parameters.toMap().entries.associate { it.key to it.value.first() }
-                    val authnRequest: AuthenticationRequestParameters =
-                        if (requestBody.isEmpty()) queryParameters.decodeFromUrlQuery<AuthenticationRequestParameters>()
-                        else requestBody.decodeFromPostBody<AuthenticationRequestParameters>()
+                    val authnRequest: RequestParameters =
+                        if (requestBody.isEmpty()) queryParameters.decodeFromUrlQuery()
+                        else requestBody.decodeFromPostBody()
                     externalAuthorizationServer.authorize(authnRequest) { catching { dummyUser() } }.fold(
                         onSuccess = { respondRedirect(it.url) },
                         onFailure = { respondOAuth2Error(it) }

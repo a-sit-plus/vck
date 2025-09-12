@@ -4,6 +4,7 @@ import at.asitplus.catching
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.PushedAuthenticationResponseParameters
+import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
@@ -99,7 +100,7 @@ class OAuth2ClientAuthenticationTest : FunSpec({
         ).getOrThrow()
             .shouldBeInstanceOf<PushedAuthenticationResponseParameters>()
         val authnResponse = server
-            .authorize(client.createAuthRequestAfterPar(parResponse)) { catching { user } }
+            .authorize(client.createAuthRequestAfterPar(parResponse) as RequestParameters) { catching { user } }
             .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code
@@ -196,7 +197,7 @@ class OAuth2ClientAuthenticationTest : FunSpec({
             scope = scope,
         )
 
-        val authnResponse = server.authorize(authnRequest) { catching { user } }
+        val authnResponse = server.authorize(authnRequest as RequestParameters) { catching { user } }
             .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code
@@ -226,7 +227,7 @@ class OAuth2ClientAuthenticationTest : FunSpec({
             state = state,
             scope = scope,
         )
-        val authnResponse = server.authorize(authnRequest) { catching { user } }
+        val authnResponse = server.authorize(authnRequest as RequestParameters) { catching { user } }
             .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code

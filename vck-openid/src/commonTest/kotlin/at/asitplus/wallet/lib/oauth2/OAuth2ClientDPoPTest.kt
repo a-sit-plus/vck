@@ -4,6 +4,7 @@ import at.asitplus.catching
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
+import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -57,7 +58,7 @@ class OAuth2ClientDPoPTest : FunSpec({
             state = state,
             scope = scope,
         )
-        val authnResponse = server.authorize(authnRequest) { catching { user } }
+        val authnResponse = server.authorize(authnRequest as RequestParameters) { catching { user } }
             .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code

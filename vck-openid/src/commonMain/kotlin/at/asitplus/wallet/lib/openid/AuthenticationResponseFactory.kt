@@ -41,7 +41,7 @@ internal class AuthenticationResponseFactory(
         Fragment, null -> authnResponseFragment(request, response)
         DcApi -> responseDcApi(request, response, false)
         DcApiJwt -> responseDcApi(request, response, true)
-        is Other -> TODO()
+        is Other -> throw IllegalArgumentException("Unsupported response mode: ${request.parameters.responseMode}")
     }
 
     @Throws(OAuth2Exception::class, CancellationException::class)

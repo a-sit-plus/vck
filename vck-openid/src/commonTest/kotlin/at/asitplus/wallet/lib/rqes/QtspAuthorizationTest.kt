@@ -3,6 +3,7 @@ package io.kotest.provided.at.asitplus.wallet.lib.rqes
 import at.asitplus.catching
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdAuthorizationDetails
+import at.asitplus.openid.RequestParameters
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
@@ -31,7 +32,7 @@ class QtspAuthorizationTest : FreeSpec({
             authorizationDetails = setOf(OpenIdAuthorizationDetails())
         )
         shouldThrow<OAuth2Exception.InvalidAuthorizationDetails> {
-            qtspAuthenticationService.authorize(serviceAuthReq) { catching { dummyUser() } }
+            qtspAuthenticationService.authorize(serviceAuthReq as RequestParameters) { catching { dummyUser() } }
                 .getOrThrow()
         }
     }
@@ -41,8 +42,10 @@ class QtspAuthorizationTest : FreeSpec({
             documentDigests = dummyDataProvider.buildDocumentDigests(),
             hashAlgorithm = Digest.SHA256
         )
-        val redirectUrlParam = Url(qtspAuthenticationService.authorize(credentialAuthReq) { catching { dummyUser() } }
-            .getOrThrow().url).parameters
+        val authorize =
+            qtspAuthenticationService.authorize(credentialAuthReq as RequestParameters) { catching { dummyUser() } }
+                .getOrThrow()
+        val redirectUrlParam = Url(authorize.url).parameters
         val credentialTokenReq = walletService.createOAuth2TokenRequest(
             state = redirectUrlParam["state"] ?: throw Exception("No state in URL"),
             authorization = OAuth2Client.AuthorizationForToken.Code(

@@ -8,6 +8,7 @@ import at.asitplus.openid.CredentialRequestParameters
 import at.asitplus.openid.CredentialRequestProofContainer
 import at.asitplus.openid.CredentialResponseSingleCredential
 import at.asitplus.openid.OpenIdAuthorizationDetails
+import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
@@ -78,7 +79,8 @@ class OidvciCodeFlowTest : FreeSpec({
             scope = scope,
             resource = issuer.metadata.credentialIssuer
         )
-        val authnResponse = authorizationService.authorize(authnRequest) { catching { DummyUserProvider.user } }
+        val input = authnRequest as RequestParameters
+        val authnResponse = authorizationService.authorize(input) { catching { DummyUserProvider.user } }
             .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code
@@ -101,7 +103,8 @@ class OidvciCodeFlowTest : FreeSpec({
             state = state,
             authorizationDetails = authorizationDetails
         )
-        val authnResponse = service.authorize(authnRequest) { catching { DummyUserProvider.user } }
+        val input = authnRequest as RequestParameters
+        val authnResponse = service.authorize(input) { catching { DummyUserProvider.user } }
             .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code
@@ -305,7 +308,8 @@ class OidvciCodeFlowTest : FreeSpec({
             scope = authCodeScope,
             resource = issuer.metadata.credentialIssuer
         )
-        val authnResponse = authorizationService.authorize(authnRequest) { catching { DummyUserProvider.user } }
+        val input = authnRequest as RequestParameters
+        val authnResponse = authorizationService.authorize(input) { catching { DummyUserProvider.user } }
             .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code
@@ -387,7 +391,8 @@ class OidvciCodeFlowTest : FreeSpec({
             state = state,
             authorizationDetails = authCodeAuthnDetails
         )
-        val authnResponse = authorizationService.authorize(authnRequest) { catching { DummyUserProvider.user } }
+        val input = authnRequest as RequestParameters
+        val authnResponse = authorizationService.authorize(input) { catching { DummyUserProvider.user } }
             .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code

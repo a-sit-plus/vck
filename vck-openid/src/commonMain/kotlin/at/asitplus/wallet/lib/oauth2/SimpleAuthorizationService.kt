@@ -17,9 +17,11 @@ import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
 import at.asitplus.openid.PushedAuthenticationResponseParameters
+import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.RequestParameters
+import at.asitplus.openid.SignatureRequestParameters
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -274,7 +276,7 @@ class SimpleAuthorizationService(
         request: RequestParameters,
         httpRequest: RequestInfo?,
     ) = catching {
-        val actualRequest = request.extractRequestParameters()
+        val actualRequest = request.extractPushedRequestParams()
         Napier.i("par called with $actualRequest")
         clientAuthenticationService.authenticateClient(httpRequest, actualRequest.clientId)
         actualRequest.validate()
@@ -287,9 +289,9 @@ class SimpleAuthorizationService(
         )
     }
 
-    private suspend fun RequestParameters.extractRequestParameters() = when (this) {
+    private suspend fun RequestParameters.extractPushedRequestParams() = when (this) {
         is JarRequestParameters -> run {
-            require(requestUri == null) { "request_uri must not be set for JAR request" }
+            require(requestUri == null) { "request_uri must not be set for PAR" }
             requestParser.extractRequestParameterFromJAR(this)?.parameters as? AuthenticationRequestParameters
                 ?: throw InvalidRequest("request must contain valid authorization request parameters")
         }
@@ -299,41 +301,41 @@ class SimpleAuthorizationService(
     }
 
     /**
-     * Builds the authentication response for this specific user from [loadUserFun]
-     * (called when request has been validated).
+     * Builds the authentication response for this specific user from [loadUserFun].
      * Send this result as HTTP Header `Location` in a 302 response to the client.
      * @return URL built from client's `redirect_uri` with `code` parameter, [KmmResult] may contain a [OAuth2Exception]
      */
     override suspend fun authorize(
-        input: AuthenticationRequestParameters,
+        input: RequestParameters,
         loadUserFun: OAuth2LoadUserFun,
     ) = catching {
-        input.validate()
-        val userInfo = loadUserFun(OAuth2LoadUserFunInput(input)).getOrElse {
+        val actualRequest = extractRequestForAuthorize(input).validate()
+        val userInfo = loadUserFun(OAuth2LoadUserFunInput(actualRequest)).getOrElse {
             throw InvalidRequest("Could not load user info for request $input", it)
         }
-        with(input) {
+        with(actualRequest) {
             issueCodeForUserInfo(userInfo, state, codeChallenge, authorizationDetails, scope, redirectUrl!!)
                 .also { Napier.i("authorize returns $it") }
         }
     }
 
-    /**
-     * Builds the authentication response.
-     * Send this result as HTTP Header `Location` in a 302 response to the client.
-     * @param loadUserFun will be called when the request has been validated, and user data is associated with
-     *                    the authorization code.
-     * @return URL build from client's `redirect_uri` with a `code` query parameter containing a fresh authorization
-     * code from [codeService].
-     */
+    @Deprecated(
+        "Use authorize with RequestParameters instead",
+        replaceWith = ReplaceWith("authorize(input, RequestInfo(loadUserFun))")
+    )
+    override suspend fun authorize(
+        input: AuthenticationRequestParameters,
+        loadUserFun: OAuth2LoadUserFun,
+    ) = authorize(input as RequestParameters, loadUserFun)
+
+    @Deprecated(
+        "Use authorize with RequestParameters instead",
+        replaceWith = ReplaceWith("authorize(input, RequestInfo(loadUserFun))")
+    )
     override suspend fun authorize(
         input: JarRequestParameters,
         loadUserFun: OAuth2LoadUserFun,
-    ) = catching {
-        Napier.i("authorize called with $input")
-        val request = extractActualRequest(input)
-        authorize(request, loadUserFun).getOrThrow()
-    }
+    ) = authorize(input as RequestParameters, loadUserFun)
 
     internal suspend fun issueCodeForUserInfo(
         userInfo: OidcUserInfoExtended,
@@ -366,18 +368,21 @@ class SimpleAuthorizationService(
         return AuthenticationResponseResult.Redirect(url, response)
     }
 
-    internal suspend fun extractActualRequest(
-        input: JarRequestParameters,
-    ): AuthenticationRequestParameters = if (input.requestUri != null) {
-        requestUriToPushedAuthorizationRequest.remove(input.requestUri!!)?.apply {
-            if (clientId != input.clientId) {
-                throw InvalidRequest("client_id not matching from par: ${input.clientId} vs $clientId")
+    internal suspend fun extractRequestForAuthorize(
+        input: RequestParameters,
+    ): AuthenticationRequestParameters = when (input) {
+        is AuthenticationRequestParameters -> input
+        is JarRequestParameters -> input.requestUri?.let {
+            requestUriToPushedAuthorizationRequest.remove(it)?.apply {
+                if (clientId != input.clientId)
+                    throw InvalidRequest("client_id not matching from par: ${input.clientId} vs $clientId")
             }
-        } ?: throw InvalidRequest("request_uri set, but not found")
-    } else {
-        (requestParser.extractRequestParameterFromJAR(input)?.parameters as? AuthenticationRequestParameters)
-            ?: throw InvalidRequest("could not parse request object from request")
-    }.validate()
+        } ?: (requestParser.extractRequestParameterFromJAR(input)?.parameters as? AuthenticationRequestParameters)
+        ?: throw InvalidRequest("could not parse request object from request")
+
+        is RequestObjectParameters -> TODO()
+        is SignatureRequestParameters -> TODO()
+    }
 
     /**
      * Validates basic requirements to [AuthenticationRequestParameters]:
@@ -387,22 +392,17 @@ class SimpleAuthorizationService(
      *  * [AuthenticationRequestParameters.authorizationDetails] are validated by [strategy]
      */
     private suspend fun AuthenticationRequestParameters.validate(): AuthenticationRequestParameters {
-        if (redirectUrl == null) {
-            throw InvalidRequest("redirect_uri not set")
-        }
-
+        require(redirectUrl != null) { "redirect_uri not set" }
         scope?.let {
             strategy.filterScope(it)
                 ?: throw InvalidScope("No matching scope in $it")
         }
-
         if (issuerState != null) {
             if (!codeService.verifyAndRemove(issuerState!!)
                 || issuerStateToCredentialOffer.remove(issuerState!!) == null
             ) throw InvalidGrant("issuer_state invalid: $issuerState")
             // the actual credential offer is irrelevant, because we're always offering all credentials
         }
-
         authorizationDetails?.let {
             strategy.validateAuthorizationDetails(it)
         }

@@ -6,6 +6,7 @@ import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.PushedAuthenticationResponseParameters
+import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
@@ -128,9 +129,9 @@ class OAuth2KtorClientTest : FunSpec() {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val queryParameters: Map<String, String> =
                         request.url.parameters.toMap().entries.associate { it.key to it.value.first() }
-                    val authnRequest: AuthenticationRequestParameters =
-                        if (requestBody.isEmpty()) queryParameters.decodeFromUrlQuery<AuthenticationRequestParameters>()
-                        else requestBody.decodeFromPostBody<AuthenticationRequestParameters>()
+                    val authnRequest: RequestParameters =
+                        if (requestBody.isEmpty()) queryParameters.decodeFromUrlQuery()
+                        else requestBody.decodeFromPostBody()
                     authorizationService.authorize(authnRequest) { catching { dummyUser() } }.fold(
                         onSuccess = { respondRedirect(it.url) },
                         onFailure = { respondOAuth2Error(it) }

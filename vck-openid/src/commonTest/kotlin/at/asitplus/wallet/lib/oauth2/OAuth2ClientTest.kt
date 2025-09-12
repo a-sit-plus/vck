@@ -63,7 +63,8 @@ class OAuth2ClientTest : FunSpec({
         )
         val parResponse = server.par(authnRequest).getOrThrow()
             .shouldBeInstanceOf<PushedAuthenticationResponseParameters>()
-        val authnResponse = server.authorize(client.createAuthRequestAfterPar(parResponse)) { catching { user } }
+        val input = client.createAuthRequestAfterPar(parResponse) as RequestParameters
+        val authnResponse = server.authorize(input) { catching { user } }
             .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code
@@ -91,7 +92,7 @@ class OAuth2ClientTest : FunSpec({
             state = state,
             scope = scope,
         )
-        val authnResponse = server.authorize(authnRequest) { catching { user } }
+        val authnResponse = server.authorize(authnRequest as RequestParameters) { catching { user } }
             .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code
@@ -119,7 +120,7 @@ class OAuth2ClientTest : FunSpec({
             state = state,
             scope = scope
         )
-        val authnResponse = server.authorize(authnRequest) { catching { user } }
+        val authnResponse = server.authorize(authnRequest as RequestParameters) { catching { user } }
             .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code
@@ -140,7 +141,7 @@ class OAuth2ClientTest : FunSpec({
             state = state,
             scope = scope,
         )
-        val authnResponse = server.authorize(authnRequest) { catching { user } }
+        val authnResponse = server.authorize(authnRequest as RequestParameters) { catching { user } }
             .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code
@@ -162,7 +163,7 @@ class OAuth2ClientTest : FunSpec({
             state = state,
             scope = scope,
         )
-        val authnResponse = server.authorize(authnRequest) { catching { user } }
+        val authnResponse = server.authorize(authnRequest as RequestParameters) { catching { user } }
             .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code

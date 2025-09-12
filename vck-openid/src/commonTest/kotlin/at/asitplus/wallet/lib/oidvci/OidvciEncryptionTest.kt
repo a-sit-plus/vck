@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweEncrypted
@@ -40,7 +41,8 @@ class OidvciEncryptionTest : FunSpec({
             scope = scope,
             resource = issuer.metadata.credentialIssuer
         )
-        val authnResponse = authorizationService.authorize(authnRequest) { catching { DummyUserProvider.user } }
+        val input = authnRequest as RequestParameters
+        val authnResponse = authorizationService.authorize(input) { catching { DummyUserProvider.user } }
             .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code

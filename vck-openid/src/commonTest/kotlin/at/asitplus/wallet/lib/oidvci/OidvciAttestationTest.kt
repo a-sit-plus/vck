@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.catching
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
@@ -45,7 +46,8 @@ class OidvciAttestationTest : FunSpec({
             scope = scope,
             resource = issuer.metadata.credentialIssuer
         )
-        val authnResponse = authorizationService.authorize(authnRequest) { catching { dummyUser() } }
+        val input = authnRequest as RequestParameters
+        val authnResponse = authorizationService.authorize(input) { catching { dummyUser() } }
             .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code
