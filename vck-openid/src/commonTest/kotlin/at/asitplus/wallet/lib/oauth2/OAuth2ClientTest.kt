@@ -57,6 +57,37 @@ class OAuth2ClientTest : FunSpec({
 
     test("process with pushed authorization request") {
         val state = uuid4().toString()
+        val authnRequest = client.createAuthRequest(
+            state = state,
+            scope = scope,
+        )
+        val parResponse = server.par(authnRequest as RequestParameters).getOrThrow()
+            .shouldBeInstanceOf<PushedAuthenticationResponseParameters>()
+        val input = client.createAuthRequestAfterPar(parResponse) as RequestParameters
+        val authnResponse = server.authorize(input) { catching { user } }
+            .getOrThrow()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+        val code = authnResponse.params.code
+            .shouldNotBeNull()
+
+        val tokenRequest = client.createTokenRequestParameters(
+            state = state,
+            authorization = OAuth2Client.AuthorizationForToken.Code(code),
+            scope = scope
+        )
+        val token = server.token(tokenRequest, null).getOrThrow().apply {
+            authorizationDetails.shouldBeNull()
+        }
+        server.tokenIntrospection(
+            TokenIntrospectionRequest(token = token.accessToken),
+            null
+        ).getOrThrow().apply {
+            active shouldBe true
+        }
+    }
+
+    test("process with pushed authorization request and JAR") {
+        val state = uuid4().toString()
         val authnRequest = client.createAuthRequestJar(
             state = state,
             scope = scope,
@@ -86,7 +117,7 @@ class OAuth2ClientTest : FunSpec({
         }
     }
 
-    test("process with authorization code flow, and PAR") {
+    test("process with authorization code flow, and JAR") {
         val state = uuid4().toString()
         val authnRequest = client.createAuthRequestJar(
             state = state,

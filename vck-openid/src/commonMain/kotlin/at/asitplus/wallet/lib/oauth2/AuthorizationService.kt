@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.KmmResult
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenIntrospectionRequest
@@ -72,15 +71,6 @@ interface AuthorizationService {
         request: RequestParameters,
         httpRequest: RequestInfo? = null,
     ): KmmResult<PushedAuthenticationResponseParameters>
-
-    @Deprecated(
-        "Use authorize with RequestParameters instead",
-        ReplaceWith("authorize(input, RequestInfo(loadUserFun))")
-    )
-    suspend fun authorize(
-        input: JarRequestParameters,
-        loadUserFun: OAuth2LoadUserFun,
-    ): KmmResult<AuthenticationResponseResult.Redirect>
 
     @Deprecated(
         "Use authorize with RequestParameters instead",
