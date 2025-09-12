@@ -18,10 +18,10 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestObjectParameters
-import at.asitplus.openid.TokenIntrospectionRequest
-import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.SignatureRequestParameters
+import at.asitplus.openid.TokenIntrospectionRequest
+import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -325,15 +325,6 @@ class SimpleAuthorizationService(
     )
     override suspend fun authorize(
         input: AuthenticationRequestParameters,
-        loadUserFun: OAuth2LoadUserFun,
-    ) = authorize(input as RequestParameters, loadUserFun)
-
-    @Deprecated(
-        "Use authorize with RequestParameters instead",
-        replaceWith = ReplaceWith("authorize(input, RequestInfo(loadUserFun))")
-    )
-    override suspend fun authorize(
-        input: JarRequestParameters,
         loadUserFun: OAuth2LoadUserFun,
     ) = authorize(input as RequestParameters, loadUserFun)
 

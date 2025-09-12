@@ -1,17 +1,15 @@
 # Changelog
 
 Release 5.9.0 (unreleased):
- - Remove Generics from `OpenId4VpHolder` functions and work directly with `AuthorizationRequestParameters`
- - In `PresentationFactory` replace `RequestParameters` in function signatures to work directly with `AuthorizationRequestParameters`
- - Remove all parameters from `RequestParameters`. Moved into their respective implementing class.
- - Change dependency structure of modules
- - Remove `vck-rqes` module
-   - Relevant classes now in `vck-openid` 
- - Rename `rqes-data-classes` to `csc-data-classes`
-   - Move Dif-related classes to `dif-data-classes`
+ - Remove code elements deprecated in 5.8.0
+ - Gradle modules: 
+   - Change dependency structure of modules
+   - Remove `vck-rqes` module, relevant classes have been moved to `vck-openid` 
+   - Rename `rqes-data-classes` to `csc-data-classes`
+   - Move DIF-related classes to `dif-data-classes`
    - Move OpenId-related classes to `openid-data-classes`
- - Remove `vck-openid` Initializer class
- - Refactor RQES:
+   - Remove class `Initializer` from `vck-openid`
+ - Remote Qualified Electronic Signatures:
    - Remove "UC5-flow" option in RQES flows
    - Remove `transactionData` from `KeyBindingJws`
    - Remove `QesAuthorizationDetails`
@@ -23,7 +21,6 @@ Release 5.9.0 (unreleased):
    - Rename `OpenIdRequestOptions` to `RequestOptions`
    - Refactor `TransactionData` to sealed class
    - Refactor `RequestParameters` to sealed class
- - Remove code elements deprecated in 5.8.0
  - Validation:
    - Improve validation of JWT VC
    - Remove subclass `InvalidStructure` from `Verifier.VerifyCredentialResult`, is now mapped to `ValidationError`
@@ -47,7 +44,14 @@ Release 5.9.0 (unreleased):
    - `SimpleAuthorizationService` supports token exchange acc. to [RFC 8693](https://datatracker.ietf.org/doc/html/rfc8693)
    - `SimpleAuthorizationService` supports token introspection acc. to [RFC 7662](https://datatracker.ietf.org/doc/html/rfc7662)
    - Implement `RemoteOAuth2AuthorizationServerAdapter` so that credential issuers may be connected to external OAuth2.0 authorization servers
-   - Implement `OAuth2KtorClient` to implement a ktor-based client for OAuth 2.0, including [OAuth 2.0 Demonstrating Proof of Possession (DPoP)](https://datatracker.ietf.org/doc/html/rfc9449)
+   - Implement `OAuth2KtorClient` to implement a ktor-based client for OAuth 2.0, including [OAuth 2.0 Demonstrating Proof of Possession (DPoP)](https://datatracker.ietf.org/doc/html/rfc9449)  
+   - Remove generics from methods in `OpenId4VpHolder` and work directly with `AuthorizationRequestParameters`
+   - In `PresentationFactory` replace `RequestParameters` in function signatures to work directly with `AuthorizationRequestParameters`
+   - Remove all parameters from `RequestParameters`, moved into their respective implementing class
+   - Add data class `JarRequestParameters` implementing `RequestParameters` to handle [JWT-secured authorization requests](https://www.rfc-editor.org/rfc/rfc9101.html) explicitly
+   - In `AuthorizationService` and `SimpleAuthorizationService` deprecate method `authorize` with `AuthenticationRequestParameters`, use `RequestParameters` instead
+   - In `AuthorizationService` and `SimpleAuthorizationService` deprecate method `par` with `AuthenticationRequestParameters`, use `RequestParameters` instead
+   - In `OAuth2Client` add method `createAuthRequestJar` to make intent more explicit
  - Cryptography:
    - Use [secure random](https://github.com/KotlinCrypto/random) for source of nonces by default, but also expose constructor parameters to override it
  - Update implementation of [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html) to draft 17:

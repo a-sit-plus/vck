@@ -378,31 +378,16 @@ class OpenId4VpHolder(
             ?.let { remoteResourceRetriever(RemoteResourceRetrieverInput(it)) }
             ?.let { joseCompliantSerializer.decodeFromString(it) }
 
-    private suspend fun RequestParameters.loadCredentialRequest(): CredentialPresentationRequest? = when (this) {
-        is AuthenticationRequestParameters -> this.loadCredentialRequest()
-        else -> null
-    }
-
     private suspend fun AuthenticationRequestParameters.loadCredentialRequest(): CredentialPresentationRequest? =
         if (responseType?.contains(VP_TOKEN) == true) {
             loadPresentationDefinition()?.let { CredentialPresentationRequest.PresentationExchangeRequest(it) }
                 ?: dcqlQuery?.let { CredentialPresentationRequest.DCQLRequest(it) }
         } else null
 
-    private suspend fun RequestParameters.loadPresentationDefinition(): PresentationDefinition? = when (this) {
-        is AuthenticationRequestParameters -> this.loadPresentationDefinition()
-        else -> null
-    }
-
     private suspend fun AuthenticationRequestParameters.loadPresentationDefinition(): PresentationDefinition? =
         presentationDefinition ?: presentationDefinitionUrl
             ?.let { remoteResourceRetriever(RemoteResourceRetrieverInput(it)) }
             ?.let { vckJsonSerializer.decodeFromString(it) }
-
-    private suspend fun RequestParameters.loadClientMetadata(): RelyingPartyMetadata? = when (this) {
-        is AuthenticationRequestParameters -> this.loadClientMetadata()
-        else -> null
-    }
 
     private suspend fun AuthenticationRequestParameters.loadClientMetadata(): RelyingPartyMetadata? =
         clientMetadata ?: clientMetadataUri
