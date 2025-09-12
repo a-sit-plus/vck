@@ -24,6 +24,8 @@ private const val JsonElementName = "jsonString"
 private const val UriElementName = "url"
 private const val ParametersElementName = "parameters"
 private const val DcApiRequestElementName = "dcApiRequest"
+private const val VerifiedElementName = "verified"
+
 /**
  * In order to de-/serialize generic types we need a kind of factory approach
  * Because we deal with a sealed class we can use an intermediary jsonSerializer,
@@ -47,6 +49,7 @@ class RequestParametersFromSerializer<T : RequestParameters>(
         element(JwsSignedSerialName, buildClassSerialDescriptor(JwsSignedSerialName) {
             element(JwsSignedElementName, JwsSignedSerializer.descriptor)
             element(ParametersElementName, parameterSerializer.descriptor)
+            element<Boolean>(VerifiedElementName)
             element(DcApiRequestElementName, dcApiRequestSerializer.descriptor)
         })
         element(UriSerialName, buildClassSerialDescriptor(UriSerialName) {
@@ -70,6 +73,7 @@ class RequestParametersFromSerializer<T : RequestParameters>(
                 val parameters =
                     decoder.json.decodeFromJsonElement(parameterSerializer, element.jsonObject[ParametersElementName]!!)
                 val jwsString = decoder.json.decodeFromJsonElement<String>(element.jsonObject[JwsSignedElementName]!!)
+                val verified = element.jsonObject[VerifiedElementName]?.let { decoder.json.decodeFromJsonElement<Boolean>(it) } ?: false
                 val jwsGeneric = JwsSigned.deserialize(jwsString).getOrThrow()
                 val dcApiRequest = element.jsonObject[DcApiRequestElementName]?.let { decoder.json.decodeFromJsonElement(dcApiRequestSerializer, it) }
 
@@ -77,6 +81,7 @@ class RequestParametersFromSerializer<T : RequestParameters>(
                 RequestParametersFrom.JwsSigned(
                     JwsSigned<T>(jwsGeneric.header, parameters, jwsGeneric.signature, jwsGeneric.plainSignatureInput),
                     parameters,
+                    verified,
                     dcApiRequest
                 )
             }
@@ -102,6 +107,7 @@ class RequestParametersFromSerializer<T : RequestParameters>(
             is RequestParametersFrom.JwsSigned -> buildJsonObject {
                 put(JwsSignedElementName, encoder.json.encodeToJsonElement(value.jwsSigned.serialize()))
                 put(ParametersElementName, encoder.json.encodeToJsonElement(parameterSerializer, value.parameters))
+                put(VerifiedElementName, encoder.json.encodeToJsonElement(value.verified))
                 value.dcApiRequest?.let { put(DcApiRequestElementName, encoder.json.encodeToJsonElement(DCAPIRequest.serializer(), it)) }
             }
 

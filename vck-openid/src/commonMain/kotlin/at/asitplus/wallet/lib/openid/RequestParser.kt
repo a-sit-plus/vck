@@ -52,7 +52,7 @@ class RequestParser(
         input: String,
         dcApiRequest: DCAPIRequest? = null,
     ): KmmResult<RequestParametersFrom<*>> = catching {
-        input.parseParameters(dcApiRequest).extractRequestParameterFromJAR(dcApiRequest)
+        input.parseParameters(dcApiRequest).extractRequest(dcApiRequest)
     }
 
     private suspend fun String.parseParameters(
@@ -63,10 +63,10 @@ class RequestParser(
             ?: parseFromJson(dcApiRequest)
             ?: throw InvalidRequest("parse error: $this")
 
-    private suspend fun RequestParametersFrom<out RequestParameters>.extractRequestParameterFromJAR(
+    private suspend fun RequestParametersFrom<out RequestParameters>.extractRequest(
         dcApiRequest: DCAPIRequest?,
     ): RequestParametersFrom<*> =
-        (this.parameters as? JarRequestParameters)?.let { extractRequestParameterFromJAR(it, dcApiRequest) } ?: this
+        (this.parameters as? JarRequestParameters)?.let { extractRequest(it, dcApiRequest) } ?: this
 
     private fun String.parseFromParameters(): RequestParametersFrom<*>? = catchingUnwrapped {
         Url(this).let {
@@ -87,7 +87,7 @@ class RequestParser(
         RequestParametersFrom.Json(this, params, dcApiRequest)
     }.getOrNull()
 
-    suspend fun extractRequestParameterFromJAR(
+    suspend fun extractRequest(
         parameters: JarRequestParameters,
         dcApiRequest: DCAPIRequest? = null,
     ): RequestParametersFrom<*>? = parameters.request?.let {
@@ -101,7 +101,6 @@ class RequestParser(
                 ?: throw InvalidRequest("URL not valid: ${parameters.requestUri}")
         }
 
-
     private suspend fun JarRequestParameters.resourceRetrieverInput(
         uri: String,
     ): RemoteResourceRetrieverInput = RemoteResourceRetrieverInput(
@@ -113,15 +112,10 @@ class RequestParser(
 
     private suspend fun String.parseAsRequestObjectJws(
         dcApiRequest: DCAPIRequest? = null,
-    ): RequestParametersFrom<*>? =
-        JwsSigned.deserialize(RequestParameters.serializer(), this, vckJsonSerializer)
-            .getOrNull()?.let { jws ->
-                if (requestObjectJwsVerifier.invoke(jws)) {
-                    RequestParametersFrom.JwsSigned(jws, jws.payload, dcApiRequest)
-                } else {
-                    null
-                }
-            }
+    ): RequestParametersFrom<*>? = JwsSigned.deserialize(RequestParameters.serializer(), this, vckJsonSerializer)
+        .getOrNull()?.let { jws ->
+            RequestParametersFrom.JwsSigned(jws, jws.payload, requestObjectJwsVerifier.invoke(jws), dcApiRequest)
+        }
 
 }
 

@@ -16,10 +16,11 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         @Serializable(JwsSignedSerializer::class)
         val jwsSigned: at.asitplus.signum.indispensable.josef.JwsSigned<T>,
         override val parameters: T,
-        val dcApiRequest: DCAPIRequest? = null
+        val verified: Boolean,
+        val dcApiRequest: DCAPIRequest? = null,
     ) : RequestParametersFrom<T>() {
         override fun toString(): String {
-            return "JwsSigned(jwsSigned=${jwsSigned.serialize()}, parameters=$parameters)"
+            return "JwsSigned(jwsSigned=${jwsSigned.serialize()}, parameters=$parameters, verified=$verified)"
         }
     }
 

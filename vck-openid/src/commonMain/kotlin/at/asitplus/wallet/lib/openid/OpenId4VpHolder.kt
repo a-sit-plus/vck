@@ -213,6 +213,9 @@ class OpenId4VpHolder(
         params: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<AuthenticationResponse> =
         startAuthorizationResponsePreparation(params).map {
+            if (it.requestObjectVerified == false)
+                throw InvalidRequest("Request object verification failed")
+
             finalizeAuthorizationResponseParameters(
                 request = params,
                 clientMetadata = it.clientMetadata,
@@ -242,7 +245,8 @@ class OpenId4VpHolder(
         AuthorizationResponsePreparationState(
             presentationDefinition,
             clientMetadata,
-            params.extractDcApiRequest() as? Oid4vpDCAPIRequest?
+            params.extractDcApiRequest() as? Oid4vpDCAPIRequest?,
+            (params as? RequestParametersFrom.JwsSigned)?.verified,
         )
     }
 
@@ -385,7 +389,7 @@ class OpenId4VpHolder(
                 ?: dcqlQuery?.let { CredentialPresentationRequest.DCQLRequest(it) }
         } else null
 
-    private suspend fun RequestParameters.loadPresentationDefinition(): PresentationDefinition? = when(this) {
+    private suspend fun RequestParameters.loadPresentationDefinition(): PresentationDefinition? = when (this) {
         is AuthenticationRequestParameters -> this.loadPresentationDefinition()
         else -> null
     }

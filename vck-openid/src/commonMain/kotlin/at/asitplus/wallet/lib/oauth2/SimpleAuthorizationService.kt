@@ -292,7 +292,7 @@ class SimpleAuthorizationService(
     private suspend fun RequestParameters.extractPushedRequestParams() = when (this) {
         is JarRequestParameters -> run {
             require(requestUri == null) { "request_uri must not be set for PAR" }
-            requestParser.extractRequestParameterFromJAR(this)?.parameters as? AuthenticationRequestParameters
+            requestParser.extractRequest(this)?.parameters as? AuthenticationRequestParameters
                 ?: throw InvalidRequest("request must contain valid authorization request parameters")
         }
 
@@ -377,11 +377,11 @@ class SimpleAuthorizationService(
                 if (clientId != input.clientId)
                     throw InvalidRequest("client_id not matching from par: ${input.clientId} vs $clientId")
             }
-        } ?: (requestParser.extractRequestParameterFromJAR(input)?.parameters as? AuthenticationRequestParameters)
+        } ?: (requestParser.extractRequest(input)?.parameters as? AuthenticationRequestParameters)
         ?: throw InvalidRequest("could not parse request object from request")
 
-        is RequestObjectParameters -> TODO()
-        is SignatureRequestParameters -> TODO()
+        is RequestObjectParameters -> throw InvalidRequest("could not parse request object from request")
+        is SignatureRequestParameters -> throw InvalidRequest("could not parse request object from request")
     }
 
     /**
