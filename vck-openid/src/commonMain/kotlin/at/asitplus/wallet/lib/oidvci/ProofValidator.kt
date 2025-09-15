@@ -120,9 +120,8 @@ class ProofValidator(
         // in the attested_keys claim within the key_attestation parameter.
         val additionalKeys = header.keyAttestationParsed?.validateAttestationProof() ?: listOf()
 
-        val headerPublicKey = header.publicKey ?: run {
-            throw InvalidProof("could not extract public key from $header")
-        }
+        val headerPublicKey = header.publicKey
+            ?: throw InvalidProof("could not extract public key from $header")
 
         return additionalKeys + headerPublicKey
     }

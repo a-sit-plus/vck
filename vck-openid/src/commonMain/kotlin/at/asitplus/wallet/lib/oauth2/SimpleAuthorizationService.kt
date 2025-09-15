@@ -365,8 +365,9 @@ class SimpleAuthorizationService(
             throw InvalidRequest("redirect_uri not set")
         }
 
-        if (scope != null) {
-            strategy.filterScope(scope!!) ?: throw InvalidScope("No matching scope in $scope")
+        scope?.let {
+            strategy.filterScope(it)
+                ?: throw InvalidScope("No matching scope in $it")
         }
 
         if (issuerState != null) {

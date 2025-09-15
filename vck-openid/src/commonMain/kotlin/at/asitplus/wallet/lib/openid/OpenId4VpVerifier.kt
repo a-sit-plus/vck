@@ -624,9 +624,8 @@ class OpenId4VpVerifier(
             "verifyDocument: mdocGeneratedNonce='$mdocGeneratedNonce', clientId='$clientId'," +
                     " responseUrl='$responseUrl', expectedNonce='$expectedNonce'"
         )
-        val deviceSignature = document.deviceSigned.deviceAuth.deviceSignature ?: run {
-            throw IllegalArgumentException("deviceSignature is null")
-        }
+        val deviceSignature = document.deviceSigned.deviceAuth.deviceSignature
+            ?: throw IllegalArgumentException("deviceSignature is null")
 
         val walletKey = mso.deviceKeyInfo.deviceKey
         if (clientId != null && responseUrl != null) {
@@ -637,16 +636,14 @@ class OpenId4VpVerifier(
                 .wrapInCborTag(24)
                 .also { Napier.d("Device authentication for verification is ${it.encodeToString(Base16())}") }
             verifyCoseSignature(deviceSignature, walletKey, byteArrayOf(), expectedPayload).onFailure {
-                val expectedBytes = expectedPayload.encodeToString(Base16)
                 throw IllegalArgumentException("deviceSignature not verified", it)
             }
         } else {
             verifyCoseSignature(deviceSignature, walletKey, byteArrayOf(), null).onFailure {
                 throw IllegalArgumentException("deviceSignature not verified", it)
             }
-            val deviceSignaturePayload = deviceSignature.payload ?: run {
-                throw IllegalArgumentException("challenge null")
-            }
+            val deviceSignaturePayload = deviceSignature.payload
+                ?: throw IllegalArgumentException("challenge is null")
             if (!deviceSignaturePayload.contentEquals(expectedNonce.encodeToByteArray())) {
                 throw IllegalArgumentException("challenge invalid: ${deviceSignaturePayload.encodeToString(Base16)}")
             }
