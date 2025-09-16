@@ -189,7 +189,7 @@ class OpenId4VpInteropTest : FreeSpec({
                 else
                     it.jsonWebKey.shouldNotBeNull()
                 it.algorithm shouldBe JwsAlgorithm.Signature.ES256
-                it.type shouldBe "vc+sd-jwt"
+                it.type shouldBe "dc+sd-jwt"
             }
             sdJwt.getPayloadAsVerifiableCredentialSdJwt().getOrThrow().also {
                 it.issuer shouldBe issuerIdentifier
@@ -208,8 +208,7 @@ class OpenId4VpInteropTest : FreeSpec({
             presSub.definitionId.shouldNotBeNull()
             presSub.descriptorMap.shouldNotBeNull().first().also {
                 it.path shouldBe "$"
-                @Suppress("DEPRECATION")
-                it.format shouldBe ClaimFormat.JWT_SD
+                it.format shouldBe ClaimFormat.SD_JWT
             }
         }
 

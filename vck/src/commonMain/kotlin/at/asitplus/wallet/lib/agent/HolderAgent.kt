@@ -380,14 +380,11 @@ class HolderAgent(
         path = index?.let { "\$[$it]" } ?: "\$",
     )
 
-    @Suppress("DEPRECATION")
     private fun StoreEntry.toFormat(): ClaimFormat = when (this) {
         is StoreEntry.Vc -> ClaimFormat.JWT_VP
-        // TODO In 5.4.0, use SD_JWT instead of JWT_SD
-        is StoreEntry.SdJwt -> ClaimFormat.JWT_SD
+        is StoreEntry.SdJwt -> ClaimFormat.SD_JWT
         is StoreEntry.Iso -> ClaimFormat.MSO_MDOC
     }
-
 
     private fun CredentialPresentationRequest.PresentationExchangeRequest.validateSubmission(
         credentialSubmissions: Map<String, PresentationExchangeCredentialDisclosure>,

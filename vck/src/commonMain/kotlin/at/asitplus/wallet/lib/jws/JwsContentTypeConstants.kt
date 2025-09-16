@@ -3,8 +3,8 @@ package at.asitplus.wallet.lib.jws
 
 object JwsContentTypeConstants {
     const val JWT = "jwt"
-    // TODO In 5.4.0, use "dc+sd-jwt" instead of "vc+sd-jwt"
-    const val SD_JWT = "vc+sd-jwt"
+    /** SD-JWT: `dc+sd-jwt` */
+    const val SD_JWT = "dc+sd-jwt"
     /** Key binding JWT for SD-JWT: `kb+jwt` */
     const val KB_JWT = "kb+jwt"
     /** Access tokens for OID4VCI: `oid4vci+at+jwt` */
