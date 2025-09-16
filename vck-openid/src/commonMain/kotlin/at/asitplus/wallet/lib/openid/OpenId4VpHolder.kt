@@ -24,14 +24,18 @@ import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.SignatureRequestParameters
-import at.asitplus.openid.SupportedAlgorithmsContainer
+import at.asitplus.openid.SupportedAlgorithmsContainerIso
+import at.asitplus.openid.SupportedAlgorithmsContainerJwt
+import at.asitplus.openid.SupportedAlgorithmsContainerSdJwt
 import at.asitplus.openid.VpFormatsSupported
 import at.asitplus.openid.extractDcApiRequest
+import at.asitplus.signum.indispensable.SignatureAlgorithm
+import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
-import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
+import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -75,7 +79,7 @@ class OpenId4VpHolder(
     private val signJarm: SignJwtFun<AuthenticationResponseParameters> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     private val encryptJarm: EncryptJweFun = EncryptJwe(keyMaterial),
     private val signError: SignJwtFun<OAuth2Error> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
-    private val supportedAlgorithms: Set<JwsAlgorithm> = setOfNotNull(JwsAlgorithm.Signature.ES256),
+    private val supportedAlgorithms: Set<SignatureAlgorithm> = setOf(SignatureAlgorithm.ECDSAwithSHA256),
     private val signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> =
         SignCoseDetached(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
     private val signDeviceAuthFallback: SignCoseFun<ByteArray> =
@@ -99,7 +103,10 @@ class OpenId4VpHolder(
     private val randomSource: RandomSource = RandomSource.Secure,
 ) {
 
-    private val supportedAlgorithmsStrings = supportedAlgorithms.map { it.identifier }.toSet()
+    private val supportedJwsAlgorithms = supportedAlgorithms
+        .mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }
+    private val supportedCoseAlgorithms = supportedAlgorithms
+        .mapNotNull { it.toCoseAlgorithm().getOrNull()?.coseValue }
     private val authorizationRequestValidator = AuthorizationRequestValidator(walletNonceMapStore)
     private val authenticationResponseFactory = AuthenticationResponseFactory(
         signJarm = signJarm,
@@ -122,8 +129,8 @@ class OpenId4VpHolder(
             responseTypesSupported = setOf(OpenIdConstants.ID_TOKEN),
             scopesSupported = setOf(OpenIdConstants.SCOPE_OPENID),
             subjectTypesSupported = setOf("pairwise", "public"),
-            idTokenSigningAlgorithmsSupportedStrings = supportedAlgorithmsStrings,
-            requestObjectSigningAlgorithmsSupportedStrings = supportedAlgorithmsStrings,
+            idTokenSigningAlgorithmsSupportedStrings = supportedJwsAlgorithms.toSet(),
+            requestObjectSigningAlgorithmsSupportedStrings = supportedJwsAlgorithms.toSet(),
             subjectSyntaxTypesSupported = setOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY, BINDING_METHOD_JWK),
             idTokenTypesSupported = setOf(IdTokenType.SUBJECT_SIGNED),
             presentationDefinitionUriSupported = false,
@@ -134,9 +141,17 @@ class OpenId4VpHolder(
                 ClientIdScheme.X509SanDns
             ).map { it.stringRepresentation }.toSet(),
             vpFormatsSupported = VpFormatsSupported(
-                vcJwt = SupportedAlgorithmsContainer(supportedAlgorithmsStrings = supportedAlgorithmsStrings),
-                dcSdJwt = SupportedAlgorithmsContainer(supportedAlgorithmsStrings = supportedAlgorithmsStrings),
-                msoMdoc = SupportedAlgorithmsContainer(supportedAlgorithmsStrings = supportedAlgorithmsStrings),
+                vcJwt = SupportedAlgorithmsContainerJwt(
+                    algorithmStrings = supportedJwsAlgorithms.toSet()
+                ),
+                dcSdJwt = SupportedAlgorithmsContainerSdJwt(
+                    sdJwtAlgorithmStrings = supportedJwsAlgorithms.toSet(),
+                    kbJwtAlgorithmStrings = supportedJwsAlgorithms.toSet(),
+                ),
+                msoMdoc = SupportedAlgorithmsContainerIso(
+                    issuerAuthAlgorithmInts = supportedCoseAlgorithms.toSet(),
+                    deviceAuthAlgorithmInts = supportedCoseAlgorithms.toSet(),
+                ),
             )
         )
     }
