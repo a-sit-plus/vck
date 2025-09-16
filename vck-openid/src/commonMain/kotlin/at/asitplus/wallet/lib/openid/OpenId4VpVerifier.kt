@@ -95,13 +95,15 @@ import kotlin.time.toDuration
  * Implements [OpenID for VP](https://openid.net/specs/openid-connect-4-verifiable-presentations-1_0.html) (2024-12-02)
  * as well as [SIOP V2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html) (2023-11-28).
  *
- * This class creates the Authentication Request, [verifier] verifies the response. See [OpenId4VpHolder] for the holder.
+ * This class creates the Authentication Request, [verifier] verifies the response.
+ * See [OpenId4VpHolder] for the holder side, i.e. the Wallet.
  */
 class OpenId4VpVerifier(
     private val clientIdScheme: ClientIdScheme,
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
-    private val decryptJwe: DecryptJweFun = DecryptJwe(keyMaterial),
+    private val decryptionKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+    private val decryptJwe: DecryptJweFun = DecryptJwe(decryptionKeyMaterial),
     private val signAuthnRequest: SignJwtFun<AuthenticationRequestParameters> =
         SignJwt(keyMaterial, JwsHeaderClientIdScheme(clientIdScheme)),
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
@@ -152,7 +154,7 @@ class OpenId4VpVerifier(
     val metadata by lazy {
         RelyingPartyMetadata(
             redirectUris = listOfNotNull((clientIdScheme as? ClientIdScheme.RedirectUri)?.redirectUri),
-            jsonWebKeySet = JsonWebKeySet(listOf(keyMaterial.publicKey.toJsonWebKey())),
+            jsonWebKeySet = JsonWebKeySet(listOf(decryptionKeyMaterial.publicKey.toJsonWebKey())),
             authorizationSignedResponseAlgString = supportedSignatureVerificationAlgorithm,
             vpFormats = FormatHolder(
                 msoMdoc = containerJwt,
@@ -186,6 +188,7 @@ class OpenId4VpVerifier(
             authorizationSignedResponseAlgString = null,
             authorizationEncryptedResponseAlgString = supportedJweAlgorithm.identifier,
             authorizationEncryptedResponseEncodingString = supportedJweEncryptionAlgorithm.identifier,
+            encryptedResponseEncryptionString = setOf(supportedJweEncryptionAlgorithm.identifier),
             jsonWebKeySet = metadata.jsonWebKeySet?.let {
                 JsonWebKeySet(it.keys.map { it.copy(publicKeyUse = "enc") })
             }

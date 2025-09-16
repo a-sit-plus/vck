@@ -83,6 +83,16 @@ data class RelyingPartyMetadata(
     val authorizationEncryptedResponseEncodingString: String? = null,
 
     /**
+     * OID4VP: OPTIONAL. Non-empty array of strings, where each string is a JWE
+     * [RFC 7516](https://datatracker.ietf.org/doc/html/rfc7516) `enc` algorithm that can be used as the content
+     * encryption algorithm for encrypting the Response. When a `response_mode` requiring encryption of the
+     * Response (such as `dc_api.jwt` or `direct_post.jwt`) is specified, this MUST be present for anything other than
+     * the default single value of `A128GCM`. Otherwise, this SHOULD be absent.
+     */
+    @SerialName("encrypted_response_enc_values_supported")
+    val encryptedResponseEncryptionString: Set<String>? = null,
+
+    /**
      * OIDC Registration: OPTIONAL. JWE alg algorithm REQUIRED for encrypting the ID Token issued to this Client.
      * If this is requested, the response will be signed then encrypted, with the result being a Nested JWT.
      * The default, if omitted, is that no encryption is performed.
@@ -179,6 +189,17 @@ data class RelyingPartyMetadata(
     @Transient
     val authorizationEncryptedResponseEncoding: JweEncryption? = authorizationEncryptedResponseEncodingString
         ?.let { s -> JweEncryption.entries.firstOrNull { it.identifier == s } }
+
+    /**
+     * OID4VP: OPTIONAL. Non-empty array of strings, where each string is a JWE
+     * [RFC 7516](https://datatracker.ietf.org/doc/html/rfc7516) `enc` algorithm that can be used as the content
+     * encryption algorithm for encrypting the Response. When a `response_mode` requiring encryption of the
+     * Response (such as `dc_api.jwt` or `direct_post.jwt`) is specified, this MUST be present for anything other than
+     * the default single value of `A128GCM`. Otherwise, this SHOULD be absent.
+     */
+    @Transient
+    val encryptedResponseEncryptionAlgorithm: Collection<JweEncryption>? = encryptedResponseEncryptionString
+        ?.mapNotNull { s -> JweEncryption.entries.firstOrNull { it.identifier == s } }
 
     /**
      * OIDC Registration: OPTIONAL. JWE enc algorithm REQUIRED for encrypting the ID Token issued to this Client.

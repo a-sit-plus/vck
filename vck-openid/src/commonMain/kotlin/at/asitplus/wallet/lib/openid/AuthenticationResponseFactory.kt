@@ -8,6 +8,7 @@ import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
+import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.JwkType
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
@@ -164,9 +165,11 @@ internal class AuthenticationResponseFactory(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
     ): String {
-        val algorithm = response.clientMetadata!!.authorizationEncryptedResponseAlg!!
-        val encryption = response.clientMetadata.authorizationEncryptedResponseEncoding!!
         val recipientKey = response.jsonWebKeys!!.getEcdhEsKey()
+        val algorithm = JweAlgorithm.ECDH_ES
+        val encryption = response.clientMetadata?.encryptedResponseEncryptionAlgorithm?.firstOrNull()
+            ?: response.clientMetadata?.authorizationEncryptedResponseEncoding
+            ?: JweEncryption.A128GCM
         val apv = request.parameters.nonce?.encodeToByteArray()
             ?: randomSource.nextBytes(16)
         val apu = response.mdocGeneratedNonce?.encodeToByteArray()

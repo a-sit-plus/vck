@@ -82,6 +82,7 @@ Release 5.9.0 (unreleased):
    - In `RelyingPartyMetadata` deprecate `vp_formats`, replace with `vp_formats_supported`, using correct algorithm values
    - Change `DCQLCredentialQuery.meta` to be mandatory
    - Add `DCQLEmptyCredentialMetadataAndValidityConstraints`
+   - In `OpenId4VpVerifier` add constructor parameter `decryptionKeyMaterial` to supply a key for decrypting encrypted responses from holders
 
 Release 5.8.0:
  - Refactor `AuthorizationServiceStrategy`
