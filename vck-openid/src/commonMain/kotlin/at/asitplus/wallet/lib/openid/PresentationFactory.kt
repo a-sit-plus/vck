@@ -21,24 +21,28 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.openid.VpFormatsSupported
 import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.SignatureAlgorithm
+import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwkType
-import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
+import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.CreatePresentationResult
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.PresentationException
 import at.asitplus.wallet.lib.agent.PresentationRequestParameters
 import at.asitplus.wallet.lib.agent.PresentationResponseParameters
-import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.PresentationResponseParameters.DCQLParameters
 import at.asitplus.wallet.lib.agent.PresentationResponseParameters.PresentationExchangeParameters
+import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
 import at.asitplus.wallet.lib.cbor.SignCoseFun
 import at.asitplus.wallet.lib.data.CredentialPresentation
@@ -56,12 +60,17 @@ import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 
 internal class PresentationFactory(
-    private val supportedAlgorithms: Set<JwsAlgorithm>,
+    private val supportedAlgorithms: Set<SignatureAlgorithm>,
     private val signDeviceAuthDetached: SignCoseDetachedFun<ByteArray>,
     private val signDeviceAuthFallback: SignCoseFun<ByteArray>,
     private val signIdToken: SignJwtFun<IdToken>,
     private val randomSource: RandomSource = RandomSource.Secure,
 ) {
+    private val supportedJwsAlgorithms = supportedAlgorithms
+        .mapNotNull { it.toJwsAlgorithm().getOrNull() }
+    private val supportedCoseAlgorithms = supportedAlgorithms
+        .mapNotNull { it.toCoseAlgorithm().getOrNull() }
+
     suspend fun createPresentation(
         holder: Holder,
         request: AuthenticationRequestParameters,
@@ -125,8 +134,18 @@ internal class PresentationFactory(
         }
     }
 
+    private fun VpFormatsSupported.verifyFormatSupport(
+        presentation: PresentationResponseParameters,
+    ) {
+        when (presentation) {
+            is DCQLParameters -> presentation.verifyFormatSupport(this)
+            is PresentationExchangeParameters -> presentation.verifyFormatSupport(this)
+        }
+    }
+
+
     /**
-     * Performs calculation of the [at.asitplus.iso.SessionTranscript] and [at.asitplus.iso.DeviceAuthentication],
+     * Performs calculation of the [SessionTranscript] and [DeviceAuthentication],
      * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024, with the [mdocGeneratedNonce] provided if set,
      * or a fallback mechanism used otherwise
      */
@@ -285,13 +304,33 @@ internal class PresentationFactory(
     }
 
     @Throws(OAuth2Exception::class)
-    private fun DCQLParameters.verifyFormatSupport(supportedFormats: FormatHolder) =
-        verifiablePresentations.entries.mapIndexed { _, descriptor ->
-            val format = this.verifiablePresentations.entries.first().value.toFormat()
-            if (!supportedFormats.supportsAlgorithm(format)) {
-                throw RegistrationValueNotSupported("incompatible algorithms: $supportedFormats")
-            }
+    private fun PresentationExchangeParameters.verifyFormatSupport(
+        supportedFormats: VpFormatsSupported,
+    ) = presentationSubmission.descriptorMap?.mapIndexed { _, descriptor ->
+        if (!supportedFormats.supportsAlgorithm(descriptor.format)) {
+            throw RegistrationValueNotSupported("incompatible algorithms: $supportedFormats")
         }
+    }
+
+    @Throws(OAuth2Exception::class)
+    private fun DCQLParameters.verifyFormatSupport(
+        supportedFormats: FormatHolder,
+    ) = verifiablePresentations.entries.mapIndexed { _, descriptor ->
+        val format = this.verifiablePresentations.entries.first().value.toFormat()
+        if (!supportedFormats.supportsAlgorithm(format)) {
+            throw RegistrationValueNotSupported("incompatible algorithms: $supportedFormats")
+        }
+    }
+
+    @Throws(OAuth2Exception::class)
+    private fun DCQLParameters.verifyFormatSupport(
+        supportedFormats: VpFormatsSupported,
+    ) = verifiablePresentations.entries.mapIndexed { _, descriptor ->
+        val format = this.verifiablePresentations.entries.first().value.toFormat()
+        if (!supportedFormats.supportsAlgorithm(format)) {
+            throw RegistrationValueNotSupported("incompatible algorithms: $supportedFormats")
+        }
+    }
 
     private fun CreatePresentationResult.toFormat(): ClaimFormat = when (this) {
         is CreatePresentationResult.DeviceResponse -> ClaimFormat.MSO_MDOC
@@ -301,15 +340,31 @@ internal class PresentationFactory(
 
     @Suppress("DEPRECATION")
     private fun FormatHolder.supportsAlgorithm(claimFormat: ClaimFormat): Boolean = when (claimFormat) {
-        ClaimFormat.JWT_VP -> jwtVp?.algorithms?.any { supportedAlgorithms.contains(it) } == true
+        ClaimFormat.JWT_VP -> jwtVp?.algorithms?.any { supportedJwsAlgorithms.contains(it) } == true
         ClaimFormat.JWT_SD, ClaimFormat.SD_JWT ->
-            if (jwtSd?.sdJwtAlgorithms?.any { supportedAlgorithms.contains(it) } == true) true
-            else if (jwtSd?.kbJwtAlgorithms?.any { supportedAlgorithms.contains(it) } == true) true
-            else if (sdJwt?.sdJwtAlgorithms?.any { supportedAlgorithms.contains(it) } == true) true
-            else if (sdJwt?.kbJwtAlgorithms?.any { supportedAlgorithms.contains(it) } == true) true
+            if (jwtSd?.sdJwtAlgorithms?.any { supportedJwsAlgorithms.contains(it) } == true) true
+            else if (jwtSd?.kbJwtAlgorithms?.any { supportedJwsAlgorithms.contains(it) } == true) true
+            else if (sdJwt?.sdJwtAlgorithms?.any { supportedJwsAlgorithms.contains(it) } == true) true
+            else if (sdJwt?.kbJwtAlgorithms?.any { supportedJwsAlgorithms.contains(it) } == true) true
             else false
 
-        ClaimFormat.MSO_MDOC -> msoMdoc?.algorithms?.any { supportedAlgorithms.contains(it) } == true
+        ClaimFormat.MSO_MDOC -> msoMdoc?.algorithms?.any { supportedJwsAlgorithms.contains(it) } == true
+        else -> false
+    }
+
+    @Suppress("DEPRECATION")
+    private fun VpFormatsSupported.supportsAlgorithm(claimFormat: ClaimFormat): Boolean = when (claimFormat) {
+        ClaimFormat.JWT_VP -> vcJwt?.algorithms?.any { supportedJwsAlgorithms.contains(it) } == true
+        ClaimFormat.JWT_SD, ClaimFormat.SD_JWT ->
+            if (dcSdJwt?.sdJwtAlgorithms?.any { supportedJwsAlgorithms.contains(it) } == true) true
+            else if (dcSdJwt?.kbJwtAlgorithms?.any { supportedJwsAlgorithms.contains(it) } == true) true
+            else false
+
+        ClaimFormat.MSO_MDOC ->
+            if (msoMdoc?.issuerAuthAlgorithms?.any { supportedCoseAlgorithms.contains(it) } == true) true
+            else if (msoMdoc?.deviceAuthAlgorithms?.any { supportedCoseAlgorithms.contains(it) } == true) true
+            else false
+
         else -> false
     }
 

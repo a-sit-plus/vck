@@ -32,9 +32,15 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.ResponseParametersFrom
+import at.asitplus.openid.SupportedAlgorithmsContainerIso
+import at.asitplus.openid.SupportedAlgorithmsContainerJwt
+import at.asitplus.openid.SupportedAlgorithmsContainerSdJwt
 import at.asitplus.openid.TransactionDataBase64Url
+import at.asitplus.openid.VpFormatsSupported
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
+import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
@@ -43,6 +49,7 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
+import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.Verifier
@@ -98,7 +105,7 @@ class OpenId4VpVerifier(
     private val signAuthnRequest: SignJwtFun<AuthenticationRequestParameters> =
         SignJwt(keyMaterial, JwsHeaderClientIdScheme(clientIdScheme)),
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
-    private val supportedAlgorithms: List<JwsAlgorithm> = listOf(JwsAlgorithm.Signature.ES256),
+    private val supportedAlgorithms: Set<SignatureAlgorithm> = setOf(SignatureAlgorithm.ECDSAwithSHA256),
     private val verifyCoseSignature: VerifyCoseSignatureWithKeyFun<ByteArray> = VerifyCoseSignatureWithKey(),
     timeLeewaySeconds: Long = 300L,
     private val clock: Clock = Clock.System,
@@ -111,16 +118,19 @@ class OpenId4VpVerifier(
     private val supportedJweEncryptionAlgorithm: JweEncryption = JweEncryption.A256GCM,
 ) {
 
-    private val supportedAlgorithmStrings = supportedAlgorithms.map { it.identifier }
+    private val supportedJwsAlgorithms = supportedAlgorithms
+        .mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }
+    private val supportedCoseAlgorithms = supportedAlgorithms
+        .mapNotNull { it.toCoseAlgorithm().getOrNull()?.coseValue }
     private val responseParser = ResponseParser(decryptJwe, verifyJwsObject)
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
     private val supportedSignatureVerificationAlgorithm =
-        (supportedAlgorithms.firstOrNull { it == JwsAlgorithm.Signature.ES256 }?.identifier
-            ?: supportedAlgorithms.first().identifier)
-    private val containerJwt = FormatContainerJwt(algorithmStrings = supportedAlgorithmStrings)
+        supportedJwsAlgorithms.firstOrNull  { it == JwsAlgorithm.Signature.EC.ES256.identifier }
+            ?: supportedJwsAlgorithms.first()
+    private val containerJwt = FormatContainerJwt(algorithmStrings = supportedJwsAlgorithms)
     private val containerSdJwt = FormatContainerSdJwt(
-        sdJwtAlgorithmStrings = supportedAlgorithmStrings.toSet(),
-        kbJwtAlgorithmStrings = supportedAlgorithmStrings.toSet()
+        sdJwtAlgorithmStrings = supportedJwsAlgorithms.toSet(),
+        kbJwtAlgorithmStrings = supportedJwsAlgorithms.toSet()
     )
 
     /**
@@ -135,13 +145,6 @@ class OpenId4VpVerifier(
         )
     }
 
-    private val supportedFormats = FormatHolder(
-        msoMdoc = containerJwt,
-        jwtVp = containerJwt,
-        jwtSd = containerSdJwt,
-        sdJwt = containerSdJwt
-    )
-
     /**
      * Creates the [at.asitplus.openid.RelyingPartyMetadata], without encryption (see [metadataWithEncryption])
      */
@@ -151,8 +154,25 @@ class OpenId4VpVerifier(
             redirectUris = listOfNotNull((clientIdScheme as? ClientIdScheme.RedirectUri)?.redirectUri),
             jsonWebKeySet = JsonWebKeySet(listOf(keyMaterial.publicKey.toJsonWebKey())),
             authorizationSignedResponseAlgString = supportedSignatureVerificationAlgorithm,
-            vpFormats = supportedFormats,
-            vpFormatsSupported = supportedFormats
+            vpFormats = FormatHolder(
+                msoMdoc = containerJwt,
+                jwtVp = containerJwt,
+                jwtSd = containerSdJwt,
+                sdJwt = containerSdJwt
+            ),
+            vpFormatsSupported = VpFormatsSupported(
+                vcJwt = SupportedAlgorithmsContainerJwt(
+                    algorithmStrings = supportedJwsAlgorithms.toSet()
+                ),
+                dcSdJwt = SupportedAlgorithmsContainerSdJwt(
+                    sdJwtAlgorithmStrings = supportedJwsAlgorithms.toSet(),
+                    kbJwtAlgorithmStrings = supportedJwsAlgorithms.toSet(),
+                ),
+                msoMdoc = SupportedAlgorithmsContainerIso(
+                    issuerAuthAlgorithmInts = supportedCoseAlgorithms.toSet(),
+                    deviceAuthAlgorithmInts = supportedCoseAlgorithms.toSet(),
+                ),
+            )
         )
     }
 

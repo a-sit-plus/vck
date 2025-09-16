@@ -79,7 +79,7 @@ Release 5.9.0 (unreleased):
    - In `RequestOptions` deprecate member `clientMetadataUrl`
    - In `OpenIdConstants` deprecate member `X509SanUri`
    - In `AuthenticationRequestParameters` and `AuthorizationResponsePreparationState` add `VerifierInfo` to display to user
-   - In `RelyingPartyMetadata` deprecate `vp_formats`, replace with `vp_formats_supported`
+   - In `RelyingPartyMetadata` deprecate `vp_formats`, replace with `vp_formats_supported`, using correct algorithm values
    - Change `DCQLCredentialQuery.meta` to be mandatory
    - Add `DCQLEmptyCredentialMetadataAndValidityConstraints`
 
