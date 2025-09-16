@@ -83,6 +83,7 @@ Release 5.9.0 (unreleased):
    - Change `DCQLCredentialQuery.meta` to be mandatory
    - Add `DCQLEmptyCredentialMetadataAndValidityConstraints`
    - In `OpenId4VpVerifier` add constructor parameter `decryptionKeyMaterial` to supply a key for decrypting encrypted responses from holders
+   - In `OAuth2AuthorizationServerMetadata` deprecate `client_id_schemes_supported`, replace with `client_id_prefixes_supported`
 
 Release 5.8.0:
  - Refactor `AuthorizationServiceStrategy`

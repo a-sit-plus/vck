@@ -122,6 +122,7 @@ class OpenId4VpHolder(
         randomSource = randomSource
     )
 
+    @Suppress("DEPRECATION")
     val metadata: OAuth2AuthorizationServerMetadata by lazy {
         OAuth2AuthorizationServerMetadata(
             issuer = clientId,
@@ -135,6 +136,12 @@ class OpenId4VpHolder(
             idTokenTypesSupported = setOf(IdTokenType.SUBJECT_SIGNED),
             presentationDefinitionUriSupported = false,
             clientIdSchemesSupported = listOf(
+                ClientIdScheme.PreRegistered,
+                ClientIdScheme.RedirectUri,
+                ClientIdScheme.VerifierAttestation,
+                ClientIdScheme.X509SanDns
+            ).map { it.stringRepresentation }.toSet(),
+            clientIdPrefixesSupported = listOf(
                 ClientIdScheme.PreRegistered,
                 ClientIdScheme.RedirectUri,
                 ClientIdScheme.VerifierAttestation,
