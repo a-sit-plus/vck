@@ -183,6 +183,7 @@ object OpenIdConstants {
             private const val STRING_REDIRECT_URI = "redirect_uri"
             private const val STRING_X509_SAN_DNS = "x509_san_dns"
             private const val STRING_X509_SAN_URI = "x509_san_uri"
+            private const val STRING_X509_HASH = "x509_hash"
             private const val STRING_ENTITY_ID = "entity_id"
             private const val STRING_DID = "did"
             private const val STRING_VERIFIER_ATTESTATION = "verifier_attestation"
@@ -192,6 +193,7 @@ object OpenIdConstants {
                 STRING_REDIRECT_URI -> RedirectUri
                 STRING_X509_SAN_DNS -> X509SanDns
                 STRING_X509_SAN_URI -> X509SanUri
+                STRING_X509_HASH -> X509Hash
                 STRING_ENTITY_ID -> EntityId
                 STRING_DID -> Did
                 STRING_VERIFIER_ATTESTATION -> VerifierAttestation
@@ -246,6 +248,19 @@ object OpenIdConstants {
         object X509SanUri : ClientIdScheme(STRING_X509_SAN_URI)
 
         /**
+         * When the Client Identifier Prefix is `x509_hash`, the original Client Identifier (the part without the
+         * `x509_hash:` prefix) MUST be a hash and match the hash of the leaf certificate passed with the request.
+         * The request MUST be signed with the private key corresponding to the public key in the leaf X.509 certificate
+         * of the certificate chain added to the request in the `x5c` JOSE header parameter
+         * [RFC 7515](https://datatracker.ietf.org/doc/html/rfc7515) of the signed request object. The value of
+         * `x509_hash` is the base64url encoded value of the SHA-256 hash of the DER-encoded X.509 certificate.
+         * The Wallet MUST validate the signature and the trust chain of the X.509 leaf certificate.
+         * All Verifier metadata other than the public key MUST be obtained from the `client_metadata` parameter.
+         * Example Client Identifier: `x509_hash:Uvo3HtuIxuhC92rShpgqcT3YXwrqRxWEviRiA0OZszk`.
+         */
+        object X509Hash : ClientIdScheme(STRING_X509_HASH)
+
+        /**
          * This value indicates that the Client Identifier is an Entity Identifier defined in OpenID Connect Federation.
          * Processing rules given in OpenID.Federation MUST be followed. Automatic Registration as defined in
          * OpenID.Federation MUST be used. The Authorization Request MAY also contain a `trust_chain` parameter.
@@ -295,6 +310,7 @@ object OpenIdConstants {
                 STRING_REDIRECT_URI -> RedirectUri
                 STRING_X509_SAN_DNS -> X509SanDns
                 STRING_X509_SAN_URI -> X509SanUri
+                STRING_X509_HASH -> X509Hash
                 STRING_ENTITY_ID -> EntityId
                 STRING_DID -> Did
                 STRING_VERIFIER_ATTESTATION -> VerifierAttestation

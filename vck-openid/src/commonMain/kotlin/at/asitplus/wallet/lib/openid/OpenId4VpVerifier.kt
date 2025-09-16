@@ -125,7 +125,7 @@ class OpenId4VpVerifier(
     private val responseParser = ResponseParser(decryptJwe, verifyJwsObject)
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
     private val supportedSignatureVerificationAlgorithm =
-        supportedJwsAlgorithms.firstOrNull  { it == JwsAlgorithm.Signature.EC.ES256.identifier }
+        supportedJwsAlgorithms.firstOrNull { it == JwsAlgorithm.Signature.EC.ES256.identifier }
             ?: supportedJwsAlgorithms.first()
     private val containerJwt = FormatContainerJwt(algorithmStrings = supportedJwsAlgorithms)
     private val containerSdJwt = FormatContainerSdJwt(
@@ -739,9 +739,23 @@ class JwsHeaderClientIdScheme(val clientIdScheme: ClientIdScheme) : JwsHeaderIde
         it: JwsHeader,
         keyMaterial: KeyMaterial,
     ) = run {
-        val attestationJwt = (clientIdScheme as? ClientIdScheme.VerifierAttestation)?.attestationJwt?.serialize()
-        (clientIdScheme as? ClientIdScheme.CertificateSanDns)?.chain?.let { x5c ->
-            it.copy(certificateChain = x5c, attestationJwt = attestationJwt)
-        } ?: it.copy(jsonWebKey = keyMaterial.jsonWebKey, attestationJwt = attestationJwt)
+        when (clientIdScheme) {
+            is ClientIdScheme.CertificateHash -> it.copy(
+                certificateChain = clientIdScheme.chain,
+            )
+
+            is ClientIdScheme.CertificateSanDns -> it.copy(
+                certificateChain = clientIdScheme.chain,
+            )
+
+            is ClientIdScheme.VerifierAttestation -> it.copy(
+                jsonWebKey = keyMaterial.jsonWebKey,
+                attestationJwt = clientIdScheme.attestationJwt.serialize()
+            )
+
+            else -> it.copy(
+                jsonWebKey = keyMaterial.jsonWebKey
+            )
+        }
     }
 }

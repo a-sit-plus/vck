@@ -1,9 +1,12 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.iso.sha256
 import at.asitplus.openid.OpenIdConstants
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.pki.CertificateChain
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 
 sealed class ClientIdScheme(
     val scheme: OpenIdConstants.ClientIdScheme,
@@ -77,7 +80,7 @@ sealed class ClientIdScheme(
     }
 
     /**
-     * When the Client Identifier Scheme is x509_san_dns, the Client Identifier MUST be a DNS name and match a
+     * When the Client Identifier Scheme is `x509_san_dns`, the Client Identifier MUST be a DNS name and match a
      * `dNSName` Subject Alternative Name (SAN) [RFC5280](https://www.rfc-editor.org/info/rfc5280) entry in the leaf
      * certificate passed with the request. The request MUST be signed with the private key corresponding to the
      * public key in the leaf X.509 certificate of the certificate chain added to the request in the `x5c` JOSE
@@ -116,6 +119,26 @@ sealed class ClientIdScheme(
             require(chain.first().tbsCertificate.subjectAlternativeNames?.dnsNames?.contains(clientIdDnsName) == true)
         }
     }
+
+    /**
+     * When the Client Identifier Prefix is `x509_hash`, the original Client Identifier (the part without the
+     * `x509_hash:` prefix) MUST be a hash and match the hash of the leaf certificate passed with the request.
+     * The request MUST be signed with the private key corresponding to the public key in the leaf X.509 certificate
+     * of the certificate chain added to the request in the `x5c` JOSE header parameter
+     * [RFC 7515](https://datatracker.ietf.org/doc/html/rfc7515) of the signed request object. The value of
+     * `x509_hash` is the base64url encoded value of the SHA-256 hash of the DER-encoded X.509 certificate.
+     * The Wallet MUST validate the signature and the trust chain of the X.509 leaf certificate.
+     * All Verifier metadata other than the public key MUST be obtained from the `client_metadata` parameter.
+     * Example Client Identifier: `x509_hash:Uvo3HtuIxuhC92rShpgqcT3YXwrqRxWEviRiA0OZszk`.
+     */
+    class CertificateHash(
+        val chain: CertificateChain,
+        redirectUri: String,
+    ) : ClientIdScheme(
+        scheme = OpenIdConstants.ClientIdScheme.X509Hash,
+        clientIdWithoutPrefix = chain.first().encodeToDer().sha256().encodeToString(Base64UrlStrict),
+        redirectUri = redirectUri,
+    )
 
     /**
      * This value indicates that the Verifier's Redirect URI (or Response URI when Response Mode `direct_post` is

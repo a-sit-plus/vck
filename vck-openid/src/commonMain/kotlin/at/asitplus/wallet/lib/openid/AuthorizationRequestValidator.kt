@@ -1,15 +1,20 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
+import at.asitplus.iso.sha256
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.OpenIdConstants.ClientIdScheme
 import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.MapStore
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import io.ktor.http.*
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.coroutines.cancellation.CancellationException
 
 internal class AuthorizationRequestValidator(
@@ -35,7 +40,7 @@ internal class AuthorizationRequestValidator(
         }
 
         val clientIdScheme = request.parameters.clientIdSchemeExtracted
-        if (clientIdScheme == OpenIdConstants.ClientIdScheme.RedirectUri) {
+        if (clientIdScheme == ClientIdScheme.RedirectUri) {
             request.parameters.verifyClientMetadata()
         }
         if (request.parameters.responseMode.isAnyDirectPost()) {
@@ -44,7 +49,7 @@ internal class AuthorizationRequestValidator(
         if (clientIdScheme.isAnyX509()) {
             request.verifyClientIdSchemeX509()
         }
-        if (clientIdScheme is OpenIdConstants.ClientIdScheme.RedirectUri) {
+        if (clientIdScheme is ClientIdScheme.RedirectUri) {
             request.parameters.verifyRedirectUrl()
         }
         if (request.isFromRequestObject()) {
@@ -70,8 +75,10 @@ internal class AuthorizationRequestValidator(
     }
 
     @Suppress("DEPRECATION")
-    private fun OpenIdConstants.ClientIdScheme?.isAnyX509() =
-        (this == OpenIdConstants.ClientIdScheme.X509SanDns) || (this == OpenIdConstants.ClientIdScheme.X509SanUri)
+    private fun ClientIdScheme?.isAnyX509() =
+        (this == ClientIdScheme.X509SanDns)
+                || (this == ClientIdScheme.X509SanUri)
+                || (this == ClientIdScheme.X509Hash)
 
     @Suppress("DEPRECATION")
     @Throws(OAuth2Exception::class)
@@ -102,44 +109,74 @@ internal class AuthorizationRequestValidator(
         val clientIdScheme = parameters.clientIdSchemeExtracted
         val responseModeIsDirectPost = parameters.responseMode.isAnyDirectPost()
         val responseModeIsDcApi = parameters.responseMode.isAnyDcApi()
-        val prefix = "client_id_scheme is $clientIdScheme"
         if (this !is RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>
             || jwsSigned.header.certificateChain == null || jwsSigned.header.certificateChain?.isEmpty() == true
         ) {
             throw InvalidRequest("x5c is null, and metadata is not set")
         }
-        //basic checks done
+
         val leaf = jwsSigned.header.certificateChain!!.leaf
+        when (clientIdScheme) {
+            ClientIdScheme.X509SanDns -> verifyX509SanDns(leaf, responseModeIsDirectPost, responseModeIsDcApi)
+            ClientIdScheme.X509SanUri -> verifyX509SanUri(leaf)
+            ClientIdScheme.X509Hash -> verifyX509SanHash(leaf)
+            // checked before calling this method
+            else -> throw InvalidRequest("Unexpected clientIdScheme $clientIdScheme")
+        }
+        // TODO Trust Model: Verify root of trust for certificate chain
+    }
+
+    private fun RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>.verifyX509SanDns(
+        leaf: X509Certificate,
+        responseModeIsDirectPost: Boolean,
+        responseModeIsDcApi: Boolean,
+    ) {
         if (leaf.tbsCertificate.extensions == null || leaf.tbsCertificate.extensions!!.isEmpty()) {
             throw InvalidRequest("no extensions in x5c")
         }
-        if (clientIdScheme == OpenIdConstants.ClientIdScheme.X509SanDns) {
-            val dnsNames = leaf.tbsCertificate.subjectAlternativeNames?.dnsNames ?: run {
-                throw InvalidRequest("no dnsNames in x5c")
+        val dnsNames = leaf.tbsCertificate.subjectAlternativeNames?.dnsNames ?: run {
+            throw InvalidRequest("no dnsNames in x5c")
+        }
+        if (!dnsNames.contains(parameters.clientIdWithoutPrefix)) {
+            throw InvalidRequest("client_id not in dnsNames in x5c $dnsNames")
+        }
+        if (!responseModeIsDirectPost && !responseModeIsDcApi) {
+            val parsedUrl = parameters.redirectUrl?.let { Url(it) } ?: run {
+                throw InvalidRequest("redirect_uri is null")
             }
-            if (!dnsNames.contains(parameters.clientIdWithoutPrefix)) {
-                throw InvalidRequest("client_id not in dnsNames in x5c $dnsNames")
+            //TODO  If the Wallet can establish trust in the Client Identifier authenticated through the
+            // certificate it may allow the client to freely choose the redirect_uri value
+            if (parsedUrl.host != parameters.clientIdWithoutPrefix) {
+                throw InvalidRequest("client_id not in redirect_uri $parsedUrl")
             }
-            if (!responseModeIsDirectPost && !responseModeIsDcApi) {
-                val parsedUrl = parameters.redirectUrl?.let { Url(it) } ?: run {
-                    throw InvalidRequest("redirect_uri is null")
-                }
-                //TODO  If the Wallet can establish trust in the Client Identifier authenticated through the
-                // certificate it may allow the client to freely choose the redirect_uri value
-                if (parsedUrl.host != parameters.clientIdWithoutPrefix) {
-                    throw InvalidRequest("client_id not in redirect_uri $parsedUrl")
-                }
-            }
-        } else {
-            val uris = leaf.tbsCertificate.subjectAlternativeNames?.uris ?: run {
-                throw InvalidRequest("no SAN in x5c")
-            }
-            if (!uris.contains(parameters.clientIdWithoutPrefix)) {
-                throw InvalidRequest("client_id not in SAN in x5c $uris")
-            }
-            if (parameters.clientIdWithoutPrefix != parameters.redirectUrl) {
-                throw InvalidRequest("client_id not in redirect_uri ${parameters.redirectUrl}")
-            }
+        }
+    }
+
+    private fun RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>.verifyX509SanUri(
+        leaf: X509Certificate,
+    ) {
+        if (leaf.tbsCertificate.extensions == null || leaf.tbsCertificate.extensions!!.isEmpty()) {
+            throw InvalidRequest("no extensions in x5c")
+        }
+        val uris = leaf.tbsCertificate.subjectAlternativeNames?.uris ?: run {
+            throw InvalidRequest("no SAN in x5c")
+        }
+        if (!uris.contains(parameters.clientIdWithoutPrefix)) {
+            throw InvalidRequest("client_id not in SAN in x5c $uris")
+        }
+        if (parameters.clientIdWithoutPrefix != parameters.redirectUrl) {
+            throw InvalidRequest("client_id not in redirect_uri ${parameters.redirectUrl}")
+        }
+    }
+
+    private fun RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>.verifyX509SanHash(
+        leaf: X509Certificate,
+    ) {
+        val calculatedHash = leaf.encodeToDerSafe()
+            .getOrElse { throw InvalidRequest("Could not encode certificate to DER", it) }
+            .sha256().encodeToString(Base64UrlStrict)
+        if (calculatedHash != parameters.clientIdWithoutPrefix) {
+            throw InvalidRequest("hash of certificate (${calculatedHash}) is not equal to client_id")
         }
     }
 
