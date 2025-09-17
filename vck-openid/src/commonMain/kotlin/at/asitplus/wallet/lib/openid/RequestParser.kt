@@ -81,7 +81,7 @@ class RequestParser(
 
     private fun String.parseFromJson(
         dcApiRequest: DCAPIRequest?,
-    ): RequestParametersFrom<*>? = catching {
+    ): RequestParametersFrom<*>? = catchingUnwrapped {
         val params = vckJsonSerializer.decodeFromString(RequestParameters.serializer(), this)
         RequestParametersFrom.Json(this, params, dcApiRequest)
     }.getOrNull()

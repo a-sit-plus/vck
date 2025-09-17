@@ -369,7 +369,7 @@ class OpenId4VpHolder(
 
     private suspend fun RelyingPartyMetadata.loadJsonWebKeySet(): JsonWebKeySet? =
         jsonWebKeySet ?: jsonWebKeySetUrl
-            ?.let { remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(it)) }
+            ?.let { remoteResourceRetriever(RemoteResourceRetrieverInput(it)) }
             ?.let { joseCompliantSerializer.decodeFromString(it) }
 
     private suspend fun AuthenticationRequestParameters.loadCredentialRequest(): CredentialPresentationRequest? =
@@ -380,12 +380,12 @@ class OpenId4VpHolder(
 
     private suspend fun AuthenticationRequestParameters.loadPresentationDefinition(): PresentationDefinition? =
         presentationDefinition ?: presentationDefinitionUrl
-            ?.let { remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(it)) }
+            ?.let { remoteResourceRetriever(RemoteResourceRetrieverInput(it)) }
             ?.let { vckJsonSerializer.decodeFromString(it) }
 
     private suspend fun AuthenticationRequestParameters.loadClientMetadata(): RelyingPartyMetadata? =
         clientMetadata ?: clientMetadataUri
-            ?.let { remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(it)) }
+            ?.let { remoteResourceRetriever(RemoteResourceRetrieverInput(it)) }
             ?.let { joseCompliantSerializer.decodeFromString(it) }
 
 }
