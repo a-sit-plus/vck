@@ -196,10 +196,8 @@ class PreRegisteredClientTest : FreeSpec({
         authnRequest.clientId shouldBe clientId
         val jar = authnRequest.request
             .shouldNotBeNull()
-        val jwsObject = JwsSigned.Companion.deserialize<AuthenticationRequestParameters>(
-            AuthenticationRequestParameters.Companion.serializer(), jar,
-            vckJsonSerializer
-        ).getOrThrow()
+        val jwsObject = JwsSigned.deserialize(AuthenticationRequestParameters.serializer(), jar, vckJsonSerializer)
+            .getOrThrow()
         VerifyJwsObject().invoke(jwsObject).shouldBeTrue()
 
         val authnResponse = holderOid4vp.createAuthnResponse(jar).getOrThrow()
@@ -244,9 +242,7 @@ class PreRegisteredClientTest : FreeSpec({
                 params.shouldHaveSize(1) // only the "response" object
             }
         val jarmResponse = authnResponse.params.entries.first { it.key == "response" }.value
-        val jwsObject = JwsSigned.Companion.deserialize<AuthenticationResponseParameters>(
-            AuthenticationResponseParameters.Companion.serializer(), jarmResponse
-        ).getOrThrow()
+        val jwsObject = JwsSigned.deserialize(AuthenticationResponseParameters.serializer(), jarmResponse).getOrThrow()
         VerifyJwsObject().invoke(jwsObject).shouldBeTrue()
 
         val result = verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())

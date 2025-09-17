@@ -130,15 +130,13 @@ private suspend fun buildAttestationJwt(
         notBefore = Clock.System.now(),
         confirmationClaim = ConfirmationClaim(jsonWebKey = verifierKeyMaterial.jsonWebKey),
     ),
-    JsonWebToken.Companion.serializer(),
+    JsonWebToken.serializer(),
 ).getOrThrow()
 
 private fun attestationJwtVerifier(trustedKey: JsonWebKey) =
     RequestObjectJwsVerifier { jws: JwsSigned<RequestParameters> ->
         val attestationJwt = jws.header.attestationJwt?.let {
-            JwsSigned.Companion.deserialize<JsonWebToken>(
-                JsonWebToken.Companion.serializer(), it
-            ).getOrThrow()
+            JwsSigned.deserialize(JsonWebToken.serializer(), it).getOrThrow()
         } ?: return@RequestObjectJwsVerifier false
         val verifyJwsSignatureWithKey = VerifyJwsSignatureWithKey()
         if (!verifyJwsSignatureWithKey(attestationJwt, trustedKey).isSuccess)

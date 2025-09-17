@@ -459,12 +459,8 @@ class OpenId4VpVerifier(
 
     @Throws(IllegalArgumentException::class, CancellationException::class)
     private suspend fun extractValidatedIdToken(idTokenJws: String): IdToken {
-        val jwsSigned = JwsSigned.Companion.deserialize<IdToken>(
-            IdToken.Companion.serializer(), idTokenJws,
-            vckJsonSerializer
-        ).getOrElse {
-            throw IllegalArgumentException("idToken", it)
-        }
+        val jwsSigned = JwsSigned.deserialize(IdToken.serializer(), idTokenJws, vckJsonSerializer)
+            .getOrElse { throw IllegalArgumentException("idToken", it) }
         if (!verifyJwsObject(jwsSigned))
             throw IllegalArgumentException("idToken")
                 .also { Napier.w { "JWS of idToken not verified: $idTokenJws" } }
@@ -608,8 +604,8 @@ class OpenId4VpVerifier(
         )
 
         ClaimFormat.JWT_VP -> verifier.verifyPresentationVcJwt(
-            input = JwsSigned.Companion.deserialize<VerifiablePresentationJws>(
-                VerifiablePresentationJws.Companion.serializer(),
+            input = JwsSigned.deserialize(
+                VerifiablePresentationJws.serializer(),
                 relatedPresentation.jsonPrimitive.content,
                 vckJsonSerializer
             ).getOrThrow(),

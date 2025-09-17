@@ -96,10 +96,6 @@ class ResponseParser(
         }
 
     private fun String.fromJws(): JwsSigned<AuthenticationResponseParameters>? =
-        JwsSigned.Companion.deserialize(
-            AuthenticationResponseParameters.Companion.serializer(),
-            this,
-            vckJsonSerializer
-        ).getOrNull()
+        JwsSigned.deserialize(AuthenticationResponseParameters.serializer(), this, vckJsonSerializer).getOrNull()
 
 }

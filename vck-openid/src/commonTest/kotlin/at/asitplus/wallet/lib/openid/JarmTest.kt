@@ -9,7 +9,9 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import com.benasher44.uuid.uuid4
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
@@ -69,8 +71,7 @@ class JarmTest : FreeSpec({
                 responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                 responseUrl = "https://example.com/${uuid4()}"
             )
-        )
-        authnRequest shouldNotBe null
+        ).shouldNotBeNull()
 
         val invalidReq = authnRequest.copy(
             clientMetadata = authnRequest.clientMetadata?.copy(
@@ -80,8 +81,8 @@ class JarmTest : FreeSpec({
             )
         )
 
-        val response = holderOid4vp.createAuthnResponse(vckJsonSerializer.encodeToString(invalidReq))
-        response.exceptionOrNull() shouldNotBe null
-        response.exceptionOrNull().shouldBeInstanceOf<OAuth2Exception.InvalidRequest>()
+        shouldThrow<OAuth2Exception.InvalidRequest> {
+            holderOid4vp.createAuthnResponse(vckJsonSerializer.encodeToString(invalidReq))
+        }
     }
 })

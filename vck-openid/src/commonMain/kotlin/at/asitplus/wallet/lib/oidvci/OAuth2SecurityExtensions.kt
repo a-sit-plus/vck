@@ -80,7 +80,7 @@ object BuildClientAttestationJwt {
         ).also {
             Napier.d("Building client attestation JWT: $it")
         },
-        JsonWebToken.Companion.serializer(),
+        JsonWebToken.serializer(),
     ).getOrThrow()
 }
 
@@ -116,6 +116,6 @@ object BuildClientAttestationPoPJwt {
         ).also {
             Napier.d("Building client attestation PoP JWT: $it")
         },
-        JsonWebToken.Companion.serializer(),
+        JsonWebToken.serializer(),
     ).getOrThrow()
 }

@@ -29,7 +29,6 @@ import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
-import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlin.time.Clock.System
 
@@ -105,12 +104,11 @@ class OidvciAttestationTest : FunSpec({
                 it.request,
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
-            val serializedCredential = credential.credentials.shouldNotBeEmpty()
-                .first().credentialString.shouldNotBeNull()
 
-            JwsSigned.Companion.deserialize<VerifiableCredentialJws>(
-                VerifiableCredentialJws.Companion.serializer(),
-                serializedCredential,
+            JwsSigned.deserialize(
+                VerifiableCredentialJws.serializer(),
+                credential.credentials.shouldNotBeEmpty()
+                    .first().credentialString.shouldNotBeNull(),
                 vckJsonSerializer
             ).getOrThrow()
                 .payload.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()

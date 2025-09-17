@@ -21,7 +21,7 @@ import kotlinx.serialization.json.jsonPrimitive
  */
 object SelectiveDisclosureItemSerializer : KSerializer<SelectiveDisclosureItem> {
 
-    private val listSerializer = ListSerializer(JsonElement.Companion.serializer())
+    private val listSerializer = ListSerializer(JsonElement.serializer())
 
     override val descriptor: SerialDescriptor = listSerializer.descriptor
 
