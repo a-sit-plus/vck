@@ -18,8 +18,12 @@ import kotlinx.serialization.json.JsonPrimitive
  */
 typealias TransactionDataBase64Url = JsonPrimitive
 
+@Deprecated("Use digest()", ReplaceWith("digest(Digest.SHA256)"))
 fun TransactionDataBase64Url.sha256(): ByteArray =
     Digest.SHA256.digest(this.content.toByteArray(Charsets.UTF_8))
+
+fun TransactionDataBase64Url.digest(digest: Digest): ByteArray =
+    digest.digest(content.toByteArray(Charsets.UTF_8))
 
 /**
  * OID4VP Draft 24: OPTIONAL. Array of strings, where each string is a base64url encoded JSON object that contains a typed parameter

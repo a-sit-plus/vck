@@ -2,19 +2,33 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.iso.*
+import at.asitplus.iso.DeviceAuth
+import at.asitplus.iso.DeviceNameSpaces
+import at.asitplus.iso.DeviceResponse
+import at.asitplus.iso.DeviceSigned
+import at.asitplus.iso.Document
+import at.asitplus.iso.IssuerSigned
+import at.asitplus.iso.sha256
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
-import at.asitplus.openid.sha256
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.SdJwtCreator.NAME_SD
-import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.data.KeyBindingJws
+import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
+import at.asitplus.wallet.lib.data.VerifiablePresentation
+import at.asitplus.wallet.lib.data.VerifiablePresentationJws
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.extensions.sdHashInput
-import at.asitplus.wallet.lib.jws.*
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
+import at.asitplus.wallet.lib.jws.JwsHeaderNone
+import at.asitplus.wallet.lib.jws.SdJwtSigned
+import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.SignJwtFun
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -240,20 +254,24 @@ class VerifiablePresentationFactory(
     private suspend fun createKeyBindingJws(
         request: PresentationRequestParameters,
         issuerJwtPlusDisclosures: String,
-    ): JwsSigned<KeyBindingJws> = signKeyBinding(
-        JwsContentTypeConstants.KB_JWT,
-        KeyBindingJws(
-            issuedAt = Clock.System.now(),
-            audience = request.audience,
-            challenge = request.nonce,
-            sdHash = issuerJwtPlusDisclosures.encodeToByteArray().sha256(),
-            transactionDataHashes = request.transactionData?.let { entry -> entry.map { it.sha256() } },
-            transactionDataHashesAlgorithm = request.transactionData?.let { SdJwtConstants.SHA_256 },
-        ),
-        KeyBindingJws.serializer(),
-    ).getOrElse {
-        throw PresentationException(it)
-    }
+    ): JwsSigned<KeyBindingJws> =
+        request.transactionData.hash().let { hashedTransactionData ->
+            signKeyBinding(
+                JwsContentTypeConstants.KB_JWT,
+                KeyBindingJws(
+                    issuedAt = Clock.System.now(),
+                    audience = request.audience,
+                    challenge = request.nonce,
+                    sdHash = issuerJwtPlusDisclosures.encodeToByteArray().sha256(),
+                    transactionDataHashesAlgorithm = hashedTransactionData?.first,
+                    transactionDataHashes = hashedTransactionData?.second,
+                ),
+                KeyBindingJws.serializer(),
+            ).getOrElse {
+                throw PresentationException(it)
+            }
+        }
+
 
     /**
      * Creates a [VerifiablePresentation] with the given [validCredentials].

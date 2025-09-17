@@ -1,4 +1,4 @@
-package io.kotest.provided.at.asitplus.wallet.lib.rqes
+package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.csc.QtspSignatureRequest
 import at.asitplus.csc.SignDocRequestParameters

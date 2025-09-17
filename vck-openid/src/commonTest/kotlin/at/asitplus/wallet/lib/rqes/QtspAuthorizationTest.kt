@@ -1,4 +1,4 @@
-package io.kotest.provided.at.asitplus.wallet.lib.rqes
+package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.catching
 import at.asitplus.openid.OidcUserInfoExtended
@@ -8,9 +8,7 @@ import at.asitplus.signum.indispensable.Digest
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
-import at.asitplus.wallet.lib.rqes.RqesWalletService
-import io.kotest.provided.at.asitplus.wallet.lib.rqes.helper.DummyValueProvider
-import at.asitplus.wallet.lib.rqes.SimpleQtspAuthorizationService
+import at.asitplus.wallet.lib.rqes.helper.DummyValueProvider
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
 import io.ktor.http.*

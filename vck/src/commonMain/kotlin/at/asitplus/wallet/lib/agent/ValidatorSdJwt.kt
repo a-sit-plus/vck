@@ -1,19 +1,25 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.csc.contentEquals
 import at.asitplus.iso.sha256
 import at.asitplus.openid.TransactionDataBase64Url
-import at.asitplus.csc.contentEquals
-import at.asitplus.openid.sha256
+import at.asitplus.openid.digest
 import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.Digest
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.SuccessSdJwt
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.ValidationError
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.agent.validation.sdJwt.SdJwtInputValidator
 import at.asitplus.wallet.lib.data.KeyBindingJws
-import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
-import at.asitplus.wallet.lib.jws.*
+import at.asitplus.wallet.lib.jws.SdJwtSigned
+import at.asitplus.wallet.lib.jws.VerifyJwsObject
+import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
+import at.asitplus.wallet.lib.jws.VerifyJwsSignature
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureFun
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnf
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnfFun
 import io.github.aakira.napier.Napier
 
 /**
@@ -75,16 +81,15 @@ class ValidatorSdJwt(
             return VerifyPresentationResult.ValidationError("Audience not correct: ${keyBinding.audience}")
         }
         if (!keyBinding.sdHash.contentEquals(input.hashInput.encodeToByteArray().sha256())) {
-            return VerifyPresentationResult.ValidationError("Key Binding does not contain correct sd_hash")
+            return VerifyPresentationResult.ValidationError("KB-JWT does not contain correct sd_hash")
         }
         if (verifyTransactionData) {
             transactionData?.let { data ->
-                //TODO support more hash algorithms
-                if (keyBinding.transactionDataHashesAlgorithm != SdJwtConstants.SHA_256) {
-                    return VerifyPresentationResult.ValidationError("Unsupported hashing algorithm: ${keyBinding.transactionDataHashesAlgorithm}")
-                }
-                if (keyBinding.transactionDataHashes?.contentEquals(data.map { it.sha256() }) == false) {
-                    return VerifyPresentationResult.ValidationError("Key Binding does not contain correct transaction data hashes")
+                val digest = keyBinding.transactionDataHashesAlgorithm?.toDigest() ?: Digest.SHA256
+                if (keyBinding.transactionDataHashes?.contentEquals(data.map { it.digest(digest) }) == false) {
+                    return VerifyPresentationResult.ValidationError(
+                        "KB-JWT does not contain correct transaction data hashes"
+                    )
                 }
             }
         }

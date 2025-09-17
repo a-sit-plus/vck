@@ -1,4 +1,4 @@
-package io.kotest.provided.at.asitplus.wallet.lib.rqes.helper
+package at.asitplus.wallet.lib.rqes.helper
 
 import at.asitplus.csc.CredentialInfo
 import at.asitplus.csc.collection_entries.*
