@@ -1,20 +1,27 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
-import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import at.asitplus.wallet.lib.jws.VerifyJwsObject
-import at.asitplus.wallet.lib.oidvci.*
+import at.asitplus.wallet.lib.oidvci.MapStore
+import at.asitplus.wallet.lib.oidvci.NonceService
+import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
+import at.asitplus.wallet.lib.oidvci.encodeToParameters
+import at.asitplus.wallet.lib.oidvci.formUrlEncode
+import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.CreationOptions
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
-import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.maps.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -22,8 +29,7 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.http.URLBuilder
-import io.ktor.http.Url
+import io.ktor.http.*
 
 class RedirectUriClientTest : FreeSpec({
 
@@ -67,7 +73,7 @@ class RedirectUriClientTest : FreeSpec({
 
     "test with Fragment" {
         val authnRequest = verifierOid4vp.createAuthnRequest(
-            defaultRequestOptions, OpenId4VpVerifier.CreationOptions.Query(walletUrl)
+            defaultRequestOptions, CreationOptions.Query(walletUrl)
         ).getOrThrow().url
 
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
@@ -99,7 +105,7 @@ class RedirectUriClientTest : FreeSpec({
             responseType = OpenIdConstants.ID_TOKEN
         )
         val authnRequest = verifierOid4vp.createAuthnRequest(
-            requestOptions, OpenId4VpVerifier.CreationOptions.Query(walletUrl)
+            requestOptions, CreationOptions.Query(walletUrl)
         ).getOrThrow().url
 
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
@@ -121,7 +127,7 @@ class RedirectUriClientTest : FreeSpec({
             },
         )
         val authnRequest = verifierOid4vp.createAuthnRequest(
-            defaultRequestOptions, OpenId4VpVerifier.CreationOptions.Query(walletUrl)
+            defaultRequestOptions, CreationOptions.Query(walletUrl)
         ).getOrThrow().url
 
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
@@ -135,7 +141,7 @@ class RedirectUriClientTest : FreeSpec({
     "signed requests not allowed for redirect-uri" {
         shouldThrow<IllegalArgumentException> {
             verifierOid4vp.createAuthnRequest(
-                defaultRequestOptions, OpenId4VpVerifier.CreationOptions.SignedRequestByValue(walletUrl)
+                defaultRequestOptions, CreationOptions.SignedRequestByValue(walletUrl)
             ).getOrThrow().url
         }
     }
@@ -144,7 +150,7 @@ class RedirectUriClientTest : FreeSpec({
         shouldThrow<IllegalArgumentException> {
             verifierOid4vp.createAuthnRequest(
                 defaultRequestOptions,
-                OpenId4VpVerifier.CreationOptions.SignedRequestByReference(walletUrl, "https://example.com")
+                CreationOptions.SignedRequestByReference(walletUrl, "https://example.com")
             ).getOrThrow().url
         }
     }
@@ -156,7 +162,7 @@ class RedirectUriClientTest : FreeSpec({
                 responseMode = OpenIdConstants.ResponseMode.DirectPost,
                 responseUrl = clientId,
             ),
-            OpenId4VpVerifier.CreationOptions.Query(walletUrl)
+            CreationOptions.Query(walletUrl)
         ).getOrThrow().url
 
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
@@ -168,14 +174,14 @@ class RedirectUriClientTest : FreeSpec({
         result.vp.freshVerifiableCredentials.shouldNotBeEmpty()
     }
 
-    "test with direct_post_jwt" {
+    "test with direct_post.jwt" {
         val authnRequest = verifierOid4vp.createAuthnRequest(
             RequestOptions(
                 credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
                 responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                 responseUrl = clientId,
             ),
-            OpenId4VpVerifier.CreationOptions.Query(walletUrl)
+            CreationOptions.Query(walletUrl)
         ).getOrThrow().url
 
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
@@ -183,9 +189,6 @@ class RedirectUriClientTest : FreeSpec({
                 url.shouldBe(clientId)
                 params.shouldHaveSize(1) // only the "response" object
             }
-        val jarmResponse = authnResponse.params.entries.first { it.key == "response" }.value
-        val jwsObject = JwsSigned.deserialize(AuthenticationResponseParameters.serializer(), jarmResponse).getOrThrow()
-        VerifyJwsObject().invoke(jwsObject).shouldBeTrue()
 
         val result = verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
             .shouldBeInstanceOf<AuthnResponseResult.Success>()
@@ -200,7 +203,7 @@ class RedirectUriClientTest : FreeSpec({
                 responseMode = OpenIdConstants.ResponseMode.Query,
                 state = expectedState
             ),
-            OpenId4VpVerifier.CreationOptions.Query(walletUrl)
+            CreationOptions.Query(walletUrl)
         ).getOrThrow().url
 
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
@@ -238,7 +241,7 @@ class RedirectUriClientTest : FreeSpec({
     "test specific credential" {
         val authnRequest = verifierOid4vp.createAuthnRequest(
             requestOptionsAtomicAttribute(),
-            OpenId4VpVerifier.CreationOptions.Query(walletUrl)
+            CreationOptions.Query(walletUrl)
         ).getOrThrow().url
 
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
@@ -266,7 +269,7 @@ private suspend fun verifySecondProtocolRun(
     holderOid4vp: OpenId4VpHolder,
 ) {
     val authnRequestUrl = verifierOid4vp.createAuthnRequest(
-        defaultRequestOptions, OpenId4VpVerifier.CreationOptions.Query(walletUrl)
+        defaultRequestOptions, CreationOptions.Query(walletUrl)
     ).getOrThrow().url
     val authnResponse = holderOid4vp.createAuthnResponse(authnRequestUrl)
     verifierOid4vp.validateAuthnResponse((authnResponse.getOrThrow() as AuthenticationResponseResult.Redirect).url)

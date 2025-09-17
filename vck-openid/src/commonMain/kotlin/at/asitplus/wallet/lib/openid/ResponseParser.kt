@@ -81,11 +81,11 @@ class ResponseParser(
         } ?: input
 
     private suspend fun String.fromJwe(): JweDecrypted<AuthenticationResponseParameters>? =
-        JweEncrypted.deserialize(this).getOrNull()?.let {
-            decryptJwe(it).getOrNull()?.let {
+        JweEncrypted.deserialize(this).getOrNull()?.let { encrypted ->
+            decryptJwe(encrypted).getOrThrow().let { decrypted ->
                 JweDecrypted(
-                    it.header,
-                    vckJsonSerializer.decodeFromString<AuthenticationResponseParameters>(it.payload)
+                    decrypted.header,
+                    vckJsonSerializer.decodeFromString<AuthenticationResponseParameters>(decrypted.payload)
                 )
             }
         }

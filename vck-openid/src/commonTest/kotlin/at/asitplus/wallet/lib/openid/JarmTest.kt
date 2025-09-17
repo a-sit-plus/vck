@@ -1,8 +1,14 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.openid.*
-import at.asitplus.wallet.eupid.EuPidScheme
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.RelyingPartyMetadata
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.rfc3986.toUri
@@ -12,8 +18,6 @@ import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
-import io.kotest.matchers.shouldNotBe
-import io.kotest.matchers.types.shouldBeInstanceOf
 
 class JarmTest : FreeSpec({
     lateinit var clientId: String
@@ -38,16 +42,6 @@ class JarmTest : FreeSpec({
                     .getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         )
-        holderAgent.storeCredential(
-            IssuerAgent(
-                identifier = "https://issuer.example.com/".toUri(),
-                randomSource = RandomSource.Default
-            ).issueCredential(
-                DummyCredentialDataProvider.getCredential(holderKeyMaterial.publicKey, EuPidScheme, SD_JWT)
-                    .getOrThrow()
-            ).getOrThrow().toStoreCredentialInput()
-        )
-
         holderOid4vp = OpenId4VpHolder(
             holder = holderAgent,
             randomSource = RandomSource.Default,
@@ -59,8 +53,7 @@ class JarmTest : FreeSpec({
     }
 
     /**
-     * Incorrect behaviour arises when the [RelyingPartyMetadata.jsonWebKeySet] cannot be
-     * retrieved and [RelyingPartyMetadata.authorizationSignedResponseAlgString] is not set.
+     * Incorrect behaviour arises when the [RelyingPartyMetadata.jsonWebKeySet] cannot be retrieved.
      */
     "DirectPostJwt must either be signed or encrypted" {
         val authnRequest = verifierOid4vp.createAuthnRequest(
@@ -76,13 +69,13 @@ class JarmTest : FreeSpec({
         val invalidReq = authnRequest.copy(
             clientMetadata = authnRequest.clientMetadata?.copy(
                 jsonWebKeySet = null,
-                jsonWebKeySetUrl = "https://example.com/rp/${uuid4()}",
+                jsonWebKeySetUrl = null,
                 authorizationSignedResponseAlgString = null
             )
         )
 
         shouldThrow<OAuth2Exception.InvalidRequest> {
-            holderOid4vp.createAuthnResponse(vckJsonSerializer.encodeToString(invalidReq))
+            holderOid4vp.createAuthnResponse(vckJsonSerializer.encodeToString(invalidReq)).getOrThrow()
         }
     }
 })

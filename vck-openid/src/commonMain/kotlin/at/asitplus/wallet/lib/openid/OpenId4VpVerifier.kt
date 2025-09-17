@@ -394,7 +394,7 @@ class OpenId4VpVerifier(
         if (options.clientMetadataUrl != null && clientIdScheme !is ClientIdScheme.RedirectUri) {
             null
         } else {
-            if (options.encryption) metadataWithEncryption else metadata
+            if (options.encryption || options.responseMode.requiresEncryption) metadataWithEncryption else metadata
         }
 
     /**

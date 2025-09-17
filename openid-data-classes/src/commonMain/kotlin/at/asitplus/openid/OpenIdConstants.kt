@@ -103,6 +103,7 @@ object OpenIdConstants {
     object TokenTypes {
         /** `urn:ietf:params:oauth:token-type:access_token` */
         const val ACCESS_TOKEN = "urn:ietf:params:oauth:token-type:access_token"
+
         /** `urn:ietf:params:oauth:token-type:refresh_token` */
         const val REFRESH_TOKEN = "urn:ietf:params:oauth:token-type:refresh_token"
     }
@@ -325,6 +326,7 @@ object OpenIdConstants {
 
     @Serializable(with = ResponseMode.Serializer::class)
     sealed class ResponseMode(val stringRepresentation: String) {
+
         override fun toString(): String = this::class.simpleName + "(" + stringRepresentation + ")"
 
         override fun hashCode() = stringRepresentation.hashCode()
@@ -355,9 +357,10 @@ object OpenIdConstants {
 
         /**
          * OID4VP: The Response Mode `direct_post.jwt` causes the Wallet to send the Authorization Response using an
-         * HTTPS POST request instead of redirecting back to the Verifier. The Wallet adds the response parameter
-         * containing the JWT as defined in Section 4.1. of JARM and Section 6.3 in the body of an HTTPS POST request
-         * using the `application/x-www-form-urlencoded` content type.
+         * HTTP POST request instead of redirecting back to the Verifier as defined in Section 8.2.
+         * The Wallet adds the response parameter containing the JWT as defined in Section 8.3 in the body of an
+         * HTTP POST request using the` application/x-www-form-urlencoded` content type.
+         * The names and values in the body MUST be encoded using UTF-8.
          */
         object DirectPostJwt : ResponseMode(STRING_DIRECT_POST_JWT)
 
@@ -407,6 +410,13 @@ object OpenIdConstants {
                 encoder.encodeString(value.stringRepresentation)
             }
         }
+
+        val requiresEncryption: Boolean
+            get() = when (this) {
+                DcApiJwt -> true
+                DirectPostJwt -> true
+                else -> false
+            }
     }
 
     /**

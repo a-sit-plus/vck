@@ -37,6 +37,7 @@ Release 5.9.0 (unreleased):
    - OpenID4VP: Use credential format identifier `dc+sd-jwt` everywhere
    - OpenID4VP: Discard option to use deprecated `client_id_scheme` parameter in `ClientIdScheme` subclasses
    - OpenID4VP: Do not read the explicit parameter `client_id_scheme` (it's prefixed in the `client_id`)
+   - OpenID4VP: Do not send signed JWT as authentication responses, but always encrypt them when using `direct_post.jwt`
    - DCAPI: Remove (already deprecated) preview data class `PreviewDCAPIRequest`, either use OpenID4VP or ISO 18013-7 Annex C
  - JWE:
    - Add `EncryptJweSymmetricFun` and `EncryptJweSymmetric` and `DecryptJweSymmetric`

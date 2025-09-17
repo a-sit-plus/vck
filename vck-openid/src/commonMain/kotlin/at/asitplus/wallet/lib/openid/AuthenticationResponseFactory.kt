@@ -8,6 +8,7 @@ import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
+import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.JwkType
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
@@ -39,8 +40,8 @@ internal class AuthenticationResponseFactory(
         DirectPostJwt -> authnResponseDirectPostJwt(request, response)
         Query -> authnResponseQuery(request, response)
         Fragment, null -> authnResponseFragment(request, response)
-        DcApi -> responseDcApi(request, response, false)
-        DcApiJwt -> responseDcApi(request, response, true)
+        DcApi -> responseDcApi(request, response)
+        DcApiJwt -> responseDcApi(request, response)
         is Other -> throw IllegalArgumentException("Unsupported response mode: ${request.parameters.responseMode}")
     }
 
@@ -48,10 +49,9 @@ internal class AuthenticationResponseFactory(
     internal suspend fun responseDcApi(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
-        requestsEncryption: Boolean,
     ) = AuthenticationResponseResult.DcApi(
         AuthenticationResponseParameters(
-            response = buildResponse(request, response, requestsEncryption),
+            response = buildResponse(request, response),
         )
     )
 
@@ -64,7 +64,7 @@ internal class AuthenticationResponseFactory(
             ?: request.parameters.redirectUrlExtracted
             ?: throw InvalidRequest("no response_uri or redirect_uri"),
         params = AuthenticationResponseParameters(
-            response = buildResponse(request, response, true),
+            response = buildResponse(request, response),
         ).encodeToParameters()
     )
 
@@ -128,15 +128,11 @@ internal class AuthenticationResponseFactory(
     private suspend fun buildResponse(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
-        requestsEncryption: Boolean = false,
-    ) = if (requestsEncryption || response.requestsEncryption()) {
+    ) = if (request.parameters.responseMode?.requiresEncryption == true || response.requestsEncryption()) {
         encrypt(request, response)
     } else if (response.requestsSignature()) {
         response.params?.let { sign(it) } ?: throw InvalidRequest("No params in response")
     } else {
-        if (requestsEncryption) {
-            throw InvalidRequest("Invoker requests encryption but required parameters not set")
-        }
         if (request.parameters.responseMode !is DcApi) {
             throw InvalidRequest("Response must be either signed, encrypted or both.")
         }
@@ -157,9 +153,11 @@ internal class AuthenticationResponseFactory(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
     ): String {
-        val algorithm = response.clientMetadata!!.authorizationEncryptedResponseAlg!!
-        val encryption = response.clientMetadata.authorizationEncryptedResponseEncoding!!
-        val recipientKey = response.jsonWebKeys!!.getEcdhEsKey()
+        val recipientKey = response.jsonWebKeys?.getEcdhEsKey()
+            ?: throw InvalidRequest("no suitable ECDH ES key found")
+        val algorithm = JweAlgorithm.ECDH_ES
+        val encryption = response.clientMetadata?.authorizationEncryptedResponseEncoding
+            ?: JweEncryption.A128GCM
         val apv = request.parameters.nonce?.encodeToByteArray()
             ?: randomSource.nextBytes(16)
         val apu = response.mdocGeneratedNonce?.encodeToByteArray()
@@ -212,4 +210,4 @@ internal fun AuthenticationResponse.requestsSignature(): Boolean =
     clientMetadata != null && clientMetadata.authorizationSignedResponseAlg != null
 
 internal fun RelyingPartyMetadata.requestsEncryption() =
-    (authorizationEncryptedResponseAlg != null && authorizationEncryptedResponseEncoding != null) || encryptedResponseEncryptionAlgorithm != null
+    (authorizationEncryptedResponseAlg != null && authorizationEncryptedResponseEncoding != null)

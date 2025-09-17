@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
@@ -226,7 +225,7 @@ class PreRegisteredClientTest : FreeSpec({
         result.vp.freshVerifiableCredentials.shouldNotBeEmpty()
     }
 
-    "test with direct_post_jwt" {
+    "test with direct_post.jwt" {
         val authnRequest = verifierOid4vp.createAuthnRequest(
             RequestOptions(
                 credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
@@ -241,9 +240,6 @@ class PreRegisteredClientTest : FreeSpec({
                 url.shouldBe(redirectUrl)
                 params.shouldHaveSize(1) // only the "response" object
             }
-        val jarmResponse = authnResponse.params.entries.first { it.key == "response" }.value
-        val jwsObject = JwsSigned.deserialize(AuthenticationResponseParameters.serializer(), jarmResponse).getOrThrow()
-        VerifyJwsObject().invoke(jwsObject).shouldBeTrue()
 
         val result = verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
             .shouldBeInstanceOf<AuthnResponseResult.Success>()
@@ -257,7 +253,7 @@ class PreRegisteredClientTest : FreeSpec({
         val parsedAuthnRequest: AuthenticationRequestParameters =
             authnRequestUrlParams.decodeFromUrlQuery()
         val authnResponse = holderOid4vp.createAuthnResponseParams(
-            RequestParametersFrom.Uri<AuthenticationRequestParameters>(
+            RequestParametersFrom.Uri(
                 Url(authnRequestUrlParams),
                 parsedAuthnRequest
             )

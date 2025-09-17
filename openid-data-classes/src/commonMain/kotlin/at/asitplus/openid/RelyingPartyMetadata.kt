@@ -50,7 +50,7 @@ data class RelyingPartyMetadata(
      * OIDC Registration: OPTIONAL. JWS alg algorithm REQUIRED for signing the ID Token issued to this Client.
      * The value none MUST NOT be used as the ID Token alg value unless the Client uses only Response Types that return
      * no ID Token from the Authorization Endpoint (such as when only using the Authorization Code Flow).
-     * The default, if omitted, is RS256.
+     * The default, if omitted, is `RS256`.
      * The public key for validating the signature is provided by retrieving the JWK Set referenced by the `jwks_uri`
      * element from OpenID Connect Discovery 1.0.
      */
@@ -60,7 +60,7 @@ data class RelyingPartyMetadata(
     /**
      * OID JARM: JWS (RFC7515) `alg` algorithm JWA (RFC7518). REQUIRED for signing authorization responses.
      * If this is specified, the response will be signed using JWS and the configured algorithm.
-     * The algorithm `none` is not allowed. The default, if omitted, is RS256.
+     * The algorithm `none` is not allowed. The default, if omitted, is `RS256`.
      */
     @SerialName("authorization_signed_response_alg")
     val authorizationSignedResponseAlgString: String? = null,
@@ -75,7 +75,7 @@ data class RelyingPartyMetadata(
 
     /**
      * OID JARM: JWE (RFC7516) `enc` algorithm JWA (RFC7518). REQUIRED for encrypting authorization responses.
-     * If [authorizationEncryptedResponseAlg] is specified, the default for this value is A128CBC-HS256.
+     * If [authorizationEncryptedResponseAlg] is specified, the default for this value is `A128CBC-HS256`.
      * When [authorizationEncryptedResponseEncoding] is included, [authorizationEncryptedResponseAlg] MUST also be
      * provided.
      */
@@ -92,7 +92,7 @@ data class RelyingPartyMetadata(
 
     /**
      * OIDC Registration: OPTIONAL. JWE enc algorithm REQUIRED for encrypting the ID Token issued to this Client.
-     * If [idTokenEncryptedResponseAlg] is specified, the default value is A128CBC-HS256.
+     * If [idTokenEncryptedResponseAlg] is specified, the default value is `A128CBC-HS256`.
      * When [idTokenEncryptedResponseEncoding] is included, [idTokenEncryptedResponseAlg] MUST also be provided.
      */
     @SerialName("id_token_encrypted_response_enc")
@@ -155,7 +155,7 @@ data class RelyingPartyMetadata(
      * OIDC Registration: OPTIONAL. JWS alg algorithm REQUIRED for signing the ID Token issued to this Client.
      * The value none MUST NOT be used as the ID Token alg value unless the Client uses only Response Types that return
      * no ID Token from the Authorization Endpoint (such as when only using the Authorization Code Flow).
-     * The default, if omitted, is RS256.
+     * The default, if omitted, is [JwsAlgorithm.Signature.RS256].
      * The public key for validating the signature is provided by retrieving the JWK Set referenced by the `jwks_uri`
      * element from OpenID Connect Discovery 1.0.
      */
@@ -165,14 +165,14 @@ data class RelyingPartyMetadata(
     /**
      * OID JARM: JWS (RFC7515) `alg` algorithm JWA (RFC7518). REQUIRED for signing authorization responses.
      * If this is specified, the response will be signed using JWS and the configured algorithm.
-     * The algorithm `none` is not allowed. The default, if omitted, is RS256.
+     * The algorithm `none` is not allowed. The default, if omitted, is [JwsAlgorithm.Signature.RS256].
      */
     @Transient
     val authorizationSignedResponseAlg: JwsAlgorithm? = authorizationSignedResponseAlgString?.toJwsAlgorithm()
 
     /**
      * OID JARM: JWE (RFC7516) `enc` algorithm JWA (RFC7518). REQUIRED for encrypting authorization responses.
-     * If [authorizationEncryptedResponseAlg] is specified, the default for this value is A128CBC-HS256.
+     * If [authorizationEncryptedResponseAlg] is specified, the default for this value is [JweEncryption.A128CBC_HS256].
      * When [authorizationEncryptedResponseEncoding] is included, [authorizationEncryptedResponseAlg] MUST also be
      * provided.
      */
@@ -182,7 +182,7 @@ data class RelyingPartyMetadata(
 
     /**
      * OIDC Registration: OPTIONAL. JWE enc algorithm REQUIRED for encrypting the ID Token issued to this Client.
-     * If [idTokenEncryptedResponseAlg] is specified, the default value is A128CBC-HS256.
+     * If [idTokenEncryptedResponseAlg] is specified, the default value is [JweEncryption.A128CBC_HS256].
      * When [idTokenEncryptedResponseEncoding] is included, [idTokenEncryptedResponseAlg] MUST also be provided.
      */
     @Transient
