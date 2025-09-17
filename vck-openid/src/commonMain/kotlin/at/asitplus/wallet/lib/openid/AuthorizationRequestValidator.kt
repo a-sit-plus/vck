@@ -134,16 +134,14 @@ internal class AuthorizationRequestValidator(
         if (leaf.tbsCertificate.extensions == null || leaf.tbsCertificate.extensions!!.isEmpty()) {
             throw InvalidRequest("no extensions in x5c")
         }
-        val dnsNames = leaf.tbsCertificate.subjectAlternativeNames?.dnsNames ?: run {
-            throw InvalidRequest("no dnsNames in x5c")
-        }
+        val dnsNames = leaf.tbsCertificate.subjectAlternativeNames?.dnsNames
+            ?: throw InvalidRequest("no dnsNames in x5c")
         if (!dnsNames.contains(parameters.clientIdWithoutPrefix)) {
             throw InvalidRequest("client_id not in dnsNames in x5c $dnsNames")
         }
         if (!responseModeIsDirectPost && !responseModeIsDcApi) {
-            val parsedUrl = parameters.redirectUrl?.let { Url(it) } ?: run {
-                throw InvalidRequest("redirect_uri is null")
-            }
+            val parsedUrl = parameters.redirectUrl?.let { Url(it) }
+                ?: throw InvalidRequest("redirect_uri is null")
             //TODO  If the Wallet can establish trust in the Client Identifier authenticated through the
             // certificate it may allow the client to freely choose the redirect_uri value
             if (parsedUrl.host != parameters.clientIdWithoutPrefix) {
@@ -158,9 +156,8 @@ internal class AuthorizationRequestValidator(
         if (leaf.tbsCertificate.extensions == null || leaf.tbsCertificate.extensions!!.isEmpty()) {
             throw InvalidRequest("no extensions in x5c")
         }
-        val uris = leaf.tbsCertificate.subjectAlternativeNames?.uris ?: run {
-            throw InvalidRequest("no SAN in x5c")
-        }
+        val uris = leaf.tbsCertificate.subjectAlternativeNames?.uris
+            ?: throw InvalidRequest("no SAN in x5c")
         if (!uris.contains(parameters.clientIdWithoutPrefix)) {
             throw InvalidRequest("client_id not in SAN in x5c $uris")
         }

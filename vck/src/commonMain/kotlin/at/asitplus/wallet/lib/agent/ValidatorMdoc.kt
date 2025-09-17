@@ -68,9 +68,8 @@ class ValidatorMdoc(
         val issuerSigned = document.issuerSigned
         val issuerAuth = issuerSigned.issuerAuth
 
-        val certificateHead = issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull() ?: run {
-            throw IllegalArgumentException("No issuer certificate in header")
-        }
+        val certificateHead = issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull()
+            ?: throw IllegalArgumentException("No issuer certificate in header")
         val x509Certificate = X509Certificate.decodeFromDerSafe(certificateHead).getOrElse {
             throw IllegalArgumentException("Could not parse issuer certificate from header", it)
         }

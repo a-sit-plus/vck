@@ -145,9 +145,9 @@ class JwtTokenVerificationService(
         if (dpopProof.payload.httpMethod != httpRequest.method.value.uppercase()) {
             throw InvalidDpopProof("DPoP JWT htm incorrect: ${dpopProof.payload.httpMethod}")
         }
-        dpopProof.header.jsonWebKey ?: run {
-            throw InvalidDpopProof("DPoP JWT contains no public key")
-        }
+        dpopProof.header.jsonWebKey
+            ?: throw InvalidDpopProof("DPoP JWT contains no public key")
+
     }
 
     /** @param validatedClientKey the key from the extracted DPoP proof */

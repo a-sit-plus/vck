@@ -57,9 +57,7 @@ data class SdJwtSigned(
      */
     fun serialize() = keyBindingJws?.let {
         serializePresentation(jws, rawDisclosures.toSet(), it)
-    } ?: run {
-        (listOf(jws.serialize()) + rawDisclosures).joinToString("~", postfix = "~")
-    }
+    } ?: (listOf(jws.serialize()) + rawDisclosures).joinToString("~", postfix = "~")
 
     override fun toString(): String {
         return "SdJwtSigned(jws=${jws.serialize()}, " +

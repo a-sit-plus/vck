@@ -60,9 +60,9 @@ class ValidatorSdJwt(
                 ?: Throwable("SD-JWT not verified: $sdJwtResult")
             return VerifyPresentationResult.ValidationError(error)
         }
-        val keyBindingSigned = sdJwtResult.sdJwtSigned.keyBindingJws ?: run {
+        val keyBindingSigned = sdJwtResult.sdJwtSigned.keyBindingJws ?:
             return VerifyPresentationResult.ValidationError("No key binding JWT")
-        }
+
         val vcSdJwt = sdJwtResult.verifiableCredentialSdJwt
         vcSdJwt.confirmationClaim?.let {
             if (!verifyJwsSignatureWithCnf(keyBindingSigned, it)) {
