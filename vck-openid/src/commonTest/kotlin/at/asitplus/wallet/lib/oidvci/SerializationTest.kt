@@ -1,11 +1,24 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.openid.*
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.CredentialFormatEnum
+import at.asitplus.openid.CredentialResponseParameters
+import at.asitplus.openid.CredentialResponseSingleCredential
+import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE
 import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_BEARER
+import at.asitplus.openid.SupportedCredentialFormatDefinition
+import at.asitplus.openid.TokenRequestParameters
+import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
+import at.asitplus.openid.dcql.DCQLCredentialQueryList
+import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
+import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -33,7 +46,16 @@ class SerializationTest : FunSpec({
         scope = randomString(),
         walletIssuer = randomString(),
         userHint = randomString(),
-        issuerState = randomString()
+        issuerState = randomString(),
+        dcqlQuery = DCQLQuery(
+            credentials = DCQLCredentialQueryList(
+                DCQLSdJwtCredentialQuery(
+                    id = DCQLCredentialQueryIdentifier(uuid4().toString()),
+                    format = CredentialFormatEnum.DC_SD_JWT,
+                    meta = DCQLSdJwtCredentialMetadataAndValidityConstraints(vctValues = listOf(randomString())),
+                )
+            )
+        )
     )
 
     fun createTokenRequest() = TokenRequestParameters(
@@ -55,22 +77,6 @@ class SerializationTest : FunSpec({
         interval = Random.nextInt(1, Int.MAX_VALUE).seconds,
     )
 
-    @Suppress("DEPRECATION")
-    fun createCredentialRequest() = CredentialRequestParameters(
-        credentialIdentifier = randomString(),
-        credentialConfigurationId = randomString(),
-        proof = CredentialRequestProof(
-            proofType = OpenIdConstants.ProofType.Other(randomString()),
-            jwt = randomString(),
-            attestation = randomString(),
-        ),
-        proofs = CredentialRequestProofContainer(
-            proofType = OpenIdConstants.ProofType.Other(randomString()),
-            jwt = setOf(randomString()),
-            attestation = setOf(randomString()),
-        )
-    )
-
     fun createCredentialResponse() = CredentialResponseParameters(
         credentials = setOf(CredentialResponseSingleCredential(JsonPrimitive(randomString()))),
         transactionId = randomString(),
@@ -80,29 +86,31 @@ class SerializationTest : FunSpec({
     test("createAuthorizationRequest as GET") {
         val params = createAuthorizationRequest()
         val baseUrl = "https://wallet.a-sit.at/authorize"
-
         val intermediateMap = params.encodeToParameters()
-        val url = "$baseUrl?${intermediateMap.formUrlEncode()}"
 
-        url shouldContain baseUrl
-        url shouldContain "response_type=${params.responseType}"
-        url shouldContain "client_id=${params.clientId}"
-        val parsed: AuthenticationRequestParameters = intermediateMap.decode()
-        parsed shouldBe params
+        "$baseUrl?${intermediateMap.formUrlEncode()}".apply {
+            this shouldContain baseUrl
+            this shouldContain "response_type=${params.responseType}"
+            this shouldContain "client_id=${params.clientId}"
+            this shouldContain "dcql_query=" + "{\"credentials".encodeURLParameter()
+        }
+
+        intermediateMap.decode<AuthenticationRequestParameters>() shouldBe params
     }
 
     test("createAuthorizationRequest as POST") {
         val params = createAuthorizationRequest()
         val intermediateMap = params.encodeToParameters()
-        val formEncoded = intermediateMap.formUrlEncode()
+        val formEncoded = intermediateMap.formUrlEncode().apply {
+            this shouldContain "response_type=${params.responseType}"
+            this shouldContain "client_id=${params.clientId}"
+            this shouldContain "authorization_details=" + "[{\"type\":".encodeURLParameter()
+            this shouldContain "dcql_query=" + "{\"credentials".encodeURLParameter()
+        }
 
-        formEncoded shouldContain "response_type=${params.responseType}"
-        formEncoded shouldContain "client_id=${params.clientId}"
-        formEncoded shouldContain "authorization_details=" + "[{\"type\":".encodeURLParameter()
-        val parsed: AuthenticationRequestParameters = intermediateMap.decode()
-        parsed shouldBe params
-        val parsedToo: AuthenticationRequestParameters = formEncoded.decodeFromPostBody()
-        parsedToo shouldBe params
+        intermediateMap.decode<AuthenticationRequestParameters>() shouldBe params
+
+        formEncoded.decodeFromPostBody<AuthenticationRequestParameters>() shouldBe params
     }
 
     test("createTokenRequest as POST") {
@@ -110,22 +118,19 @@ class SerializationTest : FunSpec({
         val intermediateMap = params.encodeToParameters()
         val formEncoded = intermediateMap.formUrlEncode()
 
-        val parsed: TokenRequestParameters = intermediateMap.decode()
-        parsed shouldBe params
-        val parsedToo: TokenRequestParameters = formEncoded.decodeFromPostBody()
-        parsedToo shouldBe params
+        intermediateMap.decode<TokenRequestParameters>() shouldBe params
+        formEncoded.decodeFromPostBody<TokenRequestParameters>() shouldBe params
     }
 
     test("createTokenResponse as JSON") {
         val params = createTokenResponse()
 
-        val json = vckJsonSerializer.encodeToString(params)
-
-        json shouldContain "\"access_token\":"
-        json shouldContain "\"token_type\":"
-        json shouldContain "\"expires_in\":"
-        val parsed: TokenResponseParameters = vckJsonSerializer.decodeFromString(json)
-        parsed shouldBe params
+        val json = vckJsonSerializer.encodeToString(params).apply {
+            this shouldContain "\"access_token\":"
+            this shouldContain "\"token_type\":"
+            this shouldContain "\"expires_in\":"
+        }
+        vckJsonSerializer.decodeFromString<TokenResponseParameters>(json) shouldBe params
     }
 
     test("createCredentialResponse as JSON") {
@@ -133,8 +138,7 @@ class SerializationTest : FunSpec({
 
         val json = vckJsonSerializer.encodeToString(params)
 
-        val parsed = vckJsonSerializer.decodeFromString<CredentialResponseParameters>(json)
-        parsed shouldBe params
+        vckJsonSerializer.decodeFromString<CredentialResponseParameters>(json) shouldBe params
     }
 })
 

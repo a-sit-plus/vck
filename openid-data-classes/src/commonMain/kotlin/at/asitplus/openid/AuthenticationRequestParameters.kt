@@ -171,12 +171,12 @@ data class AuthenticationRequestParameters(
     val presentationDefinitionUrl: String? = null,
 
     /**
-     * OID4VP 1.0: dcql_query: A string containing a JSON-encoded DCQL query as defined in Section 6.
+     * OID4VP 1.0: A JSON object containing a DCQL query as defined in
+     * [Section 6](https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#dcql_query).
      * Either a [dcqlQuery] or a [scope] parameter representing a DCQL Query MUST be present in the Authorization
      * Request, but not both.
      */
     @SerialName("dcql_query")
-    @Serializable(with = BackwardsCompatibleDCQLQuerySerializer::class)
     val dcqlQuery: DCQLQuery? = null,
 
     /**

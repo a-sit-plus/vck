@@ -39,6 +39,7 @@ Release 5.9.0 (unreleased):
    - OpenID4VP: Do not read the explicit parameter `client_id_scheme` (it's prefixed in the `client_id`)
    - OpenID4VP: Do not send signed JWT as authentication responses, but always encrypt them when using `direct_post.jwt`
    - OpenID4VP: Remove `signDeviceAuthFallback` in `OpenId4VpHolder` which has been used for mDoc presentations, but was not part of any spec
+   - OpenID4VP: Remove `BackwardsCompatibleDCQLQuerySerializer` which has been able to parse DCQL queries as strings in addition to the usual JSON object
    - DCAPI: Remove (already deprecated) preview data class `PreviewDCAPIRequest`, either use OpenID4VP or ISO 18013-7 Annex C
  - JWE:
    - Add `EncryptJweSymmetricFun` and `EncryptJweSymmetric` and `DecryptJweSymmetric`
