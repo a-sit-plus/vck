@@ -5,8 +5,12 @@ import at.asitplus.openid.CredentialResponseParameters
 import at.asitplus.openid.CredentialResponseSingleCredential
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.josef.JsonWebKey
+import at.asitplus.signum.indispensable.josef.JweAlgorithm
+import at.asitplus.signum.indispensable.josef.JwkType
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.json.JsonPrimitive
@@ -73,3 +77,20 @@ suspend fun Issuer.IssuedCredential.toCredentialResponseSingleCredential(
 private fun Issuer.IssuedCredential.Iso.toBase64UrlStrict(): String =
     coseCompliantSerializer.encodeToByteArray(issuerSigned).encodeToString(Base64UrlStrict)
 
+/**
+ * Selects the first key that the authn response can be encrypted for,
+ * i.e. one with `enc` key use, or `ECDH-ES` algorithm.
+ */
+internal fun Collection<JsonWebKey>.getEncryptionTargetKey(): JsonWebKey? =
+    filter { it.type == JwkType.EC }.let { ecKeys ->
+        ecKeys.firstOrNull { it.publicKeyUse == "enc" }
+            ?: ecKeys.firstOrNull { it.algorithm == JweAlgorithm.ECDH_ES }
+            ?: ecKeys.firstOrNull()
+    }
+
+internal fun Collection<JsonWebKey>.firstSessionTranscriptThumbprint(): ByteArray? =
+    getEncryptionTargetKey()?.sessionTranscriptThumbprint()
+
+internal fun JsonWebKey.sessionTranscriptThumbprint(): ByteArray =
+    jwkThumbprint.removePrefix("urn:ietf:params:oauth:jwk-thumbprint:sha256:")
+        .decodeToByteArray(Base64UrlStrict)

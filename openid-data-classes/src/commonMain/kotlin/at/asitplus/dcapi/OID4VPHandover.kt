@@ -4,9 +4,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.ByteString
 import kotlinx.serialization.cbor.CborArray
 
-/**
- * Part of the ISO/IEC 18013-7:2024 standard: Session Transcript (B.4.4)
- */
+@Deprecated("Changed in OpenID4VP 1.0", ReplaceWith("OpenId4VpHandover", "at.asitplus.iso.OpenId4VpHandover"))
 @Serializable
 @CborArray
 data class OID4VPHandover(

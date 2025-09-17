@@ -82,6 +82,7 @@ class OpenId4VpHolder(
     private val supportedAlgorithms: Set<SignatureAlgorithm> = setOf(SignatureAlgorithm.ECDSAwithSHA256),
     private val signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> =
         SignCoseDetached(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
+    @Deprecated("Removed, as not contained in any specification")
     private val signDeviceAuthFallback: SignCoseFun<ByteArray> =
         SignCose(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
     private val clock: Clock = Clock.System,
@@ -117,7 +118,6 @@ class OpenId4VpHolder(
     private val presentationFactory = PresentationFactory(
         supportedAlgorithms = supportedAlgorithms,
         signDeviceAuthDetached = signDeviceAuthDetached,
-        signDeviceAuthFallback = signDeviceAuthFallback,
         signIdToken = signIdToken,
         randomSource = randomSource
     )
@@ -274,14 +274,13 @@ class OpenId4VpHolder(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         clientMetadata: RelyingPartyMetadata?,
         credentialPresentation: CredentialPresentation?,
-    ): KmmResult<AuthenticationResponseResult> =
-        finalizeAuthorizationResponseParameters(
-            request,
-            clientMetadata,
-            credentialPresentation
-        ).map {
-            authenticationResponseFactory.createAuthenticationResponse(request, it)
-        }
+    ): KmmResult<AuthenticationResponseResult> = finalizeAuthorizationResponseParameters(
+        request = request,
+        clientMetadata = clientMetadata,
+        credentialPresentation = credentialPresentation
+    ).map {
+        authenticationResponseFactory.createAuthenticationResponse(request, it)
+    }
 
     /**
      * Finalize the authorization response parameters
@@ -323,10 +322,10 @@ class OpenId4VpHolder(
             presentationSubmission = resultContainer?.presentationSubmission,
         )
         AuthenticationResponse(
-            parameters,
-            clientMetadata,
-            jsonWebKeys,
-            resultContainer?.mdocGeneratedNonce
+            params = parameters,
+            clientMetadata = clientMetadata,
+            jsonWebKeys = jsonWebKeys,
+            mdocGeneratedNonce = resultContainer?.mdocGeneratedNonce
         )
     }
 

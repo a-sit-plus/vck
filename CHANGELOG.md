@@ -38,6 +38,7 @@ Release 5.9.0 (unreleased):
    - OpenID4VP: Discard option to use deprecated `client_id_scheme` parameter in `ClientIdScheme` subclasses
    - OpenID4VP: Do not read the explicit parameter `client_id_scheme` (it's prefixed in the `client_id`)
    - OpenID4VP: Do not send signed JWT as authentication responses, but always encrypt them when using `direct_post.jwt`
+   - OpenID4VP: Remove `signDeviceAuthFallback` in `OpenId4VpHolder` which has been used for mDoc presentations, but was not part of any spec
    - DCAPI: Remove (already deprecated) preview data class `PreviewDCAPIRequest`, either use OpenID4VP or ISO 18013-7 Annex C
  - JWE:
    - Add `EncryptJweSymmetricFun` and `EncryptJweSymmetric` and `DecryptJweSymmetric`
@@ -87,6 +88,7 @@ Release 5.9.0 (unreleased):
    - In `OpenId4VpVerifier` add constructor parameter `decryptionKeyMaterial` to supply a key for decrypting encrypted responses from holders
    - In `OAuth2AuthorizationServerMetadata` deprecate `client_id_schemes_supported`, replace with `client_id_prefixes_supported`
    - Add `ClientIdScheme.CertificateHash` mapping to client identifier prefix `x509_hash` from OpenID4VP
+   - Use session transcript for mDoc presentations as defined in OpenID4VP
 
 Release 5.8.0:
  - Refactor `AuthorizationServiceStrategy`

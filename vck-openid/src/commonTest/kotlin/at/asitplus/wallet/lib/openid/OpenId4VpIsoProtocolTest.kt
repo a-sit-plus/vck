@@ -60,7 +60,10 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
             ).getOrThrow().toStoreCredentialInput()
         )
 
-
+        verifierOid4vp = OpenId4VpVerifier(
+            keyMaterial = verifierKeyMaterial,
+            clientIdScheme = ClientIdScheme.RedirectUri(clientId),
+        )
         holderOid4vp = OpenId4VpHolder(
             holder = holderAgent,
             keyMaterial = holderKeyMaterial,
@@ -69,10 +72,6 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
     }
 
     "test with Fragment for mDL" {
-        verifierOid4vp = OpenId4VpVerifier(
-            keyMaterial = verifierKeyMaterial,
-            clientIdScheme = ClientIdScheme.RedirectUri(clientId),
-        )
         val document = runProcess(
             verifierOid4vp,
             walletUrl,
@@ -91,10 +90,6 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
     }
 
     "test with Fragment for custom attributes" {
-        verifierOid4vp = OpenId4VpVerifier(
-            keyMaterial = verifierKeyMaterial,
-            clientIdScheme = ClientIdScheme.RedirectUri(clientId),
-        )
         val document = runProcess(
             verifierOid4vp,
             walletUrl,
@@ -112,10 +107,6 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
 
     "Selective Disclosure with mDL" {
         val requestedClaim = MobileDrivingLicenceDataElements.FAMILY_NAME
-        verifierOid4vp = OpenId4VpVerifier(
-            keyMaterial = verifierKeyMaterial,
-            clientIdScheme = ClientIdScheme.RedirectUri(clientId),
-        )
         val document = runProcess(
             verifierOid4vp,
             walletUrl,
@@ -128,16 +119,12 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
         )
 
         document.validItems.shouldBeSingleton()
-        document.validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
+            .shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
         document.invalidItems.shouldBeEmpty()
     }
 
     "Selective Disclosure with mDL (ISO/IEC 18013-7:2024 Annex B)" {
         val requestedClaim = MobileDrivingLicenceDataElements.FAMILY_NAME
-        verifierOid4vp = OpenId4VpVerifier(
-            keyMaterial = verifierKeyMaterial,
-            clientIdScheme = ClientIdScheme.RedirectUri(clientId),
-        )
         val requestOptions = RequestOptions(
             credentials = setOf(
                 RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(requestedClaim))
@@ -157,16 +144,12 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
             .documents.first()
 
         document.validItems.shouldBeSingleton()
-        document.validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
+            .shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
         document.invalidItems.shouldBeEmpty()
     }
 
     "Selective Disclosure with mDL and encryption (ISO/IEC 18013-7:2024 Annex B)" {
         val requestedClaim = MobileDrivingLicenceDataElements.FAMILY_NAME
-        verifierOid4vp = OpenId4VpVerifier(
-            keyMaterial = verifierKeyMaterial,
-            clientIdScheme = ClientIdScheme.RedirectUri(clientId),
-        )
         val requestOptions = RequestOptions(
             credentials = setOf(
                 RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(requestedClaim))
@@ -187,17 +170,13 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
             .documents.first()
 
         document.validItems.shouldBeSingleton()
-        document.validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
+            .shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
         document.invalidItems.shouldBeEmpty()
     }
 
     "Selective Disclosure with two documents and encryption (ISO/IEC 18013-7:2024 Annex B)" {
         val mdlFamilyName = MobileDrivingLicenceDataElements.FAMILY_NAME
         val atomicGivenName = CLAIM_GIVEN_NAME
-        verifierOid4vp = OpenId4VpVerifier(
-            keyMaterial = verifierKeyMaterial,
-            clientIdScheme = ClientIdScheme.RedirectUri(clientId),
-        )
         val requestOptions = RequestOptions(
             credentials = setOf(
                 RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(mdlFamilyName)),
@@ -224,10 +203,6 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
     }
 
     "Selective Disclosure with mDL JSON Path syntax" {
-        verifierOid4vp = OpenId4VpVerifier(
-            keyMaterial = verifierKeyMaterial,
-            clientIdScheme = ClientIdScheme.RedirectUri(clientId),
-        )
         val document = runProcess(
             verifierOid4vp,
             walletUrl,
@@ -244,7 +219,7 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
         )
 
         document.validItems.shouldBeSingleton()
-        document.validItems.shouldHaveSingleElement { it.elementIdentifier == MobileDrivingLicenceDataElements.FAMILY_NAME }
+            .shouldHaveSingleElement { it.elementIdentifier == MobileDrivingLicenceDataElements.FAMILY_NAME }
         document.invalidItems.shouldBeEmpty()
     }
 

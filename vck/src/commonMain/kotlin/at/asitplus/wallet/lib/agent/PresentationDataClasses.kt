@@ -34,14 +34,19 @@ data class PresentationRequestParameters(
     val nonce: String,
     val audience: String,
     val transactionData: List<TransactionDataBase64Url>? = null,
+    @Deprecated("Use calcIsoDeviceSignaturePlain instead")
+    val calcIsoDeviceSignature: (suspend (docType: String, deviceNameSpaceBytes: ByteStringWrapper<DeviceNameSpaces>) -> Pair<CoseSigned<ByteArray>, String?>?) =
+        { _, _ -> null },
     /**
      * Handle calculating device signature for ISO mDocs, as this depends on the transport protocol
      * (OpenID4VP with ISO/IEC 18013-7)
      */
-    val calcIsoDeviceSignature: (suspend (docType: String, deviceNameSpaceBytes: ByteStringWrapper<DeviceNameSpaces>) -> Pair<CoseSigned<ByteArray>, String?>?) = { _, _ ->
-        null
-    },
-    /** mdocGeneratedNonce to be used for the presentation and [calcIsoDeviceSignature] (OpenID4VP with ISO/IEC 18013-7) */
+    val calcIsoDeviceSignaturePlain: (suspend (input: IsoDeviceSignatureInput) -> CoseSigned<ByteArray>?) =
+        { calcIsoDeviceSignature(it.docType, it.deviceNameSpaceBytes)?.first },
+    /**
+     * mdocGeneratedNonce to be used for the presentation and [calcIsoDeviceSignaturePlain]
+     * (OpenID4VP with ISO/IEC 18013-7)
+     */
     val mdocGeneratedNonce: String? = null,
 ) {
     @Deprecated("No longer necessary. Will be removed")
@@ -50,6 +55,11 @@ data class PresentationRequestParameters(
         UC5
     }
 }
+
+data class IsoDeviceSignatureInput(
+    val docType: String,
+    val deviceNameSpaceBytes: ByteStringWrapper<DeviceNameSpaces>,
+)
 
 sealed interface PresentationResponseParameters {
     val vpToken: JsonElement?
@@ -156,5 +166,6 @@ typealias PathAuthorizationValidator = (credential: SubjectCredentialStore.Store
 
 open class PresentationException : Exception {
     constructor(message: String) : super(message)
-    constructor(throwable: Throwable) : super(throwable)
+    constructor(message: String, cause: Throwable) : super(message, cause)
+    constructor(cause: Throwable) : super(cause)
 }

@@ -30,15 +30,19 @@ data class SessionTranscript private constructor(
     val deviceEngagementBytesOid: Int? = 42,
     /** Set to `null` for OID4VP with ISO/IEC 18013-7 */
     val eReaderKeyBytesOid: Int? = 42,
-    /** Set either this or [nfcHandover] or deviceEngagementBytesOid to null for QR engagement */
+    @Deprecated("Use [openId4VpHandover] instead")
     val oid4VPHandover: OID4VPHandover? = null,
-    /** Set either this or [oid4VPHandover] or deviceEngagementBytesOid to null for QR engagement */
+    /** Set either this or [openId4VpHandover] or [deviceEngagementBytesOid] to `null` for QR engagement */
     val nfcHandover: NFCHandover? = null,
     val dcapiHandover: DCAPIHandover? = null,
+    val openId4VpHandover: OpenId4VpHandover? = null,
 ) {
     init {
-        val nrOfHandovers = listOf(oid4VPHandover, nfcHandover, dcapiHandover).count { it != null }
-        check(nrOfHandovers == 1 || (deviceEngagementBytesOid == null && nrOfHandovers == 0)) { "Exactly one handover element must be set (or null for QR Handover)" }
+        val nrOfHandovers = listOf(oid4VPHandover, nfcHandover, dcapiHandover, openId4VpHandover)
+            .count { it != null }
+        check(nrOfHandovers == 1 || (deviceEngagementBytesOid == null && nrOfHandovers == 0)) {
+            "Exactly one handover element must be set (or null for QR Handover)"
+        }
     }
 
     override fun equals(other: Any?): Boolean {
@@ -54,6 +58,7 @@ data class SessionTranscript private constructor(
         if (oid4VPHandover != other.oid4VPHandover) return false
         if (nfcHandover != other.nfcHandover) return false
         if (dcapiHandover != other.dcapiHandover) return false
+        if (openId4VpHandover != other.openId4VpHandover) return false
 
         return true
     }
@@ -66,6 +71,7 @@ data class SessionTranscript private constructor(
         result = 31 * result + (oid4VPHandover?.hashCode() ?: 0)
         result = 31 * result + (nfcHandover?.hashCode() ?: 0)
         result = 31 * result + (dcapiHandover?.hashCode() ?: 0)
+        result = 31 * result + (openId4VpHandover?.hashCode() ?: 0)
         return result
     }
 
@@ -81,12 +87,21 @@ data class SessionTranscript private constructor(
             nfcHandover = nfcHandover
         )
 
+        @Deprecated("Use [forOpenId] with [OpenId4VpHandover] instead")
         fun forOpenId(
             handover: OID4VPHandover,
         ): SessionTranscript = SessionTranscript(
             deviceEngagementBytesOid = null,
             eReaderKeyBytesOid = null,
             oid4VPHandover = handover,
+        )
+
+        fun forOpenId(
+            handover: OpenId4VpHandover,
+        ): SessionTranscript = SessionTranscript(
+            deviceEngagementBytesOid = null,
+            eReaderKeyBytesOid = null,
+            openId4VpHandover = handover,
         )
 
         fun forDcApi(

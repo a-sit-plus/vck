@@ -21,4 +21,8 @@ data class DeviceAuthentication(
     /** Same as in [DeviceSigned.namespaces] */
     @ValueTags(24U)
     val namespaces: ByteStringWrapper<DeviceNameSpaces>,
-)
+) {
+    companion object {
+        const val TYPE = "DeviceAuthentication"
+    }
+}

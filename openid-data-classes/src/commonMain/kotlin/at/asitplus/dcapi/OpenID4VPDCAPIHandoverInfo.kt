@@ -5,18 +5,21 @@ import kotlinx.serialization.cbor.ByteString
 import kotlinx.serialization.cbor.CborArray
 
 /**
- * Part of OpenID for Verifiable Presentations - draft 26 (B.3.5.1)
+ * Part of ISO 18013-7 Annex C and OpenID for Verifiable Presentations 1.0
+ * [B.2.6.2](https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#appendix-B.2.6.2)
  */
 @Serializable
 @CborArray
 data class OpenID4VPDCAPIHandoverInfo(
-    /** Origin of the request. It MUST NOT be prefixed with `origin:` */
+    /** Origin of the request. It MUST NOT be prefixed with `origin:`. */
     val origin: String,
-    /** the value of the nonce request parameter */
+    /** The value of the `nonce` request parameter. */
     val nonce: String,
-    /** For the Response Mode dc_api.jwt, the third element MUST be the JWK SHA-256 Thumbprint
+    /**
+     * For the Response Mode `dc_api.jwt`, this element MUST be the JWK SHA-256 Thumbprint
+     * as defined in [RFC 7638](https://datatracker.ietf.org/doc/html/rfc7638), encoded as a Byte String,
      * of the Verifier's public key used to encrypt the response.
-     * If the Response Mode is dc_api, the third element MUST be null */
+     * If the Response Mode is `dc_api`, this element MUST be `null`. */
     @ByteString
     val jwkThumbprint: ByteArray?,
 ) {

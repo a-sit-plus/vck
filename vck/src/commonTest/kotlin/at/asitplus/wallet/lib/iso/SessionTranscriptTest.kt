@@ -2,9 +2,14 @@ package at.asitplus.wallet.lib.iso
 
 import at.asitplus.dcapi.NFCHandover
 import at.asitplus.dcapi.OID4VPHandover
+import at.asitplus.iso.OpenId4VpHandover
+import at.asitplus.iso.OpenId4VpHandoverInfo
 import at.asitplus.iso.SessionTranscript
+import at.asitplus.iso.sha256
 import at.asitplus.signum.indispensable.cosef.CoseKey
+import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -188,10 +193,10 @@ class SessionTranscriptTest : FreeSpec({
             deviceEngagementBytes = encodedDeviceEngagement,
             eReaderKeyBytes = coseCompliantSerializer.encodeToByteArray(eReaderCoseKey),
             nfcHandover = nfcHandover
-        )
-
-        sessionTranscript.oid4VPHandover shouldBe null
-        sessionTranscript.nfcHandover shouldNotBe null
+        ).apply {
+            oid4VPHandover shouldBe null
+            nfcHandover shouldNotBe null
+        }
 
         coseCompliantSerializer.encodeToByteArray(sessionTranscript) shouldBe expectedEncodedSessionTranscript
     }
@@ -313,14 +318,14 @@ class SessionTranscriptTest : FreeSpec({
         val sessionTranscript = SessionTranscript.forQr(
             deviceEngagementBytes = encodedDeviceEngagement,
             eReaderKeyBytes = coseCompliantSerializer.encodeToByteArray(eReaderCoseKey)
-        )
-
-        sessionTranscript.oid4VPHandover shouldBe null
-        sessionTranscript.nfcHandover shouldBe null
+        ).apply {
+            oid4VPHandover shouldBe null
+            nfcHandover shouldBe null
+        }
         coseCompliantSerializer.encodeToByteArray(sessionTranscript) shouldBe expectedEncodedSessionTranscript
     }
 
-    "oid4vp" {
+    "OpenID4VP pre-1.0" {
         val clientIdToHash = "543ad47d06158882c74cd2869dbbb09bd9f42b47cd0e15bf8809a7a83510ee3c"
             .decodeToByteArray(Base16)
         val responseUriToHash = "8ced6c43f0633b651ba7298d057c7fb3b01f983b079550d00171a495f0297382"
@@ -349,10 +354,46 @@ class SessionTranscriptTest : FreeSpec({
                 responseUriHash = responseUriToHash,
                 nonce = nonce
             ),
-        )
+        ).apply {
+            oid4VPHandover shouldNotBe null
+            nfcHandover shouldBe null
+        }
+        coseCompliantSerializer.encodeToByteArray(sessionTranscript) shouldBe expectedEncodedSessionTranscript
+    }
 
-        sessionTranscript.oid4VPHandover shouldNotBe null
-        sessionTranscript.nfcHandover shouldBe null
+    "OpenID4VP 1.0" {
+        val expectedEncodedSessionTranscript = """
+            83                                 # array(3)
+              f6                               #   null
+              f6                               #   null
+              82                               #   array(2)
+                71                             #     string(17)
+                  4f70656e494434565048616e646f #       "OpenID4VPHando"
+                  766572                       #       "ver"
+                58 20                          #     bytes(32)
+                  048bc053c00442af9b8eed494cef #       "\x04\x8bÀSÀ\x04B¯\x9b\x8eíILï"
+                  dd9d95240d254b046b11b6801372 #       "Ý\x9d\x95$\x0d%K\x04k\x11¶\x80\x13r"
+                  2aad38ac                     #       "*­8¬"
+
+        """.decodeFromAnnotatedCbor()
+
+        val sessionTranscript = SessionTranscript.forOpenId(
+            OpenId4VpHandover(
+                type = OpenId4VpHandover.TYPE_OPENID4VP,
+                hash = coseCompliantSerializer.encodeToByteArray(
+                    OpenId4VpHandoverInfo(
+                        clientId = "x509_san_dns:example.com",
+                        nonce = "exc7gBkxjx1rdc9udRrveKvSsJIq80avlXeLHhGwqtA",
+                        jwkThumbprint = "4283ec927ae0f208daaa2d026a814f2b22dca52cf85ffa8f3f8626c6bd669047"
+                            .decodeToByteArray(Base16Strict),
+                        responseUrl = "https://example.com/response",
+                    )
+                ).sha256(),
+            ),
+        ).apply {
+            openId4VpHandover shouldNotBe null
+            nfcHandover shouldBe null
+        }
         coseCompliantSerializer.encodeToByteArray(sessionTranscript) shouldBe expectedEncodedSessionTranscript
     }
 

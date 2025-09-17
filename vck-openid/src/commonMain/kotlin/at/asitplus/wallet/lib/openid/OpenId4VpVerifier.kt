@@ -14,6 +14,8 @@ import at.asitplus.iso.DeviceAuthentication
 import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.Document
 import at.asitplus.iso.MobileSecurityObject
+import at.asitplus.iso.OpenId4VpHandover
+import at.asitplus.iso.OpenId4VpHandoverInfo
 import at.asitplus.iso.ResponseUriToHash
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.sha256
@@ -75,6 +77,7 @@ import at.asitplus.wallet.lib.oidvci.MapStore
 import at.asitplus.wallet.lib.oidvci.NonceService
 import at.asitplus.wallet.lib.oidvci.decode
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
+import at.asitplus.wallet.lib.oidvci.sessionTranscriptThumbprint
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.matthewnelson.encoding.base16.Base16
@@ -99,18 +102,25 @@ import kotlin.time.toDuration
  */
 class OpenId4VpVerifier(
     private val clientIdScheme: ClientIdScheme,
+    /** Key material used to sign requests with [signAuthnRequest] in [createAuthnRequestAsSignedRequestObject]. */
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+    /** Verifies the actual response from the Wallet. */
     val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
-    private val decryptJwe: DecryptJweFun = DecryptJwe(keyMaterial),
+    /** Signs requests with [keyMaterial] in [createAuthnRequestAsSignedRequestObject]. */
     private val signAuthnRequest: SignJwtFun<AuthenticationRequestParameters> =
         SignJwt(keyMaterial, JwsHeaderClientIdScheme(clientIdScheme)),
+    /** Key to advertise in [metadata] or [metadataWithEncryption]. */
+    private val decryptionKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+    /** Decrypts encrypted responses from wallets with [decryptionKeyMaterial] in [validateAuthnResponse]. */
+    private val decryptJwe: DecryptJweFun = DecryptJwe(decryptionKeyMaterial),
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
     private val supportedAlgorithms: Set<SignatureAlgorithm> = setOf(SignatureAlgorithm.ECDSAwithSHA256),
     private val verifyCoseSignature: VerifyCoseSignatureWithKeyFun<ByteArray> = VerifyCoseSignatureWithKey(),
     timeLeewaySeconds: Long = 300L,
     private val clock: Clock = Clock.System,
+    /** Provides challenges in auth requests. */
     private val nonceService: NonceService = DefaultNonceService(),
-    /** Used to store issued authn requests, to verify the authn response to it */
+    /** Used to store issued authn requests to verify the authn response to it */
     private val stateToAuthnRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
     /** Algorithm supported to decrypt responses from wallets, for [metadataWithEncryption]. */
     private val supportedJweAlgorithm: JweAlgorithm = JweAlgorithm.ECDH_ES,
@@ -133,11 +143,7 @@ class OpenId4VpVerifier(
         kbJwtAlgorithmStrings = supportedJwsAlgorithms.toSet()
     )
 
-    /**
-     * Serve this result JSON-serialized under `/.well-known/jar-issuer`
-     * (see [OpenIdConstants.PATH_WELL_KNOWN_JAR_ISSUER]),
-     * so that SIOP Wallets can look up the keys used to sign request objects.
-     */
+    @Deprecated("This is not covered by any current spec")
     val jarMetadata: JwtVcIssuerMetadata by lazy {
         JwtVcIssuerMetadata(
             issuer = clientIdScheme.issuerUri ?: clientIdScheme.clientId,
@@ -152,7 +158,7 @@ class OpenId4VpVerifier(
     val metadata by lazy {
         RelyingPartyMetadata(
             redirectUris = listOfNotNull((clientIdScheme as? ClientIdScheme.RedirectUri)?.redirectUri),
-            jsonWebKeySet = JsonWebKeySet(listOf(keyMaterial.publicKey.toJsonWebKey())),
+            jsonWebKeySet = JsonWebKeySet(listOf(decryptionKeyMaterial.publicKey.toJsonWebKey())),
             authorizationSignedResponseAlgString = supportedSignatureVerificationAlgorithm,
             vpFormats = FormatHolder(
                 msoMdoc = containerJwt,
@@ -513,28 +519,25 @@ class OpenId4VpVerifier(
             val validationResults = presentationSubmission.descriptorMap?.map { descriptor ->
                 val relatedPresentation = JsonPath(descriptor.cumulativeJsonPath)
                     .query(verifiablePresentation).first().value
-                val result = catchingUnwrapped {
+                catchingUnwrapped {
                     verifyPresentationResult(
-                        descriptor.format,
-                        relatedPresentation,
-                        expectedNonce,
-                        responseParameters,
-                        authnRequest.clientId,
-                        authnRequest.responseUrl,
-                        authnRequest.transactionData
+                        claimFormat = descriptor.format,
+                        relatedPresentation = relatedPresentation,
+                        expectedNonce = expectedNonce,
+                        input = responseParameters,
+                        clientId = authnRequest.clientId,
+                        responseUrl = authnRequest.responseUrl ?: authnRequest.redirectUrlExtracted,
+                        transactionData = authnRequest.transactionData,
                     )
                 }.getOrElse {
                     return AuthnResponseResult.ValidationError("Invalid presentation", state, it)
-                }
-                result.mapToAuthnResponseResult(state)
+                }.mapToAuthnResponseResult(state)
             } ?: listOf()
             return validationResults.firstOrList()
         }
 
         authnRequest.dcqlQuery?.let { query ->
-            val credentialQueryMap = query.credentials.associateBy {
-                it.id
-            }
+            val credentialQueryMap = query.credentials.associateBy { it.id }
 
             val presentation = verifiablePresentation.jsonObject.mapKeys {
                 DCQLCredentialQueryIdentifier(it.key)
@@ -542,15 +545,19 @@ class OpenId4VpVerifier(
                 val credentialQuery = credentialQueryMap[credentialQueryId]
                     ?: throw IllegalArgumentException("Unknown credential query identifier.")
 
-                verifyPresentationResult(
-                    credentialQuery.format.toClaimFormat(),
-                    relatedPresentation,
-                    expectedNonce,
-                    responseParameters,
-                    authnRequest.clientId,
-                    authnRequest.responseUrl,
-                    authnRequest.transactionData
-                ).mapToAuthnResponseResult(state)
+                catchingUnwrapped {
+                    verifyPresentationResult(
+                        claimFormat = credentialQuery.format.toClaimFormat(),
+                        relatedPresentation = relatedPresentation,
+                        expectedNonce = expectedNonce,
+                        input = responseParameters,
+                        clientId = authnRequest.clientId,
+                        responseUrl = authnRequest.responseUrl ?: authnRequest.redirectUrlExtracted,
+                        transactionData = authnRequest.transactionData,
+                    ).mapToAuthnResponseResult(state)
+                }.getOrElse {
+                    return AuthnResponseResult.ValidationError("Invalid presentation", state, it)
+                }
             }
             return AuthnResponseResult.VerifiableDCQLPresentationValidationResults(presentation)
         }
@@ -638,70 +645,105 @@ class OpenId4VpVerifier(
      * Performs verification of the [at.asitplus.iso.SessionTranscript] and [at.asitplus.iso.DeviceAuthentication],
      * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024, if required (i.e. response is encrypted)
      */
-    @Throws(IllegalArgumentException::class)
+    @Throws(IllegalArgumentException::class, IllegalStateException::class)
     private fun verifyDocument(
         mdocGeneratedNonce: String,
         clientId: String?,
         responseUrl: String?,
-        expectedNonce: String,
+        nonce: String,
     ): suspend (MobileSecurityObject, Document) -> Boolean = { mso, document ->
-        Napier.d(
-            "verifyDocument: mdocGeneratedNonce='$mdocGeneratedNonce', clientId='$clientId'," +
-                    " responseUrl='$responseUrl', expectedNonce='$expectedNonce'"
-        )
         val deviceSignature = document.deviceSigned.deviceAuth.deviceSignature
             ?: throw IllegalArgumentException("deviceSignature is null")
 
         val walletKey = mso.deviceKeyInfo.deviceKey
-        if (clientId != null && responseUrl != null) {
-            val deviceAuthentication =
-                document.calcDeviceAuthentication(expectedNonce, mdocGeneratedNonce, clientId, responseUrl)
-            val expectedPayload = coseCompliantSerializer
-                .encodeToByteArray(coseCompliantSerializer.encodeToByteArray(deviceAuthentication))
-                .wrapInCborTag(24)
-                .also { Napier.d("Device authentication for verification is ${it.encodeToString(Base16())}") }
-            verifyCoseSignature(deviceSignature, walletKey, byteArrayOf(), expectedPayload).onFailure {
-                throw IllegalArgumentException("deviceSignature not verified", it)
-            }
-        } else {
-            verifyCoseSignature(deviceSignature, walletKey, byteArrayOf(), null).onFailure {
-                throw IllegalArgumentException("deviceSignature not verified", it)
-            }
-            val deviceSignaturePayload = deviceSignature.payload
-                ?: throw IllegalArgumentException("challenge is null")
-            if (!deviceSignaturePayload.contentEquals(expectedNonce.encodeToByteArray())) {
-                throw IllegalArgumentException("challenge invalid: ${deviceSignaturePayload.encodeToString(Base16)}")
+        if (clientId == null || responseUrl == null)
+            throw IllegalStateException("Missing required parameters: clientId, responseUrl")
+
+        val expected = document.calcDeviceAuthenticationOpenId4VpFinal(
+            clientId = clientId,
+            responseUrl = responseUrl,
+            nonce = nonce,
+            encrypted = mdocGeneratedNonce.isNotEmpty()
+        ).wrapAsExpectedPayload()
+
+        verifyCoseSignature(deviceSignature, walletKey, byteArrayOf(), expected).onFailure {
+            val legacy = document.calcDeviceAuthentication(
+                nonce = nonce,
+                mdocGeneratedNonce = mdocGeneratedNonce,
+                clientId = clientId,
+                responseUrl = responseUrl
+            ).wrapAsExpectedPayload()
+            verifyCoseSignature(deviceSignature, walletKey, byteArrayOf(), legacy).onFailure {
+                throw IllegalArgumentException(
+                    "deviceSignature not verified, expected ${expected.encodeToString(Base16())} " +
+                            "or ${legacy.encodeToString(Base16())}", it
+                )
             }
         }
         true
     }
 
+    private fun DeviceAuthentication.wrapAsExpectedPayload(): ByteArray = coseCompliantSerializer
+        .encodeToByteArray(coseCompliantSerializer.encodeToByteArray(this))
+        .wrapInCborTag(24)
+
+    /**
+     * Performs calculation of the [at.asitplus.iso.SessionTranscript] and [at.asitplus.iso.DeviceAuthentication],
+     * acc. to OpenID4VP 1.0
+     */
+    private fun Document.calcDeviceAuthenticationOpenId4VpFinal(
+        clientId: String,
+        responseUrl: String,
+        nonce: String,
+        encrypted: Boolean,
+    ) = DeviceAuthentication(
+        type = DeviceAuthentication.TYPE,
+        sessionTranscript = SessionTranscript.forOpenId(
+            OpenId4VpHandover(
+                type = OpenId4VpHandover.TYPE_OPENID4VP,
+                hash = coseCompliantSerializer.encodeToByteArray<OpenId4VpHandoverInfo>(
+                    OpenId4VpHandoverInfo(
+                        clientId = clientId,
+                        nonce = nonce,
+                        jwkThumbprint = if (encrypted) {
+                            decryptionKeyMaterial.jsonWebKey.sessionTranscriptThumbprint()
+                        } else null,
+                        responseUrl = responseUrl,
+                    )
+                ).sha256(),
+            )
+        ),
+        docType = docType,
+        namespaces = deviceSigned.namespaces
+    )
+
     /**
      * Performs calculation of the [at.asitplus.iso.SessionTranscript] and [at.asitplus.iso.DeviceAuthentication],
      * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024
      */
+    @Suppress("DEPRECATION")
     private fun Document.calcDeviceAuthentication(
-        challenge: String,
+        nonce: String,
         mdocGeneratedNonce: String,
         clientId: String,
         responseUrl: String,
-    ): DeviceAuthentication {
-        val clientIdToHash = ClientIdToHash(clientId = clientId, mdocGeneratedNonce = mdocGeneratedNonce)
-        val responseUriToHash = ResponseUriToHash(responseUri = responseUrl, mdocGeneratedNonce = mdocGeneratedNonce)
-        val sessionTranscript = SessionTranscript.forOpenId(
+    ): DeviceAuthentication = DeviceAuthentication(
+        type = DeviceAuthentication.TYPE,
+        sessionTranscript = SessionTranscript.forOpenId(
             OID4VPHandover(
-                clientIdHash = coseCompliantSerializer.encodeToByteArray(clientIdToHash).sha256(),
-                responseUriHash = coseCompliantSerializer.encodeToByteArray(responseUriToHash).sha256(),
-                nonce = challenge
+                clientIdHash = coseCompliantSerializer.encodeToByteArray(
+                    ClientIdToHash(clientId, mdocGeneratedNonce)
+                ).sha256(),
+                responseUriHash = coseCompliantSerializer.encodeToByteArray(
+                    ResponseUriToHash(responseUrl, mdocGeneratedNonce)
+                ).sha256(),
+                nonce = nonce
             ),
-        )
-        return DeviceAuthentication(
-            type = "DeviceAuthentication",
-            sessionTranscript = sessionTranscript,
-            docType = docType,
-            namespaces = deviceSigned.namespaces
-        )
-    }
+        ),
+        docType = docType,
+        namespaces = deviceSigned.namespaces
+    )
+
 
     private fun VerifyPresentationResult.mapToAuthnResponseResult(state: String) = when (this) {
         is VerifyPresentationResult.ValidationError -> AuthnResponseResult.ValidationError("vpToken", state, cause)
