@@ -69,7 +69,7 @@ Release 5.9.0 (unreleased):
   - Presentation classes:
    - In `CreatePresentationResult.Signed` add property containing `JwsSigned<VerifiablePresentationJws>`
    - In `CreatePresentationResult.SdJwt` add property containing `SdJwtSigned`
-   - Deprecate `SdJwtSigned.parse()`, please migrate to `SdJwtSigned.parseThrowing()`
+   - Deprecate `SdJwtSigned.parse()`, please migrate to `SdJwtSigned.parseCatching()`
 
 Release 5.8.0:
  - Refactor `AuthorizationServiceStrategy`

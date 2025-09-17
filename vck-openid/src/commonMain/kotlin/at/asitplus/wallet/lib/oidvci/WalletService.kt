@@ -400,7 +400,7 @@ class WalletService(
         )
 
         SD_JWT -> SdJwt(
-            signedSdJwtVc = SdJwtSigned.parseThrowing(this).getOrThrow(),
+            signedSdJwtVc = SdJwtSigned.parseCatching(this).getOrThrow(),
             vcSdJwt = this,
             scheme = credentialScheme
         )

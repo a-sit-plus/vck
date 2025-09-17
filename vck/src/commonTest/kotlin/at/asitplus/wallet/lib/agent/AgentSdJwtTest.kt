@@ -22,7 +22,6 @@ import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePr
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.StatusListToken
-import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -31,7 +30,6 @@ import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.extensions.sdHashInput
 import com.benasher44.uuid.uuid4
-import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
@@ -155,7 +153,7 @@ class AgentSdJwtTest : FreeSpec({
             val freshKbJwt = createFreshSdJwtKeyBinding(challenge, verifierId)
             val malformedVpSdJwt = vp.serialized.replaceAfterLast("~", freshKbJwt.substringAfterLast("~"))
 
-            verifier.verifyPresentationSdJwt(SdJwtSigned.parseThrowing(malformedVpSdJwt).getOrThrow(), challenge)
+            verifier.verifyPresentationSdJwt(SdJwtSigned.parseCatching(malformedVpSdJwt).getOrThrow(), challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
         }
 
@@ -243,7 +241,7 @@ class AgentSdJwtTest : FreeSpec({
             val freshKbJwt = createFreshSdJwtKeyBinding(challenge, verifierId)
             val malformedVpSdJwt = vp.serialized.replaceAfterLast("~", freshKbJwt.substringAfterLast("~"))
 
-            verifier.verifyPresentationSdJwt(SdJwtSigned.parseThrowing(malformedVpSdJwt).getOrThrow(), challenge)
+            verifier.verifyPresentationSdJwt(SdJwtSigned.parseCatching(malformedVpSdJwt).getOrThrow(), challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
         }
 

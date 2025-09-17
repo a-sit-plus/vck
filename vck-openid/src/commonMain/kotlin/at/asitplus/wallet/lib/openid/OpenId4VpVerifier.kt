@@ -42,7 +42,6 @@ import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.PresentationRequestParameters
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.agent.VerifierAgent
@@ -572,7 +571,7 @@ class OpenId4VpVerifier(
         transactionData: List<TransactionDataBase64Url>?,
     ) = when (claimFormat) {
         ClaimFormat.JWT_SD, ClaimFormat.SD_JWT -> verifier.verifyPresentationSdJwt(
-            input = SdJwtSigned.parseThrowing(relatedPresentation.jsonPrimitive.content).getOrElse {
+            input = SdJwtSigned.parseCatching(relatedPresentation.jsonPrimitive.content).getOrElse {
                 throw IllegalArgumentException("relatedPresentation")
             },
             challenge = expectedNonce,

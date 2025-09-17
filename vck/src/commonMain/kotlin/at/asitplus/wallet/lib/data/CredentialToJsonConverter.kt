@@ -41,7 +41,7 @@ object CredentialToJsonConverter {
         }
 
         is SubjectCredentialStore.StoreEntry.SdJwt -> {
-            val sdJwtSigned = SdJwtSigned.parseThrowing(credential.vcSerialized).getOrNull()
+            val sdJwtSigned = SdJwtSigned.parseCatching(credential.vcSerialized).getOrNull()
             val payloadVc = sdJwtSigned?.getPayloadAsJsonObject()?.getOrNull()
             val reconstructed = sdJwtSigned?.let { SdJwtDecoded(it).reconstructedJsonObject }
             val simpleDisclosureMap = credential.disclosures.map { entry ->
