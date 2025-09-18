@@ -252,9 +252,10 @@ class KeyBindingTests : FreeSpec({
         "Hash of transaction data is not changed during processing" {
             val referenceHash = cibaWalletTransactionData.toByteArray(Charsets.UTF_8).sha256()
 
-            val authenticationRequest =
-                holderOid4vp.parseAuthenticationRequestParameters(cibaWalletTestVector).getOrThrow()
-            authenticationRequest.parameters.transactionData.shouldNotBeEmpty().shouldNotBeNull()
+            val authenticationRequest = holderOid4vp.startAuthorizationResponsePreparation(cibaWalletTestVector)
+                .getOrThrow().request.apply {
+                    parameters.transactionData.shouldNotBeEmpty().shouldNotBeNull()
+                }
 
             externalMapStore.put(
                 "iTGlKl-AJxmncWPbXHp2xy58bNy18wqZ4TR9EzhBl2R4ulxeTEO0VyWYR2qMDpCDV5JWeOxecTqcEJ61bFKrUg",

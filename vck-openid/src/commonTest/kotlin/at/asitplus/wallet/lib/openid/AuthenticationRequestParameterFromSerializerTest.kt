@@ -52,7 +52,8 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
                 OpenId4VpVerifier.CreationOptions.Query(walletUrl)
             ).getOrThrow().url
 
-            val params = holderOid4vp.parseAuthenticationRequestParameters(authnRequest).getOrThrow()
+            val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow()
+                .request
                 .shouldBeInstanceOf<RequestParametersFrom.Uri<AuthenticationRequestParameters>>()
 
             val serialized = vckJsonSerializer.encodeToString(params)
@@ -65,7 +66,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
                 verifierOid4vp.createAuthnRequest(requestOptions = reqOptions)
             )
             authnRequest.shouldNotContain(DifInputDescriptor::class.simpleName!!)
-            val params = holderOid4vp.parseAuthenticationRequestParameters(authnRequest).getOrThrow()
+            val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow().request
 
             val serialized = vckJsonSerializer.encodeToString(params)
             val deserialized = vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
@@ -81,7 +82,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
             interim1.clientId shouldBe clientId
 
             val interim2 = interim1.request ?: throw Exception("Authn request is null")
-            val params = holderOid4vp.parseAuthenticationRequestParameters(interim2).getOrThrow()
+            val params = holderOid4vp.startAuthorizationResponsePreparation(interim2).getOrThrow().request
 
             val serialized = vckJsonSerializer.encodeToString(params)
             val deserialized = vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)

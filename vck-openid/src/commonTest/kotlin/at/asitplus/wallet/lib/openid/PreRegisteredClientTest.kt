@@ -101,9 +101,9 @@ class PreRegisteredClientTest : FreeSpec({
         authnResponse.url.shouldContain("#")
         authnResponse.url.shouldStartWith(redirectUrl)
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
+        verifierOid4vp.validateAuthnResponse(authnResponse.url)
             .shouldBeInstanceOf<AuthnResponseResult.Success>()
-        result.vp.freshVerifiableCredentials.shouldNotBeEmpty()
+            .vp.freshVerifiableCredentials.shouldNotBeEmpty()
 
         verifierOid4vp.createAuthnRequest(
             defaultRequestOptions, OpenId4VpVerifier.CreationOptions.Query(walletUrl)
@@ -132,10 +132,11 @@ class PreRegisteredClientTest : FreeSpec({
         authnResponse.url.shouldNotContain("#")
         authnResponse.url.shouldStartWith(redirectUrl)
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
-            .shouldBeInstanceOf<AuthnResponseResult.Success>()
-        result.vp.freshVerifiableCredentials.shouldNotBeEmpty()
-        result.state.shouldBe(expectedState)
+        verifierOid4vp.validateAuthnResponse(authnResponse.url)
+            .shouldBeInstanceOf<AuthnResponseResult.Success>().apply {
+                vp.freshVerifiableCredentials.shouldNotBeEmpty()
+                state.shouldBe(expectedState)
+            }
     }
 
     "wrong client nonce in id_token should lead to error" {
@@ -159,9 +160,9 @@ class PreRegisteredClientTest : FreeSpec({
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
+        verifierOid4vp.validateAuthnResponse(authnResponse.url)
             .shouldBeInstanceOf<AuthnResponseResult.ValidationError>()
-        result.field shouldBe "idToken"
+            .field shouldBe "idToken"
     }
 
     "wrong client nonce in vp_token should lead to error" {
@@ -181,9 +182,9 @@ class PreRegisteredClientTest : FreeSpec({
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
-        result.shouldBeInstanceOf<AuthnResponseResult.ValidationError>()
-        result.field shouldBe "state"
+        verifierOid4vp.validateAuthnResponse(authnResponse.url)
+            .shouldBeInstanceOf<AuthnResponseResult.ValidationError>()
+            .field shouldBe "state"
     }
 
     "test with QR Code" {
@@ -220,9 +221,9 @@ class PreRegisteredClientTest : FreeSpec({
             .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
         authnResponse.url.shouldBe(redirectUrl)
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
+        verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
             .shouldBeInstanceOf<AuthnResponseResult.Success>()
-        result.vp.freshVerifiableCredentials.shouldNotBeEmpty()
+            .vp.freshVerifiableCredentials.shouldNotBeEmpty()
     }
 
     "test with direct_post.jwt" {
@@ -241,9 +242,9 @@ class PreRegisteredClientTest : FreeSpec({
                 params.shouldHaveSize(1) // only the "response" object
             }
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
+        verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
             .shouldBeInstanceOf<AuthnResponseResult.Success>()
-        result.vp.freshVerifiableCredentials.shouldNotBeEmpty()
+            .vp.freshVerifiableCredentials.shouldNotBeEmpty()
     }
 
     "test with deserializing" {
@@ -252,19 +253,19 @@ class PreRegisteredClientTest : FreeSpec({
 
         val parsedAuthnRequest: AuthenticationRequestParameters =
             authnRequestUrlParams.decodeFromUrlQuery()
-        val authnResponse = holderOid4vp.createAuthnResponseParams(
+        val authnResponse = holderOid4vp.createAuthnResponse(
             RequestParametersFrom.Uri(
                 Url(authnRequestUrlParams),
                 parsedAuthnRequest
             )
         ).getOrThrow()
-            .shouldBeInstanceOf<AuthenticationResponse.Success>()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             .params
         val authnResponseParams = authnResponse.encodeToParameters().formUrlEncode()
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponseParams)
+        verifierOid4vp.validateAuthnResponse(authnResponseParams)
             .shouldBeInstanceOf<AuthnResponseResult.Success>()
-        result.vp.freshVerifiableCredentials.shouldNotBeEmpty()
+            .vp.freshVerifiableCredentials.shouldNotBeEmpty()
     }
 
     "test specific credential" {
@@ -276,12 +277,12 @@ class PreRegisteredClientTest : FreeSpec({
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
+        verifierOid4vp.validateAuthnResponse(authnResponse.url)
             .shouldBeInstanceOf<AuthnResponseResult.Success>()
-        result.vp.freshVerifiableCredentials.shouldNotBeEmpty()
-        result.vp.freshVerifiableCredentials.map { it.vcJws }.forEach {
-            it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
-        }
+            .vp.freshVerifiableCredentials.shouldNotBeEmpty()
+            .map { it.vcJws }.forEach {
+                it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
+            }
     }
 
     "test with request object" {
@@ -292,12 +293,12 @@ class PreRegisteredClientTest : FreeSpec({
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
+        verifierOid4vp.validateAuthnResponse(authnResponse.url)
             .shouldBeInstanceOf<AuthnResponseResult.Success>()
-        result.vp.freshVerifiableCredentials.shouldNotBeEmpty()
-        result.vp.freshVerifiableCredentials.map { it.vcJws }.forEach {
-            it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
-        }
+            .vp.freshVerifiableCredentials.shouldNotBeEmpty()
+            .map { it.vcJws }.forEach {
+                it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
+            }
     }
 
     "test with request object from request_uri as JWS" {
@@ -319,12 +320,12 @@ class PreRegisteredClientTest : FreeSpec({
         val authnResponse = holderOid4vp.createAuthnResponse(authRequestUrlWithRequestUri).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
+        verifierOid4vp.validateAuthnResponse(authnResponse.url)
             .shouldBeInstanceOf<AuthnResponseResult.Success>()
-        result.vp.freshVerifiableCredentials.shouldNotBeEmpty()
-        result.vp.freshVerifiableCredentials.map { it.vcJws }.forEach {
-            it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
-        }
+            .vp.freshVerifiableCredentials.shouldNotBeEmpty()
+            .map { it.vcJws }.forEach {
+                it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
+            }
     }
 
     "test with request object from request_uri contains wallet_nonce, but not in store should fail" {
@@ -360,8 +361,6 @@ class PreRegisteredClientTest : FreeSpec({
             randomSource = RandomSource.Default,
         )
 
-        // TODO shouldn't there be more error tests like this, and we can send every error back?
-        // or does this now remove some local error handling ...
         holderOid4vp.createAuthnResponse(authRequestUrlWithRequestUri).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             .error.shouldNotBeNull()

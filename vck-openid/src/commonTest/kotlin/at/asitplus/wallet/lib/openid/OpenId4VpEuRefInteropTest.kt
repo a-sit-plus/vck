@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
-import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
 import at.asitplus.signum.indispensable.asn1.Asn1Primitive
 import at.asitplus.signum.indispensable.asn1.Asn1String
@@ -180,7 +179,7 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
             randomSource = RandomSource.Default,
         )
 
-        holderOid4vp.parseAuthenticationRequestParameters(url).getOrThrow()
+        holderOid4vp.startAuthorizationResponsePreparation(url).getOrThrow()
     }
 
     "EUDI AuthnRequest can be parsed" {
@@ -297,6 +296,7 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
                 state = "ef391e30-bacc-4441-af5d-7f42fb682e02",
                 responseUrl = "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02",
                 clientId = "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02",
+                responseType = "vp_token",
             ),
             AuthenticationRequestParameters.serializer(),
         ).getOrThrow().serialize()
@@ -308,11 +308,11 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
             randomSource = RandomSource.Default,
         )
 
-        val parsed = wallet.parseAuthenticationRequestParameters(input).getOrThrow()
-
-        parsed.parameters.state shouldBe "ef391e30-bacc-4441-af5d-7f42fb682e02"
-        parsed.parameters.responseUrl shouldBe "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02"
-        parsed.parameters.clientIdWithoutPrefix shouldBe parsed.parameters.responseUrl
+        wallet.startAuthorizationResponsePreparation(input).getOrThrow().apply {
+            request.parameters.state shouldBe "ef391e30-bacc-4441-af5d-7f42fb682e02"
+            request.parameters.responseUrl shouldBe "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02"
+            request.parameters.clientIdWithoutPrefix shouldBe request.parameters.responseUrl
+        }
     }
 
     "process with cross-device flow with request_uri and x509_san_dns" {
@@ -366,9 +366,8 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
             randomSource = RandomSource.Default,
         )
 
-        val parameters: RequestParametersFrom<AuthenticationRequestParameters> =
-            holderOid4vp.parseAuthenticationRequestParameters(walletUrl).getOrThrow()
-        val response = holderOid4vp.createAuthnResponse(parameters).getOrThrow()
+        val state = holderOid4vp.startAuthorizationResponsePreparation(walletUrl).getOrThrow()
+        val response = holderOid4vp.finalizeAuthorizationResponse(state, null).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
         verifierOid4vp.validateAuthnResponse(response.params)
             .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()

@@ -185,9 +185,7 @@ class OpenId4VpHolder(
     suspend fun createAuthnResponse(
         input: String,
     ): KmmResult<AuthenticationResponseResult> = catching {
-        parseAuthenticationRequestParameters(input).getOrThrow().let { parsedRequest ->
-            createAuthnResponse(parsedRequest).getOrThrow()
-        }
+        createAuthnResponse(parse(input)).getOrThrow()
     }
 
     /**
@@ -196,15 +194,20 @@ class OpenId4VpHolder(
      *
      * Exceptions thrown during request parsing are caught by [KmmResult].
      */
-    // TODO return the internal state here? or rename that to parsedAuthenticationRequestParameters
+    @Deprecated("Use startAuthorizationResponsePreparation() instead")
     suspend fun parseAuthenticationRequestParameters(
         input: String,
         dcApiRequest: DCAPIRequest? = null,
     ): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> = catching {
-        @Suppress("UNCHECKED_CAST")
-        requestParser.parseRequestParameters(input, dcApiRequest)
-            .getOrThrow() as RequestParametersFrom<AuthenticationRequestParameters>
+        parse(input, dcApiRequest)
     }
+
+    @Suppress("UNCHECKED_CAST")
+    private suspend fun parse(
+        input: String,
+        dcApiRequest: DCAPIRequest? = null,
+    ) = requestParser.parseRequestParameters(input, dcApiRequest)
+        .getOrThrow() as RequestParametersFrom<AuthenticationRequestParameters>
 
     /** Creates an error response for the [error], which can be sent to the verifier / relying party. */
     suspend fun createAuthnErrorResponse(
@@ -242,31 +245,32 @@ class OpenId4VpHolder(
     /**
      * Creates the authentication response from the RP's [params]
      */
-    suspend fun createAuthnResponseParams(
+    private suspend fun createAuthnResponseParams(
         params: RequestParametersFrom<AuthenticationRequestParameters>,
-    ): KmmResult<AuthenticationResponse> = startAuthorizationResponsePreparation(params).map {
-        if (it.requestObjectVerified == false)
-            throw InvalidRequest("Request object verification failed")
-
-        finalizeAuthorizationResponseParameters(
-            request = params,
-            preparationState = it,
-            credentialPresentation = it.credentialPresentationRequest?.toCredentialPresentation()
-        ).getOrThrow()
-    }
-
-    /**
-     * Starts the authorization response building process from the RP's authentication request in [input]
-     */
-    suspend fun startAuthorizationResponsePreparation(
-        input: String,
-    ): KmmResult<AuthorizationResponsePreparationState> =
-        parseAuthenticationRequestParameters(input).map {
-            startAuthorizationResponsePreparation(it).getOrThrow()
+    ): KmmResult<AuthenticationResponse> =
+        startAuthorizationResponsePreparation(params).map {
+            if (it.requestObjectVerified == false)
+                throw InvalidRequest("Request object verification failed")
+            finalizeAuthorizationResponseParameters(
+                state = it,
+                credentialPresentation = it.credentialPresentationRequest?.toCredentialPresentation()
+            ).getOrThrow()
         }
 
     /**
-     * Starts the authorization response building process from the RP's authentication request in [params]
+     * Parses the [AuthenticationRequestParameters] from [input] and loads remote objects (client metadata, keys).
+     * Clients need to inform the user, get consent, and resume in [finalizeAuthorizationResponse].
+     */
+    suspend fun startAuthorizationResponsePreparation(
+        input: String,
+        dcApiRequest: DCAPIRequest? = null,
+    ): KmmResult<AuthorizationResponsePreparationState> = catching {
+        startAuthorizationResponsePreparation(parse(input, dcApiRequest)).getOrThrow()
+    }
+
+    /**
+     * Validates the [AuthenticationRequestParameters] from [params] and loads remote objects (client metadata, keys).
+     * Clients need to inform the user, get consent, and resume in [finalizeAuthorizationResponse].
      */
     suspend fun startAuthorizationResponsePreparation(
         params: RequestParametersFrom<AuthenticationRequestParameters>,
@@ -274,6 +278,7 @@ class OpenId4VpHolder(
         authorizationRequestValidator.validateAuthorizationRequest(params)
         val clientMetadata = params.parameters.loadClientMetadata()
         AuthorizationResponsePreparationState(
+            request = params,
             credentialPresentationRequest = params.parameters.loadCredentialRequest(),
             clientMetadata = clientMetadata,
             jsonWebKeys = clientMetadata?.loadJsonWebKeySet()?.keys,
@@ -298,19 +303,17 @@ class OpenId4VpHolder(
     }
 
     /**
-     * Finalize the authorization response, given the [request] (from [parseAuthenticationRequestParameters]),
-     * and [preparationState] from [startAuthorizationResponsePreparation], and the [credentialPresentation].
+     * Finalize the authorization response, given the [preparationState] from [startAuthorizationResponsePreparation],
+     * and the [credentialPresentation] selected by the user.
      */
     suspend fun finalizeAuthorizationResponse(
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
         preparationState: AuthorizationResponsePreparationState,
-        credentialPresentation: CredentialPresentation,
+        credentialPresentation: CredentialPresentation?,
     ): KmmResult<AuthenticationResponseResult> = finalizeAuthorizationResponseParameters(
-        request = request,
-        preparationState = preparationState,
+        state = preparationState,
         credentialPresentation = credentialPresentation
     ).map {
-        authenticationResponseFactory.createAuthenticationResponse(request, it)
+        authenticationResponseFactory.createAuthenticationResponse(preparationState.request, it)
     }
 
     @Deprecated("Use finalizeAuthorizationResponseParameters with AuthorizationResponsePreparationState")
@@ -320,8 +323,7 @@ class OpenId4VpHolder(
         credentialPresentation: CredentialPresentation?,
     ): KmmResult<AuthenticationResponse> = catching {
         finalizeAuthorizationResponseParameters(
-            request = request,
-            preparationState = startAuthorizationResponsePreparation(request).getOrThrow(),
+            state = startAuthorizationResponsePreparation(request).getOrThrow(),
             credentialPresentation = credentialPresentation
         ).getOrThrow()
     }
@@ -329,43 +331,41 @@ class OpenId4VpHolder(
     /**
      * Finalize the authorization response parameters
      *
-     * @param preparationState from [startAuthorizationResponsePreparation]
-     * @param request from [parseAuthenticationRequestParameters]
+     * @param state from [startAuthorizationResponsePreparation]
      * @param credentialPresentation the credentials that are actually being used for the VP
      */
     private suspend fun finalizeAuthorizationResponseParameters(
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
-        preparationState: AuthorizationResponsePreparationState,
+        state: AuthorizationResponsePreparationState,
         credentialPresentation: CredentialPresentation?,
     ): KmmResult<AuthenticationResponse> = catching {
-        val dcApiRequest = request.extractDcApiRequest() as? Oid4vpDCAPIRequest?
-        val audience = request.parameters.extractAudience(preparationState.jsonWebKeys, dcApiRequest)
-        val jsonWebKeys = preparationState.jsonWebKeys?.combine(request.extractLeafCertKey())
-        val idToken = presentationFactory.createSignedIdToken(clock, keyMaterial.publicKey, request)
+        val dcApiRequest = state.request.extractDcApiRequest() as? Oid4vpDCAPIRequest?
+        val audience = state.request.parameters.extractAudience(state.jsonWebKeys, dcApiRequest)
+        val jsonWebKeys = state.jsonWebKeys?.combine(state.request.extractLeafCertKey())
+        val idToken = presentationFactory.createSignedIdToken(clock, keyMaterial.publicKey, state.request)
             .getOrNull()?.serialize()
-
-        val resultContainer = credentialPresentation?.let {
+        val presentation = credentialPresentation ?: state.credentialPresentationRequest?.toCredentialPresentation()
+        val resultContainer = presentation?.let {
             presentationFactory.createPresentation(
                 holder = holder,
-                request = request.parameters,
+                request = state.request.parameters,
                 audience = audience,
-                nonce = request.parameters.nonce!!,
-                credentialPresentation = credentialPresentation,
-                clientMetadata = preparationState.clientMetadata,
+                nonce = state.request.parameters.nonce!!,
+                credentialPresentation = presentation,
+                clientMetadata = state.clientMetadata,
                 jsonWebKeys = jsonWebKeys,
                 dcApiRequest = dcApiRequest
             ).getOrThrow()
         }
 
         val parameters = AuthenticationResponseParameters(
-            state = request.parameters.state,
+            state = state.request.parameters.state,
             idToken = idToken,
             vpToken = resultContainer?.vpToken,
             presentationSubmission = resultContainer?.presentationSubmission,
         )
         AuthenticationResponse.Success(
             params = parameters,
-            clientMetadata = preparationState.clientMetadata,
+            clientMetadata = state.clientMetadata,
             jsonWebKeys = jsonWebKeys,
             mdocGeneratedNonce = resultContainer?.mdocGeneratedNonce
         )

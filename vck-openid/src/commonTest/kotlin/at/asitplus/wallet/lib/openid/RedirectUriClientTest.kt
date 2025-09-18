@@ -83,9 +83,9 @@ class RedirectUriClientTest : FreeSpec({
         authnResponse.url.shouldContain("#")
         authnResponse.url.shouldStartWith(clientId)
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
+        verifierOid4vp.validateAuthnResponse(authnResponse.url)
             .shouldBeInstanceOf<AuthnResponseResult.Success>()
-        result.vp.freshVerifiableCredentials.shouldNotBeEmpty()
+            .vp.freshVerifiableCredentials.shouldNotBeEmpty()
 
         verifySecondProtocolRun(verifierOid4vp, walletUrl, holderOid4vp)
     }
@@ -111,9 +111,9 @@ class RedirectUriClientTest : FreeSpec({
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
+        verifierOid4vp.validateAuthnResponse(authnResponse.url)
             .shouldBeInstanceOf<AuthnResponseResult.ValidationError>()
-        result.field shouldBe "idToken"
+            .field shouldBe "idToken"
     }
 
     "wrong client nonce in vp_token should lead to error" {
@@ -133,9 +133,9 @@ class RedirectUriClientTest : FreeSpec({
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
-        result.shouldBeInstanceOf<AuthnResponseResult.ValidationError>()
-        result.field shouldBe "state"
+        verifierOid4vp.validateAuthnResponse(authnResponse.url)
+            .shouldBeInstanceOf<AuthnResponseResult.ValidationError>()
+            .field shouldBe "state"
     }
 
     "signed requests not allowed for redirect-uri" {
@@ -169,9 +169,9 @@ class RedirectUriClientTest : FreeSpec({
             .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
         authnResponse.url.shouldBe(clientId)
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
+        verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
             .shouldBeInstanceOf<AuthnResponseResult.Success>()
-        result.vp.freshVerifiableCredentials.shouldNotBeEmpty()
+            .vp.freshVerifiableCredentials.shouldNotBeEmpty()
     }
 
     "test with direct_post.jwt" {
@@ -190,9 +190,9 @@ class RedirectUriClientTest : FreeSpec({
                 params.shouldHaveSize(1) // only the "response" object
             }
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
+        verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
             .shouldBeInstanceOf<AuthnResponseResult.Success>()
-        result.vp.freshVerifiableCredentials.shouldNotBeEmpty()
+            .vp.freshVerifiableCredentials.shouldNotBeEmpty()
     }
 
     "test with Query" {
@@ -213,10 +213,11 @@ class RedirectUriClientTest : FreeSpec({
         authnResponse.url.shouldNotContain("#")
         authnResponse.url.shouldStartWith(clientId)
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
-            .shouldBeInstanceOf<AuthnResponseResult.Success>()
-        result.vp.freshVerifiableCredentials.shouldNotBeEmpty()
-        result.state.shouldBe(expectedState)
+        verifierOid4vp.validateAuthnResponse(authnResponse.url)
+            .shouldBeInstanceOf<AuthnResponseResult.Success>().apply {
+                vp.freshVerifiableCredentials.shouldNotBeEmpty()
+                state.shouldBe(expectedState)
+            }
     }
 
     "test with deserializing" {
@@ -225,19 +226,19 @@ class RedirectUriClientTest : FreeSpec({
 
         val parsedAuthnRequest: AuthenticationRequestParameters =
             authnRequestUrlParams.decodeFromUrlQuery()
-        val authnResponse = holderOid4vp.createAuthnResponseParams(
+        val authnResponse = holderOid4vp.createAuthnResponse(
             RequestParametersFrom.Uri(
                 Url(authnRequestUrlParams),
                 parsedAuthnRequest
             )
         ).getOrThrow()
-            .shouldBeInstanceOf<AuthenticationResponse.Success>()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             .params
         val authnResponseParams = authnResponse.encodeToParameters().formUrlEncode()
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponseParams)
+        verifierOid4vp.validateAuthnResponse(authnResponseParams)
             .shouldBeInstanceOf<AuthnResponseResult.Success>()
-        result.vp.freshVerifiableCredentials.shouldNotBeEmpty()
+            .vp.freshVerifiableCredentials.shouldNotBeEmpty()
     }
 
     "test specific credential" {
@@ -249,12 +250,12 @@ class RedirectUriClientTest : FreeSpec({
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
+        verifierOid4vp.validateAuthnResponse(authnResponse.url)
             .shouldBeInstanceOf<AuthnResponseResult.Success>()
-        result.vp.freshVerifiableCredentials.shouldNotBeEmpty()
-        result.vp.freshVerifiableCredentials.map { it.vcJws }.forEach {
-            it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
-        }
+            .vp.freshVerifiableCredentials.shouldNotBeEmpty()
+            .map { it.vcJws }.forEach {
+                it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
+            }
     }
 
 })

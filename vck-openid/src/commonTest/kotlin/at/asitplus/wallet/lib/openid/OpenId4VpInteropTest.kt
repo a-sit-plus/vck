@@ -139,8 +139,9 @@ class OpenId4VpInteropTest : FreeSpec({
             randomSource = RandomSource.Default,
         )
 
-        val parameters = holderOid4vp.parseAuthenticationRequestParameters(requestUrlForWallet).getOrThrow()
-        parameters.shouldBeInstanceOf<RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>>()
+        val state = holderOid4vp.startAuthorizationResponsePreparation(requestUrlForWallet).getOrThrow()
+        val parameters = state.request
+            .shouldBeInstanceOf<RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>>()
 
         val jar = parameters.jwsSigned
         jar.header.algorithm shouldBe JwsAlgorithm.Signature.ES256
@@ -166,8 +167,9 @@ class OpenId4VpInteropTest : FreeSpec({
             VerifyJwsObject()(jar) shouldBe true
         }
 
-        val response = holderOid4vp.createAuthnResponse(parameters).getOrThrow()
+        val response = holderOid4vp.finalizeAuthorizationResponse(state, null).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
+            .also { println(it) }
 
         response.params.entries.firstOrNull { it.key == "vp_token" }.shouldNotBeNull().value.let { vpToken ->
             val sdJwt = SdJwtSigned.parseCatching(vpToken).getOrThrow()

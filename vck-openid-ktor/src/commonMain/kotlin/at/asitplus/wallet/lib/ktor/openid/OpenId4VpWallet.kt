@@ -108,6 +108,7 @@ class OpenId4VpWallet(
         requestObjectJwsVerifier = { _ -> true }, // unsure about this one?
     )
 
+    @Deprecated("Use [startAuthorizationResponsePreparation] instead")
     suspend fun parseAuthenticationRequestParameters(
         input: String,
         dcApiRequest: Oid4vpDCAPIRequest? = null,
@@ -143,8 +144,9 @@ class OpenId4VpWallet(
 
     suspend fun startAuthorizationResponsePreparation(
         input: String,
+        dcApiRequest: Oid4vpDCAPIRequest?
     ): KmmResult<AuthorizationResponsePreparationState> =
-        openId4VpHolder.startAuthorizationResponsePreparation(input)
+        openId4VpHolder.startAuthorizationResponsePreparation(input, dcApiRequest)
 
     /**
      * Calls [openId4VpHolder] to finalize the authentication response.
@@ -200,7 +202,6 @@ class OpenId4VpWallet(
     ): KmmResult<AuthenticationResult> = catching {
         Napier.i("startPresentation: $request")
         openId4VpHolder.finalizeAuthorizationResponse(
-            request = request,
             preparationState = preparationState,
             credentialPresentation = credentialPresentation
         ).getOrElse {

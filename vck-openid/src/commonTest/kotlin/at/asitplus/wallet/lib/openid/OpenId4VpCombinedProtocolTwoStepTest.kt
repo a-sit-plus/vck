@@ -100,8 +100,8 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
                     )
                 )
 
-                val params = holderOid4vp.parseAuthenticationRequestParameters(authnRequest.serialize()).getOrThrow()
-                val preparationState = holderOid4vp.startAuthorizationResponsePreparation(params).getOrThrow()
+                val preparationState = holderOid4vp.startAuthorizationResponsePreparation(authnRequest.serialize())
+                    .getOrThrow()
                 val presentationExchangeRequest = preparationState.credentialPresentationRequest
                     .shouldBeInstanceOf<PresentationExchangeRequest>()
                 val presentationDefinition = presentationExchangeRequest.presentationDefinition
@@ -126,7 +126,6 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
 
                     shouldNotThrowAny {
                         holderOid4vp.finalizeAuthorizationResponse(
-                            request = params,
                             preparationState = preparationState,
                             credentialPresentation = PresentationExchangePresentation(
                                 presentationRequest = presentationExchangeRequest,
@@ -155,8 +154,8 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
                     )
                 )
 
-                val params = holderOid4vp.parseAuthenticationRequestParameters(authnRequest.serialize()).getOrThrow()
-                val preparationState = holderOid4vp.startAuthorizationResponsePreparation(params).getOrThrow()
+                val preparationState = holderOid4vp.startAuthorizationResponsePreparation(authnRequest.serialize())
+                    .getOrThrow()
                 val presentationExchangeRequest = preparationState.credentialPresentationRequest
                     .shouldBeInstanceOf<PresentationExchangeRequest>()
                 val presentationDefinition = presentationExchangeRequest.presentationDefinition
@@ -180,7 +179,6 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
 
                         shouldNotThrowAny {
                             holderOid4vp.finalizeAuthorizationResponse(
-                                request = params,
                                 preparationState = preparationState,
                                 credentialPresentation = PresentationExchangePresentation(
                                     presentationRequest = presentationExchangeRequest,
@@ -206,9 +204,9 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
                         )
                     )
 
-                    val preparationStateSdJwt = holderOid4vp.startAuthorizationResponsePreparation(
-                        holderOid4vp.parseAuthenticationRequestParameters(authnRequestSdJwt.serialize()).getOrThrow()
-                    ).getOrThrow()
+                    val preparationStateSdJwt =
+                        holderOid4vp.startAuthorizationResponsePreparation(authnRequestSdJwt.serialize())
+                            .getOrThrow()
                     val presentationDefinitionSdJwt = preparationStateSdJwt.credentialPresentationRequest
                         .shouldBeInstanceOf<PresentationExchangeRequest>()
                         .presentationDefinition
@@ -235,8 +233,8 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
                     )
                 )
 
-                val params = holderOid4vp.parseAuthenticationRequestParameters(authnRequest.serialize()).getOrThrow()
-                val preparationState = holderOid4vp.startAuthorizationResponsePreparation(params).getOrThrow()
+                val preparationState = holderOid4vp.startAuthorizationResponsePreparation(authnRequest.serialize())
+                    .getOrThrow()
                 val presentationExchangeRequest = preparationState.credentialPresentationRequest
                     .shouldBeInstanceOf<PresentationExchangeRequest>()
                 val presentationDefinition = presentationExchangeRequest
@@ -264,7 +262,6 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
 
                 shouldThrowAny {
                     holderOid4vp.finalizeAuthorizationResponse(
-                        request = params,
                         preparationState = preparationState,
                         credentialPresentation = PresentationExchangePresentation(
                             presentationRequest = presentationExchangeRequest,
