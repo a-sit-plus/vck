@@ -125,9 +125,9 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
                     )
 
                     shouldNotThrowAny {
-                        holderOid4vp.finalizeAuthorizationResponseParameters(
+                        holderOid4vp.finalizeAuthorizationResponse(
                             request = params,
-                            clientMetadata = verifierOid4vp.metadata,
+                            preparationState = preparationState,
                             credentialPresentation = PresentationExchangePresentation(
                                 presentationRequest = presentationExchangeRequest,
                                 inputDescriptorSubmissions = submission
@@ -179,9 +179,9 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
                         )
 
                         shouldNotThrowAny {
-                            holderOid4vp.finalizeAuthorizationResponseParameters(
+                            holderOid4vp.finalizeAuthorizationResponse(
                                 request = params,
-                                clientMetadata = verifierOid4vp.metadata,
+                                preparationState = preparationState,
                                 credentialPresentation = PresentationExchangePresentation(
                                     presentationRequest = presentationExchangeRequest,
                                     inputDescriptorSubmissions = submission
@@ -265,7 +265,7 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
                 shouldThrowAny {
                     holderOid4vp.finalizeAuthorizationResponse(
                         request = params,
-                        clientMetadata = verifierOid4vp.metadata,
+                        preparationState = preparationState,
                         credentialPresentation = PresentationExchangePresentation(
                             presentationRequest = presentationExchangeRequest,
                             inputDescriptorSubmissions = submission

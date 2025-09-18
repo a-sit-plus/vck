@@ -219,9 +219,9 @@ class OpenId4VpWalletTest : FunSpec() {
 
                 val requestParametersFrom =
                     wallet.parseAuthenticationRequestParameters(request, dcApiRequest).getOrThrow()
-                val clientMetadata = RelyingPartyMetadata()
+                val preparationState = wallet.startAuthorizationResponsePreparation(requestParametersFrom).getOrThrow()
                 val presentation = DCQLPresentation(DCQLRequest(dcqlQuery), credentialQuerySubmissions)
-                wallet.finalizeAuthorizationResponse(requestParametersFrom, clientMetadata, presentation).also {
+                wallet.finalizeAuthorizationResponse(requestParametersFrom, preparationState, presentation).also {
                     it.isSuccess shouldBe true
                     val response = it.getOrThrow()
                     response.shouldBeInstanceOf<OpenId4VpWallet.AuthenticationForward>()

@@ -51,14 +51,18 @@ class OpenId4VpWallet(
     keyMaterial: KeyMaterial,
     holderAgent: HolderAgent,
     /** Source for random bytes, i.e., nonces for encrypted responses. */
-    randomSource: RandomSource = RandomSource.Secure
+    randomSource: RandomSource = RandomSource.Secure,
 ) {
 
     sealed interface AuthenticationResult
 
-    data class AuthenticationSuccess(val redirectUri: String? = null) : AuthenticationResult
-    data class AuthenticationForward(val authenticationResponseResult: AuthenticationResponseResult.DcApi) :
-        AuthenticationResult
+    data class AuthenticationSuccess(
+        val redirectUri: String? = null,
+    ) : AuthenticationResult
+
+    data class AuthenticationForward(
+        val authenticationResponseResult: AuthenticationResponseResult.DcApi,
+    ) : AuthenticationResult
 
 
     private val client: HttpClient = HttpClient(engine) {
@@ -71,6 +75,7 @@ class OpenId4VpWallet(
         }
         httpClientConfig?.let { apply(it) }
     }
+
     val openId4VpHolder = OpenId4VpHolder(
         holder = holderAgent,
         keyMaterial = keyMaterial,
@@ -113,6 +118,7 @@ class OpenId4VpWallet(
      * Sends an error response with the appropriate method.
      * Returns nothing as we don't expect a useful response.
      */
+    // TODO Make this not be called explicitly
     suspend fun sendAuthnErrorResponse(
         error: OAuth2Error,
         request: RequestParametersFrom<AuthenticationRequestParameters>,
@@ -159,14 +165,8 @@ class OpenId4VpWallet(
         }
     }
 
-    /**
-     * Calls [openId4VpHolder] to finalize the authentication response.
-     * In case the result shall be POSTed to the verifier, we call [client] to do that,
-     * and return the `redirect_uri` of that POST (which the Wallet may open in a browser).
-     * In case the result shall be sent as a redirect to the verifier, we return that URL.
-     * In case the result shall be returned via the Digital Credentials API, an [AuthenticationForward]
-     * will be returned with the result to be forwarded.
-     */
+    @Suppress("DEPRECATION")
+    @Deprecated("Use finalizeAuthorizationResponse with AuthorizationResponsePreparationState")
     suspend fun finalizeAuthorizationResponse(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         clientMetadata: RelyingPartyMetadata?,
@@ -180,15 +180,44 @@ class OpenId4VpWallet(
         ).getOrElse {
             sendAuthnErrorResponse(it.toOAuth2Error(request), request)
             throw it
-        }.let { response ->
-            when (response) {
-                is AuthenticationResponseResult.Post -> postResponse(response)
-                is AuthenticationResponseResult.Redirect -> redirectResponse(response)
-                is AuthenticationResponseResult.DcApi -> AuthenticationForward(response)
-            }
+        }.let {
+            handleResponseResult(it)
         }
     }
 
+    /**
+     * Calls [openId4VpHolder] to finalize the authentication response.
+     * In case the result shall be POSTed to the verifier, we call [client] to do that,
+     * and return the `redirect_uri` of that POST (which the Wallet may open in a browser).
+     * In case the result shall be sent as a redirect to the verifier, we return that URL.
+     * In case the result shall be returned via the Digital Credentials API, an [AuthenticationForward]
+     * will be returned with the result to be forwarded.
+     */
+    suspend fun finalizeAuthorizationResponse(
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        preparationState: AuthorizationResponsePreparationState,
+        credentialPresentation: CredentialPresentation,
+    ): KmmResult<AuthenticationResult> = catching {
+        Napier.i("startPresentation: $request")
+        openId4VpHolder.finalizeAuthorizationResponse(
+            request = request,
+            preparationState = preparationState,
+            credentialPresentation = credentialPresentation
+        ).getOrElse {
+            sendAuthnErrorResponse(it.toOAuth2Error(request), request)
+            throw it
+        }.let {
+            handleResponseResult(it)
+        }
+    }
+
+    private suspend fun handleResponseResult(
+        response: AuthenticationResponseResult,
+    ): AuthenticationResult = when (response) {
+        is AuthenticationResponseResult.Post -> postResponse(response)
+        is AuthenticationResponseResult.Redirect -> redirectResponse(response)
+        is AuthenticationResponseResult.DcApi -> AuthenticationForward(response)
+    }
 
     private suspend fun postResponse(it: AuthenticationResponseResult.Post) = run {
         Napier.i("postResponse: $it")

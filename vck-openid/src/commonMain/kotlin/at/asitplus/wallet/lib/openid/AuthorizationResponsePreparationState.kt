@@ -4,6 +4,7 @@ import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
 import at.asitplus.openid.VerifierInfo
+import at.asitplus.signum.indispensable.josef.JsonWebKey
 import kotlinx.serialization.Serializable
 
 /**
@@ -14,6 +15,7 @@ import kotlinx.serialization.Serializable
 data class AuthorizationResponsePreparationState(
     val credentialPresentationRequest: CredentialPresentationRequest?,
     val clientMetadata: RelyingPartyMetadata?,
+    val jsonWebKeys: Collection<JsonWebKey>?,
     val oid4vpDCAPIRequest: Oid4vpDCAPIRequest?,
     /** Whether the request object has been verified (if it was signed at all) */
     val requestObjectVerified: Boolean?,

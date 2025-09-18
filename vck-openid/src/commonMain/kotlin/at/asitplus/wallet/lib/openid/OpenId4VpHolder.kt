@@ -168,83 +168,92 @@ class OpenId4VpHolder(
         )
     }
 
-    /**
-     * Used to resolve [at.asitplus.openid.RequestParameters] by reference and also matches them to the correct [RequestParametersFrom]
-     */
-    private val requestParser: RequestParser = RequestParser(remoteResourceRetriever, requestObjectJwsVerifier) {
-        RequestObjectParameters(metadata, uuid4().toString().also { walletNonceMapStore.put(it, it) })
-    }
+    private val requestParser: RequestParser =
+        RequestParser(remoteResourceRetriever, requestObjectJwsVerifier) {
+            RequestObjectParameters(
+                metadata = metadata,
+                nonce = uuid4().toString().also { walletNonceMapStore.put(it, it) })
+        }
 
     /**
      * Pass in the URL sent by the Verifier (containing the [AuthenticationRequestParameters] as query parameters),
-     * to create [AuthenticationResponseResult] that can be sent back to the Verifier, see
-     * [AuthenticationResponseResult].
+     * to create [AuthenticationResponseResult] that can be sent back to the Verifier.
+     *
+     * Exceptions thrown during request parsing are caught by [KmmResult],
+     * exceptions during request handling result in the [AuthenticationResponseResult] containing the [OAuth2Error].
      */
-    suspend fun createAuthnResponse(input: String): KmmResult<AuthenticationResponseResult> = catching {
+    suspend fun createAuthnResponse(
+        input: String,
+    ): KmmResult<AuthenticationResponseResult> = catching {
         parseAuthenticationRequestParameters(input).getOrThrow().let { parsedRequest ->
-            createAuthnResponse(parsedRequest).getOrElse {
-                createAuthnErrorResponse(it.toOAuth2Error(parsedRequest), parsedRequest).getOrThrow()
-            }
+            createAuthnResponse(parsedRequest).getOrThrow()
         }
     }
 
     /**
      * Pass in the URL sent by the Verifier (containing the [AuthenticationRequestParameters] as query parameters),
-     * to create [AuthenticationResponseParameters] that can be sent back to the Verifier, see
-     * [AuthenticationResponseResult].
+     * to parse into [RequestParametersFrom] and [AuthenticationRequestParameters].
+     *
+     * Exceptions thrown during request parsing are caught by [KmmResult].
      */
+    // TODO return the internal state here? or rename that to parsedAuthenticationRequestParameters
     suspend fun parseAuthenticationRequestParameters(
         input: String,
         dcApiRequest: DCAPIRequest? = null,
-    ): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> =
-        catching {
-            @Suppress("UNCHECKED_CAST")
-            requestParser.parseRequestParameters(input, dcApiRequest)
-                .getOrThrow() as RequestParametersFrom<AuthenticationRequestParameters>
-        }
+    ): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> = catching {
+        @Suppress("UNCHECKED_CAST")
+        requestParser.parseRequestParameters(input, dcApiRequest)
+            .getOrThrow() as RequestParametersFrom<AuthenticationRequestParameters>
+    }
 
+    /** Creates an error response for the [error], which can be sent to the verifier / relying party. */
     suspend fun createAuthnErrorResponse(
         error: OAuth2Error,
         request: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<AuthenticationResponseResult> = catching {
         val clientMetadata = request.parameters.loadClientMetadata()
-        val jsonWebKeys = clientMetadata?.jsonWebKeySet?.keys
-        val response = AuthenticationResponse.Error(
-            error = error,
-            clientMetadata = clientMetadata,
-            jsonWebKeys = jsonWebKeys,
+        authenticationResponseFactory.createAuthenticationResponse(
+            request = request,
+            response = AuthenticationResponse.Error(
+                error = error,
+                clientMetadata = clientMetadata,
+                jsonWebKeys = clientMetadata?.loadJsonWebKeySet()?.keys,
+            )
         )
-        authenticationResponseFactory.createAuthenticationResponse(request, response)
     }
-
 
     /**
      * Pass in the deserialized [AuthenticationRequestParameters], which were either encoded as query params,
      * or JSON serialized as a JWT Request Object.
+     *
+     * Exceptions thrown during wrapping the response are caught by [KmmResult],
+     * exceptions during request handling result in the [AuthenticationResponseResult] containing the [OAuth2Error].
      */
     suspend fun createAuthnResponse(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
-    ): KmmResult<AuthenticationResponseResult> =
-        createAuthnResponseParams(request).map {
-            authenticationResponseFactory.createAuthenticationResponse(request, it)
-        }
+    ): KmmResult<AuthenticationResponseResult> = catching {
+        // TODO Always use the preparation state to cache jsonwebkeys
+        createAuthnResponseParams(request).fold(
+            onSuccess = { authenticationResponseFactory.createAuthenticationResponse(request, it) },
+            onFailure = { createAuthnErrorResponse(it.toOAuth2Error(request), request).getOrThrow() }
+        )
+    }
 
     /**
      * Creates the authentication response from the RP's [params]
      */
     suspend fun createAuthnResponseParams(
         params: RequestParametersFrom<AuthenticationRequestParameters>,
-    ): KmmResult<AuthenticationResponse> =
-        startAuthorizationResponsePreparation(params).map {
-            if (it.requestObjectVerified == false)
-                throw InvalidRequest("Request object verification failed")
+    ): KmmResult<AuthenticationResponse> = startAuthorizationResponsePreparation(params).map {
+        if (it.requestObjectVerified == false)
+            throw InvalidRequest("Request object verification failed")
 
-            finalizeAuthorizationResponseParameters(
-                request = params,
-                clientMetadata = it.clientMetadata,
-                credentialPresentation = it.credentialPresentationRequest?.toCredentialPresentation()
-            ).getOrThrow()
-        }
+        finalizeAuthorizationResponseParameters(
+            request = params,
+            preparationState = it,
+            credentialPresentation = it.credentialPresentationRequest?.toCredentialPresentation()
+        ).getOrThrow()
+    }
 
     /**
      * Starts the authorization response building process from the RP's authentication request in [input]
@@ -262,23 +271,20 @@ class OpenId4VpHolder(
     suspend fun startAuthorizationResponsePreparation(
         params: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<AuthorizationResponsePreparationState> = catching {
-        val clientMetadata = params.parameters.loadClientMetadata()
-        val presentationDefinition = params.parameters.loadCredentialRequest()
         authorizationRequestValidator.validateAuthorizationRequest(params)
+        val clientMetadata = params.parameters.loadClientMetadata()
         AuthorizationResponsePreparationState(
-            credentialPresentationRequest = presentationDefinition,
+            credentialPresentationRequest = params.parameters.loadCredentialRequest(),
             clientMetadata = clientMetadata,
+            jsonWebKeys = clientMetadata?.loadJsonWebKeySet()?.keys,
             oid4vpDCAPIRequest = params.extractDcApiRequest() as? Oid4vpDCAPIRequest?,
             requestObjectVerified = (params as? RequestParametersFrom.JwsSigned)?.verified,
             verifierInfo = params.parameters.verifierInfo
         )
     }
 
-    /**
-     * Finalize the authorization response
-     *
-     * @param request the parsed authentication request
-     */
+    @Suppress("DEPRECATION")
+    @Deprecated("Use finalizeAuthorizationResponse with AuthorizationResponsePreparationState")
     suspend fun finalizeAuthorizationResponse(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         clientMetadata: RelyingPartyMetadata?,
@@ -292,24 +298,51 @@ class OpenId4VpHolder(
     }
 
     /**
-     * Finalize the authorization response parameters
-     *
-     * @param request the parsed authentication request
+     * Finalize the authorization response, given the [request] (from [parseAuthenticationRequestParameters]),
+     * and [preparationState] from [startAuthorizationResponsePreparation], and the [credentialPresentation].
      */
+    suspend fun finalizeAuthorizationResponse(
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        preparationState: AuthorizationResponsePreparationState,
+        credentialPresentation: CredentialPresentation,
+    ): KmmResult<AuthenticationResponseResult> = finalizeAuthorizationResponseParameters(
+        request = request,
+        preparationState = preparationState,
+        credentialPresentation = credentialPresentation
+    ).map {
+        authenticationResponseFactory.createAuthenticationResponse(request, it)
+    }
+
+    @Deprecated("Use finalizeAuthorizationResponseParameters with AuthorizationResponsePreparationState")
     suspend fun finalizeAuthorizationResponseParameters(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         clientMetadata: RelyingPartyMetadata?,
         credentialPresentation: CredentialPresentation?,
     ): KmmResult<AuthenticationResponse> = catching {
-        @Suppress("UNCHECKED_CAST") val certKey =
-            (request as? RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>)
-                ?.jwsSigned?.header?.certificateChain?.firstOrNull()?.decodedPublicKey?.getOrNull()?.toJsonWebKey()
-        val clientJsonWebKeySet = clientMetadata?.loadJsonWebKeySet()
+        finalizeAuthorizationResponseParameters(
+            request = request,
+            preparationState = startAuthorizationResponsePreparation(request).getOrThrow(),
+            credentialPresentation = credentialPresentation
+        ).getOrThrow()
+    }
+
+    /**
+     * Finalize the authorization response parameters
+     *
+     * @param preparationState from [startAuthorizationResponsePreparation]
+     * @param request from [parseAuthenticationRequestParameters]
+     * @param credentialPresentation the credentials that are actually being used for the VP
+     */
+    private suspend fun finalizeAuthorizationResponseParameters(
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        preparationState: AuthorizationResponsePreparationState,
+        credentialPresentation: CredentialPresentation?,
+    ): KmmResult<AuthenticationResponse> = catching {
         val dcApiRequest = request.extractDcApiRequest() as? Oid4vpDCAPIRequest?
-        val audience = request.parameters.extractAudience(clientJsonWebKeySet, dcApiRequest)
-        val jsonWebKeys = clientJsonWebKeySet?.keys?.combine(certKey)
-        val idToken =
-            presentationFactory.createSignedIdToken(clock, keyMaterial.publicKey, request).getOrNull()?.serialize()
+        val audience = request.parameters.extractAudience(preparationState.jsonWebKeys, dcApiRequest)
+        val jsonWebKeys = preparationState.jsonWebKeys?.combine(request.extractLeafCertKey())
+        val idToken = presentationFactory.createSignedIdToken(clock, keyMaterial.publicKey, request)
+            .getOrNull()?.serialize()
 
         val resultContainer = credentialPresentation?.let {
             presentationFactory.createPresentation(
@@ -318,7 +351,7 @@ class OpenId4VpHolder(
                 audience = audience,
                 nonce = request.parameters.nonce!!,
                 credentialPresentation = credentialPresentation,
-                clientMetadata = clientMetadata,
+                clientMetadata = preparationState.clientMetadata,
                 jsonWebKeys = jsonWebKeys,
                 dcApiRequest = dcApiRequest
             ).getOrThrow()
@@ -332,67 +365,64 @@ class OpenId4VpHolder(
         )
         AuthenticationResponse.Success(
             params = parameters,
-            clientMetadata = clientMetadata,
+            clientMetadata = preparationState.clientMetadata,
             jsonWebKeys = jsonWebKeys,
             mdocGeneratedNonce = resultContainer?.mdocGeneratedNonce
         )
     }
 
+    private fun RequestParametersFrom<AuthenticationRequestParameters>.extractLeafCertKey(): JsonWebKey? =
+        (this as? RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>)
+            ?.jwsSigned?.header?.certificateChain?.firstOrNull()?.decodedPublicKey?.getOrNull()?.toJsonWebKey()
+
     suspend fun getMatchingCredentials(
         preparationState: AuthorizationResponsePreparationState,
-    ) =
-        catchingUnwrapped {
-            when (val it = preparationState.credentialPresentationRequest) {
-                is CredentialPresentationRequest.DCQLRequest -> {
-                    val dcqlQueryResult = holder.matchDCQLQueryAgainstCredentialStore(
-                        it.dcqlQuery,
-                        preparationState.oid4vpDCAPIRequest?.credentialId
-                    ).getOrThrow()
-                    DCQLMatchingResult(
-                        presentationRequest = it,
-                        dcqlQueryResult
-                    )
-                }
-
-                is CredentialPresentationRequest.PresentationExchangeRequest -> {
-                    holder.matchInputDescriptorsAgainstCredentialStore(
-                        inputDescriptors = it.presentationDefinition.inputDescriptors,
-                        fallbackFormatHolder = it.fallbackFormatHolder,
+    ) = catchingUnwrapped {
+        when (val it = preparationState.credentialPresentationRequest) {
+            is CredentialPresentationRequest.DCQLRequest ->
+                DCQLMatchingResult(
+                    presentationRequest = it,
+                    dcqlQueryResult = holder.matchDCQLQueryAgainstCredentialStore(
+                        dcqlQuery = it.dcqlQuery,
                         filterById = preparationState.oid4vpDCAPIRequest?.credentialId
-                    ).getOrThrow().let { matchInputDescriptors ->
-                        if (matchInputDescriptors.values.find { it.size != 0 } == null) {
-                            throw OAuth2Exception.AccessDenied("No matching credential")
-                        } else {
-                            PresentationExchangeMatchingResult(
-                                presentationRequest = it,
-                                matchingInputDescriptorCredentials = matchInputDescriptors
-                            )
-                        }
+                    ).getOrThrow()
+                )
+
+            is CredentialPresentationRequest.PresentationExchangeRequest ->
+                holder.matchInputDescriptorsAgainstCredentialStore(
+                    inputDescriptors = it.presentationDefinition.inputDescriptors,
+                    fallbackFormatHolder = it.fallbackFormatHolder,
+                    filterById = preparationState.oid4vpDCAPIRequest?.credentialId
+                ).getOrThrow().let { matchInputDescriptors ->
+                    if (matchInputDescriptors.values.find { it.size != 0 } == null) {
+                        throw OAuth2Exception.AccessDenied("No matching credential")
+                    } else {
+                        PresentationExchangeMatchingResult(
+                            presentationRequest = it,
+                            matchingInputDescriptorCredentials = matchInputDescriptors
+                        )
                     }
-
-
                 }
 
-                null -> TODO()
-            }
+            null -> TODO()
         }
+    }
 
-
-    /*
-    * DC API:
-    * The audience for the response (for example, the aud value in a Key Binding JWT) MUST be the
-    * Origin, prefixed with origin:, for example origin:https://verifier.example.com/.
-    * This is the case even for signed requests. Therefore, when using OpenID4VP over the DC API,
-    * the Client Identifier is not used as the audience for the response.
+    /**
+     * DC API:
+     * The audience for the response (for example, the `aud` value in a Key Binding JWT) MUST be the
+     * Origin, prefixed with `origin:`, for example `origin:https://verifier.example.com/`.
+     * This is the case even for signed requests. Therefore, when using OpenID4VP over the DC API,
+     * the Client Identifier is not used as the audience for the response.
      */
     @Throws(OAuth2Exception::class)
     private fun AuthenticationRequestParameters.extractAudience(
-        clientJsonWebKeySet: JsonWebKeySet?,
+        clientJsonWebKeySet: Collection<JsonWebKey>?,
         dcApiRequest: Oid4vpDCAPIRequest?,
     ) = dcApiRequest?.let { "origin:${it.callingOrigin}" }
         ?: clientId
         ?: issuer
-        ?: clientJsonWebKeySet?.keys?.firstOrNull()
+        ?: clientJsonWebKeySet?.firstOrNull()
             ?.let { it.keyId ?: it.didEncoded ?: it.jwkThumbprint }
         ?: throw InvalidRequest("could not parse audience")
 
@@ -425,14 +455,7 @@ private fun Collection<JsonWebKey>?.combine(certKey: JsonWebKey?): Collection<Js
 
 fun Throwable.toOAuth2Error(
     request: RequestParametersFrom<*>,
-): OAuth2Error = when (this) {
-    is OAuth2Exception -> this.toOAuth2Error().copy(state = request.parameters.state())
-    else -> OAuth2Error(
-        error = INVALID_REQUEST,
-        errorDescription = message,
-        state = request.parameters.state()
-    )
-}
+): OAuth2Error = toOAuth2Error(state = request.parameters.state())
 
 private fun RequestParameters.state() = when (this) {
     is AuthenticationRequestParameters -> this.state
