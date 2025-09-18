@@ -367,7 +367,7 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
         )
 
         val state = holderOid4vp.startAuthorizationResponsePreparation(walletUrl).getOrThrow()
-        val response = holderOid4vp.finalizeAuthorizationResponse(state, null).getOrThrow()
+        val response = holderOid4vp.finalizeAuthorizationResponse(state).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
         verifierOid4vp.validateAuthnResponse(response.params)
             .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()

@@ -77,9 +77,7 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
             walletUrl,
             RequestOptions(
                 credentials = setOf(
-                    RequestOptionsCredential(
-                        MobileDrivingLicenceScheme, ISO_MDOC, setOf(GIVEN_NAME)
-                    )
+                    RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(GIVEN_NAME))
                 )
             ),
             holderOid4vp

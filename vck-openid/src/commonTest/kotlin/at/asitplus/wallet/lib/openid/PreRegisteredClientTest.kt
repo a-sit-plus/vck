@@ -361,9 +361,9 @@ class PreRegisteredClientTest : FreeSpec({
             randomSource = RandomSource.Default,
         )
 
-        holderOid4vp.createAuthnResponse(authRequestUrlWithRequestUri).getOrThrow()
-            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-            .error.shouldNotBeNull()
+        shouldThrow<OAuth2Exception.InvalidRequest> {
+            holderOid4vp.createAuthnResponse(authRequestUrlWithRequestUri).getOrThrow()
+        }
     }
 
     "test with request object not verified" {

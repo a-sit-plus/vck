@@ -260,15 +260,15 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
                     }
                 )
 
-                shouldThrowAny {
-                    holderOid4vp.finalizeAuthorizationResponse(
-                        preparationState = preparationState,
-                        credentialPresentation = PresentationExchangePresentation(
-                            presentationRequest = presentationExchangeRequest,
-                            inputDescriptorSubmissions = submission
-                        )
-                    ).getOrThrow()
-                }
+                holderOid4vp.finalizeAuthorizationResponse(
+                    preparationState = preparationState,
+                    credentialPresentation = PresentationExchangePresentation(
+                        presentationRequest = presentationExchangeRequest,
+                        inputDescriptorSubmissions = submission
+                    )
+                ).getOrThrow()
+                    .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+                    .error.shouldNotBeNull()
             }
         }
     }

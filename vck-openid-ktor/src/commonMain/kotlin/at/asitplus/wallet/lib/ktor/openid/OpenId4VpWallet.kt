@@ -12,12 +12,10 @@ import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.AuthorizationResponsePreparationState
 import at.asitplus.wallet.lib.openid.OpenId4VpHolder
-import at.asitplus.wallet.lib.openid.toOAuth2Error
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -117,11 +115,10 @@ class OpenId4VpWallet(
 
     /**
      * Sends an error response with the appropriate method.
-     * Returns nothing as we don't expect a useful response.
+     * Returns nothing as we don't expect a useful response from the remote verifier.
      */
-    // TODO Make this not be called explicitly
     suspend fun sendAuthnErrorResponse(
-        error: OAuth2Error,
+        error: Throwable,
         request: RequestParametersFrom<AuthenticationRequestParameters>,
     ) {
         catchingUnwrapped {
@@ -179,10 +176,7 @@ class OpenId4VpWallet(
             request = request,
             clientMetadata = clientMetadata,
             credentialPresentation = credentialPresentation
-        ).getOrElse {
-            sendAuthnErrorResponse(it.toOAuth2Error(request), request)
-            throw it
-        }.let {
+        ).getOrThrow().let {
             handleResponseResult(it)
         }
     }
@@ -194,6 +188,8 @@ class OpenId4VpWallet(
      * In case the result shall be sent as a redirect to the verifier, we return that URL.
      * In case the result shall be returned via the Digital Credentials API, an [AuthenticationForward]
      * will be returned with the result to be forwarded.
+     *
+     * Exceptions may be sent to the verifier in [sendAuthnErrorResponse].
      */
     suspend fun finalizeAuthorizationResponse(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
@@ -205,7 +201,7 @@ class OpenId4VpWallet(
             preparationState = preparationState,
             credentialPresentation = credentialPresentation
         ).getOrElse {
-            sendAuthnErrorResponse(it.toOAuth2Error(request), request)
+            sendAuthnErrorResponse(it, request)
             throw it
         }.let {
             handleResponseResult(it)
@@ -233,14 +229,13 @@ class OpenId4VpWallet(
         )
     }
 
+    /**
+     * Exceptions may be sent to the verifier in [sendAuthnErrorResponse].
+     */
     suspend fun getMatchingCredentials(
         preparationState: AuthorizationResponsePreparationState,
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
     ) = catchingUnwrapped {
-        openId4VpHolder.getMatchingCredentials(preparationState).getOrElse {
-            sendAuthnErrorResponse(it.toOAuth2Error(request), request)
-            throw it
-        }
+        openId4VpHolder.getMatchingCredentials(preparationState).getOrThrow()
     }
 
     /**

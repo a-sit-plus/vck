@@ -30,7 +30,7 @@ internal class AuthenticationResponseFactory(
     internal suspend fun createAuthenticationResponse(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
-    ) = when (request.parameters.responseMode) {
+    ): AuthenticationResponseResult = when (request.parameters.responseMode) {
         DirectPost -> authnResponseDirectPost(request, response)
         DirectPostJwt -> authnResponseDirectPostJwt(request, response)
         Query -> authnResponseQuery(request, response)

@@ -193,15 +193,14 @@ class KeyBindingTests : FreeSpec({
             val authnResponse = holderOid4vp.createAuthnResponse(authnRequestUrl).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-            val result = verifierOid4Vp.validateAuthnResponse(authnResponse.url)
+            verifierOid4Vp.validateAuthnResponse(authnResponse.url)
                 .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
-
-            with(result.sdJwtSigned.keyBindingJws.shouldNotBeNull().payload) {
-                transactionDataHashes.shouldNotBeNull().shouldBe(
-                    requestOptions.transactionData!!.map { it.toBase64UrlJsonString().digest(Digest.SHA256) }
-                )
-                transactionDataHashesAlgorithm.shouldNotBeNull() shouldBe SdJwtConstants.SHA_256
-            }
+                .sdJwtSigned.keyBindingJws.shouldNotBeNull().payload.apply {
+                    transactionDataHashes.shouldNotBeNull().shouldBe(
+                        requestOptions.transactionData!!.map { it.toBase64UrlJsonString().digest(Digest.SHA256) }
+                    )
+                    transactionDataHashesAlgorithm shouldBe SdJwtConstants.SHA_256
+                }
         }
 
         "Incorrect TransactionData is rejected" {
@@ -252,17 +251,17 @@ class KeyBindingTests : FreeSpec({
         "Hash of transaction data is not changed during processing" {
             val referenceHash = cibaWalletTransactionData.toByteArray(Charsets.UTF_8).sha256()
 
-            val authenticationRequest = holderOid4vp.startAuthorizationResponsePreparation(cibaWalletTestVector)
-                .getOrThrow().request.apply {
-                    parameters.transactionData.shouldNotBeEmpty().shouldNotBeNull()
+            val state = holderOid4vp.startAuthorizationResponsePreparation(cibaWalletTestVector)
+                .getOrThrow().apply {
+                    request.parameters.transactionData.shouldNotBeEmpty().shouldNotBeNull()
                 }
 
             externalMapStore.put(
                 "iTGlKl-AJxmncWPbXHp2xy58bNy18wqZ4TR9EzhBl2R4ulxeTEO0VyWYR2qMDpCDV5JWeOxecTqcEJ61bFKrUg",
-                authenticationRequest.parameters
+                state.request.parameters
             )
 
-            val authnResponse = holderOid4vp.createAuthnResponse(authenticationRequest).getOrThrow()
+            val authnResponse = holderOid4vp.createAuthnResponse(state.request).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
             verifierOid4Vp.validateAuthnResponse(authnResponse.params)

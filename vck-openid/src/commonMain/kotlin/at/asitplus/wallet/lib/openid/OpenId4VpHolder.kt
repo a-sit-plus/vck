@@ -71,7 +71,9 @@ import kotlin.time.Clock
  * as well as [SIOP V2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html) (D13, 2023-11-28).
  *
  * The verifier (see [OpenId4VpVerifier]) creates the Authentication Request,
- * which will be answered in [createAuthnResponse] and sent back to the verifier.
+ * we can parse and validate it in [startAuthorizationResponsePreparation],
+ * show the information to the user,
+ * and create the response in [finalizeAuthorizationResponse], and send it back to the verifier.
  */
 class OpenId4VpHolder(
     /** Key material used to encrypt responses and sign ID tokens. */
@@ -211,14 +213,14 @@ class OpenId4VpHolder(
 
     /** Creates an error response for the [error], which can be sent to the verifier / relying party. */
     suspend fun createAuthnErrorResponse(
-        error: OAuth2Error,
+        error: Throwable,
         request: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<AuthenticationResponseResult> = catching {
         val clientMetadata = request.parameters.loadClientMetadata()
         authenticationResponseFactory.createAuthenticationResponse(
             request = request,
             response = AuthenticationResponse.Error(
-                error = error,
+                error = error.toOAuth2Error(request),
                 clientMetadata = clientMetadata,
                 jsonWebKeys = clientMetadata?.loadJsonWebKeySet()?.keys,
             )
@@ -235,31 +237,23 @@ class OpenId4VpHolder(
     suspend fun createAuthnResponse(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<AuthenticationResponseResult> = catching {
-        // TODO Always use the preparation state to cache jsonwebkeys
-        createAuthnResponseParams(request).fold(
-            onSuccess = { authenticationResponseFactory.createAuthenticationResponse(request, it) },
-            onFailure = { createAuthnErrorResponse(it.toOAuth2Error(request), request).getOrThrow() }
-        )
-    }
-
-    /**
-     * Creates the authentication response from the RP's [params]
-     */
-    private suspend fun createAuthnResponseParams(
-        params: RequestParametersFrom<AuthenticationRequestParameters>,
-    ): KmmResult<AuthenticationResponse> =
-        startAuthorizationResponsePreparation(params).map {
-            if (it.requestObjectVerified == false)
-                throw InvalidRequest("Request object verification failed")
-            finalizeAuthorizationResponseParameters(
-                state = it,
-                credentialPresentation = it.credentialPresentationRequest?.toCredentialPresentation()
-            ).getOrThrow()
+        val preparationState = startAuthorizationResponsePreparation(request).getOrThrow()
+        if (preparationState.requestObjectVerified == false)
+            throw InvalidRequest("Request object verification failed")
+        finalizeAuthorizationResponseParameters(
+            state = preparationState,
+        ).getOrElse {
+            return createAuthnErrorResponse(it, preparationState.request)
+        }.let {
+            authenticationResponseFactory.createAuthenticationResponse(preparationState.request, it)
         }
+    }
 
     /**
      * Parses the [AuthenticationRequestParameters] from [input] and loads remote objects (client metadata, keys).
      * Clients need to inform the user, get consent, and resume in [finalizeAuthorizationResponse].
+     *
+     * Exceptions thrown during request parsing are caught by [KmmResult],
      */
     suspend fun startAuthorizationResponsePreparation(
         input: String,
@@ -271,6 +265,8 @@ class OpenId4VpHolder(
     /**
      * Validates the [AuthenticationRequestParameters] from [params] and loads remote objects (client metadata, keys).
      * Clients need to inform the user, get consent, and resume in [finalizeAuthorizationResponse].
+     *
+     * Exceptions thrown during request parsing are caught by [KmmResult],
      */
     suspend fun startAuthorizationResponsePreparation(
         params: RequestParametersFrom<AuthenticationRequestParameters>,
@@ -308,12 +304,16 @@ class OpenId4VpHolder(
      */
     suspend fun finalizeAuthorizationResponse(
         preparationState: AuthorizationResponsePreparationState,
-        credentialPresentation: CredentialPresentation?,
-    ): KmmResult<AuthenticationResponseResult> = finalizeAuthorizationResponseParameters(
-        state = preparationState,
-        credentialPresentation = credentialPresentation
-    ).map {
-        authenticationResponseFactory.createAuthenticationResponse(preparationState.request, it)
+        credentialPresentation: CredentialPresentation? = null,
+    ): KmmResult<AuthenticationResponseResult> = catching {
+        finalizeAuthorizationResponseParameters(
+            state = preparationState,
+            credentialPresentation = credentialPresentation
+        ).getOrElse {
+            return createAuthnErrorResponse(it, preparationState.request)
+        }.let {
+            authenticationResponseFactory.createAuthenticationResponse(preparationState.request, it)
+        }
     }
 
     @Deprecated("Use finalizeAuthorizationResponseParameters with AuthorizationResponsePreparationState")
@@ -336,7 +336,7 @@ class OpenId4VpHolder(
      */
     private suspend fun finalizeAuthorizationResponseParameters(
         state: AuthorizationResponsePreparationState,
-        credentialPresentation: CredentialPresentation?,
+        credentialPresentation: CredentialPresentation? = null,
     ): KmmResult<AuthenticationResponse> = catching {
         val dcApiRequest = state.request.extractDcApiRequest() as? Oid4vpDCAPIRequest?
         val audience = state.request.parameters.extractAudience(state.jsonWebKeys, dcApiRequest)

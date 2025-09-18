@@ -7,7 +7,6 @@ import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants.ResponseMode
-import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.NameSegment
 import at.asitplus.openid.dcql.DCQLClaimsQueryList
@@ -261,7 +260,7 @@ class OpenId4VpWalletTest : FunSpec() {
             val preparationState =
                 wallet.startAuthorizationResponsePreparation(requestParametersFrom).getOrThrow()
             shouldThrow<OAuth2Exception.AccessDenied> {
-                wallet.getMatchingCredentials(preparationState, request = requestParametersFrom).getOrThrow()
+                wallet.getMatchingCredentials(preparationState).getOrThrow()
             }
         }
     }

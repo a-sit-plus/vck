@@ -15,11 +15,9 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.fail
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -53,46 +51,33 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
     }
 
     "support for format holder specification" - {
-
         "support for plain jwt credential request" - {
             "if not available despite others with correct format or correct attribute, but not both" {
                 holderAgent.storeJwtCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
-                holderAgent.storeSdJwtCredential(
-                    holderKeyMaterial,
-                    ConstantIndex.AtomicAttribute2023
-                )
+                holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
                 holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
                 val authnRequest = verifierOid4vp.createAuthnRequest(
                     requestOptions = RequestOptions(
                         credentials = setOf(
-                            RequestOptionsCredential(
-                                ConstantIndex.AtomicAttribute2023,
-                                PLAIN_JWT
-                            )
+                            RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
                         )
                     )
                 )
-                shouldThrow<OAuth2Exception> {
-                    holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
-                }
+                holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
+                    .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+                    .error.shouldNotBeNull()
             }
             "if available despite others" {
                 holderAgent.storeJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
                 holderAgent.storeJwtCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
-                holderAgent.storeSdJwtCredential(
-                    holderKeyMaterial,
-                    ConstantIndex.AtomicAttribute2023
-                )
+                holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
                 holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
                 val authnRequest = verifierOid4vp.createAuthnRequest(
                     requestOptions = RequestOptions(
                         credentials = setOf(
-                            RequestOptionsCredential(
-                                ConstantIndex.AtomicAttribute2023,
-                                PLAIN_JWT,
-                            )
+                            RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
                         )
                     )
                 )
@@ -101,129 +86,85 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
                     holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
                         .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-                val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
+                verifierOid4vp.validateAuthnResponse(authnResponse.url)
                     .shouldBeInstanceOf<AuthnResponseResult.Success>()
-                result.vp.freshVerifiableCredentials.shouldNotBeEmpty()
-                result.vp.freshVerifiableCredentials.map { it.vcJws }.forEach {
-                    it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
-                }
+                    .vp.freshVerifiableCredentials.shouldNotBeEmpty()
+                    .map { it.vcJws }.forEach {
+                        it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
+                    }
             }
         }
 
         "support for sd jwt credential request" - {
             "when using presentation exchange" - {
                 "if not available despite others with correct format or correct attribute, but not both" {
-                    holderAgent.storeJwtCredential(
-                        holderKeyMaterial,
-                        ConstantIndex.AtomicAttribute2023
-                    )
+                    holderAgent.storeJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
                     holderAgent.storeSdJwtCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
-                    holderAgent.storeIsoCredential(
-                        holderKeyMaterial,
-                        ConstantIndex.AtomicAttribute2023
-                    )
+                    holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
                     val authnRequest = verifierOid4vp.createAuthnRequest(
                         requestOptions = RequestOptions(
                             credentials = setOf(
-                                RequestOptionsCredential(
-                                    ConstantIndex.AtomicAttribute2023,
-                                    SD_JWT
-                                )
+                                RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, SD_JWT)
                             )
                         )
                     )
-                    shouldThrow<OAuth2Exception> {
-                        holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
-                    }
+                    holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
+                        .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+                        .error.shouldNotBeNull()
                 }
 
                 "if available despite others with correct format or correct attribute, but not both" {
-                    holderAgent.storeJwtCredential(
-                        holderKeyMaterial,
-                        ConstantIndex.AtomicAttribute2023
-                    )
-                    holderAgent.storeSdJwtCredential(
-                        holderKeyMaterial,
-                        ConstantIndex.AtomicAttribute2023
-                    )
+                    holderAgent.storeJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
                     holderAgent.storeSdJwtCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
-                    holderAgent.storeIsoCredential(
-                        holderKeyMaterial,
-                        ConstantIndex.AtomicAttribute2023
-                    )
+                    holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
                     val authnRequest = verifierOid4vp.createAuthnRequest(
                         requestOptions = RequestOptions(
                             credentials = setOf(
-                                RequestOptionsCredential(
-                                    ConstantIndex.AtomicAttribute2023,
-                                    SD_JWT
-                                )
+                                RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, SD_JWT)
                             )
                         ),
                     )
-                    val authnResponse =
-                        holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
-                            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+                    val authnResponse = holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
+                        .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-                    val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
+                    verifierOid4vp.validateAuthnResponse(authnResponse.url)
                         .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
-                    result.verifiableCredentialSdJwt.verifiableCredentialType shouldBe ConstantIndex.AtomicAttribute2023.sdJwtType
+                        .verifiableCredentialSdJwt.verifiableCredentialType shouldBe ConstantIndex.AtomicAttribute2023.sdJwtType
                 }
             }
             "when using dcql" - {
                 "if not available despite others with correct format or correct attribute, but not both" {
-                    holderAgent.storeJwtCredential(
-                        holderKeyMaterial,
-                        ConstantIndex.AtomicAttribute2023
-                    )
+                    holderAgent.storeJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
                     holderAgent.storeSdJwtCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
-                    holderAgent.storeIsoCredential(
-                        holderKeyMaterial,
-                        ConstantIndex.AtomicAttribute2023
-                    )
+                    holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
                     val authnRequest = verifierOid4vp.prepareAuthnRequest(
                         requestOptions = RequestOptions(
                             credentials = setOf(
-                                RequestOptionsCredential(
-                                    ConstantIndex.AtomicAttribute2023,
-                                    SD_JWT
-                                )
+                                RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, SD_JWT)
                             ),
                             presentationMechanism = PresentationMechanismEnum.DCQL,
                         ),
                     )
 
-                    shouldThrow<OAuth2Exception> {
-                        holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
-                    }
+                    holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
+                        .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+                        .error.shouldNotBeNull()
                 }
 
                 "if available despite others with correct format or correct attribute, but not both" {
-                    holderAgent.storeJwtCredential(
-                        holderKeyMaterial,
-                        ConstantIndex.AtomicAttribute2023
-                    )
-                    holderAgent.storeSdJwtCredential(
-                        holderKeyMaterial,
-                        ConstantIndex.AtomicAttribute2023
-                    )
+                    holderAgent.storeJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
                     holderAgent.storeSdJwtCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
-                    holderAgent.storeIsoCredential(
-                        holderKeyMaterial,
-                        ConstantIndex.AtomicAttribute2023
-                    )
-
+                    holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
                     val authnRequest = verifierOid4vp.createAuthnRequest(
                         requestOptions = RequestOptions(
                             credentials = setOf(
-                                RequestOptionsCredential(
-                                    ConstantIndex.AtomicAttribute2023,
-                                    SD_JWT
-                                )
+                                RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, SD_JWT)
                             ),
                             presentationMechanism = PresentationMechanismEnum.DCQL
                         ),
@@ -233,11 +174,11 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
                         holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
                             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-                    val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
+                    verifierOid4vp.validateAuthnResponse(authnResponse.url)
                         .shouldBeInstanceOf<AuthnResponseResult.VerifiableDCQLPresentationValidationResults>()
                         .validationResults.values.first()
                         .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
-                    result.verifiableCredentialSdJwt.verifiableCredentialType shouldBe ConstantIndex.AtomicAttribute2023.sdJwtType
+                        .verifiableCredentialSdJwt.verifiableCredentialType shouldBe ConstantIndex.AtomicAttribute2023.sdJwtType
                 }
             }
         }
@@ -245,53 +186,32 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
         "support for mso credential request" - {
             "when using presentation exchange" - {
                 "if not available despite others with correct format or correct attribute, but not both" {
-                    holderAgent.storeJwtCredential(
-                        holderKeyMaterial,
-                        ConstantIndex.AtomicAttribute2023
-                    )
-                    holderAgent.storeSdJwtCredential(
-                        holderKeyMaterial,
-                        ConstantIndex.AtomicAttribute2023
-                    )
+                    holderAgent.storeJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
                     holderAgent.storeIsoCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
 
                     val authnRequest = verifierOid4vp.createAuthnRequest(
                         requestOptions = RequestOptions(
                             credentials = setOf(
-                                RequestOptionsCredential(
-                                    ConstantIndex.AtomicAttribute2023,
-                                    ISO_MDOC
-                                )
+                                RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, ISO_MDOC)
                             )
                         ),
                     )
-                    shouldThrow<OAuth2Exception> {
-                        holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
-                    }
+                    holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
+                        .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+                        .error.shouldNotBeNull()
                 }
 
                 "if available despite others with correct format or correct attribute, but not both" {
-                    holderAgent.storeJwtCredential(
-                        holderKeyMaterial,
-                        ConstantIndex.AtomicAttribute2023
-                    )
-                    holderAgent.storeSdJwtCredential(
-                        holderKeyMaterial,
-                        ConstantIndex.AtomicAttribute2023
-                    )
-                    holderAgent.storeIsoCredential(
-                        holderKeyMaterial,
-                        ConstantIndex.AtomicAttribute2023
-                    )
+                    holderAgent.storeJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
                     holderAgent.storeIsoCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
 
                     val authnRequest = verifierOid4vp.createAuthnRequest(
                         requestOptions = RequestOptions(
                             credentials = setOf(
-                                RequestOptionsCredential(
-                                    ConstantIndex.AtomicAttribute2023,
-                                    ISO_MDOC
-                                )
+                                RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, ISO_MDOC)
                             )
                         ),
                     )
@@ -304,55 +224,34 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
             }
             "when using dcql" - {
                 "if not available despite others with correct format or correct attribute, but not both" {
-                    holderAgent.storeJwtCredential(
-                        holderKeyMaterial,
-                        ConstantIndex.AtomicAttribute2023
-                    )
-                    holderAgent.storeSdJwtCredential(
-                        holderKeyMaterial,
-                        ConstantIndex.AtomicAttribute2023
-                    )
+                    holderAgent.storeJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
                     holderAgent.storeIsoCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
 
                     val authnRequest = verifierOid4vp.createAuthnRequest(
                         requestOptions = RequestOptions(
                             credentials = setOf(
-                                RequestOptionsCredential(
-                                    ConstantIndex.AtomicAttribute2023,
-                                    ISO_MDOC
-                                )
+                                RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, ISO_MDOC)
                             ),
                             presentationMechanism = PresentationMechanismEnum.DCQL,
                         ),
                     )
 
-                    shouldThrow<OAuth2Exception> {
-                        holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
-                    }
+                    holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
+                        .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+                        .error.shouldNotBeNull()
                 }
 
                 "if available despite others with correct format or correct attribute, but not both" {
-                    holderAgent.storeJwtCredential(
-                        holderKeyMaterial,
-                        ConstantIndex.AtomicAttribute2023
-                    )
-                    holderAgent.storeSdJwtCredential(
-                        holderKeyMaterial,
-                        ConstantIndex.AtomicAttribute2023
-                    )
-                    holderAgent.storeIsoCredential(
-                        holderKeyMaterial,
-                        ConstantIndex.AtomicAttribute2023
-                    )
+                    holderAgent.storeJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
                     holderAgent.storeIsoCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
 
                     val authnRequest = verifierOid4vp.createAuthnRequest(
                         requestOptions = RequestOptions(
                             credentials = setOf(
-                                RequestOptionsCredential(
-                                    ConstantIndex.AtomicAttribute2023,
-                                    ISO_MDOC
-                                )
+                                RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, ISO_MDOC)
                             ),
                             presentationMechanism = PresentationMechanismEnum.DCQL
                         ),
@@ -377,13 +276,8 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
         val authnRequest = verifierOid4vp.createAuthnRequest(
             requestOptions = RequestOptions(
                 credentials = setOf(
-                    RequestOptionsCredential(
-                        ConstantIndex.AtomicAttribute2023,
-                        PLAIN_JWT
-                    ),
-                    RequestOptionsCredential(
-                        MobileDrivingLicenceScheme, ISO_MDOC
-                    )
+                    RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, PLAIN_JWT),
+                    RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC)
                 )
             ),
         )

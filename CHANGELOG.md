@@ -91,7 +91,9 @@ Release 5.9.0 (unreleased):
    - In `OAuth2AuthorizationServerMetadata` deprecate `client_id_schemes_supported`, replace with `client_id_prefixes_supported`
    - Add `ClientIdScheme.CertificateHash` mapping to client identifier prefix `x509_hash` from OpenID4VP
    - Use session transcript for mDoc presentations as defined in OpenID4VP
-   - Deprecate and refactor methods in `OpenId4VpHolder` and `OpenId4VpWallet` to fetch external resources only once
+   - Deprecate and refactor methods in `OpenId4VpHolder` and `OpenId4VpWallet` to fetch external resources only once, clients need to call `startAuthorizationResponsePreparation()` and then `finalizeAuthorizationResponse()`
+   - `OpenId4VpHolder` does not return a `KmmResult.failure` when building the response fails, but returns `AuthenticationResponseResult` containing error parameters
+   - `OpenId4VpWallet` does not send an error response to the verifier automatically
 
 Release 5.8.0:
  - Refactor `AuthorizationServiceStrategy`
