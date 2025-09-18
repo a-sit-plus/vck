@@ -164,11 +164,11 @@ internal class AuthenticationResponseFactory(
         val header = JweHeader(
             algorithm = algorithm,
             encryption = encryption,
-            type = null, // TODO type?
             agreementPartyVInfo = apv,
             agreementPartyUInfo = apu,
             keyId = recipientKey.keyId,
         )
+        // TODO never sign responses!
         val jwe = if (response.requestsSignature()) {
             val signature = response.params?.let { sign(it) }
                 ?: response.error?.let { signError(it) }

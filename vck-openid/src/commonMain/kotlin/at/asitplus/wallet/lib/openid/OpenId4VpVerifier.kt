@@ -94,31 +94,39 @@ import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
 /**
- * Combines Verifiable Presentations with OpenId Connect.
- * Implements [OpenID for VP](https://openid.net/specs/openid-connect-4-verifiable-presentations-1_0.html) (2024-12-02)
- * as well as [SIOP V2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html) (2023-11-28).
+ * Combines Verifiable Presentations with OAuth 2.0.
+ * Implements [OpenID4VP](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html) (1.0, 2025-07-09)
+ * as well as [SIOP V2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html) (D13, 2023-11-28).
  *
- * This class creates the Authentication Request, [verifier] verifies the response. See [OpenId4VpHolder] for the holder.
+ * This class creates the Authentication Request (see [AuthenticationRequestParameters]),
+ * clients need to send it to the holder (see [OpenId4VpHolder]) which will create the Authentication Response,
+ * which will be verified here in [validateAuthnResponse].
  */
 class OpenId4VpVerifier(
+    /** Scheme to use for our client identifier. */
     private val clientIdScheme: ClientIdScheme,
-    /** Key material used to sign requests with [signAuthnRequest] in [createAuthnRequestAsSignedRequestObject]. */
+    /** Key material to sign the authentication request with [signAuthnRequest]. */
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-    /** Verifies the actual response from the Wallet. */
+    /** Verifies the holder's response against our identifier from [clientIdScheme]. */
     val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
-    /** Signs requests with [keyMaterial] in [createAuthnRequestAsSignedRequestObject]. */
+    /** Advertised in [metadata] so that holders can encrypt responses. */
+    private val decryptionKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+    /** Decrypts encrypted responses from holders. */
+    private val decryptJwe: DecryptJweFun = DecryptJwe(decryptionKeyMaterial),
+    /** Signs authentication requests in [createAuthnRequestAsSignedRequestObject]. */
     private val signAuthnRequest: SignJwtFun<AuthenticationRequestParameters> =
         SignJwt(keyMaterial, JwsHeaderClientIdScheme(clientIdScheme)),
-    /** Key to advertise in [metadata] or [metadataWithEncryption]. */
-    private val decryptionKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-    /** Decrypts encrypted responses from wallets with [decryptionKeyMaterial] in [validateAuthnResponse]. */
-    private val decryptJwe: DecryptJweFun = DecryptJwe(decryptionKeyMaterial),
+    /** Validates signed responses from holders. */
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
+    /** Advertised in [metadata]. */
     private val supportedAlgorithms: Set<SignatureAlgorithm> = setOf(SignatureAlgorithm.ECDSAwithSHA256),
+    /** Used to verify session transcripts from mDoc responses. */
     private val verifyCoseSignature: VerifyCoseSignatureWithKeyFun<ByteArray> = VerifyCoseSignatureWithKey(),
+    /** Leeway for time validity checks. */
     timeLeewaySeconds: Long = 300L,
+    /** Clock for time validity checks. */
     private val clock: Clock = Clock.System,
-    /** Provides challenges in auth requests. */
+    /** Creates challenges in authentication requests. */
     private val nonceService: NonceService = DefaultNonceService(),
     /** Used to store issued authn requests to verify the authn response to it */
     private val stateToAuthnRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),

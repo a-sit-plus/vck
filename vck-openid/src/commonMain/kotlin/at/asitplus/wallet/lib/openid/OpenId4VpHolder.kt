@@ -66,27 +66,40 @@ import com.benasher44.uuid.uuid4
 import kotlin.time.Clock
 
 /**
- * Combines Verifiable Presentations with OpenId Connect.
- * Implements [OpenID for VP](https://openid.net/specs/openid-connect-4-verifiable-presentations-1_0.html) (2024-12-02)
- * as well as [SIOP V2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html) (2023-11-28).
+ * Combines Verifiable Presentations with OAuth 2.0.
+ * Implements [OpenID4VP](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html) (1.0, 2025-07-09)
+ * as well as [SIOP V2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html) (D13, 2023-11-28).
  *
- * The [holder] creates the Authentication Response, see [OpenId4VpVerifier] for the verifier.
+ * The verifier (see [OpenId4VpVerifier]) creates the Authentication Request,
+ * which will be answered in [createAuthnResponse] and sent back to the verifier.
  */
 class OpenId4VpHolder(
+    /** Key material used to encrypt responses and sign ID tokens. */
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+    /** Holds the credentials and creates the verifiable presentation. */
     private val holder: Holder = HolderAgent(keyMaterial),
+    /** Signs the ID token for SIOPv2 responses. */
     private val signIdToken: SignJwtFun<IdToken> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
+    // TODO to be removed
     private val signJarm: SignJwtFun<AuthenticationResponseParameters> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
+    /** Encrypts the authn response to the holder using [keyMaterial], if requested. */
     private val encryptJarm: EncryptJweFun = EncryptJwe(keyMaterial),
+    // TODO to be removed
     private val signError: SignJwtFun<OAuth2Error> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
+    /** Advertised in [metadata] and compared against holder's requirements. */
     private val supportedAlgorithms: Set<SignatureAlgorithm> = setOf(SignatureAlgorithm.ECDSAwithSHA256),
+    /** Signs the session transcript for mDoc responses. */
     private val signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> =
         SignCoseDetached(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
     @Deprecated("Removed, as not contained in any specification")
     private val signDeviceAuthFallback: SignCoseFun<ByteArray> =
         SignCose(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
+    /** Clock used for the signed ID token. */
     private val clock: Clock = Clock.System,
+    /** Advertised as `issuer` in [metadata]. */
     private val clientId: String = "https://wallet.a-sit.at/",
+    /** Advertised as `authorization_endpoint` in [metadata]. */
+    private val authorizationEndpoint: String = "openid4vp:",
     /**
      * Need to implement if resources are defined by reference, i.e. the URL for a [JsonWebKeySet],
      * or the authentication request itself as `request_uri`, or `presentation_definition_uri`.
@@ -99,6 +112,7 @@ class OpenId4VpHolder(
      * which may be signed with a pre-registered key (see [ClientIdScheme.PreRegistered]).
      */
     private val requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _ -> true },
+    /** Stores our nonce used when fetching authn requests using POST. */
     private val walletNonceMapStore: MapStore<String, String> = DefaultMapStore(),
     /** Source for random bytes, i.e., nonces for encrypted responses. */
     private val randomSource: RandomSource = RandomSource.Secure,
@@ -125,7 +139,7 @@ class OpenId4VpHolder(
     val metadata: OAuth2AuthorizationServerMetadata by lazy {
         OAuth2AuthorizationServerMetadata(
             issuer = clientId,
-            authorizationEndpoint = clientId,
+            authorizationEndpoint = authorizationEndpoint,
             responseTypesSupported = setOf(OpenIdConstants.ID_TOKEN),
             scopesSupported = setOf(OpenIdConstants.SCOPE_OPENID),
             subjectTypesSupported = setOf("pairwise", "public"),
