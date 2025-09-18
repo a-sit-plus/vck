@@ -80,11 +80,11 @@ class OpenId4VpHolder(
     private val holder: Holder = HolderAgent(keyMaterial),
     /** Signs the ID token for SIOPv2 responses. */
     private val signIdToken: SignJwtFun<IdToken> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
-    // TODO to be removed
+    @Deprecated("Removed, as OpenID4VP 1.0 does never sign responses")
     private val signJarm: SignJwtFun<AuthenticationResponseParameters> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     /** Encrypts the authn response to the holder using [keyMaterial], if requested. */
     private val encryptJarm: EncryptJweFun = EncryptJwe(keyMaterial),
-    // TODO to be removed
+    @Deprecated("Removed, as OpenID4VP 1.0 does never sign responses")
     private val signError: SignJwtFun<OAuth2Error> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     /** Advertised in [metadata] and compared against holder's requirements. */
     private val supportedAlgorithms: Set<SignatureAlgorithm> = setOf(SignatureAlgorithm.ECDSAwithSHA256),
@@ -124,9 +124,7 @@ class OpenId4VpHolder(
         .mapNotNull { it.toCoseAlgorithm().getOrNull()?.coseValue }
     private val authorizationRequestValidator = AuthorizationRequestValidator(walletNonceMapStore)
     private val authenticationResponseFactory = AuthenticationResponseFactory(
-        signJarm = signJarm,
-        signError = signError,
-        encryptJarm = encryptJarm,
+        encryptResponse = encryptJarm,
         randomSource = randomSource
     )
     private val presentationFactory = PresentationFactory(

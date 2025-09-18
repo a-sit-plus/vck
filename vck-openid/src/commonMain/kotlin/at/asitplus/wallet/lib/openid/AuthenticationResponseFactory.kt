@@ -13,21 +13,17 @@ import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.EncryptJweFun
-import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import at.asitplus.wallet.lib.oidvci.getEncryptionTargetKey
-import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import kotlin.coroutines.cancellation.CancellationException
 
 internal class AuthenticationResponseFactory(
-    val signJarm: SignJwtFun<AuthenticationResponseParameters>,
-    val signError: SignJwtFun<OAuth2Error>,
-    val encryptJarm: EncryptJweFun,
+    val encryptResponse: EncryptJweFun,
     val randomSource: RandomSource = RandomSource.Secure,
 ) {
     @Throws(OAuth2Exception::class, CancellationException::class)
@@ -129,24 +125,9 @@ internal class AuthenticationResponseFactory(
         response: AuthenticationResponse,
     ) = if (request.parameters.responseMode?.requiresEncryption == true || response.requestsEncryption()) {
         encrypt(request, response)
-    } else if (response.requestsSignature()) {
-        response.params?.let { sign(it) } ?: throw InvalidRequest("No params in response")
     } else {
-        if (request.parameters.responseMode !is DcApi) {
-            throw InvalidRequest("Response must be either signed, encrypted or both.")
-        }
         joseCompliantSerializer.encodeToString(response.params ?: throw InvalidRequest("No params in response"))
     }
-
-    private suspend fun sign(payload: AuthenticationResponseParameters): String =
-        signJarm(null, payload, AuthenticationResponseParameters.serializer())
-            .map { it.serialize() }
-            .getOrElse { throw InvalidRequest("sign: error", it) }
-
-    private suspend fun signError(payload: OAuth2Error): String =
-        signError(null, payload, OAuth2Error.serializer())
-            .map { it.serialize() }
-            .getOrElse { throw InvalidRequest("signError: error", it) }
 
     private suspend fun encrypt(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
@@ -168,36 +149,19 @@ internal class AuthenticationResponseFactory(
             agreementPartyUInfo = apu,
             keyId = recipientKey.keyId,
         )
-        // TODO never sign responses!
-        val jwe = if (response.requestsSignature()) {
-            val signature = response.params?.let { sign(it) }
-                ?: response.error?.let { signError(it) }
-
-            signature?.let { payload ->
-                encryptJarm(header, payload, recipientKey)
-                    .also { Napier.d("encrypt: using $header to encrypt $payload") }
-            }
-        } else {
-            response.params?.let {
-                encryptJarm(header, vckJsonSerializer.encodeToString(response.params), recipientKey)
-                    .also { Napier.d("encrypt: using $header to encrypt ${response.params}") }
-            } ?: response.error?.let {
-                encryptJarm(header, vckJsonSerializer.encodeToString(response.error), recipientKey)
-                    .also { Napier.d("encrypt: using $header to encrypt ${vckJsonSerializer.encodeToString(response.error)}") }
-            } ?: throw InvalidRequest("encrypt: nothing to encrypt")
-        }
-        return jwe?.map { it.serialize() }
-            ?.getOrElse { throw InvalidRequest("encrypt error", it) }
-            ?: throw InvalidRequest("encrypt: nothing to serialize")
+        val jwe = response.params?.let {
+            encryptResponse(header, vckJsonSerializer.encodeToString(response.params), recipientKey)
+        } ?: response.error?.let {
+            encryptResponse(header, vckJsonSerializer.encodeToString(response.error), recipientKey)
+        } ?: throw InvalidRequest("encrypt: nothing to encrypt")
+        return jwe.map { it.serialize() }
+            .getOrElse { throw InvalidRequest("encrypt error", it) }
     }
 
 }
 
 internal fun AuthenticationResponse.requestsEncryption(): Boolean =
     (clientMetadata != null && jsonWebKeys != null && clientMetadata.requestsEncryption())
-
-internal fun AuthenticationResponse.requestsSignature(): Boolean =
-    clientMetadata != null && clientMetadata.authorizationSignedResponseAlg != null
 
 internal fun RelyingPartyMetadata.requestsEncryption() =
     (authorizationEncryptedResponseAlg != null && authorizationEncryptedResponseEncoding != null)
