@@ -22,7 +22,7 @@ data class AuthorizationResponsePreparationState(
     val clientMetadata: RelyingPartyMetadata?,
     /** Extracted from [request], probably fetched remotely. */
     val jsonWebKeys: Collection<JsonWebKey>?,
-    val oid4vpDCAPIRequest: Oid4vpDCAPIRequest?,
+    val dcApiRequest: Oid4vpDCAPIRequest?,
     /** Whether the request object has been verified (if it was signed at all) */
     val requestObjectVerified: Boolean?,
     val verifierInfo: List<VerifierInfo>?,

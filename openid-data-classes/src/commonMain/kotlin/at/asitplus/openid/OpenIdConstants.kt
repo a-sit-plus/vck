@@ -94,9 +94,6 @@ object OpenIdConstants {
     /** `login` */
     const val PARAMETER_PROMPT_LOGIN = "login"
 
-    /** `openid4vp` */
-    const val DC_API_OID4VP_PROTOCOL_IDENTIFIER = "openid4vp"
-
     /**
      * Token Type Identifiers from [RFC 8693](https://datatracker.ietf.org/doc/html/rfc8693#section-3)
      */

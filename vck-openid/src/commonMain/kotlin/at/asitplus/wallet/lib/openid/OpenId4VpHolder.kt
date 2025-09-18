@@ -28,7 +28,6 @@ import at.asitplus.openid.SupportedAlgorithmsContainerIso
 import at.asitplus.openid.SupportedAlgorithmsContainerJwt
 import at.asitplus.openid.SupportedAlgorithmsContainerSdJwt
 import at.asitplus.openid.VpFormatsSupported
-import at.asitplus.openid.extractDcApiRequest
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKey
@@ -259,7 +258,7 @@ class OpenId4VpHolder(
         input: String,
         dcApiRequest: DCAPIRequest? = null,
     ): KmmResult<AuthorizationResponsePreparationState> = catching {
-        startAuthorizationResponsePreparation(parse(input, dcApiRequest)).getOrThrow()
+        startAuthorizationResponsePreparation(parse(input, dcApiRequest), dcApiRequest).getOrThrow()
     }
 
     /**
@@ -270,6 +269,7 @@ class OpenId4VpHolder(
      */
     suspend fun startAuthorizationResponsePreparation(
         params: RequestParametersFrom<AuthenticationRequestParameters>,
+        dcApiRequest: DCAPIRequest? = null,
     ): KmmResult<AuthorizationResponsePreparationState> = catching {
         authorizationRequestValidator.validateAuthorizationRequest(params)
         val clientMetadata = params.parameters.loadClientMetadata()
@@ -278,7 +278,7 @@ class OpenId4VpHolder(
             credentialPresentationRequest = params.parameters.loadCredentialRequest(),
             clientMetadata = clientMetadata,
             jsonWebKeys = clientMetadata?.loadJsonWebKeySet()?.keys,
-            oid4vpDCAPIRequest = params.extractDcApiRequest() as? Oid4vpDCAPIRequest?,
+            dcApiRequest = dcApiRequest as? Oid4vpDCAPIRequest,
             requestObjectVerified = (params as? RequestParametersFrom.JwsSigned)?.verified,
             verifierInfo = params.parameters.verifierInfo
         )
@@ -338,37 +338,38 @@ class OpenId4VpHolder(
         state: AuthorizationResponsePreparationState,
         credentialPresentation: CredentialPresentation? = null,
     ): KmmResult<AuthenticationResponse> = catching {
-        val dcApiRequest = state.request.extractDcApiRequest() as? Oid4vpDCAPIRequest?
-        val audience = state.request.parameters.extractAudience(state.jsonWebKeys, dcApiRequest)
-        val jsonWebKeys = state.jsonWebKeys?.combine(state.request.extractLeafCertKey())
-        val idToken = presentationFactory.createSignedIdToken(clock, keyMaterial.publicKey, state.request)
-            .getOrNull()?.serialize()
-        val presentation = credentialPresentation ?: state.credentialPresentationRequest?.toCredentialPresentation()
-        val resultContainer = presentation?.let {
-            presentationFactory.createPresentation(
-                holder = holder,
-                request = state.request.parameters,
-                audience = audience,
-                nonce = state.request.parameters.nonce!!,
-                credentialPresentation = presentation,
-                clientMetadata = state.clientMetadata,
-                jsonWebKeys = jsonWebKeys,
-                dcApiRequest = dcApiRequest
-            ).getOrThrow()
-        }
+        with(state) {
+            val audience = request.parameters.extractAudience(jsonWebKeys, dcApiRequest)
+            val jsonWebKeys = jsonWebKeys?.combine(request.extractLeafCertKey())
+            val idToken = presentationFactory.createSignedIdToken(clock, keyMaterial.publicKey, request)
+                .getOrNull()?.serialize()
+            val presentation = credentialPresentation ?: credentialPresentationRequest?.toCredentialPresentation()
+            val resultContainer = presentation?.let {
+                presentationFactory.createPresentation(
+                    holder = holder,
+                    request = request.parameters,
+                    audience = audience,
+                    nonce = request.parameters.nonce!!,
+                    credentialPresentation = presentation,
+                    clientMetadata = clientMetadata,
+                    jsonWebKeys = jsonWebKeys,
+                    dcApiRequest = dcApiRequest
+                ).getOrThrow()
+            }
 
-        val parameters = AuthenticationResponseParameters(
-            state = state.request.parameters.state,
-            idToken = idToken,
-            vpToken = resultContainer?.vpToken,
-            presentationSubmission = resultContainer?.presentationSubmission,
-        )
-        AuthenticationResponse.Success(
-            params = parameters,
-            clientMetadata = state.clientMetadata,
-            jsonWebKeys = jsonWebKeys,
-            mdocGeneratedNonce = resultContainer?.mdocGeneratedNonce
-        )
+            val parameters = AuthenticationResponseParameters(
+                state = request.parameters.state,
+                idToken = idToken,
+                vpToken = resultContainer?.vpToken,
+                presentationSubmission = resultContainer?.presentationSubmission,
+            )
+            AuthenticationResponse.Success(
+                params = parameters,
+                clientMetadata = clientMetadata,
+                jsonWebKeys = jsonWebKeys,
+                mdocGeneratedNonce = resultContainer?.mdocGeneratedNonce
+            )
+        }
     }
 
     private fun RequestParametersFrom<AuthenticationRequestParameters>.extractLeafCertKey(): JsonWebKey? =
@@ -384,7 +385,7 @@ class OpenId4VpHolder(
                     presentationRequest = it,
                     dcqlQueryResult = holder.matchDCQLQueryAgainstCredentialStore(
                         dcqlQuery = it.dcqlQuery,
-                        filterById = preparationState.oid4vpDCAPIRequest?.credentialId
+                        filterById = preparationState.dcApiRequest?.credentialId
                     ).getOrThrow()
                 )
 
@@ -392,7 +393,7 @@ class OpenId4VpHolder(
                 holder.matchInputDescriptorsAgainstCredentialStore(
                     inputDescriptors = it.presentationDefinition.inputDescriptors,
                     fallbackFormatHolder = it.fallbackFormatHolder,
-                    filterById = preparationState.oid4vpDCAPIRequest?.credentialId
+                    filterById = preparationState.dcApiRequest?.credentialId
                 ).getOrThrow().let { matchInputDescriptors ->
                     if (matchInputDescriptors.values.find { it.size != 0 } == null) {
                         throw OAuth2Exception.AccessDenied("No matching credential")

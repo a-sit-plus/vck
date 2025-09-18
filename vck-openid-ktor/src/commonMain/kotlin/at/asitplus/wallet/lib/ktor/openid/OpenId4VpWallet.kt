@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.ktor.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
+import at.asitplus.dcapi.request.DCAPIRequest
 import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RelyingPartyMetadata
@@ -136,12 +137,13 @@ class OpenId4VpWallet(
 
     suspend fun startAuthorizationResponsePreparation(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
+        dcApiRequest: DCAPIRequest? = null,
     ): KmmResult<AuthorizationResponsePreparationState> =
-        openId4VpHolder.startAuthorizationResponsePreparation(request)
+        openId4VpHolder.startAuthorizationResponsePreparation(request, dcApiRequest)
 
     suspend fun startAuthorizationResponsePreparation(
         input: String,
-        dcApiRequest: Oid4vpDCAPIRequest?
+        dcApiRequest: Oid4vpDCAPIRequest? = null,
     ): KmmResult<AuthorizationResponsePreparationState> =
         openId4VpHolder.startAuthorizationResponsePreparation(input, dcApiRequest)
 
@@ -192,16 +194,15 @@ class OpenId4VpWallet(
      * Exceptions may be sent to the verifier in [sendAuthnErrorResponse].
      */
     suspend fun finalizeAuthorizationResponse(
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
         preparationState: AuthorizationResponsePreparationState,
-        credentialPresentation: CredentialPresentation,
+        credentialPresentation: CredentialPresentation? = null,
     ): KmmResult<AuthenticationResult> = catching {
-        Napier.i("startPresentation: $request")
+        Napier.i("startPresentation: $preparationState")
         openId4VpHolder.finalizeAuthorizationResponse(
             preparationState = preparationState,
             credentialPresentation = credentialPresentation
         ).getOrElse {
-            sendAuthnErrorResponse(it, request)
+            sendAuthnErrorResponse(it, preparationState.request)
             throw it
         }.let {
             handleResponseResult(it)

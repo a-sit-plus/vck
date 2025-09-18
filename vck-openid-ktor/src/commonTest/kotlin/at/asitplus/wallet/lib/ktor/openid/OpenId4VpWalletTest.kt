@@ -85,19 +85,18 @@ class OpenId4VpWalletTest : FunSpec() {
                     clientId = uuid4().toString()
                 )
 
-                val requestParametersFrom = wallet.parseAuthenticationRequestParameters(url).getOrThrow()
+                val state = wallet.startAuthorizationResponsePreparation(url).getOrThrow()
                 // sends the response to the mock RP, which calls verifyReceivedAttributes, which unlocks the latch
-                wallet.startPresentationReturningUrl(requestParametersFrom).also {
-                    it.isSuccess shouldBe true
-                    it.getOrThrow().redirectUri?.let { HttpClient(mockEngine).get(it) }
-                }
+                wallet.finalizeAuthorizationResponse(state).getOrThrow()
+                    .shouldBeInstanceOf<OpenId4VpWallet.AuthenticationSuccess>()
+                    .redirectUri?.let { HttpClient(mockEngine).get(it) }
 
                 assertPresentation(countdownLatch)
             }
         }
 
 
-        test(" presentEuPidCredentialIsoQuery") {
+        test("presentEuPidCredentialIsoQuery") {
             runBlocking {
                 val (wallet, url, mockEngine) = setup(
                     scheme = EuPidScheme,
@@ -109,13 +108,13 @@ class OpenId4VpWalletTest : FunSpec() {
                     clientId = uuid4().toString()
                 )
 
-                val requestParametersFrom =
-                    wallet.parseAuthenticationRequestParameters(url).getOrThrow()
+                val state = wallet.startAuthorizationResponsePreparation(url).getOrThrow()
                 // sends the response to the mock RP, which calls verifyReceivedAttributes, which unlocks the latch
-                wallet.startPresentationReturningUrl(requestParametersFrom).also {
-                    it.isSuccess shouldBe true
-                    it.getOrThrow().redirectUri?.let { HttpClient(mockEngine).get(it) }
-                }
+                wallet.finalizeAuthorizationResponse(state).getOrThrow()
+                    .shouldBeInstanceOf<OpenId4VpWallet.AuthenticationSuccess>()
+                    .redirectUri?.let { HttpClient(mockEngine).get(it) }
+
+                assertPresentation(countdownLatch)
             }
         }
 
@@ -129,11 +128,7 @@ class OpenId4VpWalletTest : FunSpec() {
                     "age_over_21" to true
                 )
 
-                val credential = holderAgent.storeMockCredentials(
-                    MobileDrivingLicenceScheme,
-                    ISO_MDOC,
-                    attributes
-                )
+                val credential = holderAgent.storeMockCredentials(MobileDrivingLicenceScheme, ISO_MDOC, attributes)
 
                 val dcqlQuery = DCQLQuery(
                     credentials = DCQLCredentialQueryList(
@@ -216,18 +211,15 @@ class OpenId4VpWalletTest : FunSpec() {
                     callingOrigin = "https://apps.egiz.gv.at/customverifier"
                 )
 
-                val requestParametersFrom =
-                    wallet.parseAuthenticationRequestParameters(request, dcApiRequest).getOrThrow()
-                val preparationState = wallet.startAuthorizationResponsePreparation(requestParametersFrom).getOrThrow()
+                val preparationState = wallet.startAuthorizationResponsePreparation(request, dcApiRequest).getOrThrow()
                 val presentation = DCQLPresentation(DCQLRequest(dcqlQuery), credentialQuerySubmissions)
-                wallet.finalizeAuthorizationResponse(requestParametersFrom, preparationState, presentation).also {
-                    it.isSuccess shouldBe true
-                    val response = it.getOrThrow()
-                    response.shouldBeInstanceOf<OpenId4VpWallet.AuthenticationForward>()
-                    response.authenticationResponseResult.shouldBeInstanceOf<AuthenticationResponseResult.DcApi>()
-                    response.authenticationResponseResult.params.response shouldContain "vp_token"
-                    response.authenticationResponseResult.params.response shouldContain "cred1"
-                }
+                wallet.finalizeAuthorizationResponse(preparationState, presentation)
+                    .getOrThrow()
+                    .shouldBeInstanceOf<OpenId4VpWallet.AuthenticationForward>()
+                    .authenticationResponseResult.shouldBeInstanceOf<AuthenticationResponseResult.DcApi>().apply {
+                        params.response shouldContain "vp_token"
+                        params.response shouldContain "cred1"
+                    }
             }
         }
 
@@ -255,10 +247,7 @@ class OpenId4VpWalletTest : FunSpec() {
             }
             val wallet = setupWallet(mockEngine)
 
-            val requestParametersFrom = wallet.parseAuthenticationRequestParameters(url).getOrThrow()
-
-            val preparationState =
-                wallet.startAuthorizationResponsePreparation(requestParametersFrom).getOrThrow()
+            val preparationState = wallet.startAuthorizationResponsePreparation(url).getOrThrow()
             shouldThrow<OAuth2Exception.AccessDenied> {
                 wallet.getMatchingCredentials(preparationState).getOrThrow()
             }
