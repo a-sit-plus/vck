@@ -8,7 +8,7 @@ import kotlinx.serialization.Serializable
 
 /**
  * Intermediate result class to display information about the authentication process to the user,
- * e.g. to let them make an informed decision.
+ * i.e., to let them make an informed decision.
  */
 @Serializable
 data class AuthorizationResponsePreparationState(

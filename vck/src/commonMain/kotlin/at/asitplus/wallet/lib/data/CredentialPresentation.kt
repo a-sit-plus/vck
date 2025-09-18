@@ -6,6 +6,9 @@ import at.asitplus.wallet.lib.agent.PresentationExchangeCredentialDisclosure
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import kotlinx.serialization.Serializable
 
+/**
+ * The credentials that are actually being used to create the verifiable presentation.
+ */
 @Serializable
 sealed interface CredentialPresentation {
     val presentationRequest: CredentialPresentationRequest

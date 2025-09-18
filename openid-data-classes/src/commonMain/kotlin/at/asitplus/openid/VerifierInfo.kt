@@ -1,6 +1,5 @@
 package at.asitplus.openid
 
-import at.asitplus.dif.FormatHolder
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -20,15 +19,15 @@ data class VerifierInfo(
      * the attestation, which is specified in a format-specific way.
      */
     @SerialName("format")
-    val format: FormatHolder,
+    val format: String,
 
     /**
      * OID4VP 1.0: REQUIRED.
      * An object or string containing an attestation (e.g. a JWT). The payload structure is defined on a per
-     * format level. It is at the discretion of the Wallet whether it uses the information from verifier_info.
+     * format level. It is at the discretion of the Wallet whether it uses the information from [VerifierInfo].
      * Factors that influence such Wallet's decision include, but are not limited to, trust framework the Wallet
      * supports, specific policies defined by the Issuers or ecosystem, and profiles of this specification.
-     * If the Wallet uses information from verifier_info, the Wallet MUST validate the signature and ensure binding.
+     * If the Wallet uses information from [VerifierInfo], the Wallet MUST validate the signature and ensure binding.
      */
     @SerialName("data")
     val data: String,
@@ -36,9 +35,10 @@ data class VerifierInfo(
     /**
      * OID4VP 1.0: OPTIONAL.
      * A non-empty array of strings each referencing a Credential requested by the Verifier for which the attestation
-     * is relevant. Each string matches the id field in a DCQL Credential Query. If omitted, the attestation is relevant
-     * to all requested Credentials.
+     * is relevant. Each string matches the `id` field in a DCQL Credential Query
+     * (see [at.asitplus.openid.dcql.DCQLCredentialQuery.id]). If omitted, the attestation is relevant to all requested
+     * Credentials.
      */
     @SerialName("credential_ids")
-    val credentialIds: List<String>,
+    val credentialIds: Set<String>,
 )
