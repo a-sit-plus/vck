@@ -71,9 +71,10 @@ internal class AuthenticationResponseFactory(
         url = request.parameters.responseUrl
             ?: request.parameters.redirectUrlExtracted
             ?: throw InvalidRequest("no response_uri or redirect_uri"),
-        params = response.params?.encodeToParameters<AuthenticationResponseParameters>()
-            ?: response.error?.encodeToParameters<OAuth2Error>()
-            ?: throw InvalidRequest("nothing to encode")
+        params = when (response) {
+            is AuthenticationResponse.Error -> response.error.encodeToParameters<OAuth2Error>()
+            is AuthenticationResponse.Success -> response.params.encodeToParameters<AuthenticationResponseParameters>()
+        }
     )
 
     @Throws(OAuth2Exception::class)
@@ -84,16 +85,24 @@ internal class AuthenticationResponseFactory(
         url = catchingUnwrapped {
             request.parameters.redirectUrlExtracted?.let { redirectUrl ->
                 URLBuilder(redirectUrl).apply {
-                    response.params.encodeToParameters<AuthenticationResponseParameters?>().forEach {
-                        parameters.append(it.key, it.value)
-                    }
+                    appendParameters(response)
                 }.buildString()
             } ?: throw InvalidRequest("no redirect_uri")
         }.getOrElse {
-            throw InvalidRequest("Unable to build url")
+            throw InvalidRequest("Unable to build url", it)
         },
-        params = response.params ?: throw InvalidRequest("no params")
+        params = (response as? AuthenticationResponse.Success)?.params,
+        error = (response as? AuthenticationResponse.Error)?.error
     )
+
+    private fun URLBuilder.appendParameters(response: AuthenticationResponse) {
+        when (response) {
+            is AuthenticationResponse.Error -> response.error.encodeToParameters()
+            is AuthenticationResponse.Success -> response.params.encodeToParameters()
+        }.forEach {
+            parameters.append(it.key, it.value)
+        }
+    }
 
     /**
      * That's the default for `id_token` and `vp_token`
@@ -106,19 +115,23 @@ internal class AuthenticationResponseFactory(
         url = catchingUnwrapped {
             request.parameters.redirectUrlExtracted?.let { redirectUrl ->
                 URLBuilder(redirectUrl).apply {
-                    encodedFragment =
-                        response.params.encodeToParameters<AuthenticationResponseParameters?>().formUrlEncode()
+                    setFragment(response)
                 }.buildString()
             } ?: throw InvalidRequest("no redirect_uri")
         }.getOrElse {
             throw InvalidRequest("Unable to build url")
         },
-        params = response.params ?: throw InvalidRequest("no params")
+        params = (response as? AuthenticationResponse.Success)?.params,
+        error = (response as? AuthenticationResponse.Error)?.error
     )
 
-    /**
-     * Per OID4VP, the response must either be signed, or encrypted, or even signed and encrypted
-     */
+    private fun URLBuilder.setFragment(response: AuthenticationResponse) {
+        encodedFragment = when (response) {
+            is AuthenticationResponse.Error -> response.error.encodeToParameters().formUrlEncode()
+            is AuthenticationResponse.Success -> response.params.encodeToParameters().formUrlEncode()
+        }
+    }
+
     @Throws(OAuth2Exception::class, CancellationException::class)
     private suspend fun buildResponse(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
@@ -126,7 +139,10 @@ internal class AuthenticationResponseFactory(
     ) = if (request.parameters.responseMode?.requiresEncryption == true || response.requestsEncryption()) {
         encrypt(request, response)
     } else {
-        joseCompliantSerializer.encodeToString(response.params ?: throw InvalidRequest("No params in response"))
+        when (response) {
+            is AuthenticationResponse.Error -> joseCompliantSerializer.encodeToString(response.error)
+            is AuthenticationResponse.Success -> joseCompliantSerializer.encodeToString(response.params)
+        }
     }
 
     private suspend fun encrypt(
@@ -149,12 +165,13 @@ internal class AuthenticationResponseFactory(
             agreementPartyUInfo = apu,
             keyId = recipientKey.keyId,
         )
-        val jwe = response.params?.let {
-            encryptResponse(header, vckJsonSerializer.encodeToString(response.params), recipientKey)
-        } ?: response.error?.let {
-            encryptResponse(header, vckJsonSerializer.encodeToString(response.error), recipientKey)
-        } ?: throw InvalidRequest("encrypt: nothing to encrypt")
-        return jwe.map { it.serialize() }
+        return when (response) {
+            is AuthenticationResponse.Error ->
+                encryptResponse(header, vckJsonSerializer.encodeToString(response.error), recipientKey)
+
+            is AuthenticationResponse.Success ->
+                encryptResponse(header, vckJsonSerializer.encodeToString(response.params), recipientKey)
+        }.map { it.serialize() }
             .getOrElse { throw InvalidRequest("encrypt error", it) }
     }
 

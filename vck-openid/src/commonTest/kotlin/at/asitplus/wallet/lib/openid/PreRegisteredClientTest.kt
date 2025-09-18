@@ -257,7 +257,9 @@ class PreRegisteredClientTest : FreeSpec({
                 Url(authnRequestUrlParams),
                 parsedAuthnRequest
             )
-        ).getOrThrow().params
+        ).getOrThrow()
+            .shouldBeInstanceOf<AuthenticationResponse.Success>()
+            .params
         val authnResponseParams = authnResponse.encodeToParameters().formUrlEncode()
 
         val result = verifierOid4vp.validateAuthnResponse(authnResponseParams)
@@ -358,9 +360,11 @@ class PreRegisteredClientTest : FreeSpec({
             randomSource = RandomSource.Default,
         )
 
-        shouldThrow<OAuth2Exception> {
-            holderOid4vp.createAuthnResponse(authRequestUrlWithRequestUri).getOrThrow()
-        }
+        // TODO shouldn't there be more error tests like this, and we can send every error back?
+        // or does this now remove some local error handling ...
+        holderOid4vp.createAuthnResponse(authRequestUrlWithRequestUri).getOrThrow()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+            .error.shouldNotBeNull()
     }
 
     "test with request object not verified" {
@@ -398,6 +402,8 @@ private suspend fun verifySecondProtocolRun(
     holderOid4vp: OpenId4VpHolder,
 ) {
     val authnResponse = holderOid4vp.createAuthnResponse(authnRequestUrl)
-    verifierOid4vp.validateAuthnResponse((authnResponse.getOrThrow() as AuthenticationResponseResult.Redirect).url)
+        .getOrThrow()
+        .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+    verifierOid4vp.validateAuthnResponse(authnResponse.url)
         .shouldBeInstanceOf<AuthnResponseResult.Success>()
 }

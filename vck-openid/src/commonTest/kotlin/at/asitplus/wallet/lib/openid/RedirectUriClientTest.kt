@@ -226,11 +226,13 @@ class RedirectUriClientTest : FreeSpec({
         val parsedAuthnRequest: AuthenticationRequestParameters =
             authnRequestUrlParams.decodeFromUrlQuery()
         val authnResponse = holderOid4vp.createAuthnResponseParams(
-            RequestParametersFrom.Uri<AuthenticationRequestParameters>(
+            RequestParametersFrom.Uri(
                 Url(authnRequestUrlParams),
                 parsedAuthnRequest
             )
-        ).getOrThrow().params
+        ).getOrThrow()
+            .shouldBeInstanceOf<AuthenticationResponse.Success>()
+            .params
         val authnResponseParams = authnResponse.encodeToParameters().formUrlEncode()
 
         val result = verifierOid4vp.validateAuthnResponse(authnResponseParams)

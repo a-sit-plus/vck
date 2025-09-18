@@ -61,7 +61,7 @@ class OAuth2ClientDPoPTest : FunSpec({
         val authnResponse = server.authorize(authnRequest as RequestParameters) { catching { user } }
             .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-        val code = authnResponse.params.code
+        val code = authnResponse.params?.code
             .shouldNotBeNull()
         return code
     }

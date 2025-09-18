@@ -209,14 +209,11 @@ class OpenId4VpHolder(
     ): KmmResult<AuthenticationResponseResult> = catching {
         val clientMetadata = request.parameters.loadClientMetadata()
         val jsonWebKeys = clientMetadata?.jsonWebKeySet?.keys
-        val response = AuthenticationResponse(
-            params = null,
+        val response = AuthenticationResponse.Error(
+            error = error,
             clientMetadata = clientMetadata,
             jsonWebKeys = jsonWebKeys,
-            mdocGeneratedNonce = null,
-            error = error
         )
-
         authenticationResponseFactory.createAuthenticationResponse(request, response)
     }
 
@@ -333,7 +330,7 @@ class OpenId4VpHolder(
             vpToken = resultContainer?.vpToken,
             presentationSubmission = resultContainer?.presentationSubmission,
         )
-        AuthenticationResponse(
+        AuthenticationResponse.Success(
             params = parameters,
             clientMetadata = clientMetadata,
             jsonWebKeys = jsonWebKeys,

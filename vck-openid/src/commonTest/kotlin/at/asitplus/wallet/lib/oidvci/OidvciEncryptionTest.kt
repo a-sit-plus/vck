@@ -45,7 +45,7 @@ class OidvciEncryptionTest : FunSpec({
         val authnResponse = authorizationService.authorize(input) { catching { DummyUserProvider.user } }
             .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-        val code = authnResponse.params.code
+        val code = authnResponse.params?.code
             .shouldNotBeNull()
         val tokenRequest = client.oauth2Client.createTokenRequestParameters(
             state = state,

@@ -67,7 +67,7 @@ class OAuth2ClientTest : FunSpec({
         val authnResponse = server.authorize(input) { catching { user } }
             .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-        val code = authnResponse.params.code
+        val code = authnResponse.params?.code
             .shouldNotBeNull()
 
         val tokenRequest = client.createTokenRequestParameters(
@@ -98,7 +98,7 @@ class OAuth2ClientTest : FunSpec({
         val authnResponse = server.authorize(input) { catching { user } }
             .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-        val code = authnResponse.params.code
+        val code = authnResponse.params?.code
             .shouldNotBeNull()
 
         val tokenRequest = client.createTokenRequestParameters(
@@ -126,7 +126,7 @@ class OAuth2ClientTest : FunSpec({
         val authnResponse = server.authorize(authnRequest as RequestParameters) { catching { user } }
             .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-        val code = authnResponse.params.code
+        val code = authnResponse.params?.code
             .shouldNotBeNull()
 
         val tokenRequest = client.createTokenRequestParameters(
@@ -154,7 +154,7 @@ class OAuth2ClientTest : FunSpec({
         val authnResponse = server.authorize(authnRequest as RequestParameters) { catching { user } }
             .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-        val code = authnResponse.params.code
+        val code = authnResponse.params?.code
             .shouldNotBeNull()
 
         val tokenRequest = client.createTokenRequestParameters(
@@ -175,7 +175,7 @@ class OAuth2ClientTest : FunSpec({
         val authnResponse = server.authorize(authnRequest as RequestParameters) { catching { user } }
             .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-        val code = authnResponse.params.code
+        val code = authnResponse.params?.code
             .shouldNotBeNull()
 
         val tokenRequest = client.createTokenRequestParameters(
@@ -197,7 +197,7 @@ class OAuth2ClientTest : FunSpec({
         val authnResponse = server.authorize(authnRequest as RequestParameters) { catching { user } }
             .getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-        val code = authnResponse.params.code
+        val code = authnResponse.params?.code
             .shouldNotBeNull()
 
         val tokenRequest = client.createTokenRequestParameters(
