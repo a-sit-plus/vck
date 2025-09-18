@@ -3,8 +3,6 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
-import at.asitplus.dcapi.request.DCAPIRequest
-import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
@@ -198,16 +196,14 @@ class OpenId4VpHolder(
     @Deprecated("Use startAuthorizationResponsePreparation() instead")
     suspend fun parseAuthenticationRequestParameters(
         input: String,
-        dcApiRequest: DCAPIRequest? = null,
     ): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> = catching {
-        parse(input, dcApiRequest)
+        parse(input)
     }
 
     @Suppress("UNCHECKED_CAST")
     private suspend fun parse(
         input: String,
-        dcApiRequest: DCAPIRequest? = null,
-    ) = requestParser.parseRequestParameters(input, dcApiRequest)
+    ) = requestParser.parseRequestParameters(input)
         .getOrThrow() as RequestParametersFrom<AuthenticationRequestParameters>
 
     /** Creates an error response for the [error], which can be sent to the verifier / relying party. */
@@ -256,9 +252,8 @@ class OpenId4VpHolder(
      */
     suspend fun startAuthorizationResponsePreparation(
         input: String,
-        dcApiRequest: DCAPIRequest? = null,
     ): KmmResult<AuthorizationResponsePreparationState> = catching {
-        startAuthorizationResponsePreparation(parse(input, dcApiRequest), dcApiRequest).getOrThrow()
+        startAuthorizationResponsePreparation(parse(input)).getOrThrow()
     }
 
     /**
@@ -269,7 +264,6 @@ class OpenId4VpHolder(
      */
     suspend fun startAuthorizationResponsePreparation(
         params: RequestParametersFrom<AuthenticationRequestParameters>,
-        dcApiRequest: DCAPIRequest? = null,
     ): KmmResult<AuthorizationResponsePreparationState> = catching {
         authorizationRequestValidator.validateAuthorizationRequest(params)
         val clientMetadata = params.parameters.loadClientMetadata()
@@ -278,7 +272,6 @@ class OpenId4VpHolder(
             credentialPresentationRequest = params.parameters.loadCredentialRequest(),
             clientMetadata = clientMetadata,
             jsonWebKeys = clientMetadata?.loadJsonWebKeySet()?.keys,
-            dcApiRequest = dcApiRequest as? Oid4vpDCAPIRequest,
             requestObjectVerified = (params as? RequestParametersFrom.JwsSigned)?.verified,
             verifierInfo = params.parameters.verifierInfo
         )
@@ -339,7 +332,7 @@ class OpenId4VpHolder(
         credentialPresentation: CredentialPresentation? = null,
     ): KmmResult<AuthenticationResponse> = catching {
         with(state) {
-            val audience = request.parameters.extractAudience(jsonWebKeys, dcApiRequest)
+            val audience = request.extractAudience(jsonWebKeys)
             val jsonWebKeys = jsonWebKeys?.combine(request.extractLeafCertKey())
             val idToken = presentationFactory.createSignedIdToken(clock, keyMaterial.publicKey, request)
                 .getOrNull()?.serialize()
@@ -353,7 +346,7 @@ class OpenId4VpHolder(
                     credentialPresentation = presentation,
                     clientMetadata = clientMetadata,
                     jsonWebKeys = jsonWebKeys,
-                    dcApiRequest = dcApiRequest
+                    dcApiRequestCallingOrigin = request.callingOrigin()
                 ).getOrThrow()
             }
 
@@ -385,7 +378,7 @@ class OpenId4VpHolder(
                     presentationRequest = it,
                     dcqlQueryResult = holder.matchDCQLQueryAgainstCredentialStore(
                         dcqlQuery = it.dcqlQuery,
-                        filterById = preparationState.dcApiRequest?.credentialId
+                        filterById = preparationState.request.credentialId()
                     ).getOrThrow()
                 )
 
@@ -393,7 +386,7 @@ class OpenId4VpHolder(
                 holder.matchInputDescriptorsAgainstCredentialStore(
                     inputDescriptors = it.presentationDefinition.inputDescriptors,
                     fallbackFormatHolder = it.fallbackFormatHolder,
-                    filterById = preparationState.dcApiRequest?.credentialId
+                    filterById = preparationState.request.credentialId()
                 ).getOrThrow().let { matchInputDescriptors ->
                     if (matchInputDescriptors.values.find { it.size != 0 } == null) {
                         throw OAuth2Exception.AccessDenied("No matching credential")
@@ -417,15 +410,36 @@ class OpenId4VpHolder(
      * the Client Identifier is not used as the audience for the response.
      */
     @Throws(OAuth2Exception::class)
+    private fun RequestParametersFrom<AuthenticationRequestParameters>.extractAudience(
+        clientJsonWebKeySet: Collection<JsonWebKey>?,
+    ) = when (this) {
+        is RequestParametersFrom.DcApiSigned<*> -> "origin:${dcApiRequest.callingOrigin}"
+        is RequestParametersFrom.DcApiUnsigned<*> -> "origin:${dcApiRequest.callingOrigin}"
+        is RequestParametersFrom.Json<*> -> parameters.extractAudience(clientJsonWebKeySet)
+        is RequestParametersFrom.JwsSigned<*> -> parameters.extractAudience(clientJsonWebKeySet)
+        is RequestParametersFrom.Uri<*> -> parameters.extractAudience(clientJsonWebKeySet)
+    }
+
+    @Throws(OAuth2Exception::class)
     private fun AuthenticationRequestParameters.extractAudience(
         clientJsonWebKeySet: Collection<JsonWebKey>?,
-        dcApiRequest: Oid4vpDCAPIRequest?,
-    ) = dcApiRequest?.let { "origin:${it.callingOrigin}" }
-        ?: clientId
+    ) = clientId
         ?: issuer
         ?: clientJsonWebKeySet?.firstOrNull()
             ?.let { it.keyId ?: it.didEncoded ?: it.jwkThumbprint }
         ?: throw InvalidRequest("could not parse audience")
+
+    private fun RequestParametersFrom<AuthenticationRequestParameters>.callingOrigin() = when (this) {
+        is RequestParametersFrom.DcApiSigned<*> -> dcApiRequest.callingOrigin
+        is RequestParametersFrom.DcApiUnsigned<*> -> dcApiRequest.callingOrigin
+        else -> null
+    }
+
+    private fun RequestParametersFrom<AuthenticationRequestParameters>.credentialId() = when (this) {
+        is RequestParametersFrom.DcApiSigned<*> -> dcApiRequest.credentialId
+        is RequestParametersFrom.DcApiUnsigned<*> -> dcApiRequest.credentialId
+        else -> null
+    }
 
     private suspend fun RelyingPartyMetadata.loadJsonWebKeySet(): JsonWebKeySet? =
         jsonWebKeySet ?: jsonWebKeySetUrl

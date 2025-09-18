@@ -19,6 +19,7 @@ import at.asitplus.openid.dcql.DCQLIsoMdocClaimsQuery
 import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLIsoMdocCredentialQuery
 import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -29,6 +30,7 @@ import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import at.asitplus.wallet.lib.oidvci.json
 import at.asitplus.wallet.lib.openid.*
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessIso
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessSdJwt
@@ -201,8 +203,57 @@ class OpenId4VpWalletTest : FunSpec() {
                     )
                 )
 
-                val request =
-                    "{\"client_metadata\":{\"vp_formats_supported\":{\"mso_mdoc\":{\"deviceauth_alg_values\":[-7],\"issuerauth_alg_values\":[-7]}}},\"dcql_query\":{\"credentials\":[{\"claims\":[{\"path\":[\"org.iso.18013.5.1\",\"family_name\"]},{\"path\":[\"org.iso.18013.5.1\",\"given_name\"]},{\"path\":[\"org.iso.18013.5.1\",\"age_over_21\"]}],\"format\":\"mso_mdoc\",\"id\":\"cred1\",\"meta\":{\"doctype_value\":\"org.iso.18013.5.1.mDL\"}}]},\"nonce\":\"4mqexiA_rQQyzHOYkuW6-BrHKaza02b8JHFVoyB5Iw8\",\"response_mode\":\"dc_api\",\"response_type\":\"vp_token\"}"
+                // TODO test with signed request
+                val request = """
+                    {
+                       "client_metadata" : {
+                          "vp_formats_supported" : {
+                             "mso_mdoc" : {
+                                "deviceauth_alg_values" : [
+                                   -7
+                                ],
+                                "issuerauth_alg_values" : [
+                                   -7
+                                ]
+                             }
+                          }
+                       },
+                       "dcql_query" : {
+                          "credentials" : [
+                             {
+                                "claims" : [
+                                   {
+                                      "path" : [
+                                         "org.iso.18013.5.1",
+                                         "family_name"
+                                      ]
+                                   },
+                                   {
+                                      "path" : [
+                                         "org.iso.18013.5.1",
+                                         "given_name"
+                                      ]
+                                   },
+                                   {
+                                      "path" : [
+                                         "org.iso.18013.5.1",
+                                         "age_over_21"
+                                      ]
+                                   }
+                                ],
+                                "format" : "mso_mdoc",
+                                "id" : "cred1",
+                                "meta" : {
+                                   "doctype_value" : "org.iso.18013.5.1.mDL"
+                                }
+                             }
+                          ]
+                       },
+                       "nonce" : "4mqexiA_rQQyzHOYkuW6-BrHKaza02b8JHFVoyB5Iw8",
+                       "response_mode" : "dc_api",
+                       "response_type" : "vp_token"
+                    }
+                    """.trimIndent()
                 val dcApiRequest = Oid4vpDCAPIRequest(
                     protocol = "openid4vp-v1-unsigned",
                     request = request,
@@ -211,7 +262,8 @@ class OpenId4VpWalletTest : FunSpec() {
                     callingOrigin = "https://apps.egiz.gv.at/customverifier"
                 )
 
-                val preparationState = wallet.startAuthorizationResponsePreparation(request, dcApiRequest).getOrThrow()
+                val input = joseCompliantSerializer.encodeToString(dcApiRequest)
+                val preparationState = wallet.startAuthorizationResponsePreparation(input).getOrThrow()
                 val presentation = DCQLPresentation(DCQLRequest(dcqlQuery), credentialQuerySubmissions)
                 wallet.finalizeAuthorizationResponse(preparationState, presentation)
                     .getOrThrow()

@@ -112,7 +112,7 @@ class OpenId4VpWallet(
         input: String,
         dcApiRequest: Oid4vpDCAPIRequest? = null,
     ): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> =
-        openId4VpHolder.parseAuthenticationRequestParameters(input, dcApiRequest)
+        openId4VpHolder.parseAuthenticationRequestParameters(input)
 
     /**
      * Sends an error response with the appropriate method.
@@ -137,15 +137,13 @@ class OpenId4VpWallet(
 
     suspend fun startAuthorizationResponsePreparation(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
-        dcApiRequest: DCAPIRequest? = null,
     ): KmmResult<AuthorizationResponsePreparationState> =
-        openId4VpHolder.startAuthorizationResponsePreparation(request, dcApiRequest)
+        openId4VpHolder.startAuthorizationResponsePreparation(request)
 
     suspend fun startAuthorizationResponsePreparation(
         input: String,
-        dcApiRequest: Oid4vpDCAPIRequest? = null,
     ): KmmResult<AuthorizationResponsePreparationState> =
-        openId4VpHolder.startAuthorizationResponsePreparation(input, dcApiRequest)
+        openId4VpHolder.startAuthorizationResponsePreparation(input)
 
     /**
      * Calls [openId4VpHolder] to finalize the authentication response.

@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
@@ -12,6 +13,7 @@ import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -48,14 +50,12 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
                 OpenId4VpVerifier.CreationOptions.Query(walletUrl)
             ).getOrThrow().url
 
-            val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow()
-                .request
+            val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow().request
                 .shouldBeInstanceOf<RequestParametersFrom.Uri<AuthenticationRequestParameters>>()
 
             val serialized = vckJsonSerializer.encodeToString(params)
-            val deserialized =
-                vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
-            deserialized shouldBe params
+            vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
+                .shouldBe(params)
         }
 
         "Json test $representation" {
@@ -64,28 +64,70 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
             )
             authnRequest.shouldNotContain(DifInputDescriptor::class.simpleName!!)
             val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow().request
+                .shouldBeInstanceOf<RequestParametersFrom.Json<AuthenticationRequestParameters>>()
 
             val serialized = vckJsonSerializer.encodeToString(params)
-            val deserialized =
-                vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
-            deserialized shouldBe params
+            vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
+                .shouldBe(params)
+        }
+
+        "DcApiUnsigned test $representation" {
+            val authnRequest = vckJsonSerializer.encodeToString(
+                Oid4vpDCAPIRequest(
+                    protocol = "openid4vp-v1-unsigned",
+                    request = vckJsonSerializer.encodeToString(verifierOid4vp.createAuthnRequest(requestOptions = reqOptions)),
+                    credentialId = "1",
+                    callingPackageName = "com.example.app",
+                    callingOrigin = "https://example.com"
+                )
+            )
+            val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow().request
+                .shouldBeInstanceOf<RequestParametersFrom.DcApiUnsigned<AuthenticationRequestParameters>>()
+
+            val serialized = vckJsonSerializer.encodeToString(params)
+            vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
+                .shouldBe(params)
         }
 
         "JwsSigned test $representation" {
             val authnRequestUrl = verifierOid4vp.createAuthnRequest(
                 reqOptions, OpenId4VpVerifier.CreationOptions.SignedRequestByValue(walletUrl)
             ).getOrThrow().url
-            val interim1: JarRequestParameters =
-                Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
-            interim1.clientId shouldBe clientId
 
-            val interim2 = interim1.request ?: throw Exception("Authn request is null")
-            val params = holderOid4vp.startAuthorizationResponsePreparation(interim2).getOrThrow().request
+            val jarRequest: JarRequestParameters = Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
+            jarRequest.clientId shouldBe clientId
+            val serializedRequest = jarRequest.request.shouldNotBeNull()
+            val params = holderOid4vp.startAuthorizationResponsePreparation(serializedRequest).getOrThrow().request
+                .shouldBeInstanceOf<RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>>()
 
             val serialized = vckJsonSerializer.encodeToString(params)
-            val deserialized =
-                vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
-            deserialized shouldBe params
+            vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
+                .shouldBe(params)
+        }
+
+        "DcApiSigned test $representation" {
+            val authnRequestUrl = verifierOid4vp.createAuthnRequest(
+                reqOptions, OpenId4VpVerifier.CreationOptions.SignedRequestByValue(walletUrl)
+            ).getOrThrow().url
+
+            val jarRequest: JarRequestParameters = Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
+            jarRequest.clientId shouldBe clientId
+            val serializedRequest = jarRequest.request.shouldNotBeNull()
+            val authnRequest = vckJsonSerializer.encodeToString(
+                Oid4vpDCAPIRequest(
+                    protocol = "openid4vp-v1-signed",
+                    request = serializedRequest,
+                    credentialId = "1",
+                    callingPackageName = "com.example.app",
+                    callingOrigin = "https://example.com"
+                )
+            )
+            val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow().request
+                .shouldBeInstanceOf<RequestParametersFrom.DcApiSigned<AuthenticationRequestParameters>>()
+
+            val serialized = vckJsonSerializer.encodeToString(params)
+            vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
+                .shouldBe(params)
         }
     }
 })

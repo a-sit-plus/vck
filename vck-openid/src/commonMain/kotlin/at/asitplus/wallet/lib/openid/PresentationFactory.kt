@@ -76,7 +76,7 @@ internal class PresentationFactory(
         clientMetadata: RelyingPartyMetadata?,
         jsonWebKeys: Collection<JsonWebKey>?,
         credentialPresentation: CredentialPresentation,
-        dcApiRequest: Oid4vpDCAPIRequest?,
+        dcApiRequestCallingOrigin: String?,
     ): KmmResult<PresentationResponseParameters> = catching {
         request.verifyResponseType()
         val responseModeIsJwt = request.responseMode == DcApiJwt || request.responseMode == DirectPostJwt
@@ -95,7 +95,7 @@ internal class PresentationFactory(
                     responseUrl = request.responseUrl ?: request.redirectUrlExtracted,
                     nonce = nonce,
                     docType = it.docType,
-                    dcApiRequest = dcApiRequest,
+                    dcApiRequestCallingOrigin = dcApiRequestCallingOrigin,
                     jsonWebKeys = jsonWebKeys,
                     responseWillBeEncrypted = responseWillBeEncrypted
                 )
@@ -143,13 +143,13 @@ internal class PresentationFactory(
         responseUrl: String?,
         nonce: String,
         docType: String,
-        dcApiRequest: Oid4vpDCAPIRequest?,
+        dcApiRequestCallingOrigin: String?,
         jsonWebKeys: Collection<JsonWebKey>?,
         responseWillBeEncrypted: Boolean,
     ): CoseSigned<ByteArray> {
-        val sessionTranscript: SessionTranscript = if (dcApiRequest != null) {
+        val sessionTranscript: SessionTranscript = if (dcApiRequestCallingOrigin != null) {
             calcSessionTranscriptForDcApi(
-                callingOrigin = dcApiRequest.callingOrigin,
+                callingOrigin = dcApiRequestCallingOrigin,
                 nonce = nonce,
                 jsonWebKeys = jsonWebKeys,
                 responseWillBeEncrypted = responseWillBeEncrypted

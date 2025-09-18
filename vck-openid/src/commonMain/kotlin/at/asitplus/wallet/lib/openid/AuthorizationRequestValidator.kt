@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
 import at.asitplus.iso.sha256
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
@@ -30,15 +29,9 @@ internal class AuthorizationRequestValidator(
             }
         } ?: throw InvalidRequest("response_type is null")
 
-        if (request.parameters.responseMode.isAnyDcApi() && request is RequestParametersFrom.JwsSigned) {
-            if (request.dcApiRequest == null || request.dcApiRequest !is Oid4vpDCAPIRequest) {
-                throw InvalidRequest("DC API request not set even though response mode is dcapi")
-            }
-            val dcApiRequest = request.dcApiRequest as Oid4vpDCAPIRequest
-            request.parameters.verifyClientIdPresent()
-            request.parameters.verifyExpectedOrigin(dcApiRequest.callingOrigin)
+        if (request.parameters.responseMode.isAnyDcApi()) {
+            request.validateDcApi()
         }
-
         val clientIdScheme = request.parameters.clientIdSchemeExtracted
         if (clientIdScheme == ClientIdScheme.RedirectUri) {
             request.parameters.verifyClientMetadata()
@@ -60,6 +53,23 @@ internal class AuthorizationRequestValidator(
             }
         }
         // TODO Verifier Attestation JWT from OpenId4VP 11. also redirect_uri in there
+    }
+
+    private fun RequestParametersFrom<AuthenticationRequestParameters>.validateDcApi() {
+        when (this) {
+            is RequestParametersFrom.DcApiSigned<*> -> {
+                if (this.parameters.clientId == null)
+                    throw InvalidRequest("client_id must be set for DC API signed request")
+                this.parameters.verifyExpectedOrigin(this.dcApiRequest.callingOrigin)
+            }
+
+            is RequestParametersFrom.DcApiUnsigned<*> -> {
+                if (this.parameters.clientId != null)
+                    throw InvalidRequest("client_id not allowed for DC API unsigned request")
+            }
+
+            else -> throw InvalidRequest("DC API request not set even though response mode is ${parameters.responseMode}")
+        }
     }
 
     private fun RequestParametersFrom<AuthenticationRequestParameters>.isFromRequestObject(): Boolean =

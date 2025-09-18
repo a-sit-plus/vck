@@ -94,6 +94,7 @@ Release 5.9.0 (unreleased):
    - Deprecate and refactor methods in `OpenId4VpHolder` and `OpenId4VpWallet` to fetch external resources only once, clients need to call `startAuthorizationResponsePreparation()` and then `finalizeAuthorizationResponse()`
    - `OpenId4VpHolder` does not return a `KmmResult.failure` when building the response fails, but returns `AuthenticationResponseResult` containing error parameters
    - `OpenId4VpWallet` does not send an error response to the verifier automatically
+   - Extend `RequestParametersFrom` with sub-classes for `DcApiSigned` and `DcApiUnsigned`, removing the parameter `dcApiRequest` from several methods in `OpenId4VpVerifier` and `OpenId4VpWallet`
 
 Release 5.8.0:
  - Refactor `AuthorizationServiceStrategy`

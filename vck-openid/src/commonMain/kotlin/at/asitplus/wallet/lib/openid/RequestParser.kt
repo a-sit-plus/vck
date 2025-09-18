@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
-import at.asitplus.dcapi.request.DCAPIRequest
+import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.OpenIdConstants
@@ -50,23 +50,19 @@ class RequestParser(
      */
     suspend fun parseRequestParameters(
         input: String,
-        dcApiRequest: DCAPIRequest? = null,
     ): KmmResult<RequestParametersFrom<*>> = catching {
-        input.parseParameters(dcApiRequest).extractRequest(dcApiRequest)
+        input.parseParameters().extractRequest()
     }
 
-    private suspend fun String.parseParameters(
-        dcApiRequest: DCAPIRequest?,
-    ): RequestParametersFrom<out RequestParameters> =
-        parseAsRequestObjectJws(dcApiRequest)
+    private suspend fun String.parseParameters(): RequestParametersFrom<out RequestParameters> =
+        parseAsDcApiRequest()
+            ?: parseAsJwsRequest()
             ?: parseFromParameters()
-            ?: parseFromJson(dcApiRequest)
+            ?: parseFromJson()
             ?: throw InvalidRequest("parse error: $this")
 
-    private suspend fun RequestParametersFrom<out RequestParameters>.extractRequest(
-        dcApiRequest: DCAPIRequest?,
-    ): RequestParametersFrom<*> =
-        (this.parameters as? JarRequestParameters)?.let { extractRequest(it, dcApiRequest) } ?: this
+    private suspend fun RequestParametersFrom<out RequestParameters>.extractRequest(): RequestParametersFrom<*> =
+        (this.parameters as? JarRequestParameters)?.let { extractRequest(it) } ?: this
 
     private fun String.parseFromParameters(): RequestParametersFrom<*>? = catchingUnwrapped {
         Url(this).let {
@@ -80,24 +76,34 @@ class RequestParser(
         }
     }.getOrNull()
 
-    private fun String.parseFromJson(
-        dcApiRequest: DCAPIRequest?,
-    ): RequestParametersFrom<*>? = catchingUnwrapped {
+    private fun String.parseFromJson(): RequestParametersFrom<*>? = catchingUnwrapped {
         val params = vckJsonSerializer.decodeFromString(RequestParameters.serializer(), this)
-        RequestParametersFrom.Json(this, params, dcApiRequest)
+        RequestParametersFrom.Json(this, params)
     }.getOrNull()
+
+    private fun String.parseAsDcApiRequest(): RequestParametersFrom<*>? = catchingUnwrapped {
+        vckJsonSerializer.decodeFromString(Oid4vpDCAPIRequest.serializer(), this)
+    }.getOrNull()?.let { dcApiRequest ->
+        catchingUnwrapped {
+            vckJsonSerializer.decodeFromString(RequestParameters.serializer(), dcApiRequest.request)
+        }.getOrNull()?.let {
+            RequestParametersFrom.DcApiUnsigned(dcApiRequest, it, this)
+        } ?: JwsSigned.deserialize(RequestParameters.serializer(), dcApiRequest.request, vckJsonSerializer).getOrNull()
+            ?.let {
+                RequestParametersFrom.DcApiSigned(dcApiRequest, it.payload, it)
+            }
+    }
 
     suspend fun extractRequest(
         parameters: JarRequestParameters,
-        dcApiRequest: DCAPIRequest? = null,
     ): RequestParametersFrom<*>? = parameters.request?.let {
-        it.parseAsRequestObjectJws(dcApiRequest)
-            ?: it.parseFromJson(dcApiRequest)
+        it.parseAsJwsRequest()
+            ?: it.parseFromJson()
     } ?: parameters.requestUri
         ?.let { remoteResourceRetriever.invoke(parameters.resourceRetrieverInput(it)) }
         ?.let {
-            it.parseAsRequestObjectJws(dcApiRequest)
-                ?: it.parseFromJson(dcApiRequest)
+            it.parseAsJwsRequest()
+                ?: it.parseFromJson()
                 ?: throw InvalidRequest("URL not valid: ${parameters.requestUri}")
         }
 
@@ -110,12 +116,11 @@ class RequestParser(
         requestObjectParameters = buildRequestObjectParameters.invoke()
     )
 
-    private suspend fun String.parseAsRequestObjectJws(
-        dcApiRequest: DCAPIRequest? = null,
-    ): RequestParametersFrom<*>? = JwsSigned.deserialize(RequestParameters.serializer(), this, vckJsonSerializer)
-        .getOrNull()?.let { jws ->
-            RequestParametersFrom.JwsSigned(jws, jws.payload, requestObjectJwsVerifier.invoke(jws), dcApiRequest)
-        }
+    private suspend fun String.parseAsJwsRequest(): RequestParametersFrom<*>? =
+        JwsSigned.deserialize(RequestParameters.serializer(), this, vckJsonSerializer)
+            .getOrNull()?.let { jws ->
+                RequestParametersFrom.JwsSigned(jws, jws.payload, requestObjectJwsVerifier.invoke(jws))
+            }
 
 }
 
