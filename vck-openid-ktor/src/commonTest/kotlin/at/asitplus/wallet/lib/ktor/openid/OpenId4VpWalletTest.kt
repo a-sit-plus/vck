@@ -255,7 +255,7 @@ class OpenId4VpWalletTest : FunSpec() {
                     }
                     """.trimIndent()
                 val dcApiRequest = Oid4vpDCAPIRequest(
-                    protocol = "openid4vp-v1-unsigned",
+                    protocol = Oid4vpDCAPIRequest.PROTOCOL_V1_UNSIGNED,
                     request = request,
                     credentialId = "c72a2a8a6e94564cd8dea6ef0c7eb47b31a31947620ebcc0f07177bb71078def",
                     callingPackageName = "com.android.chrome",

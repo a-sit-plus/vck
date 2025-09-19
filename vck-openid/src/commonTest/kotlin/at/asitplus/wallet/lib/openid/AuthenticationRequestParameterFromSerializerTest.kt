@@ -74,7 +74,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
         "DcApiUnsigned test $representation" {
             val authnRequest = vckJsonSerializer.encodeToString(
                 Oid4vpDCAPIRequest(
-                    protocol = "openid4vp-v1-unsigned",
+                    protocol = Oid4vpDCAPIRequest.PROTOCOL_V1_UNSIGNED,
                     request = vckJsonSerializer.encodeToString(verifierOid4vp.createAuthnRequest(requestOptions = reqOptions)),
                     credentialId = "1",
                     callingPackageName = "com.example.app",
@@ -115,7 +115,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
             val serializedRequest = jarRequest.request.shouldNotBeNull()
             val authnRequest = vckJsonSerializer.encodeToString(
                 Oid4vpDCAPIRequest(
-                    protocol = "openid4vp-v1-signed",
+                    protocol = Oid4vpDCAPIRequest.PROTOCOL_V1_SIGNED,
                     request = serializedRequest,
                     credentialId = "1",
                     callingPackageName = "com.example.app",

@@ -169,7 +169,6 @@ class OpenId4VpInteropTest : FreeSpec({
 
         val response = holderOid4vp.finalizeAuthorizationResponse(state, null).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
-            .also { println(it) }
 
         response.params.entries.firstOrNull { it.key == "vp_token" }.shouldNotBeNull().value.let { vpToken ->
             val sdJwt = SdJwtSigned.parseCatching(vpToken).getOrThrow()

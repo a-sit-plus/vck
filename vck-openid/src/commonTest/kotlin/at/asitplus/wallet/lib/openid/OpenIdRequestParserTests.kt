@@ -1,18 +1,24 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RequestParametersFrom
-import at.asitplus.wallet.lib.openid.RequestParser
+import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.oidvci.encodeToParameters
+import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.ktor.http.URLBuilder
+import kotlinx.serialization.json.JsonObject
 
 
 /**
- * Tests our OpenID4VP/SIOP implementation against POTENTIAL Piloting Definition Scope
+ * Tests parsing OpenID4VP requests
  */
 class OpenIdRequestParserTests : FreeSpec({
     lateinit var requestParser: RequestParser
@@ -88,15 +94,60 @@ class OpenIdRequestParserTests : FreeSpec({
             m0LQZeO-00GBYNI0PQ
         """.trimIndent().replace("\n", "")
 
-    "direct JWS" {
-        requestParser.parseRequestParameters(jws).getOrThrow().apply {
+    val authnRequest = JwsSigned.deserialize(JsonObject.serializer(), jws).getOrThrow().payload
+
+    val authnRequestSerialized = vckJsonSerializer.encodeToString(authnRequest)
+
+    "request in URL parameters" {
+        val input = URLBuilder("https://example.com").apply {
+            authnRequest.encodeToParameters().forEach {
+                parameters.append(it.key, it.value)
+            }
+        }.buildString()
+
+        requestParser.parseRequestParameters(input).getOrThrow().apply {
             shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
-            shouldBeInstanceOf<RequestParametersFrom.JwsSigned<*>>()
+            shouldBeInstanceOf<RequestParametersFrom.Uri<*>>()
+            this.url.toString() shouldBe input
             parameters.assertParams()
         }
     }
 
-    "request by reference" {
+    "plain request directly" {
+        requestParser.parseRequestParameters(authnRequestSerialized).getOrThrow().apply {
+            shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
+            shouldBeInstanceOf<RequestParametersFrom.Json<*>>()
+            jsonString shouldBe authnRequestSerialized
+            parameters.assertParams()
+        }
+    }
+
+    "plain request by reference" {
+        val input = "https://example.com?request_uri=https%3A%2F%2Fclient.example.org%2Freq%2F1234567890"
+        requestParser = RequestParser(
+            remoteResourceRetriever = {
+                if (it.url == "https://client.example.org/req/1234567890") authnRequestSerialized else null
+            }
+        )
+
+        requestParser.parseRequestParameters(input).getOrThrow().apply {
+            shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
+            shouldBeInstanceOf<RequestParametersFrom.Json<*>>()
+            jsonString shouldBe authnRequestSerialized
+            parameters.assertParams()
+        }
+    }
+
+    "signed request directly" {
+        requestParser.parseRequestParameters(jws).getOrThrow().apply {
+            shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
+            shouldBeInstanceOf<RequestParametersFrom.JwsSigned<*>>()
+            jwsSigned.serialize() shouldBe jws
+            parameters.assertParams()
+        }
+    }
+
+    "signed request by reference" {
         val input = "https://example.com?request_uri=https%3A%2F%2Fclient.example.org%2Freq%2F1234567890"
         requestParser = RequestParser(
             remoteResourceRetriever = {
@@ -107,16 +158,56 @@ class OpenIdRequestParserTests : FreeSpec({
         requestParser.parseRequestParameters(input).getOrThrow().apply {
             shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
             shouldBeInstanceOf<RequestParametersFrom.JwsSigned<*>>()
+            jwsSigned.serialize() shouldBe jws
             parameters.assertParams()
         }
     }
 
-    "request by value" {
+    "signed request by value" {
         val input = "https://example.com?request=" + jws
 
         requestParser.parseRequestParameters(input).getOrThrow().apply {
             shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
             shouldBeInstanceOf<RequestParametersFrom.JwsSigned<*>>()
+            jwsSigned.serialize() shouldBe jws
+            parameters.assertParams()
+        }
+    }
+
+    "signed request from DCAPI" {
+        val input = vckJsonSerializer.encodeToString(
+            Oid4vpDCAPIRequest(
+                protocol = Oid4vpDCAPIRequest.PROTOCOL_V1_SIGNED,
+                request = jws,
+                credentialId = "1",
+                callingPackageName = "com.example.app",
+                callingOrigin = "https://example.com"
+            )
+        )
+
+        requestParser.parseRequestParameters(input).getOrThrow().apply {
+            shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
+            shouldBeInstanceOf<RequestParametersFrom.DcApiSigned<*>>()
+            jwsSigned.serialize() shouldBe jws
+            parameters.assertParams()
+        }
+    }
+
+    "unsigned request from DCAPI" {
+        val input = vckJsonSerializer.encodeToString(
+            Oid4vpDCAPIRequest(
+                protocol = Oid4vpDCAPIRequest.PROTOCOL_V1_UNSIGNED,
+                request = authnRequestSerialized,
+                credentialId = "1",
+                callingPackageName = "com.example.app",
+                callingOrigin = "https://example.com"
+            )
+        )
+
+        requestParser.parseRequestParameters(input).getOrThrow().apply {
+            shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
+            shouldBeInstanceOf<RequestParametersFrom.DcApiUnsigned<*>>()
+            jsonString shouldBe input
             parameters.assertParams()
         }
     }
@@ -131,8 +222,9 @@ private fun AuthenticationRequestParameters.assertParams() {
         .constraints.shouldNotBeNull()
         .fields.shouldNotBeNull().apply {
             this shouldHaveSize 20
-            val vctField = first { it.path == listOf("$.vct") }
-            vctField.filter!!.enum!! shouldContain "urn:eu.europa.ec.eudi:pid:1"
+            first { it.path == listOf("$.vct") }
+                .filter.shouldNotBeNull()
+                .enum.shouldNotBeNull() shouldContain "urn:eu.europa.ec.eudi:pid:1"
         }
 
 }
