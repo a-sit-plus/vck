@@ -6,14 +6,13 @@ import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
-import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.http.URLBuilder
+import io.ktor.http.*
 import kotlinx.serialization.json.JsonObject
 
 
@@ -110,6 +109,10 @@ class OpenIdRequestParserTests : FreeSpec({
             shouldBeInstanceOf<RequestParametersFrom.Uri<*>>()
             this.url.toString() shouldBe input
             parameters.assertParams()
+
+            vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
+                vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
+            ).shouldBe(this)
         }
     }
 
@@ -119,6 +122,10 @@ class OpenIdRequestParserTests : FreeSpec({
             shouldBeInstanceOf<RequestParametersFrom.Json<*>>()
             jsonString shouldBe authnRequestSerialized
             parameters.assertParams()
+
+            vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
+                vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
+            ).shouldBe(this)
         }
     }
 
@@ -134,7 +141,12 @@ class OpenIdRequestParserTests : FreeSpec({
             shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
             shouldBeInstanceOf<RequestParametersFrom.Json<*>>()
             jsonString shouldBe authnRequestSerialized
+            parent.toString() shouldBe input
             parameters.assertParams()
+
+            vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
+                vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
+            ).shouldBe(this)
         }
     }
 
@@ -144,6 +156,10 @@ class OpenIdRequestParserTests : FreeSpec({
             shouldBeInstanceOf<RequestParametersFrom.JwsSigned<*>>()
             jwsSigned.serialize() shouldBe jws
             parameters.assertParams()
+
+            vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
+                vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
+            ).shouldBe(this)
         }
     }
 
@@ -159,7 +175,12 @@ class OpenIdRequestParserTests : FreeSpec({
             shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
             shouldBeInstanceOf<RequestParametersFrom.JwsSigned<*>>()
             jwsSigned.serialize() shouldBe jws
+            parent.toString() shouldBe input
             parameters.assertParams()
+
+            vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
+                vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
+            ).shouldBe(this)
         }
     }
 
@@ -170,7 +191,12 @@ class OpenIdRequestParserTests : FreeSpec({
             shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
             shouldBeInstanceOf<RequestParametersFrom.JwsSigned<*>>()
             jwsSigned.serialize() shouldBe jws
+            parent.toString() shouldBe input
             parameters.assertParams()
+
+            vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
+                vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
+            ).shouldBe(this)
         }
     }
 
@@ -190,6 +216,10 @@ class OpenIdRequestParserTests : FreeSpec({
             shouldBeInstanceOf<RequestParametersFrom.DcApiSigned<*>>()
             jwsSigned.serialize() shouldBe jws
             parameters.assertParams()
+
+            vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
+                vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
+            ).shouldBe(this)
         }
     }
 
@@ -209,6 +239,10 @@ class OpenIdRequestParserTests : FreeSpec({
             shouldBeInstanceOf<RequestParametersFrom.DcApiUnsigned<*>>()
             jsonString shouldBe input
             parameters.assertParams()
+
+            vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
+                vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
+            ).shouldBe(this)
         }
     }
 })

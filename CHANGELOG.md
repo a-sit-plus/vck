@@ -95,6 +95,8 @@ Release 5.9.0 (unreleased):
    - `OpenId4VpHolder` does not return a `KmmResult.failure` when building the response fails, but returns `AuthenticationResponseResult` containing error parameters
    - `OpenId4VpWallet` does not send an error response to the verifier automatically
    - Extend `RequestParametersFrom` with sub-classes for `DcApiSigned` and `DcApiUnsigned`, removing the parameter `dcApiRequest` from several methods in `OpenId4VpVerifier` and `OpenId4VpWallet`
+   - Extend `RequestParametersFrom.JwsSigned` with a `parent` member
+   - Extend `RequestParametersFrom.Json` with a `parent` member
 
 Release 5.8.0:
  - Refactor `AuthorizationServiceStrategy`

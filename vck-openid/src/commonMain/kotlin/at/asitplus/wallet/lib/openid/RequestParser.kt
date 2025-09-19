@@ -56,13 +56,13 @@ class RequestParser(
 
     private suspend fun String.parseParameters(): RequestParametersFrom<out RequestParameters> =
         parseAsDcApiRequest()
-            ?: parseAsJwsRequest()
+            ?: parseAsJwsRequest(null)
             ?: parseFromParameters()
-            ?: parseFromJson()
+            ?: parseFromJson(null)
             ?: throw InvalidRequest("parse error: $this")
 
     private suspend fun RequestParametersFrom<out RequestParameters>.extractRequest(): RequestParametersFrom<*> =
-        (this.parameters as? JarRequestParameters)?.let { extractRequest(it) } ?: this
+        (this.parameters as? JarRequestParameters)?.let { extractRequest(it, this) } ?: this
 
     private fun String.parseFromParameters(): RequestParametersFrom<*>? = catchingUnwrapped {
         Url(this).let {
@@ -76,9 +76,11 @@ class RequestParser(
         }
     }.getOrNull()
 
-    private fun String.parseFromJson(): RequestParametersFrom<*>? = catchingUnwrapped {
+    private fun String.parseFromJson(
+        parent: RequestParametersFrom<out RequestParameters>?,
+    ): RequestParametersFrom<*>? = catchingUnwrapped {
         val params = vckJsonSerializer.decodeFromString(RequestParameters.serializer(), this)
-        RequestParametersFrom.Json(this, params)
+        RequestParametersFrom.Json(this, params, (parent as? RequestParametersFrom.Uri)?.url)
     }.getOrNull()
 
     private fun String.parseAsDcApiRequest(): RequestParametersFrom<*>? = catchingUnwrapped {
@@ -96,14 +98,15 @@ class RequestParser(
 
     suspend fun extractRequest(
         parameters: JarRequestParameters,
+        parent: RequestParametersFrom<out RequestParameters>?,
     ): RequestParametersFrom<*>? = parameters.request?.let {
-        it.parseAsJwsRequest()
-            ?: it.parseFromJson()
+        it.parseAsJwsRequest(parent)
+            ?: it.parseFromJson(parent)
     } ?: parameters.requestUri
         ?.let { remoteResourceRetriever.invoke(parameters.resourceRetrieverInput(it)) }
         ?.let {
-            it.parseAsJwsRequest()
-                ?: it.parseFromJson()
+            it.parseAsJwsRequest(parent)
+                ?: it.parseFromJson(parent)
                 ?: throw InvalidRequest("URL not valid: ${parameters.requestUri}")
         }
 
@@ -116,10 +119,17 @@ class RequestParser(
         requestObjectParameters = buildRequestObjectParameters.invoke()
     )
 
-    private suspend fun String.parseAsJwsRequest(): RequestParametersFrom<*>? =
+    private suspend fun String.parseAsJwsRequest(
+        parent: RequestParametersFrom<out RequestParameters>?,
+    ): RequestParametersFrom<*>? =
         JwsSigned.deserialize(RequestParameters.serializer(), this, vckJsonSerializer)
             .getOrNull()?.let { jws ->
-                RequestParametersFrom.JwsSigned(jws, jws.payload, requestObjectJwsVerifier.invoke(jws))
+                RequestParametersFrom.JwsSigned(
+                    jwsSigned = jws,
+                    parameters = jws.payload,
+                    verified = requestObjectJwsVerifier.invoke(jws),
+                    parent = (parent as? RequestParametersFrom.Uri)?.url
+                )
             }
 
 }
