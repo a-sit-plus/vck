@@ -148,9 +148,20 @@ internal class PresentationFactory(
         responseWillBeEncrypted: Boolean,
     ): CoseSigned<ByteArray> {
         val sessionTranscript: SessionTranscript = if (dcApiRequest != null) {
-            calcSessionTranscriptForDcApi(dcApiRequest.callingOrigin, nonce, jsonWebKeys, responseWillBeEncrypted)
+            calcSessionTranscriptForDcApi(
+                callingOrigin = dcApiRequest.callingOrigin,
+                nonce = nonce,
+                jsonWebKeys = jsonWebKeys,
+                responseWillBeEncrypted = responseWillBeEncrypted
+            )
         } else if (clientId != null && responseUrl != null) {
-            calcSessionTranscript(clientId, responseUrl, nonce, jsonWebKeys, responseWillBeEncrypted)
+            calcSessionTranscript(
+                clientId = clientId,
+                responseUrl = responseUrl,
+                nonce = nonce,
+                jsonWebKeys = jsonWebKeys,
+                responseWillBeEncrypted = responseWillBeEncrypted
+            )
         } else {
             throw IllegalStateException("Neither dcApiRequest nor clientId is set")
         }
