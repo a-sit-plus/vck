@@ -18,7 +18,7 @@ data class DCAPIHandover(
     val hash: ByteArray,
 ) {
     init {
-        require(type == "dcapi" || type == TYPE_OPENID4VP)
+        require(type == TYPE_DCAPI || type == TYPE_OPENID4VP)
     }
 
     override fun equals(other: Any?): Boolean {
@@ -41,6 +41,7 @@ data class DCAPIHandover(
 
     companion object {
         const val TYPE_OPENID4VP = "OpenID4VPDCAPIHandover"
+        const val TYPE_DCAPI = "dcapi"
     }
 
 }

@@ -1,5 +1,6 @@
 package at.asitplus.dcapi
 
+import at.asitplus.dcapi.DCAPIHandover.Companion.TYPE_DCAPI
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.CborArray
 
@@ -9,11 +10,11 @@ import kotlinx.serialization.cbor.CborArray
 @Serializable
 @CborArray
 data class EncryptedResponse(
-    /** Should be set to "dcapi" */
+    /** Should be set to `dcapi` */
     val type: String,
     val encryptedResponseData: EncryptedResponseData,
 ) {
     init {
-        require(type == "dcapi")
+        require(type == TYPE_DCAPI)
     }
 }

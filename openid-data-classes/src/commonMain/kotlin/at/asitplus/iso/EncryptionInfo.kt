@@ -1,5 +1,6 @@
 package at.asitplus.iso
 
+import at.asitplus.dcapi.DCAPIHandover.Companion.TYPE_DCAPI
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.CborArray
 
@@ -9,11 +10,11 @@ import kotlinx.serialization.cbor.CborArray
 @Serializable
 @CborArray
 data class EncryptionInfo(
-    /** Should be set to "dcapi" */
+    /** Should be set to `dcapi` */
     val type: String,
     val encryptionParameters: EncryptionParameters
 ) {
     init {
-        require(type == "dcapi")
+        require(type == TYPE_DCAPI)
     }
 }
