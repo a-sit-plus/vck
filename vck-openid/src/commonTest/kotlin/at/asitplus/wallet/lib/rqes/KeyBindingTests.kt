@@ -5,8 +5,8 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.QCertCreationAcceptance
 import at.asitplus.openid.TransactionDataBase64Url
+import at.asitplus.openid.digest
 import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
@@ -33,13 +33,13 @@ import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty
-import io.kotest.matchers.equals.shouldBeEqual
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import io.ktor.utils.io.charsets.*
+import io.ktor.utils.io.core.*
 
 class KeyBindingTests : FreeSpec({
 
@@ -176,7 +176,6 @@ class KeyBindingTests : FreeSpec({
             """.trimIndent()
 
         "KB-JWT contains transaction data" {
-            //[AuthenticationRequestParameters] do not contain [transactionData] in [presentationDefinition]
             val requestOptions = buildRequestOptions()
             val authnRequest = rqesVerifier.createAuthnRequest(requestOptions)
 
@@ -196,7 +195,7 @@ class KeyBindingTests : FreeSpec({
 
             with(result.sdJwtSigned.keyBindingJws.shouldNotBeNull().payload) {
                 transactionDataHashes.shouldNotBeNull().shouldBe(
-                    requestOptions.transactionData!!.getReferenceHashes()
+                    requestOptions.transactionData!!.map { it.toBase64UrlJsonString().digest(Digest.SHA256) }
                 )
                 transactionDataHashesAlgorithm.shouldNotBeNull()
             }
@@ -248,7 +247,7 @@ class KeyBindingTests : FreeSpec({
         }
 
         "Hash of transaction data is not changed during processing" {
-            val referenceHash = cibaWalletTransactionData.decodeToByteArray(Base64UrlStrict).sha256()
+            val referenceHash = cibaWalletTransactionData.toByteArray(Charsets.UTF_8).sha256()
 
             val authenticationRequest =
                 holderOid4vp.parseAuthenticationRequestParameters(cibaWalletTestVector).getOrThrow()
@@ -265,7 +264,7 @@ class KeyBindingTests : FreeSpec({
             rqesVerifier.validateAuthnResponse(authnResponse.params)
                 .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
                 .sdJwtSigned.keyBindingJws.shouldNotBeNull().payload.transactionDataHashes!!.first()
-                .shouldBe(referenceHash)
+                .contentEquals(referenceHash) shouldBe true
         }
     }
 })

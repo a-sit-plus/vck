@@ -18,10 +18,22 @@ import kotlinx.serialization.json.JsonPrimitive
  */
 typealias TransactionDataBase64Url = JsonPrimitive
 
+/**
+ * OID4VP: TransactionData is Base64URL encoded but the hash is taken over the string itself and should not be
+ * Base64URL decoded before computing the hash. See lengthy discussion here
+ *
+ * https://github.com/openid/OpenID4VP/issues/457
+ */
 @Deprecated("Use digest()", ReplaceWith("digest(Digest.SHA256)"))
 fun TransactionDataBase64Url.sha256(): ByteArray =
     Digest.SHA256.digest(this.content.toByteArray(Charsets.UTF_8))
 
+/**
+ * OID4VP: TransactionData is Base64URL encoded but the hash is taken over the string itself and should not be
+ * Base64URL decoded before computing the hash. See lengthy discussion here
+ *
+ * https://github.com/openid/OpenID4VP/issues/457
+ */
 fun TransactionDataBase64Url.digest(digest: Digest): ByteArray =
     digest.digest(content.toByteArray(Charsets.UTF_8))
 

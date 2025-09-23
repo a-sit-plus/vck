@@ -77,9 +77,6 @@ class RqesRequestOptionsTest : FreeSpec({
     }
 })
 
-internal fun List<TransactionData>.getReferenceHashes(): List<ByteArray> =
-    this.map { it.toBase64UrlJsonString().content.decodeToByteArray(Base64UrlStrict).sha256() }
-
 internal fun buildRequestOptions(
     responseMode: OpenIdConstants.ResponseMode = OpenIdConstants.ResponseMode.Fragment,
 ): RequestOptions {
