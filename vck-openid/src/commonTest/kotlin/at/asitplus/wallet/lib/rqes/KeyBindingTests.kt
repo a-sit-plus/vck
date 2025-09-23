@@ -264,7 +264,7 @@ class KeyBindingTests : FreeSpec({
             rqesVerifier.validateAuthnResponse(authnResponse.params)
                 .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
                 .sdJwtSigned.keyBindingJws.shouldNotBeNull().payload.transactionDataHashes!!.first()
-                .contentEquals(referenceHash) shouldBe true
+                .shouldBe(referenceHash)
         }
     }
 })
