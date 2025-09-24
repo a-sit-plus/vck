@@ -18,6 +18,7 @@ import at.asitplus.wallet.lib.agent.ValidatorSdJwt
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.toBase64UrlJsonString
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -67,15 +68,18 @@ class KeyBindingTests : FreeSpec({
     "Rqes Request with EU PID credential" - {
         val walletUrl = "https://example.com/wallet/${uuid4()}"
         val clientId = "https://example.com/rp/${uuid4()}"
-        val rqesVerifier = OpenId4VpVerifier(
+        val verifierOid4Vp = OpenId4VpVerifier(
             keyMaterial = EphemeralKeyWithoutCert(),
             clientIdScheme = ClientIdScheme.RedirectUri(clientId),
             stateToAuthnRequestStore = externalMapStore
         )
 
         val cibaWalletTransactionData = """
-                    eyJ0eXBlIjoicWNlcnRfY3JlYXRpb25fYWNjZXB0YW5jZSIsImNyZWRlbnRpYWxfaWRzIjpbIjYwNzUxMGE5LWM5NTctNDA5NS05MDZkLWY5OWZkMDA2YzRhZSJdLCJRQ190ZXJtc19jb25kaXRpb25zX3VyaSI6Imh0dHBzOi8vd3d3LmQtdHJ1c3QubmV0L2RlL2FnYiIsIlFDX2hhc2giOiI3UXptNUVqdXpYS1NIRmxjME9IOVBQOXFVYUgtVkJsMmFHTmJ3WWoxb09BIiwiUUNfaGFzaEFsZ29yaXRobU9JRCI6IjIuMTYuODQwLjEuMTAxLjMuNC4yLjEiLCJ0cmFuc2FjdGlvbl9kYXRhX2hhc2hlc19hbGciOlsic2hhLTI1NiJdfQ
-                """.trimIndent()
+            eyJ0eXBlIjoicWNlcnRfY3JlYXRpb25fYWNjZXB0YW5jZSIsImNyZWRlbnRpYWxfaWRzIjpbIjYwNzUxMGE5LWM5NTctNDA5NS05MDZkLWY5
+            OWZkMDA2YzRhZSJdLCJRQ190ZXJtc19jb25kaXRpb25zX3VyaSI6Imh0dHBzOi8vd3d3LmQtdHJ1c3QubmV0L2RlL2FnYiIsIlFDX2hhc2gi
+            OiI3UXptNUVqdXpYS1NIRmxjME9IOVBQOXFVYUgtVkJsMmFHTmJ3WWoxb09BIiwiUUNfaGFzaEFsZ29yaXRobU9JRCI6IjIuMTYuODQwLjEu
+            MTAxLjMuNC4yLjEiLCJ0cmFuc2FjdGlvbl9kYXRhX2hhc2hlc19hbGciOlsic2hhLTI1NiJdfQ
+        """.trimIndent().replace("\n", "")
 
         val cibaWalletTestVector = """
                 {
@@ -177,7 +181,7 @@ class KeyBindingTests : FreeSpec({
 
         "KB-JWT contains transaction data" {
             val requestOptions = buildRequestOptions()
-            val authnRequest = rqesVerifier.createAuthnRequest(requestOptions)
+            val authnRequest = verifierOid4Vp.createAuthnRequest(requestOptions)
 
             val authnRequestUrl = URLBuilder(walletUrl).apply {
                 authnRequest.encodeToParameters()
@@ -186,24 +190,23 @@ class KeyBindingTests : FreeSpec({
                 this shouldContain "transaction_data"
             }
 
-
             val authnResponse = holderOid4vp.createAuthnResponse(authnRequestUrl).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-            val result = rqesVerifier.validateAuthnResponse(authnResponse.url)
+            val result = verifierOid4Vp.validateAuthnResponse(authnResponse.url)
                 .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
 
             with(result.sdJwtSigned.keyBindingJws.shouldNotBeNull().payload) {
                 transactionDataHashes.shouldNotBeNull().shouldBe(
                     requestOptions.transactionData!!.map { it.toBase64UrlJsonString().digest(Digest.SHA256) }
                 )
-                transactionDataHashesAlgorithm.shouldNotBeNull()
+                transactionDataHashesAlgorithm.shouldNotBeNull() shouldBe SdJwtConstants.SHA_256
             }
         }
 
         "Incorrect TransactionData is rejected" {
             val requestOptions = buildRequestOptions(OpenIdConstants.ResponseMode.DirectPost)
-            val authnRequest = rqesVerifier.createAuthnRequest(requestOptions)
+            val authnRequest = verifierOid4Vp.createAuthnRequest(requestOptions)
 
             val malignResponse = holderOid4vp.createAuthnResponse(
                 vckJsonSerializer.encodeToString(
@@ -214,7 +217,7 @@ class KeyBindingTests : FreeSpec({
             ).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
-            rqesVerifier.validateAuthnResponse(malignResponse.params)
+            verifierOid4Vp.validateAuthnResponse(malignResponse.params)
                 .shouldBeInstanceOf<AuthnResponseResult.ValidationError>()
         }
 
@@ -261,7 +264,7 @@ class KeyBindingTests : FreeSpec({
             val authnResponse = holderOid4vp.createAuthnResponse(authenticationRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
-            rqesVerifier.validateAuthnResponse(authnResponse.params)
+            verifierOid4Vp.validateAuthnResponse(authnResponse.params)
                 .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
                 .sdJwtSigned.keyBindingJws.shouldNotBeNull().payload.transactionDataHashes!!.first()
                 .shouldBe(referenceHash)
