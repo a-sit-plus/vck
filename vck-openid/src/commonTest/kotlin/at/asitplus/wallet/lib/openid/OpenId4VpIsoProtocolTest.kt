@@ -72,7 +72,7 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
     }
 
     "test with Fragment for mDL" {
-        val document = runProcess(
+        runProcess(
             verifierOid4vp,
             walletUrl,
             RequestOptions(
@@ -81,14 +81,14 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
                 )
             ),
             holderOid4vp
-        )
-
-        document.validItems.shouldNotBeEmpty()
-        document.invalidItems.shouldBeEmpty()
+        ).apply {
+            validItems.shouldNotBeEmpty()
+            invalidItems.shouldBeEmpty()
+        }
     }
 
     "test with Fragment for custom attributes" {
-        val document = runProcess(
+        runProcess(
             verifierOid4vp,
             walletUrl,
             RequestOptions(
@@ -97,15 +97,15 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
                 )
             ),
             holderOid4vp
-        )
-
-        document.validItems.shouldNotBeEmpty()
-        document.invalidItems.shouldBeEmpty()
+        ).apply {
+            validItems.shouldNotBeEmpty()
+            invalidItems.shouldBeEmpty()
+        }
     }
 
     "Selective Disclosure with mDL" {
         val requestedClaim = MobileDrivingLicenceDataElements.FAMILY_NAME
-        val document = runProcess(
+        runProcess(
             verifierOid4vp,
             walletUrl,
             RequestOptions(
@@ -114,11 +114,11 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
                 )
             ),
             holderOid4vp,
-        )
-
-        document.validItems.shouldBeSingleton()
-            .shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
-        document.invalidItems.shouldBeEmpty()
+        ).apply {
+            validItems.shouldBeSingleton()
+            validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
+            invalidItems.shouldBeEmpty()
+        }
     }
 
     "Selective Disclosure with mDL (ISO/IEC 18013-7:2024 Annex B)" {
@@ -137,13 +137,13 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
-        val document = verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
+        verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
             .shouldBeInstanceOf<AuthnResponseResult.SuccessIso>()
-            .documents.first()
-
-        document.validItems.shouldBeSingleton()
-            .shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
-        document.invalidItems.shouldBeEmpty()
+            .documents.first().apply {
+                validItems.shouldBeSingleton()
+                validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
+                invalidItems.shouldBeEmpty()
+            }
     }
 
     "Selective Disclosure with mDL and encryption (ISO/IEC 18013-7:2024 Annex B)" {
@@ -163,13 +163,13 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
-        val document = verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
+        verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
             .shouldBeInstanceOf<AuthnResponseResult.SuccessIso>()
-            .documents.first()
-
-        document.validItems.shouldBeSingleton()
-            .shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
-        document.invalidItems.shouldBeEmpty()
+            .documents.first().apply {
+                validItems.shouldBeSingleton()
+                validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
+                invalidItems.shouldBeEmpty()
+            }
     }
 
     "Selective Disclosure with two documents and encryption (ISO/IEC 18013-7:2024 Annex B)" {
@@ -191,17 +191,18 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
-        val documents = verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
+        verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
             .shouldBeInstanceOf<AuthnResponseResult.VerifiablePresentationValidationResults>()
-            .validationResults.flatMap { it.shouldBeInstanceOf<AuthnResponseResult.SuccessIso>().documents }
-        documents.first { it.mso.docType == AtomicAttribute2023.isoDocType }
-            .validItems.shouldHaveSingleElement { it.elementIdentifier == atomicGivenName }
-        documents.first { it.mso.docType == MobileDrivingLicenceScheme.isoDocType }
-            .validItems.shouldHaveSingleElement { it.elementIdentifier == mdlFamilyName }
+            .validationResults.flatMap { it.shouldBeInstanceOf<AuthnResponseResult.SuccessIso>().documents }.apply {
+                first { it.mso.docType == AtomicAttribute2023.isoDocType }
+                    .validItems.shouldHaveSingleElement { it.elementIdentifier == atomicGivenName }
+                first { it.mso.docType == MobileDrivingLicenceScheme.isoDocType }
+                    .validItems.shouldHaveSingleElement { it.elementIdentifier == mdlFamilyName }
+            }
     }
 
     "Selective Disclosure with mDL JSON Path syntax" {
-        val document = runProcess(
+        runProcess(
             verifierOid4vp,
             walletUrl,
             RequestOptions(
@@ -214,11 +215,11 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
                 )
             ),
             holderOid4vp,
-        )
-
-        document.validItems.shouldBeSingleton()
-            .shouldHaveSingleElement { it.elementIdentifier == MobileDrivingLicenceDataElements.FAMILY_NAME }
-        document.invalidItems.shouldBeEmpty()
+        ).apply {
+            validItems.shouldBeSingleton()
+            validItems.shouldHaveSingleElement { it.elementIdentifier == MobileDrivingLicenceDataElements.FAMILY_NAME }
+            invalidItems.shouldBeEmpty()
+        }
     }
 
 })
