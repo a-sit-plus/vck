@@ -290,7 +290,7 @@ class SimpleAuthorizationService(
     }
 
     private suspend fun RequestParameters.extractPushedRequestParams() = when (this) {
-        is JarRequestParameters -> run {
+        is JarRequestParameters -> {
             require(requestUri == null) { "request_uri must not be set for PAR" }
             requestParser.extractRequest(this)?.parameters as? AuthenticationRequestParameters
                 ?: throw InvalidRequest("request must contain valid authorization request parameters")

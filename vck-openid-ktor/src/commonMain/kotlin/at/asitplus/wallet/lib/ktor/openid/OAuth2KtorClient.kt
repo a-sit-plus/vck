@@ -343,7 +343,7 @@ class OAuth2KtorClient(
             url(parEndpointUrl)
             method = HttpMethod.Post
             setBody(FormDataContent(parameters {
-                setAuthRequestIntoParams(authRequest)
+                authRequest.encodeToParameters().forEach { append(it.key, it.value) }
                 append(OpenIdConstants.PARAMETER_PROMPT, OpenIdConstants.PARAMETER_PROMPT_LOGIN)
             }))
             applyAuthnForToken(oauthMetadata, popAudience, parEndpointUrl, HttpMethod.Post, false, dpopNonce)()
@@ -359,22 +359,6 @@ class OAuth2KtorClient(
             )
         }
     } ?: throw Exception("No pushedAuthorizationRequestEndpoint in $oauthMetadata")
-
-    private fun ParametersBuilder.setAuthRequestIntoParams(authRequest: RequestParameters) {
-        when (authRequest) {
-            is AuthenticationRequestParameters -> authRequest.encodeToParameters<AuthenticationRequestParameters>()
-                .forEach { append(it.key, it.value) }
-
-            is JarRequestParameters -> authRequest.encodeToParameters<JarRequestParameters>()
-                .forEach { append(it.key, it.value) }
-
-            is RequestObjectParameters -> authRequest.encodeToParameters<RequestObjectParameters>()
-                .forEach { append(it.key, it.value) }
-
-            is SignatureRequestParameters -> authRequest.encodeToParameters<SignatureRequestParameters>()
-                .forEach { append(it.key, it.value) }
-        }
-    }
 
     /**
      * Sets the appropriate headers when accessing [resourceUrl], by reading data from [tokenResponse],
