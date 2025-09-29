@@ -1,7 +1,14 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.OpenIdConstants
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
@@ -18,6 +25,7 @@ import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.kotest.provided.at.asitplus.wallet.lib.openid.FixedNonceService
 
 class OpenId4VpIsoProtocolTest : FreeSpec({
 
@@ -32,6 +40,8 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
     beforeEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         verifierKeyMaterial = EphemeralKeyWithoutCert()
+        //println("this is the key:\n" + (verifierKeyMaterial as EphemeralKeyWithoutCert).key.exportPrivateKey().getOrThrow().encodeToDer().encodeToString(Base64Strict))
+
         clientId = "https://example.com/rp/${uuid4()}"
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent(holderKeyMaterial)
@@ -62,7 +72,9 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
 
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
+            decryptionKeyMaterial = verifierKeyMaterial,
             clientIdScheme = ClientIdScheme.RedirectUri(clientId),
+            //nonceService = FixedNonceService(),
         )
         holderOid4vp = OpenId4VpHolder(
             holder = holderAgent,
@@ -133,11 +145,15 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
         val authnRequest = verifierOid4vp.createAuthnRequest(
             requestOptions, OpenId4VpVerifier.CreationOptions.Query(walletUrl)
         ).getOrThrow().url
+        //println("this is the request:\n$authnRequest")
 
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
-        verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
+        val input = authnResponse.params.formUrlEncode()
+        //println("this is the response:\n$input")
+
+        verifierOid4vp.validateAuthnResponse(input)
             .shouldBeInstanceOf<AuthnResponseResult.SuccessIso>()
             .documents.first().apply {
                 validItems.shouldBeSingleton()
@@ -159,11 +175,15 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
         val authnRequest = verifierOid4vp.createAuthnRequest(
             requestOptions, OpenId4VpVerifier.CreationOptions.Query(walletUrl)
         ).getOrThrow().url
+        //println("this is the request:\n$authnRequest")
 
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
-        verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
+        val input = authnResponse.params.formUrlEncode()
+        //println("this is the response:\n$input")
+
+        verifierOid4vp.validateAuthnResponse(input)
             .shouldBeInstanceOf<AuthnResponseResult.SuccessIso>()
             .documents.first().apply {
                 validItems.shouldBeSingleton()
