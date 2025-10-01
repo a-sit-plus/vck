@@ -321,7 +321,6 @@ class OAuth2KtorClient(
         } else {
             URLBuilder(authorizationEndpointUrl).also { builder ->
                 authRequest.encodeToParameters().forEach {
-                    // TODO check if it now contains type
                     builder.parameters.append(it.key, it.value)
                 }
                 builder.parameters.append(OpenIdConstants.PARAMETER_PROMPT, OpenIdConstants.PARAMETER_PROMPT_LOGIN)
