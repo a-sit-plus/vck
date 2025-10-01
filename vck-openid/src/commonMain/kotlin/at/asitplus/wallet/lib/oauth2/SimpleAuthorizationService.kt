@@ -26,6 +26,7 @@ import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.wallet.lib.oidvci.CodeService
 import at.asitplus.wallet.lib.oidvci.CredentialIssuer
 import at.asitplus.wallet.lib.oidvci.DefaultCodeService
@@ -123,6 +124,9 @@ class SimpleAuthorizationService(
         /** Not necessary to load the authn request referenced by `request_uri`. */
         buildRequestObjectParameters = { null }
     ),
+
+    private val requirePAR: Boolean = true, // per OID4VC HAIP must be true; toggle for testing
+    private val enableJAR: Boolean = false
 ) : OAuth2AuthorizationServerAdapter, AuthorizationService {
 
     @Deprecated("Use [validateAccessToken] instead")
@@ -138,9 +142,10 @@ class SimpleAuthorizationService(
             userInfoEndpoint = "$publicContext$userInfoEndpointPath",
             introspectionEndpoint = "$publicContext$introspectionEndpointPath",
             introspectionEndpointAuthMethodsSupported = setOf(AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH),
-            requirePushedAuthorizationRequests = true, // per OID4VC HAIP
+            requirePushedAuthorizationRequests = requirePAR,
             tokenEndPointAuthMethodsSupported = setOf(AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH), // per OID4VC HAIP
             dpopSigningAlgValuesSupportedStrings = tokenService.dpopSigningAlgValuesSupportedStrings,
+            requestObjectSigningAlgorithmsSupportedStrings = if (enableJAR) setOf(JwsAlgorithm.Signature.ES256.identifier) else null,
             grantTypesSupported = setOfNotNull(
                 OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE,
                 OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE,
