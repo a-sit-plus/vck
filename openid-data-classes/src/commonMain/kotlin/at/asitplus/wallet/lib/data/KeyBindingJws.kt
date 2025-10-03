@@ -1,11 +1,13 @@
 package at.asitplus.wallet.lib.data
 
+import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.contentEqualsIfArray
 import at.asitplus.signum.indispensable.contentHashCodeIfArray
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
 import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import kotlin.time.Instant
 
 /**
@@ -38,10 +40,22 @@ data class KeyBindingJws(
     /**
      * OID4VP: REQUIRED when this parameter was present in the `transaction_data` request parameter. String representing
      * the hash algorithm identifier used to calculate hashes in [transactionDataHashes] response parameter.
+     *
+     * If not specified in the request, the hash function MUST be [SdJwtConstants.SHA_256].
+     * Names are defined by IANA https://www.iana.org/assignments/named-information/named-information.xhtml
      */
     @SerialName("transaction_data_hashes_alg")
-    val transactionDataHashesAlgorithm: String? = null,
+    val transactionDataHashesAlgorithmString: String? = null,
 ) {
+
+    @Transient
+    val transactionDataHashesAlgorithm =
+        when (transactionDataHashesAlgorithmString) {
+            null, SdJwtConstants.SHA_256 -> Digest.SHA256
+            SdJwtConstants.SHA_384 -> Digest.SHA384
+            SdJwtConstants.SHA_512 -> Digest.SHA512
+            else -> throw Exception("Unsupported digest name $transactionDataHashesAlgorithmString")
+        }
 
     @Suppress("DEPRECATION")
     override fun equals(other: Any?): Boolean {
@@ -58,7 +72,7 @@ data class KeyBindingJws(
             if (other.transactionDataHashes == null) return false
             if (!transactionDataHashes.contentEqualsIfArray(other.transactionDataHashes)) return false
         } else if (other.transactionDataHashes != null) return false
-        if (transactionDataHashesAlgorithm != other.transactionDataHashesAlgorithm) return false
+        if (transactionDataHashesAlgorithmString != other.transactionDataHashesAlgorithmString) return false
 
         return true
     }
@@ -70,7 +84,7 @@ data class KeyBindingJws(
         result = 31 * result + challenge.hashCode()
         result = 31 * result + sdHash.contentHashCode()
         result = 31 * result + (transactionDataHashes?.contentHashCodeIfArray() ?: 0)
-        result = 31 * result + (transactionDataHashesAlgorithm?.hashCode() ?: 0)
+        result = 31 * result + (transactionDataHashesAlgorithmString?.hashCode() ?: 0)
         return result
     }
 
