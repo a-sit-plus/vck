@@ -18,6 +18,7 @@ import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.toTransactionData
 import at.asitplus.wallet.lib.openid.ClientIdScheme
@@ -58,11 +59,13 @@ class RqesRequestOptionsTest : FreeSpec({
     }
 
     "Authentication request contains transactionData" {
-        verifierOid4Vp.createAuthnRequest(requestOptions = buildRequestOptions()).apply {
+        verifierOid4Vp.createAuthnRequest(requestOptions = buildRequestOptions(transactionDataHashAlgorithms = setOf(
+            SdJwtConstants.SHA_256
+        ))).apply {
             val inputDescriptor = presentationDefinition.shouldNotBeNull().inputDescriptors.first()
             transactionData.shouldNotBeNull().first().toTransactionData().apply {
                 transactionDataHashAlgorithms shouldNotBe null
-                credentialIds!!.first() shouldBe inputDescriptor.id
+                credentialIds.first() shouldBe inputDescriptor.id
             }
         }
     }
@@ -70,8 +73,9 @@ class RqesRequestOptionsTest : FreeSpec({
 
 internal fun buildRequestOptions(
     responseMode: OpenIdConstants.ResponseMode = OpenIdConstants.ResponseMode.Fragment,
-) = uuid4().toString().let { credentialId ->
-    RequestOptions(
+    transactionDataHashAlgorithms: Set<String>?,
+): RequestOptions = uuid4().toString().let{ credentialId ->
+    return RequestOptions(
         responseMode = responseMode,
         responseUrl = if (responseMode == OpenIdConstants.ResponseMode.DirectPost)
             "https://example.com/rp/${uuid4()}"
@@ -85,19 +89,20 @@ internal fun buildRequestOptions(
             )
         ),
         transactionData = listOf(
-            buildTransactionData(setOf(credentialId)),
-            buildTransactionData(setOf(credentialId))
+            getTransactionData(setOf(credentialId), transactionDataHashAlgorithms),
+            getTransactionData(setOf(credentialId), transactionDataHashAlgorithms)
         ),
     )
 }
 
-private fun buildTransactionData(ids: Set<String>): TransactionData = QesAuthorization.create(
-    documentDigest = listOf(buildDocumentDigests()),
-    signatureQualifier = SignatureQualifier.EU_EIDAS_QES,
-    credentialId = uuid4().toString(),
-    credentialIds = ids,
-    transactionDataHashAlgorithms = setOf(Digest.SHA256.oid.toString()),
-).getOrThrow()
+private fun getTransactionData(ids: Set<String>, transactionDataHashAlgorithms: Set<String>?): TransactionData =
+    QesAuthorization.create(
+        documentDigest = listOf(buildDocumentDigests()),
+        signatureQualifier = SignatureQualifier.EU_EIDAS_QES,
+        credentialId = uuid4().toString(),
+        credentialIds = ids,
+        transactionDataHashAlgorithms = transactionDataHashAlgorithms,
+    ).getOrThrow()
 
 private fun buildDocumentDigests(): RqesDocumentDigestEntry = RqesDocumentDigestEntry.create(
     label = uuid4().toString(),
