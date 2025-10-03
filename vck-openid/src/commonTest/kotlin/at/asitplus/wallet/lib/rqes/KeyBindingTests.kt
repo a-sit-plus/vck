@@ -180,7 +180,7 @@ class KeyBindingTests : FreeSpec({
             """.trimIndent()
 
         "KB-JWT contains transaction data" {
-            val requestOptions = buildRequestOptions()
+           val requestOptions = buildRequestOptions(transactionDataHashAlgorithms = null)
             val authnRequest = verifierOid4Vp.createAuthnRequest(requestOptions)
 
             val authnRequestUrl = URLBuilder(walletUrl).apply {
@@ -196,16 +196,42 @@ class KeyBindingTests : FreeSpec({
             verifierOid4Vp.validateAuthnResponse(authnResponse.url)
                 .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
                 .sdJwtSigned.keyBindingJws.shouldNotBeNull().payload.apply {
-                    transactionDataHashes.shouldNotBeNull().shouldBe(
-                        requestOptions.transactionData!!.map { it.toBase64UrlJsonString().digest(Digest.SHA256) }
-                    )
-                    transactionDataHashesAlgorithm shouldBe SdJwtConstants.SHA_256
-                }
+                transactionDataHashes.shouldNotBeNull()
+                transactionDataHashes.contentEquals(requestOptions.transactionData!!.getReferenceHashes())
+                transactionDataHashesAlgorithm.shouldNotBeNull()
+            }
         }
 
+        "KB-JWT transaction data hashed with SHA384" {
+            //[AuthenticationRequestParameters] do not contain [transactionData] in [presentationDefinition]
+            val requestOptions = buildRequestOptions(transactionDataHashAlgorithms = setOf(SdJwtConstants.SHA_384))
+            val authnRequest = rqesVerifier.createAuthnRequest(requestOptions)
+
+            val authnRequestUrl = URLBuilder(walletUrl).apply {
+                authnRequest.encodeToParameters()
+                    .forEach { parameters.append(it.key, it.value) }
+            }.buildString()
+
+            authnRequestUrl shouldContain "transaction_data"
+
+            val authnResponse = holderOid4vp.createAuthnResponse(authnRequestUrl).getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+
+            val result = rqesVerifier.validateAuthnResponse(authnResponse.url)
+                .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
+
+            with(result.sdJwtSigned.keyBindingJws.shouldNotBeNull().payload) {
+                transactionDataHashes.shouldNotBeNull()
+                transactionDataHashes.contentEquals(requestOptions.transactionData!!.getReferenceHashes(Digest.SHA384))
+                transactionDataHashesAlgorithmString.shouldBe(SdJwtConstants.SHA_384)
+            }
+        }
+
+
         "Incorrect TransactionData is rejected" {
-            val requestOptions = buildRequestOptions(OpenIdConstants.ResponseMode.DirectPost)
-            val authnRequest = verifierOid4Vp.createAuthnRequest(requestOptions)
+            val requestOptions =
+                buildRequestOptions(OpenIdConstants.ResponseMode.DirectPost, setOf(SdJwtConstants.SHA_256))
+            val authnRequest = rqesVerifier.createAuthnRequest(requestOptions)
 
             val malignResponse = holderOid4vp.createAuthnResponse(
                 vckJsonSerializer.encodeToString(
@@ -232,7 +258,7 @@ class KeyBindingTests : FreeSpec({
                 )
             )
 
-            val requestOptions = buildRequestOptions(OpenIdConstants.ResponseMode.DirectPost)
+            val requestOptions = buildRequestOptions(OpenIdConstants.ResponseMode.DirectPost, null)
             val authnRequest = lenientVerifier.createAuthnRequest(requestOptions)
 
             val malignResponse = holderOid4vp.createAuthnResponse(
