@@ -49,6 +49,15 @@ data class PresentationRequestParameters(
      */
     val mdocGeneratedNonce: String? = null,
 ) {
+    /**
+     * According to OID4VP 1.0 B3.3.1 every TransactionData entry may define different Digest algorithms
+     * however in the [at.asitplus.wallet.lib.data.KeyBindingJws] we are only allowed to specify one.
+     * To remedy this we only look at the intersection of all sets; if empty OID4VP 1.0 requires that every party must support [Digest.SHA256].
+     *
+     * For convenience, we always select the first if the set is non-empty
+     */
+    val transactionDataHashesAlgorithm: Digest? = getTransactionDataDigest(getCommonHashesAlgorithms(transactionData)?.first())
+
     @Deprecated("No longer necessary. Will be removed")
     enum class Flow {
         OID4VP,
@@ -60,6 +69,32 @@ data class IsoDeviceSignatureInput(
     val docType: String,
     val deviceNameSpaceBytes: ByteStringWrapper<DeviceNameSpaces>,
 )
+
+private fun getTransactionDataDigest(transactionDataHashesAlgorithmString: String?): Digest? =
+    when (transactionDataHashesAlgorithmString) {
+        SdJwtConstants.SHA_256 -> Digest.SHA256
+        SdJwtConstants.SHA_384 -> Digest.SHA384
+        SdJwtConstants.SHA_512 -> Digest.SHA512
+        null -> null
+        else -> throw Exception("Unsupported digest name $transactionDataHashesAlgorithmString")
+    }
+
+
+private fun getCommonHashesAlgorithms(transactionData: List<TransactionDataBase64Url>?): Set<String>? {
+    val listOfSets = transactionData?.map {
+        vckJsonSerializer.decodeFromJsonElement(
+            Base64URLTransactionDataSerializer, it
+        ).transactionDataHashAlgorithms
+    }
+    return if (listOfSets == null || listOfSets.any { it == null }) {
+        null
+    } else {
+        listOfSets
+            .filterNotNull()
+            .reduceOrNull { acc, set -> acc intersect set }
+            ?.takeIf { it.isNotEmpty() }
+    }
+}
 
 sealed interface PresentationResponseParameters {
     val vpToken: JsonElement?
