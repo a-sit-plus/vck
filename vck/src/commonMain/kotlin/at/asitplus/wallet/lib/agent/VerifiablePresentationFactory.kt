@@ -13,6 +13,7 @@ import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
+import at.asitplus.openid.digest
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.SdJwtCreator.NAME_SD
@@ -255,24 +256,24 @@ class VerifiablePresentationFactory(
     private suspend fun createKeyBindingJws(
         request: PresentationRequestParameters,
         issuerJwtPlusDisclosures: String,
-    ): JwsSigned<KeyBindingJws> =
-        request.transactionData.hash().let { hashedTransactionData ->
-            signKeyBinding(
-                JwsContentTypeConstants.KB_JWT,
-                KeyBindingJws(
-                    issuedAt = Clock.System.now(),
-                    audience = request.audience,
-                    challenge = request.nonce,
-                    sdHash = issuerJwtPlusDisclosures.encodeToByteArray().sha256(),
-                    transactionDataHashesAlgorithm = hashedTransactionData?.first,
-                    transactionDataHashes = hashedTransactionData?.second,
-                ),
-                KeyBindingJws.serializer(),
-            ).getOrElse {
-                throw PresentationException(it)
-            }
-        }
-
+    ): JwsSigned<KeyBindingJws> = signKeyBinding(
+        JwsContentTypeConstants.KB_JWT,
+        KeyBindingJws(
+            issuedAt = Clock.System.now(),
+            audience = request.audience,
+            challenge = request.nonce,
+            sdHash = issuerJwtPlusDisclosures.encodeToByteArray().sha256(),
+            transactionDataHashes = request.transactionData?.let { entry ->
+                entry.map {
+                    it.digest(request.transactionDataHashesAlgorithm ?: Digest.SHA256)
+                }
+            },
+            transactionDataHashesAlgorithmString = request.transactionDataHashesAlgorithm?.toIanaName(),
+        ),
+        KeyBindingJws.serializer(),
+    ).getOrElse {
+        throw PresentationException(it)
+    }
 
     /**
      * Creates a [VerifiablePresentation] with the given [validCredentials].
