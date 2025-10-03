@@ -1,9 +1,6 @@
 package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.catching
-import at.asitplus.catchingUnwrapped
-import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
@@ -11,6 +8,7 @@ import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
@@ -31,7 +29,6 @@ import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
-import at.asitplus.wallet.lib.openid.RequestParser
 import at.asitplus.wallet.lib.openid.toOAuth2Error
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FunSpec
@@ -55,14 +52,14 @@ class OAuth2KtorClientTest : FunSpec() {
         val strategy = CredentialAuthorizationServiceStrategy(setOf(EuPidScheme))
         val requestedScope = strategy.validScopes().split(" ").first()
 
-        listOf<Pair<Boolean, Boolean>>(
-            false to false,
-            false to true,
-            true to false,
-            true to true,
-        ).forEach { (enableJAR, requirePAR) ->
-            test("auth code and token; JAR=$enableJAR PAR=$requirePAR") {
-                setup(strategy, enableJAR = enableJAR, requirePAR = requirePAR)
+        listOf<Pair<Boolean, Set<JwsAlgorithm.Signature>?>>(
+            false to null,
+            false to setOf(JwsAlgorithm.Signature.ES256),
+            true to null,
+            true to setOf(JwsAlgorithm.Signature.ES256),
+        ).forEach { (requirePAR, enableJAR) ->
+            test("auth code and token; JAR=${enableJAR != null} PAR=$requirePAR") {
+                setup(strategy, enableJAR, requirePAR)
                 client.startAuthorization(
                     oauthMetadata = authorizationService.metadata(),
                     authorizationServer = authorizationService.publicContext,
@@ -87,7 +84,11 @@ class OAuth2KtorClientTest : FunSpec() {
         }
     }
 
-    private fun setup(strategy: CredentialAuthorizationServiceStrategy, enableJAR: Boolean, requirePAR: Boolean) {
+    private fun setup(
+        strategy: CredentialAuthorizationServiceStrategy,
+        requestObjectSigningAlgorithms: Set<JwsAlgorithm.Signature>?,
+        requirePAR: Boolean
+    ) {
         dpopKeyMaterial = EphemeralKeyWithoutCert()
         clientAuthKeyMaterial = EphemeralKeyWithoutCert()
         val authorizationEndpointPath = "/authorize"
@@ -106,8 +107,8 @@ class OAuth2KtorClientTest : FunSpec() {
             tokenService = TokenService.jwt(
                 issueRefreshTokens = true
             ),
-            enableJAR = enableJAR,
-            requirePAR = requirePAR,
+            requestObjectSigningAlgorithms = requestObjectSigningAlgorithms,
+            requirePushedAuthorizationRequests = requirePAR,
         )
         mockEngine = MockEngine { request ->
             when {

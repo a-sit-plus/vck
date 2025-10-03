@@ -125,8 +125,18 @@ class SimpleAuthorizationService(
         buildRequestObjectParameters = { null }
     ),
 
-    private val requirePAR: Boolean = true, // per OID4VC HAIP must be true; toggle for testing
-    private val enableJAR: Boolean = false
+    /**
+     * Sets [OAuth2AuthorizationServerMetadata.requirePushedAuthorizationRequests]
+     * Must be set to true for OID4VC HAIP
+     */
+    private val requirePushedAuthorizationRequests: Boolean = true,
+
+    /**
+     * Sets [OAuth2AuthorizationServerMetadata.requestObjectSigningAlgorithmsSupported]
+     * Currently we only support [JwsAlgorithm.Signature.ES256]
+     * If set [RequestParameters] will be wrapped as [JarRequestParameters]
+     */
+    private val requestObjectSigningAlgorithms: Set<JwsAlgorithm.Signature>? = null
 ) : OAuth2AuthorizationServerAdapter, AuthorizationService {
 
     @Deprecated("Use [validateAccessToken] instead")
@@ -142,10 +152,11 @@ class SimpleAuthorizationService(
             userInfoEndpoint = "$publicContext$userInfoEndpointPath",
             introspectionEndpoint = "$publicContext$introspectionEndpointPath",
             introspectionEndpointAuthMethodsSupported = setOf(AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH),
-            requirePushedAuthorizationRequests = requirePAR,
+            requirePushedAuthorizationRequests = requirePushedAuthorizationRequests,
             tokenEndPointAuthMethodsSupported = setOf(AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH), // per OID4VC HAIP
             dpopSigningAlgValuesSupportedStrings = tokenService.dpopSigningAlgValuesSupportedStrings,
-            requestObjectSigningAlgorithmsSupportedStrings = if (enableJAR) setOf(JwsAlgorithm.Signature.ES256.identifier) else null,
+            requestObjectSigningAlgorithmsSupportedStrings = requestObjectSigningAlgorithms?.map { it.identifier }
+                ?.toSet(),
             grantTypesSupported = setOfNotNull(
                 OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE,
                 OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE,

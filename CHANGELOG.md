@@ -1,6 +1,7 @@
 # Changelog
 
 Release 5.9.0 (unreleased):
+ - Allow `SimpleAuthorizationService` to toggle usage of PAR and JAR via new `requirePushedAuthorizationRequests` and `requestObjectSigningAlgorithms` parameters
  - Remove code elements deprecated in 5.8.0
  - Gradle modules: 
    - Change dependency structure of modules
