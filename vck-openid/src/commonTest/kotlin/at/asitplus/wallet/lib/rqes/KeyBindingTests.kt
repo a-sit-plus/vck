@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.rqes
 
+import at.asitplus.csc.contentEquals
 import at.asitplus.iso.sha256
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
@@ -19,6 +20,7 @@ import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.SdJwtConstants
+import at.asitplus.wallet.lib.data.digest
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.toBase64UrlJsonString
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -34,6 +36,7 @@ import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -197,15 +200,16 @@ class KeyBindingTests : FreeSpec({
                 .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
                 .sdJwtSigned.keyBindingJws.shouldNotBeNull().payload.apply {
                 transactionDataHashes.shouldNotBeNull()
-                transactionDataHashes.contentEquals(requestOptions.transactionData!!.getReferenceHashes())
-                transactionDataHashesAlgorithm.shouldNotBeNull()
+                transactionDataHashes.contentEquals(requestOptions.transactionData!!.map { it.digest(Digest.SHA256) })
+                transactionDataHashesAlgorithmString.shouldBeNull()
+                transactionDataHashesAlgorithm.shouldBe(Digest.SHA256)
             }
         }
 
         "KB-JWT transaction data hashed with SHA384" {
             //[AuthenticationRequestParameters] do not contain [transactionData] in [presentationDefinition]
             val requestOptions = buildRequestOptions(transactionDataHashAlgorithms = setOf(SdJwtConstants.SHA_384))
-            val authnRequest = rqesVerifier.createAuthnRequest(requestOptions)
+            val authnRequest = verifierOid4Vp.createAuthnRequest(requestOptions)
 
             val authnRequestUrl = URLBuilder(walletUrl).apply {
                 authnRequest.encodeToParameters()
@@ -217,12 +221,12 @@ class KeyBindingTests : FreeSpec({
             val authnResponse = holderOid4vp.createAuthnResponse(authnRequestUrl).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-            val result = rqesVerifier.validateAuthnResponse(authnResponse.url)
+            val result = verifierOid4Vp.validateAuthnResponse(authnResponse.url)
                 .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
 
             with(result.sdJwtSigned.keyBindingJws.shouldNotBeNull().payload) {
                 transactionDataHashes.shouldNotBeNull()
-                transactionDataHashes.contentEquals(requestOptions.transactionData!!.getReferenceHashes(Digest.SHA384))
+                transactionDataHashes.contentEquals(requestOptions.transactionData!!.map { it.digest(Digest.SHA384) })
                 transactionDataHashesAlgorithmString.shouldBe(SdJwtConstants.SHA_384)
             }
         }
@@ -231,7 +235,7 @@ class KeyBindingTests : FreeSpec({
         "Incorrect TransactionData is rejected" {
             val requestOptions =
                 buildRequestOptions(OpenIdConstants.ResponseMode.DirectPost, setOf(SdJwtConstants.SHA_256))
-            val authnRequest = rqesVerifier.createAuthnRequest(requestOptions)
+            val authnRequest = verifierOid4Vp.createAuthnRequest(requestOptions)
 
             val malignResponse = holderOid4vp.createAuthnResponse(
                 vckJsonSerializer.encodeToString(

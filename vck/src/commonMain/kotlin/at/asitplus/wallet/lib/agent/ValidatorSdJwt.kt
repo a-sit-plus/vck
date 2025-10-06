@@ -5,7 +5,6 @@ import at.asitplus.iso.sha256
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.digest
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.Digest
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.SuccessSdJwt
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.ValidationError
@@ -60,8 +59,9 @@ class ValidatorSdJwt(
                 ?: Throwable("SD-JWT not verified: $sdJwtResult")
             return VerifyPresentationResult.ValidationError(error)
         }
-        val keyBindingSigned = sdJwtResult.sdJwtSigned.keyBindingJws ?:
-            return VerifyPresentationResult.ValidationError("No key binding JWT")
+        val keyBindingSigned = sdJwtResult.sdJwtSigned.keyBindingJws ?: return VerifyPresentationResult.ValidationError(
+            "No key binding JWT"
+        )
 
         val vcSdJwt = sdJwtResult.verifiableCredentialSdJwt
         vcSdJwt.confirmationClaim?.let {
@@ -85,8 +85,8 @@ class ValidatorSdJwt(
         }
         if (verifyTransactionData) {
             transactionData?.let { data ->
-                val digest = keyBinding.transactionDataHashesAlgorithm?.toDigest() ?: Digest.SHA256
-                if (keyBinding.transactionDataHashes?.contentEquals(data.map { it.digest(digest) }) == false) {
+                if (keyBinding.transactionDataHashes?.contentEquals(data.map {
+                    it.digest(keyBinding.transactionDataHashesAlgorithm) }) == false) {
                     return VerifyPresentationResult.ValidationError(
                         "KB-JWT does not contain correct transaction data hashes"
                     )
