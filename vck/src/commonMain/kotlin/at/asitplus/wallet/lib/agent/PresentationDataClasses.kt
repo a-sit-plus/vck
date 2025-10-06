@@ -7,12 +7,16 @@ import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
+import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.wallet.lib.data.Base64URLTransactionDataSerializer
+import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.Serializable
@@ -56,7 +60,7 @@ data class PresentationRequestParameters(
      *
      * For convenience, we always select the first if the set is non-empty
      */
-    val transactionDataHashesAlgorithm: Digest? = getTransactionDataDigest(getCommonHashesAlgorithms(transactionData)?.first())
+    val transactionDataHashesAlgorithm: Digest? = getCommonHashesAlgorithms(transactionData)?.first().toDigest()
 
     @Deprecated("No longer necessary. Will be removed")
     enum class Flow {
@@ -69,32 +73,6 @@ data class IsoDeviceSignatureInput(
     val docType: String,
     val deviceNameSpaceBytes: ByteStringWrapper<DeviceNameSpaces>,
 )
-
-private fun getTransactionDataDigest(transactionDataHashesAlgorithmString: String?): Digest? =
-    when (transactionDataHashesAlgorithmString) {
-        SdJwtConstants.SHA_256 -> Digest.SHA256
-        SdJwtConstants.SHA_384 -> Digest.SHA384
-        SdJwtConstants.SHA_512 -> Digest.SHA512
-        null -> null
-        else -> throw Exception("Unsupported digest name $transactionDataHashesAlgorithmString")
-    }
-
-
-private fun getCommonHashesAlgorithms(transactionData: List<TransactionDataBase64Url>?): Set<String>? {
-    val listOfSets = transactionData?.map {
-        vckJsonSerializer.decodeFromJsonElement(
-            Base64URLTransactionDataSerializer, it
-        ).transactionDataHashAlgorithms
-    }
-    return if (listOfSets == null || listOfSets.any { it == null }) {
-        null
-    } else {
-        listOfSets
-            .filterNotNull()
-            .reduceOrNull { acc, set -> acc intersect set }
-            ?.takeIf { it.isNotEmpty() }
-    }
-}
 
 sealed interface PresentationResponseParameters {
     val vpToken: JsonElement?

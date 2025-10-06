@@ -14,6 +14,7 @@ import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
 import at.asitplus.openid.digest
+import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.SdJwtCreator.NAME_SD
@@ -263,11 +264,7 @@ class VerifiablePresentationFactory(
             audience = request.audience,
             challenge = request.nonce,
             sdHash = issuerJwtPlusDisclosures.encodeToByteArray().sha256(),
-            transactionDataHashes = request.transactionData?.let { entry ->
-                entry.map {
-                    it.digest(request.transactionDataHashesAlgorithm ?: Digest.SHA256)
-                }
-            },
+            transactionDataHashes = request.transactionData?.hash(request.transactionDataHashesAlgorithm),
             transactionDataHashesAlgorithmString = request.transactionDataHashesAlgorithm?.toIanaName(),
         ),
         KeyBindingJws.serializer(),
