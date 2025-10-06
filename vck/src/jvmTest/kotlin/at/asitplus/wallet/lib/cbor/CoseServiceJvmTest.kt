@@ -169,13 +169,10 @@ class CoseServiceJvmTest : FreeSpec({
                     val extLibSigInput =
                         SigStructureBuilder().sign1(parsedCoseSign1).build().encode().encodeToString(Base16())
                     val signatureInput = coseCompliantSerializer.encodeToByteArray(
-                        CoseSignatureInput.serializer(),
-                        CoseSignatureInput(
+                        CoseInput.serializer(),
+                        CoseInput(
                             contextString = "Signature1",
-                            protectedHeader = coseCompliantSerializer.encodeToByteArray(
-                                CoseHeader.serializer(),
-                                CoseHeader(algorithm = coseAlgorithm)
-                            ),
+                            protectedHeader = CoseHeader(algorithm = coseAlgorithm),
                             externalAad = byteArrayOf(),
                             payload = randomPayload.encodeToByteArray(),
                         )

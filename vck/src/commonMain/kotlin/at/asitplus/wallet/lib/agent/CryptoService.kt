@@ -3,9 +3,12 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.catching
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.CryptoSignature
+import at.asitplus.signum.indispensable.MessageAuthenticationCode
 import at.asitplus.signum.indispensable.SignatureAlgorithm
+import at.asitplus.signum.supreme.mac.mac
 import at.asitplus.signum.supreme.sign.SignatureInput
 import at.asitplus.signum.supreme.sign.Verifier
 import at.asitplus.signum.supreme.sign.verifierFor
@@ -28,4 +31,33 @@ class VerifySignature : VerifySignatureFun {
     ): KmmResult<Verifier.Success> = algorithm.verifierFor(publicKey).transform {
         it.verify(SignatureInput(input), signature)
     }
+}
+
+class InvalidMacException(message: String, cause: Throwable? = null): Throwable(message, cause)
+
+fun interface VerifyMacFun {
+    data object Success
+
+    suspend operator fun invoke(
+        input: ByteArray,
+        tag: ByteArray,
+        algorithm: MessageAuthenticationCode,
+        key: ByteArray
+    ): KmmResult<Success>
+}
+
+class VerifyMac() : VerifyMacFun {
+    override suspend fun invoke(
+        input: ByteArray,
+        tag: ByteArray,
+        algorithm: MessageAuthenticationCode,
+        key: ByteArray
+    ): KmmResult<VerifyMacFun.Success> = catching {
+        val realTag = algorithm.mac(key, input).getOrThrow()
+        if (realTag.contentEquals(tag))
+            VerifyMacFun.Success
+        else
+            throw InvalidMacException("Mac is invalid.")
+    }
+
 }
