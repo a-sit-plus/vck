@@ -5,9 +5,11 @@ import at.asitplus.dif.PresentationSubmission
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
+import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
@@ -17,6 +19,7 @@ import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.SdJwtDecoded
 import at.asitplus.wallet.lib.agent.ValidatorSdJwt
 import at.asitplus.wallet.lib.agent.VerifierAgent
+import at.asitplus.wallet.lib.agent.toIanaName
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
@@ -53,6 +56,7 @@ class OpenId4VpInteropTest : FreeSpec({
     lateinit var verifierKeyId: String
     lateinit var verifierKeyMaterial: KeyMaterial
     lateinit var verifierOid4vp: OpenId4VpVerifier
+    var sdAlgorithm: Digest? = null
 
     beforeEach {
         issuerKeyId = uuid4().toString()
@@ -76,7 +80,9 @@ class OpenId4VpInteropTest : FreeSpec({
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.SD_JWT,
-                ).getOrThrow()
+                ).getOrThrow().also {
+                    sdAlgorithm = (it as CredentialToBeIssued.VcSd).sdAlgorithm
+                }
             ).getOrThrow().toStoreCredentialInput()
         )
         holderOid4vp = OpenId4VpHolder(holderKeyMaterial, holderAgent, randomSource = RandomSource.Default)
@@ -197,7 +203,7 @@ class OpenId4VpInteropTest : FreeSpec({
                 it.issuedAt.shouldNotBeNull()
                 it.expiration.shouldNotBeNull()
                 it.verifiableCredentialType.shouldNotBeNull()
-                it.selectiveDisclosureAlgorithm shouldBe SdJwtConstants.SHA_256
+                it.selectiveDisclosureAlgorithm shouldBe sdAlgorithm?.toIanaName()
                 it.confirmationClaim.shouldNotBeNull().also {
                     it.jsonWebKey.shouldNotBeNull()
                 }
@@ -250,7 +256,7 @@ class OpenId4VpInteropTest : FreeSpec({
         pres.id.shouldNotBeNull()
         val inputdesc = pres.inputDescriptors.first()
         inputdesc.purpose shouldBe "Request presentation holding Power of Representation attestation"
-        val field = inputdesc.constraints!!.fields!!.first { it -> it.path == listOf("$.vct") }
+        val field = inputdesc.constraints!!.fields!!.first { it.path == listOf("$.vct") }
         field.filter!!.pattern shouldBe "urn:eu.europa.ec.eudi:por:1"
     }
 

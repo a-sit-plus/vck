@@ -4,20 +4,28 @@ import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
-import at.asitplus.openid.dcql.*
+import at.asitplus.openid.dcql.DCQLClaimsPathPointer
+import at.asitplus.openid.dcql.DCQLClaimsQueryList
+import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
+import at.asitplus.openid.dcql.DCQLCredentialQueryList
+import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
+import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
+import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
-import at.asitplus.wallet.lib.data.CredentialPresentationRequest.PresentationExchangeRequest
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest.PresentationExchangeRequest
 import at.asitplus.wallet.lib.data.rfc3986.toUri
+import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlin.time.Clock
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
 
@@ -71,7 +79,7 @@ class AgentComplexSdJwtTest : FreeSpec({
                 .presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+            verifier.verifyPresentationSdJwt(vp.sdJwt, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     disclosures.size shouldBe 1 // for address only
                     reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
@@ -104,7 +112,7 @@ class AgentComplexSdJwtTest : FreeSpec({
                 .presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+            verifier.verifyPresentationSdJwt(vp.sdJwt, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     disclosures.size shouldBe 2 // for region, country
                     reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
@@ -138,7 +146,7 @@ class AgentComplexSdJwtTest : FreeSpec({
                 .presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+            verifier.verifyPresentationSdJwt(vp.sdJwt, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     disclosures.size shouldBe 3 // for address, region, country
                     reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
@@ -169,7 +177,7 @@ class AgentComplexSdJwtTest : FreeSpec({
                 .presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+            verifier.verifyPresentationSdJwt(vp.sdJwt, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     disclosures.size shouldBe 3 // for address, region, country
                     reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
@@ -198,7 +206,7 @@ class AgentComplexSdJwtTest : FreeSpec({
                 .presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+            verifier.verifyPresentationSdJwt(vp.sdJwt, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     disclosures.size shouldBe 3 // for address, region, country
                     reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
@@ -229,7 +237,7 @@ class AgentComplexSdJwtTest : FreeSpec({
                 .presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+            verifier.verifyPresentationSdJwt(vp.sdJwt, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     disclosures.size shouldBe 2 // claim_given_name, claim_family_name
                     reconstructedJsonObject[CLAIM_GIVEN_NAME]
@@ -266,7 +274,7 @@ class AgentComplexSdJwtTest : FreeSpec({
             val vp = createPresentation(holder, challenge, dcqlQuery, verifierId)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+            verifier.verifyPresentationSdJwt(vp.sdJwt, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     disclosures.size shouldBe 1 // for address only
                     reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
@@ -299,7 +307,7 @@ class AgentComplexSdJwtTest : FreeSpec({
             val vp = createPresentation(holder, challenge, dcqlQuery, verifierId)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+            verifier.verifyPresentationSdJwt(vp.sdJwt, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     disclosures.size shouldBe 2 // for region, country
 
@@ -334,7 +342,7 @@ class AgentComplexSdJwtTest : FreeSpec({
             val vp = createPresentation(holder, challenge, dcqlQuery, verifierId)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+            verifier.verifyPresentationSdJwt(vp.sdJwt, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     disclosures.size shouldBe 3 // for address, region, country
                     reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
@@ -361,7 +369,7 @@ class AgentComplexSdJwtTest : FreeSpec({
             val vp = createPresentation(holder, challenge, dcqlQuery, verifierId)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+            verifier.verifyPresentationSdJwt(vp.sdJwt, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     disclosures.size shouldBe 3 // for address, region, country
                     reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
@@ -390,7 +398,7 @@ class AgentComplexSdJwtTest : FreeSpec({
             val vp = createPresentation(holder, challenge, dcqlQuery, verifierId)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+            verifier.verifyPresentationSdJwt(vp.sdJwt, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     disclosures.size shouldBe 3 // for address, region, country
                     reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
@@ -423,7 +431,7 @@ class AgentComplexSdJwtTest : FreeSpec({
             val vp = createPresentation(holder, challenge, dcqlQuery, verifierId)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+            verifier.verifyPresentationSdJwt(vp.sdJwt, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     disclosures.size shouldBe 2 // claim_given_name, claim_family_name
                     reconstructedJsonObject[CLAIM_GIVEN_NAME]
@@ -453,6 +461,7 @@ private suspend fun issueAndStoreCredential(
                 scheme = AtomicAttribute2023,
                 subjectPublicKey = holderKeyMaterial.publicKey,
                 userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+                sdAlgorithm = supportedSdAlgorithms.random(),
             )
         ).getOrThrow().toStoreCredentialInput()
     )
@@ -464,7 +473,7 @@ private fun buildDCQLQuery(vararg claimsQueries: DCQLJsonClaimsQuery) = DCQLQuer
             id = DCQLCredentialQueryIdentifier(uuid4().toString()),
             format = CredentialFormatEnum.DC_SD_JWT,
             claims = DCQLClaimsQueryList(claimsQueries.toList().toNonEmptyList()),
-            meta = DCQLSdJwtCredentialMetadataAndValidityConstraints( listOf(AtomicAttribute2023.sdJwtType))
+            meta = DCQLSdJwtCredentialMetadataAndValidityConstraints(listOf(AtomicAttribute2023.sdJwtType))
         )
     )
 )

@@ -7,7 +7,6 @@ import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
-import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.SdJwtTypeMetadata
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc3986.toUri
@@ -19,7 +18,6 @@ import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import com.benasher44.uuid.uuid4
-import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -140,7 +138,7 @@ private suspend fun issueVcSd(
     val vcId = "urn:uuid:${uuid4()}"
     val expirationDate = credential.expiration
     val subjectId = credential.subjectPublicKey.didEncoded
-    val (sdJwt, disclosures) = credential.claims.toSdJsonObject(RandomSource.Default)
+    val (sdJwt, disclosures) = credential.claims.toSdJsonObject(RandomSource.Default, credential.sdAlgorithm)
     val vcSdJwt = VerifiableCredentialSdJwt(
         subject = if (scrambleSubject) subjectId.reversed() else subjectId,
         notBefore = issuanceDate,
@@ -149,7 +147,7 @@ private suspend fun issueVcSd(
         issuedAt = issuanceDate,
         jwtId = vcId,
         verifiableCredentialType = credential.scheme.sdJwtType ?: credential.scheme.schemaUri,
-        selectiveDisclosureAlgorithm = SdJwtConstants.SHA_256,
+        selectiveDisclosureAlgorithm = credential.sdAlgorithm?.toIanaName(),
         confirmationClaim = if (!buildCnf) null else
             ConfirmationClaim(jsonWebKey = credential.subjectPublicKey.toJsonWebKey())
     )

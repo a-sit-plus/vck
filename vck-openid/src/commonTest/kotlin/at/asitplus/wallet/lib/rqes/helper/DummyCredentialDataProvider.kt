@@ -9,6 +9,7 @@ import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import kotlinx.datetime.LocalDate
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
@@ -58,6 +59,7 @@ object DummyCredentialDataProvider {
                         scheme = credentialScheme,
                         subjectPublicKey = subjectPublicKey,
                         userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+                        sdAlgorithm = supportedSdAlgorithms.random(),
                     )
 
                 else -> throw NotImplementedError()

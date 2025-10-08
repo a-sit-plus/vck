@@ -7,6 +7,7 @@ import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.rfc3986.toUri
+import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeIn
@@ -47,7 +48,7 @@ class OpenId4VpComplexSdJwtProtocolTest : FreeSpec({
                 randomSource = RandomSource.Default
             ).issueCredential(
                 CredentialToBeIssued.VcSd(
-                    listOf(
+                    claims = listOf(
                         ClaimToBeIssued(
                             CLAIM_ADDRESS, listOf(
                                 ClaimToBeIssued(CLAIM_ADDRESS_REGION, randomRegion),
@@ -55,10 +56,11 @@ class OpenId4VpComplexSdJwtProtocolTest : FreeSpec({
                             )
                         )
                     ),
-                    Clock.System.now().plus(5.minutes),
-                    AtomicAttribute2023,
-                    holderKeyMaterial.publicKey,
-                    DummyUserProvider.user,
+                    expiration = Clock.System.now().plus(5.minutes),
+                    scheme = AtomicAttribute2023,
+                    subjectPublicKey = holderKeyMaterial.publicKey,
+                    userInfo = DummyUserProvider.user,
+                    sdAlgorithm = supportedSdAlgorithms.random(),
                 )
             ).getOrThrow().toStoreCredentialInput()
         )

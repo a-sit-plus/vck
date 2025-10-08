@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.CryptoPublicKey
@@ -15,12 +16,9 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT
-import at.asitplus.iso.IssuerSignedItem
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.LocalDateOrInstant
+import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import at.asitplus.wallet.lib.oidvci.CredentialDataProviderFun
 import at.asitplus.wallet.lib.oidvci.CredentialDataProviderInput
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
@@ -32,9 +30,9 @@ import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlin.time.Clock
 import kotlinx.datetime.LocalDate
 import kotlin.random.Random
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
 
@@ -86,11 +84,12 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialDataProviderFun {
         )
         return when (representation) {
             SD_JWT -> CredentialToBeIssued.VcSd(
-                claims,
-                expiration,
-                ConstantIndex.AtomicAttribute2023,
-                subjectPublicKey,
-                DummyUserProvider.user,
+                claims = claims,
+                expiration = expiration,
+                scheme = ConstantIndex.AtomicAttribute2023,
+                subjectPublicKey = subjectPublicKey,
+                userInfo = DummyUserProvider.user,
+                sdAlgorithm = supportedSdAlgorithms.random()
             )
 
             PLAIN_JWT -> CredentialToBeIssued.VcJwt(
@@ -163,11 +162,12 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialDataProviderFun {
         )
         return when (representation) {
             SD_JWT -> CredentialToBeIssued.VcSd(
-                claims,
-                expiration,
-                EuPidScheme,
-                subjectPublicKey,
-                DummyUserProvider.user,
+                claims = claims,
+                expiration = expiration,
+                scheme = EuPidScheme,
+                subjectPublicKey = subjectPublicKey,
+                userInfo = DummyUserProvider.user,
+                sdAlgorithm = supportedSdAlgorithms.random()
             )
 
             PLAIN_JWT -> CredentialToBeIssued.VcJwt(
