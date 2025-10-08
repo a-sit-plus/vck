@@ -1,6 +1,8 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.signum.indispensable.Digest
 import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
+import at.asitplus.wallet.lib.data.SdJwtConstants
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldHaveSize
@@ -14,6 +16,16 @@ class SdJwtCreatorTest : FreeSpec({
         listOfClaims("name").toSdJsonObject(RandomSource.Default).apply {
             second.shouldHaveSize(1)
             first["_sd"]!!.jsonArray shouldHaveSize 1
+            first["_sd_alg"] shouldBe null
+            first["name"] shouldBe null
+        }
+    }
+
+    "digest can be specified" {
+        listOfClaims("name").toSdJsonObject(RandomSource.Default, Digest.SHA384).apply {
+            second.shouldHaveSize(1)
+            first["_sd"]!!.jsonArray shouldHaveSize 1
+            first["_sd_alg"] shouldBe SdJwtConstants.SHA_384
             first["name"] shouldBe null
         }
     }

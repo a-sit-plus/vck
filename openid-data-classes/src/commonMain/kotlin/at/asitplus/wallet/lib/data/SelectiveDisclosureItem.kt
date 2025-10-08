@@ -1,8 +1,10 @@
 package at.asitplus.wallet.lib.data
 
 import at.asitplus.iso.sha256
+import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.signum.supreme.hash.digest
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.Serializable
@@ -56,7 +58,7 @@ data class SelectiveDisclosureItem(
          * Hashes a disclosure from [SelectiveDisclosureItem.toDisclosure] according to section 5.2.3 of
          * [draft-ietf-oauth-selective-disclosure-jwt-08](https://datatracker.ietf.org/doc/draft-ietf-oauth-selective-disclosure-jwt/)
          **/
-        fun String.hashDisclosure() = encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
+        fun String.hashDisclosure(digest: Digest?) = (digest ?: Digest.SHA256).digest(this.encodeToByteArray()).encodeToString(Base64UrlStrict)
     }
 
 }
