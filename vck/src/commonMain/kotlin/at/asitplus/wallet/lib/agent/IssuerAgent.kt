@@ -17,7 +17,6 @@ import at.asitplus.wallet.lib.cbor.CoseHeaderCertificate
 import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.cbor.SignCoseFun
-import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.Status
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
@@ -186,7 +185,7 @@ class IssuerAgent(
                 uri = UniformResourceIdentifier(getRevocationListUrlFor(timePeriod)),
             )
         )
-        val (sdJwt, disclosures) = credential.claims.toSdJsonObject(randomSource)
+        val (sdJwt, disclosures) = credential.claims.toSdJsonObject(randomSource, credential.sdAlgorithm)
         val cnf = ConfirmationClaim(jsonWebKey = credential.subjectPublicKey.toJsonWebKey())
         val vcSdJwt = VerifiableCredentialSdJwt(
             subject = subjectId,
@@ -196,7 +195,7 @@ class IssuerAgent(
             issuedAt = issuanceDate,
             jwtId = vcId,
             verifiableCredentialType = credential.scheme.sdJwtType ?: credential.scheme.schemaUri,
-            selectiveDisclosureAlgorithm = SdJwtConstants.SHA_256,
+            selectiveDisclosureAlgorithm = credential.sdAlgorithm?.toIanaName(),
             confirmationClaim = cnf,
             statusElement = vckJsonSerializer.encodeToJsonElement(credentialStatus),
         )

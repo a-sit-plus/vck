@@ -224,7 +224,7 @@ class VerifiablePresentationFactory(
             }.toSet()
         // Inner disclosures when an object has been requested by name (above), but contains more _sd entries
         val innerDisclosures = validSdJwtCredential.disclosures.entries.filter { claim ->
-            claim.asHashedDisclosure(null)?.let { hashedDisclosure ->
+            claim.asHashedDisclosure(validSdJwtCredential.sdJwt.selectiveDisclosureAlgorithm?.toDigest())?.let { hashedDisclosure ->
                 disclosuresByName.any { it.containsHashedDisclosure(hashedDisclosure) }
             } == true
         }
