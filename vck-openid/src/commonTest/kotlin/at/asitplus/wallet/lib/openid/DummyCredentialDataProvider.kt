@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.eupid.EuPidCredential
 import at.asitplus.wallet.eupid.EuPidScheme
@@ -9,20 +10,17 @@ import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.iso.IssuerSignedItem
-import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
-import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
-import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.LocalDateOrInstant
+import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import at.asitplus.wallet.mdl.DrivingPrivilege
 import at.asitplus.wallet.mdl.DrivingPrivilegeCode
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
-import kotlin.time.Clock
 import kotlinx.datetime.LocalDate
 import kotlin.random.Random
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
 object DummyCredentialDataProvider {
@@ -51,6 +49,7 @@ object DummyCredentialDataProvider {
                     scheme = credentialScheme,
                     subjectPublicKey = subjectPublicKey,
                     userInfo = DummyUserProvider.user,
+                    sdAlgorithm = supportedSdAlgorithms.random()
                 )
 
                 PLAIN_JWT -> CredentialToBeIssued.VcJwt(
@@ -160,6 +159,7 @@ object DummyCredentialDataProvider {
                         scheme = credentialScheme,
                         subjectPublicKey = subjectPublicKey,
                         userInfo = DummyUserProvider.user,
+                        sdAlgorithm = supportedSdAlgorithms.random()
                     )
 
                 PLAIN_JWT -> CredentialToBeIssued.VcJwt(

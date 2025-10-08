@@ -29,6 +29,7 @@ import at.asitplus.wallet.lib.data.CredentialPresentation.DCQLPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.rfc3986.toUri
+import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.json
 import at.asitplus.wallet.lib.openid.*
@@ -363,6 +364,7 @@ class OpenId4VpWalletTest : FunSpec() {
             scheme = scheme,
             subjectPublicKey = keyMaterial.publicKey,
             userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+            sdAlgorithm = supportedSdAlgorithms.random()
         )
 
         ISO_MDOC -> CredentialToBeIssued.Iso(

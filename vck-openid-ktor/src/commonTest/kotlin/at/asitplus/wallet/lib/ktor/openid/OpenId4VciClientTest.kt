@@ -33,6 +33,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -204,11 +205,12 @@ class OpenId4VciClientTest : FunSpec() {
                 when (representation) {
                     PLAIN_JWT -> TODO()
                     SD_JWT -> VcSd(
-                        attributes.map { ClaimToBeIssued(it.key, it.value) },
-                        Clock.System.now(),
-                        it.credentialScheme,
-                        it.subjectPublicKey,
-                        OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+                        claims = attributes.map { ClaimToBeIssued(it.key, it.value) },
+                        expiration = Clock.System.now(),
+                        scheme = it.credentialScheme,
+                        subjectPublicKey = it.subjectPublicKey,
+                        userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+                        sdAlgorithm = supportedSdAlgorithms.random()
                     )
 
                     ISO_MDOC -> Iso(

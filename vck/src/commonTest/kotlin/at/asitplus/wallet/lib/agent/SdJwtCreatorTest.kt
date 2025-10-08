@@ -14,7 +14,7 @@ import kotlinx.serialization.json.jsonArray
 class SdJwtCreatorTest : FreeSpec({
 
     "name can be selectively disclosed" {
-        listOfClaims("name").toSdJsonObject(RandomSource.Default).apply {
+        listOfClaims("name").toSdJsonObject(RandomSource.Default, null).apply {
             second.shouldHaveSize(1)
             first["_sd"]!!.jsonArray shouldHaveSize 1
             first["_sd_alg"] shouldBe null
@@ -32,7 +32,7 @@ class SdJwtCreatorTest : FreeSpec({
     }
 
     "issuer MUST be included in SD-JWT, i.e. can not be selectively disclosed" {
-        listOfClaims("name", "iss").toSdJsonObject(RandomSource.Default).apply {
+        listOfClaims("name", "iss").toSdJsonObject(RandomSource.Default, null).apply {
             second.shouldHaveSize(1)
             first["_sd"]!!.jsonArray shouldHaveSize 1
             first["name"] shouldBe null
@@ -41,7 +41,7 @@ class SdJwtCreatorTest : FreeSpec({
     }
 
     "nbf, cnf, vct, status MUST be included in SD-JWT, i.e. can not be selectively disclosed" {
-        listOfClaims("nbf", "cnf", "vct", "status").toSdJsonObject(RandomSource.Default).apply {
+        listOfClaims("nbf", "cnf", "vct", "status").toSdJsonObject(RandomSource.Default, null).apply {
             second.shouldHaveSize(0)
             first["_sd"] shouldBe null
             first["nbf"] shouldNotBe null
@@ -52,7 +52,7 @@ class SdJwtCreatorTest : FreeSpec({
     }
 
     "several names are disallowed" {
-        listOfClaims("_sd_alg", "...").toSdJsonObject(RandomSource.Default).apply {
+        listOfClaims("_sd_alg", "...").toSdJsonObject(RandomSource.Default, null).apply {
             second.shouldHaveSize(0)
             first["_sd"] shouldBe null
             first["_sd_alg"] shouldBe null

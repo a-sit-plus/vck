@@ -2,6 +2,9 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.iso.IssuerSignedItem
+import at.asitplus.openid.OidcUserInfo
+import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -9,12 +12,10 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT
-import at.asitplus.iso.IssuerSignedItem
-import at.asitplus.openid.OidcUserInfo
-import at.asitplus.openid.OidcUserInfoExtended
-import kotlin.time.Clock
+import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import kotlinx.datetime.LocalDate
 import kotlin.random.Random
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
 object DummyCredentialDataProvider {
@@ -41,6 +42,7 @@ object DummyCredentialDataProvider {
                 scheme = credentialScheme,
                 subjectPublicKey = subjectPublicKey,
                 userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+                sdAlgorithm = supportedSdAlgorithms.random()
             )
 
             ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
