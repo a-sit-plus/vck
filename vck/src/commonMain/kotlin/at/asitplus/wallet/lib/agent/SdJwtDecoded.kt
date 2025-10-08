@@ -1,8 +1,9 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.catchingUnwrapped
+import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.wallet.lib.agent.SdJwtCreator.NAME_SD
+import at.asitplus.wallet.lib.data.SdJwtConstants.NAME_SD
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -50,7 +51,7 @@ class SdJwtDecoded(sdJwtSigned: SdJwtSigned) {
             val jsonObject = element.value as? JsonObject
             val jsonArray = element.value as? JsonArray
             if (sdArray != null) {
-                sdArray.forEach { processSdItem(it) }
+                sdArray.forEach { processSdItem(it, null) }
             } else if (jsonObject != null) {
                 putIfNotEmpty(element.key, jsonObject.reconstructValues())
             } else if (jsonArray != null) {
@@ -68,7 +69,7 @@ class SdJwtDecoded(sdJwtSigned: SdJwtSigned) {
             val sdArrayEntry = element.asArrayDisclosure()
             val jsonObject = element as? JsonObject
             if (sdArrayEntry != null) {
-                processSdItem(sdArrayEntry)
+                processSdItem(sdArrayEntry, null)
             } else if (jsonObject != null) {
                 addIfNotEmpty(element.reconstructValues())
             } else {
@@ -82,8 +83,8 @@ class SdJwtDecoded(sdJwtSigned: SdJwtSigned) {
             this["..."] as JsonPrimitive
         else null
 
-    private fun JsonArrayBuilder.processSdItem(disclosure: JsonPrimitive) {
-        disclosure.toValidatedItem()?.let { sdItem ->
+    private fun JsonArrayBuilder.processSdItem(disclosure: JsonPrimitive, digest: Digest?) {
+        disclosure.toValidatedItem(digest)?.let { sdItem ->
             val claimValue = sdItem.claimValue
             when (claimValue) {
                 is JsonObject -> add(claimValue.reconstructValues())
@@ -92,8 +93,8 @@ class SdJwtDecoded(sdJwtSigned: SdJwtSigned) {
         }
     }
 
-    private fun JsonObjectBuilder.processSdItem(disclosure: JsonPrimitive) {
-        disclosure.toValidatedItem()?.let { sdItem ->
+    private fun JsonObjectBuilder.processSdItem(disclosure: JsonPrimitive, digest: Digest?) {
+        disclosure.toValidatedItem(digest)?.let { sdItem ->
             when (val element = sdItem.claimValue) {
                 is JsonObject -> sdItem.claimName?.let { putIfNotEmpty(it, element.reconstructValues()) }
                 else -> sdItem.claimName?.let { put(it, element) }
@@ -101,8 +102,8 @@ class SdJwtDecoded(sdJwtSigned: SdJwtSigned) {
         }
     }
 
-    private fun JsonPrimitive.toValidatedItem(): SelectiveDisclosureItem? =
-        disclosures.firstOrNull { it.hashDisclosure() == this.content }?.let { disclosure ->
+    private fun JsonPrimitive.toValidatedItem(digest: Digest?): SelectiveDisclosureItem? =
+        disclosures.firstOrNull { it.hashDisclosure(digest) == this.content }?.let { disclosure ->
             disclosure.toSdItem()
                 ?.also { _validDisclosures[disclosure] = it }
         }

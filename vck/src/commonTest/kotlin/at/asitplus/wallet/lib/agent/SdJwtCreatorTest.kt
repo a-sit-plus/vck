@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
+import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
 import at.asitplus.wallet.lib.data.SdJwtConstants
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
@@ -25,7 +26,7 @@ class SdJwtCreatorTest : FreeSpec({
         listOfClaims("name").toSdJsonObject(RandomSource.Default, Digest.SHA384).apply {
             second.shouldHaveSize(1)
             first["_sd"]!!.jsonArray shouldHaveSize 1
-            first["_sd_alg"] shouldBe SdJwtConstants.SHA_384
+            first["_sd_alg"] shouldBe SdJwtConstants.SHA_384.toJsonElement()
             first["name"] shouldBe null
         }
     }
