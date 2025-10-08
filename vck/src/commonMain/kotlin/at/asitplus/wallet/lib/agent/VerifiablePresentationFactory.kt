@@ -13,12 +13,11 @@ import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
-import at.asitplus.openid.digest
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.wallet.lib.agent.SdJwtCreator.NAME_SD
 import at.asitplus.wallet.lib.data.KeyBindingJws
+import at.asitplus.wallet.lib.data.SdJwtConstants.NAME_SD
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import at.asitplus.wallet.lib.data.VerifiablePresentation
@@ -225,7 +224,7 @@ class VerifiablePresentationFactory(
             }.toSet()
         // Inner disclosures when an object has been requested by name (above), but contains more _sd entries
         val innerDisclosures = validSdJwtCredential.disclosures.entries.filter { claim ->
-            claim.asHashedDisclosure()?.let { hashedDisclosure ->
+            claim.asHashedDisclosure(null)?.let { hashedDisclosure ->
                 disclosuresByName.any { it.containsHashedDisclosure(hashedDisclosure) }
             } == true
         }
@@ -241,8 +240,8 @@ class VerifiablePresentationFactory(
         return CreatePresentationResult.SdJwt(sdJwt.serialize(), sdJwt)
     }
 
-    private fun Map.Entry<String, SelectiveDisclosureItem?>.asHashedDisclosure(): String? =
-        value?.toDisclosure()?.hashDisclosure()
+    private fun Map.Entry<String, SelectiveDisclosureItem?>.asHashedDisclosure(digest: Digest?): String? =
+        value?.toDisclosure()?.hashDisclosure(digest)
 
     private fun Map.Entry<String, SelectiveDisclosureItem?>.containsHashedDisclosure(hashDisclosure: String): Boolean =
         asJsonObject()?.sdElements()?.strings()?.any { it == hashDisclosure } == true

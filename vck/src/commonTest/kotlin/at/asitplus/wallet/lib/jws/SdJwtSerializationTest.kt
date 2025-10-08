@@ -121,7 +121,7 @@ class SdJwtSerializationTest : FreeSpec({
         // different whitespaces may lead to a different string, obviously!
         disclosure shouldBe "WyJfMjZiYzRMVC1hYzZxMktJNmNCVzVlcyIsImZhbWlseV9uYW1lIiwiTcO2Yml1cyJd"
 
-        "WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgIkZSIl0".hashDisclosure() shouldBe "w0I8EKcdCtUPkGCNUrfwVp2xEgNjtoIDlOxc9-PlOhs"
+        "WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgIkZSIl0".hashDisclosure(null) shouldBe "w0I8EKcdCtUPkGCNUrfwVp2xEgNjtoIDlOxc9-PlOhs"
     }
 
     "Serialize nested Byte Array" {
