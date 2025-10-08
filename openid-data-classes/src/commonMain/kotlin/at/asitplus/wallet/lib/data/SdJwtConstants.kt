@@ -4,6 +4,13 @@ package at.asitplus.wallet.lib.data
  * [IANA Naming convention](https://www.iana.org/assignments/named-information/named-information.xhtml)
  */
 object SdJwtConstants {
+
+    /** `_sd` */
+    const val NAME_SD = "_sd"
+
+    /** `_sd_alg` */
+    const val SD_ALG = "_sd_alg"
+
     /** `sha-256` */
     const val SHA_256 = "sha-256"
 

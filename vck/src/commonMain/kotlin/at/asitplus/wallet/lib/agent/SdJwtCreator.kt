@@ -1,8 +1,11 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.signum.indispensable.Digest
 import at.asitplus.wallet.lib.agent.SdJwtCreator.disallowedNames
 import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
+import at.asitplus.wallet.lib.data.SdJwtConstants.NAME_SD
+import at.asitplus.wallet.lib.data.SdJwtConstants.SD_ALG
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import at.asitplus.wallet.lib.data.fromAnyValue
@@ -18,8 +21,6 @@ import kotlinx.serialization.json.putJsonArray
  */
 object SdJwtCreator {
 
-    const val NAME_SD = "_sd"
-
     /**
      * Creates a JSON object to contain only digests for the selectively disclosable claims
      * (in the array with key `_sd`), and the plain values for
@@ -33,6 +34,7 @@ object SdJwtCreator {
      */
     fun Collection<ClaimToBeIssued>.toSdJsonObject(
         randomSource: RandomSource = RandomSource.Secure,
+        digest: Digest? = null,
     ): Pair<JsonObject, Collection<String>> = mutableListOf<String>().let { disclosures ->
         buildJsonObject {
             with(honorNotDisclosableClaims().customPartition()) {
@@ -44,7 +46,7 @@ object SdJwtCreator {
                             put(claim.name, it.first)
                             claim.toSdItem(it.first, randomSource).toDisclosure()
                                 .also { disclosures.add(it) }
-                                .hashDisclosure()
+                                .hashDisclosure(digest)
                         } else {
                             disclosures.addAll(it.second)
                             put(claim.name, it.first)
@@ -58,7 +60,7 @@ object SdJwtCreator {
                         put(key, it.first)
                         key.toSdItem(it.first, randomSource).toDisclosure()
                             .also { disclosures.add(it) }
-                            .hashDisclosure()
+                            .hashDisclosure(digest)
                     }
                 }
                 val dotNotationClaimsPlain: Collection<String> =
@@ -73,15 +75,20 @@ object SdJwtCreator {
                     if (claim.selectivelyDisclosable) {
                         claim.toSdItem(randomSource).toDisclosure()
                             .also { disclosures.add(it) }
-                            .hashDisclosure()
+                            .hashDisclosure(digest)
                     } else {
                         put(claim.name, claim.value.toJsonElement())
                         null
                     }
                 }
                 (objectClaimDigests + dotNotationClaims + dotNotationClaimsPlain + singleClaimsDigests).let { digests ->
-                    if (digests.isNotEmpty())
+                    if (digests.isNotEmpty()) {
                         putJsonArray(NAME_SD) { addAll(digests) }
+
+                        if (digest != null) {
+                            put(SD_ALG, digest.toIanaName().toJsonElement())
+                        }
+                    }
                 }
             }
         } to disclosures
