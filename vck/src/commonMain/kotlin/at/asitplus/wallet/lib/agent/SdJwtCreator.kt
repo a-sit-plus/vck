@@ -40,7 +40,7 @@ object SdJwtCreator {
             with(honorNotDisclosableClaims().customPartition()) {
                 val objectClaimDigests: Collection<String> = recursiveClaims.mapNotNull { claim ->
                     claim.value as Collection<*>
-                    (claim.value.filterIsInstance<ClaimToBeIssued>()).toSdJsonObject(randomSource).let {
+                    (claim.value.filterIsInstance<ClaimToBeIssued>()).toSdJsonObject(randomSource, digest).let {
                         if (claim.selectivelyDisclosable) {
                             disclosures.addAll(it.second)
                             put(claim.name, it.first)
@@ -55,7 +55,7 @@ object SdJwtCreator {
                     }
                 }
                 val dotNotationClaims: Collection<String> = dotNotation.groupByDots().mapNotNull { (key, claims) ->
-                    claims.toSdJsonObject(randomSource).let {
+                    claims.toSdJsonObject(randomSource,digest).let {
                         disclosures.addAll(it.second)
                         put(key, it.first)
                         key.toSdItem(it.first, randomSource).toDisclosure()
@@ -65,7 +65,7 @@ object SdJwtCreator {
                 }
                 val dotNotationClaimsPlain: Collection<String> =
                     dotNotationPlain.groupByDots().mapNotNull { (key, claims) ->
-                        claims.toSdJsonObject(randomSource).let {
+                        claims.toSdJsonObject(randomSource, digest).let {
                             disclosures.addAll(it.second)
                             put(key, it.first)
                             null

@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.Digest
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialSubject
 import at.asitplus.wallet.lib.jws.JwsHeaderModifierFun
@@ -30,6 +31,7 @@ sealed class CredentialToBeIssued {
         override val userInfo: OidcUserInfoExtended,
         /** Implement to add type metadata field */
         val modifyHeader: JwsHeaderModifierFun = JwsHeaderModifierFun { it },
+        val sdAlgorithm: Digest? = null
     ) : CredentialToBeIssued()
 
     data class Iso(

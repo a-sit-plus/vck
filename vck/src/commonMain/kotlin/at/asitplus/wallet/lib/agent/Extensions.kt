@@ -25,7 +25,7 @@ internal fun getCommonHashesAlgorithms(transactionData: List<TransactionDataBase
     }
 }
 
-internal fun Digest.toIanaName(): String =
+fun Digest.toIanaName(): String =
     when (this) {
         Digest.SHA256 -> SdJwtConstants.SHA_256
         Digest.SHA384 -> SdJwtConstants.SHA_384

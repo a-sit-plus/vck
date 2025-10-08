@@ -18,6 +18,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
@@ -41,21 +42,22 @@ class SdJwtDecoded(sdJwtSigned: SdJwtSigned) {
     val reconstructedJsonObject: JsonObject?
 
     init {
-        reconstructedJsonObject = sdJwtSigned.getPayloadAsJsonObject().getOrNull()?.reconstructValues()
+        val digest = sdJwtSigned.jws.payload.jsonObject["_sd_alg"]?.jsonPrimitive?.content.toDigest()
+        reconstructedJsonObject = sdJwtSigned.getPayloadAsJsonObject().getOrNull()?.reconstructValues(digest)
         validDisclosures = _validDisclosures.toMap()
     }
 
-    private fun JsonObject.reconstructValues(): JsonObject = buildJsonObject {
+    private fun JsonObject.reconstructValues(digest: Digest?): JsonObject = buildJsonObject {
         forEach { element ->
             val sdArray = element.asSdArray()
             val jsonObject = element.value as? JsonObject
             val jsonArray = element.value as? JsonArray
             if (sdArray != null) {
-                sdArray.forEach { processSdItem(it, null) }
+                sdArray.forEach { processSdItem(it, digest) }
             } else if (jsonObject != null) {
-                putIfNotEmpty(element.key, jsonObject.reconstructValues())
+                putIfNotEmpty(element.key, jsonObject.reconstructValues(digest))
             } else if (jsonArray != null) {
-                putIfNotEmpty(element.key, jsonArray.reconstructValues())
+                putIfNotEmpty(element.key, jsonArray.reconstructValues(digest))
             } else {
                 if (element.key !in filteredClaims) {
                     put(element.key, element.value)
@@ -64,14 +66,14 @@ class SdJwtDecoded(sdJwtSigned: SdJwtSigned) {
         }
     }
 
-    private fun JsonArray.reconstructValues() = buildJsonArray {
+    private fun JsonArray.reconstructValues(digest: Digest?) = buildJsonArray {
         forEach { element ->
             val sdArrayEntry = element.asArrayDisclosure()
             val jsonObject = element as? JsonObject
             if (sdArrayEntry != null) {
-                processSdItem(sdArrayEntry, null)
+                processSdItem(sdArrayEntry, digest)
             } else if (jsonObject != null) {
-                addIfNotEmpty(element.reconstructValues())
+                addIfNotEmpty(element.reconstructValues(digest))
             } else {
                 add(element)
             }
@@ -85,9 +87,8 @@ class SdJwtDecoded(sdJwtSigned: SdJwtSigned) {
 
     private fun JsonArrayBuilder.processSdItem(disclosure: JsonPrimitive, digest: Digest?) {
         disclosure.toValidatedItem(digest)?.let { sdItem ->
-            val claimValue = sdItem.claimValue
-            when (claimValue) {
-                is JsonObject -> add(claimValue.reconstructValues())
+            when (val claimValue = sdItem.claimValue) {
+                is JsonObject -> add(claimValue.reconstructValues(digest))
                 else -> add(claimValue)
             }
         }
@@ -96,7 +97,7 @@ class SdJwtDecoded(sdJwtSigned: SdJwtSigned) {
     private fun JsonObjectBuilder.processSdItem(disclosure: JsonPrimitive, digest: Digest?) {
         disclosure.toValidatedItem(digest)?.let { sdItem ->
             when (val element = sdItem.claimValue) {
-                is JsonObject -> sdItem.claimName?.let { putIfNotEmpty(it, element.reconstructValues()) }
+                is JsonObject -> sdItem.claimName?.let { putIfNotEmpty(it, element.reconstructValues(digest)) }
                 else -> sdItem.claimName?.let { put(it, element) }
             }
         }

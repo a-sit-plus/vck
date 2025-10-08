@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent.validation.sdJwt
 
 import at.asitplus.KmmResult
+import at.asitplus.catching
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.lib.agent.SdJwtDecoded
 import at.asitplus.wallet.lib.agent.Verifier
@@ -8,9 +9,8 @@ import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
-import io.github.aakira.napier.Napier
-import kotlin.time.Clock
 import kotlinx.serialization.json.buildJsonObject
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -36,7 +36,7 @@ data class SdJwtInputValidator(
             )
         }
 
-        val payloadJsonValidationSummary = sdJwtSigned.getPayloadAsJsonObject().map { jsonObject ->
+        val payloadJsonValidationSummary = catching {
             SdJwtDecoded(sdJwtSigned)
         }
 
