@@ -231,7 +231,6 @@ class KeyBindingTests : FreeSpec({
             }
         }
 
-
         "Incorrect TransactionData is rejected" {
             val requestOptions =
                 buildRequestOptions(OpenIdConstants.ResponseMode.DirectPost, setOf(SdJwtConstants.SHA_256))

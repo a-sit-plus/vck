@@ -49,13 +49,12 @@ data class KeyBindingJws(
 ) {
 
     @Transient
-    val transactionDataHashesAlgorithm =
-        when (transactionDataHashesAlgorithmString) {
-            null, SdJwtConstants.SHA_256 -> Digest.SHA256
-            SdJwtConstants.SHA_384 -> Digest.SHA384
-            SdJwtConstants.SHA_512 -> Digest.SHA512
-            else -> throw Exception("Unsupported digest name $transactionDataHashesAlgorithmString")
-        }
+    val transactionDataHashesAlgorithm = when (transactionDataHashesAlgorithmString) {
+        null, SdJwtConstants.SHA_256 -> Digest.SHA256
+        SdJwtConstants.SHA_384 -> Digest.SHA384
+        SdJwtConstants.SHA_512 -> Digest.SHA512
+        else -> throw IllegalArgumentException("Unsupported digest name $transactionDataHashesAlgorithmString")
+    }
 
     @Suppress("DEPRECATION")
     override fun equals(other: Any?): Boolean {

@@ -14,15 +14,12 @@ internal fun List<TransactionDataBase64Url>.hash(digest: Digest?): List<ByteArra
 
 internal fun getCommonHashesAlgorithms(transactionData: List<TransactionDataBase64Url>?): Set<String>? {
     val listOfSets = transactionData?.map {
-        vckJsonSerializer.decodeFromJsonElement(
-            Base64URLTransactionDataSerializer, it
-        ).transactionDataHashAlgorithms
+        vckJsonSerializer.decodeFromJsonElement(Base64URLTransactionDataSerializer, it).transactionDataHashAlgorithms
     }
     return if (listOfSets == null || listOfSets.any { it == null }) {
         null
     } else {
-        listOfSets
-            .filterNotNull()
+        listOfSets.filterNotNull()
             .reduceOrNull { acc, set -> acc intersect set }
             ?.takeIf { it.isNotEmpty() }
     }
