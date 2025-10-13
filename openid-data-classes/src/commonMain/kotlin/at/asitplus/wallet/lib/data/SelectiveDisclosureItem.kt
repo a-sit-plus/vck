@@ -58,7 +58,8 @@ data class SelectiveDisclosureItem(
          * Hashes a disclosure from [SelectiveDisclosureItem.toDisclosure] according to section 5.2.3 of
          * [draft-ietf-oauth-selective-disclosure-jwt-08](https://datatracker.ietf.org/doc/draft-ietf-oauth-selective-disclosure-jwt/)
          **/
-        fun String.hashDisclosure(digest: Digest?) = (digest ?: Digest.SHA256).digest(this.encodeToByteArray()).encodeToString(Base64UrlStrict)
+        fun String.hashDisclosure(digest: Digest = Digest.SHA256) =
+            digest.digest(this.encodeToByteArray()).encodeToString(Base64UrlStrict)
     }
 
 }
