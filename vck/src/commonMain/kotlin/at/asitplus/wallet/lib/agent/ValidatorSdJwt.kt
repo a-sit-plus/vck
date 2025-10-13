@@ -34,8 +34,7 @@ class ValidatorSdJwt(
     /** Toggles whether transaction data should be verified if present. */
     private val verifyTransactionData: Boolean = true,
     /** Structure / Integrity / Semantics validator. */
-    private val sdJwtInputValidator: SdJwtInputValidator =
-        SdJwtInputValidator(verifyJwsObject = verifyJwsObject),
+    private val sdJwtInputValidator: SdJwtInputValidator = SdJwtInputValidator(verifyJwsObject = verifyJwsObject),
     private val validator: Validator = Validator(),
 ) {
 
@@ -59,9 +58,8 @@ class ValidatorSdJwt(
                 ?: Throwable("SD-JWT not verified: $sdJwtResult")
             return VerifyPresentationResult.ValidationError(error)
         }
-        val keyBindingSigned = sdJwtResult.sdJwtSigned.keyBindingJws ?: return VerifyPresentationResult.ValidationError(
-            "No key binding JWT"
-        )
+        val keyBindingSigned = sdJwtResult.sdJwtSigned.keyBindingJws
+            ?: return VerifyPresentationResult.ValidationError("No key binding JWT")
 
         val vcSdJwt = sdJwtResult.verifiableCredentialSdJwt
         vcSdJwt.confirmationClaim?.let {
@@ -85,11 +83,9 @@ class ValidatorSdJwt(
         }
         if (verifyTransactionData) {
             transactionData?.let { data ->
-                if (keyBinding.transactionDataHashes?.contentEquals(data.map {
-                    it.digest(keyBinding.transactionDataHashesAlgorithm) }) == false) {
-                    return VerifyPresentationResult.ValidationError(
-                        "KB-JWT does not contain correct transaction data hashes"
-                    )
+                val digests = data.map { it.digest(keyBinding.transactionDataHashesAlgorithm) }
+                if (keyBinding.transactionDataHashes?.contentEquals(digests) == false) {
+                    return VerifyPresentationResult.ValidationError("KB-JWT does not contain correct transaction data hashes")
                 }
             }
         }

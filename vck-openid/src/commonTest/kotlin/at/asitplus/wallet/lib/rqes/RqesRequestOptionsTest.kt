@@ -59,9 +59,8 @@ class RqesRequestOptionsTest : FreeSpec({
     }
 
     "Authentication request contains transactionData" {
-        verifierOid4Vp.createAuthnRequest(requestOptions = buildRequestOptions(transactionDataHashAlgorithms = setOf(
-            SdJwtConstants.SHA_256
-        ))).apply {
+        val requestOptions = buildRequestOptions(transactionDataHashAlgorithms = setOf(SdJwtConstants.SHA_256))
+        verifierOid4Vp.createAuthnRequest(requestOptions = requestOptions).apply {
             val inputDescriptor = presentationDefinition.shouldNotBeNull().inputDescriptors.first()
             transactionData.shouldNotBeNull().first().toTransactionData().apply {
                 transactionDataHashAlgorithms shouldNotBe null

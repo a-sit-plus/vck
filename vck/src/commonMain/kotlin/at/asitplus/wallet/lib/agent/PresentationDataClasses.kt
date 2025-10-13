@@ -56,7 +56,8 @@ data class PresentationRequestParameters(
     /**
      * According to OID4VP 1.0 B3.3.1 every TransactionData entry may define different Digest algorithms
      * however in the [at.asitplus.wallet.lib.data.KeyBindingJws] we are only allowed to specify one.
-     * To remedy this we only look at the intersection of all sets; if empty OID4VP 1.0 requires that every party must support [Digest.SHA256].
+     * To remedy this we only look at the intersection of all sets;
+     * if empty OID4VP 1.0 requires that every party must support [Digest.SHA256].
      *
      * For convenience, we always select the first if the set is non-empty
      */
