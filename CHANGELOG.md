@@ -57,6 +57,7 @@ Release 5.9.0 (unreleased):
    - In `AuthorizationService` and `SimpleAuthorizationService` deprecate method `authorize` with `AuthenticationRequestParameters`, use `RequestParameters` instead
    - In `AuthorizationService` and `SimpleAuthorizationService` deprecate method `par` with `AuthenticationRequestParameters`, use `RequestParameters` instead
    - In `OAuth2Client` add method `createAuthRequestJar` to make intent more explicit
+   - Allow `SimpleAuthorizationService` to toggle usage of PAR and JAR with new `requirePushedAuthorizationRequests` and `requestObjectSigningAlgorithms` parameters 
  - Cryptography:
    - Use [secure random](https://github.com/KotlinCrypto/random) for source of nonces by default, but also expose constructor parameters to override it
  - Update implementation of [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html) to draft 17:

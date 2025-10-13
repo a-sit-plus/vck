@@ -92,7 +92,6 @@ class OpenId4VciClientTest : FunSpec() {
         }
 
         test("loadEuPidCredentialSdJwt") {
-
             val expectedFamilyName = uuid4().toString()
             setup(
                 scheme = EuPidScheme,
@@ -276,8 +275,7 @@ class OpenId4VciClientTest : FunSpec() {
 
                 request.url.fullPath.startsWith(parEndpointPath) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
-                    val authnRequest: AuthenticationRequestParameters =
-                        requestBody.decodeFromPostBody<AuthenticationRequestParameters>()
+                    val authnRequest: RequestParameters = requestBody.decodeFromPostBody()
                     authorizationService.par(authnRequest, request.toRequestInfo()).fold(
                         onSuccess = {
                             respond(

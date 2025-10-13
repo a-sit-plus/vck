@@ -286,8 +286,7 @@ class OpenId4VciClientExternalAuthorizationServerTest : FunSpec() {
 
                 request.url.toString() == "$authServerPublicContext$parEndpointPath" -> {
                     val requestBody = request.body.toByteArray().decodeToString()
-                    val authnRequest: AuthenticationRequestParameters =
-                        requestBody.decodeFromPostBody<AuthenticationRequestParameters>()
+                    val authnRequest: RequestParameters = requestBody.decodeFromPostBody()
                     externalAuthorizationServer.par(authnRequest, request.toRequestInfo()).fold(
                         onSuccess = {
                             respond(

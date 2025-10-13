@@ -26,6 +26,7 @@ import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.wallet.lib.oidvci.CodeService
 import at.asitplus.wallet.lib.oidvci.CredentialIssuer
 import at.asitplus.wallet.lib.oidvci.DefaultCodeService
@@ -123,6 +124,18 @@ class SimpleAuthorizationService(
         /** Not necessary to load the authn request referenced by `request_uri`. */
         buildRequestObjectParameters = { null }
     ),
+    /**
+     * Sets [OAuth2AuthorizationServerMetadata.requirePushedAuthorizationRequests],
+     * must be set to `true` for OID4VC HAIP
+     */
+    private val requirePushedAuthorizationRequests: Boolean = true,
+    /**
+     * Sets [OAuth2AuthorizationServerMetadata.requestObjectSigningAlgorithmsSupported].
+     * Currently, we only support [JwsAlgorithm.Signature.ES256].
+     * If set the client MAY wrap [RequestParameters] as [JarRequestParameters]
+     * - this is the default behaviour of [at.asitplus.wallet.lib.ktor.openid.OAuth2KtorClient]
+     */
+    private val requestObjectSigningAlgorithms: Set<JwsAlgorithm.Signature>? = setOf(JwsAlgorithm.Signature.ES256),
 ) : OAuth2AuthorizationServerAdapter, AuthorizationService {
 
     @Deprecated("Use [validateAccessToken] instead")
@@ -138,9 +151,11 @@ class SimpleAuthorizationService(
             userInfoEndpoint = "$publicContext$userInfoEndpointPath",
             introspectionEndpoint = "$publicContext$introspectionEndpointPath",
             introspectionEndpointAuthMethodsSupported = setOf(AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH),
-            requirePushedAuthorizationRequests = true, // per OID4VC HAIP
+            requirePushedAuthorizationRequests = requirePushedAuthorizationRequests,
             tokenEndPointAuthMethodsSupported = setOf(AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH), // per OID4VC HAIP
             dpopSigningAlgValuesSupportedStrings = tokenService.dpopSigningAlgValuesSupportedStrings,
+            requestObjectSigningAlgorithmsSupportedStrings = requestObjectSigningAlgorithms?.map { it.identifier }
+                ?.toSet(),
             grantTypesSupported = setOfNotNull(
                 OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE,
                 OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE,

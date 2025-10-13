@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.catching
-import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
@@ -9,6 +8,7 @@ import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
@@ -26,8 +26,6 @@ import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oauth2.TokenService
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
-import at.asitplus.wallet.lib.oidvci.DefaultNonceService
-import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
@@ -53,32 +51,44 @@ class OAuth2KtorClientTest : FunSpec() {
     init {
         val strategy = CredentialAuthorizationServiceStrategy(setOf(EuPidScheme))
         val requestedScope = strategy.validScopes().split(" ").first()
-        setup(strategy)
 
-        test("auth code and token") {
-            client.startAuthorization(
-                oauthMetadata = authorizationService.metadata(),
-                authorizationServer = authorizationService.publicContext,
-                scope = requestedScope,
-            ).getOrThrow().also {
-                // Simulates the browser, handling authorization to get the authCode
-                val httpClient = HttpClient(mockEngine) { followRedirects = false }
-                val authCodeUrl = httpClient.get(it.url).headers[HttpHeaders.Location].shouldNotBeNull()
-                client.requestTokenWithAuthCode(
+        listOf<Pair<Boolean, Set<JwsAlgorithm.Signature>?>>(
+            false to null,
+            false to setOf(JwsAlgorithm.Signature.ES256),
+            true to null,
+            true to setOf(JwsAlgorithm.Signature.ES256),
+        ).forEach { (requirePAR, enableJAR) ->
+            test("auth code and token; JAR=${enableJAR != null} PAR=$requirePAR") {
+                setup(strategy, enableJAR, requirePAR)
+                client.startAuthorization(
                     oauthMetadata = authorizationService.metadata(),
-                    url = authCodeUrl,
                     authorizationServer = authorizationService.publicContext,
-                    state = it.state,
                     scope = requestedScope,
-                    authorizationDetails = setOf()
                 ).getOrThrow().also {
-                    it.params.accessToken.shouldNotBeNull()
+                    // Simulates the browser, handling authorization to get the authCode
+                    val httpClient = HttpClient(mockEngine) { followRedirects = false }
+                    val authCodeUrl = httpClient.get(it.url).headers[HttpHeaders.Location].shouldNotBeNull()
+                    client.requestTokenWithAuthCode(
+                        oauthMetadata = authorizationService.metadata(),
+                        url = authCodeUrl,
+                        authorizationServer = authorizationService.publicContext,
+                        state = it.state,
+                        scope = requestedScope,
+                        authorizationDetails = setOf()
+                    ).getOrThrow().also {
+                        it.params.accessToken.shouldNotBeNull()
+                    }
                 }
             }
+
         }
     }
 
-    private fun setup(strategy: CredentialAuthorizationServiceStrategy) {
+    private fun setup(
+        strategy: CredentialAuthorizationServiceStrategy,
+        requestObjectSigningAlgorithms: Set<JwsAlgorithm.Signature>?,
+        requirePAR: Boolean
+    ) {
         dpopKeyMaterial = EphemeralKeyWithoutCert()
         clientAuthKeyMaterial = EphemeralKeyWithoutCert()
         val authorizationEndpointPath = "/authorize"
@@ -97,6 +107,8 @@ class OAuth2KtorClientTest : FunSpec() {
             tokenService = TokenService.jwt(
                 issueRefreshTokens = true
             ),
+            requestObjectSigningAlgorithms = requestObjectSigningAlgorithms,
+            requirePushedAuthorizationRequests = requirePAR,
         )
         mockEngine = MockEngine { request ->
             when {
@@ -112,8 +124,7 @@ class OAuth2KtorClientTest : FunSpec() {
 
                 request.url.fullPath.startsWith(parEndpointPath) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
-                    val authnRequest: AuthenticationRequestParameters =
-                        requestBody.decodeFromPostBody<AuthenticationRequestParameters>()
+                    val authnRequest: RequestParameters = requestBody.decodeFromPostBody()
                     authorizationService.par(authnRequest, request.toRequestInfo()).fold(
                         onSuccess = {
                             respond(
