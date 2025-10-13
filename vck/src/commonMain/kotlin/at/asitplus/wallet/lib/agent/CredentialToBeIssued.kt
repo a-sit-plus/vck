@@ -31,7 +31,7 @@ sealed class CredentialToBeIssued {
         override val userInfo: OidcUserInfoExtended,
         /** Implement to add type metadata field */
         val modifyHeader: JwsHeaderModifierFun = JwsHeaderModifierFun { it },
-        val sdAlgorithm: Digest? = null
+        val sdAlgorithm: Digest = Digest.SHA256
     ) : CredentialToBeIssued()
 
     data class Iso(

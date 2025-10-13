@@ -195,7 +195,7 @@ class IssuerAgent(
             issuedAt = issuanceDate,
             jwtId = vcId,
             verifiableCredentialType = credential.scheme.sdJwtType ?: credential.scheme.schemaUri,
-            selectiveDisclosureAlgorithm = credential.sdAlgorithm?.toIanaName(),
+            selectiveDisclosureAlgorithm = credential.sdAlgorithm.toIanaName(),
             confirmationClaim = cnf,
             statusElement = vckJsonSerializer.encodeToJsonElement(credentialStatus),
         )

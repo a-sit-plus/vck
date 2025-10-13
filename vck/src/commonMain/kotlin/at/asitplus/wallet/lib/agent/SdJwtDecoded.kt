@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.catchingUnwrapped
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.SdJwtConstants.NAME_SD
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
@@ -33,7 +34,7 @@ class SdJwtDecoded(sdJwtSigned: SdJwtSigned) {
     private val _validDisclosures = mutableMapOf<String, SelectiveDisclosureItem>()
 
     /** Per 7.1 Verification of the SD-JWT in the spec */
-    private val filteredClaims = listOf("_sd_alg", "...")
+    private val filteredClaims = listOf(SdJwtConstants.SD_ALG, "...")
 
     /** Map of serialized disclosure item (as [String]) to parsed item (as [SelectiveDisclosureItem]) */
     val validDisclosures: Map<String, SelectiveDisclosureItem>
@@ -42,12 +43,13 @@ class SdJwtDecoded(sdJwtSigned: SdJwtSigned) {
     val reconstructedJsonObject: JsonObject?
 
     init {
-        val digest = sdJwtSigned.jws.payload.jsonObject["_sd_alg"]?.jsonPrimitive?.content.toDigest()
+        val digest = sdJwtSigned.jws.payload.jsonObject[SdJwtConstants.SD_ALG]?.jsonPrimitive?.content.toDigest()
+            ?: Digest.SHA256
         reconstructedJsonObject = sdJwtSigned.getPayloadAsJsonObject().getOrNull()?.reconstructValues(digest)
         validDisclosures = _validDisclosures.toMap()
     }
 
-    private fun JsonObject.reconstructValues(digest: Digest?): JsonObject = buildJsonObject {
+    private fun JsonObject.reconstructValues(digest: Digest): JsonObject = buildJsonObject {
         forEach { element ->
             val sdArray = element.asSdArray()
             val jsonObject = element.value as? JsonObject
@@ -66,7 +68,7 @@ class SdJwtDecoded(sdJwtSigned: SdJwtSigned) {
         }
     }
 
-    private fun JsonArray.reconstructValues(digest: Digest?) = buildJsonArray {
+    private fun JsonArray.reconstructValues(digest: Digest) = buildJsonArray {
         forEach { element ->
             val sdArrayEntry = element.asArrayDisclosure()
             val jsonObject = element as? JsonObject
@@ -85,7 +87,7 @@ class SdJwtDecoded(sdJwtSigned: SdJwtSigned) {
             this["..."] as JsonPrimitive
         else null
 
-    private fun JsonArrayBuilder.processSdItem(disclosure: JsonPrimitive, digest: Digest?) {
+    private fun JsonArrayBuilder.processSdItem(disclosure: JsonPrimitive, digest: Digest) {
         disclosure.toValidatedItem(digest)?.let { sdItem ->
             when (val claimValue = sdItem.claimValue) {
                 is JsonObject -> add(claimValue.reconstructValues(digest))
@@ -94,7 +96,7 @@ class SdJwtDecoded(sdJwtSigned: SdJwtSigned) {
         }
     }
 
-    private fun JsonObjectBuilder.processSdItem(disclosure: JsonPrimitive, digest: Digest?) {
+    private fun JsonObjectBuilder.processSdItem(disclosure: JsonPrimitive, digest: Digest) {
         disclosure.toValidatedItem(digest)?.let { sdItem ->
             when (val element = sdItem.claimValue) {
                 is JsonObject -> sdItem.claimName?.let { putIfNotEmpty(it, element.reconstructValues(digest)) }
@@ -103,7 +105,7 @@ class SdJwtDecoded(sdJwtSigned: SdJwtSigned) {
         }
     }
 
-    private fun JsonPrimitive.toValidatedItem(digest: Digest?): SelectiveDisclosureItem? =
+    private fun JsonPrimitive.toValidatedItem(digest: Digest): SelectiveDisclosureItem? =
         disclosures.firstOrNull { it.hashDisclosure(digest) == this.content }?.let { disclosure ->
             disclosure.toSdItem()
                 ?.also { _validDisclosures[disclosure] = it }

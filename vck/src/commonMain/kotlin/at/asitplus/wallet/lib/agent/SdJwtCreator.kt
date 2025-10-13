@@ -4,6 +4,7 @@ import at.asitplus.signum.indispensable.Digest
 import at.asitplus.wallet.lib.agent.SdJwtCreator.disallowedNames
 import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
+import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.SdJwtConstants.NAME_SD
 import at.asitplus.wallet.lib.data.SdJwtConstants.SD_ALG
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
@@ -34,7 +35,7 @@ object SdJwtCreator {
      */
     fun Collection<ClaimToBeIssued>.toSdJsonObject(
         randomSource: RandomSource = RandomSource.Secure,
-        digest: Digest? = null,
+        digest: Digest = Digest.SHA256,
     ): Pair<JsonObject, Collection<String>> = mutableListOf<String>().let { disclosures ->
         buildJsonObject {
             with(honorNotDisclosableClaims().customPartition()) {
@@ -55,7 +56,7 @@ object SdJwtCreator {
                     }
                 }
                 val dotNotationClaims: Collection<String> = dotNotation.groupByDots().mapNotNull { (key, claims) ->
-                    claims.toSdJsonObject(randomSource,digest).let {
+                    claims.toSdJsonObject(randomSource, digest).let {
                         disclosures.addAll(it.second)
                         put(key, it.first)
                         key.toSdItem(it.first, randomSource).toDisclosure()
@@ -84,10 +85,7 @@ object SdJwtCreator {
                 (objectClaimDigests + dotNotationClaims + dotNotationClaimsPlain + singleClaimsDigests).let { digests ->
                     if (digests.isNotEmpty()) {
                         putJsonArray(NAME_SD) { addAll(digests) }
-
-                        if (digest != null) {
-                            put(SD_ALG, digest.toIanaName().toJsonElement())
-                        }
+                        put(SD_ALG, digest.toIanaName().toJsonElement())
                     }
                 }
             }
@@ -138,7 +136,7 @@ object SdJwtCreator {
     )
 
     private val disallowedNames = listOf(
-        "_sd_alg", "..."
+        SdJwtConstants.SD_ALG, "..."
     )
 
     /**

@@ -147,7 +147,7 @@ private suspend fun issueVcSd(
         issuedAt = issuanceDate,
         jwtId = vcId,
         verifiableCredentialType = credential.scheme.sdJwtType ?: credential.scheme.schemaUri,
-        selectiveDisclosureAlgorithm = credential.sdAlgorithm?.toIanaName(),
+        selectiveDisclosureAlgorithm = credential.sdAlgorithm.toIanaName(),
         confirmationClaim = if (!buildCnf) null else
             ConfirmationClaim(jsonWebKey = credential.subjectPublicKey.toJsonWebKey())
     )
