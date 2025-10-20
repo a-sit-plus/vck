@@ -46,7 +46,7 @@ import kotlin.time.Clock
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlin.random.Random
 
-class IsoProcessTest by testSuite{
+val IsoProcessTest by testSuite{
 
     "issue, store, present, verify" {
         val wallet = Wallet()

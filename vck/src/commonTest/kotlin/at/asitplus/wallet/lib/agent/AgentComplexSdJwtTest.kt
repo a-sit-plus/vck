@@ -4,14 +4,9 @@ import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
-import at.asitplus.openid.dcql.DCQLClaimsPathPointer
-import at.asitplus.openid.dcql.DCQLClaimsQueryList
-import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
-import at.asitplus.openid.dcql.DCQLCredentialQueryList
-import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
-import at.asitplus.openid.dcql.DCQLQuery
-import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
-import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
+import at.asitplus.openid.dcql.*
+import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.minus
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
@@ -20,9 +15,9 @@ import at.asitplus.wallet.lib.data.CredentialPresentationRequest.PresentationExc
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import com.benasher44.uuid.uuid4
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
 import de.infix.testBalloon.framework.testSuite
-import at.asitplus.testballoon.minus
-import at.asitplus.testballoon.invoke
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.jsonObject
@@ -42,7 +37,7 @@ val AgentComplexSdJwtTest by testSuite {
     lateinit var challenge: String
     lateinit var verifierId: String
 
-    beforeEach {
+    TestConfig.aroundEach {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         holderCredentialStore = InMemorySubjectCredentialStore()
         issuer = IssuerAgent(
@@ -55,6 +50,7 @@ val AgentComplexSdJwtTest by testSuite {
         verifierId = "urn:${uuid4()}"
         verifier = VerifierAgent(identifier = verifierId)
         challenge = uuid4().toString()
+        it()
     }
 
     "when using presentation exchange" - {

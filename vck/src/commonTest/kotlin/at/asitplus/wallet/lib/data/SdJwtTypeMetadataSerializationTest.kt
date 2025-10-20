@@ -13,7 +13,7 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 
-class SdJwtTypeMetadataSerializationTest by testSuite{
+val SdJwtTypeMetadataSerializationTest by testSuite{
 
     "Deserialization is correct for EHIC" {
         val input = """{

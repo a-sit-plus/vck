@@ -30,7 +30,7 @@ import kotlinx.serialization.encodeToByteArray
 import kotlin.random.Random
 import kotlin.random.nextUInt
 
-class DeviceSignedItemSerializationTest by testSuite{
+val DeviceSignedItemSerializationTest by testSuite{
 
     "serialization with String" {
         val namespace = uuid4().toString()

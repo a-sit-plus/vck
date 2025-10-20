@@ -7,6 +7,8 @@ import at.asitplus.wallet.lib.agent.KeyMaterial
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.testSuite
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -26,12 +28,13 @@ val JwsServiceTest by testSuite {
     lateinit var verifierJwsService: VerifyJwsObjectFun
     lateinit var randomPayload: String
 
-    beforeEach {
+    TestConfig.aroundEach {
         keyId = Random.nextBytes(16).encodeToString(Base64())
         keyMaterial = EphemeralKeyWithoutCert(customKeyId = keyId)
         signJwt = SignJwt(keyMaterial, JwsHeaderCertOrJwk())
         verifierJwsService = VerifyJwsObject()
         randomPayload = uuid4().toString()
+        it()
     }
 
     "signed object with bytes can be verified" {

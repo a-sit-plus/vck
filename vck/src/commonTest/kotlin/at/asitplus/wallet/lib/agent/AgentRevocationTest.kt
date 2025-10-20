@@ -15,10 +15,12 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.extensions.toView
-import io.kotest.assertions.fail
 import de.infix.testBalloon.framework.testSuite
 import at.asitplus.testballoon.minus
 import at.asitplus.testballoon.invoke
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import io.kotest.assertions.AssertionErrorBuilder.Companion.fail
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
@@ -36,7 +38,7 @@ val AgentRevocationTest by testSuite {
     lateinit var statusListIssuer: StatusListIssuer
     lateinit var expectedRevokedIndexes: List<ULong>
 
-    beforeEach {
+    TestConfig.aroundEach {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         issuer = IssuerAgent(
             issuerCredentialStore = issuerCredentialStore,
@@ -46,6 +48,7 @@ val AgentRevocationTest by testSuite {
         statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
         verifierKeyMaterial = EphemeralKeyWithoutCert()
         expectedRevokedIndexes = issuerCredentialStore.revokeRandomCredentials()
+        it()
     }
 
     "revocation list should contain indices of revoked credential" {

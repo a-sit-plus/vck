@@ -20,6 +20,8 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.testSuite
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -46,7 +48,7 @@ val AgentTest by testSuite {
     lateinit var validator: Validator
     lateinit var verifierId: String
 
-    beforeEach {
+    TestConfig.aroundEach {
         validator = Validator(
             tokenStatusResolver = TokenStatusResolverImpl(
                 resolveStatusListToken = {
@@ -87,6 +89,7 @@ val AgentTest by testSuite {
             validatorMdoc = ValidatorMdoc(validator = validator),
         )
         challenge = uuid4().toString()
+        it()
     }
 
     "when using presentation exchange" - {

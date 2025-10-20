@@ -19,6 +19,8 @@ import at.asitplus.wallet.lib.jws.SignJwtFun
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.testSuite
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -32,7 +34,7 @@ import kotlin.time.Clock
 import kotlin.random.Random
 
 
-class ValidatorVpTest by testSuite{
+val ValidatorVpTest by testSuite{
 
     val singularPresentationDefinition = PresentationExchangePresentation(
         CredentialPresentationRequest.PresentationExchangeRequest(
@@ -55,7 +57,7 @@ class ValidatorVpTest by testSuite{
     lateinit var verifier: Verifier
     lateinit var challenge: String
 
-    beforeEach {
+    TestConfig.aroundEach {
         validator = ValidatorVcJws(
             validator = Validator(
                 tokenStatusResolver = TokenStatusResolverImpl(
@@ -105,6 +107,7 @@ class ValidatorVpTest by testSuite{
                 ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         ).getOrThrow()
+        it()
     }
 
     "correct challenge in VP leads to Success" {

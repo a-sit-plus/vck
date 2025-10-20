@@ -27,7 +27,7 @@ import kotlinx.serialization.builtins.ByteArraySerializer
 import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 
-class CoseServiceJvmTest by testSuite{
+val CoseServiceJvmTest by testSuite{
 
     val configurations: List<Pair<String, Int>> =
         listOf(
@@ -193,4 +193,4 @@ class CoseServiceJvmTest by testSuite{
             }
         }
     }
-})
+}

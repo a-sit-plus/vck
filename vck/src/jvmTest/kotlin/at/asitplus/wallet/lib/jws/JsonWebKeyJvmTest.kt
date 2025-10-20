@@ -5,6 +5,8 @@ import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.wallet.lib.ensureSize
 import de.infix.testBalloon.framework.testSuite
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -15,16 +17,17 @@ import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.interfaces.ECPublicKey
 
-class JsonWebKeyJvmTest by testSuite{
+val JsonWebKeyJvmTest by testSuite{
 
     lateinit var ecCurve: ECCurve
     lateinit var keyPair: KeyPair
 
-    beforeTest {
+    TestConfig.aroundEach {
         ecCurve = ECCurve.SECP_256_R_1
         keyPair = KeyPairGenerator.getInstance("EC").also {
             it.initialize(256)
         }.genKeyPair()
+        it()
     }
 
     "JWK can be created from Coordinates" - {

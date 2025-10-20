@@ -9,6 +9,8 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import de.infix.testBalloon.framework.testSuite
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -21,7 +23,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.decodeFromByteArray
 
-class StoreEntrySerializationTest by testSuite{
+val StoreEntrySerializationTest by testSuite{
 
     lateinit var issuer: Issuer
     lateinit var holder: Holder
@@ -29,7 +31,7 @@ class StoreEntrySerializationTest by testSuite{
     lateinit var issuerCredentialStore: IssuerCredentialStore
     lateinit var holderCredentialStore: SubjectCredentialStore
 
-    beforeEach {
+    TestConfig.aroundEach {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         holderCredentialStore = InMemorySubjectCredentialStore()
         issuer = IssuerAgent(
@@ -40,6 +42,7 @@ class StoreEntrySerializationTest by testSuite{
         )
         holderKeyMaterial = EphemeralKeyWithoutCert()
         holder = HolderAgent(holderKeyMaterial, holderCredentialStore)
+        it()
     }
 
     "serialize stored VC" {

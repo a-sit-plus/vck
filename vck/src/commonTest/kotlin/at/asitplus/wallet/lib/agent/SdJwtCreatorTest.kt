@@ -15,7 +15,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import kotlinx.serialization.json.jsonArray
 
-class SdJwtCreatorTest by testSuite{
+val SdJwtCreatorTest by testSuite{
 
     "name can be selectively disclosed" {
         listOfClaims("name").toSdJsonObject(RandomSource.Default).apply {

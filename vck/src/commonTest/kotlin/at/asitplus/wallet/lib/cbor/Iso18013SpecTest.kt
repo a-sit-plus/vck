@@ -11,6 +11,8 @@ import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import de.infix.testBalloon.framework.testSuite
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -23,9 +25,9 @@ import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.decodeFromByteArray
 
-class Iso18013SpecTest by testSuite{
+val Iso18013SpecTest by testSuite{
 
-    beforeSpec {
+    TestConfig.aroundEach {
         CborCredentialSerializer.register(
             serializerMap = mapOf(
                 "issue_date" to LocalDate.serializer(),
@@ -33,6 +35,7 @@ class Iso18013SpecTest by testSuite{
             ),
             isoNamespace = "org.iso.18013.5.1"
         )
+        it()
     }
 
     // From ISO/IEC 18013-5:2021(E), D4.1.1, page 115

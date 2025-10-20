@@ -14,7 +14,7 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.KeyStore
 import java.security.Security
 
-class KeyStoreMaterialTest by testSuite{
+val KeyStoreMaterialTest by testSuite{
 
     val ks = KeyStore.getInstance("JKS")
     ks.load(KeyStoreMaterial::class.java.getResourceAsStream("/pw_bar_kpw_foo_alias_foo.jks"), "bar".toCharArray())
@@ -49,5 +49,4 @@ class KeyStoreMaterialTest by testSuite{
 
         material.getCertificate().shouldNotBeNull()
     }
-
-})
+}

@@ -20,6 +20,8 @@ import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import de.infix.testBalloon.framework.testSuite
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -37,7 +39,7 @@ import kotlin.random.Random
 import kotlin.time.Clock
 
 @OptIn(ExperimentalSerializationApi::class)
-class CoseServiceTest by testSuite{
+val CoseServiceTest by testSuite{
 
     lateinit var signCose: SignCoseFun<ByteArray>
     lateinit var signCoseNothing: SignCoseFun<Nothing>
@@ -52,7 +54,7 @@ class CoseServiceTest by testSuite{
     lateinit var macCoseDetached: MacCoseDetachedFun<ByteArray>
     lateinit var macCoseKey: CoseKey
 
-    beforeEach {
+    TestConfig.aroundEach {
         val signKeyMaterial = EphemeralKeyWithoutCert()
         signCose = SignCose(signKeyMaterial)
         signCoseNothing = SignCose(signKeyMaterial)
@@ -68,6 +70,7 @@ class CoseServiceTest by testSuite{
         macCoseMso = MacCose(macCoseKey)
         macCoseNothing = MacCose(macCoseKey)
         macCoseDetached = MacCoseDetached(macCoseKey)
+        it()
     }
 
     // "T" translates to 54 hex = "bytes(20)" in CBOR meaning,

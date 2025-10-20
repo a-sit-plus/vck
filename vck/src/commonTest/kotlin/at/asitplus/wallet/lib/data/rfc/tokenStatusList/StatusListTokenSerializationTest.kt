@@ -16,7 +16,7 @@ import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
 
-class StatusListTokenSerializationTest by testSuite{
+val StatusListTokenSerializationTest by testSuite{
     val jsonStatusListTokenPayloadTestVectors =
         mapOf<String, Pair<String, Map<String, (StatusListTokenPayload) -> Unit>>>(
             Pair(
@@ -59,7 +59,7 @@ class StatusListTokenSerializationTest by testSuite{
     "jwt status list token payload" - {
         "deserialization" - {
             withData(
-                data = jsonStatusListTokenPayloadTestVectors
+                jsonStatusListTokenPayloadTestVectors
             ) { (it, assertions) ->
                 val value = Json.decodeFromString<StatusListTokenPayload>(it)
                 withData(assertions) {
@@ -76,4 +76,4 @@ class StatusListTokenSerializationTest by testSuite{
             }
         }
     }
-})
+}

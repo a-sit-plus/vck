@@ -21,7 +21,7 @@ import kotlinx.serialization.encodeToByteArray
  * as defined by ISO/IEC 18013-5:2021
  */
 @OptIn(ExperimentalSerializationApi::class)
-class Tag0SerializationTest by testSuite{
+val Tag0SerializationTest by testSuite{
 
     "ValidityInfo" {
         val input = ValidityInfo(

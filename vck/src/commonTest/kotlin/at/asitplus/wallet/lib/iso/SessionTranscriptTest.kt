@@ -22,7 +22,7 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
 
-class SessionTranscriptTest by testSuite{
+val SessionTranscriptTest by testSuite{
 
     "Local presentation with NFC Handover" {
         val expectedEncodedSessionTranscript = """
