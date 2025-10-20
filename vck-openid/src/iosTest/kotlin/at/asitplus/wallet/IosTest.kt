@@ -4,4 +4,4 @@ import at.asitplus.test.FreeSpec
 import kotlin.experimental.ExperimentalNativeApi
 
 @OptIn(ExperimentalNativeApi::class)
-class iosOnlyTest : FreeSpec({ "should run on on ${Platform}"{} })
+class iosOnlyTest by testSuite{ "should run on on ${Platform}"{} })

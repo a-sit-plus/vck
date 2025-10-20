@@ -19,7 +19,7 @@ import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.GIVEN_NAME
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.*
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSingleElement
@@ -27,7 +27,7 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.provided.at.asitplus.wallet.lib.openid.FixedNonceService
 
-class OpenId4VpIsoProtocolTest : FreeSpec({
+class OpenId4VpIsoProtocolTest by testSuite{
 
     lateinit var clientId: String
     lateinit var walletUrl: String

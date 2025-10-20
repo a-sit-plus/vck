@@ -220,8 +220,7 @@ class PresentationExchangeInputEvaluatorTest : FunSpec({
             shouldHaveSize(1)
         }
     }
-})
-
+}
 private fun arrayFilter(elementIdentifier: String): ConstraintField = ConstraintField(
     path = listOf("$.$elementIdentifier"),
     filter = ConstraintFilter(

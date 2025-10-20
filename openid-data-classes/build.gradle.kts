@@ -1,4 +1,6 @@
 import at.asitplus.gradle.*
+import org.gradle.kotlin.dsl.withType
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     id("at.asitplus.gradle.vclib-conventions")
@@ -10,10 +12,9 @@ group = "at.asitplus.wallet"
 version = artifactVersion
 
 
+vckAndroid()
 kotlin {
-
     jvm()
-    vckAndroid()
     iosArm64()
     iosSimulatorArm64()
     iosX64()

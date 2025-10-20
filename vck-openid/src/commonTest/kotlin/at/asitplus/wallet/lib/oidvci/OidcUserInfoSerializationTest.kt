@@ -49,8 +49,7 @@ class OidcUserInfoSerializationTest : FunSpec({
         joseCompliantSerializer.decodeFromString<OidcUserInfoExtended>(serialized) shouldBe user
     }
 
-})
-
+}
 private fun OidcUserInfoExtended.shouldHaveKey(key: String): JsonPrimitive {
     jsonObject[key].apply {
         shouldBeInstanceOf<JsonPrimitive>()

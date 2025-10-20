@@ -218,4 +218,4 @@ class OAuth2ClientTest : FunSpec({
         }
     }
 
-})
+}

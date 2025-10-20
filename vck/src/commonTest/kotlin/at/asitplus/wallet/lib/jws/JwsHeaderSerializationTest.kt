@@ -19,7 +19,11 @@ import com.benasher44.uuid.uuid4
 import com.ionspin.kotlin.bignum.integer.BigInteger
 import com.ionspin.kotlin.bignum.integer.Sign
 import com.ionspin.kotlin.bignum.modular.ModularBigInteger
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.testSuite
+import at.asitplus.testballoon.*
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -28,7 +32,7 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.time.Clock
 import kotlin.random.Random
 
-class JwsHeaderSerializationTest : FreeSpec({
+val JwsHeaderSerializationTest by testSuite {
 
     "Serialization contains x5c as strings" {
         val first = randomCertificate()
@@ -74,7 +78,7 @@ class JwsHeaderSerializationTest : FreeSpec({
         parsed.certificateChain?.shouldContain(second)
     }
 
-})
+}
 
 private fun randomCertificate() = X509Certificate(
     TbsCertificate(

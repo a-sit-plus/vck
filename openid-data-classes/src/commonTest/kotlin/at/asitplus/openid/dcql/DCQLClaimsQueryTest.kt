@@ -1,6 +1,8 @@
 package at.asitplus.openid.dcql
 
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.minus
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -8,7 +10,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 
-class DCQLClaimsQueryTest : FreeSpec({
+val DCQLClaimsQueryTest by testSuite{
     "specification" - {
         "serial names" {
             DCQLClaimsQuery.SerialNames.ID shouldBe "id"
@@ -49,4 +51,4 @@ class DCQLClaimsQueryTest : FreeSpec({
             DCQLJsonClaimsQuery.SerialNames.PATH shouldBeIn serialized.jsonObject.keys
         }
     }
-})
+}

@@ -18,13 +18,13 @@ import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.fail
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.*
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-class OpenId4VpCombinedProtocolTest : FreeSpec({
+class OpenId4VpCombinedProtocolTest by testSuite{
 
     lateinit var clientId: String
     lateinit var holderKeyMaterial: KeyMaterial

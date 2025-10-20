@@ -16,7 +16,9 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.extensions.toView
 import io.kotest.assertions.fail
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.testSuite
+import at.asitplus.testballoon.minus
+import at.asitplus.testballoon.invoke
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
@@ -26,7 +28,7 @@ import kotlinx.serialization.json.Json
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
-class AgentRevocationTest : FreeSpec({
+val AgentRevocationTest by testSuite {
 
     lateinit var issuerCredentialStore: IssuerCredentialStore
     lateinit var verifierKeyMaterial: KeyMaterial
@@ -174,7 +176,7 @@ class AgentRevocationTest : FreeSpec({
 
         verifyStatusList(revocationList, expectedRevokedIndexes)
     }
-})
+}
 
 
 private fun verifyStatusList(statusList: StatusList, expectedRevokedIndexes: List<ULong>) {

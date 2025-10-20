@@ -64,7 +64,7 @@ gradlePlugin {
 
 tasks.withType<KotlinCompile>().configureEach {
     kotlinOptions {
-        freeCompilerArgs = freeCompilerArgs + "-Xcontext-receivers"
+        freeCompilerArgs = freeCompilerArgs + "-Xcontext-paramaters"
     }
 }
 

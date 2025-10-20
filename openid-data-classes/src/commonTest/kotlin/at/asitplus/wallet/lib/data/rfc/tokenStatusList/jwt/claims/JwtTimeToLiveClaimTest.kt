@@ -1,15 +1,14 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList.jwt.claims
 
-import io.kotest.core.spec.style.FreeSpec
-import io.kotest.datatest.withData
+import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.minus
+import at.asitplus.testballoon.withData
+import at.asitplus.testballoon.withDataSuites
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.shouldBe
-import kotlin.time.Clock
-import kotlin.time.Instant
-import kotlin.time.Duration
-import kotlin.time.DurationUnit
-import kotlin.time.toDuration
+import kotlin.time.*
 
-class JwtTimeToLiveClaimTest : FreeSpec({
+val JwtTimeToLiveClaimTest by testSuite{
     "specification robustness" {
         JwtTimeToLiveClaim.Specification.CLAIM_NAME shouldBe "ttl"
     }
@@ -29,7 +28,7 @@ class JwtTimeToLiveClaimTest : FreeSpec({
         val inOneHour = now.plus(oneHour)
 
         "value" - {
-            withData(
+            withDataSuites(
                 mapOf<String, Pair<List<Duration>, Boolean>>(
                     "negative duration" to Pair(
                         listOf(
@@ -67,7 +66,7 @@ class JwtTimeToLiveClaimTest : FreeSpec({
         }
 
 
-        withData(
+        withDataSuites(
             mapOf<String, Pair<List<Pair<Instant, Duration>>, Boolean>>(
                 "past to past" to Pair(
                     listOf(
@@ -113,4 +112,4 @@ class JwtTimeToLiveClaimTest : FreeSpec({
             }
         }
     }
-})
+}

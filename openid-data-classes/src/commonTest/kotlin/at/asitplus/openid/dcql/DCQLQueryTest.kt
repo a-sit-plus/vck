@@ -3,26 +3,23 @@ package at.asitplus.openid.dcql
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.minus
+import at.asitplus.testballoon.withData
+import at.asitplus.testballoon.withDataSuites
 import com.benasher44.uuid.uuid4
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrowAny
-import io.kotest.core.spec.style.FreeSpec
-import io.kotest.datatest.withData
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.maps.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.encodeToJsonElement
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.put
+import kotlinx.serialization.json.*
 import kotlin.random.Random
 
-class DCQLQueryTest : FreeSpec({
+val DCQLQueryTest by testSuite{
     "specification" - {
         "serial names" {
             DCQLQuery.SerialNames.CREDENTIALS shouldBe "credentials"
@@ -77,7 +74,7 @@ class DCQLQueryTest : FreeSpec({
 
             "failing" - {
                 withData(
-                    data = mapOf(
+                     mapOf(
                         "empty database" to listOf<TestCredential>(),
                         "iso mdoc database" to listOf<TestCredential>(
                             TestCredential.MdocCredential(
@@ -128,7 +125,7 @@ class DCQLQueryTest : FreeSpec({
 
             "success" - {
                 withData(
-                    data = mapOf(
+                     mapOf(
                         "empty database" to listOf<TestCredential>(
                             TestCredential.SdJwtCredential(
                                 type = "https://credentials.example.com/identity_credential",
@@ -228,7 +225,7 @@ class DCQLQueryTest : FreeSpec({
 
             "failing" - {
                 withData(
-                    data = mapOf(
+                     mapOf(
                         "empty database" to listOf<TestCredential>(),
                         "iso mdoc database with only partial matches" to listOf<TestCredential>(
                             TestCredential.MdocCredential(
@@ -282,7 +279,7 @@ class DCQLQueryTest : FreeSpec({
 
             "success" - {
                 withData(
-                    data = mapOf(
+                   mapOf(
                         "empty database" to listOf<TestCredential>(
                             TestCredential.MdocCredential(
                                 documentType = "org.iso.7367.1.mVRC",
@@ -400,7 +397,7 @@ class DCQLQueryTest : FreeSpec({
 
             "failing" - {
                 withData(
-                    data = mapOf(
+                   mapOf(
                         "empty database" to listOf<TestCredential>(),
                         "database with only one matching credential 1" to listOf<TestCredential>(
                             TestCredential.MdocCredential(
@@ -437,7 +434,7 @@ class DCQLQueryTest : FreeSpec({
 
             "success" - {
                 withData(
-                    data = mapOf(
+                   mapOf(
                         "database with both matching credentials" to listOf<TestCredential>(
                             TestCredential.MdocCredential(
                                 documentType = "org.iso.7367.1.mVRC",
@@ -599,7 +596,7 @@ class DCQLQueryTest : FreeSpec({
 
             "failing" - {
                 withData(
-                    data = mapOf(
+                   mapOf(
                         "empty database" to listOf<TestCredential>(),
                         "database without reduced 2" to listOf(
                             reducedCred1,
@@ -625,7 +622,7 @@ class DCQLQueryTest : FreeSpec({
 
             "success" - {
                 withData(
-                    data = mapOf(
+                   mapOf(
                         "database with pid" to listOf(
                             pidCredential,
                         ),
@@ -834,7 +831,7 @@ class DCQLQueryTest : FreeSpec({
 
             "failing" - {
                 withData(
-                    data = mapOf(
+                   mapOf(
                         "empty database" to listOf<TestCredential>(),
                         "only addresses" to listOf(
                             mdlAddressCred,
@@ -850,7 +847,7 @@ class DCQLQueryTest : FreeSpec({
 
             "success" - {
                 withData(
-                    data = mapOf(
+                   mapOf(
                         "database with mdl id" to listOf(
                             mdlIdCred
                         ),
@@ -1035,7 +1032,7 @@ class DCQLQueryTest : FreeSpec({
 
             "failing" - {
                 withData(
-                    data = mapOf(
+                   mapOf(
                         "empty database" to listOf<TestCredential>(),
                         "missing claims" to listOf(
                             acdCred,
@@ -1056,7 +1053,7 @@ class DCQLQueryTest : FreeSpec({
 
             "success" - {
                 withData(
-                    data = mapOf(
+                   mapOf(
                         "abeCred" to listOf(
                             abeCred
                         ),
@@ -1208,7 +1205,7 @@ class DCQLQueryTest : FreeSpec({
 
             "failing" - {
                 withData(
-                    data = mapOf(
+                   mapOf(
                         "empty database" to listOf<TestCredential>(),
                         "missing claims" to listOf(
                             missingAddress,
@@ -1229,7 +1226,7 @@ class DCQLQueryTest : FreeSpec({
 
             "success" - {
                 withData(
-                    data = mapOf(
+                   mapOf(
                         "valid1" to listOf(valid1),
                         "valid2" to listOf(valid2),
                     )
@@ -1241,8 +1238,8 @@ class DCQLQueryTest : FreeSpec({
     }
     "Manual written examples" - {
         "values" - {
-            withData(
-                data = mapOf(
+            withDataSuites(
+               mapOf(
                     // expected values json array, list of valid values, list of invalid values
                     "strings1" to Triple<String, List<Any?>, List<Any?>>(
                         """["expectedStringValue1", "2"]""",
@@ -1406,4 +1403,4 @@ class DCQLQueryTest : FreeSpec({
             }
         }
     }
-})
+}

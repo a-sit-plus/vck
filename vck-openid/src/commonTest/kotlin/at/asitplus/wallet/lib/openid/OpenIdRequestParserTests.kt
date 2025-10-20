@@ -6,7 +6,7 @@ import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.*
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -19,7 +19,7 @@ import kotlinx.serialization.json.JsonObject
 /**
  * Tests parsing OpenID4VP requests
  */
-class OpenIdRequestParserTests : FreeSpec({
+class OpenIdRequestParserTests by testSuite{
     lateinit var requestParser: RequestParser
 
     beforeEach {

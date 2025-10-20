@@ -6,11 +6,15 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.procedures.dcql.DCQLQueryAdapter
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.testSuite
+import at.asitplus.testballoon.*
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.maps.shouldHaveSize
 import kotlinx.serialization.json.Json
 
-class DCQLQueryProcedureAdapterTest : FreeSpec({
+class DCQLQueryProcedureAdapterTest by testSuite{
     "from bug issue 318" {
 
         val validator = Validator()

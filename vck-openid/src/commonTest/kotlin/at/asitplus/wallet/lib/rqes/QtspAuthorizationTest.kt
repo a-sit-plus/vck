@@ -10,12 +10,12 @@ import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.rqes.helper.DummyValueProvider
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.*
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
 
 
-class QtspAuthorizationTest : FreeSpec({
+class QtspAuthorizationTest by testSuite{
 
     val qtspAuthenticationService = SimpleQtspAuthorizationService(
         acceptedCredentials = setOf(ConstantIndex.AtomicAttribute2023),
@@ -54,6 +54,5 @@ class QtspAuthorizationTest : FreeSpec({
         qtspAuthenticationService.token(credentialTokenReq, null).getOrThrow()
     }
 
-})
-
+}
 private fun dummyUser(): OidcUserInfoExtended = OidcUserInfoExtended.deserialize("{\"sub\": \"foo\"}").getOrThrow()

@@ -22,13 +22,13 @@ import at.asitplus.wallet.lib.rqes.helper.DummyValueProvider
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.*
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-class RqesOpenId4VpHolderTest : FreeSpec({
+class RqesOpenId4VpHolderTest by testSuite{
 
     val dummyValueProvider = DummyValueProvider()
     val rqesWalletService = RqesWalletService(
@@ -191,8 +191,7 @@ class RqesOpenId4VpHolderTest : FreeSpec({
                 .shouldBe(request)
         }
     }
-})
-
+}
 val X509SignatureAlgorithm.digest: Digest
     get() = when (this) {
         is X509SignatureAlgorithm.ECDSA -> digest

@@ -1,16 +1,17 @@
 package at.asitplus.wallet.lib.data.rfc7519
 
+import at.asitplus.testballoon.minus
+import at.asitplus.testballoon.withData
 import at.asitplus.wallet.lib.data.rfc7519.primitives.NumericDate
-import io.kotest.core.spec.style.FreeSpec
-import io.kotest.datatest.withData
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.shouldBe
-import kotlin.time.Instant
 import kotlinx.serialization.json.Json
+import kotlin.time.Instant
 
-class NumericDateSerializationTest : FreeSpec({
+val NumericDateSerializationTest by testSuite{
     "simple tests" - {
         withData(
-            data = mapOf(
+           mapOf(
                 "epoch" to 0,
                 "sometime in the future" to Instant.Companion.DISTANT_FUTURE.epochSeconds,
                 "sometime in the past" to Instant.Companion.DISTANT_PAST.epochSeconds,
@@ -20,4 +21,4 @@ class NumericDateSerializationTest : FreeSpec({
             value.instant shouldBe Instant.Companion.fromEpochSeconds(it)
         }
     }
-})
+}

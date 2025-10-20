@@ -18,7 +18,11 @@ import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.testSuite
+import at.asitplus.testballoon.*
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -33,7 +37,7 @@ import kotlin.random.Random
 import kotlin.time.Clock
 
 @OptIn(ExperimentalSerializationApi::class)
-class CoseServiceTest : FreeSpec({
+class CoseServiceTest by testSuite{
 
     lateinit var signCose: SignCoseFun<ByteArray>
     lateinit var signCoseNothing: SignCoseFun<Nothing>
@@ -393,5 +397,4 @@ class CoseServiceTest : FreeSpec({
         maced.prepareCoseMacInput()
             .encodeToString(Base16Strict) shouldBe "84644D414330404054546869732069732074686520636F6E74656E742E"
     }
-})
-
+}

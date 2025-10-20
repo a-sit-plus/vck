@@ -5,12 +5,13 @@ import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwkType
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.testSuite
+import at.asitplus.testballoon.invoke
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 
-class JwkSerializationTest : FreeSpec({
+val JwkSerializationTest by testSuite {
 
     "Serialization contains P-256 as curve name" {
         val curve = ECCurve.SECP_256_R_1
@@ -50,4 +51,4 @@ class JwkSerializationTest : FreeSpec({
         parsed.keyId shouldBe kid
     }
 
-})
+}

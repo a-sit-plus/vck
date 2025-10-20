@@ -3,12 +3,12 @@ package at.asitplus.wallet.lib.rqes
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.SignatureRequestParameters
 import at.asitplus.wallet.lib.openid.RequestParser
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.*
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-class SignatureRequestParsingTests : FreeSpec({
+class SignatureRequestParsingTests by testSuite{
     val jwt = """
         eyJhbGciOiJSUzI1NiIsImtpZCI6ImRpZDpkcl9wb2M6c2lnIzEiLCJ0eXAiOiJvYXV0aC1hdXRoei1yZXErand0In0.eyJyZXNwb25zZV90eXBl
         Ijoic2lnbl9yZXF1ZXN0IiwiY2xpZW50X2lkIjoiaHR0cHM6Ly9hcHBzLmVnaXouZ3YuYXQvZHJpdmluZ2FwcCIsImNsaWVudF9pZF9zY2hlbWUi

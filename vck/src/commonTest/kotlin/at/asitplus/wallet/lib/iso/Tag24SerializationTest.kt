@@ -38,7 +38,11 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import io.kotest.assertions.withClue
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.testSuite
+import at.asitplus.testballoon.*
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.collections.shouldHaveAtLeastSize
 import io.kotest.matchers.maps.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -60,7 +64,7 @@ import kotlin.random.Random
  * as defined by ISO/IEC 18013-5:2021
  */
 @OptIn(ExperimentalSerializationApi::class)
-class Tag24SerializationTest : FreeSpec({
+class Tag24SerializationTest by testSuite{
 
     "DeviceSigned" {
         val input = DeviceSigned(
@@ -173,8 +177,7 @@ class Tag24SerializationTest : FreeSpec({
     }
 
 
-})
-
+}
 /**
  * Ensures serialization of this structure in [IssuerSigned.issuerAuth]:
  * ```

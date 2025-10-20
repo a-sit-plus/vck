@@ -22,13 +22,13 @@ import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrowAny
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.*
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.maps.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
+class OpenId4VpCombinedProtocolTwoStepTest by testSuite{
 
     lateinit var clientId: String
     lateinit var holderKeyMaterial: KeyMaterial

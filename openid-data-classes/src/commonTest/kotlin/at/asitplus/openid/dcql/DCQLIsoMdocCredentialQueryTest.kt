@@ -1,7 +1,8 @@
 package at.asitplus.openid.dcql
 
 import at.asitplus.openid.CredentialFormatEnum
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.invoke
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -9,7 +10,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 
-class DCQLIsoMdocCredentialQueryTest : FreeSpec({
+val DCQLIsoMdocCredentialQueryTest by testSuite{
     "serialization" {
         val value = DCQLIsoMdocCredentialQuery(
             id = DCQLCredentialQueryIdentifier("test"),
@@ -27,4 +28,4 @@ class DCQLIsoMdocCredentialQueryTest : FreeSpec({
         DCQLCredentialQuery.SerialNames.ID shouldBeIn serialized.jsonObject.keys
         DCQLCredentialQuery.SerialNames.FORMAT shouldBeIn serialized.jsonObject.keys
     }
-})
+}

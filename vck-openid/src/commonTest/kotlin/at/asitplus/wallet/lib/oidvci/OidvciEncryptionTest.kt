@@ -211,4 +211,4 @@ class OidvciEncryptionTest : FunSpec({
     }
 
 
-})
+}

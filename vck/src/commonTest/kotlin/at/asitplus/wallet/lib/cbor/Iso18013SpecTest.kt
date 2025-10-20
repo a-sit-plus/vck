@@ -9,7 +9,11 @@ import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.ValueDigestList
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.testSuite
+import at.asitplus.testballoon.*
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.matthewnelson.encoding.base16.Base16
@@ -19,7 +23,7 @@ import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.decodeFromByteArray
 
-class Iso18013SpecTest : FreeSpec({
+class Iso18013SpecTest by testSuite{
 
     beforeSpec {
         CborCredentialSerializer.register(
@@ -453,8 +457,7 @@ class Iso18013SpecTest : FreeSpec({
 
         coseSigned.serialize(MobileSecurityObject.serializer()).encodeToString(Base16(true)) shouldBe input
     }
-})
-
+}
 private fun ItemsRequestList.findItem(key: String) =
     entries.first { it.key == key }.value
 

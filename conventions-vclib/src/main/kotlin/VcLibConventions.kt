@@ -5,7 +5,6 @@ package at.asitplus.gradle
 import VcLibVersions
 import com.android.build.api.dsl.androidLibrary
 import com.android.build.api.variant.KotlinMultiplatformAndroidComponentsExtension
-import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.artifacts.VersionCatalog
 import org.gradle.api.artifacts.VersionCatalogsExtension
@@ -15,6 +14,7 @@ import org.gradle.kotlin.dsl.invoke
 import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinDependencyHandler
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 val Project.signumVersionCatalog: VersionCatalog
     get() = extensions.getByType<VersionCatalogsExtension>().named("signum")
@@ -49,9 +49,9 @@ inline fun KotlinDependencyHandler.commonImplementationDependencies() {
     implementation("net.orandja.obor:obor:${project.VcLibVersions.obor}")
 }
 
-class VcLibConventions : Plugin<Project> {
+class VcLibConventions : K2Conventions() {
     override fun apply(target: Project) {
-        target.pluginManager.apply("at.asitplus.gradle.conventions")
+        super.apply(target)
         if (target.rootProject != target) {
             target.pluginManager.apply("org.jetbrains.kotlin.multiplatform")
             target.pluginManager.apply("org.jetbrains.kotlin.plugin.serialization")
@@ -62,15 +62,24 @@ class VcLibConventions : Plugin<Project> {
             target.pluginManager.apply("maven-publish")
             //if we do this properly, cinterop (swift-klib) blows up, so we hack!
             target.afterEvaluate {
+
+                extensions.getByType<KotlinMultiplatformExtension>().apply {
+                    sourceSets.forEach {
+                        it.languageSettings.enableLanguageFeature("ContextParameters")
+                    }
+                    sourceSets.commonMain.get()
+                        .dependencies { implementation("at.asitplus.gradle:testballoon-shim:$buildDate") }
+                }
                 tasks.withType<Test>().configureEach {
                     maxHeapSize = "4G"
                 }
+
             }
         }
     }
 }
 
-fun Project.vckAndroid(minSdkOverride: Int? = null) = extensions.getByType<KotlinMultiplatformExtension>().apply  {
+fun Project.vckAndroid(minSdkOverride: Int? = null) = extensions.getByType<KotlinMultiplatformExtension>().apply {
     val namespace = "${project.group}.${project.name.replace('-', '.')}"
     androidLibrary {
         this.namespace = namespace
@@ -78,7 +87,7 @@ fun Project.vckAndroid(minSdkOverride: Int? = null) = extensions.getByType<Kotli
             project.logger.lifecycle("  \u001b[7m\u001b[1m" + "Overriding Android defaultConfig minSDK to $minSdkOverride for project ${project.name}" + "\u001b[0m")
             minSdk = it
         }
-        compileSdk=androidCompileSdk
+        compileSdk = androidCompileSdk
 
         withDeviceTestBuilder {
             sourceSetTreeName = "test"

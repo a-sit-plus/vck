@@ -34,7 +34,7 @@ import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.rqes.helper.DummyCredentialDataProvider
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.*
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -45,7 +45,7 @@ import io.ktor.http.*
 import io.ktor.utils.io.charsets.*
 import io.ktor.utils.io.core.*
 
-class KeyBindingTests : FreeSpec({
+class KeyBindingTests by testSuite{
 
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var holderAgent: Holder
@@ -299,8 +299,7 @@ class KeyBindingTests : FreeSpec({
                 .shouldBe(referenceHash)
         }
     }
-})
-
+}
 private fun malignTransactionData(): List<TransactionDataBase64Url> = listOf(
     QCertCreationAcceptance(
         credentialIds = setOf(),

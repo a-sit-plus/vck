@@ -20,7 +20,9 @@ import at.asitplus.wallet.lib.data.CredentialPresentationRequest.PresentationExc
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.testSuite
+import at.asitplus.testballoon.minus
+import at.asitplus.testballoon.invoke
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.jsonObject
@@ -29,7 +31,7 @@ import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
 
-class AgentComplexSdJwtTest : FreeSpec({
+val AgentComplexSdJwtTest by testSuite {
 
     lateinit var issuer: Issuer
     lateinit var holder: Holder
@@ -443,7 +445,7 @@ class AgentComplexSdJwtTest : FreeSpec({
                 }
         }
     }
-})
+}
 
 private fun nonsenseClaim(): ClaimToBeIssued = ClaimToBeIssued(uuid4().toString(), uuid4().toString())
 

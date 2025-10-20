@@ -3,13 +3,17 @@ package at.asitplus.wallet.lib.data
 import at.asitplus.data.NonEmptyList
 import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.testSuite
+import at.asitplus.testballoon.*
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 
-class SdJwtTypeMetadataSerializationTest : FreeSpec({
+class SdJwtTypeMetadataSerializationTest by testSuite{
 
     "Deserialization is correct for EHIC" {
         val input = """{
@@ -435,7 +439,6 @@ class SdJwtTypeMetadataSerializationTest : FreeSpec({
             schemaUriIntegrity shouldBe "sha256-He4fNeA4xvjLbh/e+rd9Hw3l60OS4tEliHE7NDYXRwA="
         }
     }
-})
-
+}
 private fun NonEmptyList<DCQLClaimsPathPointerSegment>.firstNamedSegment(): String? =
     filterIsInstance<DCQLClaimsPathPointerSegment.NameSegment>().map { it.name }.firstOrNull()

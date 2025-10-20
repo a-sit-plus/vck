@@ -10,11 +10,11 @@ import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.*
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.encodeToHexString
 
-class PresentationFactoryTest : FreeSpec({
+class PresentationFactoryTest by testSuite{
 
     lateinit var presentationFactory: PresentationFactory
 

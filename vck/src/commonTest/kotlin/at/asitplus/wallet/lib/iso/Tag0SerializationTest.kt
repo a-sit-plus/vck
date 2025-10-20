@@ -2,7 +2,11 @@ package at.asitplus.wallet.lib.iso
 
 import at.asitplus.iso.ValidityInfo
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.testSuite
+import at.asitplus.testballoon.*
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.matthewnelson.encoding.base16.Base16
@@ -17,7 +21,7 @@ import kotlinx.serialization.encodeToByteArray
  * as defined by ISO/IEC 18013-5:2021
  */
 @OptIn(ExperimentalSerializationApi::class)
-class Tag0SerializationTest : FreeSpec({
+class Tag0SerializationTest by testSuite{
 
     "ValidityInfo" {
         val input = ValidityInfo(
@@ -39,4 +43,4 @@ class Tag0SerializationTest : FreeSpec({
         coseCompliantSerializer.decodeFromByteArray<ValidityInfo>(serialized) shouldBe input
     }
 
-})
+}

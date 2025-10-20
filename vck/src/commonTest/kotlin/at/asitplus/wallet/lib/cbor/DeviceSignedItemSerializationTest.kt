@@ -15,7 +15,11 @@ import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.testSuite
+import at.asitplus.testballoon.*
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import io.matthewnelson.encoding.base16.Base16
@@ -26,7 +30,7 @@ import kotlinx.serialization.encodeToByteArray
 import kotlin.random.Random
 import kotlin.random.nextUInt
 
-class DeviceSignedItemSerializationTest : FreeSpec({
+class DeviceSignedItemSerializationTest by testSuite{
 
     "serialization with String" {
         val namespace = uuid4().toString()
@@ -91,4 +95,4 @@ class DeviceSignedItemSerializationTest : FreeSpec({
 
         coseCompliantSerializer.decodeFromByteArray<Document>(serialized) shouldBe doc
     }
-})
+}

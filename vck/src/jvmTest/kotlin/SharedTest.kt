@@ -1,4 +1,8 @@
 import io.kotest.core.platform
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.testSuite
+import at.asitplus.testballoon.*
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 
-class `Shared Andoid JVM Test` : FreeSpec({ "should work on $platform" { } })
+class `Shared Andoid JVM Test` by testSuite{ "should work on $platform" { } })

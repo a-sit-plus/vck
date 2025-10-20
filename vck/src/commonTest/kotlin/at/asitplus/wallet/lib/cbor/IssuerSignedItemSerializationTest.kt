@@ -24,7 +24,11 @@ import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.data.LocalDateOrInstant
 import at.asitplus.wallet.lib.data.LocalDateOrInstantSerializer
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.testSuite
+import at.asitplus.testballoon.*
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -45,7 +49,7 @@ import kotlin.random.Random
 import kotlin.random.nextUInt
 
 @OptIn(ExperimentalSerializationApi::class, ExperimentalStdlibApi::class)
-class IssuerSignedItemSerializationTest : FreeSpec({
+class IssuerSignedItemSerializationTest by testSuite{
 
     lateinit var elementId: String
     lateinit var namespace: String
@@ -323,6 +327,5 @@ class IssuerSignedItemSerializationTest : FreeSpec({
             .elementValue shouldBe LocalDate.parse("1965-01-01")
     }
 
-})
-
+}
 private fun String.toHex(): String = encodeToByteArray().encodeToString(Base16())

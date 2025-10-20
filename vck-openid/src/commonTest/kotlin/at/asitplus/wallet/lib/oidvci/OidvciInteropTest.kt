@@ -514,4 +514,4 @@ class OidvciInteropTest : FunSpec({
         parsed.dpopSigningAlgValuesSupported.shouldNotBeNull() shouldContain JwsAlgorithm.Signature.ES256
     }
 
-})
+}

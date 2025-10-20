@@ -17,7 +17,11 @@ import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.testSuite
+import at.asitplus.testballoon.*
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSize
@@ -28,7 +32,7 @@ import kotlin.time.Clock
 import kotlin.random.Random
 
 
-class ValidatorVpTest : FreeSpec({
+class ValidatorVpTest by testSuite{
 
     val singularPresentationDefinition = PresentationExchangePresentation(
         CredentialPresentationRequest.PresentationExchangeRequest(
@@ -291,4 +295,4 @@ class ValidatorVpTest : FreeSpec({
         verifier.verifyPresentationVcJwt(vpJws, challenge)
             .shouldBeInstanceOf<VerifyPresentationResult.ValidationError>()
     }
-})
+}

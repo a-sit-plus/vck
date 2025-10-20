@@ -140,8 +140,7 @@ class SerializationTest : FunSpec({
 
         vckJsonSerializer.decodeFromString<CredentialResponseParameters>(json) shouldBe params
     }
-})
-
+}
 val charPool = ('A'..'Z') + ('a'..'z') + ('0'..'9')
 
 fun randomString() = (1..16)

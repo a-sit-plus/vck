@@ -5,13 +5,17 @@ import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
 import at.asitplus.wallet.lib.data.SdJwtConstants
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.testSuite
+import at.asitplus.testballoon.*
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import kotlinx.serialization.json.jsonArray
 
-class SdJwtCreatorTest : FreeSpec({
+class SdJwtCreatorTest by testSuite{
 
     "name can be selectively disclosed" {
         listOfClaims("name").toSdJsonObject(RandomSource.Default).apply {
@@ -59,7 +63,7 @@ class SdJwtCreatorTest : FreeSpec({
         }
     }
 
-})
+}
 
 private fun listOfClaims(vararg claimName: String): List<ClaimToBeIssued> =
     claimName.map { ClaimToBeIssued(it, uuid4(), true) }

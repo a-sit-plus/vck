@@ -1,10 +1,11 @@
 package at.asitplus.wallet.lib.data.rfc7519.jwt.claims
 
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.invoke
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.shouldBe
 
-class JwtIssuedAtClaimTest : FreeSpec({
+val JwtIssuedAtClaimTest by testSuite{
     "specification robustness" {
         JwtIssuedAtClaim.Specification.CLAIM_NAME shouldBe "iat"
     }
-})
+}

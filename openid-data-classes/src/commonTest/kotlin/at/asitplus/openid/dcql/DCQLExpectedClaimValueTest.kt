@@ -1,12 +1,12 @@
 package at.asitplus.openid.dcql
 
-import io.kotest.core.spec.style.FreeSpec
-import io.kotest.datatest.withData
+import at.asitplus.testballoon.minus
+import at.asitplus.testballoon.withData
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-class DCQLExpectedClaimValueTest : FreeSpec({
+val DCQLExpectedClaimValueTest by testSuite{
     "serialization" - {
         withData(
             "-1", "0", "1", "false", "true", "other"
@@ -27,4 +27,4 @@ class DCQLExpectedClaimValueTest : FreeSpec({
             Json.decodeFromString<DCQLExpectedClaimValue>(it).shouldBeInstanceOf<DCQLExpectedClaimValue.BooleanValue>()
         }
     }
-})
+}

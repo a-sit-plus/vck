@@ -3,24 +3,19 @@ package at.asitplus.openid.dcql
 import at.asitplus.jsonpath.core.NodeListEntry
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
-import io.kotest.core.spec.style.FreeSpec
-import io.kotest.datatest.withData
+import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.minus
+import at.asitplus.testballoon.withData
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.util.encodeBase64
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonArray
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.encodeToJsonElement
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.long
+import io.ktor.util.*
+import kotlinx.serialization.json.*
 import kotlin.random.Random
 import kotlin.random.nextUInt
 
-class DCQLClaimsPathPointerSegmentTest : FreeSpec({
+val DCQLClaimsPathPointerSegmentTest by testSuite{
     "select" - {
         "null" {
             val selection = DCQLClaimsPathPointerSegment.NullSegment.query(
@@ -134,4 +129,4 @@ class DCQLClaimsPathPointerSegmentTest : FreeSpec({
             }
         }
     }
-})
+}

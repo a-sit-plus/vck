@@ -1,11 +1,12 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives
 
+import at.asitplus.testballoon.minus
+import at.asitplus.testballoon.withData
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.FreeSpec
-import io.kotest.datatest.withData
 
-class TokenStatusTest : FreeSpec({
+val TokenStatusTest by testSuite{
     "argument validation" - {
         withData(
             listOf(
@@ -35,4 +36,4 @@ class TokenStatusTest : FreeSpec({
             }
         }
     }
-})
+}

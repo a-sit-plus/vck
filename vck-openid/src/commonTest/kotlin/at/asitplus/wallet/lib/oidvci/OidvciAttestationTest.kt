@@ -178,8 +178,7 @@ class OidvciAttestationTest : FunSpec({
     }
 
 
-})
-
+}
 private fun buildClientWithKeyAttestation(): WalletService {
     val keyMaterial = EphemeralKeyWithoutCert()
     val signKeyAttestation = SignJwt<KeyAttestationJwt>(keyMaterial, JwsHeaderCertOrJwk())

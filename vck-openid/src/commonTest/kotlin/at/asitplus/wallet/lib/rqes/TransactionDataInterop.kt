@@ -14,7 +14,7 @@ import at.asitplus.wallet.lib.data.Base64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.randomString
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.*
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -34,7 +34,7 @@ import kotlin.random.Random
 /**
  * Test vectors taken from "Transaction Data entries as defined in D3.1: UC Specification WP3"
  */
-class TransactionDataInterop : FreeSpec({
+class TransactionDataInterop by testSuite{
 
     "Polymorphic Serialization is stable" {
         val input = QCertCreationAcceptance(

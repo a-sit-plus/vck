@@ -3,7 +3,11 @@ package at.asitplus.wallet.lib.jws
 import at.asitplus.signum.indispensable.ECCurve
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.wallet.lib.ensureSize
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.testSuite
+import at.asitplus.testballoon.*
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldHaveMinLength
@@ -11,7 +15,7 @@ import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.interfaces.ECPublicKey
 
-class JsonWebKeyJvmTest : FreeSpec({
+class JsonWebKeyJvmTest by testSuite{
 
     lateinit var ecCurve: ECCurve
     lateinit var keyPair: KeyPair
@@ -62,4 +66,4 @@ class JsonWebKeyJvmTest : FreeSpec({
         }
     }
 
-})
+}
