@@ -6,15 +6,12 @@ import java.io.ByteArrayOutputStream
 
 plugins {
     val kotlinVer = System.getenv("KOTLIN_VERSION_ENV")?.ifBlank { null } ?: libs.versions.kotlin.get()
-    val kotestVer = System.getenv("KOTEST_VERSION_ENV")?.ifBlank { null } ?: libs.versions.kotest.get()
-    val kspVer = System.getenv("KSP_VERSION_ENV")?.ifBlank { null } ?: "$kotlinVer-${libs.versions.ksp.get()}"
 
     id("at.asitplus.gradle.conventions") version "20250728"
-    id("io.kotest") version kotestVer
     kotlin("multiplatform") version kotlinVer apply false
     kotlin("plugin.serialization") version kotlinVer apply false
-    id("com.android.library") version libs.versions.agp.get() apply (false)
-    id("com.google.devtools.ksp") version kspVer
+    id("com.android.kotlin.multiplatform.library") version libs.versions.agp.get() apply (false)
+    id("de.infix.testBalloon") version libs.versions.testballoon.get() apply false
 }
 
 //access dokka plugin from conventions plugin's classpath in root project → no need to specify version

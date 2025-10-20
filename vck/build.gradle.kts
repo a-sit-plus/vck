@@ -3,13 +3,7 @@ import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree.Companion.test
 
 plugins {
-    id("com.android.library")
-    kotlin("multiplatform")
-    kotlin("plugin.serialization")
-
     id("at.asitplus.gradle.vclib-conventions")
-    id("org.jetbrains.dokka")
-    id("signing")
 }
 
 /* required for maven publication */
@@ -20,11 +14,7 @@ version = artifactVersion
 
 kotlin {
     jvm()
-    androidTarget {
-        @OptIn(ExperimentalKotlinGradlePluginApi::class)
-        instrumentedTestVariant.sourceSetTree.set(test)
-        publishLibraryVariants("release")
-    }
+    vckAndroid()
     iosArm64()
     iosSimulatorArm64()
     iosX64()
@@ -47,9 +37,6 @@ kotlin {
         }
     }
 }
-
-
-setupAndroid()
 
 exportXCFramework(
     name = "VckKmm",

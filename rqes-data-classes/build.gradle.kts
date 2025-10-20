@@ -1,19 +1,7 @@
-import at.asitplus.gradle.VcLibVersions
-import at.asitplus.gradle.exportXCFramework
-import at.asitplus.gradle.ktor
-import at.asitplus.gradle.napier
-import at.asitplus.gradle.setupAndroid
-import at.asitplus.gradle.setupDokka
-import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree.Companion.test
+import at.asitplus.gradle.*
 
 plugins {
-    id("com.android.library")
-    kotlin("multiplatform")
-    kotlin("plugin.serialization")
     id("at.asitplus.gradle.vclib-conventions")
-    id("org.jetbrains.dokka")
-    id("signing")
 }
 
 /* required for maven publication */
@@ -22,14 +10,10 @@ group = "at.asitplus.wallet"
 version = artifactVersion
 
 
+    vckAndroid()
 kotlin {
 
     jvm()
-    androidTarget {
-        @OptIn(ExperimentalKotlinGradlePluginApi::class)
-        instrumentedTestVariant.sourceSetTree.set(test)
-        publishLibraryVariants("release")
-    }
     iosArm64()
     iosSimulatorArm64()
     iosX64()
@@ -50,8 +34,6 @@ kotlin {
     }
 }
 
-
-setupAndroid()
 
 exportXCFramework(
     "RqesDataClasses",
