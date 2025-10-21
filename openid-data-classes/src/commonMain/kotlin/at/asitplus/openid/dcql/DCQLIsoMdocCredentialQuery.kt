@@ -20,20 +20,18 @@ data class DCQLIsoMdocCredentialQuery(
     @SerialName(DCQLCredentialQuery.SerialNames.MULTIPLE)
     override val multiple: Boolean? = false,
     @SerialName(DCQLCredentialQuery.SerialNames.TRUSTED_AUTHORITIES)
-    override val trustedAuthorities: List<String>? = null,
+    override val trustedAuthorities: NonEmptyList<DCQLTrustedAuthorityQueryEntry>? = null,
     @SerialName(DCQLCredentialQuery.SerialNames.REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING)
     override val requireCryptographicHolderBinding: Boolean? = true,
 ) : DCQLCredentialQuery {
     init {
-        validate(this)
+        validate()
     }
 
-    companion object {
-        fun validate(query: DCQLIsoMdocCredentialQuery) = query.run {
-            DCQLCredentialQuery.validate(this)
-            if (format != CredentialFormatEnum.MSO_MDOC) {
-                throw IllegalArgumentException("Value has an invalid format identifier in this context.")
-            }
+    override fun validate() {
+        super.validate()
+        if (format != CredentialFormatEnum.MSO_MDOC) {
+            throw IllegalArgumentException("Value has an invalid format identifier in this context.")
         }
     }
 }

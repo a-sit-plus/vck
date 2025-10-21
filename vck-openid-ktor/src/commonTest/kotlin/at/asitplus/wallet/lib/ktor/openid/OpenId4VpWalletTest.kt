@@ -343,12 +343,14 @@ val OpenId4VpWalletTest by testSuite {
                 )
             )
 
-            val credentialQuerySubmissions = mapOf(
-                DCQLCredentialQueryIdentifier("cred1") to DCQLCredentialSubmissionOption(
-                    credential = credential,
-                    matchingResult = matchingResult
+                val credentialQuerySubmissions = mapOf(
+                    DCQLCredentialQueryIdentifier("cred1") to listOf(
+                        DCQLCredentialSubmissionOption(
+                            credential = credential,
+                            matchingResult = matchingResult
+                        )
+                    )
                 )
-            )
 
             // TODO test with signed request
             val request = """

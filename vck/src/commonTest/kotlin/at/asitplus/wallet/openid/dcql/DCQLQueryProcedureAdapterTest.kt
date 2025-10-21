@@ -21,7 +21,6 @@ import kotlinx.serialization.json.Json
 
 val DCQLQueryProcedureAdapterTest by testSuite {
     "from bug issue 318" {
-
         val validator = Validator()
         val issuerCredentialStore = InMemoryIssuerCredentialStore()
         val holderCredentialStore = InMemorySubjectCredentialStore()

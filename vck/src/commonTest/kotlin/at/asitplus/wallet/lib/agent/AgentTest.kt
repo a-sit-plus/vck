@@ -12,14 +12,17 @@ package at.asitplus.wallet.lib.agent
  * see the "LICENSE" file for more details
  */
 
+import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
-import at.asitplus.openid.dcql.DCQLCredentialQueryInstance
 import at.asitplus.openid.dcql.DCQLCredentialQueryList
 import at.asitplus.openid.dcql.DCQLJwtVcCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.openid.dcql.DCQLW3CVerifiableCredentialMetadataAndValidityConstraints
+import at.asitplus.openid.dcql.DCQLW3CVerifiableCredentialQuery
+import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
@@ -271,7 +274,7 @@ val AgentTest by testSuite {
 
         val singularDCQLRequest = DCQLQuery(
             credentials = DCQLCredentialQueryList(
-                DCQLCredentialQueryInstance(
+                DCQLW3CVerifiableCredentialQuery(
                     id = DCQLCredentialQueryIdentifier(uuid4().toString()),
                     format = CredentialFormatEnum.JWT_VC,
                     meta = DCQLJwtVcCredentialMetadataAndValidityConstraints(
@@ -282,6 +285,10 @@ val AgentTest by testSuite {
                             )
                         )
                     )
+                    format = CredentialFormatEnum.JWT_VC,
+                    meta = DCQLW3CVerifiableCredentialMetadataAndValidityConstraints(
+                        typeValues = listOf(listOf("").toNonEmptyList()).toNonEmptyList()
+                    ),
                 )
             ),
         )
@@ -307,7 +314,7 @@ val AgentTest by testSuite {
                     singularDCQLRequest
                 )
             ).getOrThrow() as PresentationResponseParameters.DCQLParameters
-            val vp = presentationParameters.verifiablePresentations.values.first()
+            val vp = presentationParameters.verifiablePresentations.values.flatten().first()
                 .shouldBeInstanceOf<CreatePresentationResult.Signed>()
             it.verifier.verifyPresentationVcJwt(vp.jwsSigned, it.challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
@@ -333,7 +340,7 @@ val AgentTest by testSuite {
                     singularDCQLRequest
                 )
             ).getOrThrow() as PresentationResponseParameters.DCQLParameters
-            val vp = presentationParameters.verifiablePresentations.values.first()
+            val vp = presentationParameters.verifiablePresentations.values.flatten().first()
                 .shouldBeInstanceOf<CreatePresentationResult.Signed>()
             it.verifier.verifyPresentationVcJwt(vp.jwsSigned, it.challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
@@ -370,7 +377,7 @@ val AgentTest by testSuite {
                 )
             ).getOrNull() as PresentationResponseParameters.DCQLParameters?
             presentationParameters.shouldNotBeNull()
-            val vp = presentationParameters.verifiablePresentations.values.firstOrNull()
+            val vp = presentationParameters.verifiablePresentations.values.flatten().firstOrNull()
                 .shouldNotBeNull()
                 .shouldBeInstanceOf<CreatePresentationResult.Signed>()
 
@@ -401,7 +408,7 @@ val AgentTest by testSuite {
                 )
             ).getOrNull() as PresentationResponseParameters.DCQLParameters?
             presentationParameters.shouldNotBeNull()
-            val vp = presentationParameters.verifiablePresentations.values.firstOrNull()
+            val vp = presentationParameters.verifiablePresentations.values.flatten().firstOrNull()
                 .shouldNotBeNull()
                 .shouldBeInstanceOf<CreatePresentationResult.Signed>()
 

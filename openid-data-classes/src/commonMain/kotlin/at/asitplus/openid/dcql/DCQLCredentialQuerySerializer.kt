@@ -19,8 +19,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
-object DCQLCredentialQuerySerializer :
-    JsonContentPolymorphicSerializer<DCQLCredentialQuery>(DCQLCredentialQuery::class) {
+object DCQLCredentialQuerySerializer : JsonContentPolymorphicSerializer<DCQLCredentialQuery>(DCQLCredentialQuery::class) {
     override fun selectDeserializer(element: JsonElement): DeserializationStrategy<DCQLCredentialQuery> {
         val parameters = element.jsonObject
         val credentialFormatIdentifier =
@@ -31,7 +30,8 @@ object DCQLCredentialQuerySerializer :
             CredentialFormatEnum.MSO_MDOC -> DCQLIsoMdocCredentialQuery.serializer()
             CredentialFormatEnum.DC_SD_JWT -> DCQLSdJwtCredentialQuery.serializer()
             CredentialFormatEnum.JWT_VC -> DCQLJwtVcCredentialQuery.serializer()
-            else -> DCQLCredentialQueryInstance.serializer()
+            CredentialFormatEnum.JWT_VC -> DCQLW3CVerifiableCredentialQuery.serializer()
+            else -> throw IllegalArgumentException("Credential format not supported: ${credentialFormatIdentifier}")
         }
     }
 }

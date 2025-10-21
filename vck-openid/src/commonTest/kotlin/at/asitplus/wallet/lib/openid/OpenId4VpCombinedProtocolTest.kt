@@ -170,7 +170,7 @@ val OpenId4VpCombinedProtocolTest by testSuite {
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
                 .shouldBeInstanceOf<AuthnResponseResult.VerifiableDCQLPresentationValidationResults>()
-                .validationResults.values.first()
+                .validationResults.values.first().first()
                 .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
                 .verifiableCredentialSdJwt.verifiableCredentialType shouldBe ConstantIndex.AtomicAttribute2023.sdJwtType
         }

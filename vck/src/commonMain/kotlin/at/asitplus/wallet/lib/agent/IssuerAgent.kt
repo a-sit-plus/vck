@@ -242,5 +242,4 @@ class IssuerAgent(
         expiration = expirationDate,
         jwtId = id
     )
-
 }

@@ -69,15 +69,16 @@ sealed interface PresentationResponseParameters {
     val presentationSubmission: PresentationSubmission?
 
     data class DCQLParameters(
-        val verifiablePresentations: Map<DCQLCredentialQueryIdentifier, CreatePresentationResult>,
+        val verifiablePresentations: Map<DCQLCredentialQueryIdentifier, List<CreatePresentationResult>>,
     ) : PresentationResponseParameters {
         override val vpToken
             get() = buildJsonObject {
-                // To be reconsidered when supporting [DCQLCredentialQueryInstance.multiple]
                 verifiablePresentations.entries.forEach {
-                    putJsonArray(it.key.string) {
-                        add(it.value.toJsonPrimitive())
-                    }
+                    put(it.key.string, buildJsonArray {
+                        it.value.forEach {
+                            add(it.toJsonPrimitive())
+                        }
+                    })
                 }
             }
 

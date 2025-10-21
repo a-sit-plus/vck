@@ -51,6 +51,10 @@ Release 5.11.0 (unreleased):
    * Bouncy Castle 1.83 (no more forcing exact version)
    * TestBalloon 0.7.1-K2.3.0
    * Signum 3.19.1
+ - DCQL updates
+   - Add: Support OpenID4VP attribute DCQLCredentialQuery::multiple
+   - Add: Support OpenID4VP attribute DCQLCredentialQuery::trustedAuthority
+   - Add: Support OpenID4VP attribute DCQLCredentialQuery::require_cryptographic_holder_binding
 
 Release 5.10.1:
  - Proximity presentations:

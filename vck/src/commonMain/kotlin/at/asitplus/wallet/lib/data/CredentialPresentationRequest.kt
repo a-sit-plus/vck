@@ -53,7 +53,7 @@ sealed interface CredentialPresentationRequest {
         override fun toCredentialPresentation() = toCredentialPresentation(null)
 
         fun toCredentialPresentation(
-            credentialQuerySubmissions: Map<DCQLCredentialQueryIdentifier, DCQLCredentialSubmissionOption<SubjectCredentialStore.StoreEntry>>?
+            credentialQuerySubmissions: Map<DCQLCredentialQueryIdentifier, List<DCQLCredentialSubmissionOption<SubjectCredentialStore.StoreEntry>>>?
         ): CredentialPresentation = CredentialPresentation.DCQLPresentation(
             presentationRequest = this,
             credentialQuerySubmissions = credentialQuerySubmissions

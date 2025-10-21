@@ -83,7 +83,9 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Clock
 import kotlin.time.DurationUnit
@@ -154,7 +156,8 @@ class OpenId4VpVerifier(
             redirectUris = listOfNotNull((clientIdScheme as? ClientIdScheme.RedirectUri)?.redirectUri),
             jsonWebKeySet = JsonWebKeySet(
                 listOf(
-                    decryptionKeyMaterial.publicKey.toJsonWebKey(decryptionKeyMaterial.identifier).withAlgorithm()
+                    decryptionKeyMaterial.publicKey.toJsonWebKey(decryptionKeyMaterial.identifier)
+                        .withAlgorithm()
                 )
             ),
             vpFormatsSupported = VpFormatsSupported(
@@ -180,7 +183,8 @@ class OpenId4VpVerifier(
     @Suppress("DEPRECATION")
     val metadataWithEncryption by lazy {
         metadata.copy(
-            encryptedResponseEncValuesSupportedString = supportedJweEncryptionAlgorithms.map { it.identifier }.toSet(),
+            encryptedResponseEncValuesSupportedString = supportedJweEncryptionAlgorithms.map { it.identifier }
+                .toSet(),
             jsonWebKeySet = metadata.jsonWebKeySet?.let {
                 JsonWebKeySet(it.keys.map { it.copy(publicKeyUse = "enc") })
             }
@@ -604,17 +608,42 @@ class OpenId4VpVerifier(
                     ?: throw IllegalArgumentException("Unknown credential query identifier.")
 
                 catchingUnwrapped {
-                    verifyPresentationResult(
-                        claimFormat = credentialQuery.format.toClaimFormat(),
-                        relatedPresentation = relatedPresentation,
-                        expectedNonce = expectedNonce,
-                        input = responseParameters,
-                        clientId = authnRequest.clientId,
-                        responseUrl = authnRequest.responseUrl ?: authnRequest.redirectUrlExtracted,
-                        transactionData = authnRequest.transactionData,
-                        clientIdRequired = clientIdRequired,
-                        origin = (originalResponseParameters as? ResponseParametersFrom.DcApi)?.origin,
-                    ).mapToAuthnResponseResult(responseParameters.parameters.state)
+                    when (relatedPresentation) {
+                        // TODO: remove JsonPrimitive switch when dropping backwards compatibility to pre-list era
+                        is JsonPrimitive -> listOf(
+                            verifyPresentationResult(
+                                claimFormat = credentialQuery.format.toClaimFormat(),
+                                relatedPresentation = relatedPresentation,
+                                expectedNonce = expectedNonce,
+                                input = responseParameters,
+                                clientId = authnRequest.clientId,
+                                responseUrl = authnRequest.responseUrl
+                                    ?: authnRequest.redirectUrlExtracted,
+                                transactionData = authnRequest.transactionData,
+                                clientIdRequired = clientIdRequired,
+                                origin = (originalResponseParameters as? ResponseParametersFrom.DcApi)?.origin,
+                            )
+                        )
+
+                        is JsonArray -> relatedPresentation.jsonArray.map {
+                            verifyPresentationResult(
+                                claimFormat = credentialQuery.format.toClaimFormat(),
+                                relatedPresentation = it.jsonPrimitive,
+                                expectedNonce = expectedNonce,
+                                input = responseParameters,
+                                clientId = authnRequest.clientId,
+                                responseUrl = authnRequest.responseUrl
+                                    ?: authnRequest.redirectUrlExtracted,
+                                transactionData = authnRequest.transactionData,
+                                clientIdRequired = clientIdRequired,
+                                origin = (originalResponseParameters as? ResponseParametersFrom.DcApi)?.origin,
+                            )
+                        }
+
+                        is JsonObject -> throw IllegalArgumentException("Verifiable presentations must not be Json Objects")
+                    }.map {
+                        it.mapToAuthnResponseResult(responseParameters.parameters.state)
+                    }
                 }.getOrElse {
                     return AuthnResponseResult.ValidationError(
                         "Invalid presentation",

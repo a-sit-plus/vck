@@ -41,7 +41,6 @@ sealed interface DCQLCredentialQuery {
      *  OID4VP 1.0: multiple: OPTIONAL. A boolean which indicates whether multiple Credentials can be returned
      *  for this Credential Query. If omitted, the default value is false.
      */
-    //TODO Implement
     val multiple: Boolean?
 
     /**
@@ -61,8 +60,7 @@ sealed interface DCQLCredentialQuery {
      * Every Credential returned by the Wallet SHOULD match at least one of the conditions present
      * in the corresponding trusted_authorities array if present.
      */
-    //TODO implement
-    val trustedAuthorities: List<String>?
+    val trustedAuthorities: NonEmptyList<DCQLTrustedAuthorityQueryEntry>?
 
     /**
      *  OID4VP: require_cryptographic_holder_binding: OPTIONAL. A boolean which indicates whether the Verifier
@@ -70,7 +68,6 @@ sealed interface DCQLCredentialQuery {
      *  with Cryptographic Holder Binding is required. If set to false, the Verifier accepts a Credential without
      *  Cryptographic Holder Binding proof.
      */
-    //TODO: Implement
     val requireCryptographicHolderBinding: Boolean?
 
     /**
@@ -91,6 +88,60 @@ sealed interface DCQLCredentialQuery {
      */
     val claimSets: NonEmptyList<List<DCQLClaimsQueryIdentifier>>?
 
+    companion object {
+        operator fun invoke(
+            id: DCQLCredentialQueryIdentifier,
+            format: CredentialFormatEnum,
+            meta: DCQLCredentialMetadataAndValidityConstraints,
+            claims: DCQLClaimsQueryList<DCQLClaimsQuery>? = null,
+            claimSets: NonEmptyList<List<DCQLClaimsQueryIdentifier>>? = null,
+            multiple: Boolean? = false,
+            trustedAuthorities: NonEmptyList<DCQLTrustedAuthorityQueryEntry>? = null,
+            requireCryptographicHolderBinding: Boolean? = true,
+        ): DCQLCredentialQuery = when (format) {
+            CredentialFormatEnum.JWT_VC -> DCQLW3CVerifiableCredentialQuery(
+                id = id,
+                format = format,
+                meta = meta as DCQLW3CVerifiableCredentialMetadataAndValidityConstraints,
+                claims = claims?.map {
+                    it as DCQLJsonClaimsQuery
+                }?.toNonEmptyList()?.let(::DCQLClaimsQueryList),
+                claimSets = claimSets,
+                multiple = multiple,
+                trustedAuthorities = trustedAuthorities,
+                requireCryptographicHolderBinding = requireCryptographicHolderBinding,
+            )
+
+            CredentialFormatEnum.DC_SD_JWT -> DCQLSdJwtCredentialQuery(
+                id = id,
+                format = format,
+                meta = meta as DCQLSdJwtCredentialMetadataAndValidityConstraints,
+                claims = claims?.map {
+                    it as DCQLJsonClaimsQuery
+                }?.toNonEmptyList()?.let(::DCQLClaimsQueryList),
+                claimSets = claimSets,
+                multiple = multiple,
+                trustedAuthorities = trustedAuthorities,
+                requireCryptographicHolderBinding = requireCryptographicHolderBinding,
+            )
+
+            CredentialFormatEnum.MSO_MDOC -> DCQLIsoMdocCredentialQuery(
+                id = id,
+                format = format,
+                meta = meta as DCQLIsoMdocCredentialMetadataAndValidityConstraints,
+                claims = claims?.map {
+                    it as DCQLIsoMdocClaimsQuery
+                }?.toNonEmptyList()?.let(::DCQLClaimsQueryList),
+                claimSets = claimSets,
+                multiple = multiple,
+                trustedAuthorities = trustedAuthorities,
+                requireCryptographicHolderBinding = requireCryptographicHolderBinding,
+            )
+
+            else -> throw IllegalArgumentException("Unsupported credential format: ${format}")
+        }
+    }
+
     object SerialNames {
         const val ID = "id"
         const val FORMAT = "format"
@@ -103,13 +154,11 @@ sealed interface DCQLCredentialQuery {
     }
 
 
-    companion object {
-        fun validate(query: DCQLCredentialQuery) = query.run {
-            if (claimSets != null) {
-                claims?.forEach {
-                    if (it.id == null) {
-                        throw IllegalArgumentException("Value of `id` in claims is REQUIRED if claim_sets is present in the Credential Query.")
-                    }
+    fun validate() {
+        if (claimSets != null) {
+            claims?.forEach {
+                if (it.id == null) {
+                    throw IllegalArgumentException("Value of `id` in claims is REQUIRED if claim_sets is present in the Credential Query.")
                 }
             }
         }
@@ -152,10 +201,44 @@ sealed interface DCQLCredentialQuery {
         sdJwtCredentialTypeExtractor: (Credential) -> String,
         jwtVcCredentialTypeExtractor: (Credential) -> List<String>,
         credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
+        satisfiesCryptographicHolderBinding: (Credential) -> Boolean,
+        authorityKeyIdentifiers: (Credential) -> List<DCQLAuthorityKeyIdentifier>,
     ): KmmResult<DCQLCredentialQueryMatchingResult> = catching {
         if (credentialFormatExtractor(credential) != format) {
             throw IllegalArgumentException("Incompatible credential format")
         }
+
+        val isTrustedAuthorityMatching = trustedAuthorities?.any { trustedAuthority ->
+            when(trustedAuthority) {
+                is DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier -> {
+                    val supportedAuthorityKeyIdentifiers = trustedAuthority.values.map {
+                        DCQLAuthorityKeyIdentifier(it)
+                    }
+                    authorityKeyIdentifiers(credential).any {
+                        it in supportedAuthorityKeyIdentifiers
+                    }
+                }
+
+                is DCQLTrustedAuthorityQueryEntryETSITrustedList,
+                is DCQLTrustedAuthorityQueryEntryOpenIDFederation-> throw UnsupportedOperationException("Trusted authority type is not supported: `${trustedAuthority.type}`")
+            }
+        } ?: true
+
+        if (!isTrustedAuthorityMatching) {
+            throw IllegalArgumentException(
+                "Credential matches to none of the trusted authorities."
+            )
+        }
+
+        if (requireCryptographicHolderBinding == true && !satisfiesCryptographicHolderBinding(
+                credential
+            )
+        ) {
+            throw IllegalArgumentException(
+                "Credential does not satisfy constraint `require_cryptographic_holder_binding`."
+            )
+        }
+
 
         Procedures.validateCredentialMetadataAndValidityConstraints(
             credential = credential,
@@ -171,13 +254,15 @@ sealed interface DCQLCredentialQuery {
 
         val requestedClaimsQueryCombinations = claimSets?.let {
             val claimQueryLookup = claimQueries.associateBy {
-                it.id
-                    ?: throw IllegalArgumentException("Claim query identifier is missing despite the presence of `claim_sets`.")
+                it.id ?: throw IllegalArgumentException(
+                    "Claim query identifier is missing despite the presence of `claim_sets`."
+                )
             }
             it.map {
                 it.map {
-                    claimQueryLookup[it]
-                        ?: throw IllegalArgumentException("Claim specified in `claim_sets` was not found in `claims`.")
+                    claimQueryLookup[it] ?: throw IllegalArgumentException(
+                        "Claim specified in `claim_sets` was not found in `claims`."
+                    )
                 }
             }.toNonEmptyList()
         } ?: nonEmptyListOf(claimQueries)

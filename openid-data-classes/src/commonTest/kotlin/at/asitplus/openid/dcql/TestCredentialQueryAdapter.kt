@@ -50,5 +50,11 @@ value class TestCredentialQueryAdapter(val dcqlQuery: DCQLQuery) {
                 else -> throw IllegalArgumentException("Json Credentials do not have an JWT-VC document type.")
             }
         },
+        satisfiesCryptographicHolderBinding = {
+            true
+        },
+        authorityKeyIdentifiers = {
+            listOf()
+        }
     )
 }
