@@ -167,7 +167,7 @@ val AgentIsoMdocTest by testSuite {
                 )
             ).getOrThrow() as PresentationResponseParameters.DCQLParameters
 
-            val vp = presentationParameters.verifiablePresentations.values.shouldBeSingleton().firstOrNull()
+            val vp = presentationParameters.verifiablePresentations.values.shouldBeSingleton().firstOrNull()?.first()
                 .shouldBeInstanceOf<CreatePresentationResult.DeviceResponse>()
 
             it.verifier.verifyPresentationIsoMdoc(vp.deviceResponse, documentVerifier())
@@ -200,7 +200,7 @@ val AgentIsoMdocTest by testSuite {
                 )
             ).getOrThrow() as PresentationResponseParameters.DCQLParameters
 
-            val vp = presentationParameters.verifiablePresentations.values.shouldBeSingleton().firstOrNull()
+            val vp = presentationParameters.verifiablePresentations.values.shouldBeSingleton().firstOrNull()?.first()
                 .shouldBeInstanceOf<CreatePresentationResult.DeviceResponse>()
 
             it.holderCredentialStore.getCredentials().getOrThrow()

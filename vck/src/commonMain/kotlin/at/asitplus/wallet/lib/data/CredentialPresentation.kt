@@ -22,6 +22,6 @@ sealed interface CredentialPresentation {
     @Serializable
     data class DCQLPresentation(
         override val presentationRequest: CredentialPresentationRequest.DCQLRequest,
-        val credentialQuerySubmissions: Map<DCQLCredentialQueryIdentifier, DCQLCredentialSubmissionOption<SubjectCredentialStore.StoreEntry>>?,
+        val credentialQuerySubmissions: Map<DCQLCredentialQueryIdentifier, List<DCQLCredentialSubmissionOption<SubjectCredentialStore.StoreEntry>>>?,
     ) : CredentialPresentation
 }

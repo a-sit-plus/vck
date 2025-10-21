@@ -84,7 +84,9 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Clock
 import kotlin.time.DurationUnit
@@ -155,7 +157,8 @@ class OpenId4VpVerifier(
             redirectUris = listOfNotNull((clientIdScheme as? ClientIdScheme.RedirectUri)?.redirectUri),
             jsonWebKeySet = JsonWebKeySet(
                 listOf(
-                    decryptionKeyMaterial.publicKey.toJsonWebKey(decryptionKeyMaterial.identifier).withAlgorithm()
+                    decryptionKeyMaterial.publicKey.toJsonWebKey(decryptionKeyMaterial.identifier)
+                        .withAlgorithm()
                 )
             ),
             vpFormatsSupported = VpFormatsSupported(
@@ -181,7 +184,8 @@ class OpenId4VpVerifier(
     @Suppress("DEPRECATION")
     val metadataWithEncryption by lazy {
         metadata.copy(
-            encryptedResponseEncValuesSupportedString = supportedJweEncryptionAlgorithms.map { it.identifier }.toSet(),
+            encryptedResponseEncValuesSupportedString = supportedJweEncryptionAlgorithms.map { it.identifier }
+                .toSet(),
             jsonWebKeySet = metadata.jsonWebKeySet?.let {
                 JsonWebKeySet(it.keys.map { it.copy(publicKeyUse = "enc") })
             }
@@ -263,7 +267,8 @@ class OpenId4VpVerifier(
                 URLBuilder(creationOptions.walletUrl).apply {
                     JarRequestParameters(
                         clientId = clientIdScheme.clientId,
-                        request = createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow().serialize(),
+                        request = createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow()
+                            .serialize(),
                     ).encodeToParameters()
                         .forEach { parameters.append(it.key, it.value) }
                 }.buildString().toCreatedRequest()
@@ -281,7 +286,8 @@ class OpenId4VpVerifier(
                 }.buildString()
                     .toCreatedRequest {
                         catching {
-                            createAuthnRequestAsSignedRequestObject(requestOptions, it).getOrThrow().serialize()
+                            createAuthnRequestAsSignedRequestObject(requestOptions, it).getOrThrow()
+                                .serialize()
                         }
                     }
             }
@@ -553,8 +559,9 @@ class OpenId4VpVerifier(
             ?: throw IllegalArgumentException("vp_token")
 
         return authnRequest.presentationDefinition?.let { presentationDefinition ->
-            val presentationSubmission = responseParameters.parameters.presentationSubmission?.descriptorMap
-                ?: throw IllegalArgumentException("Presentation Exchange need to present a presentation submission.")
+            val presentationSubmission =
+                responseParameters.parameters.presentationSubmission?.descriptorMap
+                    ?: throw IllegalArgumentException("Presentation Exchange need to present a presentation submission.")
 
             presentationSubmission.map { descriptor ->
                 verifyPresentationResult(
@@ -575,15 +582,38 @@ class OpenId4VpVerifier(
                     ?: throw IllegalArgumentException("Unknown credential query identifier.")
 
                 catchingUnwrapped {
-                    verifyPresentationResult(
-                        claimFormat = credentialQuery.format.toClaimFormat(),
-                        relatedPresentation = relatedPresentation,
-                        expectedNonce = expectedNonce,
-                        input = responseParameters,
-                        clientId = authnRequest.clientId,
-                        responseUrl = authnRequest.responseUrl ?: authnRequest.redirectUrlExtracted,
-                        transactionData = authnRequest.transactionData,
-                    ).mapToAuthnResponseResult(responseParameters.parameters.state)
+                    when (relatedPresentation) {
+                        // TODO: remove JsonPrimitive switch when dropping backwards compatibility to pre-list era
+                        is JsonPrimitive -> listOf(
+                            verifyPresentationResult(
+                                claimFormat = credentialQuery.format.toClaimFormat(),
+                                relatedPresentation = relatedPresentation,
+                                expectedNonce = expectedNonce,
+                                input = responseParameters,
+                                clientId = authnRequest.clientId,
+                                responseUrl = authnRequest.responseUrl
+                                    ?: authnRequest.redirectUrlExtracted,
+                                transactionData = authnRequest.transactionData,
+                            )
+                        )
+
+                        is JsonArray -> relatedPresentation.jsonArray.map {
+                            verifyPresentationResult(
+                                claimFormat = credentialQuery.format.toClaimFormat(),
+                                relatedPresentation = it.jsonPrimitive,
+                                expectedNonce = expectedNonce,
+                                input = responseParameters,
+                                clientId = authnRequest.clientId,
+                                responseUrl = authnRequest.responseUrl
+                                    ?: authnRequest.redirectUrlExtracted,
+                                transactionData = authnRequest.transactionData,
+                            )
+                        }
+
+                        is JsonObject -> throw IllegalArgumentException("Verifiable presentations must not be Json Objects")
+                    }.map {
+                        it.mapToAuthnResponseResult(responseParameters.parameters.state)
+                    }
                 }.getOrElse {
                     return AuthnResponseResult.ValidationError(
                         "Invalid presentation",
@@ -697,7 +727,13 @@ class OpenId4VpVerifier(
             externalAad = byteArrayOf(),
             detachedPayload = expected
         ).onFailure {
-            throw IllegalArgumentException("deviceSignature not matching ${expected.encodeToString(Base16())}", it)
+            throw IllegalArgumentException(
+                "deviceSignature not matching ${
+                    expected.encodeToString(
+                        Base16()
+                    )
+                }", it
+            )
         }
         true
     }
@@ -737,7 +773,12 @@ class OpenId4VpVerifier(
     )
 
     private fun VerifyPresentationResult.mapToAuthnResponseResult(state: String?) = when (this) {
-        is VerifyPresentationResult.ValidationError -> AuthnResponseResult.ValidationError("vpToken", state, cause)
+        is VerifyPresentationResult.ValidationError -> AuthnResponseResult.ValidationError(
+            "vpToken",
+            state,
+            cause
+        )
+
         is VerifyPresentationResult.Success -> AuthnResponseResult.Success(vp, state)
         is VerifyPresentationResult.SuccessIso -> AuthnResponseResult.SuccessIso(documents, state)
         is VerifyPresentationResult.SuccessSdJwt -> AuthnResponseResult.SuccessSdJwt(

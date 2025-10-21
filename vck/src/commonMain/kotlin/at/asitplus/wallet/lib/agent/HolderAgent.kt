@@ -231,7 +231,11 @@ class HolderAgent(
             credentialPresentation.presentationRequest.dcqlQuery.requestedCredentialSetQueries
         val credentialSubmissions = credentialPresentation.credentialQuerySubmissions
             ?: matchDCQLQueryAgainstCredentialStore(dcqlQuery).getOrThrow()
-                .toDefaultSubmission().getOrThrow()
+                .toDefaultSubmission(dcqlQuery.credentials.filter {
+                    it.multiple ?: false
+                }.map {
+                    it.id
+                }.toSet()).getOrThrow()
 
         DCQLQuery.Procedures.isSatisfactoryCredentialSubmission(
             credentialSubmissions = credentialSubmissions.keys,
@@ -242,12 +246,16 @@ class HolderAgent(
             }
         }
 
-        val verifiablePresentations = credentialSubmissions.mapValues {
-            verifiablePresentationFactory.createVerifiablePresentation(
-                request = request,
-                credential = it.value.credential,
-                disclosedAttributes = it.value.matchingResult,
-            ).getOrThrow()
+        val verifiablePresentations = credentialSubmissions.mapValues { match ->
+            match.value.map {
+                val credential = it.credential
+                val disclosedAttributes = it.matchingResult
+                verifiablePresentationFactory.createVerifiablePresentation(
+                    request = request,
+                    credential = credential,
+                    disclosedAttributes = disclosedAttributes,
+                ).getOrThrow()
+            }
         }
 
         PresentationResponseParameters.DCQLParameters(verifiablePresentations)

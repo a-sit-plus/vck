@@ -39,9 +39,12 @@ val DCQLQueryTest by testSuite {
         val serialized = Json.encodeToJsonElement(
             DCQLQuery(
                 credentials = DCQLCredentialQueryList(
-                    DCQLCredentialQueryInstance(
+                    DCQLIsoMdocCredentialQuery(
                         id = queryId1,
                         format = CredentialFormatEnum.MSO_MDOC,
+                        meta = DCQLIsoMdocCredentialMetadataAndValidityConstraints(
+                            doctypeValue = "anything"
+                        )
                     )
                 ),
                 credentialSets = nonEmptyListOf(

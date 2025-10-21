@@ -61,14 +61,18 @@ data class DCQLQuery(
         mdocCredentialDoctypeExtractor: (Credential) -> String,
         sdJwtCredentialTypeExtractor: (Credential) -> String,
         credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
+        satisfiesCryptographicHolderBinding: (Credential) -> Boolean,
+        authorityKeyIdentifiers: (Credential) -> List<DCQLAuthorityKeyIdentifier>,
     ): KmmResult<DCQLQueryResult<Credential>> = Procedures.executeQuery(
-        credentials = credentials,
+        credentialQueries = credentials,
         requestedCredentialSetQueries = requestedCredentialSetQueries,
         availableCredentials = availableCredentials,
         credentialFormatExtractor = credentialFormatExtractor,
         mdocCredentialDoctypeExtractor = mdocCredentialDoctypeExtractor,
         sdJwtCredentialTypeExtractor = sdJwtCredentialTypeExtractor,
         credentialClaimStructureExtractor = credentialClaimStructureExtractor,
+        satisfiesCryptographicHolderBinding = satisfiesCryptographicHolderBinding,
+        authorityKeyIdentifiers = authorityKeyIdentifiers,
     )
 
     object Procedures {
@@ -90,21 +94,25 @@ data class DCQLQuery(
          * by the Verifier according to these rules, it MUST NOT return any Credential(s).
          */
         fun <Credential : Any> executeQuery(
-            credentials: List<DCQLCredentialQuery>,
+            credentialQueries: List<DCQLCredentialQuery>,
             requestedCredentialSetQueries: List<DCQLCredentialSetQuery>,
             availableCredentials: List<Credential>,
             credentialFormatExtractor: (Credential) -> CredentialFormatEnum,
             mdocCredentialDoctypeExtractor: (Credential) -> String,
             sdJwtCredentialTypeExtractor: (Credential) -> String,
             credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
+            satisfiesCryptographicHolderBinding: (Credential) -> Boolean,
+            authorityKeyIdentifiers: (Credential) -> List<DCQLAuthorityKeyIdentifier>,
         ): KmmResult<DCQLQueryResult<Credential>> = catching {
             val credentialQueryMatches = findCredentialQueryMatches(
-                credentials,
+                credentialQueries,
                 availableCredentials = availableCredentials,
                 credentialFormatExtractor = credentialFormatExtractor,
                 mdocCredentialDoctypeExtractor = mdocCredentialDoctypeExtractor,
                 sdJwtCredentialTypeExtractor = sdJwtCredentialTypeExtractor,
                 credentialClaimStructureExtractor = credentialClaimStructureExtractor,
+                satisfiesCryptographicHolderBinding = satisfiesCryptographicHolderBinding,
+                authorityKeyIdentifiers = authorityKeyIdentifiers,
             )
 
             val satisfiableCredentialSetQueryOptions = findSatisfactoryCredentialSetQueryOptions(
@@ -127,6 +135,8 @@ data class DCQLQuery(
             mdocCredentialDoctypeExtractor: (Credential) -> String,
             sdJwtCredentialTypeExtractor: (Credential) -> String,
             credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
+            satisfiesCryptographicHolderBinding: (Credential) -> Boolean,
+            authorityKeyIdentifiers: (Credential) -> List<DCQLAuthorityKeyIdentifier>,
         ): Map<DCQLCredentialQueryIdentifier, List<DCQLCredentialSubmissionOption<Credential>>> {
             return credentialQueries.associate { credentialQuery ->
                 credentialQuery.id to availableCredentials.mapNotNull { credential ->
@@ -136,6 +146,8 @@ data class DCQLQuery(
                         mdocCredentialDoctypeExtractor = mdocCredentialDoctypeExtractor,
                         sdJwtCredentialTypeExtractor = sdJwtCredentialTypeExtractor,
                         credentialClaimStructureExtractor = credentialClaimStructureExtractor,
+                        satisfiesCryptographicHolderBinding = satisfiesCryptographicHolderBinding,
+                        authorityKeyIdentifiers = authorityKeyIdentifiers,
                     ).getOrNull()?.let {
                         DCQLCredentialSubmissionOption(
                             credential = credential,
