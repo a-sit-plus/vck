@@ -58,7 +58,7 @@ val StatusListTokenSerializationTest by testSuite{
         )
     "jwt status list token payload" - {
         "deserialization" - {
-            withData(
+            withDataSuites(
                 jsonStatusListTokenPayloadTestVectors
             ) { (it, assertions) ->
                 val value = Json.decodeFromString<StatusListTokenPayload>(it)

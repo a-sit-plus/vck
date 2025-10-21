@@ -29,17 +29,20 @@ import at.asitplus.wallet.lib.rqes.helper.DummyCredentialDataProvider
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 
-class RqesRequestOptionsTest by testSuite{
+val RqesRequestOptionsTest by testSuite{
 
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var holderAgent: Holder
     lateinit var verifierOid4Vp: OpenId4VpVerifier
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         holderAgent = HolderAgent(holderKeyMaterial)
 
@@ -56,6 +59,7 @@ class RqesRequestOptionsTest by testSuite{
             keyMaterial = EphemeralKeyWithoutCert(),
             clientIdScheme = ClientIdScheme.RedirectUri("https://example.com/rp/${uuid4()}"),
         )
+        it()
     }
 
     "Authentication request contains transactionData" {

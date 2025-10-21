@@ -10,12 +10,13 @@ import at.asitplus.csc.enums.CertificateOptions
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldNotContain
 
-class CredentialInfoParsingTests by testSuite{
+val CredentialInfoParsingTests by testSuite{
 
 
     /**
@@ -166,4 +167,4 @@ class CredentialInfoParsingTests by testSuite{
         decoded.authInfo shouldBe false
         decoded.certInfo shouldBe false
     }
-})
+}

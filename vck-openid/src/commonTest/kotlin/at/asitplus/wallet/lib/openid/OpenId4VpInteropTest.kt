@@ -32,6 +32,9 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
 import com.benasher44.uuid.uuid4
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -44,7 +47,7 @@ import kotlinx.serialization.json.jsonPrimitive
 /**
  * Tests our OpenID4VP/SIOP implementation against POTENTIAL Piloting Definition Scope
  */
-class OpenId4VpInteropTest by testSuite{
+val OpenId4VpInteropTest by testSuite{
     lateinit var issuerKeyId: String
     lateinit var issuerIdentifier: String
     lateinit var holderKeyMaterial: KeyMaterial
@@ -58,7 +61,7 @@ class OpenId4VpInteropTest by testSuite{
     lateinit var verifierOid4vp: OpenId4VpVerifier
     var sdAlgorithm: Digest? = null
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         issuerKeyId = uuid4().toString()
         issuerIdentifier = "https://issuer.example.com"
         val issuerKeyMaterial = EphemeralKeyWithoutCert(customKeyId = issuerKeyId)
@@ -109,6 +112,7 @@ class OpenId4VpInteropTest by testSuite{
             ),
             clientIdScheme = clientIdScheme,
         )
+        it()
     }
 
     "process with cross-device flow with request_uri and pre-trusted" {
@@ -292,5 +296,4 @@ class OpenId4VpInteropTest by testSuite{
             this["family_name"]!!.jsonPrimitive.content shouldBe "Doe"
         }
     }
-
-})
+}

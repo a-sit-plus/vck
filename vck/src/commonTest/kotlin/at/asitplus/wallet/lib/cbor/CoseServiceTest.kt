@@ -54,7 +54,7 @@ val CoseServiceTest by testSuite{
     lateinit var macCoseDetached: MacCoseDetachedFun<ByteArray>
     lateinit var macCoseKey: CoseKey
 
-    TestConfig.aroundEach {
+   testConfig=  TestConfig.aroundEach {
         val signKeyMaterial = EphemeralKeyWithoutCert()
         signCose = SignCose(signKeyMaterial)
         signCoseNothing = SignCose(signKeyMaterial)

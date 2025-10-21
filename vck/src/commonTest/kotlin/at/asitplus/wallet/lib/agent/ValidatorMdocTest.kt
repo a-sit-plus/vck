@@ -12,102 +12,116 @@ import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import de.infix.testBalloon.framework.TestConfig
-import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.TestExecutionScope
+import de.infix.testBalloon.framework.TestSuite
 import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlin.random.Random
 import kotlin.time.Clock
 
+private data class Config(
+    val issuer: Issuer,
+    val statusListIssuer: StatusListIssuer,
+    val issuerCredentialStore: IssuerCredentialStore,
+    val issuerKeyMaterial: KeyMaterial,
+    val verifierKeyMaterial: KeyMaterial,
+    val validator: ValidatorMdoc
+) {
+
+    companion object {
+        fun random(): Config {
+            val issuerKeyMaterial = EphemeralKeyWithSelfSignedCert()
+            val issuerCredentialStore = InMemoryIssuerCredentialStore()
+            val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
+            return Config(
+                validator = ValidatorMdoc(
+                    validator = Validator(
+                        tokenStatusResolver = TokenStatusResolverImpl(
+                            resolveStatusListToken = {
+                                if (Random.nextBoolean()) StatusListToken.StatusListJwt(
+                                    statusListIssuer.issueStatusListJwt(),
+                                    resolvedAt = Clock.System.now(),
+                                ) else {
+                                    StatusListToken.StatusListCwt(
+                                        statusListIssuer.issueStatusListCwt(),
+                                        resolvedAt = Clock.System.now(),
+                                    )
+                                }
+                            },
+                        )
+                    )
+                ),
+                issuerCredentialStore = issuerCredentialStore,
+                issuerKeyMaterial = issuerKeyMaterial,
+                issuer = IssuerAgent(
+                    keyMaterial = issuerKeyMaterial,
+                    issuerCredentialStore = issuerCredentialStore,
+                    identifier = "https://issuer.example.com/".toUri(),
+                    randomSource = RandomSource.Default
+                ),
+                statusListIssuer = statusListIssuer,
+                verifierKeyMaterial = EphemeralKeyWithoutCert()
+            )
+        }
+    }
+}
+
+context(suite: TestSuite)
+private fun String.withConfig(config: Config, nested: suspend TestExecutionScope.(Config) -> Unit) {
+    this.invoke { nested(config) }
+}
 
 val ValidatorMdocTest by testSuite {
-
-    lateinit var issuer: Issuer
-    lateinit var statusListIssuer: StatusListIssuer
-    lateinit var issuerCredentialStore: IssuerCredentialStore
-    lateinit var issuerKeyMaterial: KeyMaterial
-    lateinit var verifierKeyMaterial: KeyMaterial
-    lateinit var validator: ValidatorMdoc
-
-    TestConfig.aroundEach {
-        validator = ValidatorMdoc(
-            validator = Validator(
-                tokenStatusResolver = TokenStatusResolverImpl(
-                    resolveStatusListToken = {
-                        if (Random.nextBoolean()) StatusListToken.StatusListJwt(
-                            statusListIssuer.issueStatusListJwt(),
-                            resolvedAt = Clock.System.now(),
-                        ) else {
-                            StatusListToken.StatusListCwt(
-                                statusListIssuer.issueStatusListCwt(),
-                                resolvedAt = Clock.System.now(),
-                            )
-                        }
-                    },
-                )
-            )
-        )
-        issuerCredentialStore = InMemoryIssuerCredentialStore()
-        issuerKeyMaterial = EphemeralKeyWithSelfSignedCert()
-        issuer = IssuerAgent(
-            keyMaterial = issuerKeyMaterial,
-            issuerCredentialStore = issuerCredentialStore,
-            identifier = "https://issuer.example.com/".toUri(),
-            randomSource = RandomSource.Default
-        )
-        statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
-        verifierKeyMaterial = EphemeralKeyWithoutCert()
-        it()
-    }
-
-    "credentials are valid for" {
-        val credential = issuer.issueCredential(
-            DummyCredentialDataProvider.getCredential(
-                verifierKeyMaterial.publicKey,
-                ConstantIndex.AtomicAttribute2023,
-                ISO_MDOC,
+    with(Config.random()) {
+        "credentials are valid for" {
+            val credential = issuer.issueCredential(
+                DummyCredentialDataProvider.getCredential(
+                    verifierKeyMaterial.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    ISO_MDOC,
+                ).getOrThrow()
             ).getOrThrow()
-        ).getOrThrow()
-        credential.shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
+            credential.shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
 
-        val issuerKey: CoseKey? =
-            credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull()?.let {
-                catchingUnwrapped { X509Certificate.decodeFromDer(it) }.getOrNull()?.decodedPublicKey?.getOrNull()
-                    ?.toCoseKey()
-                    ?.getOrNull()
-            }
+            val issuerKey: CoseKey? =
+                credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull()?.let {
+                    catchingUnwrapped { X509Certificate.decodeFromDer(it) }.getOrNull()?.decodedPublicKey?.getOrNull()
+                        ?.toCoseKey()
+                        ?.getOrNull()
+                }
 
-        validator.verifyIsoCred(credential.issuerSigned, issuerKey)
-            .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessIso>()
+            validator.verifyIsoCred(credential.issuerSigned, issuerKey)
+                .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessIso>()
+        }
     }
-
-    "revoked credentials are not valid" {
-        val credential = issuer.issueCredential(
-            DummyCredentialDataProvider.getCredential(
-                verifierKeyMaterial.publicKey,
-                ConstantIndex.AtomicAttribute2023,
-                ISO_MDOC,
+    with(Config.random()) {
+        "revoked credentials are not valid" {
+            val credential = issuer.issueCredential(
+                DummyCredentialDataProvider.getCredential(
+                    verifierKeyMaterial.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    ISO_MDOC,
+                ).getOrThrow()
             ).getOrThrow()
-        ).getOrThrow()
-        credential.shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
+            credential.shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
 
-        val issuerKey: CoseKey? =
-            credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull()?.let {
-                catchingUnwrapped { X509Certificate.decodeFromDer(it) }.getOrNull()?.decodedPublicKey?.getOrNull()
-                    ?.toCoseKey()
-                    ?.getOrNull()
-            }
+            val issuerKey: CoseKey? =
+                credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull()?.let {
+                    catchingUnwrapped { X509Certificate.decodeFromDer(it) }.getOrNull()?.decodedPublicKey?.getOrNull()
+                        ?.toCoseKey()
+                        ?.getOrNull()
+                }
 
-        val value = validator.verifyIsoCred(credential.issuerSigned, issuerKey)
-            .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessIso>()
-        issuerCredentialStore.setStatus(
-            timePeriod = FixedTimePeriodProvider.timePeriod,
-            index = credential.issuerSigned.issuerAuth.payload!!.status!!.statusList.index,
-            status = TokenStatus.Invalid,
-        ) shouldBe true
-        validator.checkRevocationStatus(value.issuerSigned)
-            .shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
+            val value = validator.verifyIsoCred(credential.issuerSigned, issuerKey)
+                .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessIso>()
+            issuerCredentialStore.setStatus(
+                timePeriod = FixedTimePeriodProvider.timePeriod,
+                index = credential.issuerSigned.issuerAuth.payload!!.status!!.statusList.index,
+                status = TokenStatus.Invalid,
+            ) shouldBe true
+            validator.checkRevocationStatus(value.issuerSigned)
+                .shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
+        }
     }
-
 }

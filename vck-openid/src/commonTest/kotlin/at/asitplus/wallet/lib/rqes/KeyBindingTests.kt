@@ -35,6 +35,9 @@ import at.asitplus.wallet.lib.rqes.helper.DummyCredentialDataProvider
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -45,7 +48,7 @@ import io.ktor.http.*
 import io.ktor.utils.io.charsets.*
 import io.ktor.utils.io.core.*
 
-class KeyBindingTests by testSuite{
+val KeyBindingTests by testSuite{
 
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var holderAgent: Holder
@@ -53,7 +56,7 @@ class KeyBindingTests by testSuite{
 
     val externalMapStore = DefaultMapStore<String, AuthenticationRequestParameters>()
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         holderAgent = HolderAgent(holderKeyMaterial)
         holderAgent.storeCredential(
@@ -66,6 +69,7 @@ class KeyBindingTests by testSuite{
             ).getOrThrow().toStoreCredentialInput()
         )
         holderOid4vp = OpenId4VpHolder(holder = holderAgent, randomSource = RandomSource.Default)
+        it()
     }
 
     "Rqes Request with EU PID credential" - {

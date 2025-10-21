@@ -11,14 +11,17 @@ import at.asitplus.wallet.lib.cbor.SignCoseDetached
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.encodeToHexString
 
-class PresentationFactoryTest by testSuite{
+val  PresentationFactoryTest by testSuite{
 
     lateinit var presentationFactory: PresentationFactory
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         val keyMaterial = EphemeralKeyWithoutCert()
         presentationFactory = PresentationFactory(
             supportedAlgorithms = setOf(SignatureAlgorithm.ECDSAwithSHA256),
@@ -86,4 +89,4 @@ class PresentationFactoryTest by testSuite{
             """.trimIndent().replace("\n", "")
         }
     }
-})
+}

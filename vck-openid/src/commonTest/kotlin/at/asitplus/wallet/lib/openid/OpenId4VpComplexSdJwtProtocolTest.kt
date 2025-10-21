@@ -10,6 +10,9 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import com.benasher44.uuid.uuid4
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSize
@@ -21,7 +24,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Duration.Companion.minutes
 
-class OpenId4VpComplexSdJwtProtocolTest by testSuite{
+val OpenId4VpComplexSdJwtProtocolTest by testSuite {
 
     lateinit var clientId: String
     lateinit var walletUrl: String
@@ -33,7 +36,7 @@ class OpenId4VpComplexSdJwtProtocolTest by testSuite{
     lateinit var randomRegion: String
     lateinit var randomCountry: String
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         randomRegion = uuid4().toString()
         randomCountry = uuid4().toString()
         holderKeyMaterial = EphemeralKeyWithoutCert()
@@ -73,6 +76,7 @@ class OpenId4VpComplexSdJwtProtocolTest by testSuite{
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = ClientIdScheme.RedirectUri(clientId)
         )
+        it()
     }
 
 
@@ -160,8 +164,8 @@ class OpenId4VpComplexSdJwtProtocolTest by testSuite{
             }
         }
     }
+}
 
-})
 
 private const val CLAIM_ADDRESS = "address"
 private const val CLAIM_ADDRESS_REGION = "region"

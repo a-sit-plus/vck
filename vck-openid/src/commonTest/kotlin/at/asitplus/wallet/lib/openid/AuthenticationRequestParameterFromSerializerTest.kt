@@ -13,13 +13,14 @@ import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import com.benasher44.uuid.uuid4
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 
-class AuthenticationRequestParameterFromSerializerTest by testSuite{
+val AuthenticationRequestParameterFromSerializerTest by testSuite{
 
     val clientId = "PRE-REGISTERED-CLIENT"
     val redirectUrl = "https://example.com/rp/${uuid4()}"
@@ -130,4 +131,4 @@ class AuthenticationRequestParameterFromSerializerTest by testSuite{
                 .shouldBe(params)
         }
     }
-})
+}

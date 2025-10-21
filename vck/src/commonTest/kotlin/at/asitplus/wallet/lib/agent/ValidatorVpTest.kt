@@ -57,7 +57,7 @@ val ValidatorVpTest by testSuite{
     lateinit var verifier: Verifier
     lateinit var challenge: String
 
-    TestConfig.aroundEach {
+   testConfig=  TestConfig.aroundEach {
         validator = ValidatorVcJws(
             validator = Validator(
                 tokenStatusResolver = TokenStatusResolverImpl(

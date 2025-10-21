@@ -25,6 +25,9 @@ import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import com.benasher44.uuid.uuid4
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -37,14 +40,14 @@ import kotlin.time.Instant
  * see [https://verifier.eudiw.dev/cbor-selectable/verifiable](https://verifier.eudiw.dev/cbor-selectable/verifiable)
  */
 @Suppress("DEPRECATION")
-class OpenId4VpEuRefInteropTest by testSuite{
+val OpenId4VpEuRefInteropTest by testSuite{
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var holderAgent: Holder
     lateinit var holderOid4vp: OpenId4VpHolder
     lateinit var verifierKeyMaterial: KeyMaterial
     lateinit var verifierOid4vp: OpenId4VpVerifier
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         holderAgent = HolderAgent(holderKeyMaterial)
         val issuerAgent = IssuerAgent(
@@ -70,6 +73,7 @@ class OpenId4VpEuRefInteropTest by testSuite{
             ).getOrThrow().toStoreCredentialInput()
         )
         holderOid4vp = OpenId4VpHolder(holderKeyMaterial, holderAgent, randomSource = RandomSource.Default)
+        it()
     }
 
     "EUDI from URL 2024-05-17" {
@@ -372,5 +376,4 @@ class OpenId4VpEuRefInteropTest by testSuite{
         verifierOid4vp.validateAuthnResponse(response.params)
             .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
     }
-
-})
+}

@@ -60,7 +60,7 @@ val AgentSdJwtTest by testSuite {
     lateinit var challenge: String
     lateinit var verifierId: String
 
-   TestConfig.aroundEach {
+  testConfig=  TestConfig.aroundEach {
         val validator = ValidatorSdJwt(
             validator = Validator(
                 tokenStatusResolver = TokenStatusResolverImpl(

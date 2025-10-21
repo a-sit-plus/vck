@@ -11,11 +11,12 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.rqes.helper.DummyValueProvider
 import io.kotest.assertions.throwables.shouldThrow
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.testSuite
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
 
 
-class QtspAuthorizationTest by testSuite{
+val QtspAuthorizationTest by testSuite{
 
     val qtspAuthenticationService = SimpleQtspAuthorizationService(
         acceptedCredentials = setOf(ConstantIndex.AtomicAttribute2023),

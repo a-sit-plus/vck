@@ -7,6 +7,9 @@ import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -19,10 +22,10 @@ import kotlinx.serialization.json.JsonObject
 /**
  * Tests parsing OpenID4VP requests
  */
-class OpenIdRequestParserTests by testSuite{
+val OpenIdRequestParserTests by testSuite{
     lateinit var requestParser: RequestParser
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         requestParser = RequestParser()
     }
 
@@ -245,7 +248,7 @@ class OpenIdRequestParserTests by testSuite{
             ).shouldBe(this)
         }
     }
-})
+}
 
 private fun AuthenticationRequestParameters.assertParams() {
     responseUrl shouldBe "https://verifier.funke.wwwallet.org/verification/direct_post"

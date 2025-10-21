@@ -37,7 +37,7 @@ val AgentComplexSdJwtTest by testSuite {
     lateinit var challenge: String
     lateinit var verifierId: String
 
-    TestConfig.aroundEach {
+    testConfig = TestConfig.aroundEach {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         holderCredentialStore = InMemorySubjectCredentialStore()
         issuer = IssuerAgent(

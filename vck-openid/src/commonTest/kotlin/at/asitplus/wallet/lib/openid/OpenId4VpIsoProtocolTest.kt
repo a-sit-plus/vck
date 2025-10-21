@@ -20,6 +20,9 @@ import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.GIVEN_NAME
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSingleElement
@@ -27,7 +30,7 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.provided.at.asitplus.wallet.lib.openid.FixedNonceService
 
-class OpenId4VpIsoProtocolTest by testSuite{
+val OpenId4VpIsoProtocolTest by testSuite{
 
     lateinit var clientId: String
     lateinit var walletUrl: String
@@ -37,7 +40,7 @@ class OpenId4VpIsoProtocolTest by testSuite{
     lateinit var holderOid4vp: OpenId4VpHolder
     lateinit var verifierOid4vp: OpenId4VpVerifier
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         verifierKeyMaterial = EphemeralKeyWithoutCert()
         //println("this is the key:\n" + (verifierKeyMaterial as EphemeralKeyWithoutCert).key.exportPrivateKey().getOrThrow().encodeToDer().encodeToString(Base64Strict))
@@ -81,6 +84,7 @@ class OpenId4VpIsoProtocolTest by testSuite{
             keyMaterial = holderKeyMaterial,
             randomSource = RandomSource.Default,
         )
+        it()
     }
 
     "test with Fragment for mDL" {
@@ -241,8 +245,7 @@ class OpenId4VpIsoProtocolTest by testSuite{
             invalidItems.shouldBeEmpty()
         }
     }
-
-})
+}
 
 private suspend fun runProcess(
     verifierOid4vp: OpenId4VpVerifier,

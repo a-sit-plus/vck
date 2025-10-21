@@ -38,7 +38,7 @@ val AgentRevocationTest by testSuite {
     lateinit var statusListIssuer: StatusListIssuer
     lateinit var expectedRevokedIndexes: List<ULong>
 
-    TestConfig.aroundEach {
+    testConfig= TestConfig.aroundEach {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         issuer = IssuerAgent(
             issuerCredentialStore = issuerCredentialStore,

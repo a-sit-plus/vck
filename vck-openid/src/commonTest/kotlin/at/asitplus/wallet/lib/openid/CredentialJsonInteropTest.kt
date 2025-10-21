@@ -11,19 +11,22 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 
-class CredentialJsonInteropTest by testSuite{
+val CredentialJsonInteropTest by testSuite{
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var issuerAgent: Issuer
     lateinit var subjectCredentialStore: SubjectCredentialStore
     lateinit var holderAgent: Holder
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         subjectCredentialStore = InMemorySubjectCredentialStore()
         holderAgent = HolderAgent(holderKeyMaterial, subjectCredentialStore)
@@ -32,6 +35,7 @@ class CredentialJsonInteropTest by testSuite{
             identifier = "https://issuer.example.com/".toUri(),
             randomSource = RandomSource.Default
         )
+        it()
     }
 
     "Plain jwt credential path resolving" {
@@ -107,7 +111,7 @@ class CredentialJsonInteropTest by testSuite{
             JsonPath("$.address.[\"formatted\"]")
         }
     }
-})
+}
 
 private fun JsonElement.getByJsonPath(path: String) =
     (JsonPath(path).query(this).first().value as JsonPrimitive)

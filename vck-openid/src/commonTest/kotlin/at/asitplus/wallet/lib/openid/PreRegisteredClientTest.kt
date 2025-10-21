@@ -27,6 +27,9 @@ import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.maps.shouldHaveSize
@@ -38,7 +41,7 @@ import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 
-class PreRegisteredClientTest by testSuite{
+val PreRegisteredClientTest by testSuite{
 
     lateinit var clientId: String
     lateinit var walletUrl: String
@@ -49,7 +52,7 @@ class PreRegisteredClientTest by testSuite{
     lateinit var holderOid4vp: OpenId4VpHolder
     lateinit var verifierOid4vp: OpenId4VpVerifier
     lateinit var defaultRequestOptions: RequestOptions
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         verifierKeyMaterial = EphemeralKeyWithoutCert()
         clientId = "PRE-REGISTERED-CLIENT"
@@ -83,6 +86,7 @@ class PreRegisteredClientTest by testSuite{
                 RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
             ),
         )
+        it()
     }
 
     "test with Fragment" {
@@ -387,7 +391,7 @@ class PreRegisteredClientTest by testSuite{
             holderOid4vp.createAuthnResponse(authRequestUrlWithRequestUri).getOrThrow()
         }
     }
-})
+}
 
 private fun requestOptionsAtomicAttribute() = RequestOptions(
     credentials = setOf(

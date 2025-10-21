@@ -23,12 +23,16 @@ import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
+import io.kotest.engine.runBlocking
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-class RqesOpenId4VpHolderTest by testSuite{
+val RqesOpenId4VpHolderTest by testSuite{
 
     val dummyValueProvider = DummyValueProvider()
     val rqesWalletService = RqesWalletService(
@@ -39,11 +43,12 @@ class RqesOpenId4VpHolderTest by testSuite{
         keyParameters.status == KeyParameters.KeyStatusOptions.ENABLED
                 && certParameters!!.status == CertificateParameters.CertStatus.VALID
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         rqesWalletService.updateSignatureProperties(
             signatureFormat = SignatureFormat.entries.random(),
             conformanceLevel = ConformanceLevel.entries.random(),
         )
+        it()
     }
     "RqesWalletService Tests" - {
         repeat(10) {
@@ -88,7 +93,7 @@ class RqesOpenId4VpHolderTest by testSuite{
             }
         }
 
-        val validCert = dummyValueProvider.getSigningCredential(isValid = true)
+        val validCert = runBlocking {  dummyValueProvider.getSigningCredential(isValid = true) }
         val validSigningAlgo =
             validCert.keyParameters.algo.firstNotNullOf { oid -> catchingUnwrapped { X509SignatureAlgorithm.entries.first { it.oid == oid } }.getOrNull() }
         rqesWalletService.setSigningCredential(validCert)

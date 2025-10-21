@@ -56,7 +56,7 @@ val IssuerSignedItemSerializationTest by testSuite{
     lateinit var elementId: String
     lateinit var namespace: String
 
-    TestConfig.aroundEach {
+    testConfig= TestConfig.aroundEach {
         namespace = uuid4().toString()
         elementId = uuid4().toString()
         it()

@@ -17,12 +17,15 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 
-class VerifierAttestationTest by testSuite{
+val VerifierAttestationTest by testSuite{
 
     lateinit var clientId: String
     lateinit var redirectUrl: String
@@ -33,7 +36,7 @@ class VerifierAttestationTest by testSuite{
     lateinit var holderOid4vp: OpenId4VpHolder
     lateinit var verifierOid4vp: OpenId4VpVerifier
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         verifierKeyMaterial = EphemeralKeyWithoutCert()
         clientId = "${uuid4()}"
@@ -58,6 +61,7 @@ class VerifierAttestationTest by testSuite{
             holder = holderAgent,
             randomSource = RandomSource.Default,
         )
+        it()
     }
 
     "test with request object and Attestation JWT" {
@@ -107,7 +111,7 @@ class VerifierAttestationTest by testSuite{
             holderOid4vp.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()
         }
     }
-})
+}
 
 
 private fun requestOptionsAtomicAttribute() = RequestOptions(

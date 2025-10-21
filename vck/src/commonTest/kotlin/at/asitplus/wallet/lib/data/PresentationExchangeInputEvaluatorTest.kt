@@ -26,7 +26,7 @@ val PresentationExchangeInputEvaluatorTest  by testSuite{
     lateinit var arrayCredential: JsonObject
     lateinit var objectCredential: JsonObject
 
-    TestConfig.aroundEach {
+   testConfig=  TestConfig.aroundEach {
         elementIdentifier = "p" + uuid4().bytes.encodeToString(Base16)
         elementValue = uuid4().bytes.encodeToString(Base16)
         simpleCredential = buildJsonObject {

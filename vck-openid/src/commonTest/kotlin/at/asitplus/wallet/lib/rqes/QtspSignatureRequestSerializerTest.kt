@@ -14,12 +14,13 @@ import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.github.aakira.napier.Napier
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.shouldBe
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 
-class QtspSignatureRequestSerializerTest by testSuite{
+val QtspSignatureRequestSerializerTest by testSuite{
 
     val adaptedCscTestVectorSignHash1 = """
     {
@@ -226,4 +227,4 @@ class QtspSignatureRequestSerializerTest by testSuite{
             }
         }
     }
-})
+}

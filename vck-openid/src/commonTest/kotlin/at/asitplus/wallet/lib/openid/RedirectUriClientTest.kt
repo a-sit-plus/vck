@@ -3,25 +3,18 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.RandomSource
-import at.asitplus.wallet.lib.agent.toStoreCredentialInput
+import at.asitplus.testballoon.invoke
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import at.asitplus.wallet.lib.oidvci.MapStore
-import at.asitplus.wallet.lib.oidvci.NonceService
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
-import at.asitplus.wallet.lib.oidvci.encodeToParameters
-import at.asitplus.wallet.lib.oidvci.formUrlEncode
+import at.asitplus.wallet.lib.oidvci.*
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.CreationOptions
 import com.benasher44.uuid.uuid4
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.assertions.throwables.shouldThrow
-import at.asitplus.testballoon.*
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.maps.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -31,7 +24,7 @@ import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 
-class RedirectUriClientTest by testSuite{
+val RedirectUriClientTest by testSuite {
 
     lateinit var clientId: String
     lateinit var walletUrl: String
@@ -41,7 +34,7 @@ class RedirectUriClientTest by testSuite{
     lateinit var holderOid4vp: OpenId4VpHolder
     lateinit var verifierOid4vp: OpenId4VpVerifier
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         verifierKeyMaterial = EphemeralKeyWithoutCert()
         clientId = "https://example.com/rp/${uuid4()}"
@@ -69,6 +62,7 @@ class RedirectUriClientTest by testSuite{
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = ClientIdScheme.RedirectUri(clientId),
         )
+        it()
     }
 
     "test with Fragment" {
@@ -257,8 +251,7 @@ class RedirectUriClientTest by testSuite{
                 it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
             }
     }
-
-})
+}
 
 private fun requestOptionsAtomicAttribute() = RequestOptions(
     credentials = setOf(

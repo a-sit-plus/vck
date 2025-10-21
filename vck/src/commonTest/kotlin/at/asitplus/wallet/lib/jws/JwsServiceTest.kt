@@ -28,7 +28,7 @@ val JwsServiceTest by testSuite {
     lateinit var verifierJwsService: VerifyJwsObjectFun
     lateinit var randomPayload: String
 
-    TestConfig.aroundEach {
+   testConfig=  TestConfig.aroundEach {
         keyId = Random.nextBytes(16).encodeToString(Base64())
         keyMaterial = EphemeralKeyWithoutCert(customKeyId = keyId)
         signJwt = SignJwt(keyMaterial, JwsHeaderCertOrJwk())

@@ -23,12 +23,15 @@ import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrowAny
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.maps.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-class OpenId4VpCombinedProtocolTwoStepTest by testSuite{
+val OpenId4VpCombinedProtocolTwoStepTest by testSuite{
 
     lateinit var clientId: String
     lateinit var holderKeyMaterial: KeyMaterial
@@ -37,7 +40,7 @@ class OpenId4VpCombinedProtocolTwoStepTest by testSuite{
     lateinit var holderOid4vp: OpenId4VpHolder
     lateinit var verifierOid4vp: OpenId4VpVerifier
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         verifierKeyMaterial = EphemeralKeyWithoutCert()
         clientId = "https://example.com/rp/${uuid4()}"
@@ -52,6 +55,7 @@ class OpenId4VpCombinedProtocolTwoStepTest by testSuite{
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = ClientIdScheme.RedirectUri(clientId),
         )
+        it()
     }
 
     "test credential matching" - {
@@ -272,7 +276,7 @@ class OpenId4VpCombinedProtocolTwoStepTest by testSuite{
             }
         }
     }
-})
+}
 
 private suspend fun Holder.storeSdJwtCredential(
     holderKeyMaterial: KeyMaterial,

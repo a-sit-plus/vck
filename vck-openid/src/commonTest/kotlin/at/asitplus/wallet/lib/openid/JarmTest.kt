@@ -17,9 +17,12 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
 
-class JarmTest by testSuite{
+val JarmTest by testSuite{
     lateinit var clientId: String
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var verifierKeyMaterial: KeyMaterial
@@ -27,7 +30,7 @@ class JarmTest by testSuite{
     lateinit var holderOid4vp: OpenId4VpHolder
     lateinit var verifierOid4vp: OpenId4VpVerifier
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         verifierKeyMaterial = EphemeralKeyWithoutCert()
         clientId = "https://example.com/rp/${uuid4()}"
@@ -50,6 +53,7 @@ class JarmTest by testSuite{
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = ClientIdScheme.RedirectUri(clientId)
         )
+        it()
     }
 
     /**
@@ -78,4 +82,4 @@ class JarmTest by testSuite{
             holderOid4vp.createAuthnResponse(vckJsonSerializer.encodeToString(invalidReq)).getOrThrow()
         }
     }
-})
+}

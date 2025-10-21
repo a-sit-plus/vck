@@ -27,7 +27,7 @@ import kotlinx.serialization.decodeFromByteArray
 
 val Iso18013SpecTest by testSuite{
 
-    TestConfig.aroundEach {
+   testConfig=  TestConfig.aroundEach {
         CborCredentialSerializer.register(
             serializerMap = mapOf(
                 "issue_date" to LocalDate.serializer(),

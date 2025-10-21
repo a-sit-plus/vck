@@ -6,6 +6,7 @@ import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.wallet.lib.jws.DecryptJwe
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSingleElement
@@ -18,7 +19,7 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
  * i.e. in the currently defined format of the device signature and session transcript for ISO mdocs,
  * that is the definition from ISO/IEC 18013-7:2024 Annex B.
  */
-class OpenId4VpIsoFixedTest by testSuite{
+val OpenId4VpIsoFixedTest by testSuite{
 
     "Selective Disclosure with mDL (ISO/IEC 18013-7:2024 Annex B)" {
         val keyDerBase64 =
@@ -140,5 +141,4 @@ class OpenId4VpIsoFixedTest by testSuite{
                 invalidItems.shouldBeEmpty()
             }
     }
-
-})
+}

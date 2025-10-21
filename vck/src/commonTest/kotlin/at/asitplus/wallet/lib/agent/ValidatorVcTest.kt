@@ -43,7 +43,7 @@ val ValidatorVcTest by testSuite {
 
     val revocationListUrl: String = "https://wallet.a-sit.at/backend/credentials/status/1"
 
-    TestConfig.aroundEach {
+   testConfig=  TestConfig.aroundEach {
         validator = ValidatorVcJws(
             validator = Validator(
                 tokenStatusResolver = TokenStatusResolverImpl(

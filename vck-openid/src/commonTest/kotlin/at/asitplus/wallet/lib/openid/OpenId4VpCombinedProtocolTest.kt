@@ -1,15 +1,10 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.minus
 import at.asitplus.wallet.eupid.EuPidScheme
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.RandomSource
-import at.asitplus.wallet.lib.agent.toStoreCredentialInput
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
@@ -17,14 +12,16 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
-import io.kotest.assertions.fail
-import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
+import io.kotest.assertions.AssertionErrorBuilder.Companion.fail
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-class OpenId4VpCombinedProtocolTest by testSuite{
+val OpenId4VpCombinedProtocolTest by testSuite {
 
     lateinit var clientId: String
     lateinit var holderKeyMaterial: KeyMaterial
@@ -33,7 +30,7 @@ class OpenId4VpCombinedProtocolTest by testSuite{
     lateinit var holderOid4vp: OpenId4VpHolder
     lateinit var verifierOid4vp: OpenId4VpVerifier
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         verifierKeyMaterial = EphemeralKeyWithoutCert()
         clientId = "https://example.com/rp/${uuid4()}"
@@ -48,6 +45,7 @@ class OpenId4VpCombinedProtocolTest by testSuite{
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = ClientIdScheme.RedirectUri(clientId),
         )
+        it()
     }
 
     "support for format holder specification" - {
@@ -337,7 +335,7 @@ class OpenId4VpCombinedProtocolTest by testSuite{
             }
         }
     }
-})
+}
 
 private fun AuthenticationRequestParameters.serialize(): String = vckJsonSerializer.encodeToString(this)
 
