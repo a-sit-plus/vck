@@ -29,6 +29,7 @@ val  PresentationFactoryTest by testSuite{
             signIdToken = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
             randomSource = RandomSource.Default
         )
+        it()
     }
 
     // https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#appendix-B.2.6.1-7

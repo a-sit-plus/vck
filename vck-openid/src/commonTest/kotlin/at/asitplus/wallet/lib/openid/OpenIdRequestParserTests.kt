@@ -27,6 +27,7 @@ val OpenIdRequestParserTests by testSuite{
 
     testConfig = TestConfig.aroundEach {
         requestParser = RequestParser()
+        it()
     }
 
     // https://verifier.funke.wwwallet.org/verifier/public/definitions/presentation-request/PID

@@ -217,7 +217,7 @@ val QtspSignatureRequestSerializerTest by testSuite{
             adaptedCscTestVectorSignDoc2,
             adaptedCscTestVectorSignDoc3
         ).forEachIndexed { i, vec ->
-            "Testvector ${i + 1}" - {
+            "Testvector ${i + 1}" {
                 val expected = vckJsonSerializer.decodeFromString<JsonObject>(vec).canonicalize()
                 val actual = vckJsonSerializer.encodeToJsonElement(
                     vckJsonSerializer.decodeFromString(QtspSignatureRequest.serializer(), vec)
