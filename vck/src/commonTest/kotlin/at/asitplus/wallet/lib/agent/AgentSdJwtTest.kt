@@ -217,7 +217,7 @@ val AgentSdJwtTest by testSuite {
                 )
             ).getOrThrow() as PresentationResponseParameters.DCQLParameters
 
-            val vp = presentationParameters.verifiablePresentations.values.firstOrNull()
+            val vp = presentationParameters.verifiablePresentations.values.flatten().firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
             verifier.verifyPresentationSdJwt(vp.sdJwt, challenge)
@@ -241,7 +241,7 @@ val AgentSdJwtTest by testSuite {
                 ),
             ).getOrThrow() as PresentationResponseParameters.DCQLParameters
 
-            val vp = presentationParameters.verifiablePresentations.values.firstOrNull()
+            val vp = presentationParameters.verifiablePresentations.values.flatten().firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
             // replace key binding of original vp.sdJwt (i.e. the part after the last `~`)
             val freshKbJwt = createFreshSdJwtKeyBinding(challenge, verifierId)
@@ -267,7 +267,7 @@ val AgentSdJwtTest by testSuite {
                 )
             ).getOrThrow() as PresentationResponseParameters.DCQLParameters
 
-            val vp = presentationParameters.verifiablePresentations.values.firstOrNull()
+            val vp = presentationParameters.verifiablePresentations.values.flatten().firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
             verifier.verifyPresentationSdJwt(vp.sdJwt, challenge)
@@ -286,7 +286,7 @@ val AgentSdJwtTest by testSuite {
                 )
             ).getOrThrow() as PresentationResponseParameters.DCQLParameters
 
-            val vp = presentationParameters.verifiablePresentations.values.firstOrNull()
+            val vp = presentationParameters.verifiablePresentations.values.flatten().firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
             holderCredentialStore.getCredentials().getOrThrow()

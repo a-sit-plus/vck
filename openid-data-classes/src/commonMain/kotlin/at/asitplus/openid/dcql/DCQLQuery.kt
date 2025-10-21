@@ -62,7 +62,7 @@ data class DCQLQuery(
         sdJwtCredentialTypeExtractor: (Credential) -> String,
         credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
     ): KmmResult<DCQLQueryResult<Credential>> = Procedures.executeQuery(
-        credentials = credentials,
+        credentialQueries = credentials,
         requestedCredentialSetQueries = requestedCredentialSetQueries,
         availableCredentials = availableCredentials,
         credentialFormatExtractor = credentialFormatExtractor,
@@ -90,7 +90,7 @@ data class DCQLQuery(
          * by the Verifier according to these rules, it MUST NOT return any Credential(s).
          */
         fun <Credential : Any> executeQuery(
-            credentials: List<DCQLCredentialQuery>,
+            credentialQueries: List<DCQLCredentialQuery>,
             requestedCredentialSetQueries: List<DCQLCredentialSetQuery>,
             availableCredentials: List<Credential>,
             credentialFormatExtractor: (Credential) -> CredentialFormatEnum,
@@ -99,7 +99,7 @@ data class DCQLQuery(
             credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
         ): KmmResult<DCQLQueryResult<Credential>> = catching {
             val credentialQueryMatches = findCredentialQueryMatches(
-                credentials,
+                credentialQueries,
                 availableCredentials = availableCredentials,
                 credentialFormatExtractor = credentialFormatExtractor,
                 mdocCredentialDoctypeExtractor = mdocCredentialDoctypeExtractor,

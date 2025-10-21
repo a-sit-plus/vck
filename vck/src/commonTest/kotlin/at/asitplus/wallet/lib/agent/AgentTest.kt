@@ -311,7 +311,7 @@ val AgentTest by testSuite {
                 request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
                 credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(singularDCQLRequest)
             ).getOrThrow() as PresentationResponseParameters.DCQLParameters
-            val vp = presentationParameters.verifiablePresentations.values.first()
+            val vp = presentationParameters.verifiablePresentations.values.flatten().first()
                 .shouldBeInstanceOf<CreatePresentationResult.Signed>()
             verifier.verifyPresentationVcJwt(vp.jwsSigned, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
@@ -335,7 +335,7 @@ val AgentTest by testSuite {
                 ),
                 credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(singularDCQLRequest)
             ).getOrThrow() as PresentationResponseParameters.DCQLParameters
-            val vp = presentationParameters.verifiablePresentations.values.first()
+            val vp = presentationParameters.verifiablePresentations.values.flatten().first()
                 .shouldBeInstanceOf<CreatePresentationResult.Signed>()
             verifier.verifyPresentationVcJwt(vp.jwsSigned, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
@@ -365,7 +365,7 @@ val AgentTest by testSuite {
                 credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(singularDCQLRequest)
             ).getOrNull() as PresentationResponseParameters.DCQLParameters?
             presentationParameters.shouldNotBeNull()
-            val vp = presentationParameters.verifiablePresentations.values.firstOrNull()
+            val vp = presentationParameters.verifiablePresentations.values.flatten().firstOrNull()
                 .shouldNotBeNull()
                 .shouldBeInstanceOf<CreatePresentationResult.Signed>()
 
@@ -391,7 +391,7 @@ val AgentTest by testSuite {
                 credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(singularDCQLRequest)
             ).getOrNull() as PresentationResponseParameters.DCQLParameters?
             presentationParameters.shouldNotBeNull()
-            val vp = presentationParameters.verifiablePresentations.values.firstOrNull()
+            val vp = presentationParameters.verifiablePresentations.values.flatten().firstOrNull()
                 .shouldNotBeNull()
                 .shouldBeInstanceOf<CreatePresentationResult.Signed>()
 

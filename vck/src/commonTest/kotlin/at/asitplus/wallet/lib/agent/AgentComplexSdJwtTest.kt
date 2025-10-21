@@ -493,7 +493,7 @@ private suspend fun createPresentation(
     credentialPresentationRequest = DCQLRequest(dcqlQuery),
 ).getOrThrow().let {
     it as PresentationResponseParameters.DCQLParameters
-}.verifiablePresentations.values.firstOrNull()
+}.verifiablePresentations.values.flatten().firstOrNull()
 
 
 private const val CLAIM_ALWAYS_VISIBLE = "alwaysVisible"

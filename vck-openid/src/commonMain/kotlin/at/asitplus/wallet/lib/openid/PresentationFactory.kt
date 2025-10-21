@@ -289,7 +289,7 @@ internal class PresentationFactory(
     @Throws(OAuth2Exception::class)
     private fun DCQLParameters.verifyFormatSupport(supportedFormats: FormatHolder) =
         verifiablePresentations.entries.mapIndexed { _, descriptor ->
-            val format = this.verifiablePresentations.entries.first().value.toFormat()
+            val format = this.verifiablePresentations.values.flatten().first().toFormat()
             if (!supportedFormats.supportsAlgorithm(format)) {
                 throw RegistrationValueNotSupported("incompatible algorithms: $supportedFormats")
             }
@@ -298,7 +298,7 @@ internal class PresentationFactory(
     @Throws(OAuth2Exception::class)
     private fun DCQLParameters.verifyFormatSupport(supportedFormats: VpFormatsSupported) =
         verifiablePresentations.entries.mapIndexed { _, descriptor ->
-            val format = this.verifiablePresentations.entries.first().value.toFormat()
+            val format = this.verifiablePresentations.values.flatten().first().toFormat()
             if (!supportedFormats.supportsAlgorithm(format)) {
                 throw RegistrationValueNotSupported("incompatible algorithms: $supportedFormats")
             }

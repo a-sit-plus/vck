@@ -13,10 +13,7 @@ import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.wallet.lib.data.Base64URLTransactionDataSerializer
-import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.Serializable
@@ -81,17 +78,22 @@ sealed interface PresentationResponseParameters {
     val mdocGeneratedNonce: String?
 
     data class DCQLParameters(
-        val verifiablePresentations: Map<DCQLCredentialQueryIdentifier, CreatePresentationResult>,
+        val verifiablePresentations: Map<DCQLCredentialQueryIdentifier, List<CreatePresentationResult>>,
     ) : PresentationResponseParameters {
         override val vpToken
             get() = buildJsonObject {
                 verifiablePresentations.entries.forEach {
-                    put(it.key.string, it.value.toJsonPrimitive())
+                    put(it.key.string, buildJsonArray {
+                        it.value.forEach {
+                            add(it.toJsonPrimitive())
+                        }
+                    })
                 }
             }
 
         override val mdocGeneratedNonce
-            get() = verifiablePresentations.values.filterIsInstance<CreatePresentationResult.DeviceResponse>()
+            get() = verifiablePresentations.values.flatten().filterIsInstance<CreatePresentationResult.DeviceResponse>()
+        // TODO: Why only singleOrNull and not firstOrNull
                 .singleOrNull()?.mdocGeneratedNonce
 
         override val presentationSubmission

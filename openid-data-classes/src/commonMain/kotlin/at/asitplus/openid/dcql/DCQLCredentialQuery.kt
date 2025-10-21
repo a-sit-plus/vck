@@ -158,13 +158,15 @@ sealed interface DCQLCredentialQuery {
 
         val requestedClaimsQueryCombinations = claimSets?.let {
             val claimQueryLookup = claimQueries.associateBy {
-                it.id
-                    ?: throw IllegalArgumentException("Claim query identifier is missing despite the presence of `claim_sets`.")
+                it.id ?: throw IllegalArgumentException(
+                    "Claim query identifier is missing despite the presence of `claim_sets`."
+                )
             }
             it.map {
                 it.map {
-                    claimQueryLookup[it]
-                        ?: throw IllegalArgumentException("Claim specified in `claim_sets` was not found in `claims`.")
+                    claimQueryLookup[it] ?: throw IllegalArgumentException(
+                        "Claim specified in `claim_sets` was not found in `claims`."
+                    )
                 }
             }.toNonEmptyList()
         } ?: nonEmptyListOf(claimQueries)

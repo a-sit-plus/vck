@@ -253,7 +253,11 @@ class HolderAgent(
             credentialPresentation.presentationRequest.dcqlQuery.requestedCredentialSetQueries
         val credentialSubmissions = credentialPresentation.credentialQuerySubmissions
             ?: matchDCQLQueryAgainstCredentialStore(dcqlQuery).getOrThrow()
-                .toDefaultSubmission().getOrThrow()
+                .toDefaultSubmission(dcqlQuery.credentials.filter {
+                    it.multiple ?: false
+                }.map {
+                    it.id
+                }.toSet()).getOrThrow()
 
         DCQLQuery.Procedures.isSatisfactoryCredentialSubmission(
             credentialSubmissions = credentialSubmissions.keys,
@@ -265,13 +269,15 @@ class HolderAgent(
         }
 
         val verifiablePresentations = credentialSubmissions.mapValues { match ->
-            val credential = match.value.credential
-            val disclosedAttributes = match.value.matchingResult
-            verifiablePresentationFactory.createVerifiablePresentation(
-                request = request,
-                credential = credential,
-                disclosedAttributes = disclosedAttributes,
-            ).getOrThrow()
+            match.value.map {
+                val credential = it.credential
+                val disclosedAttributes = it.matchingResult
+                verifiablePresentationFactory.createVerifiablePresentation(
+                    request = request,
+                    credential = credential,
+                    disclosedAttributes = disclosedAttributes,
+                ).getOrThrow()
+            }
         }
 
         PresentationResponseParameters.DCQLParameters(
@@ -345,8 +351,9 @@ class HolderAgent(
         filterById: String?,
     ): KmmResult<DCQLQueryResult<StoreEntry>> {
         return DCQLQueryAdapter(dcqlQuery).select(
-            credentials = getValidCredentialsByPriority(filterById)
-                ?: throw PresentationException("Credentials could not be retrieved from the store"),
+            credentials = getValidCredentialsByPriority(filterById) ?: throw PresentationException(
+                "Credentials could not be retrieved from the store"
+            ),
         )
     }
 
