@@ -18,6 +18,9 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.randomString
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import com.benasher44.uuid.uuid4
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -26,7 +29,7 @@ import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 
-class OAuth2ClientDPoPTest : FunSpec({
+val OAuth2ClientDPoPTest by testSuite{
 
     lateinit var scope: String
     lateinit var client: OAuth2Client
@@ -38,7 +41,7 @@ class OAuth2ClientDPoPTest : FunSpec({
     val tokenUrl = "https://example.com/token"
     val resourceUrl = "https://example.com/resource"
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         scope = randomString()
         client = OAuth2Client()
         user = OidcUserInfoExtended(OidcUserInfo(randomString()))
@@ -51,6 +54,7 @@ class OAuth2ClientDPoPTest : FunSpec({
         clientKey = EphemeralKeyWithoutCert()
         signDpop = SignJwt(clientKey, JwsHeaderCertOrJwk())
         state = uuid4().toString()
+        it()
     }
 
     suspend fun getCode(state: String): String {
@@ -397,4 +401,4 @@ class OAuth2ClientDPoPTest : FunSpec({
             ).getOrThrow()
         }
     }
-})
+}

@@ -6,6 +6,9 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.randomString
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import com.benasher44.uuid.uuid4
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
@@ -13,20 +16,21 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-class OAuth2ClientTest : FunSpec({
+val OAuth2ClientTest  by testSuite{
 
     lateinit var scope: String
     lateinit var client: OAuth2Client
     lateinit var user: OidcUserInfoExtended
     lateinit var server: SimpleAuthorizationService
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         scope = randomString()
         client = OAuth2Client()
         user = OidcUserInfoExtended(OidcUserInfo(randomString()))
         server = SimpleAuthorizationService(
             strategy = DummyAuthorizationServiceStrategy(scope),
         )
+        it()
     }
 
     test("process with pre-authorized code") {
@@ -217,5 +221,4 @@ class OAuth2ClientTest : FunSpec({
             active shouldBe true
         }
     }
-
 }

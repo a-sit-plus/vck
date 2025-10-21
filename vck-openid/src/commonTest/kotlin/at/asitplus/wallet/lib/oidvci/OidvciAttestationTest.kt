@@ -24,6 +24,9 @@ import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.core.spec.style.FunSpec
@@ -32,7 +35,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlin.time.Clock.System
 
-class OidvciAttestationTest : FunSpec({
+val OidvciAttestationTest by testSuite{
 
     lateinit var authorizationService: SimpleAuthorizationService
     lateinit var issuer: CredentialIssuer
@@ -60,7 +63,7 @@ class OidvciAttestationTest : FunSpec({
         return authorizationService.token(tokenRequest, null).getOrThrow()
     }
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         authorizationService = SimpleAuthorizationService(
             strategy = CredentialAuthorizationServiceStrategy(
                 setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme)
@@ -79,6 +82,7 @@ class OidvciAttestationTest : FunSpec({
             )
         )
         state = uuid4().toString()
+        it()
     }
 
     test("use key attestation for proof") {

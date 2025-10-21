@@ -18,18 +18,21 @@ import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-class OidvciOfferCodeTest by testSuite{
+val OidvciOfferCodeTest by testSuite{
 
     lateinit var authorizationService: SimpleAuthorizationService
     lateinit var issuer: CredentialIssuer
     lateinit var client: WalletService
     lateinit var state: String
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         authorizationService = SimpleAuthorizationService(
             strategy = CredentialAuthorizationServiceStrategy(setOf(AtomicAttribute2023, MobileDrivingLicenceScheme)),
         )
@@ -43,6 +46,7 @@ class OidvciOfferCodeTest by testSuite{
         )
         client = WalletService()
         state = uuid4().toString()
+        it()
     }
 
     suspend fun getToken(

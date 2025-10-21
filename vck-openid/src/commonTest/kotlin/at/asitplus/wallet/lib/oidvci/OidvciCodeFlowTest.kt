@@ -35,6 +35,9 @@ import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
@@ -48,7 +51,7 @@ import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.decodeFromByteArray
 
-class OidvciCodeFlowTest by testSuite{
+val OidvciCodeFlowTest by testSuite{
 
     lateinit var strategy: AuthorizationServiceStrategy
     lateinit var authorizationService: SimpleAuthorizationService
@@ -56,7 +59,7 @@ class OidvciCodeFlowTest by testSuite{
     lateinit var client: WalletService
     lateinit var state: String
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         strategy = CredentialAuthorizationServiceStrategy(setOf(AtomicAttribute2023, MobileDrivingLicenceScheme))
         authorizationService = SimpleAuthorizationService(
             strategy = strategy,
@@ -71,6 +74,7 @@ class OidvciCodeFlowTest by testSuite{
         )
         client = WalletService()
         state = uuid4().toString()
+        it()
     }
 
     suspend fun getToken(scope: String, setScopeInTokenRequest: Boolean = true): TokenResponseParameters {

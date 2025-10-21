@@ -2,35 +2,15 @@ package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.catching
 import at.asitplus.iso.IssuerSignedItem
-import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.ClientNonceResponse
-import at.asitplus.openid.CredentialFormatEnum
-import at.asitplus.openid.CredentialRequestParameters
-import at.asitplus.openid.CredentialResponseParameters
-import at.asitplus.openid.IssuerMetadata
-import at.asitplus.openid.OAuth2AuthorizationServerMetadata
-import at.asitplus.openid.OidcUserInfo
-import at.asitplus.openid.OidcUserInfoExtended
+import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_CREDENTIAL_ISSUER
 import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER
 import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION
-import at.asitplus.openid.PushedAuthenticationResponseParameters
-import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.TokenIntrospectionRequest
-import at.asitplus.openid.TokenIntrospectionResponse
-import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.eupid.EuPidScheme
-import at.asitplus.wallet.lib.agent.ClaimToBeIssued
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued.Iso
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued.VcSd
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.RandomSource
-import at.asitplus.wallet.lib.agent.ValidatorSdJwt
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
@@ -40,23 +20,14 @@ import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
-import at.asitplus.wallet.lib.oauth2.ClientAuthenticationService
-import at.asitplus.wallet.lib.oauth2.OAuth2Client
-import at.asitplus.wallet.lib.oauth2.RequestInfo
-import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
-import at.asitplus.wallet.lib.oauth2.TokenService
-import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
-import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
-import at.asitplus.wallet.lib.oidvci.CredentialDataProviderFun
-import at.asitplus.wallet.lib.oidvci.CredentialIssuer
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception
-import at.asitplus.wallet.lib.oidvci.WalletService
-import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
+import at.asitplus.wallet.lib.oauth2.*
+import at.asitplus.wallet.lib.oidvci.*
 import at.asitplus.wallet.lib.openid.toOAuth2Error
 import com.benasher44.uuid.uuid4
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.github.aakira.napier.Napier
-import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -76,7 +47,7 @@ import kotlin.time.Clock
  * Tests [OpenId4VciClient] against [CredentialIssuer] that uses [RemoteOAuth2AuthorizationServerAdapter]
  * to simulate an external OAuth2.0 Authorization Server (which is still our own internal [SimpleAuthorizationService]).
  */
-class OpenId4VciClientExternalAuthorizationServerTest : FunSpec() {
+val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
 
     lateinit var credentialKeyMaterial: KeyMaterial
     lateinit var walletDpopKeyMaterial: KeyMaterial
@@ -92,85 +63,18 @@ class OpenId4VciClientExternalAuthorizationServerTest : FunSpec() {
     lateinit var issuerClientAuthKeyMaterial: KeyMaterial
     lateinit var issuerPublicContext: String
 
-    init {
-        beforeEach {
-            credentialKeyMaterial = EphemeralKeyWithoutCert()
-            walletDpopKeyMaterial = EphemeralKeyWithoutCert()
-            walletClientAuthKeyMaterial = EphemeralKeyWithoutCert()
-            issuerDpopKeyMaterial = EphemeralKeyWithoutCert()
-            issuerClientAuthKeyMaterial = EphemeralKeyWithoutCert()
-        }
-
-        test("loadEuPidCredentialSdJwt") {
-
-            val expectedFamilyName = uuid4().toString()
-            setup(
-                scheme = EuPidScheme,
-                representation = SD_JWT,
-                attributes = mapOf(EuPidScheme.Attributes.FAMILY_NAME to expectedFamilyName),
-            )
-
-            // Load credential identifier infos from Issuing service
-            val credentialIdentifierInfos = client.loadCredentialMetadata(issuerPublicContext).getOrThrow()
-            // just pick the first credential in SD-JWT that is available
-            val selectedCredential = credentialIdentifierInfos
-                .first { it.supportedCredentialFormat.format == CredentialFormatEnum.DC_SD_JWT }
-            // client will call clientBrowser.openUrlExternally
-            client.startProvisioningWithAuthRequestReturningResult(
-                credentialIssuerUrl = issuerPublicContext,
-                credentialIdentifierInfo = selectedCredential,
-            ).getOrThrow().also {
-                // Simulates the browser, handling authorization to get the authCode
-                val httpClient = HttpClient(mockEngine) { followRedirects = false }
-                val authCode = httpClient.get(it.url).headers[HttpHeaders.Location]
-                client.resumeWithAuthCode(authCode!!, it.context).getOrThrow().also {
-                    refreshTokenStore = it.refreshToken!!
-                    verifySdJwtCredential(it, expectedFamilyName)
-                }
-            }
-
-            refreshTokenStore.shouldNotBeNull()
-            client.refreshCredentialReturningResult(refreshTokenStore).getOrThrow().also {
-                verifySdJwtCredential(it, expectedFamilyName)
-            }
-
-        }
-
-        test("loadEuPidCredentialIsoWithOffer") {
-            val expectedGivenName = uuid4().toString()
-            setup(
-                scheme = EuPidScheme,
-                representation = ISO_MDOC,
-                attributes = mapOf(
-                    EuPidScheme.Attributes.GIVEN_NAME to expectedGivenName
-                )
-            )
-
-            // Load credential identifier infos from Issuing service
-            val credentialIdentifierInfos = client.loadCredentialMetadata(issuerPublicContext).getOrThrow()
-            // just pick the first credential in MSO_MDOC that is available
-            val selectedCredential = credentialIdentifierInfos
-                .first { it.supportedCredentialFormat.format == CredentialFormatEnum.MSO_MDOC }
-
-            val offer = externalAuthorizationServer.credentialOfferWithPreAuthnForUser(
-                dummyUser(),
-                credentialIssuer.metadata.credentialIssuer
-            )
-            client.loadCredentialWithOfferReturningResult(offer, selectedCredential, null).getOrThrow().also {
-                it.shouldBeInstanceOf<CredentialIssuanceResult.Success>().also {
-                    refreshTokenStore = it.refreshToken!!
-                    verifyIsoMdocCredential(it, expectedGivenName)
-                }
-            }
-            refreshTokenStore.shouldNotBeNull()
-            client.refreshCredentialReturningResult(refreshTokenStore).getOrThrow().also {
-                verifyIsoMdocCredential(it, expectedGivenName)
-            }
-
-        }
+    testConfig = TestConfig.aroundEach {
+        credentialKeyMaterial = EphemeralKeyWithoutCert()
+        walletDpopKeyMaterial = EphemeralKeyWithoutCert()
+        walletClientAuthKeyMaterial = EphemeralKeyWithoutCert()
+        issuerDpopKeyMaterial = EphemeralKeyWithoutCert()
+        issuerClientAuthKeyMaterial = EphemeralKeyWithoutCert()
+        it()
     }
 
-    private suspend fun verifySdJwtCredential(
+
+
+     suspend fun verifySdJwtCredential(
         success: CredentialIssuanceResult.Success,
         expectedFamilyName: String,
     ) {
@@ -188,7 +92,7 @@ class OpenId4VciClientExternalAuthorizationServerTest : FunSpec() {
         }
     }
 
-    private fun verifyIsoMdocCredential(
+     fun verifyIsoMdocCredential(
         success: CredentialIssuanceResult.Success,
         expectedGivenName: String,
     ) {
@@ -202,7 +106,7 @@ class OpenId4VciClientExternalAuthorizationServerTest : FunSpec() {
         }
     }
 
-    private fun setup(
+     fun setup(
         scheme: ConstantIndex.CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation,
         attributes: Map<String, String>,
@@ -445,23 +349,95 @@ class OpenId4VciClientExternalAuthorizationServerTest : FunSpec() {
         )
     }
 
-    private fun MockRequestHandleScope.respondOAuth2Error(throwable: Throwable): HttpResponseData = respond(
-        vckJsonSerializer.encodeToString(throwable.toOAuth2Error(null)),
-        headers = headers {
-            append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            (throwable as? OAuth2Exception.UseDpopNonce)?.dpopNonce
-                ?.let { append(HttpHeaders.DPoPNonce, it) }
-        },
-        status = HttpStatusCode.BadRequest
-    ).also { Napier.w("Server error: ${throwable.message}", throwable) }
 
-    private fun HttpRequestData.toRequestInfo(): RequestInfo = RequestInfo(
-        url = url.toString(),
-        method = method,
-        dpop = headers["DPoP"],
-        clientAttestation = headers["OAuth-Client-Attestation"],
-        clientAttestationPop = headers["OAuth-Client-Attestation-PoP"],
-    )
 
-    private fun dummyUser(): OidcUserInfoExtended = OidcUserInfoExtended.deserialize("{\"sub\": \"foo\"}").getOrThrow()
+
+    test("loadEuPidCredentialSdJwt") {
+
+        val expectedFamilyName = uuid4().toString()
+        setup(
+            scheme = EuPidScheme,
+            representation = SD_JWT,
+            attributes = mapOf(EuPidScheme.Attributes.FAMILY_NAME to expectedFamilyName),
+        )
+
+        // Load credential identifier infos from Issuing service
+        val credentialIdentifierInfos = client.loadCredentialMetadata(issuerPublicContext).getOrThrow()
+        // just pick the first credential in SD-JWT that is available
+        val selectedCredential = credentialIdentifierInfos
+            .first { it.supportedCredentialFormat.format == CredentialFormatEnum.DC_SD_JWT }
+        // client will call clientBrowser.openUrlExternally
+        client.startProvisioningWithAuthRequestReturningResult(
+            credentialIssuerUrl = issuerPublicContext,
+            credentialIdentifierInfo = selectedCredential,
+        ).getOrThrow().also {
+            // Simulates the browser, handling authorization to get the authCode
+            val httpClient = HttpClient(mockEngine) { followRedirects = false }
+            val authCode = httpClient.get(it.url).headers[HttpHeaders.Location]
+            client.resumeWithAuthCode(authCode!!, it.context).getOrThrow().also {
+                refreshTokenStore = it.refreshToken!!
+                verifySdJwtCredential(it, expectedFamilyName)
+            }
+        }
+
+        refreshTokenStore.shouldNotBeNull()
+        client.refreshCredentialReturningResult(refreshTokenStore).getOrThrow().also {
+            verifySdJwtCredential(it, expectedFamilyName)
+        }
+
+    }
+
+    test("loadEuPidCredentialIsoWithOffer") {
+        val expectedGivenName = uuid4().toString()
+        setup(
+            scheme = EuPidScheme,
+            representation = ISO_MDOC,
+            attributes = mapOf(
+                EuPidScheme.Attributes.GIVEN_NAME to expectedGivenName
+            )
+        )
+
+        // Load credential identifier infos from Issuing service
+        val credentialIdentifierInfos = client.loadCredentialMetadata(issuerPublicContext).getOrThrow()
+        // just pick the first credential in MSO_MDOC that is available
+        val selectedCredential = credentialIdentifierInfos
+            .first { it.supportedCredentialFormat.format == CredentialFormatEnum.MSO_MDOC }
+
+        val offer = externalAuthorizationServer.credentialOfferWithPreAuthnForUser(
+            dummyUser(),
+            credentialIssuer.metadata.credentialIssuer
+        )
+        client.loadCredentialWithOfferReturningResult(offer, selectedCredential, null).getOrThrow().also {
+            it.shouldBeInstanceOf<CredentialIssuanceResult.Success>().also {
+                refreshTokenStore = it.refreshToken!!
+                verifyIsoMdocCredential(it, expectedGivenName)
+            }
+        }
+        refreshTokenStore.shouldNotBeNull()
+        client.refreshCredentialReturningResult(refreshTokenStore).getOrThrow().also {
+            verifyIsoMdocCredential(it, expectedGivenName)
+        }
+
+    }
+
 }
+
+private fun MockRequestHandleScope.respondOAuth2Error(throwable: Throwable): HttpResponseData = respond(
+    vckJsonSerializer.encodeToString(throwable.toOAuth2Error(null)),
+    headers = headers {
+        append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+        (throwable as? OAuth2Exception.UseDpopNonce)?.dpopNonce
+            ?.let { append(HttpHeaders.DPoPNonce, it) }
+    },
+    status = HttpStatusCode.BadRequest
+).also { Napier.w("Server error: ${throwable.message}", throwable) }
+
+private fun HttpRequestData.toRequestInfo(): RequestInfo = RequestInfo(
+    url = url.toString(),
+    method = method,
+    dpop = headers["DPoP"],
+    clientAttestation = headers["OAuth-Client-Attestation"],
+    clientAttestationPop = headers["OAuth-Client-Attestation-PoP"],
+)
+
+private fun dummyUser(): OidcUserInfoExtended = OidcUserInfoExtended.deserialize("{\"sub\": \"foo\"}").getOrThrow()

@@ -8,6 +8,9 @@ import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import at.asitplus.testballoon.*
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.nulls.shouldNotBeNull
 import kotlinx.serialization.json.JsonPrimitive
@@ -15,12 +18,12 @@ import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 
-class OidvciMetadataTest by testSuite{
+val OidvciMetadataTest by testSuite{
 
     lateinit var authorizationService: SimpleAuthorizationService
     lateinit var issuer: CredentialIssuer
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         authorizationService = SimpleAuthorizationService(
             strategy = CredentialAuthorizationServiceStrategy(setOf(AtomicAttribute2023, MobileDrivingLicenceScheme)),
         )
@@ -32,6 +35,7 @@ class OidvciMetadataTest by testSuite{
             ),
             credentialSchemes = setOf(AtomicAttribute2023, MobileDrivingLicenceScheme),
         )
+        it()
     }
 
     "metadata for ISO_MDOC" {
@@ -45,4 +49,4 @@ class OidvciMetadataTest by testSuite{
             }
         }
     }
-})
+}

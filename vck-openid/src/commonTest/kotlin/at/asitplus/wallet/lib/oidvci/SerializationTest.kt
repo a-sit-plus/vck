@@ -19,6 +19,7 @@ import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -28,7 +29,7 @@ import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
 
-class SerializationTest : FunSpec({
+val SerializationTest by testSuite {
 
     fun createAuthorizationRequest() = AuthenticationRequestParameters(
         responseType = GRANT_TYPE_CODE,
