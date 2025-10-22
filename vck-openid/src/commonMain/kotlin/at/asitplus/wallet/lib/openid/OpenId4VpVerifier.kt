@@ -85,7 +85,10 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
-import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.coroutines.cancellation.CancellationException
@@ -528,20 +531,44 @@ class OpenId4VpVerifier(
                 val relatedPresentation = JsonPath(descriptor.cumulativeJsonPath)
                     .query(verifiablePresentation).first().value
                 catchingUnwrapped {
-                    verifyPresentationResult(
-                        claimFormat = descriptor.format,
-                        relatedPresentation = relatedPresentation,
-                        expectedNonce = expectedNonce,
-                        input = responseParameters,
-                        clientId = authnRequest.clientId,
-                        responseUrl = authnRequest.responseUrl ?: authnRequest.redirectUrlExtracted,
-                        transactionData = authnRequest.transactionData,
-                    )
+                    when (relatedPresentation) {
+                        // TODO: remove JsonPrimitive switch when dropping backwards compatibility to pre-list era
+                        is JsonPrimitive -> listOf(
+                            verifyPresentationResult(
+                                claimFormat = descriptor.format,
+                                relatedPresentation = relatedPresentation,
+                                expectedNonce = expectedNonce,
+                                input = responseParameters,
+                                clientId = authnRequest.clientId,
+                                responseUrl = authnRequest.responseUrl ?: authnRequest.redirectUrlExtracted,
+                                transactionData = authnRequest.transactionData,
+                            )
+                        )
+
+                        is JsonArray -> relatedPresentation.jsonArray.map {
+                            verifyPresentationResult(
+                                claimFormat = descriptor.format,
+                                relatedPresentation = it.jsonPrimitive,
+                                expectedNonce = expectedNonce,
+                                input = responseParameters,
+                                clientId = authnRequest.clientId,
+                                responseUrl = authnRequest.responseUrl ?: authnRequest.redirectUrlExtracted,
+                                transactionData = authnRequest.transactionData,
+                            )
+                        }
+
+                        is JsonObject -> throw IllegalArgumentException("Verifiable presentations must not be Json Objects")
+                    }.map {
+                        it.mapToAuthnResponseResult(state)
+                    }
                 }.getOrElse {
                     return AuthnResponseResult.ValidationError("Invalid presentation", state, it)
-                }.mapToAuthnResponseResult(state)
+                }
             } ?: listOf()
-            return validationResults.firstOrList()
+            return validationResults.mapNotNull {
+                // TODO: how to handle multiple credentials for an input descriptor at this point? No specification...
+                it.firstOrNull()
+            }.firstOrList()
         }
 
         authnRequest.dcqlQuery?.let { query ->
@@ -554,15 +581,36 @@ class OpenId4VpVerifier(
                     ?: throw IllegalArgumentException("Unknown credential query identifier.")
 
                 catchingUnwrapped {
-                    verifyPresentationResult(
-                        claimFormat = credentialQuery.format.toClaimFormat(),
-                        relatedPresentation = relatedPresentation,
-                        expectedNonce = expectedNonce,
-                        input = responseParameters,
-                        clientId = authnRequest.clientId,
-                        responseUrl = authnRequest.responseUrl ?: authnRequest.redirectUrlExtracted,
-                        transactionData = authnRequest.transactionData,
-                    ).mapToAuthnResponseResult(state)
+                    when (relatedPresentation) {
+                        // TODO: remove JsonPrimitive switch when dropping backwards compatibility to pre-list era
+                        is JsonPrimitive -> listOf(
+                            verifyPresentationResult(
+                                claimFormat = credentialQuery.format.toClaimFormat(),
+                                relatedPresentation = relatedPresentation,
+                                expectedNonce = expectedNonce,
+                                input = responseParameters,
+                                clientId = authnRequest.clientId,
+                                responseUrl = authnRequest.responseUrl ?: authnRequest.redirectUrlExtracted,
+                                transactionData = authnRequest.transactionData,
+                            )
+                        )
+
+                        is JsonArray -> relatedPresentation.jsonArray.map {
+                            verifyPresentationResult(
+                                claimFormat = credentialQuery.format.toClaimFormat(),
+                                relatedPresentation = it.jsonPrimitive,
+                                expectedNonce = expectedNonce,
+                                input = responseParameters,
+                                clientId = authnRequest.clientId,
+                                responseUrl = authnRequest.responseUrl ?: authnRequest.redirectUrlExtracted,
+                                transactionData = authnRequest.transactionData,
+                            )
+                        }
+
+                        is JsonObject -> throw IllegalArgumentException("Verifiable presentations must not be Json Objects")
+                    }.map {
+                        it.mapToAuthnResponseResult(state)
+                    }
                 }.getOrElse {
                     return AuthnResponseResult.ValidationError("Invalid presentation", state, it)
                 }
@@ -603,7 +651,7 @@ class OpenId4VpVerifier(
     @Suppress("DEPRECATION")
     private suspend fun verifyPresentationResult(
         claimFormat: ClaimFormat,
-        relatedPresentation: JsonElement,
+        relatedPresentation: JsonPrimitive,
         expectedNonce: String,
         input: ResponseParametersFrom,
         clientId: String?,
@@ -611,7 +659,7 @@ class OpenId4VpVerifier(
         transactionData: List<TransactionDataBase64Url>?,
     ) = when (claimFormat) {
         ClaimFormat.JWT_SD, ClaimFormat.SD_JWT -> verifier.verifyPresentationSdJwt(
-            input = SdJwtSigned.parseCatching(relatedPresentation.jsonPrimitive.content).getOrElse {
+            input = SdJwtSigned.parseCatching(relatedPresentation.content).getOrElse {
                 throw IllegalArgumentException("relatedPresentation")
             },
             challenge = expectedNonce,
@@ -621,7 +669,7 @@ class OpenId4VpVerifier(
         ClaimFormat.JWT_VP -> verifier.verifyPresentationVcJwt(
             input = JwsSigned.deserialize(
                 VerifiablePresentationJws.serializer(),
-                relatedPresentation.jsonPrimitive.content,
+                relatedPresentation.content,
                 vckJsonSerializer
             ).getOrThrow(),
             challenge = expectedNonce
@@ -634,7 +682,7 @@ class OpenId4VpVerifier(
                 ?.jweDecrypted?.header?.agreementPartyUInfo
             val apuNested = ((input as? ResponseParametersFrom.JwsSigned)?.parent as? ResponseParametersFrom.JweForJws)
                 ?.jweDecrypted?.header?.agreementPartyUInfo
-            val deviceResponse = relatedPresentation.jsonPrimitive.content.decodeToByteArray(Base64UrlStrict)
+            val deviceResponse = relatedPresentation.content.decodeToByteArray(Base64UrlStrict)
                 .let { coseCompliantSerializer.decodeFromByteArray<DeviceResponse>(it) }
 
             val mdocGeneratedNonce = apuDirect?.decodeToString()

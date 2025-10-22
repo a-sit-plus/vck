@@ -35,7 +35,7 @@ sealed class AuthnResponseResult {
     /**
      * Validation results of all returned verifiable presentations
      */
-    data class VerifiableDCQLPresentationValidationResults(val validationResults: Map<DCQLCredentialQueryIdentifier, AuthnResponseResult>) :
+    data class VerifiableDCQLPresentationValidationResults(val validationResults: Map<DCQLCredentialQueryIdentifier, List<AuthnResponseResult>>) :
         AuthnResponseResult()
 
     /**

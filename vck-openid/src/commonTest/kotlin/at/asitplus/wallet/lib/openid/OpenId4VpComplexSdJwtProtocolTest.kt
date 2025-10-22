@@ -160,7 +160,7 @@ val OpenId4VpComplexSdJwtProtocolTest by testSuite {
 
         verifierOid4vp.validateAuthnResponse(authnResponse.url).apply {
             shouldBeInstanceOf<AuthnResponseResult.VerifiableDCQLPresentationValidationResults>()
-            validationResults.values.shouldBeSingleton().first().apply {
+            validationResults.values.shouldBeSingleton().first().first().apply {
                 shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
                 verifiableCredentialSdJwt.shouldNotBeNull()
                 CLAIM_ADDRESS shouldBeIn reconstructed.keys
