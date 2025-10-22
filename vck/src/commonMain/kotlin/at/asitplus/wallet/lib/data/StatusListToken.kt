@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.data
 import at.asitplus.KmmResult
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.StatusListTokenIntegrityValidator
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
@@ -13,6 +14,10 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import kotlin.time.Instant
 
+object StatusListConstants {
+    const val STATUS_LIST_TYP = "statuslist+jwt"
+}
+
 sealed interface StatusListToken {
     val resolvedAt: Instant?
     val payload: StatusListTokenPayload
@@ -22,6 +27,7 @@ sealed interface StatusListToken {
         verifyCoseSignature: VerifyCoseSignatureFun<StatusListTokenPayload> = VerifyCoseSignature(),
         statusListInfo: StatusListInfo,
         isInstantInThePast: (Instant) -> Boolean,
+        trustAnchors: Set<X509Certificate>? = null
     ): KmmResult<StatusListTokenPayload> = StatusListTokenValidator.validateStatusListToken(
         statusListToken = this,
         statusListTokenResolvedAt = resolvedAt,
