@@ -15,6 +15,7 @@ on:
 jobs:
   build:
     runs-on: macos-latest
+    timeout-minutes: 300
     env:
       KOTLIN_VERSION_ENV: ${{ inputs.kotlin-version }}
       TESTBALLOON_VERSION_OVERRIDE: ${{ inputs.testballoon-version }}
@@ -36,7 +37,7 @@ jobs:
         if: success() || failure()
         with:
           name: All Tests
-          path: 'dif-data-classes/build/test-results/**/TEST*.xml,openid-data-classes/build/test-results/**/TEST*.xml,csc-data-classes/build/test-results/**/TEST*.xml,vck/build/test-results/**/TEST*.xml,vck-openid/build/test-results/**/TEST*.xml,vck-openid-ktor/build/test-results/**/TEST*.xml,vck-csc/build/test-results/**/TEST*.xml,'
+          path: dif-data-classes/build/test-results/**/TEST*.xml,openid-data-classes/build/test-results/**/TEST*.xml,csc-data-classes/build/test-results/**/TEST*.xml,vck/build/test-results/**/TEST*.xml,vck-openid/build/test-results/**/TEST*.xml,vck-openid-ktor/build/test-results/**/TEST*.xml,vck-csc/build/test-results/**/TEST*.xml,
           list-suites: failed
           list-tests: failed
           reporter: java-junit
