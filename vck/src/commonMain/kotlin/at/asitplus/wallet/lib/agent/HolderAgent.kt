@@ -77,7 +77,7 @@ class HolderAgent(
 
             is Holder.StoreCredentialInput.SdJwt -> {
                 val validated = validatorSdJwt.verifySdJwt(credential.signedSdJwtVc, keyMaterial.publicKey)
-                if (credential.signedSdJwtVc.keyBindingJws != null) Throwable("Holder must reject SD-JWT from Verifier if it contains KB")
+                if (credential.signedSdJwtVc.keyBindingJws != null) Throwable("Issued SD-JWT credentials must not contain a KB")
                 if (validated !is Verifier.VerifyCredentialResult.SuccessSdJwt) {
                     val error = (validated as? Verifier.VerifyCredentialResult.ValidationError)?.cause
                         ?: Throwable("Invalid SD-JWT")
