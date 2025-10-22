@@ -36,7 +36,7 @@ jobs:
         if: success() || failure()
         with:
           name: All Tests
-          path: vck/build/test-results/**/TEST*.xml,vck-openid/build/test-results/**/TEST*.xml,vck-openid-ktor/build/test-results/**/TEST*.xml,mobile-driving-licence-credential/mobiledrivinglicence/build/test-results/**/TEST*.xml
+          path: '**/build/test-results/**/TEST*.xml'
           list-suites: failed
           list-tests: failed
           reporter: java-junit

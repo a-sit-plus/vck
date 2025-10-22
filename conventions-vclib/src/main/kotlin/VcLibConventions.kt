@@ -12,6 +12,7 @@ import org.gradle.api.tasks.testing.Test
 import org.gradle.kotlin.dsl.getByType
 import org.gradle.kotlin.dsl.invoke
 import org.gradle.kotlin.dsl.withType
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinDependencyHandler
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
@@ -80,9 +81,22 @@ class VcLibConventions : K2Conventions() {
 }
 
 fun KotlinMultiplatformExtension.vckAndroid(minSdkOverride: Int? = null)  {
+    val compat = project.androidJvmTarget
     val namespace = "${project.group}.${project.name.replace('-', '.')}"
     androidLibrary {
+
+        compilations.configureEach {
+            if (name.contains("test", ignoreCase = true)) {
+                if (project.raiseAndroidTestToJdkTarget) compilerOptions.configure {
+                    jvmTarget.set(JvmTarget.fromTarget(project.jvmTarget))
+                }
+            } else compilerOptions.configure {
+                jvmTarget.set(JvmTarget.fromTarget(compat!!))
+            }
+        }
+
         this.namespace = namespace
+        minSdk = project.androidMinSdk
         minSdkOverride?.let {
             project.logger.lifecycle("  \u001b[7m\u001b[1m" + "Overriding Android defaultConfig minSDK to $minSdkOverride for project ${project.name}" + "\u001b[0m")
             minSdk = it
@@ -120,6 +134,18 @@ fun KotlinMultiplatformExtension.vckAndroid(minSdkOverride: Int? = null)  {
                 //noinspection WrongGradleMethod
             ).forEach { resources.excludes.add(it) }
         }
+    }
+    sourceSets.whenObjectAdded {
+        if (this.name == "androidDeviceTest") {
+            dependencies {
+                implementation("de.infix.testBalloon:testBalloon-framework-core:${project.AspVersions.testballoon}")
+                implementation("androidx.test:runner:${project.AspVersions.androidTestRunner}")
+            }
+        }
+    }
+    sourceSets.findByName("androidDeviceTest")?.dependencies {
+        implementation("de.infix.testBalloon:testBalloon-framework-core:${project.AspVersions.testballoon}")
+        implementation("androidx.test:runner:${project.AspVersions.androidTestRunner}")
     }
     project.extensions.getByType<KotlinMultiplatformAndroidComponentsExtension>().apply {
         onVariants { v ->
