@@ -2,12 +2,14 @@ package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
-import at.asitplus.wallet.lib.extensions.ifTrue
+import at.asitplus.wallet.lib.data.StatusListConstants
+import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
+import at.asitplus.wallet.lib.extensions.ifTrue
 import at.asitplus.wallet.lib.extensions.toView
-import io.github.aakira.napier.Napier
 import kotlin.time.Instant
 
 object StatusListTokenValidator {
@@ -20,13 +22,30 @@ object StatusListTokenValidator {
      * Check for the existence of the required claims as defined in Section 5.1 and Section 5.2
      * depending on token type.
      */
-    suspend fun <StatusListToken : Any> validateStatusListToken(
-        statusListToken: StatusListToken,
+    suspend fun <S : StatusListToken> validateStatusListToken(
+        statusListToken: S,
         statusListTokenResolvedAt: Instant?,
-        validateStatusListTokenIntegrity: suspend (StatusListToken) -> StatusListTokenPayload,
+        validateStatusListTokenIntegrity: suspend (S) -> StatusListTokenPayload,
         statusListInfo: StatusListInfo,
         isInstantInThePast: (Instant) -> Boolean,
+        /**
+         * When using HAIP we need to provide trust anchors to verify the certificate chain
+         */
+        trustAnchors: Set<X509Certificate>? = null
     ): KmmResult<StatusListTokenPayload> = catching {
+        if (statusListToken is StatusListToken.StatusListJwt) {
+            val header = statusListToken.value.header
+            require(header.type == StatusListConstants.STATUS_LIST_TYP) { "The JWT type MUST be statuslist+jwt" }
+            if (trustAnchors != null) {
+                require(header.certificateChain != null) { "The certificate chain must not be null when using HAIP" }
+                require(
+                    (header.certificateChain as Iterable<X509Certificate>).toSet().intersect(trustAnchors).isEmpty()
+                ) { "The certificate chain must not contain any trusted certificates" }
+
+                //TODO require cert path to trust anchor
+                //TODO certs in certchain MUST not be self-signed
+            }
+        }
         val payload = validateStatusListTokenIntegrity(statusListToken)
 
         validateStatusListTokenPayloadClaims(
