@@ -79,7 +79,7 @@ class VcLibConventions : K2Conventions() {
     }
 }
 
-fun Project.vckAndroid(minSdkOverride: Int? = null) = extensions.getByType<KotlinMultiplatformExtension>().apply {
+fun KotlinMultiplatformExtension.vckAndroid(minSdkOverride: Int? = null)  {
     val namespace = "${project.group}.${project.name.replace('-', '.')}"
     androidLibrary {
         this.namespace = namespace
@@ -87,7 +87,7 @@ fun Project.vckAndroid(minSdkOverride: Int? = null) = extensions.getByType<Kotli
             project.logger.lifecycle("  \u001b[7m\u001b[1m" + "Overriding Android defaultConfig minSDK to $minSdkOverride for project ${project.name}" + "\u001b[0m")
             minSdk = it
         }
-        compileSdk = androidCompileSdk
+        compileSdk = project.androidCompileSdk
 
         withDeviceTestBuilder {
             sourceSetTreeName = "test"

@@ -13,10 +13,11 @@ group = "at.asitplus.wallet"
 version = artifactVersion
 
 
-vckAndroid()
+val disableAppleTargets by envExtra
 kotlin {
     jvm()
-    if (HostManager.hostIsMac) {
+    vckAndroid()
+    if ("true" != disableAppleTargets) {
         iosArm64()
         iosSimulatorArm64()
         iosX64()
@@ -35,7 +36,7 @@ kotlin {
     }
 }
 
-if (HostManager.hostIsMac) exportXCFramework(
+if ("true" != disableAppleTargets) exportXCFramework(
     "OpenIdDataClasses",
     transitiveExports = true,
     static = false,
