@@ -1,3 +1,4 @@
+import at.asitplus.wallet.eupid.Initializer
 import at.asitplus.wallet.lib.Initializer.initOpenIdModule
 import de.infix.testBalloon.framework.TestSession
 import io.github.aakira.napier.DebugAntilog
@@ -7,7 +8,7 @@ class ModuleTestSession : TestSession() {
     init {
         Napier.takeLogarithm()
         Napier.base(DebugAntilog())
-        at.asitplus.wallet.eupid.Initializer.initWithVCK()
+        Initializer.initWithVCK()
         at.asitplus.wallet.mdl.Initializer.initWithVCK()
     }
 }

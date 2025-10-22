@@ -62,12 +62,6 @@ gradlePlugin {
     }
 }
 
-tasks.withType<KotlinCompile>().configureEach {
-    kotlinOptions {
-        freeCompilerArgs = freeCompilerArgs + "-Xcontext-paramaters"
-    }
-}
-
 kotlin {
     jvmToolchain(17)
 }
