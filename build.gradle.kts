@@ -30,7 +30,7 @@ tasks.getByName("dokkaHtmlMultiModule") {
 }
 
 subprojects {
-    this.afterEvaluate {
+    afterEvaluate {
         //doesn't build with latest signum, but doesn't matter either
         tasks.findByName("iosX64Test")?.let { it.enabled = false }
         tasks.findByName("linkDebugTestIosX64")?.let { it.enabled = false }

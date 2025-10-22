@@ -1,6 +1,7 @@
 import at.asitplus.gradle.*
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree.Companion.test
+import org.jetbrains.kotlin.konan.target.HostManager
 
 plugins {
     id("at.asitplus.gradle.vclib-conventions")
@@ -16,9 +17,11 @@ kotlin {
 
     jvm()
     vckAndroid()
-    iosArm64()
-    iosSimulatorArm64()
-    iosX64()
+    if (HostManager.hostIsMac) {
+        iosArm64()
+        iosSimulatorArm64()
+        iosX64()
+    }
     sourceSets {
 
         commonMain {
@@ -55,7 +58,7 @@ kotlin {
     }
 }
 
-exportXCFramework(
+if (HostManager.hostIsMac) exportXCFramework(
     "VckOpenIdKtorKmm",
     transitiveExports = true,
     static = false,

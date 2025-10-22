@@ -1,4 +1,5 @@
 import at.asitplus.gradle.*
+import org.jetbrains.kotlin.konan.target.HostManager
 
 plugins {
     id("at.asitplus.gradle.vclib-conventions")
@@ -14,9 +15,11 @@ vckAndroid()
 kotlin {
 
     jvm()
-    iosArm64()
-    iosSimulatorArm64()
-    iosX64()
+    if (HostManager.hostIsMac) {
+        iosArm64()
+        iosSimulatorArm64()
+        iosX64()
+    }
     sourceSets {
         commonMain {
             dependencies {
@@ -31,7 +34,7 @@ kotlin {
     }
 }
 
-exportXCFramework(
+if (HostManager.hostIsMac) exportXCFramework(
     "CscDataClasses",
     transitiveExports = true,
     static = false,
