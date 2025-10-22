@@ -14,7 +14,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.maps.shouldHaveSize
 import kotlinx.serialization.json.Json
 
-val DCQLQueryProcedureAdapterTest by testSuite{
+val DCQLQueryProcedureAdapterTest by testSuite {
     "from bug issue 318" {
 
         val validator = Validator()

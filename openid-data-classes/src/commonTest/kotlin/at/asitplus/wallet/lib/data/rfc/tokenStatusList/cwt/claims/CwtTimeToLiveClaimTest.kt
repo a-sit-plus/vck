@@ -8,7 +8,7 @@ import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.shouldBe
 import kotlin.time.*
 
-val CwtTimeToLiveClaimTest by testSuite{
+val CwtTimeToLiveClaimTest by testSuite {
     "specification robustness" {
         CwtTimeToLiveClaim.Specification.CLAIM_NAME shouldBe "ttl"
         CwtTimeToLiveClaim.Specification.CLAIM_KEY shouldBe 65534L

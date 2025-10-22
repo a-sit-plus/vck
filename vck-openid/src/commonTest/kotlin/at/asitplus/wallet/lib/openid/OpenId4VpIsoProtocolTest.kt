@@ -30,7 +30,7 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.provided.at.asitplus.wallet.lib.openid.FixedNonceService
 
-val OpenId4VpIsoProtocolTest by testSuite{
+val OpenId4VpIsoProtocolTest by testSuite {
 
     lateinit var clientId: String
     lateinit var walletUrl: String

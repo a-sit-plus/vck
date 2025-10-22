@@ -33,7 +33,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 
-val OAuth2ClientAuthenticationTest by testSuite{
+val OAuth2ClientAuthenticationTest by testSuite {
 
     lateinit var scope: String
     lateinit var client: OAuth2Client

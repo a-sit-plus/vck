@@ -4,7 +4,7 @@ import at.asitplus.testballoon.invoke
 import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.shouldBe
 
-val JwtIssuedAtClaimTest by testSuite{
+val JwtIssuedAtClaimTest by testSuite {
     "specification robustness" {
         JwtIssuedAtClaim.Specification.CLAIM_NAME shouldBe "iat"
     }

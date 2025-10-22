@@ -15,7 +15,7 @@ import io.kotest.matchers.maps.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 
-val DeserializationTest by testSuite{
+val DeserializationTest by testSuite {
 
     test("OID4VCI A.1.1.2. VC Signed as a JWT, Not Using JSON-LD") {
         val input = """

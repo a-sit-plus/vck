@@ -4,7 +4,7 @@ import at.asitplus.testballoon.invoke
 import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.shouldBe
 
-val JwtStatusListClaimTest by testSuite{
+val JwtStatusListClaimTest by testSuite {
     "specification robustness" {
         JwtStatusListClaim.Specification.CLAIM_NAME shouldBe "status_list"
     }

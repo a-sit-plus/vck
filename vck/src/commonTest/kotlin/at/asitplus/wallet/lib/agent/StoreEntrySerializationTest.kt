@@ -23,7 +23,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.decodeFromByteArray
 
-val StoreEntrySerializationTest by testSuite{
+val StoreEntrySerializationTest by testSuite {
 
     lateinit var issuer: Issuer
     lateinit var holder: Holder

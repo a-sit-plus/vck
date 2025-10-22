@@ -40,7 +40,7 @@ import kotlin.time.Instant
  * see [https://verifier.eudiw.dev/cbor-selectable/verifiable](https://verifier.eudiw.dev/cbor-selectable/verifiable)
  */
 @Suppress("DEPRECATION")
-val OpenId4VpEuRefInteropTest by testSuite{
+val OpenId4VpEuRefInteropTest by testSuite {
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var holderAgent: Holder
     lateinit var holderOid4vp: OpenId4VpHolder

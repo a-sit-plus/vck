@@ -9,7 +9,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.shouldBe
 
-val SubmissionRequirementsTest by testSuite{
+val SubmissionRequirementsTest by testSuite {
     "all" - {
         "from" - {
             val group = "A"

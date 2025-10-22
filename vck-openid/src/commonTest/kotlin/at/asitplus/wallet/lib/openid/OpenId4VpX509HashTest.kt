@@ -22,7 +22,7 @@ import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-val OpenId4VpX509HashTest by testSuite{
+val OpenId4VpX509HashTest by testSuite {
 
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var verifierKeyMaterial: KeyMaterial

@@ -10,7 +10,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-val CredentialSubjectTest by testSuite{
+val CredentialSubjectTest by testSuite {
     "Subclasses are correctly deserialized" {
         @Serializable
         class SpecializedCredentialTest(override val id: String, @SerialName("not-foo") val foo: String) :

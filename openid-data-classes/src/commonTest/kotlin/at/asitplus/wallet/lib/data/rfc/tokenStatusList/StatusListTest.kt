@@ -8,7 +8,7 @@ import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.shouldBe
 
 @OptIn(ExperimentalUnsignedTypes::class)
-val StatusListTest by testSuite{
+val StatusListTest by testSuite {
     "byte array correctness" - {
         "tokenStatus1 list" - {
             withData(

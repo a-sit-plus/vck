@@ -16,7 +16,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-val OAuth2ClientTest  by testSuite{
+val OAuth2ClientTest  by testSuite {
 
     lateinit var scope: String
     lateinit var client: OAuth2Client

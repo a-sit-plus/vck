@@ -10,7 +10,7 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.json.*
 import kotlin.random.Random
 
-val DCQLCredentialQueryTest by testSuite{
+val DCQLCredentialQueryTest by testSuite {
     "specification" - {
         "serial names" {
             DCQLCredentialQuery.SerialNames.ID shouldBe "id"

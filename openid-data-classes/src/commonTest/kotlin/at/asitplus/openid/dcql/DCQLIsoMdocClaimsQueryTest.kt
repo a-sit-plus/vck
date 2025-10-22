@@ -14,7 +14,7 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.json.*
 import kotlin.random.Random
 
-val DCQLIsoMdocClaimsQueryTest by testSuite{
+val DCQLIsoMdocClaimsQueryTest by testSuite {
     "specification" - {
         "serial names" {
             DCQLJsonClaimsQuery.SerialNames.PATH shouldBe "path"

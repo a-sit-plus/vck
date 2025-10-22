@@ -8,7 +8,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.JsonPrimitive
 
-val OidcUserInfoSerializationTest by testSuite{
+val OidcUserInfoSerializationTest by testSuite {
     test("Basic") {
         val input = """
         {

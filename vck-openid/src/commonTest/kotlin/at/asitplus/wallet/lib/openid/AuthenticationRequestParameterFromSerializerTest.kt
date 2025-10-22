@@ -20,7 +20,7 @@ import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 
-val AuthenticationRequestParameterFromSerializerTest by testSuite{
+val AuthenticationRequestParameterFromSerializerTest by testSuite {
 
     val clientId = "PRE-REGISTERED-CLIENT"
     val redirectUrl = "https://example.com/rp/${uuid4()}"

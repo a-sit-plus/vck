@@ -12,7 +12,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 
-val DCQLSdJwtCredentialMetadataAndValidityConstraintsTest by testSuite{
+val DCQLSdJwtCredentialMetadataAndValidityConstraintsTest by testSuite {
     "specification" - {
         "serial names" {
             DCQLSdJwtCredentialMetadataAndValidityConstraints.SerialNames.VCT_VALUES shouldBe "vct_values"

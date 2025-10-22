@@ -29,7 +29,7 @@ import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-val OpenId4VpX509SanDnsTest by testSuite{
+val OpenId4VpX509SanDnsTest by testSuite {
 
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var verifierKeyMaterial: KeyMaterial

@@ -35,7 +35,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlin.time.Clock.System
 
-val OidvciAttestationTest by testSuite{
+val OidvciAttestationTest by testSuite {
 
     lateinit var authorizationService: SimpleAuthorizationService
     lateinit var issuer: CredentialIssuer

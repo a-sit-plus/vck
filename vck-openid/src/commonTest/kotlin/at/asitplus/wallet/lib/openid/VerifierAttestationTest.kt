@@ -25,7 +25,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 
-val VerifierAttestationTest by testSuite{
+val VerifierAttestationTest by testSuite {
 
     lateinit var clientId: String
     lateinit var redirectUrl: String

@@ -22,7 +22,7 @@ import kotlinx.serialization.json.JsonObject
 /**
  * Tests parsing OpenID4VP requests
  */
-val OpenIdRequestParserTests by testSuite{
+val OpenIdRequestParserTests by testSuite {
     lateinit var requestParser: RequestParser
 
     testConfig = TestConfig.aroundEach {

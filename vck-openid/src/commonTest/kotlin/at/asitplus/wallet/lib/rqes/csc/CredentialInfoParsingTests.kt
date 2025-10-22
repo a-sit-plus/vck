@@ -16,7 +16,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldNotContain
 
-val CredentialInfoParsingTests by testSuite{
+val CredentialInfoParsingTests by testSuite {
 
 
     /**

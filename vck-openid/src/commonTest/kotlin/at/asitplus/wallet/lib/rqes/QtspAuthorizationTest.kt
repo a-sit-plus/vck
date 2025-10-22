@@ -16,7 +16,7 @@ import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
 
 
-val QtspAuthorizationTest by testSuite{
+val QtspAuthorizationTest by testSuite {
 
     val qtspAuthenticationService = SimpleQtspAuthorizationService(
         acceptedCredentials = setOf(ConstantIndex.AtomicAttribute2023),

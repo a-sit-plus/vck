@@ -51,7 +51,7 @@ import kotlin.random.Random
 import kotlin.random.nextUInt
 
 @OptIn(ExperimentalSerializationApi::class, ExperimentalStdlibApi::class)
-val IssuerSignedItemSerializationTest by testSuite{
+val IssuerSignedItemSerializationTest by testSuite {
 
     lateinit var elementId: String
     lateinit var namespace: String

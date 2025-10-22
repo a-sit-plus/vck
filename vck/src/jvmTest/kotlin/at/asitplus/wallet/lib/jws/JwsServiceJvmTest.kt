@@ -39,7 +39,7 @@ import java.security.interfaces.RSAPublicKey
 import kotlin.random.Random
 
 @OptIn(HazardousMaterials::class)
-val JwsServiceJvmTest by testSuite{
+val JwsServiceJvmTest by testSuite {
 
     val configurations: List<Pair<String, Int>> =
         listOf(

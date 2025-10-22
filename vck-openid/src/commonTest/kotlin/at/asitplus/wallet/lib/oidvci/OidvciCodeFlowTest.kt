@@ -51,7 +51,7 @@ import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.decodeFromByteArray
 
-val OidvciCodeFlowTest by testSuite{
+val OidvciCodeFlowTest by testSuite {
 
     lateinit var strategy: AuthorizationServiceStrategy
     lateinit var authorizationService: SimpleAuthorizationService

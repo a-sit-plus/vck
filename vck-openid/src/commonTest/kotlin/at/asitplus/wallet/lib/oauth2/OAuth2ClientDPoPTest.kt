@@ -29,7 +29,7 @@ import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 
-val OAuth2ClientDPoPTest by testSuite{
+val OAuth2ClientDPoPTest by testSuite {
 
     lateinit var scope: String
     lateinit var client: OAuth2Client

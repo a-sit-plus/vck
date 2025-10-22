@@ -8,7 +8,7 @@ import io.kotest.matchers.shouldBe
 import kotlinx.serialization.json.Json
 import kotlin.time.Instant
 
-val NumericDateSerializationTest by testSuite{
+val NumericDateSerializationTest by testSuite {
     "simple tests" - {
         withData(
            mapOf(

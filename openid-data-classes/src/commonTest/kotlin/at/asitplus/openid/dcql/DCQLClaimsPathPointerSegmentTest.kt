@@ -15,7 +15,7 @@ import kotlinx.serialization.json.*
 import kotlin.random.Random
 import kotlin.random.nextUInt
 
-val DCQLClaimsPathPointerSegmentTest by testSuite{
+val DCQLClaimsPathPointerSegmentTest by testSuite {
     "select" - {
         "null" {
             val selection = DCQLClaimsPathPointerSegment.NullSegment.query(

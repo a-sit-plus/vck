@@ -10,7 +10,7 @@ import io.kotest.matchers.booleans.shouldBeTrue
 import kotlinx.serialization.SerialName
 import kotlin.random.Random
 
-val EqualityTests by testSuite{
+val EqualityTests by testSuite {
     lateinit var jwk1: JsonWebKey
     lateinit var jwk2: JsonWebKey
 

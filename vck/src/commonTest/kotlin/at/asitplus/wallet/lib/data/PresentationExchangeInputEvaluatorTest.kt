@@ -18,7 +18,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 
-val PresentationExchangeInputEvaluatorTest  by testSuite{
+val PresentationExchangeInputEvaluatorTest  by testSuite {
 
     lateinit var elementIdentifier: String
     lateinit var elementValue: String

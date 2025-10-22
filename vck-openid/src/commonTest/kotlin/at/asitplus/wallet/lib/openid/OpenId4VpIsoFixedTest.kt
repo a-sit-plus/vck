@@ -19,7 +19,7 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
  * i.e. in the currently defined format of the device signature and session transcript for ISO mdocs,
  * that is the definition from ISO/IEC 18013-7:2024 Annex B.
  */
-val OpenId4VpIsoFixedTest by testSuite{
+val OpenId4VpIsoFixedTest by testSuite {
 
     "Selective Disclosure with mDL (ISO/IEC 18013-7:2024 Annex B)" {
         val keyDerBase64 =

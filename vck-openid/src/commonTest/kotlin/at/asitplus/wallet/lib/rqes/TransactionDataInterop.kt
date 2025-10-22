@@ -35,7 +35,7 @@ import kotlin.random.Random
 /**
  * Test vectors taken from "Transaction Data entries as defined in D3.1: UC Specification WP3"
  */
-val TransactionDataInterop by testSuite{
+val TransactionDataInterop by testSuite {
 
     "Polymorphic Serialization is stable" {
         val input = QCertCreationAcceptance(

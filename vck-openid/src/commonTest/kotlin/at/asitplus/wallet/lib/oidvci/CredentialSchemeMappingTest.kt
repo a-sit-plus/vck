@@ -14,7 +14,7 @@ import io.kotest.matchers.maps.shouldContainKey
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 
-val CredentialSchemeMappingTest by testSuite{
+val CredentialSchemeMappingTest by testSuite {
 
     test("AtomicAttribute in plain JWT") {
         val expectedKey = "${AtomicAttribute2023.vcType}#${CredentialFormatEnum.JWT_VC.text}"

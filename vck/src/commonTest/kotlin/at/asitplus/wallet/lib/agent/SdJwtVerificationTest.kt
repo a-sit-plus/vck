@@ -14,7 +14,7 @@ import io.kotest.matchers.shouldBe
 /**
  * Verifies examples from [IETF-OAuth-SD-JWT](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-13.html)
  */
-val SdJwtVerificationTest by testSuite{
+val SdJwtVerificationTest by testSuite {
 
     "A.1. Simple structured SD-JWT" {
         val input = """

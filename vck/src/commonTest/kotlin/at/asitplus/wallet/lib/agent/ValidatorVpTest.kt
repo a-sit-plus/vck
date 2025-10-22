@@ -34,7 +34,7 @@ import kotlin.time.Clock
 import kotlin.random.Random
 
 
-val ValidatorVpTest by testSuite{
+val ValidatorVpTest by testSuite {
 
     val singularPresentationDefinition = PresentationExchangePresentation(
         CredentialPresentationRequest.PresentationExchangeRequest(

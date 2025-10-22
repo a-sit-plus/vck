@@ -17,7 +17,7 @@ import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.encodeToHexString
 
-val  PresentationFactoryTest by testSuite{
+val  PresentationFactoryTest by testSuite {
 
     lateinit var presentationFactory: PresentationFactory
 

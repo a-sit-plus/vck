@@ -47,7 +47,7 @@ import kotlinx.serialization.json.jsonPrimitive
 /**
  * Tests our OpenID4VP/SIOP implementation against POTENTIAL Piloting Definition Scope
  */
-val OpenId4VpInteropTest by testSuite{
+val OpenId4VpInteropTest by testSuite {
     lateinit var issuerKeyId: String
     lateinit var issuerIdentifier: String
     lateinit var holderKeyMaterial: KeyMaterial

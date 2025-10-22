@@ -41,7 +41,7 @@ import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 
-val PreRegisteredClientTest by testSuite{
+val PreRegisteredClientTest by testSuite {
 
     lateinit var clientId: String
     lateinit var walletUrl: String

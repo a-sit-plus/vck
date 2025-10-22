@@ -20,7 +20,7 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 
-val QtspSignatureRequestSerializerTest by testSuite{
+val QtspSignatureRequestSerializerTest by testSuite {
 
     val adaptedCscTestVectorSignHash1 = """
     {

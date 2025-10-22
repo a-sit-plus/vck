@@ -16,7 +16,7 @@ import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
 
-val StatusListTokenSerializationTest by testSuite{
+val StatusListTokenSerializationTest by testSuite {
     val jsonStatusListTokenPayloadTestVectors =
         mapOf<String, Pair<String, Map<String, (StatusListTokenPayload) -> Unit>>>(
             Pair(

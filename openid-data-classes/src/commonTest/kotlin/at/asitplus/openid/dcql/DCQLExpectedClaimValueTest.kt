@@ -6,7 +6,7 @@ import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.Json
 
-val DCQLExpectedClaimValueTest by testSuite{
+val DCQLExpectedClaimValueTest by testSuite {
     "serialization" - {
         withData(
             "-1", "0", "1", "false", "true", "other"

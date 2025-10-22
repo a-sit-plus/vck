@@ -64,7 +64,7 @@ import kotlin.random.Random
  * as defined by ISO/IEC 18013-5:2021
  */
 @OptIn(ExperimentalSerializationApi::class)
-val Tag24SerializationTest by testSuite{
+val Tag24SerializationTest by testSuite {
 
     "DeviceSigned" {
         val input = DeviceSigned(

@@ -8,7 +8,7 @@ import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.shouldBe
 import kotlin.time.*
 
-val JwtTimeToLiveClaimTest by testSuite{
+val JwtTimeToLiveClaimTest by testSuite {
     "specification robustness" {
         JwtTimeToLiveClaim.Specification.CLAIM_NAME shouldBe "ttl"
     }

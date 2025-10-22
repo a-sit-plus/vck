@@ -10,7 +10,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 
-val DCQLCredentialMetadataAndValidityConstraintsTest by testSuite{
+val DCQLCredentialMetadataAndValidityConstraintsTest by testSuite {
      "serialization" - {
          "iso" {
              val value = DCQLIsoMdocCredentialMetadataAndValidityConstraints(

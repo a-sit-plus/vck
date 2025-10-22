@@ -31,7 +31,7 @@ import io.kotest.matchers.maps.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-val OpenId4VpCombinedProtocolTwoStepTest by testSuite{
+val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
 
     lateinit var clientId: String
     lateinit var holderKeyMaterial: KeyMaterial

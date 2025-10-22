@@ -39,7 +39,7 @@ import kotlin.random.Random
 import kotlin.time.Clock
 
 @OptIn(ExperimentalSerializationApi::class)
-val CoseServiceTest by testSuite{
+val CoseServiceTest by testSuite {
 
     lateinit var signCose: SignCoseFun<ByteArray>
     lateinit var signCoseNothing: SignCoseFun<Nothing>

@@ -22,7 +22,7 @@ import de.infix.testBalloon.framework.aroundEach
 import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
 
-val JarmTest by testSuite{
+val JarmTest by testSuite {
     lateinit var clientId: String
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var verifierKeyMaterial: KeyMaterial

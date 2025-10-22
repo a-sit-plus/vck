@@ -11,7 +11,7 @@ import kotlin.time.DurationUnit
 import kotlin.time.Instant
 import kotlin.time.toDuration
 
-val JwtExpirationTimeClaimTest by testSuite{
+val JwtExpirationTimeClaimTest by testSuite {
     "specification robustness" {
         JwtExpirationTimeClaim.Specification.CLAIM_NAME shouldBe "exp"
     }

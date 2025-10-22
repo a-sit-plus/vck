@@ -25,7 +25,7 @@ import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.decodeFromByteArray
 
-val Iso18013SpecTest by testSuite{
+val Iso18013SpecTest by testSuite {
 
    testConfig=  TestConfig.aroundEach {
         CborCredentialSerializer.register(

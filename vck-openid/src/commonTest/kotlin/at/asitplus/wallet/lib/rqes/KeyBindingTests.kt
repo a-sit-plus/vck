@@ -48,7 +48,7 @@ import io.ktor.http.*
 import io.ktor.utils.io.charsets.*
 import io.ktor.utils.io.core.*
 
-val KeyBindingTests by testSuite{
+val KeyBindingTests by testSuite {
 
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var holderAgent: Holder

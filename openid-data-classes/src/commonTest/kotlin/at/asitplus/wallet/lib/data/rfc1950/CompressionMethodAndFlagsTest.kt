@@ -5,7 +5,7 @@ import at.asitplus.wallet.lib.data.rfc1950.primitives.Nibble
 import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.shouldBe
 
-val CompressionMethodAndFlagsTest by testSuite{
+val CompressionMethodAndFlagsTest by testSuite {
     "check properties" - {
         withData(
             (0..Nibble.MAX_VALUE).map {

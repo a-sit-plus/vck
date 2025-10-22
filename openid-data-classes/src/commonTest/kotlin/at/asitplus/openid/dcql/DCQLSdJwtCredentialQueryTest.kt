@@ -9,7 +9,7 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.json.*
 import kotlin.random.Random
 
-val DCQLSdJwtCredentialQueryTest by testSuite{
+val DCQLSdJwtCredentialQueryTest by testSuite {
     "serialization" {
         val value = DCQLSdJwtCredentialQuery(
             id = DCQLCredentialQueryIdentifier(

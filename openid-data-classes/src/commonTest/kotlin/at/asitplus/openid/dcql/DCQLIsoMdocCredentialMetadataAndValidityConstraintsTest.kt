@@ -12,7 +12,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 
-val DCQLIsoMdocCredentialMetadataAndValidityConstraintsTest by testSuite{
+val DCQLIsoMdocCredentialMetadataAndValidityConstraintsTest by testSuite {
     "specification" - {
         "serial names" {
             DCQLIsoMdocCredentialMetadataAndValidityConstraints.SerialNames.DOCTYPE_VALUE shouldBe "doctype_value"

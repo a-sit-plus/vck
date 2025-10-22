@@ -52,7 +52,7 @@ import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 
 @OptIn(HazardousMaterials::class, SecretExposure::class)
-val JweServiceJvmTest by testSuite{
+val JweServiceJvmTest by testSuite {
 
     val ecdhesConfiguration = listOf(
         EcdhesConfiguration(SECP_256_R_1, listOf(A128CBC_HS256, A128GCM)),

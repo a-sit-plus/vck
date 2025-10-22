@@ -14,7 +14,7 @@ import kotlinx.serialization.json.*
 import kotlin.random.Random
 import kotlin.random.nextUInt
 
-val DCQLClaimsPathPointerTest by testSuite{
+val DCQLClaimsPathPointerTest by testSuite {
     "constructors" - {
         withData(
             listOf("test", 0u, null)

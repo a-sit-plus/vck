@@ -23,7 +23,7 @@ import kotlinx.serialization.json.long
 
 @OptIn(ExperimentalSerializationApi::class)
 
-val StatusListSerializationTest by testSuite{
+val StatusListSerializationTest by testSuite {
     "json" - {
         "deserialization" - {
             withData(

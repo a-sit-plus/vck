@@ -6,7 +6,7 @@ import de.infix.testBalloon.framework.testSuite
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 
-val DCQLClaimsQueryIdentifierTest by testSuite{
+val DCQLClaimsQueryIdentifierTest by testSuite {
     "success" - {
         withData(
             listOf(
