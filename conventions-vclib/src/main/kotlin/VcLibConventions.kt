@@ -3,6 +3,8 @@
 package at.asitplus.gradle
 
 import VcLibVersions
+import java.io.File
+import java.util.Properties
 import com.android.build.api.dsl.androidLibrary
 import com.android.build.api.variant.KotlinMultiplatformAndroidComponentsExtension
 import org.gradle.api.Project
@@ -15,7 +17,6 @@ import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinDependencyHandler
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 val Project.signumVersionCatalog: VersionCatalog
     get() = extensions.getByType<VersionCatalogsExtension>().named("signum")
@@ -52,11 +53,14 @@ inline fun KotlinDependencyHandler.commonImplementationDependencies() {
 
 class VcLibConventions : K2Conventions() {
     override fun apply(target: Project) {
+        target.keepAndroidJvmTarget = true // keep androidJvmMain wiring even if no AGP is applied
         super.apply(target)
         if (target.rootProject != target) {
             target.pluginManager.apply("org.jetbrains.kotlin.multiplatform")
             target.pluginManager.apply("org.jetbrains.kotlin.plugin.serialization")
-            target.pluginManager.apply("com.android.kotlin.multiplatform.library")
+            if (target.hasAndroidSdk()) {
+                target.pluginManager.apply("com.android.kotlin.multiplatform.library")
+            }
             target.pluginManager.apply("signing")
             target.pluginManager.apply("org.jetbrains.dokka")
             target.pluginManager.apply("de.infix.testBalloon")
@@ -81,10 +85,12 @@ class VcLibConventions : K2Conventions() {
 }
 
 fun KotlinMultiplatformExtension.vckAndroid(minSdkOverride: Int? = null)  {
+    if (!project.hasAndroidSdk()) {
+        project.logger.lifecycle("  \u001b[7m\u001b[1mAndroid SDK not found; skipping Android artifact.\u001b[0m")
+        return
+    }
     val compat = project.androidJvmTarget
-    val namespace = "${project.group}.${project.name.replace('-', '.')}"
     androidLibrary {
-
         compilations.configureEach {
             if (name.contains("test", ignoreCase = true)) {
                 if (project.raiseAndroidTestToJdkTarget) compilerOptions.configure {
@@ -95,7 +101,7 @@ fun KotlinMultiplatformExtension.vckAndroid(minSdkOverride: Int? = null)  {
             }
         }
 
-        this.namespace = namespace
+        namespace = "${project.group}.${project.name.replace('-', '.')}"
         minSdk = project.androidMinSdk
         minSdkOverride?.let {
             project.logger.lifecycle("  \u001b[7m\u001b[1m" + "Overriding Android defaultConfig minSDK to $minSdkOverride for project ${project.name}" + "\u001b[0m")
@@ -153,4 +159,37 @@ fun KotlinMultiplatformExtension.vckAndroid(minSdkOverride: Int? = null)  {
             v.androidTest?.manifestPlaceholders?.put("testLargeHeap", "true")
         }
     }
+}
+
+fun Project.hasAndroidSdk() = resolveAndroidSdk(this)?.let { it -> isValidAndroidSdk(it) } == true
+
+private fun resolveAndroidSdk(project: Project): File? {
+    // Highest precedence: ANDROID_SDK_ROOT (preferred), then ANDROID_HOME (legacy)
+    val env = System.getenv()
+    val fromEnv = listOf("ANDROID_SDK_ROOT", "ANDROID_HOME")
+        .asSequence()
+        .mapNotNull { env[it]?.takeIf { it.isNotBlank() } }
+        .map(::File)
+        .firstOrNull { it.exists() }
+
+    if (fromEnv != null) return fromEnv
+
+    // Fallback: local.properties (common on dev machines)
+    val localProps = File(project.rootDir, "local.properties")
+    if (localProps.exists()) {
+        Properties().apply {
+            localProps.inputStream().use(::load)
+            (getProperty("sdk.dir") ?: getProperty("android.sdk.path"))?.let {
+                val f = File(it)
+                if (f.exists()) return f
+            }
+        }
+    }
+    return null
+}
+
+private fun isValidAndroidSdk(sdk: File): Boolean {
+    val platformsOk = File(sdk, "platforms").listFiles()?.any { it.isDirectory } == true
+    val buildToolsOk = File(sdk, "build-tools").listFiles()?.any { it.isDirectory } == true
+    return platformsOk && buildToolsOk
 }
