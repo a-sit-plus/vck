@@ -29,6 +29,7 @@ import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapperSerializer
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.Issuer
@@ -37,8 +38,8 @@ import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.rfc3986.toUri
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.assertions.withClue
-import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldHaveAtLeastSize
 import io.kotest.matchers.maps.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -48,19 +49,19 @@ import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlin.time.Clock
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
 import kotlin.random.Random
+import kotlin.time.Clock
 
 /**
  * Test correct appending tag 24 (in hex `D818`) for certain data structures,
  * as defined by ISO/IEC 18013-5:2021
  */
 @OptIn(ExperimentalSerializationApi::class)
-class Tag24SerializationTest : FreeSpec({
+val Tag24SerializationTest by testSuite {
 
     "DeviceSigned" {
         val input = DeviceSigned(
@@ -173,8 +174,7 @@ class Tag24SerializationTest : FreeSpec({
     }
 
 
-})
-
+}
 /**
  * Ensures serialization of this structure in [IssuerSigned.issuerAuth]:
  * ```

@@ -5,6 +5,7 @@ import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.CredentialOffer
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
@@ -12,24 +13,26 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
-import at.asitplus.wallet.lib.openid.DummyUserProvider
 import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
+import at.asitplus.wallet.lib.openid.DummyUserProvider
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-class OidvciOfferCodeTest : FreeSpec({
+val OidvciOfferCodeTest by testSuite {
 
     lateinit var authorizationService: SimpleAuthorizationService
     lateinit var issuer: CredentialIssuer
     lateinit var client: WalletService
     lateinit var state: String
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         authorizationService = SimpleAuthorizationService(
             strategy = CredentialAuthorizationServiceStrategy(setOf(AtomicAttribute2023, MobileDrivingLicenceScheme)),
         )
@@ -43,6 +46,7 @@ class OidvciOfferCodeTest : FreeSpec({
         )
         client = WalletService()
         state = uuid4().toString()
+        it()
     }
 
     suspend fun getToken(
@@ -163,4 +167,4 @@ class OidvciOfferCodeTest : FreeSpec({
         credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
     }
 
-})
+}

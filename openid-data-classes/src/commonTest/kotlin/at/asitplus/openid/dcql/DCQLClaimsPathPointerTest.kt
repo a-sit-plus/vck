@@ -2,12 +2,14 @@ package at.asitplus.openid.dcql
 
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
-import io.kotest.core.spec.style.FreeSpec
-import io.kotest.datatest.withData
+import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.minus
+import at.asitplus.testballoon.withData
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.util.encodeBase64
+import io.ktor.util.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
@@ -17,7 +19,7 @@ import kotlinx.serialization.json.encodeToJsonElement
 import kotlin.random.Random
 import kotlin.random.nextUInt
 
-class DCQLClaimsPathPointerTest : FreeSpec({
+val DCQLClaimsPathPointerTest by testSuite {
     "constructors" - {
         withData(
             listOf("test", 0u, null)
@@ -131,4 +133,4 @@ class DCQLClaimsPathPointerTest : FreeSpec({
         Json.encodeToJsonElement(pointer) shouldBe jsonElement
         Json.decodeFromJsonElement<DCQLClaimsPathPointer>(jsonElement) shouldBe pointer
     }
-})
+}

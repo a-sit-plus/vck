@@ -22,15 +22,17 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.randomString
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import com.benasher44.uuid.uuid4
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 
-class OAuth2ClientAuthenticationTest : FunSpec({
+val OAuth2ClientAuthenticationTest by testSuite {
 
     lateinit var scope: String
     lateinit var client: OAuth2Client
@@ -40,7 +42,7 @@ class OAuth2ClientAuthenticationTest : FunSpec({
     lateinit var clientAttestationPop: JwsSigned<JsonWebToken>
     lateinit var clientKey: KeyMaterial
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         scope = randomString()
         client = OAuth2Client()
         user = OidcUserInfoExtended(OidcUserInfo(randomString()))
@@ -66,6 +68,7 @@ class OAuth2ClientAuthenticationTest : FunSpec({
             audience = "some server",
             randomSource = RandomSource.Default
         )
+        it()
     }
 
     suspend fun getToken(state: String, code: String): TokenResponseParameters = server.token(
@@ -240,5 +243,4 @@ class OAuth2ClientAuthenticationTest : FunSpec({
         )
         shouldThrow<OAuth2Exception> { server.token(tokenRequest, null).getOrThrow() }
     }
-
-})
+}

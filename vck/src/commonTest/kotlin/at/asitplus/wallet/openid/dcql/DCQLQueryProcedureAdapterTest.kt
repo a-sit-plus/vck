@@ -1,16 +1,25 @@
 package at.asitplus.wallet.openid.dcql
 
 import at.asitplus.openid.dcql.DCQLQuery
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.testballoon.invoke
+import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.InMemoryIssuerCredentialStore
+import at.asitplus.wallet.lib.agent.InMemorySubjectCredentialStore
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.agent.Validator
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.procedures.dcql.DCQLQueryAdapter
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.maps.shouldHaveSize
 import kotlinx.serialization.json.Json
 
-class DCQLQueryProcedureAdapterTest : FreeSpec({
+val DCQLQueryProcedureAdapterTest by testSuite {
     "from bug issue 318" {
 
         val validator = Validator()
@@ -86,4 +95,4 @@ class DCQLQueryProcedureAdapterTest : FreeSpec({
             credentials = listOf(credential)
         ).getOrThrow().credentialQueryMatches shouldHaveSize 1
     }
-})
+}

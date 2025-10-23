@@ -1,29 +1,40 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.jsonpath.JsonPath
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.testballoon.invoke
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.InMemorySubjectCredentialStore
+import at.asitplus.wallet.lib.agent.Issuer
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.agent.SubjectCredentialStore
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import com.benasher44.uuid.uuid4
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 
-class CredentialJsonInteropTest : FreeSpec({
+val CredentialJsonInteropTest by testSuite {
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var issuerAgent: Issuer
     lateinit var subjectCredentialStore: SubjectCredentialStore
     lateinit var holderAgent: Holder
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         subjectCredentialStore = InMemorySubjectCredentialStore()
         holderAgent = HolderAgent(holderKeyMaterial, subjectCredentialStore)
@@ -32,6 +43,7 @@ class CredentialJsonInteropTest : FreeSpec({
             identifier = "https://issuer.example.com/".toUri(),
             randomSource = RandomSource.Default
         )
+        it()
     }
 
     "Plain jwt credential path resolving" {
@@ -107,7 +119,7 @@ class CredentialJsonInteropTest : FreeSpec({
             JsonPath("$.address.[\"formatted\"]")
         }
     }
-})
+}
 
 private fun JsonElement.getByJsonPath(path: String) =
     (JsonPath(path).query(this).first().value as JsonPrimitive)

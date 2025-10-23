@@ -1,18 +1,20 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
+import at.asitplus.testballoon.minus
+import at.asitplus.testballoon.withData
+import at.asitplus.testballoon.withDataSuites
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBitSize
 import at.asitplus.wallet.lib.extensions.toView
-import io.kotest.core.spec.style.FreeSpec
-import io.kotest.datatest.withData
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.shouldBe
-import kotlin.time.Instant
 import kotlinx.serialization.json.Json
 import kotlin.time.DurationUnit
+import kotlin.time.Instant
 import kotlin.time.toDuration
 
 
-class StatusListTokenSerializationTest : FreeSpec({
+val StatusListTokenSerializationTest by testSuite {
     val jsonStatusListTokenPayloadTestVectors =
         mapOf<String, Pair<String, Map<String, (StatusListTokenPayload) -> Unit>>>(
             Pair(
@@ -54,8 +56,8 @@ class StatusListTokenSerializationTest : FreeSpec({
         )
     "jwt status list token payload" - {
         "deserialization" - {
-            withData(
-                data = jsonStatusListTokenPayloadTestVectors
+            withDataSuites(
+                jsonStatusListTokenPayloadTestVectors
             ) { (it, assertions) ->
                 val value = Json.decodeFromString<StatusListTokenPayload>(it)
                 withData(assertions) {
@@ -72,4 +74,4 @@ class StatusListTokenSerializationTest : FreeSpec({
             }
         }
     }
-})
+}

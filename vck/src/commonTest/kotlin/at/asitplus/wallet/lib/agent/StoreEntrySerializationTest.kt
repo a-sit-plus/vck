@@ -3,11 +3,14 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.iso.CborCredentialSerializer
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -17,7 +20,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.decodeFromByteArray
 
-class StoreEntrySerializationTest : FreeSpec({
+val StoreEntrySerializationTest by testSuite {
 
     lateinit var issuer: Issuer
     lateinit var holder: Holder
@@ -25,7 +28,7 @@ class StoreEntrySerializationTest : FreeSpec({
     lateinit var issuerCredentialStore: IssuerCredentialStore
     lateinit var holderCredentialStore: SubjectCredentialStore
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         holderCredentialStore = InMemorySubjectCredentialStore()
         issuer = IssuerAgent(
@@ -36,6 +39,7 @@ class StoreEntrySerializationTest : FreeSpec({
         )
         holderKeyMaterial = EphemeralKeyWithoutCert()
         holder = HolderAgent(holderKeyMaterial, holderCredentialStore)
+        it()
     }
 
     "serialize stored VC" {
@@ -378,4 +382,4 @@ class StoreEntrySerializationTest : FreeSpec({
     }
 
 
-})
+}

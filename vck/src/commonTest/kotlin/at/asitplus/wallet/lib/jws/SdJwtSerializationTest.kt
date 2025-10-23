@@ -2,11 +2,12 @@ package at.asitplus.wallet.lib.jws
 
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import at.asitplus.wallet.lib.data.fromAnyValue
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -21,7 +22,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
 import kotlin.random.nextUInt
 
-class SdJwtSerializationTest : FreeSpec({
+val SdJwtSerializationTest by testSuite {
 
     "Serialization is correct for String" {
         val salt = Random.nextBytes(32)
@@ -185,4 +186,4 @@ class SdJwtSerializationTest : FreeSpec({
         nestedSd.size shouldBe 4
     }
 
-})
+}

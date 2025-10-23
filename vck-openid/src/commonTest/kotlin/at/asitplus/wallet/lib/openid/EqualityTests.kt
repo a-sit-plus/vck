@@ -2,18 +2,22 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.invoke
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.booleans.shouldBeTrue
 import kotlinx.serialization.SerialName
 import kotlin.random.Random
 
-class EqualityTests : FreeSpec({
+val EqualityTests by testSuite {
     lateinit var jwk1: JsonWebKey
     lateinit var jwk2: JsonWebKey
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         jwk1 = JsonWebKey(x = Random.Default.nextBytes(32))
         jwk2 = JsonWebKey(x = Random.Default.nextBytes(32))
+        it()
     }
 
     "JsonWebKeySet new" {
@@ -52,7 +56,7 @@ class EqualityTests : FreeSpec({
         // this is false, because the order matters on arrays
         //equals.shouldBeTrue()
     }
-})
+}
 
 data class OldJsonWebKeySet(
     @SerialName("keys")

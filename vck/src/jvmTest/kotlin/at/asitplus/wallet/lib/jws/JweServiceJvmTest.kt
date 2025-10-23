@@ -40,7 +40,11 @@ import com.nimbusds.jose.crypto.AESEncrypter
 import com.nimbusds.jose.crypto.ECDHDecrypter
 import com.nimbusds.jose.crypto.ECDHEncrypter
 import com.nimbusds.jose.jwk.JWK
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.testSuite
+import at.asitplus.testballoon.*
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.engine.runBlocking
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -48,7 +52,7 @@ import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 
 @OptIn(HazardousMaterials::class, SecretExposure::class)
-class JweServiceJvmTest : FreeSpec({
+val JweServiceJvmTest by testSuite {
 
     val ecdhesConfiguration = listOf(
         EcdhesConfiguration(SECP_256_R_1, listOf(A128CBC_HS256, A128GCM)),
@@ -164,8 +168,7 @@ class JweServiceJvmTest : FreeSpec({
             }
         }
     }
-})
-
+}
 private data class SymmetricConfiguration(
     val algorithm: JweAlgorithm,
     val encryption: Collection<JweEncryption>,

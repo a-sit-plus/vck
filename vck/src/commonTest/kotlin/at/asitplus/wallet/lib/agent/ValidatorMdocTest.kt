@@ -4,6 +4,7 @@ import at.asitplus.catchingUnwrapped
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
@@ -11,53 +12,68 @@ import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.TestExecutionScope
+import de.infix.testBalloon.framework.TestSuite
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlin.time.Clock
 import kotlin.random.Random
+import kotlin.time.Clock
 
+private data class Config(
+    val issuer: Issuer,
+    val statusListIssuer: StatusListIssuer,
+    val issuerCredentialStore: IssuerCredentialStore,
+    val issuerKeyMaterial: KeyMaterial,
+    val verifierKeyMaterial: KeyMaterial,
+    val validator: ValidatorMdoc
+) {
 
-class ValidatorMdocTest : FreeSpec() {
-
-    private lateinit var issuer: Issuer
-    private lateinit var statusListIssuer: StatusListIssuer
-    private lateinit var issuerCredentialStore: IssuerCredentialStore
-    private lateinit var issuerKeyMaterial: KeyMaterial
-    private lateinit var verifierKeyMaterial: KeyMaterial
-    private lateinit var validator: ValidatorMdoc
-
-    init {
-        beforeEach {
-            validator = ValidatorMdoc(
-                validator = Validator(
-                    tokenStatusResolver = TokenStatusResolverImpl(
-                        resolveStatusListToken = {
-                            if (Random.nextBoolean()) StatusListToken.StatusListJwt(
-                                statusListIssuer.issueStatusListJwt(),
-                                resolvedAt = Clock.System.now(),
-                            ) else {
-                                StatusListToken.StatusListCwt(
-                                    statusListIssuer.issueStatusListCwt(),
+    companion object {
+        fun random(): Config {
+            val issuerKeyMaterial = EphemeralKeyWithSelfSignedCert()
+            val issuerCredentialStore = InMemoryIssuerCredentialStore()
+            val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
+            return Config(
+                validator = ValidatorMdoc(
+                    validator = Validator(
+                        tokenStatusResolver = TokenStatusResolverImpl(
+                            resolveStatusListToken = {
+                                if (Random.nextBoolean()) StatusListToken.StatusListJwt(
+                                    statusListIssuer.issueStatusListJwt(),
                                     resolvedAt = Clock.System.now(),
-                                )
-                            }
-                        },
+                                ) else {
+                                    StatusListToken.StatusListCwt(
+                                        statusListIssuer.issueStatusListCwt(),
+                                        resolvedAt = Clock.System.now(),
+                                    )
+                                }
+                            },
+                        )
                     )
-                )
-            )
-            issuerCredentialStore = InMemoryIssuerCredentialStore()
-            issuerKeyMaterial = EphemeralKeyWithSelfSignedCert()
-            issuer = IssuerAgent(
-                keyMaterial = issuerKeyMaterial,
+                ),
                 issuerCredentialStore = issuerCredentialStore,
-                identifier = "https://issuer.example.com/".toUri(),
-                randomSource = RandomSource.Default
+                issuerKeyMaterial = issuerKeyMaterial,
+                issuer = IssuerAgent(
+                    keyMaterial = issuerKeyMaterial,
+                    issuerCredentialStore = issuerCredentialStore,
+                    identifier = "https://issuer.example.com/".toUri(),
+                    randomSource = RandomSource.Default
+                ),
+                statusListIssuer = statusListIssuer,
+                verifierKeyMaterial = EphemeralKeyWithoutCert()
             )
-            statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
-            verifierKeyMaterial = EphemeralKeyWithoutCert()
         }
+    }
+}
 
+context(suite: TestSuite)
+private fun String.withConfig(config: Config, nested: suspend TestExecutionScope.(Config) -> Unit) {
+    this.invoke { nested(config) }
+}
+
+val ValidatorMdocTest by testSuite {
+    with(Config.random()) {
         "credentials are valid for" {
             val credential = issuer.issueCredential(
                 DummyCredentialDataProvider.getCredential(
@@ -70,14 +86,16 @@ class ValidatorMdocTest : FreeSpec() {
 
             val issuerKey: CoseKey? =
                 credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull()?.let {
-                    catchingUnwrapped { X509Certificate.decodeFromDer(it) }.getOrNull()?.decodedPublicKey?.getOrNull()?.toCoseKey()
+                    catchingUnwrapped { X509Certificate.decodeFromDer(it) }.getOrNull()?.decodedPublicKey?.getOrNull()
+                        ?.toCoseKey()
                         ?.getOrNull()
                 }
 
             validator.verifyIsoCred(credential.issuerSigned, issuerKey)
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessIso>()
         }
-
+    }
+    with(Config.random()) {
         "revoked credentials are not valid" {
             val credential = issuer.issueCredential(
                 DummyCredentialDataProvider.getCredential(
@@ -90,7 +108,8 @@ class ValidatorMdocTest : FreeSpec() {
 
             val issuerKey: CoseKey? =
                 credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull()?.let {
-                    catchingUnwrapped { X509Certificate.decodeFromDer(it) }.getOrNull()?.decodedPublicKey?.getOrNull()?.toCoseKey()
+                    catchingUnwrapped { X509Certificate.decodeFromDer(it) }.getOrNull()?.decodedPublicKey?.getOrNull()
+                        ?.toCoseKey()
                         ?.getOrNull()
                 }
 

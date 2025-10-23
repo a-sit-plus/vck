@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
@@ -20,8 +21,10 @@ import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.CreationOptions
 import com.benasher44.uuid.uuid4
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.maps.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -31,7 +34,7 @@ import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 
-class RedirectUriClientTest : FreeSpec({
+val RedirectUriClientTest by testSuite {
 
     lateinit var clientId: String
     lateinit var walletUrl: String
@@ -41,7 +44,7 @@ class RedirectUriClientTest : FreeSpec({
     lateinit var holderOid4vp: OpenId4VpHolder
     lateinit var verifierOid4vp: OpenId4VpVerifier
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         verifierKeyMaterial = EphemeralKeyWithoutCert()
         clientId = "https://example.com/rp/${uuid4()}"
@@ -69,6 +72,7 @@ class RedirectUriClientTest : FreeSpec({
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = ClientIdScheme.RedirectUri(clientId),
         )
+        it()
     }
 
     "test with Fragment" {
@@ -257,8 +261,7 @@ class RedirectUriClientTest : FreeSpec({
                 it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
             }
     }
-
-})
+}
 
 private fun requestOptionsAtomicAttribute() = RequestOptions(
     credentials = setOf(

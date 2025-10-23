@@ -2,12 +2,12 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import io.kotest.core.spec.style.FunSpec
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.JsonPrimitive
 
-class OidcUserInfoSerializationTest : FunSpec({
+val OidcUserInfoSerializationTest by testSuite {
     test("Basic") {
         val input = """
         {
@@ -49,8 +49,7 @@ class OidcUserInfoSerializationTest : FunSpec({
         joseCompliantSerializer.decodeFromString<OidcUserInfoExtended>(serialized) shouldBe user
     }
 
-})
-
+}
 private fun OidcUserInfoExtended.shouldHaveKey(key: String): JsonPrimitive {
     jsonObject[key].apply {
         shouldBeInstanceOf<JsonPrimitive>()

@@ -13,6 +13,7 @@ import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
@@ -33,8 +34,10 @@ import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.openid.DummyUserProvider
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
@@ -48,7 +51,7 @@ import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.decodeFromByteArray
 
-class OidvciCodeFlowTest : FreeSpec({
+val OidvciCodeFlowTest by testSuite {
 
     lateinit var strategy: AuthorizationServiceStrategy
     lateinit var authorizationService: SimpleAuthorizationService
@@ -56,7 +59,7 @@ class OidvciCodeFlowTest : FreeSpec({
     lateinit var client: WalletService
     lateinit var state: String
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         strategy = CredentialAuthorizationServiceStrategy(setOf(AtomicAttribute2023, MobileDrivingLicenceScheme))
         authorizationService = SimpleAuthorizationService(
             strategy = strategy,
@@ -71,6 +74,7 @@ class OidvciCodeFlowTest : FreeSpec({
         )
         client = WalletService()
         state = uuid4().toString()
+        it()
     }
 
     suspend fun getToken(scope: String, setScopeInTokenRequest: Boolean = true): TokenResponseParameters {
@@ -519,8 +523,7 @@ class OidvciCodeFlowTest : FreeSpec({
         numberOfClaims shouldBeGreaterThan 1
     }
 
-})
-
+}
 private fun String.assertSdJwtReceived() {
     JwsSigned.deserialize(
         VerifiableCredentialSdJwt.serializer(),

@@ -7,15 +7,16 @@ import at.asitplus.csc.collection_entries.AuthParameters
 import at.asitplus.csc.collection_entries.CertificateParameters
 import at.asitplus.csc.collection_entries.KeyParameters
 import at.asitplus.csc.enums.CertificateOptions
+import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldNotContain
 
-class CredentialInfoParsingTests : FreeSpec({
+val CredentialInfoParsingTests by testSuite {
 
 
     /**
@@ -166,4 +167,4 @@ class CredentialInfoParsingTests : FreeSpec({
         decoded.authInfo shouldBe false
         decoded.certInfo shouldBe false
     }
-})
+}

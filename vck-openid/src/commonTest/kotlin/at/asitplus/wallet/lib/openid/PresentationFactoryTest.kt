@@ -4,21 +4,24 @@ import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.encodeToHexString
 
-class PresentationFactoryTest : FreeSpec({
+val  PresentationFactoryTest by testSuite {
 
     lateinit var presentationFactory: PresentationFactory
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         val keyMaterial = EphemeralKeyWithoutCert()
         presentationFactory = PresentationFactory(
             supportedAlgorithms = setOf(SignatureAlgorithm.ECDSAwithSHA256),
@@ -26,6 +29,7 @@ class PresentationFactoryTest : FreeSpec({
             signIdToken = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
             randomSource = RandomSource.Default
         )
+        it()
     }
 
     // https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#appendix-B.2.6.1-7
@@ -86,4 +90,4 @@ class PresentationFactoryTest : FreeSpec({
             """.trimIndent().replace("\n", "")
         }
     }
-})
+}

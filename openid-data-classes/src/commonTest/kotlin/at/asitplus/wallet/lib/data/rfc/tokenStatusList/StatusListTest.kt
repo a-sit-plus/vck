@@ -1,13 +1,14 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
+import at.asitplus.testballoon.minus
+import at.asitplus.testballoon.withData
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBitSize
-import io.kotest.core.spec.style.FreeSpec
-import io.kotest.datatest.withData
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.shouldBe
 
 @OptIn(ExperimentalUnsignedTypes::class)
-class StatusListTest : FreeSpec({
+val StatusListTest by testSuite {
     "byte array correctness" - {
         "tokenStatus1 list" - {
             withData(
@@ -232,4 +233,4 @@ class StatusListTest : FreeSpec({
             }
         }
     }
-})
+}

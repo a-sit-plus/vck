@@ -9,8 +9,8 @@ import at.asitplus.iso.sha256
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.invoke
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.matthewnelson.encoding.base16.Base16
@@ -18,7 +18,7 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
 
-class SessionTranscriptTest : FreeSpec({
+val SessionTranscriptTest by testSuite {
 
     "Local presentation with NFC Handover" {
         val expectedEncodedSessionTranscript = """
@@ -397,7 +397,6 @@ class SessionTranscriptTest : FreeSpec({
         coseCompliantSerializer.encodeToByteArray(sessionTranscript) shouldBe expectedEncodedSessionTranscript
     }
 
-})
-
+}
 private fun String.decodeFromAnnotatedCbor(): ByteArray =
     trimIndent().split("\n").joinToString("") { it.split("#").first().replace(" ", "") }.decodeToByteArray(Base16)

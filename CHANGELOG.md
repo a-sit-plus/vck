@@ -100,6 +100,7 @@ Release 5.9.0 (unreleased):
    - Extend `RequestParametersFrom.Json` with a `parent` member
  - SD-JWT:
    - Honour digest defined in `_sd_alg` parameter to allow for more digests in issuance and verification of selective disclosures items
+ - Make it possible to disable all apple targets by setting Gradle property `disableAppleTargets=true` (either through `gradle.properties`/`local.properties` or as env variable)
 
 Release 5.8.0:
  - Refactor `AuthorizationServiceStrategy`

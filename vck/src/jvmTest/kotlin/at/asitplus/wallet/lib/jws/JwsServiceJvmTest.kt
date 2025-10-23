@@ -21,7 +21,11 @@ import com.nimbusds.jose.crypto.RSASSASigner
 import com.nimbusds.jose.crypto.RSASSAVerifier
 import com.nimbusds.jose.jwk.JWK
 import io.kotest.assertions.withClue
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.testSuite
+import at.asitplus.testballoon.*
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -35,7 +39,7 @@ import java.security.interfaces.RSAPublicKey
 import kotlin.random.Random
 
 @OptIn(HazardousMaterials::class)
-class JwsServiceJvmTest : FreeSpec({
+val JwsServiceJvmTest by testSuite {
 
     val configurations: List<Pair<String, Int>> =
         listOf(
@@ -166,4 +170,4 @@ class JwsServiceJvmTest : FreeSpec({
             }
         }
     }
-})
+}

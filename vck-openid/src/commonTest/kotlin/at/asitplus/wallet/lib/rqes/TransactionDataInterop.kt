@@ -1,20 +1,22 @@
 package at.asitplus.wallet.lib.rqes
 
+import at.asitplus.csc.collection_entries.RqesDocumentDigestEntry.DocumentLocationMethod
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.InputDescriptor
 import at.asitplus.openid.QCertCreationAcceptance
 import at.asitplus.openid.QesAuthorization
 import at.asitplus.openid.TransactionData
-import at.asitplus.csc.collection_entries.RqesDocumentDigestEntry.DocumentLocationMethod
 import at.asitplus.signum.indispensable.asn1.KnownOIDs
 import at.asitplus.signum.indispensable.asn1.sha_256
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
+import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.minus
 import at.asitplus.wallet.lib.data.Base64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.randomString
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -34,7 +36,7 @@ import kotlin.random.Random
 /**
  * Test vectors taken from "Transaction Data entries as defined in D3.1: UC Specification WP3"
  */
-class TransactionDataInterop : FreeSpec({
+val TransactionDataInterop by testSuite {
 
     "Polymorphic Serialization is stable" {
         val input = QCertCreationAcceptance(
@@ -164,7 +166,7 @@ class TransactionDataInterop : FreeSpec({
                 .canonicalize().shouldBe(expected)
         }
     }
-})
+}
 
 /**
  * Sorts all entries of the JsonElement which is necessary in case we want to compare two objects

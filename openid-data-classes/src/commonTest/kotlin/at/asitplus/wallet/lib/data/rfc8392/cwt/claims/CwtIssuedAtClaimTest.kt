@@ -1,11 +1,12 @@
 package at.asitplus.wallet.lib.data.rfc8392.cwt.claims
 
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.invoke
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.shouldBe
 
-class CwtIssuedAtClaimTest : FreeSpec({
+val CwtIssuedAtClaimTest by testSuite {
     "specification robustness" {
         CwtIssuedAtClaim.Specification.CLAIM_NAME shouldBe "iat"
         CwtIssuedAtClaim.Specification.CLAIM_KEY shouldBe 6L
     }
-})
+}

@@ -9,6 +9,7 @@ import at.asitplus.signum.indispensable.asn1.encoding.Asn1
 import at.asitplus.signum.indispensable.asn1.subjectAltName_2_5_29_17
 import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
+import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
@@ -22,11 +23,13 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-class OpenId4VpX509SanDnsTest : FreeSpec({
+val OpenId4VpX509SanDnsTest by testSuite {
 
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var verifierKeyMaterial: KeyMaterial
@@ -34,7 +37,7 @@ class OpenId4VpX509SanDnsTest : FreeSpec({
     lateinit var holderOid4vp: OpenId4VpHolder
     lateinit var verifierOid4vp: OpenId4VpVerifier
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         val clientId = "example.com"
         val extensions = listOf(
             X509CertificateExtension(
@@ -78,6 +81,7 @@ class OpenId4VpX509SanDnsTest : FreeSpec({
                 clientId
             ),
         )
+        it()
     }
 
     "test with request object" {
@@ -142,6 +146,5 @@ class OpenId4VpX509SanDnsTest : FreeSpec({
         verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
             .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
             .reconstructed[CLAIM_GIVEN_NAME].shouldNotBeNull()
-
     }
-})
+}

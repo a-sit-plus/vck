@@ -1,11 +1,8 @@
-package io.kotest.provided
-
-import at.asitplus.test.XmlReportingProjectConfig
+import de.infix.testBalloon.framework.TestSession
 import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
 
-/** Wires KMP JUnit XML reporting */
-class ProjectConfig : XmlReportingProjectConfig() {
+class TestConfig : TestSession() {
     init {
         Napier.takeLogarithm()
         Napier.base(DebugAntilog())

@@ -7,14 +7,14 @@ import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import io.kotest.core.spec.style.FunSpec
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 
-class OidvciInteropTest : FunSpec({
+val OidvciInteropTest by testSuite {
 
     test("Parse EUDIW URL") {
         val url =
@@ -514,4 +514,4 @@ class OidvciInteropTest : FunSpec({
         parsed.dpopSigningAlgValuesSupported.shouldNotBeNull() shouldContain JwsAlgorithm.Signature.ES256
     }
 
-})
+}

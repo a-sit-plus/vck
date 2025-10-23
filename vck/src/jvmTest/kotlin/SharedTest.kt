@@ -1,4 +1,5 @@
-import io.kotest.core.platform
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.test.Target
+import at.asitplus.testballoon.invoke
+import de.infix.testBalloon.framework.testSuite
 
-class `Shared Andoid JVM Test` : FreeSpec({ "should work on $platform" { } })
+val `Shared Andoid JVM Test` by testSuite { "should work on ${Target.current}" { } }

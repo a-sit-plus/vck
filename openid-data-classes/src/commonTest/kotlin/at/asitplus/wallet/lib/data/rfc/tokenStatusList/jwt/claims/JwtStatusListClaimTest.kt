@@ -1,10 +1,11 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList.jwt.claims
 
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.invoke
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.shouldBe
 
-class JwtStatusListClaimTest : FreeSpec({
+val JwtStatusListClaimTest by testSuite {
     "specification robustness" {
         JwtStatusListClaim.Specification.CLAIM_NAME shouldBe "status_list"
     }
-})
+}

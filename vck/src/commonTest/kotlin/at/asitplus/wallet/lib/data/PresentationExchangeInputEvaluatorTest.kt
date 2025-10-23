@@ -5,7 +5,9 @@ import at.asitplus.dif.ConstraintFilter
 import at.asitplus.wallet.lib.data.dif.PresentationExchangeInputEvaluator
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FunSpec
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.matthewnelson.encoding.base16.Base16
@@ -15,7 +17,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 
-class PresentationExchangeInputEvaluatorTest : FunSpec({
+val PresentationExchangeInputEvaluatorTest by testSuite {
 
     lateinit var elementIdentifier: String
     lateinit var elementValue: String
@@ -23,7 +25,7 @@ class PresentationExchangeInputEvaluatorTest : FunSpec({
     lateinit var arrayCredential: JsonObject
     lateinit var objectCredential: JsonObject
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         elementIdentifier = "p" + uuid4().bytes.encodeToString(Base16)
         elementValue = uuid4().bytes.encodeToString(Base16)
         simpleCredential = buildJsonObject {
@@ -39,6 +41,7 @@ class PresentationExchangeInputEvaluatorTest : FunSpec({
                 put(elementIdentifier, JsonPrimitive(elementValue))
             })
         }
+        it()
     }
 
     test("simple credential matches constraint field with string filter") {
@@ -220,7 +223,7 @@ class PresentationExchangeInputEvaluatorTest : FunSpec({
             shouldHaveSize(1)
         }
     }
-})
+}
 
 private fun arrayFilter(elementIdentifier: String): ConstraintField = ConstraintField(
     path = listOf("$.$elementIdentifier"),

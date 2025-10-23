@@ -6,7 +6,7 @@ import at.asitplus.openid.IssuerMetadata
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import io.kotest.core.spec.style.FunSpec
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldNotBeEmpty
@@ -14,7 +14,7 @@ import io.kotest.matchers.maps.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 
-class DeserializationTest : FunSpec({
+val DeserializationTest by testSuite {
 
     test("OID4VCI A.1.1.2. VC Signed as a JWT, Not Using JSON-LD") {
         val input = """
@@ -486,5 +486,4 @@ class DeserializationTest : FunSpec({
         vckJsonSerializer.decodeFromString<AuthenticationRequestParameters>(input)
             .shouldNotBeNull()
     }
-
-})
+}

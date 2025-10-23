@@ -9,19 +9,22 @@ import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.ValueDigestList
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.invoke
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.decodeFromByteArray
+import kotlin.time.Instant
 
-class Iso18013SpecTest : FreeSpec({
+val Iso18013SpecTest by testSuite {
 
-    beforeSpec {
+    testConfig = TestConfig.aroundEach {
         CborCredentialSerializer.register(
             serializerMap = mapOf(
                 "issue_date" to LocalDate.serializer(),
@@ -29,6 +32,7 @@ class Iso18013SpecTest : FreeSpec({
             ),
             isoNamespace = "org.iso.18013.5.1"
         )
+        it()
     }
 
     // From ISO/IEC 18013-5:2021(E), D4.1.1, page 115
@@ -453,7 +457,7 @@ class Iso18013SpecTest : FreeSpec({
 
         coseSigned.serialize(MobileSecurityObject.serializer()).encodeToString(Base16(true)) shouldBe input
     }
-})
+}
 
 private fun ItemsRequestList.findItem(key: String) =
     entries.first { it.key == key }.value

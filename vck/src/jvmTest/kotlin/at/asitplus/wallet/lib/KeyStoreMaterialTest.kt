@@ -2,7 +2,11 @@ package at.asitplus.wallet.lib
 
 import at.asitplus.signum.supreme.SignatureResult
 import at.asitplus.wallet.lib.agent.KeyStoreMaterial
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.testSuite
+import at.asitplus.testballoon.*
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -10,7 +14,7 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.KeyStore
 import java.security.Security
 
-class KeyStoreMaterialTest : FreeSpec({
+val KeyStoreMaterialTest by testSuite {
 
     val ks = KeyStore.getInstance("JKS")
     ks.load(KeyStoreMaterial::class.java.getResourceAsStream("/pw_bar_kpw_foo_alias_foo.jks"), "bar".toCharArray())
@@ -45,5 +49,4 @@ class KeyStoreMaterialTest : FreeSpec({
 
         material.getCertificate().shouldNotBeNull()
     }
-
-})
+}

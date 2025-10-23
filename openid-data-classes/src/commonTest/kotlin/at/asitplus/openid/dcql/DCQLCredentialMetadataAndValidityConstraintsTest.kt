@@ -1,6 +1,8 @@
 package at.asitplus.openid.dcql
 
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.minus
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -8,7 +10,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 
-class DCQLCredentialMetadataAndValidityConstraintsTest : FreeSpec({
+val DCQLCredentialMetadataAndValidityConstraintsTest by testSuite {
      "serialization" - {
          "iso" {
              val value = DCQLIsoMdocCredentialMetadataAndValidityConstraints(
@@ -35,4 +37,4 @@ class DCQLCredentialMetadataAndValidityConstraintsTest : FreeSpec({
              DCQLSdJwtCredentialMetadataAndValidityConstraints.SerialNames.VCT_VALUES shouldBeIn serialized.jsonObject.keys
          }
      }
-})
+}

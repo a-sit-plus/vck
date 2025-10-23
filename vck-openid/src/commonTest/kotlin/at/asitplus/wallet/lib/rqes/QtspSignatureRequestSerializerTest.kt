@@ -11,15 +11,17 @@ import at.asitplus.csc.enums.SignedEnvelopeProperty
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.io.Base64Strict
+import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.minus
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import de.infix.testBalloon.framework.testSuite
 import io.github.aakira.napier.Napier
-import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 
-class QtspSignatureRequestSerializerTest : FreeSpec({
+val QtspSignatureRequestSerializerTest by testSuite {
 
     val adaptedCscTestVectorSignHash1 = """
     {
@@ -216,7 +218,7 @@ class QtspSignatureRequestSerializerTest : FreeSpec({
             adaptedCscTestVectorSignDoc2,
             adaptedCscTestVectorSignDoc3
         ).forEachIndexed { i, vec ->
-            "Testvector ${i + 1}" - {
+            "Testvector ${i + 1}" {
                 val expected = vckJsonSerializer.decodeFromString<JsonObject>(vec).canonicalize()
                 val actual = vckJsonSerializer.encodeToJsonElement(
                     vckJsonSerializer.decodeFromString(QtspSignatureRequest.serializer(), vec)
@@ -226,4 +228,4 @@ class QtspSignatureRequestSerializerTest : FreeSpec({
             }
         }
     }
-})
+}

@@ -2,10 +2,12 @@ package at.asitplus.wallet.lib.data
 
 import at.asitplus.dif.SubmissionRequirement
 import at.asitplus.dif.SubmissionRequirementRuleEnum
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.minus
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.shouldBe
 
-class SubmissionRequirementsTest : FreeSpec({
+val SubmissionRequirementsTest by testSuite {
     "all" - {
         "from" - {
             val group = "A"
@@ -1693,4 +1695,4 @@ class SubmissionRequirementsTest : FreeSpec({
             }
         }
     }
-})
+}

@@ -1,20 +1,23 @@
 package at.asitplus.wallet.lib.data.rfc7519.jwt.claims
 
-import io.kotest.core.spec.style.FreeSpec
-import io.kotest.datatest.withData
+import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.minus
+import at.asitplus.testballoon.withData
+import at.asitplus.testballoon.withDataSuites
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.shouldBe
 import kotlin.time.Clock
-import kotlin.time.Instant
 import kotlin.time.DurationUnit
+import kotlin.time.Instant
 import kotlin.time.toDuration
 
-class JwtExpirationTimeClaimTest : FreeSpec({
+val JwtExpirationTimeClaimTest by testSuite {
     "specification robustness" {
         JwtExpirationTimeClaim.Specification.CLAIM_NAME shouldBe "exp"
     }
     "validation" - {
         val now = Clock.System.now()
-        withData(
+        withDataSuites(
             mapOf<String, Pair<List<Instant>, Boolean>>(
                 "past" to Pair(
                     listOf(
@@ -40,4 +43,4 @@ class JwtExpirationTimeClaimTest : FreeSpec({
             }
         }
     }
-})
+}

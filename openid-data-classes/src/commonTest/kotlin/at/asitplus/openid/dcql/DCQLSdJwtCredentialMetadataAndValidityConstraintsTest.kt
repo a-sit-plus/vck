@@ -1,16 +1,18 @@
 package at.asitplus.openid.dcql
 
 import at.asitplus.openid.CredentialFormatEnum
+import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.minus
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrowAny
-import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 
-class DCQLSdJwtCredentialMetadataAndValidityConstraintsTest : FreeSpec({
+val DCQLSdJwtCredentialMetadataAndValidityConstraintsTest by testSuite {
     "specification" - {
         "serial names" {
             DCQLSdJwtCredentialMetadataAndValidityConstraints.SerialNames.VCT_VALUES shouldBe "vct_values"
@@ -61,4 +63,4 @@ class DCQLSdJwtCredentialMetadataAndValidityConstraintsTest : FreeSpec({
             ).getOrThrow()
         }
     }
-})
+}

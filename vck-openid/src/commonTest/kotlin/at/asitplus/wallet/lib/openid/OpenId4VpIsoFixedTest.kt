@@ -3,9 +3,9 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.io.Base64Strict
-import at.asitplus.wallet.lib.jws.DecryptJwe
+import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSingleElement
@@ -18,7 +18,7 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
  * i.e. in the currently defined format of the device signature and session transcript for ISO mdocs,
  * that is the definition from ISO/IEC 18013-7:2024 Annex B.
  */
-class OpenId4VpIsoFixedTest : FreeSpec({
+val OpenId4VpIsoFixedTest by testSuite {
 
     "Selective Disclosure with mDL (ISO/IEC 18013-7:2024 Annex B)" {
         val keyDerBase64 =
@@ -140,5 +140,4 @@ class OpenId4VpIsoFixedTest : FreeSpec({
                 invalidItems.shouldBeEmpty()
             }
     }
-
-})
+}

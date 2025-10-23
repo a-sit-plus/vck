@@ -13,8 +13,16 @@ import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
+import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.eupid.EuPidScheme
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
@@ -24,7 +32,9 @@ import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -37,14 +47,14 @@ import kotlin.time.Instant
  * see [https://verifier.eudiw.dev/cbor-selectable/verifiable](https://verifier.eudiw.dev/cbor-selectable/verifiable)
  */
 @Suppress("DEPRECATION")
-class OpenId4VpEuRefInteropTest : FreeSpec({
+val OpenId4VpEuRefInteropTest by testSuite {
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var holderAgent: Holder
     lateinit var holderOid4vp: OpenId4VpHolder
     lateinit var verifierKeyMaterial: KeyMaterial
     lateinit var verifierOid4vp: OpenId4VpVerifier
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         holderAgent = HolderAgent(holderKeyMaterial)
         val issuerAgent = IssuerAgent(
@@ -70,6 +80,7 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
             ).getOrThrow().toStoreCredentialInput()
         )
         holderOid4vp = OpenId4VpHolder(holderKeyMaterial, holderAgent, randomSource = RandomSource.Default)
+        it()
     }
 
     "EUDI from URL 2024-05-17" {
@@ -372,5 +383,4 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
         verifierOid4vp.validateAuthnResponse(response.params)
             .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
     }
-
-})
+}

@@ -5,6 +5,7 @@ import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.RandomSource
@@ -12,14 +13,14 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 
-class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
+val AuthenticationRequestParameterFromSerializerTest by testSuite {
 
     val clientId = "PRE-REGISTERED-CLIENT"
     val redirectUrl = "https://example.com/rp/${uuid4()}"
@@ -130,4 +131,4 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
                 .shouldBe(params)
         }
     }
-})
+}

@@ -4,12 +4,13 @@ import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.testballoon.invoke
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 
-class JweSerializationTest : FreeSpec({
+val JweSerializationTest by testSuite {
 
     "Serialization is correct" {
         val kid = uuid4().toString()
@@ -89,4 +90,4 @@ class JweSerializationTest : FreeSpec({
         parsed.type shouldBe type
     }
 
-})
+}

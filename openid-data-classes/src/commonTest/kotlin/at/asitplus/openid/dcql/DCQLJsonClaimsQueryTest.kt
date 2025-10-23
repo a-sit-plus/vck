@@ -2,7 +2,9 @@ package at.asitplus.openid.dcql
 
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.minus
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -16,13 +18,13 @@ import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlin.random.Random
 
-class DCQLJsonClaimsQueryTest : FreeSpec({
+val DCQLJsonClaimsQueryTest by testSuite {
     "specification" - {
         "serial names" {
             DCQLJsonClaimsQuery.SerialNames.PATH shouldBe "path"
         }
     }
-    "instance serialization" - {
+    "instance serialization" {
         val value = DCQLJsonClaimsQuery(
             id = DCQLClaimsQueryIdentifier("test"),
             path = DCQLClaimsPathPointer("test"),
@@ -145,5 +147,5 @@ class DCQLJsonClaimsQueryTest : FreeSpec({
             )
         ).isSuccess shouldBe false
     }
-})
+}
 

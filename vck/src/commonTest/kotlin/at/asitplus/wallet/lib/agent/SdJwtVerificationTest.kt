@@ -1,8 +1,9 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.SdJwtSigned
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.maps.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -10,7 +11,7 @@ import io.kotest.matchers.shouldBe
 /**
  * Verifies examples from [IETF-OAuth-SD-JWT](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-13.html)
  */
-class SdJwtVerificationTest : FreeSpec({
+val SdJwtVerificationTest by testSuite {
 
     "A.1. Simple structured SD-JWT" {
         val input = """
@@ -251,4 +252,4 @@ class SdJwtVerificationTest : FreeSpec({
         reconstructed shouldBe vckJsonSerializer.parseToJsonElement(expected)
     }
 
-})
+}

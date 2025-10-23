@@ -2,22 +2,23 @@ package at.asitplus.wallet.lib.iso
 
 import at.asitplus.iso.ValidityInfo
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.invoke
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlin.time.Clock
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
+import kotlin.time.Clock
 
 /**
  * Test correct appending tag 0 (in hex `C0`) for certain data elements,
  * as defined by ISO/IEC 18013-5:2021
  */
 @OptIn(ExperimentalSerializationApi::class)
-class Tag0SerializationTest : FreeSpec({
+val Tag0SerializationTest by testSuite {
 
     "ValidityInfo" {
         val input = ValidityInfo(
@@ -39,4 +40,4 @@ class Tag0SerializationTest : FreeSpec({
         coseCompliantSerializer.decodeFromByteArray<ValidityInfo>(serialized) shouldBe input
     }
 
-})
+}

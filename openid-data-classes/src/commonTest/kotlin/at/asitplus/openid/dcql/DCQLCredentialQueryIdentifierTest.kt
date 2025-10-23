@@ -1,11 +1,12 @@
 package at.asitplus.openid.dcql
 
+import at.asitplus.testballoon.minus
+import at.asitplus.testballoon.withData
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.FreeSpec
-import io.kotest.datatest.withData
 
-class DCQLCredentialQueryIdentifierTest : FreeSpec({
+val DCQLCredentialQueryIdentifierTest by testSuite {
     "success" - {
         withData(
             listOf(
@@ -38,4 +39,4 @@ class DCQLCredentialQueryIdentifierTest : FreeSpec({
             }
         }
     }
-})
+}

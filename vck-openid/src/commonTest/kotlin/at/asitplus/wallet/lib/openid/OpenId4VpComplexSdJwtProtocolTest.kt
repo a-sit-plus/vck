@@ -3,25 +3,36 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.dif.FormatContainerJwt
 import at.asitplus.dif.FormatContainerSdJwt
 import at.asitplus.jsonpath.JsonPath
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.testballoon.invoke
+import at.asitplus.wallet.lib.agent.ClaimToBeIssued
+import at.asitplus.wallet.lib.agent.CredentialToBeIssued
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlin.time.Clock
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
-class OpenId4VpComplexSdJwtProtocolTest : FreeSpec({
+val OpenId4VpComplexSdJwtProtocolTest by testSuite {
 
     lateinit var clientId: String
     lateinit var walletUrl: String
@@ -33,7 +44,7 @@ class OpenId4VpComplexSdJwtProtocolTest : FreeSpec({
     lateinit var randomRegion: String
     lateinit var randomCountry: String
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         randomRegion = uuid4().toString()
         randomCountry = uuid4().toString()
         holderKeyMaterial = EphemeralKeyWithoutCert()
@@ -73,6 +84,7 @@ class OpenId4VpComplexSdJwtProtocolTest : FreeSpec({
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = ClientIdScheme.RedirectUri(clientId)
         )
+        it()
     }
 
 
@@ -160,8 +172,8 @@ class OpenId4VpComplexSdJwtProtocolTest : FreeSpec({
             }
         }
     }
+}
 
-})
 
 private const val CLAIM_ADDRESS = "address"
 private const val CLAIM_ADDRESS_REGION = "region"

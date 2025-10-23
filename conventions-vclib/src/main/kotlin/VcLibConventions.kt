@@ -3,28 +3,24 @@
 package at.asitplus.gradle
 
 import VcLibVersions
-import com.android.build.gradle.LibraryExtension
-import com.squareup.kotlinpoet.ClassName
-import com.squareup.kotlinpoet.FileSpec
-import com.squareup.kotlinpoet.FunSpec
-import com.squareup.kotlinpoet.TypeSpec
-import org.gradle.api.Plugin
+import com.android.build.api.dsl.androidLibrary
+import com.android.build.api.variant.KotlinMultiplatformAndroidComponentsExtension
 import org.gradle.api.Project
 import org.gradle.api.artifacts.VersionCatalog
 import org.gradle.api.artifacts.VersionCatalogsExtension
-import org.gradle.kotlin.dsl.dependencies
-import org.gradle.kotlin.dsl.getByName
+import org.gradle.api.tasks.testing.Test
 import org.gradle.kotlin.dsl.getByType
+import org.gradle.kotlin.dsl.invoke
 import org.gradle.kotlin.dsl.withType
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinDependencyHandler
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
-import java.io.FileInputStream
-import java.util.regex.Pattern
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 val Project.signumVersionCatalog: VersionCatalog
     get() = extensions.getByType<VersionCatalogsExtension>().named("signum")
 
-val Project.VcLibVersions get()= VcLibVersions(this)
+val Project.VcLibVersions get() = VcLibVersions(this)
 
 inline fun Project.commonApiDependencies(): List<String> {
     project.AspVersions.versions["signum"] = VcLibVersions.signum
@@ -47,7 +43,6 @@ inline fun KotlinDependencyHandler.commonImplementationAndApiDependencies() {
 }
 
 
-
 inline fun KotlinDependencyHandler.commonImplementationDependencies() {
     implementation(project.ktor("http"))
     implementation(project.napier())
@@ -55,152 +50,107 @@ inline fun KotlinDependencyHandler.commonImplementationDependencies() {
     implementation("net.orandja.obor:obor:${project.VcLibVersions.obor}")
 }
 
-/**
- * Hooks up Kotest tests from common using a frankensteined JUnit runner.
- * It generates code using KotlinPoet to hook it up as per https://github.com/kotest/kotest/issues/189
- */
-inline fun Project.wireAndroidInstrumentedTests() {
-    logger.lifecycle("  Wiring up Android Instrumented Tests")
-    val targetDir = project.layout.projectDirectory.dir("src")
-        .dir("androidInstrumentedTest").dir("kotlin")
-        .dir("generated").asFile.apply { deleteRecursively() }
-
-    val packagePattern = Pattern.compile("package\\s+(\\S+)", Pattern.UNICODE_CHARACTER_CLASS)
-    val searchPattern =
-        Pattern.compile("\\s+class\\s+(\\S+)\\s*:\\s*FreeSpec", Pattern.UNICODE_CHARACTER_CLASS)
-    project.layout.projectDirectory.dir("src").dir("commonTest")
-        .dir("kotlin").asFileTree.filter { it.extension == "kt" }.forEach { file ->
-            FileInputStream(file).bufferedReader().use { reader ->
-                val source = reader.readText()
-
-                val packageName = packagePattern.matcher(source).run {
-                    if (find()) group(1) else null
-                }
-
-                val matcher = searchPattern.matcher(source)
-
-                while (matcher.find()) {
-                    val className = matcher.group(1)
-                    logger.lifecycle("Found Test class $className in file ${file.name}")
-
-                    FileSpec.builder("at.asitplus.wallet.instrumented", "Android$className")
-                        .addType(
-                            TypeSpec.classBuilder("Android$className")
-                                .apply {
-                                    // this.superclass(ClassName(packageName ?: "", className))
-                                    addFunction(
-                                        FunSpec.Companion.builder("test").addCode(
-                                            "%L",
-                                            """
-                                            val listener = io.kotest.engine.listener.CollectingTestEngineListener()
-                                            io.kotest.engine.TestEngineLauncher(listener)
-                                                .withClasses(
-                                                """.trimIndent()
-                                                    + ClassName(
-                                                packageName ?: "",
-                                                className
-                                            ).canonicalName + "::class)" +
-                                                    """
-                                            .launch()
-                                            listener.tests.map { entry ->
-                                                {
-                                                    val testCase = entry.key
-                                                    val descriptor = testCase.descriptor.chain().joinToString(" > ") {
-                                                        it.id.value
-                                                    }
-                                                    val cause = when (val value = entry.value) {
-                                                        is io.kotest.core.test.TestResult.Error -> value.cause
-                                                        is io.kotest.core.test.TestResult.Failure -> value.cause
-                                                        else -> null
-                                                    }
-                                                    org.junit.jupiter.api.Assertions.assertFalse(entry.value.isErrorOrFailure) {
-                                            """.trimIndent()
-                                                    + "\"\"\"\$descriptor\n" +
-                                                    "                        |\${cause?.stackTraceToString()}\"\"\".trimMargin()\n" +
-                                                    """
-                                                            }
-                                                        }
-                                                    }.let {
-                                                        org.junit.jupiter.api.assertAll(it)
-                                                    }
-                                                    """.trimIndent() +
-                                                    "\nprint(\"Total \${listener.tests.size}\")\n" +
-                                                    "println(\" Failure \${listener.tests.count { it.value.isErrorOrFailure }}\")"
-
-                                        ).addAnnotation(ClassName("org.junit.jupiter.api", "Test"))
-                                            .build()
-
-
-                                    )
-                                        .build()
-                                }.build()
-                        ).build().apply {
-                            targetDir.also { file ->
-                                file.mkdirs()
-                                writeTo(file)
-                            }
-                        }
-                }
-            }
-        }
-}
-
-fun Project.setupAndroid() {
-    project.extensions.getByName<LibraryExtension>("android").apply {
-        namespace = "$group.${name.replace('-','.')}".also { logger.lifecycle("Setting Android namespace to $it") }
-        defaultConfig {
-            testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        }
-
-
-        dependencies {
-            add("androidTestImplementation", "androidx.test:runner:${VcLibVersions.Android.testRunner}")
-            add("androidTestImplementation", "androidx.test:core:${VcLibVersions.Android.testCore}")
-            add("testImplementation", "org.junit.jupiter:junit-jupiter-api:${VcLibVersions.Android.junit}")
-            add("testRuntimeOnly", "org.junit.jupiter:junit-jupiter-engine:${VcLibVersions.Android.junit}")
-            add("androidTestImplementation", "org.junit.jupiter:junit-jupiter-api:${VcLibVersions.Android.junit}")
-        }
-
-        packaging {
-            resources.excludes.add("/META-INF/{AL2.0,LGPL2.1}")
-            resources.excludes.add("win32-x86-64/attach_hotspot_windows.dll")
-            resources.excludes.add("win32-x86/attach_hotspot_windows.dll")
-            resources.excludes.add("META-INF/versions/9/OSGI-INF/MANIFEST.MF")
-            resources.excludes.add("META-INF/licenses/*")
-        }
-
-        testOptions {
-            managedDevices {
-                localDevices.create("pixel2api33") {
-                    device = "Pixel 2"
-                    apiLevel = 33
-                    systemImageSource = "aosp-atd"
-                }
-            }
-        }
-    }
-}
-
-
-class VcLibConventions : Plugin<Project> {
+class VcLibConventions : K2Conventions() {
     override fun apply(target: Project) {
-        if (target.rootProject != target) target.plugins.apply("com.android.library")
-        target.plugins.apply("at.asitplus.gradle.conventions")
-        if (target.rootProject != target) target.plugins.apply("de.mannodermaus.android-junit5")
+        super.apply(target)
+        if (target.rootProject != target) {
+            target.pluginManager.apply("org.jetbrains.kotlin.multiplatform")
+            target.pluginManager.apply("org.jetbrains.kotlin.plugin.serialization")
+            target.pluginManager.apply("com.android.kotlin.multiplatform.library")
+            target.pluginManager.apply("signing")
+            target.pluginManager.apply("org.jetbrains.dokka")
+            target.pluginManager.apply("de.infix.testBalloon")
+            target.pluginManager.apply("maven-publish")
+            //if we do this properly, cinterop (swift-klib) blows up, so we hack!
+            target.afterEvaluate {
 
-        target.task("wireAndroidInstrumentedTests") {
-            doFirst { target.wireAndroidInstrumentedTests() }
-        }
-        target.gradle.taskGraph.whenReady {
-            target.wireAndroidInstrumentedTests()
-            target.tasks.withType<KotlinCompilationTask<*>>().configureEach {
-                compilerOptions {
-                    freeCompilerArgs.add("-Xexpect-actual-classes")
-                    optIn.add("kotlinx.cinterop.BetaInteropApi")
+                extensions.getByType<KotlinMultiplatformExtension>().apply {
+                    sourceSets.forEach {
+                        it.languageSettings.enableLanguageFeature("ContextParameters")
+                    }
+                    sourceSets.commonMain.get()
+                        .dependencies { implementation("at.asitplus.gradle:testballoon-shim:$buildDate") }
                 }
+                tasks.withType<Test>().configureEach {
+                    maxHeapSize = "4G"
+                }
+
             }
         }
-
     }
 }
 
+fun KotlinMultiplatformExtension.vckAndroid(minSdkOverride: Int? = null)  {
+    val compat = project.androidJvmTarget
+    val namespace = "${project.group}.${project.name.replace('-', '.')}"
+    androidLibrary {
+
+        compilations.configureEach {
+            if (name.contains("test", ignoreCase = true)) {
+                if (project.raiseAndroidTestToJdkTarget) compilerOptions.configure {
+                    jvmTarget.set(JvmTarget.fromTarget(project.jvmTarget))
+                }
+            } else compilerOptions.configure {
+                jvmTarget.set(JvmTarget.fromTarget(compat!!))
+            }
+        }
+
+        this.namespace = namespace
+        minSdk = project.androidMinSdk
+        minSdkOverride?.let {
+            project.logger.lifecycle("  \u001b[7m\u001b[1m" + "Overriding Android defaultConfig minSDK to $minSdkOverride for project ${project.name}" + "\u001b[0m")
+            minSdk = it
+        }
+        compileSdk = project.androidCompileSdk
+
+        withDeviceTestBuilder {
+            sourceSetTreeName = "test"
+        }.configure {
+            instrumentationRunnerArguments["timeout_msec"] = "2400000"
+            managedDevices {
+                localDevices {
+                    create("pixelAVD").apply {
+                        device = "Pixel 4"
+                        apiLevel = 35
+                        systemImageSource = "aosp-atd"
+                    }
+                }
+            }
+        }
+        packaging {
+            listOf(
+                "org/bouncycastle/pqc/crypto/picnic/lowmcL5.bin.properties",
+                "org/bouncycastle/pqc/crypto/picnic/lowmcL3.bin.properties",
+                "org/bouncycastle/pqc/crypto/picnic/lowmcL1.bin.properties",
+                "org/bouncycastle/x509/CertPathReviewerMessages_de.properties",
+                "org/bouncycastle/x509/CertPathReviewerMessages.properties",
+                "org/bouncycastle/pkix/CertPathReviewerMessages_de.properties",
+                "org/bouncycastle/pkix/CertPathReviewerMessages.properties",
+                "/META-INF/{AL2.0,LGPL2.1}",
+                "win32-x86-64/attach_hotspot_windows.dll",
+                "win32-x86/attach_hotspot_windows.dll",
+                "META-INF/versions/9/OSGI-INF/MANIFEST.MF",
+                "META-INF/licenses/*",
+                //noinspection WrongGradleMethod
+            ).forEach { resources.excludes.add(it) }
+        }
+    }
+    sourceSets.whenObjectAdded {
+        if (this.name == "androidDeviceTest") {
+            dependencies {
+                implementation("de.infix.testBalloon:testBalloon-framework-core:${project.AspVersions.testballoon}")
+                implementation("androidx.test:runner:${project.AspVersions.androidTestRunner}")
+            }
+        }
+    }
+    sourceSets.findByName("androidDeviceTest")?.dependencies {
+        implementation("de.infix.testBalloon:testBalloon-framework-core:${project.AspVersions.testballoon}")
+        implementation("androidx.test:runner:${project.AspVersions.androidTestRunner}")
+    }
+    project.extensions.getByType<KotlinMultiplatformAndroidComponentsExtension>().apply {
+        onVariants { v ->
+            // Configure the instrumented-test APK only
+            v.androidTest?.manifestPlaceholders?.put("testLargeHeap", "true")
+        }
+    }
+}

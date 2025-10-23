@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.OpenIdConstants
+import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
@@ -15,11 +16,13 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.CreationOptions
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-class OpenId4VpX509HashTest : FreeSpec({
+val OpenId4VpX509HashTest by testSuite {
 
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var verifierKeyMaterial: KeyMaterial
@@ -27,7 +30,7 @@ class OpenId4VpX509HashTest : FreeSpec({
     lateinit var holderOid4vp: OpenId4VpHolder
     lateinit var verifierOid4vp: OpenId4VpVerifier
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         verifierKeyMaterial = EphemeralKeyWithSelfSignedCert()
         holderAgent = HolderAgent(holderKeyMaterial)
@@ -56,6 +59,7 @@ class OpenId4VpX509HashTest : FreeSpec({
                 "https://example.com/redirect"
             ),
         )
+        it()
     }
 
     "test with request object" {
@@ -122,4 +126,4 @@ class OpenId4VpX509HashTest : FreeSpec({
             .reconstructed[CLAIM_GIVEN_NAME].shouldNotBeNull()
 
     }
-})
+}

@@ -17,12 +17,15 @@ import at.asitplus.signum.indispensable.cosef.CoseMac
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.toCoseKey
+import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
-import io.ktor.util.hex
+import io.ktor.util.*
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -33,7 +36,7 @@ import kotlin.random.Random
 import kotlin.time.Clock
 
 @OptIn(ExperimentalSerializationApi::class)
-class CoseServiceTest : FreeSpec({
+val CoseServiceTest by testSuite {
 
     lateinit var signCose: SignCoseFun<ByteArray>
     lateinit var signCoseNothing: SignCoseFun<Nothing>
@@ -48,7 +51,7 @@ class CoseServiceTest : FreeSpec({
     lateinit var macCoseDetached: MacCoseDetachedFun<ByteArray>
     lateinit var macCoseKey: CoseKey
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         val signKeyMaterial = EphemeralKeyWithoutCert()
         signCose = SignCose(signKeyMaterial)
         signCoseNothing = SignCose(signKeyMaterial)
@@ -59,11 +62,13 @@ class CoseServiceTest : FreeSpec({
 
         val macAlgorithm = HMAC.SHA256
         val rawKey = Random.nextBytes(32)
-        macCoseKey = CoseKey.forMacKey(macAlgorithm, rawKey, null, CoseKeyOperation.MAC_CREATE, CoseKeyOperation.MAC_VERIFY)
+        macCoseKey =
+            CoseKey.forMacKey(macAlgorithm, rawKey, null, CoseKeyOperation.MAC_CREATE, CoseKeyOperation.MAC_VERIFY)
         macCose = MacCose(macCoseKey)
         macCoseMso = MacCose(macCoseKey)
         macCoseNothing = MacCose(macCoseKey)
         macCoseDetached = MacCoseDetached(macCoseKey)
+        it()
     }
 
     // "T" translates to 54 hex = "bytes(20)" in CBOR meaning,
@@ -183,7 +188,12 @@ class CoseServiceTest : FreeSpec({
         val parsed = CoseSigned.deserialize(parameterSerializer, signed.serialize(parameterSerializer)).getOrThrow()
             .shouldBe(signed)
 
-        VerifyCoseSignatureWithKey<MobileSecurityObject>()(parsed, signCoseKey, byteArrayOf(), null).isSuccess shouldBe true
+        VerifyCoseSignatureWithKey<MobileSecurityObject>()(
+            parsed,
+            signCoseKey,
+            byteArrayOf(),
+            null
+        ).isSuccess shouldBe true
     }
 
     "maced object with MSO payload can be verified" {
@@ -393,5 +403,4 @@ class CoseServiceTest : FreeSpec({
         maced.prepareCoseMacInput()
             .encodeToString(Base16Strict) shouldBe "84644D414330404054546869732069732074686520636F6E74656E742E"
     }
-})
-
+}

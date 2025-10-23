@@ -1,6 +1,8 @@
 package at.asitplus.wallet
-import io.kotest.core.spec.style.FreeSpec
+
+import at.asitplus.testballoon.invoke
+import de.infix.testBalloon.framework.testSuite
 import kotlin.experimental.ExperimentalNativeApi
 
 @OptIn(ExperimentalNativeApi::class)
-class iosOnlyTest : FreeSpec({ "should run on on ${Platform}"{} })
+val iosOnlyTest by testSuite { "should run on on ${Platform}" {} }

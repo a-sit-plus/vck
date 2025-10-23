@@ -7,6 +7,7 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.QesAuthorization
 import at.asitplus.openid.TransactionData
 import at.asitplus.signum.indispensable.Digest
+import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.eupid.EuPidScheme.SdJwtAttributes.FAMILY_NAME
 import at.asitplus.wallet.eupid.EuPidScheme.SdJwtAttributes.GIVEN_NAME
@@ -28,18 +29,20 @@ import at.asitplus.wallet.lib.openid.RequestOptionsCredential
 import at.asitplus.wallet.lib.rqes.helper.DummyCredentialDataProvider
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 
-class RqesRequestOptionsTest : FreeSpec({
+val RqesRequestOptionsTest by testSuite {
 
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var holderAgent: Holder
     lateinit var verifierOid4Vp: OpenId4VpVerifier
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         holderAgent = HolderAgent(holderKeyMaterial)
 
@@ -56,6 +59,7 @@ class RqesRequestOptionsTest : FreeSpec({
             keyMaterial = EphemeralKeyWithoutCert(),
             clientIdScheme = ClientIdScheme.RedirectUri("https://example.com/rp/${uuid4()}"),
         )
+        it()
     }
 
     "Authentication request contains transactionData" {
@@ -68,8 +72,7 @@ class RqesRequestOptionsTest : FreeSpec({
             }
         }
     }
-})
-
+}
 internal fun buildRequestOptions(
     responseMode: OpenIdConstants.ResponseMode = OpenIdConstants.ResponseMode.Fragment,
     transactionDataHashAlgorithms: Set<String>?,

@@ -30,9 +30,14 @@ jobs:
           ./gradlew -DregressionTest=true jvmTest  
           cd ..
       - name: Test Report
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v2
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
         if: success() || failure()
         with:
-          name: vck Tests
-          path: vck/build/test-results/**/TEST*.xml,vck-openid/build/test-results/**/TEST*.xml,vck-openid-ktor/build/test-results/**/TEST*.xml,mobile-driving-licence-credential/mobiledrivinglicence/build/test-results/**/TEST*.xml
+          name: All Tests
+          path: '**/build/test-results/**/TEST*.xml'
+          list-suites: failed
+          list-tests: failed
           reporter: java-junit
+          use-actions-summary: true

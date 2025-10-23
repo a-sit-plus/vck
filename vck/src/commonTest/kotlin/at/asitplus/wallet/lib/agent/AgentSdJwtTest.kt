@@ -14,6 +14,8 @@ import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.minus
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
@@ -31,7 +33,9 @@ import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -42,7 +46,7 @@ import kotlin.random.Random
 import kotlin.time.Clock
 
 
-class AgentSdJwtTest : FreeSpec({
+val AgentSdJwtTest by testSuite {
 
     lateinit var issuer: Issuer
     lateinit var statusListIssuer: StatusListIssuer
@@ -54,7 +58,7 @@ class AgentSdJwtTest : FreeSpec({
     lateinit var challenge: String
     lateinit var verifierId: String
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         val validator = ValidatorSdJwt(
             validator = Validator(
                 tokenStatusResolver = TokenStatusResolverImpl(
@@ -101,6 +105,7 @@ class AgentSdJwtTest : FreeSpec({
                 ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         ).getOrThrow()
+        it()
     }
 
     "keyBindingJws contains more JWK attributes, still verifies" {
@@ -298,7 +303,7 @@ class AgentSdJwtTest : FreeSpec({
                 .shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
         }
     }
-})
+}
 
 private fun buildDCQLQuery(vararg claimsQueries: DCQLJsonClaimsQuery) = DCQLQuery(
     credentials = DCQLCredentialQueryList(

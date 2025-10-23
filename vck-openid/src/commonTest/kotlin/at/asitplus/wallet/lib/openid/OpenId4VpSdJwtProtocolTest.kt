@@ -1,18 +1,27 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.eupid.EuPidScheme
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-class OpenId4VpSdJwtProtocolTest : FreeSpec({
+val OpenId4VpSdJwtProtocolTest by testSuite {
 
     lateinit var clientId: String
     lateinit var walletUrl: String
@@ -22,7 +31,7 @@ class OpenId4VpSdJwtProtocolTest : FreeSpec({
     lateinit var holderOid4vp: OpenId4VpHolder
     lateinit var verifierOid4vp: OpenId4VpVerifier
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         verifierKeyMaterial = EphemeralKeyWithoutCert()
         clientId = "https://example.com/rp/${uuid4()}"
@@ -56,6 +65,7 @@ class OpenId4VpSdJwtProtocolTest : FreeSpec({
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = ClientIdScheme.RedirectUri(clientId)
         )
+        it()
     }
 
     "Selective Disclosure with custom credential" {
@@ -107,5 +117,4 @@ class OpenId4VpSdJwtProtocolTest : FreeSpec({
             result.reconstructed[it].shouldNotBeNull()
         }
     }
-
-})
+}

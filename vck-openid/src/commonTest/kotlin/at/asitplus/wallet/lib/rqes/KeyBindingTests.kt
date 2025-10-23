@@ -6,8 +6,9 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.QCertCreationAcceptance
 import at.asitplus.openid.TransactionDataBase64Url
-import at.asitplus.openid.digest
 import at.asitplus.signum.indispensable.Digest
+import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.minus
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
@@ -34,7 +35,9 @@ import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.rqes.helper.DummyCredentialDataProvider
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -45,7 +48,7 @@ import io.ktor.http.*
 import io.ktor.utils.io.charsets.*
 import io.ktor.utils.io.core.*
 
-class KeyBindingTests : FreeSpec({
+val KeyBindingTests by testSuite {
 
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var holderAgent: Holder
@@ -53,7 +56,7 @@ class KeyBindingTests : FreeSpec({
 
     val externalMapStore = DefaultMapStore<String, AuthenticationRequestParameters>()
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         holderAgent = HolderAgent(holderKeyMaterial)
         holderAgent.storeCredential(
@@ -66,6 +69,7 @@ class KeyBindingTests : FreeSpec({
             ).getOrThrow().toStoreCredentialInput()
         )
         holderOid4vp = OpenId4VpHolder(holder = holderAgent, randomSource = RandomSource.Default)
+        it()
     }
 
     "Rqes Request with EU PID credential" - {
@@ -299,8 +303,7 @@ class KeyBindingTests : FreeSpec({
                 .shouldBe(referenceHash)
         }
     }
-})
-
+}
 private fun malignTransactionData(): List<TransactionDataBase64Url> = listOf(
     QCertCreationAcceptance(
         credentialIds = setOf(),

@@ -5,17 +5,18 @@ import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.RequestParameters
 import at.asitplus.signum.indispensable.Digest
+import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.rqes.helper.DummyValueProvider
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.FreeSpec
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
 
 
-class QtspAuthorizationTest : FreeSpec({
+val QtspAuthorizationTest by testSuite {
 
     val qtspAuthenticationService = SimpleQtspAuthorizationService(
         acceptedCredentials = setOf(ConstantIndex.AtomicAttribute2023),
@@ -54,6 +55,5 @@ class QtspAuthorizationTest : FreeSpec({
         qtspAuthenticationService.token(credentialTokenReq, null).getOrThrow()
     }
 
-})
-
+}
 private fun dummyUser(): OidcUserInfoExtended = OidcUserInfoExtended.deserialize("{\"sub\": \"foo\"}").getOrThrow()

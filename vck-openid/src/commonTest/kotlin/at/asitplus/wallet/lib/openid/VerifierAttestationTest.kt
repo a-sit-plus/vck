@@ -5,7 +5,14 @@ import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.testballoon.invoke
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.rfc3986.toUri
@@ -15,14 +22,16 @@ import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import com.benasher44.uuid.uuid4
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 
-class VerifierAttestationTest : FreeSpec({
+val VerifierAttestationTest by testSuite {
 
     lateinit var clientId: String
     lateinit var redirectUrl: String
@@ -33,7 +42,7 @@ class VerifierAttestationTest : FreeSpec({
     lateinit var holderOid4vp: OpenId4VpHolder
     lateinit var verifierOid4vp: OpenId4VpVerifier
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         verifierKeyMaterial = EphemeralKeyWithoutCert()
         clientId = "${uuid4()}"
@@ -58,6 +67,7 @@ class VerifierAttestationTest : FreeSpec({
             holder = holderAgent,
             randomSource = RandomSource.Default,
         )
+        it()
     }
 
     "test with request object and Attestation JWT" {
@@ -107,7 +117,7 @@ class VerifierAttestationTest : FreeSpec({
             holderOid4vp.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()
         }
     }
-})
+}
 
 
 private fun requestOptionsAtomicAttribute() = RequestOptions(

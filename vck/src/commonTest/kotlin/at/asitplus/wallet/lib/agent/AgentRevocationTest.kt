@@ -2,6 +2,8 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
+import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.minus
 import at.asitplus.wallet.lib.agent.FixedTimePeriodProvider.timePeriod
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
@@ -13,20 +15,22 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.extensions.toView
-import io.kotest.assertions.fail
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.wallet.lib.jws.VerifyJwsObject
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
+import io.kotest.assertions.AssertionErrorBuilder.Companion.fail
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlin.time.Clock
 import kotlinx.serialization.json.Json
 import kotlin.random.Random
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 
-class AgentRevocationTest : FreeSpec({
+val AgentRevocationTest by testSuite {
 
     lateinit var issuerCredentialStore: IssuerCredentialStore
     lateinit var verifierKeyMaterial: KeyMaterial
@@ -34,7 +38,7 @@ class AgentRevocationTest : FreeSpec({
     lateinit var statusListIssuer: StatusListIssuer
     lateinit var expectedRevokedIndexes: List<ULong>
 
-    beforeEach {
+    testConfig= TestConfig.aroundEach {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         issuer = IssuerAgent(
             issuerCredentialStore = issuerCredentialStore,
@@ -44,6 +48,7 @@ class AgentRevocationTest : FreeSpec({
         statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
         verifierKeyMaterial = EphemeralKeyWithoutCert()
         expectedRevokedIndexes = issuerCredentialStore.revokeRandomCredentials()
+        it()
     }
 
     "revocation list should contain indices of revoked credential" {
@@ -174,7 +179,7 @@ class AgentRevocationTest : FreeSpec({
 
         verifyStatusList(revocationList, expectedRevokedIndexes)
     }
-})
+}
 
 
 private fun verifyStatusList(statusList: StatusList, expectedRevokedIndexes: List<ULong>) {

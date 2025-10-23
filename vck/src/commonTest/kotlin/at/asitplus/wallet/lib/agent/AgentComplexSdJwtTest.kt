@@ -12,6 +12,8 @@ import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
+import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.minus
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
@@ -20,7 +22,9 @@ import at.asitplus.wallet.lib.data.CredentialPresentationRequest.PresentationExc
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.jsonObject
@@ -29,7 +33,7 @@ import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
 
-class AgentComplexSdJwtTest : FreeSpec({
+val AgentComplexSdJwtTest by testSuite {
 
     lateinit var issuer: Issuer
     lateinit var holder: Holder
@@ -40,7 +44,7 @@ class AgentComplexSdJwtTest : FreeSpec({
     lateinit var challenge: String
     lateinit var verifierId: String
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         holderCredentialStore = InMemorySubjectCredentialStore()
         issuer = IssuerAgent(
@@ -53,6 +57,7 @@ class AgentComplexSdJwtTest : FreeSpec({
         verifierId = "urn:${uuid4()}"
         verifier = VerifierAgent(identifier = verifierId)
         challenge = uuid4().toString()
+        it()
     }
 
     "when using presentation exchange" - {
@@ -443,7 +448,7 @@ class AgentComplexSdJwtTest : FreeSpec({
                 }
         }
     }
-})
+}
 
 private fun nonsenseClaim(): ClaimToBeIssued = ClaimToBeIssued(uuid4().toString(), uuid4().toString())
 

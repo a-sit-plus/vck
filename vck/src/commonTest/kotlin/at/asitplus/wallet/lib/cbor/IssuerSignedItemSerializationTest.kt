@@ -17,14 +17,23 @@ import at.asitplus.iso.ValueDigestList
 import at.asitplus.iso.sha256
 import at.asitplus.iso.wrapInCborTag
 import at.asitplus.signum.indispensable.CryptoSignature
-import at.asitplus.signum.indispensable.cosef.*
+import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
+import at.asitplus.signum.indispensable.cosef.CoseEllipticCurve
+import at.asitplus.signum.indispensable.cosef.CoseHeader
+import at.asitplus.signum.indispensable.cosef.CoseKey
+import at.asitplus.signum.indispensable.cosef.CoseKeyParams
+import at.asitplus.signum.indispensable.cosef.CoseKeyType
+import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.data.LocalDateOrInstant
 import at.asitplus.wallet.lib.data.LocalDateOrInstantSerializer
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import de.infix.testBalloon.framework.TestConfig
+import de.infix.testBalloon.framework.aroundEach
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -33,8 +42,6 @@ import io.kotest.matchers.string.shouldNotContain
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlin.time.Clock
-import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.builtins.ByteArraySerializer
@@ -43,16 +50,19 @@ import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
 import kotlin.random.Random
 import kotlin.random.nextUInt
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 @OptIn(ExperimentalSerializationApi::class, ExperimentalStdlibApi::class)
-class IssuerSignedItemSerializationTest : FreeSpec({
+val IssuerSignedItemSerializationTest by testSuite {
 
     lateinit var elementId: String
     lateinit var namespace: String
 
-    beforeEach {
+    testConfig = TestConfig.aroundEach {
         namespace = uuid4().toString()
         elementId = uuid4().toString()
+        it()
     }
 
     "serialization with String" {
@@ -80,13 +90,13 @@ class IssuerSignedItemSerializationTest : FreeSpec({
 
         val serialized =
             coseCompliantSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementId), item)
-            .also {
-                it.encodeToString(Base16()).shouldContain(
-                    "elementValue".toHex()
-                            + "C0" // tag(0)
-                            + "78" // text(..)
-                )
-            }
+                .also {
+                    it.encodeToString(Base16()).shouldContain(
+                        "elementValue".toHex()
+                                + "C0" // tag(0)
+                                + "78" // text(..)
+                    )
+                }
 
         coseCompliantSerializer.decodeFromByteArray(
             IssuerSignedItemSerializer(namespace, elementId),
@@ -105,13 +115,13 @@ class IssuerSignedItemSerializationTest : FreeSpec({
 
         val serialized =
             coseCompliantSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementId), item)
-            .also {
-                it.encodeToString(Base16()).shouldContain(
-                    "elementValue".toHex()
-                            + "D903EC" // tag(1004)
-                            + "6A" // text(10)
-                )
-            }
+                .also {
+                    it.encodeToString(Base16()).shouldContain(
+                        "elementValue".toHex()
+                                + "D903EC" // tag(1004)
+                                + "6A" // text(10)
+                    )
+                }
 
         coseCompliantSerializer.decodeFromByteArray(
             IssuerSignedItemSerializer(namespace, elementId),
@@ -323,6 +333,6 @@ class IssuerSignedItemSerializationTest : FreeSpec({
             .elementValue shouldBe LocalDate.parse("1965-01-01")
     }
 
-})
+}
 
 private fun String.toHex(): String = encodeToByteArray().encodeToString(Base16())

@@ -1,14 +1,10 @@
 import at.asitplus.gradle.*
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree.Companion.test
+import org.jetbrains.kotlin.konan.target.HostManager
 
 plugins {
-    id("com.android.library")
-    kotlin("multiplatform")
-    kotlin("plugin.serialization")
     id("at.asitplus.gradle.vclib-conventions")
-    id("org.jetbrains.dokka")
-    id("signing")
 }
 
 /* required for maven publication */
@@ -17,21 +13,16 @@ group = "at.asitplus.wallet"
 version = artifactVersion
 
 
-setupAndroid()
 
+val disableAppleTargets by envExtra
 kotlin {
-
     jvm()
-
-    androidTarget {
-        @OptIn(ExperimentalKotlinGradlePluginApi::class)
-        instrumentedTestVariant.sourceSetTree.set(test)
-        publishLibraryVariants("release")
+    vckAndroid()
+    if ("true" != disableAppleTargets) {
+        iosArm64()
+        iosSimulatorArm64()
+        iosX64()
     }
-
-    iosArm64()
-    iosSimulatorArm64()
-    iosX64()
     sourceSets {
 
         commonMain {
@@ -58,7 +49,7 @@ kotlin {
     }
 }
 
-exportXCFramework(
+if ("true" != disableAppleTargets) exportXCFramework(
     "VckOpenIdKmm",
     transitiveExports = true,
     static = false,
