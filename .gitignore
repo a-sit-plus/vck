@@ -23,7 +23,8 @@ bin/
 !**/src/test/**/bin/
 
 ### IntelliJ IDEA ###
-.idea
+.idea/*
+!.idea/codeStyles
 *.iws
 *.iml
 *.ipr
