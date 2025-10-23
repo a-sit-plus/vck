@@ -51,7 +51,7 @@ val CoseServiceTest by testSuite {
     lateinit var macCoseDetached: MacCoseDetachedFun<ByteArray>
     lateinit var macCoseKey: CoseKey
 
-   testConfig=  TestConfig.aroundEach {
+    testConfig = TestConfig.aroundEach {
         val signKeyMaterial = EphemeralKeyWithoutCert()
         signCose = SignCose(signKeyMaterial)
         signCoseNothing = SignCose(signKeyMaterial)
@@ -62,7 +62,8 @@ val CoseServiceTest by testSuite {
 
         val macAlgorithm = HMAC.SHA256
         val rawKey = Random.nextBytes(32)
-        macCoseKey = CoseKey.forMacKey(macAlgorithm, rawKey, null, CoseKeyOperation.MAC_CREATE, CoseKeyOperation.MAC_VERIFY)
+        macCoseKey =
+            CoseKey.forMacKey(macAlgorithm, rawKey, null, CoseKeyOperation.MAC_CREATE, CoseKeyOperation.MAC_VERIFY)
         macCose = MacCose(macCoseKey)
         macCoseMso = MacCose(macCoseKey)
         macCoseNothing = MacCose(macCoseKey)
@@ -187,7 +188,12 @@ val CoseServiceTest by testSuite {
         val parsed = CoseSigned.deserialize(parameterSerializer, signed.serialize(parameterSerializer)).getOrThrow()
             .shouldBe(signed)
 
-        VerifyCoseSignatureWithKey<MobileSecurityObject>()(parsed, signCoseKey, byteArrayOf(), null).isSuccess shouldBe true
+        VerifyCoseSignatureWithKey<MobileSecurityObject>()(
+            parsed,
+            signCoseKey,
+            byteArrayOf(),
+            null
+        ).isSuccess shouldBe true
     }
 
     "maced object with MSO payload can be verified" {

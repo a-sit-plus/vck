@@ -58,7 +58,7 @@ val AgentSdJwtTest by testSuite {
     lateinit var challenge: String
     lateinit var verifierId: String
 
-  testConfig=  TestConfig.aroundEach {
+    testConfig = TestConfig.aroundEach {
         val validator = ValidatorSdJwt(
             validator = Validator(
                 tokenStatusResolver = TokenStatusResolverImpl(
@@ -105,7 +105,7 @@ val AgentSdJwtTest by testSuite {
                 ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         ).getOrThrow()
-       it()
+        it()
     }
 
     "keyBindingJws contains more JWK attributes, still verifies" {

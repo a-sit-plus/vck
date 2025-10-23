@@ -41,7 +41,7 @@ val ValidatorSdJwtTest by testSuite {
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var validator: ValidatorSdJwt
 
-   testConfig=  TestConfig.aroundEach {
+    testConfig = TestConfig.aroundEach {
         validator = ValidatorSdJwt()
         issuer = IssuerAgent(
             identifier = "https://issuer.example.com/".toUri(),

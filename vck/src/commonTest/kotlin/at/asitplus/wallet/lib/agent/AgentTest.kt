@@ -46,7 +46,7 @@ val AgentTest by testSuite {
     lateinit var validator: Validator
     lateinit var verifierId: String
 
-   testConfig=  TestConfig.aroundEach {
+    testConfig = TestConfig.aroundEach {
         validator = Validator(
             tokenStatusResolver = TokenStatusResolverImpl(
                 resolveStatusListToken = {

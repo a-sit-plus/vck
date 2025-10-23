@@ -17,7 +17,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 
-val PresentationExchangeInputEvaluatorTest  by testSuite {
+val PresentationExchangeInputEvaluatorTest by testSuite {
 
     lateinit var elementIdentifier: String
     lateinit var elementValue: String
@@ -25,7 +25,7 @@ val PresentationExchangeInputEvaluatorTest  by testSuite {
     lateinit var arrayCredential: JsonObject
     lateinit var objectCredential: JsonObject
 
-   testConfig=  TestConfig.aroundEach {
+    testConfig = TestConfig.aroundEach {
         elementIdentifier = "p" + uuid4().bytes.encodeToString(Base16)
         elementValue = uuid4().bytes.encodeToString(Base16)
         simpleCredential = buildJsonObject {
@@ -224,6 +224,7 @@ val PresentationExchangeInputEvaluatorTest  by testSuite {
         }
     }
 }
+
 private fun arrayFilter(elementIdentifier: String): ConstraintField = ConstraintField(
     path = listOf("$.$elementIdentifier"),
     filter = ConstraintFilter(

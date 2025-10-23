@@ -28,7 +28,7 @@ val StoreEntrySerializationTest by testSuite {
     lateinit var issuerCredentialStore: IssuerCredentialStore
     lateinit var holderCredentialStore: SubjectCredentialStore
 
-   testConfig=  TestConfig.aroundEach {
+    testConfig = TestConfig.aroundEach {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         holderCredentialStore = InMemorySubjectCredentialStore()
         issuer = IssuerAgent(

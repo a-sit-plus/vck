@@ -59,7 +59,7 @@ val IssuerSignedItemSerializationTest by testSuite {
     lateinit var elementId: String
     lateinit var namespace: String
 
-    testConfig= TestConfig.aroundEach {
+    testConfig = TestConfig.aroundEach {
         namespace = uuid4().toString()
         elementId = uuid4().toString()
         it()
@@ -90,13 +90,13 @@ val IssuerSignedItemSerializationTest by testSuite {
 
         val serialized =
             coseCompliantSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementId), item)
-            .also {
-                it.encodeToString(Base16()).shouldContain(
-                    "elementValue".toHex()
-                            + "C0" // tag(0)
-                            + "78" // text(..)
-                )
-            }
+                .also {
+                    it.encodeToString(Base16()).shouldContain(
+                        "elementValue".toHex()
+                                + "C0" // tag(0)
+                                + "78" // text(..)
+                    )
+                }
 
         coseCompliantSerializer.decodeFromByteArray(
             IssuerSignedItemSerializer(namespace, elementId),
@@ -115,13 +115,13 @@ val IssuerSignedItemSerializationTest by testSuite {
 
         val serialized =
             coseCompliantSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementId), item)
-            .also {
-                it.encodeToString(Base16()).shouldContain(
-                    "elementValue".toHex()
-                            + "D903EC" // tag(1004)
-                            + "6A" // text(10)
-                )
-            }
+                .also {
+                    it.encodeToString(Base16()).shouldContain(
+                        "elementValue".toHex()
+                                + "D903EC" // tag(1004)
+                                + "6A" // text(10)
+                    )
+                }
 
         coseCompliantSerializer.decodeFromByteArray(
             IssuerSignedItemSerializer(namespace, elementId),
@@ -334,4 +334,5 @@ val IssuerSignedItemSerializationTest by testSuite {
     }
 
 }
+
 private fun String.toHex(): String = encodeToByteArray().encodeToString(Base16())

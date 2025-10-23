@@ -24,7 +24,7 @@ import kotlin.time.Instant
 
 val Iso18013SpecTest by testSuite {
 
-   testConfig=  TestConfig.aroundEach {
+    testConfig = TestConfig.aroundEach {
         CborCredentialSerializer.register(
             serializerMap = mapOf(
                 "issue_date" to LocalDate.serializer(),
@@ -458,6 +458,7 @@ val Iso18013SpecTest by testSuite {
         coseSigned.serialize(MobileSecurityObject.serializer()).encodeToString(Base16(true)) shouldBe input
     }
 }
+
 private fun ItemsRequestList.findItem(key: String) =
     entries.first { it.key == key }.value
 
