@@ -4,11 +4,16 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
+import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
-import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest
+import at.asitplus.wallet.lib.data.StatusListToken
+import at.asitplus.wallet.lib.data.VerifiablePresentation
+import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.rfc3986.toUri
@@ -17,21 +22,17 @@ import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.testSuite
-import at.asitplus.testballoon.*
 import de.infix.testBalloon.framework.TestConfig
 import de.infix.testBalloon.framework.aroundEach
-import io.kotest.matchers.collections.shouldHaveSize
-import io.kotest.matchers.shouldBe
-import io.kotest.matchers.types.shouldBeInstanceOf
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlin.time.Clock
 import kotlin.random.Random
+import kotlin.time.Clock
 
 
 val ValidatorVpTest by testSuite {

@@ -1,15 +1,12 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.signum.indispensable.Digest
+import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
 import at.asitplus.wallet.lib.data.SdJwtConstants
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.testSuite
-import at.asitplus.testballoon.*
-import io.kotest.matchers.collections.shouldHaveSize
-import io.kotest.matchers.shouldBe
-import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe

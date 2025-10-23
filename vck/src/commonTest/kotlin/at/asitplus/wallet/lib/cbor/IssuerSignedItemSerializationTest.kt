@@ -17,20 +17,23 @@ import at.asitplus.iso.ValueDigestList
 import at.asitplus.iso.sha256
 import at.asitplus.iso.wrapInCborTag
 import at.asitplus.signum.indispensable.CryptoSignature
-import at.asitplus.signum.indispensable.cosef.*
+import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
+import at.asitplus.signum.indispensable.cosef.CoseEllipticCurve
+import at.asitplus.signum.indispensable.cosef.CoseHeader
+import at.asitplus.signum.indispensable.cosef.CoseKey
+import at.asitplus.signum.indispensable.cosef.CoseKeyParams
+import at.asitplus.signum.indispensable.cosef.CoseKeyType
+import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.data.LocalDateOrInstant
 import at.asitplus.wallet.lib.data.LocalDateOrInstantSerializer
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.testSuite
-import at.asitplus.testballoon.*
 import de.infix.testBalloon.framework.TestConfig
 import de.infix.testBalloon.framework.aroundEach
-import io.kotest.matchers.collections.shouldHaveSize
-import io.kotest.matchers.shouldBe
-import io.kotest.matchers.types.shouldBeInstanceOf
+import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -39,8 +42,6 @@ import io.kotest.matchers.string.shouldNotContain
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlin.time.Clock
-import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.builtins.ByteArraySerializer
@@ -49,6 +50,8 @@ import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
 import kotlin.random.Random
 import kotlin.random.nextUInt
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 @OptIn(ExperimentalSerializationApi::class, ExperimentalStdlibApi::class)
 val IssuerSignedItemSerializationTest by testSuite {

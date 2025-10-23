@@ -26,7 +26,6 @@ import de.infix.testBalloon.framework.TestConfig
 import de.infix.testBalloon.framework.aroundEach
 import de.infix.testBalloon.framework.testSuite
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe

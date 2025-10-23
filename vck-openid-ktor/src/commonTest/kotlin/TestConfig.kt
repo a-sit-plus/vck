@@ -1,5 +1,4 @@
 import at.asitplus.wallet.eupid.Initializer
-import at.asitplus.wallet.lib.Initializer.initOpenIdModule
 import de.infix.testBalloon.framework.TestSession
 import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier

@@ -9,6 +9,7 @@ import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
+import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
@@ -31,7 +32,6 @@ import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
 import com.benasher44.uuid.uuid4
-import at.asitplus.testballoon.*
 import de.infix.testBalloon.framework.TestConfig
 import de.infix.testBalloon.framework.aroundEach
 import de.infix.testBalloon.framework.testSuite

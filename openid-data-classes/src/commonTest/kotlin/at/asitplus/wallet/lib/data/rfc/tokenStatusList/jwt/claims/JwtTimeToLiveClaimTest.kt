@@ -6,7 +6,11 @@ import at.asitplus.testballoon.withData
 import at.asitplus.testballoon.withDataSuites
 import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.shouldBe
-import kotlin.time.*
+import kotlin.time.Clock
+import kotlin.time.Duration
+import kotlin.time.DurationUnit
+import kotlin.time.Instant
+import kotlin.time.toDuration
 
 val JwtTimeToLiveClaimTest by testSuite {
     "specification robustness" {

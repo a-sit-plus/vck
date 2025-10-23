@@ -8,7 +8,6 @@ import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.TestConfig
 import de.infix.testBalloon.framework.aroundEach
 import de.infix.testBalloon.framework.testSuite
-import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.matthewnelson.encoding.base16.Base16

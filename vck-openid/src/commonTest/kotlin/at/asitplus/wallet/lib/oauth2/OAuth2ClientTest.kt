@@ -1,7 +1,11 @@
 package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.catching
-import at.asitplus.openid.*
+import at.asitplus.openid.OidcUserInfo
+import at.asitplus.openid.OidcUserInfoExtended
+import at.asitplus.openid.PushedAuthenticationResponseParameters
+import at.asitplus.openid.RequestParameters
+import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.randomString
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
@@ -10,7 +14,6 @@ import de.infix.testBalloon.framework.TestConfig
 import de.infix.testBalloon.framework.aroundEach
 import de.infix.testBalloon.framework.testSuite
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe

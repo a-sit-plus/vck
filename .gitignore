@@ -1,5 +1,5 @@
 HELP.md
-*/metrics/
+**/metrics/
 .gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar

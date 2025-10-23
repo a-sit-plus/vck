@@ -2,11 +2,9 @@ package at.asitplus.wallet.lib.data
 
 import at.asitplus.dif.SubmissionRequirement
 import at.asitplus.dif.SubmissionRequirementRuleEnum
+import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.minus
 import de.infix.testBalloon.framework.testSuite
-import at.asitplus.testballoon.*
-import io.kotest.matchers.collections.shouldHaveSize
-import io.kotest.matchers.shouldBe
-import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.shouldBe
 
 val SubmissionRequirementsTest by testSuite {

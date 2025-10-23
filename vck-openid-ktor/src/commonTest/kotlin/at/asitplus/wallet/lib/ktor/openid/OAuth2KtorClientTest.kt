@@ -1,7 +1,13 @@
 package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.catching
-import at.asitplus.openid.*
+import at.asitplus.openid.OAuth2AuthorizationServerMetadata
+import at.asitplus.openid.OidcUserInfoExtended
+import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.PushedAuthenticationResponseParameters
+import at.asitplus.openid.RequestParameters
+import at.asitplus.openid.TokenRequestParameters
+import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.eupid.EuPidScheme
@@ -13,8 +19,16 @@ import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
-import at.asitplus.wallet.lib.oauth2.*
-import at.asitplus.wallet.lib.oidvci.*
+import at.asitplus.wallet.lib.oauth2.ClientAuthenticationService
+import at.asitplus.wallet.lib.oauth2.OAuth2Client
+import at.asitplus.wallet.lib.oauth2.RequestInfo
+import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
+import at.asitplus.wallet.lib.oauth2.TokenService
+import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
+import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
+import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.openid.toOAuth2Error
 import de.infix.testBalloon.framework.testSuite
 import io.github.aakira.napier.Napier

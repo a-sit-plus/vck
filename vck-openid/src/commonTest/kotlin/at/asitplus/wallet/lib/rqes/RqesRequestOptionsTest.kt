@@ -7,6 +7,7 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.QesAuthorization
 import at.asitplus.openid.TransactionData
 import at.asitplus.signum.indispensable.Digest
+import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.eupid.EuPidScheme.SdJwtAttributes.FAMILY_NAME
 import at.asitplus.wallet.eupid.EuPidScheme.SdJwtAttributes.GIVEN_NAME
@@ -28,7 +29,6 @@ import at.asitplus.wallet.lib.openid.RequestOptionsCredential
 import at.asitplus.wallet.lib.rqes.helper.DummyCredentialDataProvider
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
-import at.asitplus.testballoon.*
 import de.infix.testBalloon.framework.TestConfig
 import de.infix.testBalloon.framework.aroundEach
 import de.infix.testBalloon.framework.testSuite

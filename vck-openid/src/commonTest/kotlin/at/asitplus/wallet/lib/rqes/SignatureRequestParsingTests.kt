@@ -2,8 +2,8 @@ package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.SignatureRequestParameters
+import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.openid.RequestParser
-import at.asitplus.testballoon.*
 import de.infix.testBalloon.framework.testSuite
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
