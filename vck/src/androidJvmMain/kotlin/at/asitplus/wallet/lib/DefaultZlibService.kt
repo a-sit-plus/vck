@@ -7,20 +7,20 @@ import java.util.zip.Deflater
 import java.util.zip.DeflaterInputStream
 import java.util.zip.InflaterInputStream
 
-open class DefaultAndroidJvmZlibService : ZlibService {
+actual class DefaultZlibService actual constructor() : ZlibService {
 
     /**
      * 5 MB seems to be safe for a max. inflated byte array
      */
     private val MAX_DECOMPRESSED_SIZE = 5 * 1024 * 1024
 
-    override fun compress(input: ByteArray): ByteArray? =
+    actual override fun compress(input: ByteArray): ByteArray? =
         DeflaterInputStream(input.inputStream(), Deflater(Deflater.DEFAULT_COMPRESSION)).readBytes()
 
     /**
      * Safely decompresses ZLIB encoded bytes, with max size [MAX_DECOMPRESSED_SIZE]
      */
-    override fun decompress(input: ByteArray): ByteArray? =
+    actual override fun decompress(input: ByteArray): ByteArray? =
         InflaterInputStream(input.inputStream()).readBytes().also {
             val inflaterStream = InflaterInputStream(input.inputStream())
             val outputStream = ByteArrayOutputStream(DEFAULT_BUFFER_SIZE)

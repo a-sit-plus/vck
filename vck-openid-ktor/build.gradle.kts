@@ -35,9 +35,11 @@ kotlin {
             }
         }
 
-        androidMain {
-            dependencies {
-                implementation(ktor("client-android"))
+        if (project.hasAndroidSdk()) {
+            androidMain {
+                dependencies {
+                    implementation(ktor("client-android"))
+                }
             }
         }
 

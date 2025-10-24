@@ -6,4 +6,4 @@
 	url = https://github.com/a-sit-plus/signum.git	
 [submodule "mobile-driving-licence-credential"]
 	path = mobile-driving-licence-credential
-	url = git@github.com:a-sit-plus/mobile-driving-licence-credential.git
+	url = https://github.com/a-sit-plus/mobile-driving-licence-credential.git

@@ -16,6 +16,11 @@ pluginManagement {
     }
 }
 
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
+}
+
+
 if (System.getProperty("publishing.excludeIncludedBuilds") != "true") {
     includeBuild("signum")
 } else logger.lifecycle("Excluding Signum from this build")
