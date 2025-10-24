@@ -13,7 +13,6 @@ import at.asitplus.wallet.lib.rqes.helper.DummyValueProvider
 import de.infix.testBalloon.framework.testSuite
 import io.kotest.assertions.throwables.shouldThrow
 import io.ktor.http.*
-import kotlinx.coroutines.runBlocking
 
 
 val QtspAuthorizationTest by testSuite {
@@ -22,9 +21,7 @@ val QtspAuthorizationTest by testSuite {
         acceptedCredentials = setOf(ConstantIndex.AtomicAttribute2023),
     )
     val dummyDataProvider = DummyValueProvider()
-    val walletService = RqesWalletService().apply {
-        setSigningCredential(runBlocking { dummyDataProvider.getSigningCredential(true) })
-    }
+    val walletService = RqesWalletService()
 
     "QTSP rejects non CSC authorization details" {
         val serviceAuthReq = walletService.createServiceAuthenticationRequest().copy(
@@ -37,9 +34,12 @@ val QtspAuthorizationTest by testSuite {
     }
 
     "CSC Authorization Details match between auth and token request" {
+        val signingCert =  dummyDataProvider.getCredentialInfo(true).toSigningCredential()
         val credentialAuthReq = walletService.createCredentialAuthenticationRequest(
+            signingCredential = signingCert,
             documentDigests = dummyDataProvider.buildDocumentDigests(),
-            hashAlgorithm = Digest.SHA256
+            hashAlgorithm = Digest.SHA256,
+            signatureProperties = RqesWalletService.SignatureProperties()
         )
         val authorize =
             qtspAuthenticationService.authorize(credentialAuthReq as RequestParameters) { catching { dummyUser() } }

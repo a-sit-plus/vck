@@ -1,12 +1,10 @@
 package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.catchingUnwrapped
-import at.asitplus.csc.CredentialInfo
 import at.asitplus.csc.QtspSignatureRequest
 import at.asitplus.csc.SignHashRequestParameters
 import at.asitplus.csc.collection_entries.CertificateParameters
 import at.asitplus.csc.collection_entries.DocumentDigest
-import at.asitplus.csc.collection_entries.KeyParameters
 import at.asitplus.csc.enums.ConformanceLevel
 import at.asitplus.csc.enums.SignatureFormat
 import at.asitplus.csc.enums.SignatureQualifier
@@ -39,39 +37,41 @@ val RqesOpenId4VpHolderTest by testSuite {
         oauth2Client = OAuth2Client(signPushedAuthorizationRequest = null)
     )
 
-    fun CredentialInfo.isValid(): Boolean =
-        keyParameters.status == KeyParameters.KeyStatusOptions.ENABLED
-                && certParameters!!.status == CertificateParameters.CertStatus.VALID
+    var signatureProperties = RqesWalletService.SignatureProperties()
+    var validCert = runBlocking { dummyValueProvider.getCredentialInfo(isValid = true) }
+    var validSigningAlgo =
+        validCert.keyParameters.algo.shuffled()
+            .firstNotNullOf { oid -> catchingUnwrapped { X509SignatureAlgorithm.entries.first { it.oid == oid } }.getOrNull() }
 
     testConfig = TestConfig.aroundEach {
-        rqesWalletService.updateSignatureProperties(
+        signatureProperties = signatureProperties.copy(
             signatureFormat = SignatureFormat.entries.random(),
             conformanceLevel = ConformanceLevel.entries.random(),
         )
+        validCert = runBlocking { dummyValueProvider.getCredentialInfo(isValid = true) }
+        validSigningAlgo =
+            validCert.keyParameters.algo.shuffled()
+                .firstNotNullOf { oid -> catchingUnwrapped { X509SignatureAlgorithm.entries.first { it.oid == oid } }.getOrNull() }
+
         it()
     }
-    repeat(10) {
-        "random certificate can be parsed" {
-            dummyValueProvider.getSigningCredential().also {
-                if (it.isValid()) {
-                    rqesWalletService.setSigningCredential(it)
-                } else {
-                    shouldThrow<IllegalArgumentException> { rqesWalletService.setSigningCredential(it) }
-                }
-            }
+
+    "disabled signing key throws" {
+        dummyValueProvider.getCredentialInfo(false).let {
+            shouldThrow<IllegalArgumentException> { it.toSigningCredential() }
         }
     }
 
     "certificate without certParameters is invalid" {
-        dummyValueProvider.getSigningCredential(true).copy(
+        dummyValueProvider.getCredentialInfo(true).copy(
             certParameters = null
         ).apply {
-            shouldThrow<IllegalArgumentException> { rqesWalletService.setSigningCredential(this) }
+            shouldThrow<IllegalArgumentException> { this.toSigningCredential() }
         }
     }
 
     "certificate without status is valid" {
-        dummyValueProvider.getSigningCredential(true).copy(
+        dummyValueProvider.getCredentialInfo(true).copy(
             certParameters = CertificateParameters(
                 status = null,
                 certificates = listOf(EphemeralKeyWithSelfSignedCert().getCertificate()!!),
@@ -80,25 +80,25 @@ val RqesOpenId4VpHolderTest by testSuite {
                 subjectDN = uuid4().toString(),
             ),
         ).apply {
-            rqesWalletService.setSigningCredential(this)
+            this.toSigningCredential()
         }
     }
 
     "certificate without certparameters is invalid" {
-        dummyValueProvider.getSigningCredential(true).copy(
-            certParameters = dummyValueProvider.getSigningCredential(true).certParameters!!.copy(certificates = null)
+        dummyValueProvider.getCredentialInfo(true).copy(
+            certParameters = dummyValueProvider.getCredentialInfo(true).certParameters!!.copy(certificates = null)
         ).apply {
-            shouldThrow<IllegalArgumentException> { rqesWalletService.setSigningCredential(this) }
+            shouldThrow<IllegalArgumentException> { this.toSigningCredential() }
         }
     }
 
     "CscAuthDetails respects SigningCredential" {
-        val validCert = runBlocking { dummyValueProvider.getSigningCredential(isValid = true) }
-        val validSigningAlgo =
-            validCert.keyParameters.algo.firstNotNullOf { oid -> catchingUnwrapped { X509SignatureAlgorithm.entries.first { it.oid == oid } }.getOrNull() }
-        rqesWalletService.setSigningCredential(validCert)
         val digests = dummyValueProvider.buildDocumentDigests()
-        val authDetails = rqesWalletService.getCscAuthenticationDetails(digests, validSigningAlgo.digest)
+        val authDetails = rqesWalletService.getCscAuthenticationDetails(
+            signingCredential = validCert.toSigningCredential(), digests,
+            validSigningAlgo.digest,
+            signatureProperties = signatureProperties,
+        )
         authDetails.shouldBeInstanceOf<CscAuthorizationDetails>().apply {
             this.credentialID shouldBe validCert.credentialID
             this.signatureQualifier shouldBe SignatureQualifier.EU_EIDAS_QES
@@ -111,22 +111,19 @@ val RqesOpenId4VpHolderTest by testSuite {
     }
 
     "CscDocumentDigest respects SigningCredential" {
-        val validCert = runBlocking { dummyValueProvider.getSigningCredential(isValid = true) }
-        val validSigningAlgo =
-            validCert.keyParameters.algo.firstNotNullOf { oid -> catchingUnwrapped { X509SignatureAlgorithm.entries.first { it.oid == oid } }.getOrNull() }
-        rqesWalletService.setSigningCredential(validCert)
         val digests = dummyValueProvider.buildDocumentDigests()
         val testDocumentDigests = rqesWalletService.getCscDocumentDigests(
             digests,
-            rqesWalletService.signingCredential!!.supportedSigningAlgorithms.first()
+            validCert.toSigningCredential().supportedSigningAlgorithms.first(),
+            signatureProperties = signatureProperties,
         )
         with(testDocumentDigests) {
             this shouldNotBe null
             this.signAlgoOid shouldBe validSigningAlgo.oid
             // These change before each test
-            this.signatureFormat shouldBe rqesWalletService.signatureProperties.signatureFormat
-            this.conformanceLevel shouldBe rqesWalletService.signatureProperties.conformanceLevel
-            this.signedEnvelopeProperty shouldBe rqesWalletService.signatureProperties.signedEnvelopeProperty
+            this.signatureFormat shouldBe signatureProperties.signatureFormat
+            this.conformanceLevel shouldBe signatureProperties.conformanceLevel
+            this.signedEnvelopeProperty shouldBe signatureProperties.signedEnvelopeProperty
         }
         val serialized = vckJsonSerializer.encodeToString(DocumentDigest.serializer(), testDocumentDigests)
         val deserialized = vckJsonSerializer.decodeFromString(DocumentDigest.serializer(), serialized)
@@ -148,10 +145,11 @@ val RqesOpenId4VpHolderTest by testSuite {
     "AuthenticationRequest CREDENTIAL" {
         val documentDigests = dummyValueProvider.buildDocumentDigests()
         val request = rqesWalletService.createCredentialAuthenticationRequest(
+            signingCredential = validCert.toSigningCredential(),
             documentDigests = documentDigests,
             redirectUrl = "someOtherURL",
             hashAlgorithm = Digest.entries.random(),
-            optionalParameters = null
+            signatureProperties = signatureProperties,
         )
 
         request.redirectUrl shouldBe "someOtherURL"
@@ -171,8 +169,10 @@ val RqesOpenId4VpHolderTest by testSuite {
             authorization = OAuth2Client.AuthorizationForToken.Code(uuid4().toString()),
             authorizationDetails = setOf(
                 rqesWalletService.getCscAuthenticationDetails(
+                    signingCredential = validCert.toSigningCredential(),
                     dummyValueProvider.buildDocumentDigests(),
                     Digest.entries.random(),
+                    signatureProperties = signatureProperties,
                 )
             )
         )
@@ -184,14 +184,11 @@ val RqesOpenId4VpHolderTest by testSuite {
     }
 
     "SignHash" {
-        val validCert = runBlocking { dummyValueProvider.getSigningCredential(isValid = true) }
-        val validSigningAlgo =
-            validCert.keyParameters.algo.firstNotNullOf { oid -> catchingUnwrapped { X509SignatureAlgorithm.entries.first { it.oid == oid } }.getOrNull() }
-        rqesWalletService.setSigningCredential(validCert)
         val request = rqesWalletService.createSignHashRequestParameters(
+            signingCredential = validCert.toSigningCredential(),
             dtbsr = listOf(uuid4().bytes),
             sad = uuid4().toString(),
-            signatureAlgorithm = rqesWalletService.signingCredential!!.supportedSigningAlgorithms.first(),
+            signatureAlgorithm = validSigningAlgo,
         ).shouldBeInstanceOf<SignHashRequestParameters>()
 
         request.credentialId shouldBe validCert.credentialID
@@ -201,9 +198,8 @@ val RqesOpenId4VpHolderTest by testSuite {
         vckJsonSerializer.decodeFromString<QtspSignatureRequest>(serialized)
             .shouldBe(request)
     }
-
-
 }
+
 val X509SignatureAlgorithm.digest: Digest
     get() = when (this) {
         is X509SignatureAlgorithm.ECDSA -> digest
