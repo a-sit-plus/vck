@@ -5,7 +5,11 @@ import at.asitplus.csc.CredentialInfo
 import at.asitplus.csc.Hashes
 import at.asitplus.csc.QtspSignatureRequest
 import at.asitplus.csc.SignHashRequestParameters
-import at.asitplus.csc.collection_entries.*
+import at.asitplus.csc.collection_entries.CertificateParameters
+import at.asitplus.csc.collection_entries.DocumentDigest
+import at.asitplus.csc.collection_entries.DocumentLocation
+import at.asitplus.csc.collection_entries.KeyParameters
+import at.asitplus.csc.collection_entries.OAuthDocumentDigest
 import at.asitplus.csc.enums.ConformanceLevel
 import at.asitplus.csc.enums.SignatureFormat
 import at.asitplus.csc.enums.SignatureQualifier
@@ -19,6 +23,7 @@ import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm.Companion.entries
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
+import at.asitplus.wallet.lib.rqes.RqesWalletService.SigningCredential
 import com.benasher44.uuid.uuid4
 
 /**
@@ -52,81 +57,32 @@ class RqesWalletService(
         val supportedSigningAlgorithms: List<X509SignatureAlgorithm>,
     )
 
-    var signatureProperties = SignatureProperties()
-        private set
-
-    var signingCredential: SigningCredential? = null
-        private set
-
     enum class RqesOauthScope(val value: String) {
         SERVICE("service"),
         CREDENTIAL("credential"),
-    }
-
-    @Throws(IllegalArgumentException::class)
-    fun setSigningCredential(credentialInfo: CredentialInfo) {
-        require(credentialInfo.credentialID != null) {
-            "credentialID must not be null (Required by SignHashRequestParameters)"
-        }
-
-        with(credentialInfo.certParameters) {
-            require(this != null) { "Certificate parameters must not be null" }
-            require(!this.certificates.isNullOrEmpty()) { "Signing Certificate chain must not be null or empty" }
-            this.status?.let { status ->
-                require(status == CertificateParameters.CertStatus.VALID) { "Signing Certificate status must be valid" }
-            }
-        }
-
-        with(credentialInfo.keyParameters) {
-            require(status == KeyParameters.KeyStatusOptions.ENABLED) { "Signing key parameters must be enabled" }
-        }
-
-        val signingAlgos = credentialInfo.keyParameters.algo
-            .mapNotNull { oid -> catching { entries.first { it.oid == oid } }.getOrNull() }
-
-        require(signingAlgos.isNotEmpty()) { "Supported signing algorithms must not be null or empty" }
-
-        signingCredential = SigningCredential(
-            credentialId = credentialInfo.credentialID!!,
-            certificates = credentialInfo.certParameters!!.certificates!!,
-            supportedSigningAlgorithms = signingAlgos,
-        )
-    }
-
-    suspend fun updateSignatureProperties(
-        signatureFormat: SignatureFormat? = null,
-        conformanceLevel: ConformanceLevel? = null,
-        signedEnvelopeProperty: SignedEnvelopeProperty? = null,
-    ) = signatureProperties.copy(
-        signatureFormat = signatureFormat ?: signatureProperties.signatureFormat,
-        conformanceLevel = conformanceLevel ?: signatureProperties.conformanceLevel,
-        signedEnvelopeProperty = signedEnvelopeProperty ?: signatureProperties.signedEnvelopeProperty
-    ).also {
-        if (it.signedEnvelopeProperty?.viableSignatureFormats?.contains(it.signatureFormat) == false)
-            throw IllegalArgumentException("Signed envelope property ${it.signedEnvelopeProperty} is not supported by signature format ${it.signatureFormat}")
-        signatureProperties = it
     }
 
     /**
      * Here [OAuthDocumentDigest.hash] is the DTBS/R and will be hashed again with [hashAlgorithmOid]
      */
     suspend fun getCscAuthenticationDetails(
+        signingCredential: SigningCredential,
         documentDigests: Collection<OAuthDocumentDigest>,
         hashAlgorithm: Digest,
         documentLocation: Collection<DocumentLocation>? = null,
-    ): AuthorizationDetails = signingCredential?.let { signingCred ->
-        CscAuthorizationDetails(
-            credentialID = signingCred.credentialId,
-            signatureQualifier = signatureProperties.signatureQualifier,
-            hashAlgorithmOid = hashAlgorithm.oid,
-            documentDigests = documentDigests,
-            documentLocations = documentLocation
-        )
-    } ?: throw Exception("Please set a signing credential before using CSC functionality.")
+        signatureProperties: SignatureProperties = SignatureProperties(),
+    ): AuthorizationDetails = CscAuthorizationDetails(
+        credentialID = signingCredential.credentialId,
+        signatureQualifier = signatureProperties.signatureQualifier,
+        hashAlgorithmOid = hashAlgorithm.oid,
+        documentDigests = documentDigests,
+        documentLocations = documentLocation
+    )
 
     suspend fun getCscDocumentDigests(
         documentDigests: Collection<OAuthDocumentDigest>,
         signatureAlgorithm: X509SignatureAlgorithm,
+        signatureProperties: SignatureProperties = SignatureProperties(),
     ): DocumentDigest = DocumentDigest(
         hashes = documentDigests.map { it.hash },
         signatureFormat = signatureProperties.signatureFormat,
@@ -155,14 +111,24 @@ class RqesWalletService(
      * Authorization to access `/credentials/signHash` and `/credentials/signDoc` endpoints
      */
     suspend fun createCredentialAuthenticationRequest(
+        signingCredential: SigningCredential,
         documentDigests: Collection<OAuthDocumentDigest>,
         redirectUrl: String = this.redirectUrl,
         hashAlgorithm: Digest,
         optionalParameters: OAuth2RqesParameters.Optional? = null,
         documentLocation: Collection<DocumentLocation>? = null,
+        signatureProperties: SignatureProperties = SignatureProperties(),
     ): AuthenticationRequestParameters = oauth2Client.createAuthRequest(
         state = uuid4().toString(),
-        authorizationDetails = setOf(getCscAuthenticationDetails(documentDigests, hashAlgorithm, documentLocation))
+        authorizationDetails = setOf(
+            getCscAuthenticationDetails(
+                signingCredential = signingCredential,
+                documentDigests = documentDigests,
+                hashAlgorithm = hashAlgorithm,
+                documentLocation = documentLocation,
+                signatureProperties = signatureProperties,
+            )
+        )
     ).enrichAuthRequest(
         redirectUrl = redirectUrl,
         optionalParameters = optionalParameters
@@ -179,10 +145,11 @@ class RqesWalletService(
     )
 
     suspend fun createSignHashRequestParameters(
+        signingCredential: SigningCredential,
         dtbsr: Hashes,
         sad: String,
         signatureAlgorithm: X509SignatureAlgorithm,
-    ): QtspSignatureRequest = signingCredential?.let {
+    ): QtspSignatureRequest = signingCredential.let {
         require(it.supportedSigningAlgorithms.contains(signatureAlgorithm))
         SignHashRequestParameters(
             credentialId = it.credentialId,
@@ -190,7 +157,7 @@ class RqesWalletService(
             hashes = dtbsr,
             signAlgoOid = signatureAlgorithm.oid,
         )
-    } ?: throw Exception("Please set a signing credential before using CSC functionality.")
+    }
 }
 
 private suspend fun AuthenticationRequestParameters.enrichAuthRequest(
@@ -209,3 +176,33 @@ private suspend fun AuthenticationRequestParameters.enrichAuthRequest(
     accountToken = optionalParameters?.accountToken,
     clientData = optionalParameters?.clientData,
 )
+
+@Throws(IllegalArgumentException::class)
+fun CredentialInfo.toSigningCredential(): SigningCredential {
+    require(this.credentialID != null) {
+        "credentialID must not be null (Required by SignHashRequestParameters)"
+    }
+
+    with(this.certParameters) {
+        require(this != null) { "Certificate parameters must not be null" }
+        require(!this.certificates.isNullOrEmpty()) { "Signing Certificate chain must not be null or empty" }
+        this.status?.let { status ->
+            require(status == CertificateParameters.CertStatus.VALID) { "Signing Certificate status must be valid" }
+        }
+    }
+
+    with(this.keyParameters) {
+        require(status == KeyParameters.KeyStatusOptions.ENABLED) { "Signing key parameters must be enabled" }
+    }
+
+    val signingAlgos = this.keyParameters.algo
+        .mapNotNull { oid -> catching { entries.first { it.oid == oid } }.getOrNull() }
+
+    require(signingAlgos.isNotEmpty()) { "Supported signing algorithms must not be null or empty" }
+
+    return SigningCredential(
+        credentialId = this.credentialID!!,
+        certificates = this.certParameters!!.certificates!!,
+        supportedSigningAlgorithms = signingAlgos,
+    )
+}

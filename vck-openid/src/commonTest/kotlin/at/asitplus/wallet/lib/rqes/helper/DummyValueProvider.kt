@@ -12,6 +12,8 @@ import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
+import at.asitplus.wallet.lib.rqes.RqesWalletService
+import at.asitplus.wallet.lib.rqes.toSigningCredential
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
@@ -30,7 +32,7 @@ class DummyValueProvider {
         X509SignatureAlgorithm.ES512,
     )
 
-    suspend fun getSigningCredential(isValid: Boolean = false): CredentialInfo = CredentialInfo(
+    suspend fun getCredentialInfo(isValid: Boolean = false): CredentialInfo = CredentialInfo(
         credentialID = uuid4().toString(),
         signatureQualifier = SignatureQualifier.EU_EIDAS_QES,
         keyParameters = validSignatureAlgorithms.random().toCscKeyParameters(isValid),
