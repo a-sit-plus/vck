@@ -3,7 +3,11 @@ package at.asitplus.wallet.lib.rqes.helper
 import at.asitplus.csc.CredentialInfo
 import at.asitplus.csc.collection_entries.AuthParameters
 import at.asitplus.csc.collection_entries.CertificateParameters
+import at.asitplus.csc.collection_entries.CertificateParameters.CertStatus
+import at.asitplus.csc.collection_entries.CertificateParameters.CertStatus.VALID
 import at.asitplus.csc.collection_entries.KeyParameters
+import at.asitplus.csc.collection_entries.KeyParameters.KeyStatusOptions
+import at.asitplus.csc.collection_entries.KeyParameters.KeyStatusOptions.ENABLED
 import at.asitplus.csc.collection_entries.OAuthDocumentDigest
 import at.asitplus.csc.enums.SignatureQualifier
 import at.asitplus.signum.indispensable.Digest
@@ -12,8 +16,6 @@ import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
-import at.asitplus.wallet.lib.rqes.RqesWalletService
-import at.asitplus.wallet.lib.rqes.toSigningCredential
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
@@ -32,11 +34,14 @@ class DummyValueProvider {
         X509SignatureAlgorithm.ES512,
     )
 
-    suspend fun getCredentialInfo(isValid: Boolean = false): CredentialInfo = CredentialInfo(
+    suspend fun getCredentialInfo(
+        certStatus: CertStatus = VALID,
+        keyStatus: KeyStatusOptions = ENABLED
+    ): CredentialInfo = CredentialInfo(
         credentialID = uuid4().toString(),
         signatureQualifier = SignatureQualifier.EU_EIDAS_QES,
-        keyParameters = validSignatureAlgorithms.random().toCscKeyParameters(isValid),
-        certParameters = cscCertificateParameters(isValid),
+        keyParameters = validSignatureAlgorithms.random().toCscKeyParameters(keyStatus),
+        certParameters = cscCertificateParameters(certStatus),
         authParameters = AuthParameters(
             mode = AuthParameters.AuthMode.EXPLICIT,
         ),
@@ -45,8 +50,8 @@ class DummyValueProvider {
         lang = "de"
     )
 
-    private suspend fun cscCertificateParameters(isValid: Boolean) = CertificateParameters(
-        status = if (isValid) CertificateParameters.CertStatus.VALID else CertificateParameters.CertStatus.entries.random(),
+    private suspend fun cscCertificateParameters(certStatus: CertStatus) = CertificateParameters(
+        status = certStatus,
         certificates = listOf(EphemeralKeyWithSelfSignedCert().getCertificate()!!),
         issuerDN = uuid4().toString(),
         serialNumber = uuid4().toString(),
@@ -54,9 +59,9 @@ class DummyValueProvider {
     )
 
     private fun X509SignatureAlgorithm.toCscKeyParameters(
-        isValid: Boolean,
+        keyStatus: KeyStatusOptions,
     ): KeyParameters = KeyParameters(
-        status = if (isValid) KeyParameters.KeyStatusOptions.ENABLED else KeyParameters.KeyStatusOptions.entries.random(),
+        status = keyStatus,
         algo = setOf(oid),
         len = digest.outputLength.bits,
         curve = if (isEc) (algorithm.toJwsAlgorithm().getOrThrow() as JwsAlgorithm.Signature.EC).ecCurve.oid else null
