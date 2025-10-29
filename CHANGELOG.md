@@ -102,6 +102,13 @@ Release 5.9.0 (unreleased):
  - SD-JWT:
    - Honour digest defined in `_sd_alg` parameter to allow for more digests in issuance and verification of selective disclosures items
  - Make it possible to disable all apple targets by setting Gradle property `disableAppleTargets=true` (either through `gradle.properties`/`local.properties` or as env variable)
+ - Dependency Updates:
+   - Kotlin 2.2.21
+   - Signum 3.18.2 / Supreme 0.10.2
+ - Build Updates:
+   - AGP 8.12.3 with new Android KMP Library Plugin
+   - Migrate from Kotest to TestBalloon
+   - Remove dodgy Swift-Klib workarounds
 
 Release 5.8.0:
  - Refactor `AuthorizationServiceStrategy`

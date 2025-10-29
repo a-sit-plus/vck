@@ -1,15 +1,15 @@
 #versions identifiers must not have dots in them in this version catalog file
 [versions]
-kotlin = "2.2.20"
+kotlin = "2.2.21"
 agp = "8.12.3"
 testballoon = "0.6.3-K2.2.20-SNAPSHOT"
-signum="3.18.1"
-supreme="0.10.1"
+signum="3.18.2"
+supreme="0.10.2"
 uuid="0.8.1"
 jsonpath="3.0.0"
 jvmJson="20230618"
 jvmCbor="1.18"
-eupid="3.1.1-SNAPSHOT"
-mdl="1.2.1-SNAPSHOT"
+eupid="3.2.0"
+mdl="1.3.0"
 obor="2.1.3"
 

@@ -66,10 +66,4 @@ dependencyResolutionManagement {
         mavenLocal()
         mavenCentral()
     }
-
-    versionCatalogs {
-        create("signum") {
-            from("at.asitplus.signum:indispensable-versionCatalog:${versionOf("signum")}")
-        }
-    }
 }
