@@ -79,6 +79,8 @@ class VcLibConventions : K2Conventions() {
                     maxHeapSize = "4G"
                 }
 
+                target.compileVersionCatalog()
+                target.setupSignDependency()
             }
         }
     }

@@ -1,6 +1,6 @@
 # Changelog
 
-Release 5.9.0 (unreleased):
+Release 5.9.0
  - Refactor `RqesWalletService` to be stateless
  - Remove code elements deprecated in 5.8.0
  - Gradle modules: 
