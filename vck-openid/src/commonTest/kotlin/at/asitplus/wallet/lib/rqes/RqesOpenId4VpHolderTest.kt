@@ -5,6 +5,7 @@ import at.asitplus.csc.QtspSignatureRequest
 import at.asitplus.csc.SignHashRequestParameters
 import at.asitplus.csc.collection_entries.CertificateParameters
 import at.asitplus.csc.collection_entries.DocumentDigest
+import at.asitplus.csc.collection_entries.KeyParameters
 import at.asitplus.csc.enums.ConformanceLevel
 import at.asitplus.csc.enums.SignatureFormat
 import at.asitplus.csc.enums.SignatureQualifier
@@ -38,7 +39,7 @@ val RqesOpenId4VpHolderTest by testSuite {
     )
 
     var signatureProperties = RqesWalletService.SignatureProperties()
-    var validCert = runBlocking { dummyValueProvider.getCredentialInfo(isValid = true) }
+    var validCert = runBlocking { dummyValueProvider.getCredentialInfo() }
     var validSigningAlgo =
         validCert.keyParameters.algo.shuffled()
             .firstNotNullOf { oid -> catchingUnwrapped { X509SignatureAlgorithm.entries.first { it.oid == oid } }.getOrNull() }
@@ -48,7 +49,7 @@ val RqesOpenId4VpHolderTest by testSuite {
             signatureFormat = SignatureFormat.entries.random(),
             conformanceLevel = ConformanceLevel.entries.random(),
         )
-        validCert = runBlocking { dummyValueProvider.getCredentialInfo(isValid = true) }
+        validCert = runBlocking { dummyValueProvider.getCredentialInfo() }
         validSigningAlgo =
             validCert.keyParameters.algo.shuffled()
                 .firstNotNullOf { oid -> catchingUnwrapped { X509SignatureAlgorithm.entries.first { it.oid == oid } }.getOrNull() }
@@ -56,14 +57,38 @@ val RqesOpenId4VpHolderTest by testSuite {
         it()
     }
 
-    "disabled signing key throws" {
-        dummyValueProvider.getCredentialInfo(false).let {
+    "Invalid signing certificate throws" {
+        dummyValueProvider.getCredentialInfo(
+            CertificateParameters.CertStatus.VALID,
+            KeyParameters.KeyStatusOptions.DISABLED
+        ).let {
+            shouldThrow<IllegalArgumentException> { it.toSigningCredential() }
+        }
+
+        dummyValueProvider.getCredentialInfo(
+            CertificateParameters.CertStatus.EXPIRED,
+            KeyParameters.KeyStatusOptions.ENABLED
+        ).let {
+            shouldThrow<IllegalArgumentException> { it.toSigningCredential() }
+        }
+
+        dummyValueProvider.getCredentialInfo(
+            CertificateParameters.CertStatus.REVOKED,
+            KeyParameters.KeyStatusOptions.ENABLED
+        ).let {
+            shouldThrow<IllegalArgumentException> { it.toSigningCredential() }
+        }
+
+        dummyValueProvider.getCredentialInfo(
+            CertificateParameters.CertStatus.SUSPENDED,
+            KeyParameters.KeyStatusOptions.ENABLED
+        ).let {
             shouldThrow<IllegalArgumentException> { it.toSigningCredential() }
         }
     }
 
     "certificate without certParameters is invalid" {
-        dummyValueProvider.getCredentialInfo(true).copy(
+        validCert.copy(
             certParameters = null
         ).apply {
             shouldThrow<IllegalArgumentException> { this.toSigningCredential() }
@@ -71,7 +96,7 @@ val RqesOpenId4VpHolderTest by testSuite {
     }
 
     "certificate without status is valid" {
-        dummyValueProvider.getCredentialInfo(true).copy(
+        validCert.copy(
             certParameters = CertificateParameters(
                 status = null,
                 certificates = listOf(EphemeralKeyWithSelfSignedCert().getCertificate()!!),
@@ -85,8 +110,8 @@ val RqesOpenId4VpHolderTest by testSuite {
     }
 
     "certificate without certparameters is invalid" {
-        dummyValueProvider.getCredentialInfo(true).copy(
-            certParameters = dummyValueProvider.getCredentialInfo(true).certParameters!!.copy(certificates = null)
+        validCert.copy(
+            certParameters = dummyValueProvider.getCredentialInfo().certParameters!!.copy(certificates = null)
         ).apply {
             shouldThrow<IllegalArgumentException> { this.toSigningCredential() }
         }

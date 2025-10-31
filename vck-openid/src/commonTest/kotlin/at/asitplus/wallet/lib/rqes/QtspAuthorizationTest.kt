@@ -34,7 +34,7 @@ val QtspAuthorizationTest by testSuite {
     }
 
     "CSC Authorization Details match between auth and token request" {
-        val signingCert =  dummyDataProvider.getCredentialInfo(true).toSigningCredential()
+        val signingCert =  dummyDataProvider.getCredentialInfo().toSigningCredential()
         val credentialAuthReq = walletService.createCredentialAuthenticationRequest(
             signingCredential = signingCert,
             documentDigests = dummyDataProvider.buildDocumentDigests(),
