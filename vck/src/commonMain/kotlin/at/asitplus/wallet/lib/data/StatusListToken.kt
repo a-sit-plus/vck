@@ -3,8 +3,8 @@ package at.asitplus.wallet.lib.data
 import at.asitplus.KmmResult
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.signum.indispensable.pki.X509Certificate
-import at.asitplus.wallet.lib.agent.StatusListTokenIntegrityValidator
+import at.asitplus.wallet.lib.agent.StatusListCwtIntegrityValidator
+import at.asitplus.wallet.lib.agent.StatusListJwtIntegrityValidator
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
@@ -12,11 +12,8 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenValidator
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
+import at.asitplus.wallet.lib.jws.VerifyStatusListTokenHAIP
 import kotlin.time.Instant
-
-object StatusListConstants {
-    const val STATUS_LIST_TYP = "statuslist+jwt"
-}
 
 sealed interface StatusListToken {
     val resolvedAt: Instant?
@@ -26,20 +23,20 @@ sealed interface StatusListToken {
         verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
         verifyCoseSignature: VerifyCoseSignatureFun<StatusListTokenPayload> = VerifyCoseSignature(),
         statusListInfo: StatusListInfo,
-        isInstantInThePast: (Instant) -> Boolean,
-        trustAnchors: Set<X509Certificate>? = null
-    ): KmmResult<StatusListTokenPayload> = StatusListTokenValidator.validateStatusListToken(
-        statusListToken = this,
-        statusListTokenResolvedAt = resolvedAt,
-        validateStatusListTokenIntegrity = {
-            StatusListTokenIntegrityValidator(
-                verifyJwsObject = verifyJwsObject,
-                verifyCoseSignature = verifyCoseSignature,
-            ).validateStatusListTokenIntegrity(it).getOrThrow()
-        },
-        statusListInfo = statusListInfo,
-        isInstantInThePast = isInstantInThePast,
-    )
+        isInstantInThePast: (Instant) -> Boolean
+    ): KmmResult<StatusListTokenPayload> = when (this) {
+        is StatusListJwt -> validate(
+            verifyJwsObject = verifyJwsObject,
+            statusListInfo = statusListInfo,
+            isInstantInThePast = isInstantInThePast
+        )
+
+        is StatusListCwt -> validate(
+            verifyCoseSignature = verifyCoseSignature,
+            statusListInfo = statusListInfo,
+            isInstantInThePast = isInstantInThePast
+        )
+    }
 
     data class StatusListJwt(
         val value: JwsSigned<StatusListTokenPayload>,
@@ -56,9 +53,8 @@ sealed interface StatusListToken {
             statusListToken = this,
             statusListTokenResolvedAt = resolvedAt,
             validateStatusListTokenIntegrity = {
-                StatusListTokenIntegrityValidator(
+                StatusListJwtIntegrityValidator(
                     verifyJwsObject = verifyJwsObject,
-                    verifyCoseSignature = { _, _, _ -> KmmResult.failure(IllegalArgumentException("CWT not expected")) },
                 ).validateStatusListTokenIntegrity(it).getOrThrow()
             },
             statusListInfo = statusListInfo,
@@ -81,8 +77,7 @@ sealed interface StatusListToken {
             statusListToken = this,
             statusListTokenResolvedAt = resolvedAt,
             validateStatusListTokenIntegrity = {
-                StatusListTokenIntegrityValidator(
-                    verifyJwsObject = { false },
+                StatusListCwtIntegrityValidator(
                     verifyCoseSignature = verifyCoseSignature,
                 ).validateStatusListTokenIntegrity(it).getOrThrow()
             },
