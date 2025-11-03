@@ -1,0 +1,75 @@
+name: Build iOS Framework
+on:
+  workflow_dispatch:
+    inputs:
+      kotlin-version:
+        description: 'Override Kotlin version?'
+        required: false
+        default: ''
+        type: string
+      kotest-version:
+        description: 'Override Kotest version?'
+        required: false
+        default: ''
+        type: string
+      ksp-version:
+        description: 'Override KSP version? (full version string)?'
+        required: false
+        default: ''
+        type: string
+jobs:
+  build:
+    runs-on: macos-latest
+    env:
+      KOTLIN_VERSION_ENV: ${{ inputs.kotlin-version }}
+      KOTEST_VERSION_ENV: ${{ inputs.kotest-version }}
+      KSP_VERSION_ENV: ${{ inputs.ksp-version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Build klibs
+        run: ./gradlew iosArm64MainKlibrary iosX64MainKlibrary
+      - name: Build XCFrameworks
+        run: ./gradlew assembleVckKmmXCFramework  assembleVckOpenIdKmmXCFramework
+      - name: Upload debug XCFramework vck
+        uses: actions/upload-artifact@v3
+        with:
+          name: VckKmm-debug.xcframework
+          path: |
+            vck/build/XCFrameworks/debug/
+      - name: Upload debug XCFramework vck-openid
+        uses: actions/upload-artifact@v3
+        with:
+          name: VckOpenIdKmm-debug.xcframework
+          path: |
+            vck-openid/build/XCFrameworks/debug/
+      - name: Upload debug XCFramework vck-openid-ktor
+        uses: actions/upload-artifact@v3
+        with:
+          name: VckOpenIdKtorKmm-debug.xcframework
+          path: |
+            vck-openid-ktor/build/XCFrameworks/debug/
+      - name: Upload release XCFramework vck
+        uses: actions/upload-artifact@v3
+        with:
+          name: VckKmm-release.xcframework
+          path: |
+            vck/build/XCFrameworks/release/
+      - name: Upload release XCFramework vck-openid
+        uses: actions/upload-artifact@v3
+        with:
+          name: VckOpenIdKmm-release.xcframework
+          path: |
+            vck-openid/build/XCFrameworks/release/
+      - name: Upload release XCFramework vck-openid-ktor
+        uses: actions/upload-artifact@v3
+        with:
+          name: VckOpenIdKtorKmm-release.xcframework
+          path: |
+            vck-openid-ktor/build/XCFrameworks/release/
