@@ -1,8 +1,5 @@
 import org.jetbrains.dokka.gradle.DokkaMultiModuleTask
-import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
-import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
-import org.jetbrains.kotlin.konan.target.Family
-import java.io.ByteArrayOutputStream
+import java.time.Duration
 
 plugins {
     val kotlinVer = System.getenv("KOTLIN_VERSION_ENV")?.ifBlank { null } ?: libs.versions.kotlin.get()
@@ -40,3 +37,13 @@ subprojects {
 val artifactVersion: String by extra
 group = "at.asitplus.wallet"
 version = artifactVersion
+
+//massive timeouts for nexus publishing to cope with the sheer number and size of artefacts
+nexusPublishing {
+    transitionCheckOptions {
+        maxRetries.set(200)
+        delayBetween.set(Duration.ofSeconds(20))
+    }
+    connectTimeout.set(Duration.ofMinutes(15))
+    clientTimeout.set(Duration.ofMinutes(15))
+}
