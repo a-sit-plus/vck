@@ -15,23 +15,20 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
  * Parses and validates Status List Tokens
  * Does verify the cryptographic authenticity of the data.
  */
-class StatusListTokenIntegrityValidator(
-    private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
-    private val verifyCoseSignature: VerifyCoseSignatureFun<StatusListTokenPayload> = VerifyCoseSignature(),
-) {
+interface StatusListTokenIntegrityValidator<T: StatusListToken> {
     /**
      * Validate the integrity of a status list token
      */
-    suspend fun validateStatusListTokenIntegrity(statusListToken: StatusListToken) =
-        when (val it = statusListToken) {
-            is StatusListToken.StatusListJwt -> validateStatusListJwtIntegrity(it)
-            is StatusListToken.StatusListCwt -> validateStatusListCwtIntegrity(it)
-        }
+    suspend fun validateStatusListTokenIntegrity(statusListToken: T): KmmResult<StatusListTokenPayload>
+}
 
+class StatusListJwtIntegrityValidator(
+    val verifyJwsObject: VerifyJwsObjectFun
+): StatusListTokenIntegrityValidator<StatusListToken.StatusListJwt> {
     /**
      * Validate the integrity of a status list jwt
      */
-    suspend fun validateStatusListJwtIntegrity(statusListToken: StatusListToken.StatusListJwt): KmmResult<StatusListTokenPayload> =
+    override suspend fun validateStatusListTokenIntegrity(statusListToken: StatusListToken.StatusListJwt): KmmResult<StatusListTokenPayload> =
         catching {
             val jwsSigned = statusListToken.value
             verifyJwsObject(jwsSigned).ifFalse {
@@ -48,11 +45,16 @@ class StatusListTokenIntegrityValidator(
             }
             jwsSigned.payload
         }
+}
+
+class StatusListCwtIntegrityValidator(
+    val verifyCoseSignature: VerifyCoseSignatureFun<StatusListTokenPayload> = VerifyCoseSignature()
+) : StatusListTokenIntegrityValidator<StatusListToken.StatusListCwt> {
 
     /**
      * Validate the integrity of a status list cwt
      */
-    suspend fun validateStatusListCwtIntegrity(statusListToken: StatusListToken.StatusListCwt): KmmResult<StatusListTokenPayload> =
+    override suspend fun validateStatusListTokenIntegrity(statusListToken: StatusListToken.StatusListCwt): KmmResult<StatusListTokenPayload> =
         catching {
             val coseStatus = statusListToken.value
             verifyCoseSignature(coseStatus, byteArrayOf(), null).getOrElse {
