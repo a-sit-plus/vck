@@ -1,5 +1,7 @@
 # Changelog
 
+Release 5.10.0 (Unreleased)
+
 Release 5.9.0
  - Refactor `RqesWalletService` to be stateless
  - Remove code elements deprecated in 5.8.0
