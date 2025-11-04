@@ -11,9 +11,11 @@ import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
 import at.asitplus.wallet.lib.data.Status
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenValidator
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
+import at.asitplus.wallet.lib.extensions.toView
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import kotlin.time.Clock
@@ -44,7 +46,7 @@ class TokenStatusResolverImpl(
             },
         ).getOrThrow()
 
-        StatusListTokenValidator.extractTokenStatus(
+        extractTokenStatus(
             statusList = payload.statusList,
             statusListInfo = status.statusList,
             zlibService = zlibService,
@@ -76,12 +78,28 @@ fun StatusListTokenResolver.toTokenStatusResolver(
             },
         ).getOrThrow()
 
-        StatusListTokenValidator.extractTokenStatus(
+        extractTokenStatus(
             statusList = payload.statusList,
             statusListInfo = status.statusList,
             zlibService = zlibService,
         ).getOrThrow()
     }
+}
+
+/**
+ * Decompress the Status List with a decompressor that is compatible with DEFLATE [RFC1951] and
+ * ZLIB [RFC1950]
+ *
+ * Retrieve the status value of the index specified in the Referenced Token as described in
+ * Section 4. Fail if the provided index is out of bound of the Status List
+ */
+private fun extractTokenStatus(
+    statusList: StatusList,
+    statusListInfo: StatusListInfo,
+    zlibService: ZlibService = DefaultZlibService(),
+): KmmResult<TokenStatus> = catching {
+    statusList.toView(zlibService).getOrNull(statusListInfo.index)
+        ?: throw IndexOutOfBoundsException("The index specified in the status list info is out of bounds of the status list.")
 }
 
 suspend operator fun TokenStatusResolver.invoke(issuerSigned: IssuerSigned) =
