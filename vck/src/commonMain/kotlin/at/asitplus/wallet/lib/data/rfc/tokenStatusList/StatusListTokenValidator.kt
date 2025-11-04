@@ -4,41 +4,12 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
-import at.asitplus.wallet.lib.agent.StatusListTokenIntegrityValidator
-import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.extensions.ifTrue
 import at.asitplus.wallet.lib.extensions.toView
 import kotlin.time.Instant
 
 object StatusListTokenValidator {
-    /**
-     * Validate the Status List Token:
-     *
-     * Validate the Status List Token by following the rules defined in section 7.2 of [RFC7519]
-     * for JWTs and section 7.2 of [RFC8392] for CWTs
-     *
-     * Check for the existence of the required claims as defined in Section 5.1 and Section 5.2
-     * depending on token type.
-     */
-    suspend fun <S : StatusListToken> validateStatusListToken(
-        statusListToken: S,
-        statusListTokenResolvedAt: Instant?,
-        integrityValidator: StatusListTokenIntegrityValidator<S>,
-        statusListInfo: StatusListInfo,
-        isInstantInThePast: (Instant) -> Boolean,
-    ): KmmResult<StatusListTokenPayload> = catching {
-        val payload = integrityValidator.validateStatusListTokenIntegrity(statusListToken).getOrThrow()
-
-        validateStatusListTokenPayloadClaims(
-            statusListTokenPayload = payload,
-            statusListInfo = statusListInfo,
-            statusListTokenResolvedAt = statusListTokenResolvedAt,
-            isInstantInThePast = isInstantInThePast,
-        )
-
-        payload
-    }
 
     /**
      * All existing claims in the Status List Token MUST be checked according to the rules in
@@ -62,7 +33,7 @@ object StatusListTokenValidator {
         statusListInfo: StatusListInfo,
         statusListTokenResolvedAt: Instant?,
         isInstantInThePast: (Instant) -> Boolean,
-    ): KmmResult<Unit> = catching {
+    ): KmmResult<StatusListTokenPayload> = catching {
         if (statusListTokenPayload.subject.string != statusListInfo.uri.string) {
             throw IllegalArgumentException("The subject claim of the Status List Token is not equal to the uri claim in the status_list object of the Referenced Token.")
         }
@@ -76,6 +47,7 @@ object StatusListTokenValidator {
                 }
             }
         }
+        statusListTokenPayload
     }
 
     /**
