@@ -2,10 +2,9 @@ package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
-import at.asitplus.wallet.lib.data.StatusListConstants
+import at.asitplus.wallet.lib.agent.StatusListTokenIntegrityValidator
 import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.extensions.ifTrue
@@ -25,28 +24,11 @@ object StatusListTokenValidator {
     suspend fun <S : StatusListToken> validateStatusListToken(
         statusListToken: S,
         statusListTokenResolvedAt: Instant?,
-        validateStatusListTokenIntegrity: suspend (S) -> StatusListTokenPayload,
+        integrityValidator: StatusListTokenIntegrityValidator<S>,
         statusListInfo: StatusListInfo,
         isInstantInThePast: (Instant) -> Boolean,
-        /**
-         * When using HAIP we need to provide trust anchors to verify the certificate chain
-         */
-        trustAnchors: Set<X509Certificate>? = null
     ): KmmResult<StatusListTokenPayload> = catching {
-        if (statusListToken is StatusListToken.StatusListJwt) {
-            val header = statusListToken.value.header
-            require(header.type == StatusListConstants.STATUS_LIST_TYP) { "The JWT type MUST be statuslist+jwt" }
-            if (trustAnchors != null) {
-                require(header.certificateChain != null) { "The certificate chain must not be null when using HAIP" }
-                require(
-                    (header.certificateChain as Iterable<X509Certificate>).toSet().intersect(trustAnchors).isEmpty()
-                ) { "The certificate chain must not contain any trusted certificates" }
-
-                //TODO require cert path to trust anchor
-                //TODO certs in certchain MUST not be self-signed
-            }
-        }
-        val payload = validateStatusListTokenIntegrity(statusListToken)
+        val payload = integrityValidator.validateStatusListTokenIntegrity(statusListToken).getOrThrow()
 
         validateStatusListTokenPayloadClaims(
             statusListTokenPayload = payload,
