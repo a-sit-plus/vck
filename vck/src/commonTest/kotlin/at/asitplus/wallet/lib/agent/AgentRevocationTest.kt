@@ -9,7 +9,8 @@ import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
-import at.asitplus.wallet.lib.data.StatusListToken
+import at.asitplus.wallet.lib.data.StatusListCwt
+import at.asitplus.wallet.lib.data.StatusListJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
@@ -38,7 +39,7 @@ val AgentRevocationTest by testSuite {
     lateinit var statusListIssuer: StatusListIssuer
     lateinit var expectedRevokedIndexes: List<ULong>
 
-    testConfig= TestConfig.aroundEach {
+    testConfig = TestConfig.aroundEach {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         issuer = IssuerAgent(
             issuerCredentialStore = issuerCredentialStore,
@@ -97,7 +98,7 @@ val AgentRevocationTest by testSuite {
                 acceptedContentTypes = listOf(StatusListTokenMediaType.Jwt),
                 time = timestamp,
             )
-            providedToken.shouldBeInstanceOf<StatusListToken.StatusListJwt>()
+            providedToken.shouldBeInstanceOf<StatusListJwt>()
             providedToken.value.payload.statusList shouldBe issuedToken.payload.statusList
         }
 
@@ -119,7 +120,7 @@ val AgentRevocationTest by testSuite {
                 acceptedContentTypes = listOf(StatusListTokenMediaType.Cwt),
                 time = timestamp,
             )
-            providedToken.shouldBeInstanceOf<StatusListToken.StatusListCwt>()
+            providedToken.shouldBeInstanceOf<StatusListCwt>()
             providedToken.value.payload!!.statusList shouldBe issuedToken.payload.statusList
         }
     }

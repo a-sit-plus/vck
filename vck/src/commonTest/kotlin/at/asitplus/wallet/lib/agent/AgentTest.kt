@@ -16,7 +16,8 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
-import at.asitplus.wallet.lib.data.StatusListToken
+import at.asitplus.wallet.lib.data.StatusListCwt
+import at.asitplus.wallet.lib.data.StatusListJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import com.benasher44.uuid.uuid4
@@ -50,11 +51,11 @@ val AgentTest by testSuite {
         validator = Validator(
             tokenStatusResolver = TokenStatusResolverImpl(
                 resolveStatusListToken = {
-                    if (Random.nextBoolean()) StatusListToken.StatusListJwt(
+                    if (Random.nextBoolean()) StatusListJwt(
                         statusListIssuer.issueStatusListJwt(),
                         resolvedAt = Clock.System.now()
                     ) else {
-                        StatusListToken.StatusListCwt(
+                        StatusListCwt(
                             statusListIssuer.issueStatusListCwt(),
                             resolvedAt = Clock.System.now()
                         )

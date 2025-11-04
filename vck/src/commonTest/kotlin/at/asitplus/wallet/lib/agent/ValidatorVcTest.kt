@@ -10,7 +10,8 @@ import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.Status
-import at.asitplus.wallet.lib.data.StatusListToken
+import at.asitplus.wallet.lib.data.StatusListCwt
+import at.asitplus.wallet.lib.data.StatusListJwt
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
@@ -53,11 +54,11 @@ val ValidatorVcTest by testSuite {
             validator = Validator(
                 tokenStatusResolver = TokenStatusResolverImpl(
                     resolveStatusListToken = {
-                        if (Random.nextBoolean()) StatusListToken.StatusListJwt(
+                        if (Random.nextBoolean()) StatusListJwt(
                             statusListIssuer.issueStatusListJwt(),
                             resolvedAt = Clock.System.now(),
                         ) else {
-                            StatusListToken.StatusListCwt(
+                            StatusListCwt(
                                 statusListIssuer.issueStatusListCwt(),
                                 resolvedAt = Clock.System.now(),
                             )
