@@ -1,6 +1,8 @@
 # Changelog
 
 Release 5.10.0 (Unreleased)
+ - BREAKING CHANGE: vp_token now contains a list of credentials for each key when using DCQL Queries
+ - Add: Support OpenID4VP attribute DCQLCredentialQuery::multiple
 
 Release 5.9.0
  - Refactor `RqesWalletService` to be stateless
