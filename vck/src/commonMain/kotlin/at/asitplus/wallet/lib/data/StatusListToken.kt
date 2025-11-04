@@ -52,11 +52,7 @@ sealed interface StatusListToken {
         ): KmmResult<StatusListTokenPayload> = StatusListTokenValidator.validateStatusListToken(
             statusListToken = this,
             statusListTokenResolvedAt = resolvedAt,
-            validateStatusListTokenIntegrity = {
-                StatusListJwtIntegrityValidator(
-                    verifyJwsObject = verifyJwsObject,
-                ).validateStatusListTokenIntegrity(it).getOrThrow()
-            },
+            integrityValidator = StatusListJwtIntegrityValidator(verifyJwsObject = verifyJwsObject),
             statusListInfo = statusListInfo,
             isInstantInThePast = isInstantInThePast,
         )
@@ -76,11 +72,7 @@ sealed interface StatusListToken {
         ): KmmResult<StatusListTokenPayload> = StatusListTokenValidator.validateStatusListToken(
             statusListToken = this,
             statusListTokenResolvedAt = resolvedAt,
-            validateStatusListTokenIntegrity = {
-                StatusListCwtIntegrityValidator(
-                    verifyCoseSignature = verifyCoseSignature,
-                ).validateStatusListTokenIntegrity(it).getOrThrow()
-            },
+            integrityValidator = StatusListCwtIntegrityValidator(verifyCoseSignature = verifyCoseSignature),
             statusListInfo = statusListInfo,
             isInstantInThePast = isInstantInThePast,
         )
