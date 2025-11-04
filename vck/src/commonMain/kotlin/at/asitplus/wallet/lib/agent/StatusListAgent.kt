@@ -7,6 +7,8 @@ import at.asitplus.wallet.lib.cbor.CoseHeaderCertificate
 import at.asitplus.wallet.lib.cbor.CoseHeaderKeyIdForKeyMaterial
 import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.cbor.SignCoseFun
+import at.asitplus.wallet.lib.data.StatusListCwt
+import at.asitplus.wallet.lib.data.StatusListJwt
 import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.MediaTypes
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
@@ -108,12 +110,12 @@ class StatusListAgent(
             ?: throw IllegalArgumentException("Argument `acceptedContentTypes` must contain at least one item.")
 
         return preferedType to when (preferedType) {
-            StatusListTokenMediaType.Jwt -> StatusListToken.StatusListJwt(
+            StatusListTokenMediaType.Jwt -> StatusListJwt(
                 issueStatusListJwt(time),
                 resolvedAt = clock.now(),
             )
 
-            StatusListTokenMediaType.Cwt -> StatusListToken.StatusListCwt(
+            StatusListTokenMediaType.Cwt -> StatusListCwt(
                 issueStatusListCwt(time),
                 resolvedAt = clock.now(),
             )

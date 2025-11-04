@@ -8,7 +8,8 @@ import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
-import at.asitplus.wallet.lib.data.StatusListToken
+import at.asitplus.wallet.lib.data.StatusListCwt
+import at.asitplus.wallet.lib.data.StatusListJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.rfc3986.toUri
@@ -39,11 +40,11 @@ private data class Config(
                     validator = Validator(
                         tokenStatusResolver = TokenStatusResolverImpl(
                             resolveStatusListToken = {
-                                if (Random.nextBoolean()) StatusListToken.StatusListJwt(
+                                if (Random.nextBoolean()) StatusListJwt(
                                     statusListIssuer.issueStatusListJwt(),
                                     resolvedAt = Clock.System.now(),
                                 ) else {
-                                    StatusListToken.StatusListCwt(
+                                    StatusListCwt(
                                         statusListIssuer.issueStatusListCwt(),
                                         resolvedAt = Clock.System.now(),
                                     )
