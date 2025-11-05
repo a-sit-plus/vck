@@ -15,6 +15,9 @@ sealed class StatusListToken {
     abstract val resolvedAt: Instant?
     abstract val payload: StatusListTokenPayload
 
+    typealias StatusListJwt = at.asitplus.wallet.lib.data.StatusListJwt
+    typealias StatusListCwt = at.asitplus.wallet.lib.data.StatusListCwt
+
     /**
      * Validate the Status List Token:
      *

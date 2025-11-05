@@ -1,7 +1,9 @@
-import at.asitplus.gradle.*
-import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree.Companion.test
-import org.jetbrains.kotlin.konan.target.HostManager
+import at.asitplus.gradle.VcLibVersions
+import at.asitplus.gradle.commonImplementationAndApiDependencies
+import at.asitplus.gradle.envExtra
+import at.asitplus.gradle.exportXCFramework
+import at.asitplus.gradle.setupDokka
+import at.asitplus.gradle.vckAndroid
 
 plugins {
     id("at.asitplus.gradle.vclib-conventions")
