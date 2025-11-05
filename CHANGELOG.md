@@ -1,6 +1,11 @@
 # Changelog
 
 Release 5.10.0 (Unreleased)
+ - StatusListToken:
+   - Remove `StatusTokenValidator`
+   - Remove `StatusTokenIntegrityValidator` class
+   - Refactor `StatusListToken.StatusListJwt` to `StatusListJwt`
+   - Refactor `StatusListToken.StatusListCwt` to `StatusListCwt`
 
 Release 5.9.0
  - Refactor `RqesWalletService` to be stateless
