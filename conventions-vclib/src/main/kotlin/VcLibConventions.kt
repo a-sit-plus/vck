@@ -75,7 +75,7 @@ class VcLibConventions : K2Conventions() {
                     }
                 }
                 tasks.withType<Test>().configureEach {
-                    maxHeapSize = "4G"
+                    maxHeapSize = "8G"
                 }
             }
         }
@@ -111,6 +111,7 @@ fun KotlinMultiplatformExtension.vckAndroid(minSdkOverride: Int? = null) {
             sourceSetTreeName = "test"
         }.configure {
             instrumentationRunnerArguments["timeout_msec"] = "2400000"
+            instrumentationRunnerArguments["TESTBALLOON_REPORTING_PATH_LIMIT"] = "600"
             managedDevices {
                 localDevices {
                     create("pixelAVD").apply {
