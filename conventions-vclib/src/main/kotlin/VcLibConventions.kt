@@ -75,7 +75,7 @@ class VcLibConventions : K2Conventions() {
                     }
                 }
                 tasks.withType<Test>().configureEach {
-                    maxHeapSize = "4G"
+                    maxHeapSize = "8G"
                 }
             }
         }
