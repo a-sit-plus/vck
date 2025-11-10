@@ -34,6 +34,7 @@ val OidvciPreAuthTest by testSuite {
     lateinit var authorizationService: SimpleAuthorizationService
     lateinit var issuer: CredentialIssuer
     lateinit var client: WalletService
+    lateinit var oauth2Client: OAuth2Client
     lateinit var state: String
 
     testConfig = TestConfig.aroundEach {
@@ -49,6 +50,7 @@ val OidvciPreAuthTest by testSuite {
             credentialSchemes = setOf(AtomicAttribute2023, MobileDrivingLicenceScheme),
         )
         client = WalletService()
+        oauth2Client = OAuth2Client()
         state = uuid4().toString()
         it()
     }
@@ -58,7 +60,7 @@ val OidvciPreAuthTest by testSuite {
         credentialIdToRequest: Set<String>,
     ): TokenResponseParameters {
         val preAuth = credentialOffer.grants?.preAuthorizedCode.shouldNotBeNull()
-        val tokenRequest = client.oauth2Client.createTokenRequestParameters(
+        val tokenRequest = oauth2Client.createTokenRequestParameters(
             state = state,
             authorization = OAuth2Client.AuthorizationForToken.PreAuthCode(preAuth.preAuthorizedCode),
             authorizationDetails = client.buildAuthorizationDetails(
@@ -142,7 +144,7 @@ val OidvciPreAuthTest by testSuite {
 
         val preAuth = credentialOffer.grants?.preAuthorizedCode
             .shouldNotBeNull()
-        val tokenRequest = client.oauth2Client.createTokenRequestParameters(
+        val tokenRequest = oauth2Client.createTokenRequestParameters(
             state = state,
             authorization = OAuth2Client.AuthorizationForToken.PreAuthCode(preAuth.preAuthorizedCode),
             scope = scope,

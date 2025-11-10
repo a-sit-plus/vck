@@ -35,10 +35,11 @@ val OidvciEncryptionTest by testSuite {
     lateinit var authorizationService: SimpleAuthorizationService
     lateinit var issuer: CredentialIssuer
     lateinit var client: WalletService
+    lateinit var oauth2Client: OAuth2Client
     lateinit var state: String
 
     suspend fun getToken(scope: String): TokenResponseParameters {
-        val authnRequest = client.oauth2Client.createAuthRequestJar(
+        val authnRequest = oauth2Client.createAuthRequestJar(
             state = state,
             scope = scope,
             resource = issuer.metadata.credentialIssuer
@@ -49,7 +50,7 @@ val OidvciEncryptionTest by testSuite {
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params?.code
             .shouldNotBeNull()
-        val tokenRequest = client.oauth2Client.createTokenRequestParameters(
+        val tokenRequest = oauth2Client.createTokenRequestParameters(
             state = state,
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
             scope = scope,
@@ -81,6 +82,7 @@ val OidvciEncryptionTest by testSuite {
                 decryptionKeyMaterial = EphemeralKeyWithoutCert() // this is important
             )
         )
+        oauth2Client = OAuth2Client()
         it()
     }
 

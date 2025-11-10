@@ -39,28 +39,8 @@ val OidvciAttestationTest by testSuite {
     lateinit var authorizationService: SimpleAuthorizationService
     lateinit var issuer: CredentialIssuer
     lateinit var client: WalletService
+    lateinit var oauth2Client: OAuth2Client
     lateinit var state: String
-
-    suspend fun getToken(scope: String): TokenResponseParameters {
-        val authnRequest = client.oauth2Client.createAuthRequestJar(
-            state = state,
-            scope = scope,
-            resource = issuer.metadata.credentialIssuer
-        )
-        val input = authnRequest as RequestParameters
-        val authnResponse = authorizationService.authorize(input) { catching { dummyUser() } }
-            .getOrThrow()
-            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-        val code = authnResponse.params?.code
-            .shouldNotBeNull()
-        val tokenRequest = client.oauth2Client.createTokenRequestParameters(
-            state = state,
-            authorization = OAuth2Client.AuthorizationForToken.Code(code),
-            scope = scope,
-            resource = issuer.metadata.credentialIssuer
-        )
-        return authorizationService.token(tokenRequest, null).getOrThrow()
-    }
 
     testConfig = TestConfig.aroundEach {
         authorizationService = SimpleAuthorizationService(
@@ -84,8 +64,30 @@ val OidvciAttestationTest by testSuite {
         it()
     }
 
+    suspend fun getToken(scope: String): TokenResponseParameters {
+        val authnRequest = oauth2Client.createAuthRequestJar(
+            state = state,
+            scope = scope,
+            resource = issuer.metadata.credentialIssuer
+        )
+        val input = authnRequest as RequestParameters
+        val authnResponse = authorizationService.authorize(input) { catching { dummyUser() } }
+            .getOrThrow()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+        val code = authnResponse.params?.code
+            .shouldNotBeNull()
+        val tokenRequest = oauth2Client.createTokenRequestParameters(
+            state = state,
+            authorization = OAuth2Client.AuthorizationForToken.Code(code),
+            scope = scope,
+            resource = issuer.metadata.credentialIssuer
+        )
+        return authorizationService.token(tokenRequest, null).getOrThrow()
+    }
+
     test("use key attestation for proof") {
         client = buildClientWithKeyAttestation()
+        oauth2Client = OAuth2Client()
 
         val requestOptions = WalletService.RequestOptions(
             ConstantIndex.AtomicAttribute2023,
@@ -132,6 +134,7 @@ val OidvciAttestationTest by testSuite {
             )
         )
         client = buildClientWithKeyAttestation()
+        oauth2Client = OAuth2Client()
 
         val requestOptions = WalletService.RequestOptions(
             ConstantIndex.AtomicAttribute2023,
@@ -160,6 +163,7 @@ val OidvciAttestationTest by testSuite {
 
     test("require key attestation for proof, but do not provide one") {
         client = WalletService(loadKeyAttestation = null)
+        oauth2Client = OAuth2Client()
 
         val requestOptions = WalletService.RequestOptions(
             ConstantIndex.AtomicAttribute2023,

@@ -30,6 +30,7 @@ val OidvciOfferCodeTest by testSuite {
     lateinit var authorizationService: SimpleAuthorizationService
     lateinit var issuer: CredentialIssuer
     lateinit var client: WalletService
+    lateinit var oauth2Client: OAuth2Client
     lateinit var state: String
 
     testConfig = TestConfig.aroundEach {
@@ -45,6 +46,7 @@ val OidvciOfferCodeTest by testSuite {
             credentialSchemes = setOf(AtomicAttribute2023, MobileDrivingLicenceScheme),
         )
         client = WalletService()
+        oauth2Client = OAuth2Client()
         state = uuid4().toString()
         it()
     }
@@ -53,7 +55,7 @@ val OidvciOfferCodeTest by testSuite {
         credentialOffer: CredentialOffer,
         scope: String,
     ): TokenResponseParameters {
-        val authnRequest = client.oauth2Client.createAuthRequestJar(
+        val authnRequest = oauth2Client.createAuthRequestJar(
             state = state,
             scope = scope,
             resource = issuer.metadata.credentialIssuer,
@@ -65,7 +67,7 @@ val OidvciOfferCodeTest by testSuite {
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params?.code
             .shouldNotBeNull()
-        val tokenRequest = client.oauth2Client.createTokenRequestParameters(
+        val tokenRequest = oauth2Client.createTokenRequestParameters(
             state = state,
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
             scope = scope,
@@ -78,7 +80,7 @@ val OidvciOfferCodeTest by testSuite {
         credentialOffer: CredentialOffer,
         authorizationDetails: Set<AuthorizationDetails>,
     ): TokenResponseParameters {
-        val authnRequest = client.oauth2Client.createAuthRequestJar(
+        val authnRequest = oauth2Client.createAuthRequestJar(
             state = state,
             authorizationDetails = authorizationDetails,
             issuerState = credentialOffer.grants?.authorizationCode.shouldNotBeNull().issuerState
@@ -89,7 +91,7 @@ val OidvciOfferCodeTest by testSuite {
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params?.code
             .shouldNotBeNull()
-        val tokenRequest = client.oauth2Client.createTokenRequestParameters(
+        val tokenRequest = oauth2Client.createTokenRequestParameters(
             state = state,
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
             authorizationDetails = authorizationDetails,
@@ -125,7 +127,7 @@ val OidvciOfferCodeTest by testSuite {
         val credentialIdToRequest = credentialOffer.configurationIds.first()
         val credentialFormat =
             issuer.metadata.supportedCredentialConfigurations!![credentialIdToRequest].shouldNotBeNull()
-        val authnRequest = client.oauth2Client.createAuthRequestJar(
+        val authnRequest = oauth2Client.createAuthRequestJar(
             state = state,
             scope = credentialFormat.scope.shouldNotBeNull(),
             resource = issuer.metadata.credentialIssuer,

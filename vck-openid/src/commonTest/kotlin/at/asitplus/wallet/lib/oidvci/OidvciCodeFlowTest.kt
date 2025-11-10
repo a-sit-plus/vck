@@ -57,6 +57,7 @@ val OidvciCodeFlowTest by testSuite {
     lateinit var authorizationService: SimpleAuthorizationService
     lateinit var issuer: CredentialIssuer
     lateinit var client: WalletService
+    lateinit var oauth2Client: OAuth2Client
     lateinit var state: String
 
     testConfig = TestConfig.aroundEach {
@@ -73,12 +74,13 @@ val OidvciCodeFlowTest by testSuite {
             credentialSchemes = setOf(AtomicAttribute2023, MobileDrivingLicenceScheme),
         )
         client = WalletService()
+        oauth2Client = OAuth2Client()
         state = uuid4().toString()
         it()
     }
 
     suspend fun getToken(scope: String, setScopeInTokenRequest: Boolean = true): TokenResponseParameters {
-        val authnRequest = client.oauth2Client.createAuthRequestJar(
+        val authnRequest = oauth2Client.createAuthRequestJar(
             state = state,
             scope = scope,
             resource = issuer.metadata.credentialIssuer
@@ -89,7 +91,7 @@ val OidvciCodeFlowTest by testSuite {
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params?.code
             .shouldNotBeNull()
-        val tokenRequest = client.oauth2Client.createTokenRequestParameters(
+        val tokenRequest = oauth2Client.createTokenRequestParameters(
             state = state,
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
             scope = if (setScopeInTokenRequest) scope else null,
@@ -103,7 +105,7 @@ val OidvciCodeFlowTest by testSuite {
         authorizationDetails: Set<AuthorizationDetails>,
         setAuthnDetailsInTokenRequest: Boolean = true,
     ): TokenResponseParameters {
-        val authnRequest = client.oauth2Client.createAuthRequestJar(
+        val authnRequest = oauth2Client.createAuthRequestJar(
             state = state,
             authorizationDetails = authorizationDetails
         )
@@ -113,7 +115,7 @@ val OidvciCodeFlowTest by testSuite {
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params?.code
             .shouldNotBeNull()
-        val tokenRequest = client.oauth2Client.createTokenRequestParameters(
+        val tokenRequest = oauth2Client.createTokenRequestParameters(
             state = state,
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
             authorizationDetails = if (setAuthnDetailsInTokenRequest) authorizationDetails else null,
@@ -306,7 +308,7 @@ val OidvciCodeFlowTest by testSuite {
         val tokenScope =
             client.selectSupportedCredentialFormat(RequestOptions(AtomicAttribute2023, ISO_MDOC), issuer.metadata)
                 ?.scope.shouldNotBeNull()
-        val authnRequest = client.oauth2Client.createAuthRequestJar(
+        val authnRequest = oauth2Client.createAuthRequestJar(
             state = state,
             scope = authCodeScope,
             resource = issuer.metadata.credentialIssuer
@@ -317,7 +319,7 @@ val OidvciCodeFlowTest by testSuite {
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params?.code
             .shouldNotBeNull()
-        val tokenRequest = client.oauth2Client.createTokenRequestParameters(
+        val tokenRequest = oauth2Client.createTokenRequestParameters(
             state = state,
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
             scope = tokenScope, // this is wrong, should be the same as in authn request
@@ -390,7 +392,7 @@ val OidvciCodeFlowTest by testSuite {
             credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(ISO_MDOC),
             authorizationServers = issuer.metadata.authorizationServers
         )
-        val authnRequest = client.oauth2Client.createAuthRequestJar(
+        val authnRequest = oauth2Client.createAuthRequestJar(
             state = state,
             authorizationDetails = authCodeAuthnDetails
         )
@@ -400,7 +402,7 @@ val OidvciCodeFlowTest by testSuite {
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params?.code
             .shouldNotBeNull()
-        val tokenRequest = client.oauth2Client.createTokenRequestParameters(
+        val tokenRequest = oauth2Client.createTokenRequestParameters(
             state = state,
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
             authorizationDetails = tokenAuthnDetails // this is wrong, should be same as in authn request

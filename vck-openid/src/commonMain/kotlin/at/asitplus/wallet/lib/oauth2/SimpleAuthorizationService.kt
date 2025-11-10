@@ -56,7 +56,7 @@ import kotlin.time.Duration.Companion.minutes
  *
  * Implemented from
  * [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
- * , Draft 15, 2024-12-19.
+ * 1.0 from 2025-09-16.
  * Also implements necessary parts of
  * [OpenID4VC HAIP](https://openid.net/specs/openid4vc-high-assurance-interoperability-profile-1_0.html)
  * , Draft 03, 2025-02-07, e.g.

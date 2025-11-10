@@ -45,15 +45,11 @@ import kotlin.collections.map
  *
  * Implemented from
  * [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
- * , Draft 15, 2024-12-19.
+ * 1.0 from 2025-09-16.
  */
 class WalletService(
-    /** Used to create request parameters, e.g. [AuthenticationRequestParameters], typically a URI.
-     * Must match [OAuth2Client.clientId] in [oauth2Client]. */
+    /** Used as the issuer in credential proofs. Must match the `client_id` of the OAuth client. */
     val clientId: String = "https://wallet.a-sit.at/app",
-    /** Used to create [AuthenticationRequestParameters] and [TokenRequestParameters]. */
-    @Deprecated("Configure oauth2Client instead")
-    val redirectUrl: String = "$clientId/callback",
     /** Used to prove possession of the key material for [CredentialRequestProofContainer], i.e., the holder key. */
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     /**
@@ -65,26 +61,8 @@ class WalletService(
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
     /** Load key attestation to create [CredentialRequestProofContainer], if required by the credential issuer. */
     private val loadKeyAttestation: (suspend (KeyAttestationInput) -> KmmResult<JwsSigned<KeyAttestationJwt>>)? = null,
-    @Deprecated("Use [encryptionService] instead")
-    private val requestEncryption: Boolean = false,
-    @Deprecated("Use [encryptionService] instead")
-    private val decryptionKeyMaterial: KeyMaterial? = null,
-    @Deprecated("Use [encryptionService] instead")
-    private val supportedJweAlgorithm: JweAlgorithm = JweAlgorithm.ECDH_ES,
-    @Deprecated("Use [encryptionService] instead")
-    private val supportedJweEncryptionAlgorithm: JweEncryption = JweEncryption.A256GCM,
-    /** OAuth2 client to build authorization requests */
-    val oauth2Client: OAuth2Client = OAuth2Client(
-        clientId = clientId,
-        redirectUrl = redirectUrl
-    ),
     /** Handles credential request encryption and credential response decryption. */
-    private val encryptionService: WalletEncryptionService = WalletEncryptionService(
-        requestEncryption = requestEncryption,
-        decryptionKeyMaterial = decryptionKeyMaterial,
-        supportedJweAlgorithm = supportedJweAlgorithm,
-        supportedJweEncryptionAlgorithm = supportedJweEncryptionAlgorithm,
-    ),
+    private val encryptionService: WalletEncryptionService = WalletEncryptionService(),
 ) {
 
     data class KeyAttestationInput(val clientNonce: String?, val supportedAlgorithms: Collection<String>?)
@@ -206,7 +184,6 @@ class WalletService(
      * @param previouslyRequestedScope the `scope` value requested in the token request, since the authorization server
      * may not set it in [tokenResponse]
      */
-    @Suppress("DEPRECATION")
     suspend fun createCredential(
         tokenResponse: TokenResponseParameters,
         metadata: IssuerMetadata,
@@ -234,27 +211,6 @@ class WalletService(
     private fun IssuerMetadata.shouldEncryptRequest(): Boolean =
         credentialRequestEncryption?.encryptionRequired == true ||
                 (encryptionService.requestEncryption && credentialRequestEncryption?.jsonWebKeySet != null)
-
-    @Deprecated(
-        "Use [createCredential] instead to handle encryption",
-        ReplaceWith("createCredential(tokenResponse, metadata, credentialFormat, clientNonce, previouslyRequestedScope, clock)")
-    )
-    @Suppress("DEPRECATION")
-    suspend fun createCredentialRequest(
-        tokenResponse: TokenResponseParameters,
-        metadata: IssuerMetadata,
-        credentialFormat: SupportedCredentialFormat,
-        clientNonce: String? = null,
-        previouslyRequestedScope: String? = null,
-        clock: Clock = Clock.System,
-    ): KmmResult<Collection<CredentialRequestParameters>> = createCredentialRequestInternal(
-        tokenResponse = tokenResponse,
-        metadata = metadata,
-        credentialFormat = credentialFormat,
-        clientNonce = clientNonce,
-        previouslyRequestedScope = previouslyRequestedScope,
-        clock = clock
-    )
 
     private suspend fun createCredentialRequestInternal(
         tokenResponse: TokenResponseParameters,

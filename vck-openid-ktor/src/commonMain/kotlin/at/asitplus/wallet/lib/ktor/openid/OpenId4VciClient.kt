@@ -24,6 +24,7 @@ import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
+import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
 import at.asitplus.wallet.lib.oidvci.WalletService
 import at.asitplus.wallet.lib.oidvci.toRepresentation
@@ -45,8 +46,7 @@ import kotlinx.serialization.Serializable
 /**
  * Implements the client side of
  * [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
- *  Draft 15, 2024-12-19.
- *
+ * 1.0 from 2025-09-16.
  * Supported features:
  *  * Pre-authorized grants
  *  * Authentication code flows
@@ -65,41 +65,19 @@ class OpenId4VciClient(
     /** Additional configuration for building the HTTP client, e.g. callers may enable logging. */
     httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
     /**
-     * Callback to load the client attestation JWT, which may be needed as authentication at the AS, where the
-     * `clientId` must match [WalletService.clientId] in [oid4vciService] and the key attested in `cnf` must match
-     * the key behind [signClientAttestationPop], see
-     * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-04.html)
-     */
-    @Deprecated("Configure oAuth2Client instead")
-    private val loadClientAttestationJwt: (suspend () -> String)? = null,
-    /** Used for authenticating the client at the authorization server with client attestation. */
-    @Deprecated("Configure oAuth2Client instead")
-    private val signClientAttestationPop: SignJwtFun<JsonWebToken>? = SignJwt(
-        EphemeralKeyWithoutCert(),
-        JwsHeaderNone()
-    ),
-    /** Used to calculate DPoP, i.e. the key the access token and refresh token gets bound to.
-     * Must match [OAuth2KtorClient.signDpop] in [oauth2Client]. */
-    private val signDpop: SignJwtFun<JsonWebToken> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk()),
-    @Deprecated("Configure oAuth2Client instead")
-    private val dpopAlgorithm: JwsAlgorithm = JwsAlgorithm.Signature.ES256,
-    /**
      * Implements OID4VCI protocol, `redirectUrl` needs to be registered by the OS for this application, so redirection
      * back from browser works, `cryptoService` provides proof of possession for credential key material.
      */
-    val oid4vciService: WalletService = WalletService(),
+    private val oid4vciService: WalletService = WalletService(),
+    private val oauth2InternalClient: OAuth2Client = OAuth2Client(clientId = oid4vciService.clientId),
     private val oauth2Client: OAuth2KtorClient = OAuth2KtorClient(
         engine = engine,
         cookiesStorage = cookiesStorage,
         httpClientConfig = httpClientConfig,
-        loadClientAttestationJwt = loadClientAttestationJwt,
-        signClientAttestationPop = signClientAttestationPop,
-        signDpop = signDpop,
-        dpopAlgorithm = dpopAlgorithm,
-        oAuth2Client = oid4vciService.oauth2Client,
+        oAuth2Client = oauth2InternalClient,
     ),
 ) {
-
+    // TODO Use OAuth2KtorClient for that
     private val client: HttpClient = HttpClient(engine) {
         followRedirects = false
         install(ContentNegotiation) {
