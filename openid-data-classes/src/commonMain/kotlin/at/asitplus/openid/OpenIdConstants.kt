@@ -119,55 +119,11 @@ object OpenIdConstants {
         const val REFRESH_TOKEN = "urn:ietf:params:oauth:token-type:refresh_token"
     }
 
-
-    @Serializable(with = ProofType.Serializer::class)
-    sealed class ProofType(val stringRepresentation: String) {
-        override fun toString(): String = this::class.simpleName + "(" + stringRepresentation + ")"
-
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other !is ProofType) return false
-            return other.stringRepresentation == stringRepresentation
-        }
-
-        override fun hashCode(): Int {
-            return stringRepresentation.hashCode()
-        }
-
-        companion object {
-            private const val STRING_JWT = "jwt"
-            private const val STRING_ATTESTATION = "attestation"
-        }
-
-        /**
-         * Proof type `jwt` in [at.asitplus.openid.CredentialRequestProof]
-         */
-        object JWT : ProofType(STRING_JWT)
-
-        /**
-         * Proof type `attestation` in [at.asitplus.openid.CredentialRequestProof]
-         */
-        object ATTESTATION : ProofType(STRING_ATTESTATION)
-
-        /**
-         * Any proof type not natively supported by this library
-         */
-        class Other(stringRepresentation: String) : ProofType(stringRepresentation)
-
-        object Serializer : KSerializer<ProofType> {
-            override val descriptor: SerialDescriptor =
-                PrimitiveSerialDescriptor(serialName = "ProofType", PrimitiveKind.STRING)
-
-            override fun deserialize(decoder: Decoder): ProofType = when (val str = decoder.decodeString()) {
-                STRING_JWT -> JWT
-                STRING_ATTESTATION -> ATTESTATION
-                else -> Other(str)
-            }
-
-            override fun serialize(encoder: Encoder, value: ProofType) {
-                encoder.encodeString(value.stringRepresentation)
-            }
-        }
+    object ProofTypes {
+        /** `jwt` */
+        const val JWT = "jwt"
+        /** `attestation` */
+        const val ATTESTATION = "attestation"
     }
 
     /**

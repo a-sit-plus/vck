@@ -32,14 +32,6 @@ data class CredentialRequestParameters(
     @SerialName("credential_response_encryption")
     val credentialResponseEncryption: CredentialResponseEncryption? = null,
 
-    @SerialName("credential_definition")
-    @Deprecated("Removed in OID4VCI draft 16")
-    val credentialDefinition: SupportedCredentialFormatDefinition? = null,
-
-    @SerialName("proof")
-    @Deprecated("Removed in OID4VCI draft 16, use `proofs` instead", ReplaceWith("proofs"))
-    val proof: CredentialRequestProof? = null,
-
     /**
      * OID4VCI: OPTIONAL. Object providing one or more proof of possessions of the cryptographic key material to which
      * the issued Credential instances will be bound to. The [proofs] parameter contains exactly one parameter named as

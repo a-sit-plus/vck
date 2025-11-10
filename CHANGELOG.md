@@ -7,7 +7,10 @@ Release 5.10.0 (Unreleased):
    - Refactor `StatusListToken.StatusListJwt` to `StatusListJwt`
    - Refactor `StatusListToken.StatusListCwt` to `StatusListCwt`
  - OAuth 2.0:
-    - Use correct path for metadata retrieval (inserting strings between host component and path component)
+   - Use correct path for metadata retrieval (inserting strings between host component and path component)
+ - OpenID for Verifiable Credential Issuance:
+   - Update implementation to 1.0 from 2025-09-16
+   - Drop single `proof` in credential request
 
 Release 5.9.0
  - Refactor `RqesWalletService` to be stateless

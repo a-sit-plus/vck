@@ -216,7 +216,7 @@ val OidvciCodeFlowTest by testSuite {
         val credentialRequest = CredentialRequestParameters(
             credentialConfigurationId = scope,
             proofs = CredentialRequestProofContainer(
-                jwt = setOf(proof.jwt!!, differentProof.jwt!!)
+                jwt = proof.jwt!! + differentProof.jwt!!
             )
         )
 
@@ -497,7 +497,7 @@ val OidvciCodeFlowTest by testSuite {
     "request credential in ISO MDOC, using scope" {
         val requestOptions = RequestOptions(MobileDrivingLicenceScheme, ISO_MDOC)
         val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata).shouldNotBeNull()
-        val scope = credentialFormat?.scope.shouldNotBeNull()
+        val scope = credentialFormat.scope.shouldNotBeNull()
         val token = getToken(scope)
 
         val credential = issuer.credential(

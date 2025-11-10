@@ -10,22 +10,19 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class CredentialRequestProofContainer(
     /**
-     * OID4VCI: e.g. `jwt`, or `ldp_vp`. See [at.asitplus.openid.OpenIdConstants.ProofType].
-     */
-    @SerialName("proof_type")
-    val proofType: OpenIdConstants.ProofType? = null,
-
-    /**
-     * OID4VCI: A JWT (RFC7519) is used as proof of possession. When [proofType] is `jwt`, a proof object MUST include
-     * a `jwt` claim containing a JWT defined in Section 8.2.1.1.
+     * A JWT [RFC7519](https://datatracker.ietf.org/doc/html/rfc7519) is used for proof of possession.
+     * When a `proofs` object is using a `jwt` proof type, it MUST include a `jwt` parameter with its value being a
+     * non-empty array of JWTs, where each JWT is formed as defined in Appendix F.1.
      * See [jwtParsed].
      */
     @SerialName("jwt")
     val jwt: Set<String>? = null,
 
     /**
-     * OID4VCI: A JWT (RFC7519) is used as proof of possession. When [proofType] is set to `attestation`, the object
-     * MUST also contain an `attestation` parameter that includes a JWT as defined in Section 8.2.1.3.
+     * A JWT [RFC7519](https://datatracker.ietf.org/doc/html/rfc7519) representing a key attestation without using a
+     * proof of possession of the cryptographic key material that is being attested.
+     * When a `proofs` object is using an attestation proof type, the object MUST include an `attestation` parameter
+     * with its value being an array that contains exactly one JWT that is formed as defined in Appendix D.1.
      * See [attestationParsed].
      */
     @SerialName("attestation")

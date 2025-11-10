@@ -190,7 +190,7 @@ val OidvciPreAuthTest by testSuite {
         val credentialRequest = CredentialRequestParameters(
             credentialIdentifier = credentialIdentifier,
             proofs = CredentialRequestProofContainer(
-                jwt = setOf(proof.jwt!!, differentProof.jwt!!)
+                jwt = proof.jwt!! + differentProof.jwt!!
             )
         )
 

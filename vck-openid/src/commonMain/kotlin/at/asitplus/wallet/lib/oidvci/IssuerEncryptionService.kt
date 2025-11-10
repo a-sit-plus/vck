@@ -24,7 +24,7 @@ import io.github.aakira.napier.Napier
  *
  * Implemented from
  * [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
- * , Draft 17, 2025-08-17.
+ * 1.0 from 2025-09-16.
  */
 class IssuerEncryptionService(
     /** Encrypt credential response, if requested by client or [requireResponseEncryption] is set. */
