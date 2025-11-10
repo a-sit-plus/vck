@@ -3,20 +3,17 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
-import at.asitplus.dcapi.OID4VPHandover
 import at.asitplus.dif.ClaimFormat
 import at.asitplus.dif.FormatContainerJwt
 import at.asitplus.dif.FormatContainerSdJwt
 import at.asitplus.dif.FormatHolder
 import at.asitplus.dif.PresentationSubmissionDescriptor
-import at.asitplus.iso.ClientIdToHash
 import at.asitplus.iso.DeviceAuthentication
 import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.Document
 import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.OpenId4VpHandover
 import at.asitplus.iso.OpenId4VpHandoverInfo
-import at.asitplus.iso.ResponseUriToHash
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.sha256
 import at.asitplus.iso.wrapInCborTag
@@ -29,7 +26,6 @@ import at.asitplus.openid.IdTokenType
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.JarRequestParameters.RequestUriMethod
 import at.asitplus.openid.JarRequestParameters.RequestUriMethod.POST
-import at.asitplus.openid.JwtVcIssuerMetadata
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestObjectParameters
@@ -153,14 +149,6 @@ class OpenId4VpVerifier(
         sdJwtAlgorithmStrings = supportedJwsAlgorithms.toSet(),
         kbJwtAlgorithmStrings = supportedJwsAlgorithms.toSet()
     )
-
-    @Deprecated("This is not covered by any current spec")
-    val jarMetadata: JwtVcIssuerMetadata by lazy {
-        JwtVcIssuerMetadata(
-            issuer = clientIdScheme.issuerUri ?: clientIdScheme.clientId,
-            jsonWebKeySet = JsonWebKeySet(setOf(keyMaterial.jsonWebKey))
-        )
-    }
 
     /**
      * Creates the [at.asitplus.openid.RelyingPartyMetadata], without encryption (see [metadataWithEncryption])
@@ -686,18 +674,7 @@ class OpenId4VpVerifier(
         ).wrapAsExpectedPayload()
 
         verifyCoseSignature(deviceSignature, walletKey, byteArrayOf(), expected).onFailure {
-            val legacy = document.calcDeviceAuthentication(
-                nonce = nonce,
-                mdocGeneratedNonce = mdocGeneratedNonce,
-                clientId = clientId,
-                responseUrl = responseUrl
-            ).wrapAsExpectedPayload()
-            verifyCoseSignature(deviceSignature, walletKey, byteArrayOf(), legacy).onFailure {
-                throw IllegalArgumentException(
-                    "deviceSignature not verified, expected ${expected.encodeToString(Base16())} " +
-                            "or ${legacy.encodeToString(Base16())}", it
-                )
-            }
+            throw IllegalArgumentException("deviceSignature not matching ${expected.encodeToString(Base16())}", it)
         }
         true
     }
@@ -735,34 +712,6 @@ class OpenId4VpVerifier(
         docType = docType,
         namespaces = deviceSigned.namespaces
     )
-
-    /**
-     * Performs calculation of the [at.asitplus.iso.SessionTranscript] and [at.asitplus.iso.DeviceAuthentication],
-     * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024
-     */
-    @Suppress("DEPRECATION")
-    private fun Document.calcDeviceAuthentication(
-        nonce: String,
-        mdocGeneratedNonce: String,
-        clientId: String,
-        responseUrl: String,
-    ): DeviceAuthentication = DeviceAuthentication(
-        type = DeviceAuthentication.TYPE,
-        sessionTranscript = SessionTranscript.forOpenId(
-            OID4VPHandover(
-                clientIdHash = coseCompliantSerializer.encodeToByteArray(
-                    ClientIdToHash(clientId, mdocGeneratedNonce)
-                ).sha256(),
-                responseUriHash = coseCompliantSerializer.encodeToByteArray(
-                    ResponseUriToHash(responseUrl, mdocGeneratedNonce)
-                ).sha256(),
-                nonce = nonce
-            ),
-        ),
-        docType = docType,
-        namespaces = deviceSigned.namespaces
-    )
-
 
     private fun VerifyPresentationResult.mapToAuthnResponseResult(state: String) = when (this) {
         is VerifyPresentationResult.ValidationError -> AuthnResponseResult.ValidationError("vpToken", state, cause)

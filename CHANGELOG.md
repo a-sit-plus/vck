@@ -16,6 +16,7 @@ Release 5.10.0 (Unreleased):
  - OpenID for Verifiable Presentations:
    - Update implementation to 1.0 from 2025-07-09
    - Use correct syntax for `vp_token` in responses to DCQL queries, i.e., with an array
+   - Drop session transcript implementation from ISO/IEC 18013-7:2024 Annex B, which was pre-OpenID4VP 1.0
 
 Release 5.9.0
  - Refactor `RqesWalletService` to be stateless
