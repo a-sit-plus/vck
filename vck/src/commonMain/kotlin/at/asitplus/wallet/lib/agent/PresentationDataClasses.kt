@@ -25,6 +25,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.putJsonArray
 
 /**
  * Input to create a verifiable presentation of credentials, i.e. contains input required to fill fields in the VP,
@@ -85,8 +86,11 @@ sealed interface PresentationResponseParameters {
     ) : PresentationResponseParameters {
         override val vpToken
             get() = buildJsonObject {
+                // To be reconsidered when supporting [DCQLCredentialQueryInstance.multiple]
                 verifiablePresentations.entries.forEach {
-                    put(it.key.string, it.value.toJsonPrimitive())
+                    putJsonArray(it.key.string) {
+                        add(it.value.toJsonPrimitive())
+                    }
                 }
             }
 

@@ -85,9 +85,12 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Clock
 import kotlin.time.DurationUnit
@@ -611,7 +614,7 @@ class OpenId4VpVerifier(
         transactionData: List<TransactionDataBase64Url>?,
     ) = when (claimFormat) {
         ClaimFormat.JWT_SD, ClaimFormat.SD_JWT -> verifier.verifyPresentationSdJwt(
-            input = SdJwtSigned.parseCatching(relatedPresentation.jsonPrimitive.content).getOrElse {
+            input = SdJwtSigned.parseCatching(relatedPresentation.extractContent()).getOrElse {
                 throw IllegalArgumentException("relatedPresentation")
             },
             challenge = expectedNonce,
@@ -621,7 +624,7 @@ class OpenId4VpVerifier(
         ClaimFormat.JWT_VP -> verifier.verifyPresentationVcJwt(
             input = JwsSigned.deserialize(
                 VerifiablePresentationJws.serializer(),
-                relatedPresentation.jsonPrimitive.content,
+                relatedPresentation.extractContent(),
                 vckJsonSerializer
             ).getOrThrow(),
             challenge = expectedNonce
@@ -634,7 +637,7 @@ class OpenId4VpVerifier(
                 ?.jweDecrypted?.header?.agreementPartyUInfo
             val apuNested = ((input as? ResponseParametersFrom.JwsSigned)?.parent as? ResponseParametersFrom.JweForJws)
                 ?.jweDecrypted?.header?.agreementPartyUInfo
-            val deviceResponse = relatedPresentation.jsonPrimitive.content.decodeToByteArray(Base64UrlStrict)
+            val deviceResponse = relatedPresentation.extractContent().decodeToByteArray(Base64UrlStrict)
                 .let { coseCompliantSerializer.decodeFromByteArray<DeviceResponse>(it) }
 
             val mdocGeneratedNonce = apuDirect?.decodeToString()
@@ -647,6 +650,14 @@ class OpenId4VpVerifier(
         }
 
         else -> throw IllegalArgumentException("descriptor.format: $claimFormat")
+    }
+
+    // To be reconsidered when supporting [DCQLCredentialQueryInstance.multiple]
+    private fun JsonElement.extractContent(): String = when (this) {
+        is JsonArray -> first().extractContent()
+        is JsonObject -> toString()
+        is JsonPrimitive -> content
+        JsonNull -> throw IllegalArgumentException("Can't extract string from JsonNull")
     }
 
     /**
