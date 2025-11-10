@@ -39,6 +39,7 @@ import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
@@ -54,6 +55,7 @@ import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
+import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.toBase64UrlJsonString
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -155,7 +157,11 @@ class OpenId4VpVerifier(
     val metadata by lazy {
         RelyingPartyMetadata(
             redirectUris = listOfNotNull((clientIdScheme as? ClientIdScheme.RedirectUri)?.redirectUri),
-            jsonWebKeySet = JsonWebKeySet(listOf(decryptionKeyMaterial.publicKey.toJsonWebKey())),
+            jsonWebKeySet = JsonWebKeySet(
+                listOf(
+                    decryptionKeyMaterial.publicKey.toJsonWebKey(decryptionKeyMaterial.identifier).withAlgorithm()
+                )
+            ),
             authorizationSignedResponseAlgString = supportedSignatureVerificationAlgorithm,
             vpFormatsSupported = VpFormatsSupported(
                 vcJwt = SupportedAlgorithmsContainerJwt(
@@ -388,7 +394,8 @@ class OpenId4VpVerifier(
         is ClientIdScheme.RedirectUri,
         is ClientIdScheme.VerifierAttestation,
         is ClientIdScheme.CertificateSanDns,
-        is ClientIdScheme.CertificateHash ->
+        is ClientIdScheme.CertificateHash,
+            ->
             if (encryption || responseMode.requiresEncryption) metadataWithEncryption else metadata
 
         else -> null
@@ -709,7 +716,11 @@ class OpenId4VpVerifier(
             freshnessSummary = freshnessSummary,
         )
     }
+
+    // should always be ecdh-es for encryption
+    private fun JsonWebKey.withAlgorithm(): JsonWebKey = this.copy(algorithm = JweAlgorithm.ECDH_ES)
 }
+
 
 private val PresentationSubmissionDescriptor.cumulativeJsonPath: String
     get() {

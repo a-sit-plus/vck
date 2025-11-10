@@ -30,6 +30,7 @@ import at.asitplus.wallet.lib.agent.ValidatorSdJwt
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
+import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
@@ -262,10 +263,17 @@ val OpenId4VciClientTest by testSuite {
                         request = request.toRequestInfo(),
                     ).fold(
                         onSuccess = {
-                            respond(
-                                vckJsonSerializer.encodeToString<CredentialResponseParameters>(it),
-                                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                            )
+                            when (it) {
+                                is CredentialIssuer.CredentialResponse.Encrypted -> respond(
+                                    it.response.serialize(),
+                                    headers = headersOf(HttpHeaders.ContentType, MediaTypes.Application.JWT)
+                                )
+
+                                is CredentialIssuer.CredentialResponse.Plain -> respond(
+                                    vckJsonSerializer.encodeToString<CredentialResponseParameters>(it.response),
+                                    headers = headersOf(HttpHeaders.ContentType, MediaTypes.Application.JSON)
+                                )
+                            }
                         },
                         onFailure = { respondOAuth2Error(it) }
                     )

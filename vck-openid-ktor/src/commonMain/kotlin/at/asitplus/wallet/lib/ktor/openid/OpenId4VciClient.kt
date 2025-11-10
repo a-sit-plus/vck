@@ -5,7 +5,6 @@ import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.ClientNonceResponse
 import at.asitplus.openid.CredentialOffer
-import at.asitplus.openid.CredentialResponseParameters
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants.WellKnownPaths
@@ -271,7 +270,7 @@ class OpenId4VciClient(
                 tokenResponse = tokenResponse,
                 credentialFormat = credentialFormat,
                 credentialScheme = credentialScheme,
-                dpopNonce = dpopNonce
+                dpopNonce = dpopNonce ?: tokenResponse.dpopNonce,
             )
         }
         return CredentialIssuanceResult.Success(
@@ -318,8 +317,12 @@ class OpenId4VciClient(
             fetchCredential(url, request, tokenResponse, credentialFormat, credentialScheme, dpopNonce, retryCount + 1)
         } ?: throw Exception("Error requesting credential: ${this?.errorDescription ?: this?.error}")
     }.onSuccessCredential { response ->
-        oid4vciService.parseCredentialResponse(this, credentialFormat.format.toRepresentation(), credentialScheme)
-            .getOrThrow()
+        oid4vciService.parseCredentialResponse(
+            response = this,
+            isEncrypted = response.contentType() == ContentType.parse(MediaTypes.Application.JWT),
+            representation = credentialFormat.format.toRepresentation(),
+            scheme = credentialScheme
+        ).getOrThrow()
     }
 
     /**
@@ -486,5 +489,5 @@ data class RefreshTokenInfo(
 
 
 private suspend inline fun <R> IntermediateResult<R>.onSuccessCredential(
-    block: CredentialResponseParameters.(httpResponse: HttpResponse) -> R,
-) = onSuccess<CredentialResponseParameters, R>(block)
+    block: String.(httpResponse: HttpResponse) -> R,
+) = onSuccess<String, R>(block)

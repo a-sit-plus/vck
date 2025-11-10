@@ -27,6 +27,7 @@ import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
+import at.asitplus.wallet.lib.oidvci.CredentialIssuer.CredentialResponse
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 import com.benasher44.uuid.uuid4
@@ -251,13 +252,41 @@ class WalletService(
      * decrypting the response if required.
      */
     public suspend fun parseCredentialResponse(
-        response: CredentialResponseParameters,
+        response: String,
+        isEncrypted: Boolean,
         representation: CredentialRepresentation,
         scheme: ConstantIndex.CredentialScheme,
     ): KmmResult<Collection<Holder.StoreCredentialInput>> = catching {
-        response.extractCredentials()
+        response.decryptResponse(isEncrypted)
+            .extractCredentials()
             .map { encryptionService.decrypt(it).getOrThrow() }
             .map { it.toStoreCredentialInput(representation, scheme) }
+    }
+
+    private suspend fun String.decryptResponse(encrypted: Boolean) =
+        vckJsonSerializer.decodeFromString<CredentialResponseParameters>(
+            if (encrypted) encryptionService.decrypt(this).getOrThrow() else this
+        )
+
+    /**
+     * Parses [response] received from the credential issuer, mapping to [Holder.StoreCredentialInput],
+     * decrypting the response if required.
+     */
+    public suspend fun parseCredentialResponse(
+        response: CredentialResponse,
+        representation: CredentialRepresentation,
+        scheme: ConstantIndex.CredentialScheme,
+    ): KmmResult<Collection<Holder.StoreCredentialInput>> = catching {
+        response.decryptResponse()
+            .extractCredentials()
+            .map { encryptionService.decrypt(it).getOrThrow() }
+            .map { it.toStoreCredentialInput(representation, scheme) }
+    }
+
+    private suspend fun CredentialResponse.decryptResponse() = when (this) {
+        is CredentialResponse.Plain -> response
+        is CredentialResponse.Encrypted -> encryptionService.decrypt(response.serialize()).getOrThrow()
+            .decryptResponse(true)
     }
 
     private fun Set<AuthorizationDetails>.toCredentialRequest(): List<CredentialRequestParameters> =

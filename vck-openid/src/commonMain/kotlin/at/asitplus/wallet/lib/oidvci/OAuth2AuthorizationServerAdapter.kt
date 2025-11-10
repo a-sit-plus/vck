@@ -74,4 +74,9 @@ data class TokenInfo(
         ?.filterIsInstance<OpenIdAuthorizationDetails>()
         ?.flatMap { it.credentialIdentifiers ?: setOf() }
         ?: setOf()
+    @Transient
+    val validCredentialConfigurationIds = authorizationDetails
+        ?.filterIsInstance<OpenIdAuthorizationDetails>()
+        ?.mapNotNull { it.credentialConfigurationId }
+        ?: setOf()
 }

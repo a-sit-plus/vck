@@ -6,7 +6,6 @@ import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
 import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.SdJwtConstants.NAME_SD
-import at.asitplus.wallet.lib.data.SdJwtConstants.SD_ALG
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import at.asitplus.wallet.lib.data.fromAnyValue
@@ -44,7 +43,7 @@ object SdJwtCreator {
                     (claim.value.filterIsInstance<ClaimToBeIssued>()).toSdJsonObject(randomSource, digest).let {
                         if (claim.selectivelyDisclosable) {
                             disclosures.addAll(it.second)
-                            put(claim.name, it.first)
+                            //put(claim.name, it.first)
                             claim.toSdItem(it.first, randomSource).toDisclosure()
                                 .also { disclosures.add(it) }
                                 .hashDisclosure(digest)
@@ -85,7 +84,6 @@ object SdJwtCreator {
                 (objectClaimDigests + dotNotationClaims + dotNotationClaimsPlain + singleClaimsDigests).let { digests ->
                     if (digests.isNotEmpty()) {
                         putJsonArray(NAME_SD) { addAll(digests) }
-                        put(SD_ALG, digest.toIanaName().toJsonElement())
                     }
                 }
             }

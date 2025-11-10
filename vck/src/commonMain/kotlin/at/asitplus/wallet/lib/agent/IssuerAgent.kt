@@ -17,6 +17,8 @@ import at.asitplus.wallet.lib.cbor.CoseHeaderCertificate
 import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.cbor.SignCoseFun
+import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
+import at.asitplus.wallet.lib.data.SdJwtConstants.SD_ALG
 import at.asitplus.wallet.lib.data.Status
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
@@ -38,6 +40,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 
 /**
@@ -68,9 +71,9 @@ class IssuerAgent(
         credential: CredentialToBeIssued,
     ): KmmResult<Issuer.IssuedCredential> = catching {
         when (credential) {
-            is CredentialToBeIssued.Iso -> issueMdoc(credential, clock.now())
-            is CredentialToBeIssued.VcJwt -> issueVc(credential, clock.now())
-            is CredentialToBeIssued.VcSd -> issueVcSd(credential, clock.now())
+            is CredentialToBeIssued.Iso -> issueMdoc(credential, clock.now().minus(3.minutes))
+            is CredentialToBeIssued.VcJwt -> issueVc(credential, clock.now().minus(3.minutes))
+            is CredentialToBeIssued.VcSd -> issueVcSd(credential, clock.now().minus(3.minutes))
         }
     }
 
@@ -204,6 +207,8 @@ class IssuerAgent(
             sdJwt.forEach {
                 put(it.key, it.value)
             }
+            // TODO make sure this only get's inserted at the top-level
+            put(SD_ALG, credential.sdAlgorithm.toIanaName().toJsonElement())
             vcSdJwtObject.forEach {
                 put(it.key, it.value)
             }

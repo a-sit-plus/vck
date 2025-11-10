@@ -119,7 +119,10 @@ val OidvciOfferCodeTest by testSuite {
             params = credentialRequest.first(),
             credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
         ).getOrThrow()
-        credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
+            .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+            .response
+        credential.credentials.shouldNotBeEmpty()
+            .first().credentialString.shouldNotBeNull()
     }
 
     "process with code after credential offer, wrong issuer_state" {
@@ -166,7 +169,10 @@ val OidvciOfferCodeTest by testSuite {
             params = credentialRequest.first(),
             credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
         ).getOrThrow()
-        credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
+            .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+            .response
+        credential.credentials.shouldNotBeEmpty()
+            .first().credentialString.shouldNotBeNull()
     }
 
 }
