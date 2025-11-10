@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OpenIdAuthorizationDetails
-import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oauth2.AuthorizationServiceStrategy
@@ -64,21 +63,11 @@ class CredentialAuthorizationServiceStrategy(
     private fun AuthorizationDetails.validateAndTransform() = when (this) {
         is OpenIdAuthorizationDetails -> when {
             credentialConfigurationId != null -> filterCredentialConfigurationId()
-            format != null -> filterFormat()
             else -> null
         } ?: throw InvalidAuthorizationDetails("Not a valid OpenIdAuthorizationDetail: $this")
 
         else -> throw InvalidAuthorizationDetails("Wrong type for issuance: $this")
     }
-
-    @Suppress("DEPRECATION")
-    @Deprecated("Removed in OID4VCI draft 16")
-    private fun OpenIdAuthorizationDetails.filterFormat(): OpenIdAuthorizationDetails? =
-        supportedCredentialSchemes.entries.firstOrNull {
-            matchesFormat(it.value)
-        }?.let { matchingCredential ->
-            copy(credentialIdentifiers = setOf(matchingCredential.key))
-        }
 
     private fun OpenIdAuthorizationDetails.filterCredentialConfigurationId(): OpenIdAuthorizationDetails? =
         if (supportedCredentialSchemes.containsKey(credentialConfigurationId)) {
@@ -90,32 +79,12 @@ class CredentialAuthorizationServiceStrategy(
 
 /**
  * Returns `true` if the [other] authorization detail is semantically the same,
- * i.e. it has either the same [OpenIdAuthorizationDetails.credentialConfigurationId]
- * or the same [OpenIdAuthorizationDetails.format] plus format-specific properties.
+ * i.e., it has the same [OpenIdAuthorizationDetails.credentialConfigurationId].
  */
 @Suppress("DEPRECATION")
 fun OpenIdAuthorizationDetails.matches(other: AuthorizationDetails): Boolean = when {
     other !is OpenIdAuthorizationDetails -> false
     credentialConfigurationId != null -> other.credentialConfigurationId == credentialConfigurationId
-    format != null -> matchesFormat(other)
-
     else -> false
 }
 
-@Suppress("DEPRECATION")
-@Deprecated("Removed in OID4VCI draft 16")
-private fun OpenIdAuthorizationDetails.matchesFormat(
-    other: OpenIdAuthorizationDetails,
-): Boolean = (other.format == format
-        && other.docType == docType
-        && other.sdJwtVcType == sdJwtVcType
-        && other.credentialDefinition == credentialDefinition)
-
-@Suppress("DEPRECATION")
-@Deprecated("Removed in OID4VCI draft 16")
-private fun OpenIdAuthorizationDetails.matchesFormat(
-    other: SupportedCredentialFormat,
-): Boolean = other.format == format &&
-        other.docType == docType &&
-        other.sdJwtVcType == sdJwtVcType &&
-        other.credentialDefinition == credentialDefinition

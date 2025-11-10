@@ -10,6 +10,7 @@ Release 5.10.0 (Unreleased):
    - Use correct path for metadata retrieval (inserting strings between host component and path component)
  - OpenID for Verifiable Credential Issuance:
    - Update implementation to 1.0 from 2025-09-16
+   - Remove code elements deprecated in 5.9.0
    - Drop single `proof` in credential request
 
 Release 5.9.0

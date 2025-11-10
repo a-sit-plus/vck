@@ -1,17 +1,14 @@
 package at.asitplus.openid
 
-import at.asitplus.catchingUnwrapped
 import at.asitplus.csc.collection_entries.DocumentLocation
 import at.asitplus.csc.collection_entries.OAuthDocumentDigest
 import at.asitplus.csc.enums.SignatureQualifier
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.decodeFromJsonElement
 
 @Serializable
 sealed class AuthorizationDetails
@@ -34,28 +31,12 @@ data class OpenIdAuthorizationDetails(
     @SerialName("credential_configuration_id")
     val credentialConfigurationId: String? = null,
 
-    @Deprecated("Removed in OID4VCI draft 16")
-    @SerialName("format")
-    val format: CredentialFormatEnum? = null,
-
-    @Deprecated("Removed in OID4VCI draft 16")
-    @SerialName("doctype")
-    val docType: String? = null,
-
     /**
      * OID4VCI: ISO mDL: OPTIONAL. An array of claims description objects as defined in Appendix B.2.
      * OID4VCI: IETF SD-JWT VC: OPTIONAL. An array of claims description objects as defined in Appendix B.2.
      */
     @SerialName("claims")
     val claimDescription: Set<ClaimDescription>? = null,
-
-    @Deprecated("Removed in OID4VCI draft 16")
-    @SerialName("credential_definition")
-    val credentialDefinition: SupportedCredentialFormatDefinition? = null,
-
-    @Deprecated("Removed in OID4VCI draft 16")
-    @SerialName("vct")
-    val sdJwtVcType: String? = null,
 
     /**
      * OID4VCI: If the Credential Issuer metadata contains an [IssuerMetadata.authorizationServers] parameter, the

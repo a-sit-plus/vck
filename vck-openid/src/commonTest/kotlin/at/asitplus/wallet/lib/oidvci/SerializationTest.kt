@@ -35,10 +35,6 @@ val SerializationTest by testSuite {
         clientId = randomString(),
         authorizationDetails = setOf(
             OpenIdAuthorizationDetails(
-                format = CredentialFormatEnum.JWT_VC,
-                credentialDefinition = SupportedCredentialFormatDefinition(
-                    types = setOf(VERIFIABLE_CREDENTIAL, randomString()),
-                ),
                 credentialIdentifiers = setOf(randomString()),
             )
         ),

@@ -139,7 +139,6 @@ val OidvciCodeFlowTest by testSuite {
                 it.supportedProofTypes.shouldNotBeNull().shouldNotBeEmpty()
                 it.supportedBindingMethods.shouldNotBeNull().shouldNotBeEmpty()
                 if (it.format != CredentialFormatEnum.JWT_VC) {
-                    it.claimDescription.shouldNotBeNull().shouldNotBeEmpty()
                     it.credentialMetadata.shouldNotBeNull().claimDescription.shouldNotBeNull().shouldNotBeEmpty()
                 }
             }
