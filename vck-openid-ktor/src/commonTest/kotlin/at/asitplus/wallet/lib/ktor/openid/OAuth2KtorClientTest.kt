@@ -1,9 +1,7 @@
 package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.catching
-import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OidcUserInfoExtended
-import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenRequestParameters

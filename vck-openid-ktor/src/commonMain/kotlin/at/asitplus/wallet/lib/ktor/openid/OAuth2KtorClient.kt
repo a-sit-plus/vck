@@ -4,13 +4,11 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
-import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
-import at.asitplus.openid.OpenIdConstants.WellKnownPaths
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.SupportedCredentialFormat
@@ -27,7 +25,6 @@ import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.OAuth2Client.AuthorizationForToken
-import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationPoPJwt
 import at.asitplus.wallet.lib.oidvci.BuildDPoPHeader
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
@@ -263,7 +260,7 @@ class OAuth2KtorClient(
         }.onFailure { response ->
             dpopNonce(response)?.takeIf { retryCount == 0 }?.let { dpopNonce ->
                 postToken(oauthMetadata, tokenRequest, popAudience, dpopNonce, retryCount + 1)
-            } ?: throw Exception("Error requesting Token: ${errorDescription ?: error}")
+            } ?: throw Exception("Error requesting Token: ${this?.errorDescription ?: this?.error}")
         }.onSuccessToken { response ->
             TokenResponseWithDpopNonce(this, response.headers[HttpHeaders.DPoPNonce])
         }
@@ -351,12 +348,11 @@ class OAuth2KtorClient(
         }.onFailure { response ->
             dpopNonce(response)?.takeIf { retryCount == 0 }?.let { dpopNonce ->
                 pushAuthorizationRequest(oauthMetadata, authRequest, state, popAudience, dpopNonce, retryCount + 1)
-            } ?: throw Exception("Error requesting PAR: ${errorDescription ?: error}")
+            } ?: throw Exception("Error requesting PAR: ${this?.errorDescription ?: this?.error}")
         }.onSuccessPar {
             JarRequestParameters(
                 clientId = oAuth2Client.clientId,
                 requestUri = requestUri ?: throw Exception("No request_uri from PAR response at $parEndpointUrl"),
-                state = state,
             )
         }
     } ?: throw Exception("No pushedAuthorizationRequestEndpoint in $oauthMetadata")

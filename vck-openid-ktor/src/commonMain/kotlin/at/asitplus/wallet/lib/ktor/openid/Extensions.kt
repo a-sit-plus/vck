@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.ktor.openid
 
+import at.asitplus.catching
 import at.asitplus.openid.OpenIdConstants.Errors.USE_DPOP_NONCE
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import io.ktor.client.call.*
@@ -28,13 +29,14 @@ sealed class IntermediateResult<R> {
 /** Helper method to perform error handling on ktor responses, see [onSuccess]. */
 @OptIn(ExperimentalContracts::class)
 suspend inline fun <reified R> HttpResponse.onFailure(
-    block: OAuth2Error.(response: HttpResponse) -> R,
+    block: OAuth2Error?.(response: HttpResponse) -> R,
 ): IntermediateResult<R> {
     contract {
         callsInPlace(block, InvocationKind.AT_MOST_ONCE)
     }
     return if (!status.isSuccess()) {
-        IntermediateResult.Failure(block(this.body<OAuth2Error>(), this))
+        val body = catching { this.body<OAuth2Error>() }.getOrNull()
+        IntermediateResult.Failure(block(body, this))
     } else {
         IntermediateResult.Success(this)
     }
@@ -55,6 +57,17 @@ suspend inline fun <reified T, R> IntermediateResult<R>.onSuccess(
 }
 
 /** Extracts the header `DPoP-Nonce` if the error is `use_dpop_nonce`. */
-fun OAuth2Error.dpopNonce(response: HttpResponse) = runCatching {
-    error.takeIf { it == USE_DPOP_NONCE }?.let { response.headers[HttpHeaders.DPoPNonce] }
+fun OAuth2Error?.dpopNonce(response: HttpResponse) = runCatching {
+    authorizationServerProvidedNonce(response)
+        ?: resourceServerProvidedNonce(response)
 }.getOrNull()
+
+/** [RFC 9449 8.](https://datatracker.ietf.org/doc/html/rfc9449#name-authorization-server-provid) */
+private fun OAuth2Error?.authorizationServerProvidedNonce(response: HttpResponse): String? =
+    this?.error.takeIf { it == USE_DPOP_NONCE }?.let { response.headers[HttpHeaders.DPoPNonce] }
+
+/** [RFC 9449 9.](https://datatracker.ietf.org/doc/html/rfc9449#section-9) */
+private fun resourceServerProvidedNonce(response: HttpResponse): String? =
+    response.takeIf {
+        response.headers.getAll(HttpHeaders.WWWAuthenticate)?.any { it.contains(USE_DPOP_NONCE) } == true
+    }?.let { response.headers[HttpHeaders.DPoPNonce] }

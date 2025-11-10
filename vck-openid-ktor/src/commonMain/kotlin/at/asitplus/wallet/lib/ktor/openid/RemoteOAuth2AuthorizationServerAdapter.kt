@@ -179,7 +179,7 @@ class RemoteOAuth2AuthorizationServerAdapter(
     }.onFailure { response ->
         dpopNonce(response)?.takeIf { retryCount == 0 }?.let { dpopNonce ->
             callTokenIntrospection(url, request, oauthMetadata, token, dpopNonce, retryCount + 1)
-        } ?: throw Exception("Error requesting Token Introspection: ${errorDescription ?: error}")
+        } ?: throw Exception("Error requesting Token Introspection: ${this?.errorDescription ?: this?.error}")
     }.onSuccessTokenIntrospection { response ->
         if (!active) {
             throw InvalidToken("Introspected token is not active")
@@ -224,7 +224,7 @@ class RemoteOAuth2AuthorizationServerAdapter(
     }.onFailure { response ->
         dpopNonce(response)?.takeIf { retryCount == 0 }?.let { dpopNonce ->
             fetchUserInfo(userInfoEndpoint, params, dpopNonce, retryCount + 1)
-        } ?: throw Exception("Error requesting UserInfo: ${errorDescription ?: error}")
+        } ?: throw Exception("Error requesting UserInfo: ${this?.errorDescription ?: this?.error}")
     }.onSuccessUserInfo {
         this
     }

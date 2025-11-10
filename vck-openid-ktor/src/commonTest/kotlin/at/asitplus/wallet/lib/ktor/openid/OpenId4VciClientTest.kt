@@ -56,7 +56,6 @@ import de.infix.testBalloon.framework.core.testSuite
 import io.github.aakira.napier.Napier
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldBeSingleton
-import io.kotest.matchers.collections.shouldEndWith
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf

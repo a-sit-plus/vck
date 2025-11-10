@@ -211,9 +211,10 @@ class SimpleAuthorizationService(
     suspend fun credentialOfferWithPreAuthnForUser(
         user: OidcUserInfoExtended,
         credentialIssuer: String,
+        configurationIds: Collection<String> = this.strategy.allCredentialIdentifier(),
     ): CredentialOffer = CredentialOffer(
         credentialIssuer = credentialIssuer,
-        configurationIds = strategy.allCredentialIdentifier(),
+        configurationIds = configurationIds.ifEmpty { strategy.allCredentialIdentifier() },
         grants = CredentialOfferGrants(
             preAuthorizedCode = CredentialOfferGrantsPreAuthCode(
                 preAuthorizedCode = providePreAuthorizedCode(user),
