@@ -12,21 +12,16 @@ import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
-import at.asitplus.signum.indispensable.josef.JweAlgorithm
-import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
-import at.asitplus.wallet.lib.jws.EncryptJwe
-import at.asitplus.wallet.lib.jws.EncryptJweFun
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oauth2.RequestInfo
-import at.asitplus.wallet.lib.oauth2.TokenVerificationService
 import at.asitplus.wallet.lib.oidvci.CredentialSchemeMapping.decodeFromCredentialIdentifier
 import at.asitplus.wallet.lib.oidvci.CredentialSchemeMapping.toSupportedCredentialFormat
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
@@ -64,30 +59,15 @@ class CredentialIssuer(
     private val nonceEndpointPath: String = "/nonce",
     /** Turn on to require key attestation support in the [metadata]. */
     private val requireKeyAttestation: Boolean = false,
-    @Deprecated("Use [encryptionService] instead")
-    private val encryptCredentialRequest: EncryptJweFun = EncryptJwe(EphemeralKeyWithoutCert()),
-    @Deprecated("Use [encryptionService] instead")
-    private val requireEncryption: Boolean = false,
-    @Deprecated("Use [encryptionService] instead")
-    private val supportedJweAlgorithms: Set<JweAlgorithm> = setOf(JweAlgorithm.ECDH_ES),
-    @Deprecated("Use [encryptionService] instead")
-    private val supportedJweEncryptionAlgorithms: Set<JweEncryption> = setOf(JweEncryption.A256GCM),
     /** Used to verify proof of posession of key material in credential requests. */
     private val proofValidator: ProofValidator = ProofValidator(
         publicContext = publicContext,
         requireKeyAttestation = requireKeyAttestation,
     ),
-    @Suppress("DEPRECATION") @Deprecated("[OAuth2AuthorizationServerAdapter] is been used now, which validates tokens")
-    private val tokenVerificationService: TokenVerificationService = authorizationService.tokenVerificationService,
     /** Used to provide signed metadata in [signedMetadata]. */
     private val signMetadata: SignJwtFun<IssuerMetadata> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk()),
     /** Handles credential request decryption and credential response encryption. */
-    private val encryptionService: IssuerEncryptionService = IssuerEncryptionService(
-        encryptCredentialResponse = encryptCredentialRequest, // yes, that name was wrong
-        supportedJweAlgorithms = supportedJweAlgorithms,
-        supportedJweEncryptionAlgorithms = supportedJweEncryptionAlgorithms,
-        requireResponseEncryption = requireEncryption
-    ),
+    private val encryptionService: IssuerEncryptionService = IssuerEncryptionService(),
 ) {
 
     private val supportedCredentialConfigurations = credentialSchemes
@@ -155,13 +135,6 @@ class CredentialIssuer(
             jsonWebKeySet = JsonWebKeySet(keyMaterial.map { it.jsonWebKey }.toSet())
         )
     }
-
-    /**
-     * Provides a fresh nonce to the clients, for incorporating them into the credential proofs.
-     * Requests from the client are HTTP POST.
-     */
-    @Deprecated("Use [nonceWithDpopNonce] instead", ReplaceWith("nonceWithDpopNonce()"))
-    suspend fun nonce(): KmmResult<ClientNonceResponse> = catching { proofValidator.nonce() }
 
     /**
      * Provides a fresh nonce for credential proofs and a DPoP nonce for DPoP proofs.

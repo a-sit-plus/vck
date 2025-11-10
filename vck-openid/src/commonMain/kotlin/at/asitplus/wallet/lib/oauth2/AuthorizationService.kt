@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.oauth2
 
 
 import at.asitplus.KmmResult
-import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenIntrospectionRequest
@@ -20,26 +19,6 @@ import kotlinx.serialization.json.JsonObject
  * [at.asitplus.wallet.lib.oidvci.CredentialIssuer].
  */
 interface AuthorizationService {
-
-    @Deprecated(
-        "Use par with RequestInfo instead",
-        ReplaceWith("par(input, RequestInfo(clientAttestation = clientAttestation, clientAttestationPop = clientAttestationPop))")
-    )
-    suspend fun par(
-        input: String,
-        clientAttestation: String? = null,
-        clientAttestationPop: String? = null,
-    ): KmmResult<PushedAuthenticationResponseParameters>
-
-    @Deprecated(
-        "Use par with RequestInfo instead",
-        ReplaceWith("par(request, RequestInfo(clientAttestation = clientAttestation, clientAttestationPop = clientAttestationPop))")
-    )
-    suspend fun par(
-        request: AuthenticationRequestParameters,
-        clientAttestation: String? = null,
-        clientAttestationPop: String? = null,
-    ): KmmResult<PushedAuthenticationResponseParameters>
 
     /**
      * Pushed authorization request endpoint as defined in [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html).
@@ -71,15 +50,6 @@ interface AuthorizationService {
         request: RequestParameters,
         httpRequest: RequestInfo? = null,
     ): KmmResult<PushedAuthenticationResponseParameters>
-
-    @Deprecated(
-        "Use authorize with RequestParameters instead",
-        ReplaceWith("authorize(input, RequestInfo(loadUserFun))")
-    )
-    suspend fun authorize(
-        input: AuthenticationRequestParameters,
-        loadUserFun: OAuth2LoadUserFun,
-    ): KmmResult<AuthenticationResponseResult.Redirect>
 
     /**
      * Builds the authentication response for this specific user from [loadUserFun].

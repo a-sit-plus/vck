@@ -226,7 +226,7 @@ class SimpleAuthorizationService(
         "Use par with RequestInfo instead",
         ReplaceWith("par(input, RequestInfo(clientAttestation = clientAttestation, clientAttestationPop = clientAttestationPop))")
     )
-    override suspend fun par(
+    suspend fun par(
         input: String,
         clientAttestation: String?,
         clientAttestationPop: String?,
@@ -244,7 +244,7 @@ class SimpleAuthorizationService(
         "Use par with RequestInfo instead",
         ReplaceWith("par(request, RequestInfo(clientAttestation = clientAttestation, clientAttestationPop = clientAttestationPop))")
     )
-    override suspend fun par(
+    suspend fun par(
         request: AuthenticationRequestParameters,
         clientAttestation: String?,
         clientAttestationPop: String?,
@@ -338,7 +338,7 @@ class SimpleAuthorizationService(
         "Use authorize with RequestParameters instead",
         replaceWith = ReplaceWith("authorize(input, RequestInfo(loadUserFun))")
     )
-    override suspend fun authorize(
+    suspend fun authorize(
         input: AuthenticationRequestParameters,
         loadUserFun: OAuth2LoadUserFun,
     ) = authorize(input as RequestParameters, loadUserFun)
