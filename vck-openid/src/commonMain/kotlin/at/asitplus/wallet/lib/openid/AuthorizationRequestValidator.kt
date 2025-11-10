@@ -90,10 +90,9 @@ internal class AuthorizationRequestValidator(
                 || (this == ClientIdScheme.X509SanUri)
                 || (this == ClientIdScheme.X509Hash)
 
-    @Suppress("DEPRECATION")
     @Throws(OAuth2Exception::class)
     private fun AuthenticationRequestParameters.verifyClientMetadata() {
-        if (clientMetadata == null && clientMetadataUri == null) {
+        if (clientMetadata == null) {
             throw InvalidRequest("client_metadata is null, but client_id_scheme is redirect_uri")
         }
     }

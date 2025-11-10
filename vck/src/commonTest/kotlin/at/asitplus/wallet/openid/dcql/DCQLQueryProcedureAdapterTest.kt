@@ -64,7 +64,7 @@ val DCQLQueryProcedureAdapterTest by testSuite {
                 "credentials": [
                   {
                     "id": "pid_sd_jwt",
-                    "format": "vc+sd-jwt",
+                    "format": "dc+sd-jwt",
                     "meta": {
                       "vct_values": [
                         "AtomicAttribute2023"

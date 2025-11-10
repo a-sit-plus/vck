@@ -435,7 +435,6 @@ data class AuthenticationRequestParameters(
         if (walletNonce != other.walletNonce) return false
         if (claims != other.claims) return false
         if (clientMetadata != other.clientMetadata) return false
-        if (clientMetadataUri != other.clientMetadataUri) return false
         if (idTokenHint != other.idTokenHint) return false
         if (idTokenType != other.idTokenType) return false
         if (presentationDefinition != other.presentationDefinition) return false
@@ -485,7 +484,6 @@ data class AuthenticationRequestParameters(
         result = 31 * result + (walletNonce?.hashCode() ?: 0)
         result = 31 * result + (claims?.hashCode() ?: 0)
         result = 31 * result + (clientMetadata?.hashCode() ?: 0)
-        result = 31 * result + (clientMetadataUri?.hashCode() ?: 0)
         result = 31 * result + (idTokenHint?.hashCode() ?: 0)
         result = 31 * result + (idTokenType?.hashCode() ?: 0)
         result = 31 * result + (presentationDefinition?.hashCode() ?: 0)

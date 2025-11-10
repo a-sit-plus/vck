@@ -41,10 +41,8 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.cbor.CoseHeaderNone
-import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
 import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
-import at.asitplus.wallet.lib.cbor.SignCoseFun
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -79,20 +77,13 @@ class OpenId4VpHolder(
     private val holder: Holder = HolderAgent(keyMaterial),
     /** Signs the ID token for SIOPv2 responses. */
     private val signIdToken: SignJwtFun<IdToken> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
-    @Deprecated("Removed, as OpenID4VP 1.0 does never sign responses")
-    private val signJarm: SignJwtFun<AuthenticationResponseParameters> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     /** Encrypts the authn response to the holder using [keyMaterial], if requested. */
     private val encryptJarm: EncryptJweFun = EncryptJwe(keyMaterial),
-    @Deprecated("Removed, as OpenID4VP 1.0 does never sign responses")
-    private val signError: SignJwtFun<OAuth2Error> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     /** Advertised in [metadata] and compared against holder's requirements. */
     private val supportedAlgorithms: Set<SignatureAlgorithm> = setOf(SignatureAlgorithm.ECDSAwithSHA256),
     /** Signs the session transcript for mDoc responses. */
     private val signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> =
         SignCoseDetached(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
-    @Deprecated("Removed, as not contained in any specification")
-    private val signDeviceAuthFallback: SignCoseFun<ByteArray> =
-        SignCose(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
     /** Clock used for the signed ID token. */
     private val clock: Clock = Clock.System,
     /** Advertised as `issuer` in [metadata]. */
@@ -187,19 +178,6 @@ class OpenId4VpHolder(
         createAuthnResponse(parse(input)).getOrThrow()
     }
 
-    /**
-     * Pass in the URL sent by the Verifier (containing the [AuthenticationRequestParameters] as query parameters),
-     * to parse into [RequestParametersFrom] and [AuthenticationRequestParameters].
-     *
-     * Exceptions thrown during request parsing are caught by [KmmResult].
-     */
-    @Deprecated("Use startAuthorizationResponsePreparation() instead")
-    suspend fun parseAuthenticationRequestParameters(
-        input: String,
-    ): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> = catching {
-        parse(input)
-    }
-
     @Suppress("UNCHECKED_CAST")
     private suspend fun parse(
         input: String,
@@ -211,13 +189,12 @@ class OpenId4VpHolder(
         error: Throwable,
         request: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<AuthenticationResponseResult> = catching {
-        val clientMetadata = request.parameters.loadClientMetadata()
         authenticationResponseFactory.createAuthenticationResponse(
             request = request,
             response = AuthenticationResponse.Error(
                 error = error.toOAuth2Error(request),
-                clientMetadata = clientMetadata,
-                jsonWebKeys = clientMetadata?.loadJsonWebKeySet()?.keys,
+                clientMetadata = request.parameters.clientMetadata,
+                jsonWebKeys = request.parameters.clientMetadata?.loadJsonWebKeySet()?.keys,
             )
         )
     }
@@ -266,29 +243,14 @@ class OpenId4VpHolder(
         params: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<AuthorizationResponsePreparationState> = catching {
         authorizationRequestValidator.validateAuthorizationRequest(params)
-        val clientMetadata = params.parameters.loadClientMetadata()
         AuthorizationResponsePreparationState(
             request = params,
             credentialPresentationRequest = params.parameters.loadCredentialRequest(),
-            clientMetadata = clientMetadata,
-            jsonWebKeys = clientMetadata?.loadJsonWebKeySet()?.keys,
+            clientMetadata = params.parameters.clientMetadata,
+            jsonWebKeys = params.parameters.clientMetadata?.loadJsonWebKeySet()?.keys,
             requestObjectVerified = (params as? RequestParametersFrom.JwsSigned)?.verified,
             verifierInfo = params.parameters.verifierInfo
         )
-    }
-
-    @Suppress("DEPRECATION")
-    @Deprecated("Use finalizeAuthorizationResponse with AuthorizationResponsePreparationState")
-    suspend fun finalizeAuthorizationResponse(
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
-        clientMetadata: RelyingPartyMetadata?,
-        credentialPresentation: CredentialPresentation?,
-    ): KmmResult<AuthenticationResponseResult> = finalizeAuthorizationResponseParameters(
-        request = request,
-        clientMetadata = clientMetadata,
-        credentialPresentation = credentialPresentation
-    ).map {
-        authenticationResponseFactory.createAuthenticationResponse(request, it)
     }
 
     /**
@@ -307,18 +269,6 @@ class OpenId4VpHolder(
         }.let {
             authenticationResponseFactory.createAuthenticationResponse(preparationState.request, it)
         }
-    }
-
-    @Deprecated("Use finalizeAuthorizationResponseParameters with AuthorizationResponsePreparationState")
-    suspend fun finalizeAuthorizationResponseParameters(
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
-        clientMetadata: RelyingPartyMetadata?,
-        credentialPresentation: CredentialPresentation?,
-    ): KmmResult<AuthenticationResponse> = catching {
-        finalizeAuthorizationResponseParameters(
-            state = startAuthorizationResponsePreparation(request).getOrThrow(),
-            credentialPresentation = credentialPresentation
-        ).getOrThrow()
     }
 
     /**
@@ -459,9 +409,7 @@ class OpenId4VpHolder(
 
     @Suppress("DEPRECATION")
     private suspend fun AuthenticationRequestParameters.loadClientMetadata(): RelyingPartyMetadata? =
-        clientMetadata ?: clientMetadataUri
-            ?.let { remoteResourceRetriever(RemoteResourceRetrieverInput(it)) }
-            ?.let { joseCompliantSerializer.decodeFromString(it) }
+        clientMetadata
 
 }
 

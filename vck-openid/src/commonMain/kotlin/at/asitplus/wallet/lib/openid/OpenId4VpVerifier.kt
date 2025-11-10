@@ -153,18 +153,11 @@ class OpenId4VpVerifier(
     /**
      * Creates the [at.asitplus.openid.RelyingPartyMetadata], without encryption (see [metadataWithEncryption])
      */
-    @Suppress("DEPRECATION")
     val metadata by lazy {
         RelyingPartyMetadata(
             redirectUris = listOfNotNull((clientIdScheme as? ClientIdScheme.RedirectUri)?.redirectUri),
             jsonWebKeySet = JsonWebKeySet(listOf(decryptionKeyMaterial.publicKey.toJsonWebKey())),
             authorizationSignedResponseAlgString = supportedSignatureVerificationAlgorithm,
-            vpFormats = FormatHolder(
-                msoMdoc = containerJwt,
-                jwtVp = containerJwt,
-                jwtSd = containerSdJwt,
-                sdJwt = containerSdJwt
-            ),
             vpFormatsSupported = VpFormatsSupported(
                 vcJwt = SupportedAlgorithmsContainerJwt(
                     algorithmStrings = supportedJwsAlgorithms.toSet()
@@ -359,7 +352,7 @@ class OpenId4VpVerifier(
         requestObjectParameters: RequestObjectParameters? = null,
     ) = requestOptions.toAuthnRequest(requestObjectParameters)
 
-    @Suppress("DEPRECATION")
+
     private suspend fun RequestOptions.toAuthnRequest(
         requestObjectParameters: RequestObjectParameters?,
     ): AuthenticationRequestParameters = AuthenticationRequestParameters(
@@ -372,7 +365,6 @@ class OpenId4VpVerifier(
         nonce = nonceService.provideNonce(),
         walletNonce = requestObjectParameters?.walletNonce,
         clientMetadata = clientMetadata(this),
-        clientMetadataUri = clientMetadataUrl,
         idTokenType = if (isSiop) IdTokenType.SUBJECT_SIGNED.text else null,
         responseMode = responseMode,
         state = state,
@@ -393,14 +385,15 @@ class OpenId4VpVerifier(
         authenticationRequestParameters,
     )
 
-    // OpenID4VP: Metadata MUST be passed as parameter if client_id_scheme is "redirect_uri"
-    @Suppress("DEPRECATION")
-    private fun clientMetadata(options: RequestOptions): RelyingPartyMetadata? =
-        if (options.clientMetadataUrl != null && clientIdScheme !is ClientIdScheme.RedirectUri) {
-            null
-        } else {
+    private fun clientMetadata(options: RequestOptions): RelyingPartyMetadata? = when (clientIdScheme) {
+        is ClientIdScheme.RedirectUri,
+        is ClientIdScheme.VerifierAttestation,
+        is ClientIdScheme.CertificateSanDns,
+        is ClientIdScheme.CertificateHash ->
             if (options.encryption || options.responseMode.requiresEncryption) metadataWithEncryption else metadata
-        }
+
+        else -> null
+    }
 
     /**
      * Validates an Authentication Response from the Wallet, where [input] is a map of POST parameters received.
@@ -565,17 +558,9 @@ class OpenId4VpVerifier(
     }
 
     private fun CredentialFormatEnum.toClaimFormat(): ClaimFormat = when (this) {
-        CredentialFormatEnum.JWT_VC,
-            -> ClaimFormat.JWT_VP
-
-        @Suppress("DEPRECATION")
-        CredentialFormatEnum.VC_SD_JWT,
-        CredentialFormatEnum.DC_SD_JWT,
-            -> ClaimFormat.SD_JWT
-
-        CredentialFormatEnum.MSO_MDOC,
-            -> ClaimFormat.MSO_MDOC
-
+        CredentialFormatEnum.JWT_VC -> ClaimFormat.JWT_VP
+        CredentialFormatEnum.DC_SD_JWT -> ClaimFormat.SD_JWT
+        CredentialFormatEnum.MSO_MDOC -> ClaimFormat.MSO_MDOC
         CredentialFormatEnum.NONE,
         CredentialFormatEnum.JWT_VC_JSON_LD,
         CredentialFormatEnum.JSON_LD,
@@ -591,7 +576,6 @@ class OpenId4VpVerifier(
      * [OpenID for VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html),
      * as referenced by [OpenID for VP](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html).
      */
-    @Suppress("DEPRECATION")
     private suspend fun verifyPresentationResult(
         claimFormat: ClaimFormat,
         relatedPresentation: JsonElement,
@@ -601,7 +585,7 @@ class OpenId4VpVerifier(
         responseUrl: String?,
         transactionData: List<TransactionDataBase64Url>?,
     ) = when (claimFormat) {
-        ClaimFormat.JWT_SD, ClaimFormat.SD_JWT -> verifier.verifyPresentationSdJwt(
+        ClaimFormat.SD_JWT -> verifier.verifyPresentationSdJwt(
             input = SdJwtSigned.parseCatching(relatedPresentation.extractContent()).getOrElse {
                 throw IllegalArgumentException("relatedPresentation")
             },

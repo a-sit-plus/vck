@@ -21,9 +21,7 @@ fun CredentialRepresentation.toFormat(): CredentialFormatEnum = when (this) {
     CredentialRepresentation.ISO_MDOC -> CredentialFormatEnum.MSO_MDOC
 }
 
-@Suppress("DEPRECATION")
 fun CredentialFormatEnum.toRepresentation() = when (this) {
-    CredentialFormatEnum.VC_SD_JWT -> CredentialRepresentation.SD_JWT
     CredentialFormatEnum.DC_SD_JWT -> CredentialRepresentation.SD_JWT
     CredentialFormatEnum.MSO_MDOC -> CredentialRepresentation.ISO_MDOC
     else -> CredentialRepresentation.PLAIN_JWT
