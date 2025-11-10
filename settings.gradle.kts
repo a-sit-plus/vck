@@ -2,7 +2,7 @@ import org.tomlj.Toml
 import org.tomlj.TomlParseResult
 import java.io.FileInputStream
 import java.util.*
-
+System.setProperty("TESTBALLOON_NO_ASP_HELPER", "false")
 pluginManagement {
     includeBuild("conventions-vclib")
     repositories {

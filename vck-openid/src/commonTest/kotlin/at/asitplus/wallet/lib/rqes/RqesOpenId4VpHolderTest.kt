@@ -21,9 +21,9 @@ import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.rqes.helper.DummyValueProvider
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.TestConfig
-import de.infix.testBalloon.framework.aroundEach
-import de.infix.testBalloon.framework.testSuite
+import de.infix.testBalloon.framework.core.TestConfig
+import de.infix.testBalloon.framework.core.aroundEach
+import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.engine.runBlocking
 import io.kotest.matchers.nulls.shouldNotBeNull

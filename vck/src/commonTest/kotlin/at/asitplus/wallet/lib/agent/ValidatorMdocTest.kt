@@ -12,9 +12,9 @@ import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import de.infix.testBalloon.framework.TestExecutionScope
-import de.infix.testBalloon.framework.TestSuite
-import de.infix.testBalloon.framework.testSuite
+import de.infix.testBalloon.framework.core.TestExecutionScope
+import de.infix.testBalloon.framework.core.TestSuite
+import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlin.random.Random
@@ -65,11 +65,6 @@ private data class Config(
             )
         }
     }
-}
-
-context(suite: TestSuite)
-private fun String.withConfig(config: Config, nested: suspend TestExecutionScope.(Config) -> Unit) {
-    this.invoke { nested(config) }
 }
 
 val ValidatorMdocTest by testSuite {

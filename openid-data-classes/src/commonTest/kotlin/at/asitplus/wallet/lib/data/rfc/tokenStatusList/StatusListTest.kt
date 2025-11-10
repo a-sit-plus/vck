@@ -4,7 +4,7 @@ import at.asitplus.testballoon.minus
 import at.asitplus.testballoon.withData
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBitSize
-import de.infix.testBalloon.framework.testSuite
+import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe
 
 @OptIn(ExperimentalUnsignedTypes::class)

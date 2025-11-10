@@ -1,4 +1,4 @@
-import de.infix.testBalloon.framework.TestSession
+import de.infix.testBalloon.framework.core.TestSession
 import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
 

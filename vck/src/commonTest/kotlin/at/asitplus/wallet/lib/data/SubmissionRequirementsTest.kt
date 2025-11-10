@@ -4,7 +4,7 @@ import at.asitplus.dif.SubmissionRequirement
 import at.asitplus.dif.SubmissionRequirementRuleEnum
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.minus
-import de.infix.testBalloon.framework.testSuite
+import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe
 
 val SubmissionRequirementsTest by testSuite {
