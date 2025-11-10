@@ -169,6 +169,7 @@ data class SupportedCredentialFormat private constructor(
             supportedBindingMethods: Set<String>? = null,
             supportedProofTypes: Map<String, CredentialRequestProofSupported>? = null,
             credentialDefinition: SupportedCredentialFormatDefinition,
+            vcJwtClaims: Set<ClaimDescription>,
             display: Set<DisplayProperties>? = null,
         ) = SupportedCredentialFormat(
             format = format,
@@ -176,9 +177,10 @@ data class SupportedCredentialFormat private constructor(
             supportedBindingMethods = supportedBindingMethods,
             supportedProofTypes = supportedProofTypes,
             credentialDefinition = credentialDefinition,
-            credentialMetadata = display?.let {
-                CredentialMetadata(display = display)
-            }
+            credentialMetadata = CredentialMetadata(
+                claimDescription = vcJwtClaims,
+                display = display,
+            )
         )
 
     }

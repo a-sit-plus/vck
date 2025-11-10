@@ -16,7 +16,7 @@ data class SupportedAlgorithmsContainer(
      * context-specific, e.g. `EdDSA` and `ES256`.
      */
     @SerialName("alg_values_supported")
-    val supportedAlgorithmsStrings: Set<String>,
+    val supportedAlgorithmsStrings: Set<String>? = null,
 
     /**
      * OID4VCI: REQUIRED. Array containing a list of the JWE (RFC7516) encryption algorithms (enc values) (RFC7518)
@@ -32,7 +32,7 @@ data class SupportedAlgorithmsContainer(
      * every Credential Response and therefore the Wallet MUST provide encryption keys in the Credential Request.
      * If the value is `false`, the Wallet MAY choose whether it provides encryption keys or not.
      */
-    @SerialName("encryption_required")
+    @SerialName("encryption_required") // TODO make this non-optional?!
     val encryptionRequired: Boolean? = null,
 
     /**
@@ -52,8 +52,8 @@ data class SupportedAlgorithmsContainer(
      * context-specific, e.g. `EdDSA` and `ES256`.
      */
     @Transient
-    val supportedAlgorithms: Set<JsonWebAlgorithm> = supportedAlgorithmsStrings
-        .mapNotNull { s -> JsonWebAlgorithm.entries.firstOrNull { it.identifier == s } }.toSet()
+    val supportedAlgorithms: Set<JsonWebAlgorithm>? = supportedAlgorithmsStrings
+        ?.mapNotNull { s -> JsonWebAlgorithm.entries.firstOrNull { it.identifier == s } }?.toSet()
 
     /**
      * OID4VCI: REQUIRED. Array containing a list of the JWE (RFC7516) encryption algorithms (enc values) (RFC7518)

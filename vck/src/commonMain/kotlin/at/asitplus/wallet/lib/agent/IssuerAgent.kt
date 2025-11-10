@@ -38,6 +38,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 
 /**
@@ -68,9 +69,9 @@ class IssuerAgent(
         credential: CredentialToBeIssued,
     ): KmmResult<Issuer.IssuedCredential> = catching {
         when (credential) {
-            is CredentialToBeIssued.Iso -> issueMdoc(credential, clock.now())
-            is CredentialToBeIssued.VcJwt -> issueVc(credential, clock.now())
-            is CredentialToBeIssued.VcSd -> issueVcSd(credential, clock.now())
+            is CredentialToBeIssued.Iso -> issueMdoc(credential, clock.now().minus(3.minutes))
+            is CredentialToBeIssued.VcJwt -> issueVc(credential, clock.now().minus(3.minutes))
+            is CredentialToBeIssued.VcSd -> issueVcSd(credential, clock.now().minus(3.minutes))
         }
     }
 

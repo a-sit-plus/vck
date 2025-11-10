@@ -61,7 +61,7 @@ fun OAuth2Error?.dpopNonce(response: HttpResponse) = runCatching {
     authorizationServerProvidedNonce(response)
         ?: resourceServerProvidedNonce(response)
 }.getOrNull()
-
+// todo need to handle "wrong nonce"?
 /** [RFC 9449 8.](https://datatracker.ietf.org/doc/html/rfc9449#name-authorization-server-provid) */
 private fun OAuth2Error?.authorizationServerProvidedNonce(response: HttpResponse): String? =
     this?.error.takeIf { it == USE_DPOP_NONCE }?.let { response.headers[HttpHeaders.DPoPNonce] }

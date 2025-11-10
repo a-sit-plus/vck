@@ -181,7 +181,7 @@ class EncryptJwe(
         val jweEncryption = header.encryption
             ?: throw IllegalArgumentException("No encryption in JWE header")
         val jweHeader = header.copy(
-            jsonWebKey = keyMaterial.jsonWebKey,
+            //TODO this seems wrong, should be the key of the recipient! jsonWebKey = keyMaterial.jsonWebKey,
             ephemeralKeyPair = ephemeralKeyPair.publicValue.asCryptoPublicKey().toJsonWebKey()
         )
         JweUtils.encryptJwe(ephemeralKeyPair, recipientKey, jweEncryption, jweHeader, payload)

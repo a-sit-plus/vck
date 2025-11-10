@@ -18,7 +18,7 @@ data class CredentialResponseEncryption(
      * OID4VCI: REQUIRED. JWE (RFC7516) `alg` algorithm (RFC7518) for encrypting Credential Responses.
      */
     @SerialName("alg")
-    val jweAlgorithm: JweAlgorithm,
+    val jweAlgorithm: JweAlgorithm? = null,
 
     /**
      * OID4VCI: REQUIRED. JWE (RFC7516) `enc` algorithm (RFC7518) for encrypting Credential Responses.

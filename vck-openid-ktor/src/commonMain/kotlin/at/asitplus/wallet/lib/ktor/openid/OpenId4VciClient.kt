@@ -271,7 +271,7 @@ class OpenId4VciClient(
                 tokenResponse = tokenResponse,
                 credentialFormat = credentialFormat,
                 credentialScheme = credentialScheme,
-                dpopNonce = dpopNonce
+                dpopNonce = dpopNonce ?: tokenResponse.dpopNonce,
             )
         }
         return CredentialIssuanceResult.Success(

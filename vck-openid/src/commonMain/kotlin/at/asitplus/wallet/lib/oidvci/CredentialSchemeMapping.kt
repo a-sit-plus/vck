@@ -49,9 +49,11 @@ object CredentialSchemeMapping {
                     scope = this,
                     credentialDefinition = SupportedCredentialFormatDefinition(
                         types = setOf(VcDataModelConstants.VERIFIABLE_CREDENTIAL, vcType!!),
-                        credentialSubject = claimNames.associateWith { CredentialSubjectMetadataSingle() }
                     ),
                     supportedBindingMethods = setOf(BINDING_METHOD_JWK, URN_TYPE_JWK_THUMBPRINT),
+                    vcJwtClaims = claimNames.map {
+                        ClaimDescription(path = it.split("."))
+                    }.toSet()
                 )
             }
         } else null
