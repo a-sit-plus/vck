@@ -150,17 +150,14 @@ object OpenIdConstants {
             private const val STRING_PRE_REGISTERED = "pre-registered"
             private const val STRING_REDIRECT_URI = "redirect_uri"
             private const val STRING_X509_SAN_DNS = "x509_san_dns"
-            private const val STRING_X509_SAN_URI = "x509_san_uri"
             private const val STRING_X509_HASH = "x509_hash"
             private const val STRING_ENTITY_ID = "entity_id"
             private const val STRING_DID = "did"
             private const val STRING_VERIFIER_ATTESTATION = "verifier_attestation"
 
-            @Suppress("DEPRECATION")
             fun decodeFromClientId(clientId: String) = when (clientId.substringBefore(":")) {
                 STRING_REDIRECT_URI -> RedirectUri
                 STRING_X509_SAN_DNS -> X509SanDns
-                STRING_X509_SAN_URI -> X509SanUri
                 STRING_X509_HASH -> X509Hash
                 STRING_ENTITY_ID -> EntityId
                 STRING_DID -> Did
@@ -200,20 +197,6 @@ object OpenIdConstants {
          * Client Identifier.
          */
         object X509SanDns : ClientIdScheme(STRING_X509_SAN_DNS)
-
-        /**
-         * When the Client Identifier Scheme is `x509_san_uri`, the Client Identifier MUST be a URI and match a
-         * `uniformResourceIdentifier` Subject Alternative Name (SAN) RFC5280 entry in the leaf certificate passed with
-         * the request. The request MUST be signed with the private key corresponding to the public key in the leaf
-         * X.509 certificate of the certificate chain added to the request in the `x5c` JOSE header RFC7515 of the
-         * signed request object. The Wallet MUST validate the signature and the trust chain of the X.509 certificate.
-         * All Verifier metadata other than the public key MUST be obtained from the `client_metadata` parameter. If
-         * the Wallet can establish trust in the Client Identifier authenticated through the certificate, e.g. because
-         * the Client Identifier is contained in a list of trusted Client Identifiers, it may allow the client to
-         * freely choose the `redirect_uri` value. If not, the `redirect_uri` value MUST match the Client Identifier.
-         */
-        @Deprecated("Removed in OpenID4VP Draft 25")
-        object X509SanUri : ClientIdScheme(STRING_X509_SAN_URI)
 
         /**
          * When the Client Identifier Prefix is `x509_hash`, the original Client Identifier (the part without the
@@ -272,12 +255,10 @@ object OpenIdConstants {
         object Serializer : KSerializer<ClientIdScheme> {
             override val descriptor = PrimitiveSerialDescriptor("ClientIdScheme", PrimitiveKind.STRING)
 
-            @Suppress("DEPRECATION")
             override fun deserialize(decoder: Decoder): ClientIdScheme = when (val string = decoder.decodeString()) {
                 STRING_PRE_REGISTERED -> PreRegistered
                 STRING_REDIRECT_URI -> RedirectUri
                 STRING_X509_SAN_DNS -> X509SanDns
-                STRING_X509_SAN_URI -> X509SanUri
                 STRING_X509_HASH -> X509Hash
                 STRING_ENTITY_ID -> EntityId
                 STRING_DID -> Did

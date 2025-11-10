@@ -19,6 +19,7 @@ Release 5.10.0 (Unreleased):
    - Use correct syntax for `vp_token` in responses to DCQL queries, i.e., with an array
    - Drop session transcript implementation from ISO/IEC 18013-7:2024 Annex B, which was pre-OpenID4VP 1.0
    - Remove deprecated format identifier `vc+sd-jwt` (now `dc+sd-jwt`)
+   - Remove deprecated client identifier prefix scheme `x509_san_uri`
 
 Release 5.9.0
  - Refactor `RqesWalletService` to be stateless

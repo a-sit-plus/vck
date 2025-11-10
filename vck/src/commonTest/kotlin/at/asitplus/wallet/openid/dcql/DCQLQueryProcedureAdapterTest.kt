@@ -53,7 +53,6 @@ val DCQLQueryProcedureAdapterTest by testSuite {
               {
                 "credential_sets": [
                   {
-                    "purpose": "To obtain e-prescription, we need to verify your identity.",
                     "options": [
                       [
                         "pid_sd_jwt"
