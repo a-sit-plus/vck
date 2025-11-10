@@ -6,7 +6,6 @@ import at.asitplus.catchingUnwrapped
 import at.asitplus.dif.ClaimFormat
 import at.asitplus.dif.FormatContainerJwt
 import at.asitplus.dif.FormatContainerSdJwt
-import at.asitplus.dif.FormatHolder
 import at.asitplus.dif.PresentationSubmissionDescriptor
 import at.asitplus.iso.DeviceAuthentication
 import at.asitplus.iso.DeviceResponse
@@ -364,7 +363,7 @@ class OpenId4VpVerifier(
         scope = if (isSiop) buildScope() else null,
         nonce = nonceService.provideNonce(),
         walletNonce = requestObjectParameters?.walletNonce,
-        clientMetadata = clientMetadata(this),
+        clientMetadata = clientMetadata(),
         idTokenType = if (isSiop) IdTokenType.SUBJECT_SIGNED.text else null,
         responseMode = responseMode,
         state = state,
@@ -385,12 +384,12 @@ class OpenId4VpVerifier(
         authenticationRequestParameters,
     )
 
-    private fun clientMetadata(options: RequestOptions): RelyingPartyMetadata? = when (clientIdScheme) {
+    private fun RequestOptions.clientMetadata(): RelyingPartyMetadata? = when (clientIdScheme) {
         is ClientIdScheme.RedirectUri,
         is ClientIdScheme.VerifierAttestation,
         is ClientIdScheme.CertificateSanDns,
         is ClientIdScheme.CertificateHash ->
-            if (options.encryption || options.responseMode.requiresEncryption) metadataWithEncryption else metadata
+            if (encryption || responseMode.requiresEncryption) metadataWithEncryption else metadata
 
         else -> null
     }

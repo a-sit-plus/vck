@@ -106,7 +106,13 @@ class OpenId4VpHolder(
     private val walletNonceMapStore: MapStore<String, String> = DefaultMapStore(),
     /** Source for random bytes, i.e., nonces for encrypted responses. */
     private val randomSource: RandomSource = RandomSource.Secure,
+    /** Callback to load encryption keys for pre-registered clients. */
+    private val lookupJsonWebKeysForClient: (JsonWebKeyLookupInput) -> JsonWebKeySet? = { null }
 ) {
+
+    data class JsonWebKeyLookupInput(
+        val clientId: String?
+    )
 
     private val supportedJwsAlgorithms = supportedAlgorithms
         .mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }
@@ -194,7 +200,8 @@ class OpenId4VpHolder(
             response = AuthenticationResponse.Error(
                 error = error.toOAuth2Error(request),
                 clientMetadata = request.parameters.clientMetadata,
-                jsonWebKeys = request.parameters.clientMetadata?.loadJsonWebKeySet()?.keys,
+                jsonWebKeys = request.parameters.clientMetadata?.loadJsonWebKeySet()?.keys
+                    ?: lookupJsonWebKeysForClient(JsonWebKeyLookupInput(request.parameters.clientId))?.keys,
             )
         )
     }
@@ -247,7 +254,8 @@ class OpenId4VpHolder(
             request = params,
             credentialPresentationRequest = params.parameters.loadCredentialRequest(),
             clientMetadata = params.parameters.clientMetadata,
-            jsonWebKeys = params.parameters.clientMetadata?.loadJsonWebKeySet()?.keys,
+            jsonWebKeys = params.parameters.clientMetadata?.loadJsonWebKeySet()?.keys
+                ?: lookupJsonWebKeysForClient(JsonWebKeyLookupInput(params.parameters.clientId))?.keys,
             requestObjectVerified = (params as? RequestParametersFrom.JwsSigned)?.verified,
             verifierInfo = params.parameters.verifierInfo
         )
@@ -284,6 +292,7 @@ class OpenId4VpHolder(
         with(state) {
             val audience = request.extractAudience(jsonWebKeys)
             val jsonWebKeys = jsonWebKeys?.combine(request.extractLeafCertKey())
+                ?: lookupJsonWebKeysForClient(JsonWebKeyLookupInput(request.parameters.clientId))?.keys
             val idToken = presentationFactory.createSignedIdToken(clock, keyMaterial.publicKey, request)
                 .getOrNull()?.serialize()
             val presentation = credentialPresentation ?: credentialPresentationRequest?.toCredentialPresentation()
@@ -406,10 +415,6 @@ class OpenId4VpHolder(
         presentationDefinition ?: presentationDefinitionUrl
             ?.let { remoteResourceRetriever(RemoteResourceRetrieverInput(it)) }
             ?.let { vckJsonSerializer.decodeFromString(it) }
-
-    @Suppress("DEPRECATION")
-    private suspend fun AuthenticationRequestParameters.loadClientMetadata(): RelyingPartyMetadata? =
-        clientMetadata
 
 }
 
