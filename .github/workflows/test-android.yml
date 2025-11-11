@@ -34,8 +34,24 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      - name: Android Host Test
-        run: ./gradlew testAndroidHostTest
+      - name: Accept Android SDK licences
+        run: yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses
+      - name: Add ADB to Path
+        run: echo "${ANDROID_HOME}/platform-tools" >> "$GITHUB_PATH"
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Connected Check
+        run: |
+          # start logcat in the background
+          adb start-server
+          adb devices                                # makes sure the daemon is up
+          (for i in {1..10}; do adb logcat -v time || true; done) &
+          LOGCAT_PID=$!
+          ./gradlew pixelAVDAndroidDeviceTest --info --stacktrace
+          killall -9 adb || true
       - name: Test Report
         uses: dorny/test-reporter@v2
         env:
@@ -43,7 +59,7 @@ jobs:
         if: success() || failure()
         with:
           name: Android Device Tests
-          path: '**/build/reports/tests/testAndroidHostTest/**/TEST*.xml'
+          path: '**/build/outputs/androidTest-results/managedDevice/androidmain/**/TEST*.xml'
           reporter: java-junit
           list-suites: failed
           list-tests: failed
