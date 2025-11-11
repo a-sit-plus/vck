@@ -111,7 +111,7 @@ fun KotlinMultiplatformExtension.vckAndroid(minSdkOverride: Int? = null) {
             sourceSetTreeName = "test"
         }.configure {
             instrumentationRunnerArguments["timeout_msec"] = "2400000"
-            instrumentationRunnerArguments["TESTBALLOON_REPORTING_PATH_LIMIT"] = "600"
+            instrumentationRunnerArguments["TESTBALLOON_REPORTING_PATH_LIMIT"] = "300"
             managedDevices {
                 localDevices {
                     create("pixelAVD").apply {
