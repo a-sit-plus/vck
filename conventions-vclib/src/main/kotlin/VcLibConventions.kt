@@ -3,7 +3,6 @@
 package at.asitplus.gradle
 
 import VcLibVersions
-import at.asitplus.gradle.at.asitplus.gradle.addTestExtensions
 import com.android.build.api.dsl.androidLibrary
 import com.android.build.api.variant.KotlinMultiplatformAndroidComponentsExtension
 import org.gradle.api.Project
@@ -11,7 +10,6 @@ import org.gradle.api.artifacts.VersionCatalog
 import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.tasks.testing.Test
 import org.gradle.kotlin.dsl.getByType
-import org.gradle.kotlin.dsl.invoke
 import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
@@ -76,6 +74,12 @@ class VcLibConventions : K2Conventions() {
                 }
                 tasks.withType<Test>().configureEach {
                     maxHeapSize = "8G"
+                    useJUnitPlatform {
+                        reports {
+
+                            this.
+                            junitXml.required.set(true); html.required.set(true) }
+                    }
                 }
             }
         }
@@ -107,20 +111,8 @@ fun KotlinMultiplatformExtension.vckAndroid(minSdkOverride: Int? = null) {
         }
         compileSdk = project.androidCompileSdk
 
-        withDeviceTestBuilder {
+        withHostTestBuilder {
             sourceSetTreeName = "test"
-        }.configure {
-            instrumentationRunnerArguments["timeout_msec"] = "2400000"
-            instrumentationRunnerArguments["TESTBALLOON_REPORTING_PATH_LIMIT"] = "400"
-            managedDevices {
-                localDevices {
-                    create("pixelAVD").apply {
-                        device = "Pixel 4"
-                        apiLevel = 35
-                        systemImageSource = "aosp-atd"
-                    }
-                }
-            }
         }
         packaging {
             listOf(
@@ -141,15 +133,15 @@ fun KotlinMultiplatformExtension.vckAndroid(minSdkOverride: Int? = null) {
         }
     }
     sourceSets.whenObjectAdded {
-        if (this.name == "androidDeviceTest") {
+        if (this.name == "androidHostTest") {
             dependencies {
-                implementation("de.infix.testBalloon:testBalloon-framework-core:${project.AspVersions.testballoon}")
+                implementation("de.infix.testBalloon:testBalloon-framework-core-jvm:${project.AspVersions.testballoon}")
                 implementation("androidx.test:runner:${project.AspVersions.androidTestRunner}")
             }
         }
     }
-    sourceSets.findByName("androidDeviceTest")?.dependencies {
-        implementation("de.infix.testBalloon:testBalloon-framework-core:${project.AspVersions.testballoon}")
+    sourceSets.findByName("androidHostTest")?.dependencies {
+        implementation("de.infix.testBalloon:testBalloon-framework-core-jvm:${project.AspVersions.testballoon}")
         implementation("androidx.test:runner:${project.AspVersions.androidTestRunner}")
     }
     project.extensions.getByType<KotlinMultiplatformAndroidComponentsExtension>().apply {
