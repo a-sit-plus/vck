@@ -50,7 +50,7 @@ jobs:
           adb devices                                # makes sure the daemon is up
           (for i in {1..10}; do adb logcat -v time || true; done) &
           LOGCAT_PID=$!
-          ./gradlew pixelAVDAndroidDeviceTest
+          ./gradlew pixelAVDAndroidDeviceTest --info --stacktrace
           killall -9 adb || true
       - name: Test Report
         uses: dorny/test-reporter@v2
