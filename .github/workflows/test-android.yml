@@ -44,14 +44,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - name: Connected Check
-        run: |
-          # start logcat in the background
-          adb start-server
-          adb devices                                # makes sure the daemon is up
-          (for i in {1..10}; do adb logcat -v time || true; done) &
-          LOGCAT_PID=$!
-          ./gradlew pixelAVDAndroidDeviceTest --info --stacktrace
-          killall -9 adb || true
+        run: ./gradlew pixelAVDAndroidDeviceTest --info --stacktrace
       - name: Test Report
         uses: dorny/test-reporter@v2
         env:
