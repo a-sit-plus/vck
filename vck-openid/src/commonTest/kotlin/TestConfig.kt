@@ -3,7 +3,6 @@ import de.infix.testBalloon.framework.core.TestSession
 import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
 
-internal expect val testNameLimit: Int
 
 class TestConfig : TestSession() {
     init {
@@ -11,6 +10,6 @@ class TestConfig : TestSession() {
         Napier.base(DebugAntilog())
         at.asitplus.wallet.eupid.Initializer.initWithVCK()
         at.asitplus.wallet.mdl.Initializer.initWithVCK()
-        FreeSpec.maxLength=testNameLimit //work around Android test name length limit
+        FreeSpec.maxLength = 5 //work around Android test name length limit
     }
 }
