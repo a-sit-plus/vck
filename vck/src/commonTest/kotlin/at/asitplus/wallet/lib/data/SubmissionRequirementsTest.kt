@@ -16,7 +16,7 @@ val all by testSuite {
             from = group,
         )
 
-        "1" - {
+        "one" - {
             val inputDescriptorId = "0"
 
             "inGroup" - {
@@ -69,7 +69,7 @@ val all by testSuite {
 
             }
         }
-        "2" - {
+        "two" - {
             val inputDescriptor0Id = "0"
             val inputDescriptor1Id = "1"
 
@@ -265,7 +265,7 @@ val all by testSuite {
     }
 
     "nested" - {
-        "1"-  {
+        "one" - {
             val nestedGroup = "A"
             val inputDescriptorId = "0"
             val inputDescriptorGroups = mapOf(inputDescriptorId to nestedGroup)
@@ -278,28 +278,28 @@ val all by testSuite {
                 ),
             )
 
-            "satisfied"  {
+            "satisfied" {
                 val selectedInputDescriptorIds = listOf(inputDescriptorId)
 
 
-                    submissionRequirement.evaluate(
-                        inputDescriptorGroups = inputDescriptorGroups,
-                        selectedInputDescriptorIds = selectedInputDescriptorIds
-                    ) shouldBe true
+                submissionRequirement.evaluate(
+                    inputDescriptorGroups = inputDescriptorGroups,
+                    selectedInputDescriptorIds = selectedInputDescriptorIds
+                ) shouldBe true
 
             }
 
-            "unsatisfied"  {
+            "unsatisfied" {
                 val selectedInputDescriptorIds = listOf<String>()
 
-                    submissionRequirement.evaluate(
-                        inputDescriptorGroups = inputDescriptorGroups,
-                        selectedInputDescriptorIds = selectedInputDescriptorIds
-                    ) shouldBe false
+                submissionRequirement.evaluate(
+                    inputDescriptorGroups = inputDescriptorGroups,
+                    selectedInputDescriptorIds = selectedInputDescriptorIds
+                ) shouldBe false
             }
         }
 
-        "2"- {
+        "two" - {
             val nestedGroup0 = "A"
             val nestedGroup1 = "B"
             val inputDescriptor0Id = "0"
@@ -410,7 +410,7 @@ val pick by testSuite {
                 rule = SubmissionRequirementRuleEnum.PICK, from = group, count = 1
             )
 
-            "1" - {
+            "one" - {
                 val inputDescriptorId = "0"
 
                 "inGroup" - {
@@ -456,7 +456,7 @@ val pick by testSuite {
                 }
             }
 
-            "2" - {
+            "two" - {
                 val inputDescriptor0Id = "0"
                 val inputDescriptor1Id = "1"
 
@@ -653,7 +653,7 @@ val pick by testSuite {
                 rule = SubmissionRequirementRuleEnum.PICK, from = group, min = 1
             )
 
-            "1" - {
+            "one" - {
                 val inputDescriptorId = "0"
 
                 "inGroup" - {
@@ -699,7 +699,7 @@ val pick by testSuite {
                 }
             }
 
-            "2" - {
+            "two" - {
                 val inputDescriptor0Id = "0"
                 val inputDescriptor1Id = "1"
 
@@ -824,7 +824,7 @@ val pick by testSuite {
                         ) shouldBe false
                     }
 
-                    "oneSelected"  {
+                    "oneSelected" {
                         val selectionPossibilities = listOf(
                             listOf(inputDescriptor0Id),
                             listOf(inputDescriptor1Id),
@@ -896,7 +896,7 @@ val pick by testSuite {
                 rule = SubmissionRequirementRuleEnum.PICK, from = group, max = 1
             )
 
-            "1" - {
+            "one" - {
                 val inputDescriptorId = "0"
 
                 "inGroup" - {
@@ -931,7 +931,7 @@ val pick by testSuite {
                             selectedInputDescriptorIds = selectedInputDescriptorIds
                         ) shouldBe true
                     }
-                    "notSelected"  {
+                    "notSelected" {
                         val selectedInputDescriptorIds = listOf<String>()
 
                         submissionRequirement.evaluate(
@@ -942,7 +942,7 @@ val pick by testSuite {
                 }
             }
 
-            "2" - {
+            "two" - {
                 val inputDescriptor0Id = "0"
                 val inputDescriptor1Id = "1"
 
@@ -1138,7 +1138,7 @@ val pick by testSuite {
 
     "nested" - {
         "count" - {
-            "1" - {
+            "one" - {
                 val nestedGroup = "A"
                 val inputDescriptorId = "0"
                 val inputDescriptorGroups = mapOf(inputDescriptorId to nestedGroup)
@@ -1169,7 +1169,7 @@ val pick by testSuite {
                 }
             }
 
-            "2" - {
+            "two" - {
                 val nestedGroup0 = "A"
                 val nestedGroup1 = "B"
                 val inputDescriptor0Id = "0"
@@ -1213,7 +1213,7 @@ val pick by testSuite {
                     }
                 }
 
-                "firstSatisfied"  {
+                "firstSatisfied" {
                     val selectedInputDescriptorIds = listOf(
                         inputDescriptor0Id,
                     )
@@ -1274,7 +1274,7 @@ val pick by testSuite {
         }
     }
     "min" - {
-        "1" - {
+        "one" - {
             val nestedGroup = "A"
             val inputDescriptorId = "0"
             val inputDescriptorGroups = mapOf(inputDescriptorId to nestedGroup)
@@ -1305,7 +1305,7 @@ val pick by testSuite {
             }
         }
 
-        "2" - {
+        "two" - {
             val nestedGroup0 = "A"
             val nestedGroup1 = "B"
             val inputDescriptor0Id = "0"
@@ -1409,7 +1409,7 @@ val pick by testSuite {
         }
     }
     "max" - {
-        "1" - {
+        "one" - {
             val nestedGroup = "A"
             val inputDescriptorId = "0"
             val inputDescriptorGroups = mapOf(inputDescriptorId to nestedGroup)
@@ -1440,7 +1440,7 @@ val pick by testSuite {
             }
         }
 
-        "2" - {
+        "two" - {
             val nestedGroup0 = "A"
             val nestedGroup1 = "B"
             val inputDescriptor0Id = "0"

@@ -1,1 +1,1 @@
-internal actual val testNameLimit: Int = 10
+internal actual val testNameLimit: Int = 4
