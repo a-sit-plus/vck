@@ -48,10 +48,10 @@ jobs:
           # start logcat in the background
           adb start-server
           adb devices                                # makes sure the daemon is up
-          adb logcat -v time &                       # stream to stdout
+          (for i in {1..10}; do adb logcat -v time || true; done) &
           LOGCAT_PID=$!
           ./gradlew pixelAVDAndroidDeviceTest
-          kill "$LOGCAT_PID" || true
+          killall -9 adb || true
       - name: Test Report
         uses: dorny/test-reporter@v2
         env:
