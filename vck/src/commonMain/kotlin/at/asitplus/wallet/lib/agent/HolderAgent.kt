@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.dif.ClaimFormat
+import at.asitplus.catchingUnwrapped
 import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.FormatHolder
 import at.asitplus.dif.InputDescriptor
@@ -10,7 +10,6 @@ import at.asitplus.dif.PresentationSubmission
 import at.asitplus.dif.PresentationSubmissionDescriptor
 import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
-import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLQueryResult
 import at.asitplus.signum.indispensable.cosef.CoseKey
@@ -108,7 +107,7 @@ class HolderAgent(
 
     private fun Holder.StoreCredentialInput.Iso.extractIssuerKey(): CoseKey? =
         issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull()?.let {
-            runCatching { X509Certificate.decodeFromDer(it) }.getOrNull()?.decodedPublicKey?.getOrNull()
+            catchingUnwrapped { X509Certificate.decodeFromDer(it) }.getOrNull()?.decodedPublicKey?.getOrNull()
                 ?.toCoseKey()
                 ?.getOrNull()
         }
@@ -309,18 +308,12 @@ class HolderAgent(
         inputDescriptor = inputDescriptor,
         fallbackFormatHolder = fallbackFormatHolder,
         credentialClaimStructure = CredentialToJsonConverter.toJsonElement(credential),
-        credentialFormat = credential.toCredentialFormat(),
-        credentialScheme = credential.toScheme(),
+        credentialFormat = credential.credentialFormat,
+        credentialScheme = credential.schemeIdentifier(),
         pathAuthorizationValidator = pathAuthorizationValidator,
     )
 
-    private fun StoreEntry.toCredentialFormat(): CredentialFormatEnum = when (this) {
-        is StoreEntry.Vc -> CredentialFormatEnum.JWT_VC
-        is StoreEntry.SdJwt -> CredentialFormatEnum.DC_SD_JWT
-        is StoreEntry.Iso -> CredentialFormatEnum.MSO_MDOC
-    }
-
-    private fun StoreEntry.toScheme(): String? = when (this) {
+    private fun StoreEntry.schemeIdentifier(): String? = when (this) {
         is StoreEntry.Vc -> scheme?.vcType
         is StoreEntry.SdJwt -> scheme?.sdJwtType
         is StoreEntry.Iso -> scheme?.isoDocType
@@ -329,11 +322,10 @@ class HolderAgent(
     override suspend fun matchDCQLQueryAgainstCredentialStore(
         dcqlQuery: DCQLQuery,
         filterById: String?,
-    ): KmmResult<DCQLQueryResult<StoreEntry>> =
-        DCQLQueryAdapter(dcqlQuery).select(
-            credentials = getValidCredentialsByPriority(filterById)
-                ?: throw PresentationException("Credentials could not be retrieved from the store"),
-        )
+    ): KmmResult<DCQLQueryResult<StoreEntry>> = DCQLQueryAdapter(dcqlQuery).select(
+        credentials = getValidCredentialsByPriority(filterById)
+            ?: throw PresentationException("Credentials could not be retrieved from the store"),
+    )
 
     private fun PresentationSubmission.Companion.fromMatches(
         presentationId: String?,
@@ -357,7 +349,7 @@ class HolderAgent(
         index: Int?,
     ) = PresentationSubmissionDescriptor(
         id = inputDescriptorId,
-        format = credential.toFormat(),
+        format = credential.claimFormat,
         // from https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#section-6.1-2.4
         // These objects contain a field called path, which, for this specification,
         // MUST have the value $ (top level root path) when only 1 Verifiable Presentation is contained in the VP Token,
@@ -365,12 +357,6 @@ class HolderAgent(
         // where n is the index to select.
         path = index?.let { "\$[$it]" } ?: "\$",
     )
-
-    private fun StoreEntry.toFormat(): ClaimFormat = when (this) {
-        is StoreEntry.Vc -> ClaimFormat.JWT_VP
-        is StoreEntry.SdJwt -> ClaimFormat.SD_JWT
-        is StoreEntry.Iso -> ClaimFormat.MSO_MDOC
-    }
 
     private fun CredentialPresentationRequest.PresentationExchangeRequest.validateSubmission(
         credentialSubmissions: Map<String, PresentationExchangeCredentialDisclosure>,

@@ -2,8 +2,10 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catchingUnwrapped
+import at.asitplus.dif.ClaimFormat
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.sha256
+import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -75,6 +77,8 @@ interface SubjectCredentialStore {
         val schemaUri: String
         val scheme: ConstantIndex.CredentialScheme?
             get() = AttributeIndex.resolveSchemaUri(schemaUri) ?: getFallbackScheme()
+        val credentialFormat: CredentialFormatEnum
+        val claimFormat: ClaimFormat
 
         fun getFallbackScheme(): ConstantIndex.CredentialScheme?
 
@@ -87,8 +91,11 @@ interface SubjectCredentialStore {
             @SerialName("schema-uri")
             override val schemaUri: String,
         ) : StoreEntry {
-            override fun getFallbackScheme(): ConstantIndex.CredentialScheme? =
+            override fun getFallbackScheme(): ConstantIndex.CredentialScheme =
                 VcFallbackCredentialScheme(vc.vc.type.first { it != VERIFIABLE_CREDENTIAL })
+
+            override val credentialFormat: CredentialFormatEnum = CredentialFormatEnum.JWT_VC
+            override val claimFormat: ClaimFormat = ClaimFormat.JWT_VP
         }
 
         @Serializable
@@ -103,8 +110,11 @@ interface SubjectCredentialStore {
             @SerialName("schema-uri")
             override val schemaUri: String,
         ) : StoreEntry {
-            override fun getFallbackScheme(): ConstantIndex.CredentialScheme? =
+            override fun getFallbackScheme(): ConstantIndex.CredentialScheme =
                 SdJwtFallbackCredentialScheme(sdJwt.verifiableCredentialType)
+
+            override val credentialFormat: CredentialFormatEnum = CredentialFormatEnum.DC_SD_JWT
+            override val claimFormat: ClaimFormat = ClaimFormat.SD_JWT
         }
 
         @Serializable
@@ -117,6 +127,9 @@ interface SubjectCredentialStore {
             override fun getFallbackScheme(): ConstantIndex.CredentialScheme? = catchingUnwrapped {
                 IsoMdocFallbackCredentialScheme(issuerSigned.issuerAuth.payload?.docType!!)
             }.getOrNull()
+
+            override val credentialFormat: CredentialFormatEnum = CredentialFormatEnum.MSO_MDOC
+            override val claimFormat: ClaimFormat = ClaimFormat.MSO_MDOC
         }
 
         @OptIn(ExperimentalStdlibApi::class)
