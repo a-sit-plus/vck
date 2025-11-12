@@ -465,6 +465,15 @@ fun interface PublicJsonWebKeyLookup {
     ): Set<JsonWebKey>?
 }
 
+/**
+ * Assumes that truststore is populated by x509 certificates
+ */
+fun interface TrustStoreLookup {
+    suspend operator fun invoke(
+        jwsObject: JwsSigned<*>,
+    ): Set<X509Certificate>?
+}
+
 fun interface VerifyJwsSignatureFun {
     suspend operator fun invoke(
         jwsObject: JwsSigned<*>,
@@ -557,11 +566,11 @@ class VerifyJwsSignatureWithCnf(
 class VerifyStatusListTokenHAIP(
     val verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(),
     /** Need to implement if valid keys for JWS are transported somehow out-of-band, e.g. provided by a trust store */
-//    val trustStoreLookup: TrustStoreLookup = TrustStoreLookup { null },
+    val trustStoreLookup: TrustStoreLookup = TrustStoreLookup { null },
 ) : VerifyJwsObjectFun {
 
     override suspend operator fun invoke(jwsObject: JwsSigned<*>) = catchingUnwrapped {
-        val trustStore: Set<X509Certificate>? = null //trustStoreLookup(jwsObject)
+        val trustStore: Set<X509Certificate>? = trustStoreLookup(jwsObject)
         val certChain: CertificateChain? = jwsObject.header.certificateChain
         val signingCert: X509Certificate = certChain?.first() ?: throw Exception("Certificate Chain MUST not be empty")
         signingCert.decodedPublicKey
