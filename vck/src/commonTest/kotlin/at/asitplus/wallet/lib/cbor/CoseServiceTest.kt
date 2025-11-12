@@ -19,9 +19,9 @@ import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import de.infix.testBalloon.framework.TestConfig
-import de.infix.testBalloon.framework.aroundEach
-import de.infix.testBalloon.framework.testSuite
+import de.infix.testBalloon.framework.core.TestConfig
+import de.infix.testBalloon.framework.core.aroundEach
+import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain

@@ -6,7 +6,7 @@ import at.asitplus.testballoon.withDataSuites
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBitSize
 import at.asitplus.wallet.lib.extensions.toView
-import de.infix.testBalloon.framework.testSuite
+import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.json.Json
 import kotlin.time.DurationUnit

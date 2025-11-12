@@ -1,8 +1,6 @@
 import org.tomlj.Toml
 import org.tomlj.TomlParseResult
 import java.io.FileInputStream
-import java.util.*
-
 pluginManagement {
     includeBuild("conventions-vclib")
     repositories {

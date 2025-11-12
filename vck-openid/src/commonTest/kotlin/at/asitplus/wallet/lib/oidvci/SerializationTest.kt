@@ -19,7 +19,7 @@ import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.testSuite
+import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.ktor.http.*

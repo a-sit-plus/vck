@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import de.infix.testBalloon.framework.testSuite
+import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.JsonPrimitive

@@ -3,8 +3,7 @@
 package at.asitplus.gradle
 
 import VcLibVersions
-import java.io.File
-import java.util.Properties
+import at.asitplus.gradle.at.asitplus.gradle.addTestExtensions
 import com.android.build.api.dsl.androidLibrary
 import com.android.build.api.variant.KotlinMultiplatformAndroidComponentsExtension
 import org.gradle.api.Project
@@ -17,6 +16,8 @@ import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinDependencyHandler
+import java.io.File
+import java.util.*
 
 val Project.signumVersionCatalog: VersionCatalog
     get() = extensions.getByType<VersionCatalogsExtension>().named("signum")
@@ -54,7 +55,7 @@ inline fun KotlinDependencyHandler.commonImplementationDependencies() {
 class VcLibConventions : K2Conventions() {
     override fun apply(target: Project) {
         target.keepAndroidJvmTarget = true // keep androidJvmMain wiring even if no AGP is applied
-        super.apply(target)
+
         if (target.rootProject != target) {
             target.pluginManager.apply("org.jetbrains.kotlin.multiplatform")
             target.pluginManager.apply("org.jetbrains.kotlin.plugin.serialization")
@@ -64,7 +65,7 @@ class VcLibConventions : K2Conventions() {
             target.pluginManager.apply("signing")
             target.pluginManager.apply("org.jetbrains.dokka")
             target.pluginManager.apply("de.infix.testBalloon")
-            target.pluginManager.apply("maven-publish")
+            super.apply(target)
             //if we do this properly, cinterop (swift-klib) blows up, so we hack!
             target.afterEvaluate {
 
@@ -72,21 +73,16 @@ class VcLibConventions : K2Conventions() {
                     sourceSets.forEach {
                         it.languageSettings.enableLanguageFeature("ContextParameters")
                     }
-                    sourceSets.commonMain.get()
-                        .dependencies { implementation("at.asitplus.gradle:testballoon-shim:$buildDate") }
                 }
                 tasks.withType<Test>().configureEach {
-                    maxHeapSize = "4G"
+                    maxHeapSize = "8G"
                 }
-
-                target.compileVersionCatalog()
-                target.setupSignDependency()
             }
         }
     }
 }
 
-fun KotlinMultiplatformExtension.vckAndroid(minSdkOverride: Int? = null)  {
+fun KotlinMultiplatformExtension.vckAndroid(minSdkOverride: Int? = null) {
     if (!project.hasAndroidSdk()) {
         project.logger.lifecycle("  \u001b[7m\u001b[1mAndroid SDK not found; skipping Android artifact.\u001b[0m")
         return
@@ -115,6 +111,7 @@ fun KotlinMultiplatformExtension.vckAndroid(minSdkOverride: Int? = null)  {
             sourceSetTreeName = "test"
         }.configure {
             instrumentationRunnerArguments["timeout_msec"] = "2400000"
+            instrumentationRunnerArguments["TESTBALLOON_REPORTING_PATH_LIMIT"] = "400"
             managedDevices {
                 localDevices {
                     create("pixelAVD").apply {

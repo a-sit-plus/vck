@@ -2,7 +2,7 @@ package at.asitplus.openid.dcql
 
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.minus
-import de.infix.testBalloon.framework.testSuite
+import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe

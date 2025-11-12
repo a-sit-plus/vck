@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.data.rfc1950
 
 import at.asitplus.testballoon.*
 import at.asitplus.wallet.lib.data.rfc1950.primitives.Nibble
-import de.infix.testBalloon.framework.testSuite
+import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe
 
 val CompressionMethodAndFlagsTest by testSuite {

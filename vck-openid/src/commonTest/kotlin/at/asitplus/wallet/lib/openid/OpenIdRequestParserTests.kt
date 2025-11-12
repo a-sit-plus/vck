@@ -7,9 +7,9 @@ import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
-import de.infix.testBalloon.framework.TestConfig
-import de.infix.testBalloon.framework.aroundEach
-import de.infix.testBalloon.framework.testSuite
+import de.infix.testBalloon.framework.core.TestConfig
+import de.infix.testBalloon.framework.core.aroundEach
+import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull

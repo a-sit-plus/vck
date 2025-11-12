@@ -3,7 +3,7 @@ package at.asitplus.openid.dcql
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.minus
-import de.infix.testBalloon.framework.testSuite
+import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.collections.shouldBeIn

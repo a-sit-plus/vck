@@ -4,73 +4,459 @@ import at.asitplus.dif.SubmissionRequirement
 import at.asitplus.dif.SubmissionRequirementRuleEnum
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.minus
-import de.infix.testBalloon.framework.testSuite
+import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 
-val SubmissionRequirementsTest by testSuite {
-    "all" - {
-        "from" - {
-            val group = "A"
+val all by testSuite {
+    "from" - {
+        val group = "A"
+        val submissionRequirement = SubmissionRequirement(
+            rule = SubmissionRequirementRuleEnum.ALL,
+            from = group,
+        )
+
+        "one" - {
+            val inputDescriptorId = "0"
+
+            "inGroup" - {
+                val inputDescriptorGroups = mapOf(inputDescriptorId to group)
+
+                "selected" {
+                    val selectedInputDescriptorIds = listOf(inputDescriptorId)
+
+
+                    submissionRequirement.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds
+                    ) shouldBe true
+
+                }
+                "notSelected" {
+                    val selectedInputDescriptorIds = listOf<String>()
+
+
+                    submissionRequirement.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds
+                    ) shouldBe false
+
+                }
+            }
+
+            "notInGroup" - {
+                val inputDescriptorGroups = mapOf(inputDescriptorId to group + "2")
+
+                "selected" {
+                    val selectedInputDescriptorIds = listOf(inputDescriptorId)
+
+
+                    submissionRequirement.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds
+                    ) shouldBe true
+
+                }
+                "notSelected" {
+                    val selectedInputDescriptorIds = listOf<String>()
+
+
+                    submissionRequirement.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds
+                    ) shouldBe true
+                }
+
+            }
+        }
+        "two" - {
+            val inputDescriptor0Id = "0"
+            val inputDescriptor1Id = "1"
+
+            "bothInGroup" - {
+                val inputDescriptorGroups = mapOf(
+                    inputDescriptor0Id to group,
+                    inputDescriptor1Id to group,
+                )
+
+                "bothSelected" {
+                    val selectedInputDescriptorIds = listOf(
+                        inputDescriptor0Id,
+                        inputDescriptor1Id,
+                    )
+
+                    submissionRequirement.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds
+                    ) shouldBe true
+                }
+
+                "secondSelected" {
+                    val selectedInputDescriptorIds = listOf(
+                        inputDescriptor1Id,
+                    )
+
+                    submissionRequirement.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds
+                    ) shouldBe false
+                }
+
+                "firstSelected" {
+                    val selectedInputDescriptorIds = listOf(
+                        inputDescriptor0Id,
+                    )
+
+
+                    submissionRequirement.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds
+                    ) shouldBe false
+
+                }
+
+                "neither selected" {
+                    val selectedInputDescriptorIds = listOf<String>()
+
+
+                    submissionRequirement.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds
+                    ) shouldBe false
+
+                }
+            }
+
+            "first in group" - {
+                val inputDescriptorGroups = mapOf(
+                    inputDescriptor0Id to group,
+                    inputDescriptor1Id to (group + "2"),
+                )
+
+                "both selected" {
+                    val selectedInputDescriptorIds = listOf(
+                        inputDescriptor0Id,
+                        inputDescriptor1Id,
+                    )
+                    submissionRequirement.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds
+                    ) shouldBe true
+                }
+
+                "firstSelected" {
+                    val selectedInputDescriptorIds = listOf(
+                        inputDescriptor0Id,
+                    )
+
+                    submissionRequirement.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds
+                    ) shouldBe true
+                }
+
+                "secondSelected" {
+                    val selectedInputDescriptorIds = listOf(
+                        inputDescriptor1Id,
+                    )
+                    submissionRequirement.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds
+                    ) shouldBe false
+                }
+
+                "neitherSelected" {
+                    val selectedInputDescriptorIds = listOf(
+                        inputDescriptor1Id,
+                    )
+
+                    submissionRequirement.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds
+                    ) shouldBe false
+                }
+            }
+
+            "groups00" - {
+                val actualGroup = group + "2"
+                val inputDescriptorGroups = mapOf(
+                    inputDescriptor0Id to actualGroup,
+                    inputDescriptor1Id to actualGroup,
+                )
+
+                "bothSelected" {
+                    val selectedInputDescriptorIds = listOf(
+                        inputDescriptor0Id,
+                        inputDescriptor1Id,
+                    )
+
+                    submissionRequirement.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds
+                    ) shouldBe true
+                }
+
+                "oneSelected" {
+                    val selectionPossibilities = listOf(
+                        listOf(inputDescriptor0Id),
+                        listOf(inputDescriptor1Id),
+                    )
+
+                    selectionPossibilities.forEach {
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = it
+                        ) shouldBe true
+                    }
+                }
+
+                "neitherSelected" {
+                    val selectedInputDescriptorIds = listOf<String>()
+
+                    submissionRequirement.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds
+                    ) shouldBe true
+                }
+            }
+
+            "groups01" - {
+                val inputDescriptorGroups = mapOf(
+                    inputDescriptor0Id to group + "2",
+                    inputDescriptor1Id to group + "3",
+                )
+
+                "bothSelected" {
+                    val selectedInputDescriptorIds = listOf(
+                        inputDescriptor0Id,
+                        inputDescriptor1Id,
+                    )
+
+                    submissionRequirement.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds
+                    ) shouldBe true
+                }
+
+                "oneSelected" {
+                    val selectionPossibilities = listOf(
+                        listOf(inputDescriptor0Id),
+                        listOf(inputDescriptor1Id),
+                    )
+
+                    selectionPossibilities.forEach {
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = it
+                        ) shouldBe true
+                    }
+                }
+
+                "neitherSelected" {
+                    val selectedInputDescriptorIds = listOf<String>()
+
+                    submissionRequirement.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds
+                    ) shouldBe true
+                }
+            }
+        }
+    }
+
+    "nested" - {
+        "one" - {
+            val nestedGroup = "A"
+            val inputDescriptorId = "0"
+            val inputDescriptorGroups = mapOf(inputDescriptorId to nestedGroup)
             val submissionRequirement = SubmissionRequirement(
                 rule = SubmissionRequirementRuleEnum.ALL,
-                from = group,
+                fromNested = listOf(
+                    SubmissionRequirement(
+                        rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup
+                    )
+                ),
             )
 
-            "1" - {
+            "satisfied" {
+                val selectedInputDescriptorIds = listOf(inputDescriptorId)
+
+
+                submissionRequirement.evaluate(
+                    inputDescriptorGroups = inputDescriptorGroups,
+                    selectedInputDescriptorIds = selectedInputDescriptorIds
+                ) shouldBe true
+
+            }
+
+            "unsatisfied" {
+                val selectedInputDescriptorIds = listOf<String>()
+
+                submissionRequirement.evaluate(
+                    inputDescriptorGroups = inputDescriptorGroups,
+                    selectedInputDescriptorIds = selectedInputDescriptorIds
+                ) shouldBe false
+            }
+        }
+
+        "two" - {
+            val nestedGroup0 = "A"
+            val nestedGroup1 = "B"
+            val inputDescriptor0Id = "0"
+            val inputDescriptor1Id = "1"
+            val inputDescriptorGroups = mapOf(
+                inputDescriptor0Id to nestedGroup0,
+                inputDescriptor1Id to nestedGroup1,
+            )
+
+            val nestedRequirements = listOf(
+                SubmissionRequirement(
+                    rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup0
+                ),
+                SubmissionRequirement(
+                    rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup1
+                ),
+            )
+            val submissionRequirement = SubmissionRequirement(
+                rule = SubmissionRequirementRuleEnum.ALL,
+                fromNested = nestedRequirements,
+            )
+
+            "bothSatisfied" {
+                val selectedInputDescriptorIds = listOf(
+                    inputDescriptor0Id,
+                    inputDescriptor1Id,
+                )
+
+                nestedRequirements.forEach {
+                    it.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds,
+                    ) shouldBe true
+                }
+                submissionRequirement.evaluate(
+                    inputDescriptorGroups = inputDescriptorGroups,
+                    selectedInputDescriptorIds = selectedInputDescriptorIds
+                ) shouldBe true
+            }
+
+            "firstSatisfied" {
+                val selectedInputDescriptorIds = listOf(
+                    inputDescriptor0Id,
+                )
+                nestedRequirements[0].evaluate(
+                    inputDescriptorGroups = inputDescriptorGroups,
+                    selectedInputDescriptorIds = selectedInputDescriptorIds,
+                ) shouldBe true
+                nestedRequirements[1].evaluate(
+                    inputDescriptorGroups = inputDescriptorGroups,
+                    selectedInputDescriptorIds = selectedInputDescriptorIds,
+                ) shouldBe false
+                withClue("shouldBeFalse") {
+                    submissionRequirement.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds,
+                    ) shouldBe false
+                }
+            }
+
+            "secondSatisfied" {
+                val selectedInputDescriptorIds = listOf(
+                    inputDescriptor1Id,
+                )
+                nestedRequirements[0].evaluate(
+                    inputDescriptorGroups = inputDescriptorGroups,
+                    selectedInputDescriptorIds = selectedInputDescriptorIds,
+                ) shouldBe false
+                nestedRequirements[1].evaluate(
+                    inputDescriptorGroups = inputDescriptorGroups,
+                    selectedInputDescriptorIds = selectedInputDescriptorIds,
+                ) shouldBe true
+                withClue("shouldBeFalse") {
+                    submissionRequirement.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds,
+                    ) shouldBe false
+                }
+            }
+
+            "neitherSatisfied" {
+                val selectedInputDescriptorIds = listOf<String>()
+                nestedRequirements[0].evaluate(
+                    inputDescriptorGroups = inputDescriptorGroups,
+                    selectedInputDescriptorIds = selectedInputDescriptorIds,
+                ) shouldBe false
+                nestedRequirements[1].evaluate(
+                    inputDescriptorGroups = inputDescriptorGroups,
+                    selectedInputDescriptorIds = selectedInputDescriptorIds,
+                ) shouldBe false
+                withClue("shouldBeFalse") {
+                    submissionRequirement.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds,
+                    ) shouldBe false
+                }
+            }
+        }
+    }
+}
+
+val pick by testSuite {
+    "from" - {
+        val group = "A"
+
+        "count" - {
+            val submissionRequirement = SubmissionRequirement(
+                rule = SubmissionRequirementRuleEnum.PICK, from = group, count = 1
+            )
+
+            "one" - {
                 val inputDescriptorId = "0"
 
                 "inGroup" - {
                     val inputDescriptorGroups = mapOf(inputDescriptorId to group)
 
-                    "selected" - {
+                    "selected" {
                         val selectedInputDescriptorIds = listOf(inputDescriptorId)
 
-                        "shouldBeTrue" {
-                            submissionRequirement.evaluate(
-                                inputDescriptorGroups = inputDescriptorGroups,
-                                selectedInputDescriptorIds = selectedInputDescriptorIds
-                            ) shouldBe true
-                        }
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe true
                     }
-                    "notSelected" - {
+                    "notSelected" {
                         val selectedInputDescriptorIds = listOf<String>()
 
-                        "shouldBeFalse" {
-                            submissionRequirement.evaluate(
-                                inputDescriptorGroups = inputDescriptorGroups,
-                                selectedInputDescriptorIds = selectedInputDescriptorIds
-                            ) shouldBe false
-                        }
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe false
                     }
                 }
 
                 "notInGroup" - {
                     val inputDescriptorGroups = mapOf(inputDescriptorId to group + "2")
 
-                    "selected" - {
+                    "selected" {
                         val selectedInputDescriptorIds = listOf(inputDescriptorId)
 
-                        "shouldBeTrue" {
-                            submissionRequirement.evaluate(
-                                inputDescriptorGroups = inputDescriptorGroups,
-                                selectedInputDescriptorIds = selectedInputDescriptorIds
-                            ) shouldBe true
-                        }
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe false
                     }
-                    "notSelected" - {
+                    "notSelected" {
                         val selectedInputDescriptorIds = listOf<String>()
 
-                        "shouldBeTrue" {
-                            submissionRequirement.evaluate(
-                                inputDescriptorGroups = inputDescriptorGroups,
-                                selectedInputDescriptorIds = selectedInputDescriptorIds
-                            ) shouldBe true
-                        }
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe false
                     }
                 }
             }
 
-            "2" - {
+            "two" - {
                 val inputDescriptor0Id = "0"
                 val inputDescriptor1Id = "1"
 
@@ -80,115 +466,99 @@ val SubmissionRequirementsTest by testSuite {
                         inputDescriptor1Id to group,
                     )
 
-                    "bothSelected" - {
+                    "bothSelected" {
                         val selectedInputDescriptorIds = listOf(
                             inputDescriptor0Id,
                             inputDescriptor1Id,
                         )
 
-                        "shouldBeTrue" {
-                            submissionRequirement.evaluate(
-                                inputDescriptorGroups = inputDescriptorGroups,
-                                selectedInputDescriptorIds = selectedInputDescriptorIds
-                            ) shouldBe true
-                        }
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe false
                     }
 
-                    "secondSelected" - {
+                    "secondSelected" {
                         val selectedInputDescriptorIds = listOf(
                             inputDescriptor1Id,
                         )
 
-                        "shouldBeFalse" {
-                            submissionRequirement.evaluate(
-                                inputDescriptorGroups = inputDescriptorGroups,
-                                selectedInputDescriptorIds = selectedInputDescriptorIds
-                            ) shouldBe false
-                        }
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe true
                     }
 
-                    "firstSelected" - {
+                    "firstSelected" {
                         val selectedInputDescriptorIds = listOf(
                             inputDescriptor0Id,
                         )
 
-                        "shouldBeFalse" {
-                            submissionRequirement.evaluate(
-                                inputDescriptorGroups = inputDescriptorGroups,
-                                selectedInputDescriptorIds = selectedInputDescriptorIds
-                            ) shouldBe false
-                        }
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe true
                     }
 
-                    "neither selected" - {
+                    "neitherSelected" {
                         val selectedInputDescriptorIds = listOf<String>()
 
-                        "shouldBeFalse" {
-                            submissionRequirement.evaluate(
-                                inputDescriptorGroups = inputDescriptorGroups,
-                                selectedInputDescriptorIds = selectedInputDescriptorIds
-                            ) shouldBe false
-                        }
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe false
                     }
                 }
 
-                "first in group" - {
+                "groupsT0" - {
                     val inputDescriptorGroups = mapOf(
                         inputDescriptor0Id to group,
                         inputDescriptor1Id to (group + "2"),
                     )
 
-                    "both selected" - {
+                    "bothSelected" {
                         val selectedInputDescriptorIds = listOf(
                             inputDescriptor0Id,
                             inputDescriptor1Id,
                         )
 
-                        "shouldBeTrue" {
-                            submissionRequirement.evaluate(
-                                inputDescriptorGroups = inputDescriptorGroups,
-                                selectedInputDescriptorIds = selectedInputDescriptorIds
-                            ) shouldBe true
-                        }
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe true
                     }
 
-                    "firstSelected" - {
+                    "firstSelected" {
                         val selectedInputDescriptorIds = listOf(
                             inputDescriptor0Id,
                         )
 
-                        "shouldBeTrue" {
-                            submissionRequirement.evaluate(
-                                inputDescriptorGroups = inputDescriptorGroups,
-                                selectedInputDescriptorIds = selectedInputDescriptorIds
-                            ) shouldBe true
-                        }
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe true
                     }
 
-                    "secondSelected" - {
+                    "secondSelected" {
                         val selectedInputDescriptorIds = listOf(
                             inputDescriptor1Id,
                         )
 
-                        "shouldBeFalse" {
-                            submissionRequirement.evaluate(
-                                inputDescriptorGroups = inputDescriptorGroups,
-                                selectedInputDescriptorIds = selectedInputDescriptorIds
-                            ) shouldBe false
-                        }
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe false
                     }
 
-                    "neitherSelected" - {
+                    "neitherSelected" {
                         val selectedInputDescriptorIds = listOf(
                             inputDescriptor1Id,
                         )
 
-                        "shouldBeFalse" {
-                            submissionRequirement.evaluate(
-                                inputDescriptorGroups = inputDescriptorGroups,
-                                selectedInputDescriptorIds = selectedInputDescriptorIds
-                            ) shouldBe false
-                        }
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe false
                     }
                 }
 
@@ -199,45 +569,39 @@ val SubmissionRequirementsTest by testSuite {
                         inputDescriptor1Id to actualGroup,
                     )
 
-                    "bothSelected" - {
+                    "bothSelected" {
                         val selectedInputDescriptorIds = listOf(
                             inputDescriptor0Id,
                             inputDescriptor1Id,
                         )
 
-                        "shouldBeTrue" {
-                            submissionRequirement.evaluate(
-                                inputDescriptorGroups = inputDescriptorGroups,
-                                selectedInputDescriptorIds = selectedInputDescriptorIds
-                            ) shouldBe true
-                        }
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe false
                     }
 
-                    "oneSelected" - {
+                    "oneSelected" {
                         val selectionPossibilities = listOf(
                             listOf(inputDescriptor0Id),
                             listOf(inputDescriptor1Id),
                         )
 
-                        "shouldBeTrue" {
-                            selectionPossibilities.forEach {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = it
-                                ) shouldBe true
-                            }
+                        selectionPossibilities.forEach {
+                            submissionRequirement.evaluate(
+                                inputDescriptorGroups = inputDescriptorGroups,
+                                selectedInputDescriptorIds = it
+                            ) shouldBe false
                         }
                     }
 
-                    "neitherSelected" - {
+                    "neitherSelected" {
                         val selectedInputDescriptorIds = listOf<String>()
 
-                        "shouldBeTrue" {
-                            submissionRequirement.evaluate(
-                                inputDescriptorGroups = inputDescriptorGroups,
-                                selectedInputDescriptorIds = selectedInputDescriptorIds
-                            ) shouldBe true
-                        }
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe false
                     }
                 }
 
@@ -247,79 +611,86 @@ val SubmissionRequirementsTest by testSuite {
                         inputDescriptor1Id to group + "3",
                     )
 
-                    "bothSelected" - {
+                    "bothSelected" {
                         val selectedInputDescriptorIds = listOf(
                             inputDescriptor0Id,
                             inputDescriptor1Id,
                         )
 
-                        "shouldBeTrue" {
-                            submissionRequirement.evaluate(
-                                inputDescriptorGroups = inputDescriptorGroups,
-                                selectedInputDescriptorIds = selectedInputDescriptorIds
-                            ) shouldBe true
-                        }
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe false
                     }
 
-                    "oneSelected" - {
+                    "oneSelected" {
                         val selectionPossibilities = listOf(
                             listOf(inputDescriptor0Id),
                             listOf(inputDescriptor1Id),
                         )
 
-                        "shouldBeTrue" {
-                            selectionPossibilities.forEach {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = it
-                                ) shouldBe true
-                            }
+                        selectionPossibilities.forEach {
+                            submissionRequirement.evaluate(
+                                inputDescriptorGroups = inputDescriptorGroups,
+                                selectedInputDescriptorIds = it
+                            ) shouldBe false
                         }
                     }
 
-                    "neitherSelected" - {
+                    "neitherSelected" {
                         val selectedInputDescriptorIds = listOf<String>()
 
-                        "shouldBeTrue" {
-                            submissionRequirement.evaluate(
-                                inputDescriptorGroups = inputDescriptorGroups,
-                                selectedInputDescriptorIds = selectedInputDescriptorIds
-                            ) shouldBe true
-                        }
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe false
                     }
                 }
             }
         }
+        "min" - {
+            val submissionRequirement = SubmissionRequirement(
+                rule = SubmissionRequirementRuleEnum.PICK, from = group, min = 1
+            )
 
-        "nested" - {
-            "1" - {
-                val nestedGroup = "A"
+            "one" - {
                 val inputDescriptorId = "0"
-                val inputDescriptorGroups = mapOf(inputDescriptorId to nestedGroup)
-                val submissionRequirement = SubmissionRequirement(
-                    rule = SubmissionRequirementRuleEnum.ALL,
-                    fromNested = listOf(
-                        SubmissionRequirement(
-                            rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup
-                        )
-                    ),
-                )
 
-                "satisfied" - {
-                    val selectedInputDescriptorIds = listOf(inputDescriptorId)
+                "inGroup" - {
+                    val inputDescriptorGroups = mapOf(inputDescriptorId to group)
 
-                    "shouldBeTrue" {
+                    "selected" {
+                        val selectedInputDescriptorIds = listOf(inputDescriptorId)
+
                         submissionRequirement.evaluate(
                             inputDescriptorGroups = inputDescriptorGroups,
                             selectedInputDescriptorIds = selectedInputDescriptorIds
                         ) shouldBe true
                     }
+                    "notSelected" {
+                        val selectedInputDescriptorIds = listOf<String>()
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe false
+                    }
                 }
 
-                "unsatisfied" - {
-                    val selectedInputDescriptorIds = listOf<String>()
+                "notInGroup" - {
+                    val inputDescriptorGroups = mapOf(inputDescriptorId to group + "2")
 
-                    "shouldBeFalse" {
+                    "selected" {
+                        val selectedInputDescriptorIds = listOf(inputDescriptorId)
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe false
+                    }
+                    "notSelected" {
+                        val selectedInputDescriptorIds = listOf<String>()
+
                         submissionRequirement.evaluate(
                             inputDescriptorGroups = inputDescriptorGroups,
                             selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -328,7 +699,477 @@ val SubmissionRequirementsTest by testSuite {
                 }
             }
 
-            "2" - {
+            "two" - {
+                val inputDescriptor0Id = "0"
+                val inputDescriptor1Id = "1"
+
+                "bothInGroup" - {
+                    val inputDescriptorGroups = mapOf(
+                        inputDescriptor0Id to group,
+                        inputDescriptor1Id to group,
+                    )
+
+                    "bothSelected" {
+                        val selectedInputDescriptorIds = listOf(
+                            inputDescriptor0Id,
+                            inputDescriptor1Id,
+                        )
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe true
+                    }
+
+                    "secondSelected" {
+                        val selectedInputDescriptorIds = listOf(
+                            inputDescriptor1Id,
+                        )
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe true
+                    }
+
+                    "firstSelected" {
+                        val selectedInputDescriptorIds = listOf(
+                            inputDescriptor0Id,
+                        )
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe true
+                    }
+
+                    "neitherSelected" {
+                        val selectedInputDescriptorIds = listOf<String>()
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe false
+                    }
+                }
+
+                "when descriptors are in different groups, but descriptor 0 is in the selected group" - {
+                    val inputDescriptorGroups = mapOf(
+                        inputDescriptor0Id to group,
+                        inputDescriptor1Id to (group + "2"),
+                    )
+
+                    "bothSelected" {
+                        val selectedInputDescriptorIds = listOf(
+                            inputDescriptor0Id,
+                            inputDescriptor1Id,
+                        )
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe true
+                    }
+
+                    "when only the descriptor in the intended group is selected" {
+                        val selectedInputDescriptorIds = listOf(
+                            inputDescriptor0Id,
+                        )
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe true
+                    }
+
+                    "when only the descriptor not in the intended group is selected" {
+                        val selectedInputDescriptorIds = listOf(
+                            inputDescriptor1Id,
+                        )
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe false
+                    }
+
+                    "neitherSelected" {
+                        val selectedInputDescriptorIds = listOf(
+                            inputDescriptor1Id,
+                        )
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe false
+                    }
+                }
+
+                "when descriptors are in same groups, but the group is not the intended one" - {
+                    val actualGroup = group + "2"
+                    val inputDescriptorGroups = mapOf(
+                        inputDescriptor0Id to actualGroup,
+                        inputDescriptor1Id to actualGroup,
+                    )
+
+                    "bothSelected" {
+                        val selectedInputDescriptorIds = listOf(
+                            inputDescriptor0Id,
+                            inputDescriptor1Id,
+                        )
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe false
+                    }
+
+                    "oneSelected" {
+                        val selectionPossibilities = listOf(
+                            listOf(inputDescriptor0Id),
+                            listOf(inputDescriptor1Id),
+                        )
+
+                        selectionPossibilities.forEach {
+                            submissionRequirement.evaluate(
+                                inputDescriptorGroups = inputDescriptorGroups,
+                                selectedInputDescriptorIds = it
+                            ) shouldBe false
+                        }
+                    }
+
+                    "neitherSelected" {
+                        val selectedInputDescriptorIds = listOf<String>()
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe false
+                    }
+                }
+
+                "groups01" - {
+                    val inputDescriptorGroups = mapOf(
+                        inputDescriptor0Id to group + "2",
+                        inputDescriptor1Id to group + "3",
+                    )
+
+                    "bothSelected" {
+                        val selectedInputDescriptorIds = listOf(
+                            inputDescriptor0Id,
+                            inputDescriptor1Id,
+                        )
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe false
+                    }
+
+                    "oneSelected" {
+                        val selectionPossibilities = listOf(
+                            listOf(inputDescriptor0Id),
+                            listOf(inputDescriptor1Id),
+                        )
+
+                        selectionPossibilities.forEach {
+                            submissionRequirement.evaluate(
+                                inputDescriptorGroups = inputDescriptorGroups,
+                                selectedInputDescriptorIds = it
+                            ) shouldBe false
+                        }
+                    }
+
+                    "neitherSelected" {
+                        val selectedInputDescriptorIds = listOf<String>()
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe false
+                    }
+                }
+            }
+        }
+        "max" - {
+            val submissionRequirement = SubmissionRequirement(
+                rule = SubmissionRequirementRuleEnum.PICK, from = group, max = 1
+            )
+
+            "one" - {
+                val inputDescriptorId = "0"
+
+                "inGroup" - {
+                    val inputDescriptorGroups = mapOf(inputDescriptorId to group)
+
+                    "selected" {
+                        val selectedInputDescriptorIds = listOf(inputDescriptorId)
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe true
+                    }
+                    "notSelected" {
+                        val selectedInputDescriptorIds = listOf<String>()
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe true
+                    }
+                }
+
+                "notInGroup" - {
+                    val inputDescriptorGroups = mapOf(inputDescriptorId to group + "2")
+
+                    "selected" {
+                        val selectedInputDescriptorIds = listOf(inputDescriptorId)
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe true
+                    }
+                    "notSelected" {
+                        val selectedInputDescriptorIds = listOf<String>()
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe true
+                    }
+                }
+            }
+
+            "two" - {
+                val inputDescriptor0Id = "0"
+                val inputDescriptor1Id = "1"
+
+                "bothInGroup" - {
+                    val inputDescriptorGroups = mapOf(
+                        inputDescriptor0Id to group,
+                        inputDescriptor1Id to group,
+                    )
+
+                    "bothSelected" {
+                        val selectedInputDescriptorIds = listOf(
+                            inputDescriptor0Id,
+                            inputDescriptor1Id,
+                        )
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe false
+                    }
+
+                    "secondSelected" {
+                        val selectedInputDescriptorIds = listOf(
+                            inputDescriptor1Id,
+                        )
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe true
+                    }
+
+                    "firstSelected" {
+                        val selectedInputDescriptorIds = listOf(
+                            inputDescriptor0Id,
+                        )
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe true
+                    }
+
+                    "neitherSelected" {
+                        val selectedInputDescriptorIds = listOf<String>()
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe true
+                    }
+                }
+
+                "when descriptors are in different groups, but descriptor 0 is in the selected group" - {
+                    val inputDescriptorGroups = mapOf(
+                        inputDescriptor0Id to group,
+                        inputDescriptor1Id to (group + "2"),
+                    )
+
+                    "bothSelected" {
+                        val selectedInputDescriptorIds = listOf(
+                            inputDescriptor0Id,
+                            inputDescriptor1Id,
+                        )
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe true
+                    }
+
+                    "when only the descriptor in the intended group is selected" {
+                        val selectedInputDescriptorIds = listOf(
+                            inputDescriptor0Id,
+                        )
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe true
+                    }
+
+                    "when only the descriptor not in the intended group is selected" {
+                        val selectedInputDescriptorIds = listOf(
+                            inputDescriptor1Id,
+                        )
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe true
+                    }
+
+                    "neitherSelected" {
+                        val selectedInputDescriptorIds = listOf(
+                            inputDescriptor1Id,
+                        )
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe true
+                    }
+                }
+
+                "when descriptors are in same groups, but the group is not the intended one" - {
+                    val actualGroup = group + "2"
+                    val inputDescriptorGroups = mapOf(
+                        inputDescriptor0Id to actualGroup,
+                        inputDescriptor1Id to actualGroup,
+                    )
+
+                    "bothSelected" {
+                        val selectedInputDescriptorIds = listOf(
+                            inputDescriptor0Id,
+                            inputDescriptor1Id,
+                        )
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe true
+                    }
+
+                    "oneSelected" {
+                        val selectionPossibilities = listOf(
+                            listOf(inputDescriptor0Id),
+                            listOf(inputDescriptor1Id),
+                        )
+
+                        selectionPossibilities.forEach {
+                            submissionRequirement.evaluate(
+                                inputDescriptorGroups = inputDescriptorGroups,
+                                selectedInputDescriptorIds = it
+                            ) shouldBe true
+                        }
+                    }
+
+                    "neitherSelected" {
+                        val selectedInputDescriptorIds = listOf<String>()
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe true
+                    }
+                }
+
+                "groups01" - {
+                    val inputDescriptorGroups = mapOf(
+                        inputDescriptor0Id to group + "2",
+                        inputDescriptor1Id to group + "3",
+                    )
+
+                    "bothSelected" {
+                        val selectedInputDescriptorIds = listOf(
+                            inputDescriptor0Id,
+                            inputDescriptor1Id,
+                        )
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe true
+                    }
+
+                    "oneSelected" {
+                        val selectionPossibilities = listOf(
+                            listOf(inputDescriptor0Id),
+                            listOf(inputDescriptor1Id),
+                        )
+
+                        selectionPossibilities.forEach {
+                            submissionRequirement.evaluate(
+                                inputDescriptorGroups = inputDescriptorGroups,
+                                selectedInputDescriptorIds = it
+                            ) shouldBe true
+                        }
+                    }
+
+                    "neitherSelected" {
+                        val selectedInputDescriptorIds = listOf<String>()
+
+                        submissionRequirement.evaluate(
+                            inputDescriptorGroups = inputDescriptorGroups,
+                            selectedInputDescriptorIds = selectedInputDescriptorIds
+                        ) shouldBe true
+                    }
+                }
+            }
+        }
+    }
+
+    "nested" - {
+        "count" - {
+            "one" - {
+                val nestedGroup = "A"
+                val inputDescriptorId = "0"
+                val inputDescriptorGroups = mapOf(inputDescriptorId to nestedGroup)
+                val submissionRequirement = SubmissionRequirement(
+                    rule = SubmissionRequirementRuleEnum.PICK, fromNested = listOf(
+                        SubmissionRequirement(
+                            rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup
+                        )
+                    ), count = 1
+                )
+
+                "isSatisfied" {
+                    val selectedInputDescriptorIds = listOf(inputDescriptorId)
+
+                    submissionRequirement.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds
+                    ) shouldBe true
+                }
+
+                "isNotSatisfied" {
+                    val selectedInputDescriptorIds = listOf<String>()
+
+                    submissionRequirement.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds
+                    ) shouldBe false
+                }
+            }
+
+            "two" - {
                 val nestedGroup0 = "A"
                 val nestedGroup1 = "B"
                 val inputDescriptor0Id = "0"
@@ -347,11 +1188,12 @@ val SubmissionRequirementsTest by testSuite {
                     ),
                 )
                 val submissionRequirement = SubmissionRequirement(
-                    rule = SubmissionRequirementRuleEnum.ALL,
+                    rule = SubmissionRequirementRuleEnum.PICK,
                     fromNested = nestedRequirements,
+                    count = 1
                 )
 
-                "bothSatisfied" - {
+                "bothSatisfied" {
                     val selectedInputDescriptorIds = listOf(
                         inputDescriptor0Id,
                         inputDescriptor1Id,
@@ -363,15 +1205,15 @@ val SubmissionRequirementsTest by testSuite {
                             selectedInputDescriptorIds = selectedInputDescriptorIds,
                         ) shouldBe true
                     }
-                    "shouldBeTrue" {
+                    withClue("shouldBeFalse") {
                         submissionRequirement.evaluate(
                             inputDescriptorGroups = inputDescriptorGroups,
                             selectedInputDescriptorIds = selectedInputDescriptorIds
-                        ) shouldBe true
+                        ) shouldBe false
                     }
                 }
 
-                "firstSatisfied" - {
+                "firstSatisfied" {
                     val selectedInputDescriptorIds = listOf(
                         inputDescriptor0Id,
                     )
@@ -383,15 +1225,15 @@ val SubmissionRequirementsTest by testSuite {
                         inputDescriptorGroups = inputDescriptorGroups,
                         selectedInputDescriptorIds = selectedInputDescriptorIds,
                     ) shouldBe false
-                    "shouldBeFalse" {
+                    withClue("shouldBeTrue") {
                         submissionRequirement.evaluate(
                             inputDescriptorGroups = inputDescriptorGroups,
                             selectedInputDescriptorIds = selectedInputDescriptorIds,
-                        ) shouldBe false
+                        ) shouldBe true
                     }
                 }
 
-                "secondSatisfied" - {
+                "secondSatisfied" {
                     val selectedInputDescriptorIds = listOf(
                         inputDescriptor1Id,
                     )
@@ -403,15 +1245,15 @@ val SubmissionRequirementsTest by testSuite {
                         inputDescriptorGroups = inputDescriptorGroups,
                         selectedInputDescriptorIds = selectedInputDescriptorIds,
                     ) shouldBe true
-                    "shouldBeFalse" {
+                    withClue("shouldBeTrue") {
                         submissionRequirement.evaluate(
                             inputDescriptorGroups = inputDescriptorGroups,
                             selectedInputDescriptorIds = selectedInputDescriptorIds,
-                        ) shouldBe false
+                        ) shouldBe true
                     }
                 }
 
-                "neitherSatisfied" - {
+                "neitherSatisfied" {
                     val selectedInputDescriptorIds = listOf<String>()
                     nestedRequirements[0].evaluate(
                         inputDescriptorGroups = inputDescriptorGroups,
@@ -421,7 +1263,7 @@ val SubmissionRequirementsTest by testSuite {
                         inputDescriptorGroups = inputDescriptorGroups,
                         selectedInputDescriptorIds = selectedInputDescriptorIds,
                     ) shouldBe false
-                    "shouldBeFalse" {
+                    withClue("shouldBeFalse") {
                         submissionRequirement.evaluate(
                             inputDescriptorGroups = inputDescriptorGroups,
                             selectedInputDescriptorIds = selectedInputDescriptorIds,
@@ -431,1266 +1273,272 @@ val SubmissionRequirementsTest by testSuite {
             }
         }
     }
+    "min" - {
+        "one" - {
+            val nestedGroup = "A"
+            val inputDescriptorId = "0"
+            val inputDescriptorGroups = mapOf(inputDescriptorId to nestedGroup)
+            val submissionRequirement = SubmissionRequirement(
+                rule = SubmissionRequirementRuleEnum.PICK, fromNested = listOf(
+                    SubmissionRequirement(
+                        rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup
+                    )
+                ), min = 1
+            )
 
-    "pick" - {
-        "from" - {
-            val group = "A"
+            "satisfied" {
+                val selectedInputDescriptorIds = listOf(inputDescriptorId)
 
-            "count" - {
-                val submissionRequirement = SubmissionRequirement(
-                    rule = SubmissionRequirementRuleEnum.PICK, from = group, count = 1
-                )
-
-                "1" - {
-                    val inputDescriptorId = "0"
-
-                    "inGroup" - {
-                        val inputDescriptorGroups = mapOf(inputDescriptorId to group)
-
-                        "selected" - {
-                            val selectedInputDescriptorIds = listOf(inputDescriptorId)
-
-                            "shouldBeTrue" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe true
-                            }
-                        }
-                        "notSelected" - {
-                            val selectedInputDescriptorIds = listOf<String>()
-
-                            "shouldBeFalse" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe false
-                            }
-                        }
-                    }
-
-                    "notInGroup" - {
-                        val inputDescriptorGroups = mapOf(inputDescriptorId to group + "2")
-
-                        "selected" - {
-                            val selectedInputDescriptorIds = listOf(inputDescriptorId)
-
-                            "shouldBeFalse" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe false
-                            }
-                        }
-                        "notSelected" - {
-                            val selectedInputDescriptorIds = listOf<String>()
-
-                            "shouldBeFalse" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe false
-                            }
-                        }
-                    }
-                }
-
-                "2" - {
-                    val inputDescriptor0Id = "0"
-                    val inputDescriptor1Id = "1"
-
-                    "bothInGroup" - {
-                        val inputDescriptorGroups = mapOf(
-                            inputDescriptor0Id to group,
-                            inputDescriptor1Id to group,
-                        )
-
-                        "bothSelected" - {
-                            val selectedInputDescriptorIds = listOf(
-                                inputDescriptor0Id,
-                                inputDescriptor1Id,
-                            )
-
-                            "shouldBeFalse" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe false
-                            }
-                        }
-
-                        "secondSelected" - {
-                            val selectedInputDescriptorIds = listOf(
-                                inputDescriptor1Id,
-                            )
-
-                            "shouldBeTrue" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe true
-                            }
-                        }
-
-                        "firstSelected" - {
-                            val selectedInputDescriptorIds = listOf(
-                                inputDescriptor0Id,
-                            )
-
-                            "shouldBeTrue" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe true
-                            }
-                        }
-
-                        "neitherSelected" - {
-                            val selectedInputDescriptorIds = listOf<String>()
-
-                            "shouldBeFalse" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe false
-                            }
-                        }
-                    }
-
-                    "groupsT0" - {
-                        val inputDescriptorGroups = mapOf(
-                            inputDescriptor0Id to group,
-                            inputDescriptor1Id to (group + "2"),
-                        )
-
-                        "bothSelected" - {
-                            val selectedInputDescriptorIds = listOf(
-                                inputDescriptor0Id,
-                                inputDescriptor1Id,
-                            )
-
-                            "shouldBeTrue" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe true
-                            }
-                        }
-
-                        "firstSelected" - {
-                            val selectedInputDescriptorIds = listOf(
-                                inputDescriptor0Id,
-                            )
-
-                            "shouldBeTrue" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe true
-                            }
-                        }
-
-                        "secondSelected" - {
-                            val selectedInputDescriptorIds = listOf(
-                                inputDescriptor1Id,
-                            )
-
-                            "shouldBeFalse" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe false
-                            }
-                        }
-
-                        "neitherSelected" - {
-                            val selectedInputDescriptorIds = listOf(
-                                inputDescriptor1Id,
-                            )
-
-                            "shouldBeFalse" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe false
-                            }
-                        }
-                    }
-
-                    "groups00" - {
-                        val actualGroup = group + "2"
-                        val inputDescriptorGroups = mapOf(
-                            inputDescriptor0Id to actualGroup,
-                            inputDescriptor1Id to actualGroup,
-                        )
-
-                        "bothSelected" - {
-                            val selectedInputDescriptorIds = listOf(
-                                inputDescriptor0Id,
-                                inputDescriptor1Id,
-                            )
-
-                            "shouldBeFalse" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe false
-                            }
-                        }
-
-                        "oneSelected" - {
-                            val selectionPossibilities = listOf(
-                                listOf(inputDescriptor0Id),
-                                listOf(inputDescriptor1Id),
-                            )
-
-                            "shouldBeFalse" {
-                                selectionPossibilities.forEach {
-                                    submissionRequirement.evaluate(
-                                        inputDescriptorGroups = inputDescriptorGroups,
-                                        selectedInputDescriptorIds = it
-                                    ) shouldBe false
-                                }
-                            }
-                        }
-
-                        "neitherSelected" - {
-                            val selectedInputDescriptorIds = listOf<String>()
-
-                            "shouldBeFalse" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe false
-                            }
-                        }
-                    }
-
-                    "groups01" - {
-                        val inputDescriptorGroups = mapOf(
-                            inputDescriptor0Id to group + "2",
-                            inputDescriptor1Id to group + "3",
-                        )
-
-                        "bothSelected" - {
-                            val selectedInputDescriptorIds = listOf(
-                                inputDescriptor0Id,
-                                inputDescriptor1Id,
-                            )
-
-                            "shouldBeFalse" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe false
-                            }
-                        }
-
-                        "oneSelected" - {
-                            val selectionPossibilities = listOf(
-                                listOf(inputDescriptor0Id),
-                                listOf(inputDescriptor1Id),
-                            )
-
-                            "shouldBeFalse" {
-                                selectionPossibilities.forEach {
-                                    submissionRequirement.evaluate(
-                                        inputDescriptorGroups = inputDescriptorGroups,
-                                        selectedInputDescriptorIds = it
-                                    ) shouldBe false
-                                }
-                            }
-                        }
-
-                        "neitherSelected" - {
-                            val selectedInputDescriptorIds = listOf<String>()
-
-                            "shouldBeFalse" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe false
-                            }
-                        }
-                    }
-                }
+                submissionRequirement.evaluate(
+                    inputDescriptorGroups = inputDescriptorGroups,
+                    selectedInputDescriptorIds = selectedInputDescriptorIds
+                ) shouldBe true
             }
-            "min" - {
-                val submissionRequirement = SubmissionRequirement(
-                    rule = SubmissionRequirementRuleEnum.PICK, from = group, min = 1
-                )
 
-                "1" - {
-                    val inputDescriptorId = "0"
+            "isNotSatisfied" {
+                val selectedInputDescriptorIds = listOf<String>()
 
-                    "inGroup" - {
-                        val inputDescriptorGroups = mapOf(inputDescriptorId to group)
-
-                        "selected" - {
-                            val selectedInputDescriptorIds = listOf(inputDescriptorId)
-
-                            "shouldBeTrue" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe true
-                            }
-                        }
-                        "notSelected" - {
-                            val selectedInputDescriptorIds = listOf<String>()
-
-                            "shouldBeFalse" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe false
-                            }
-                        }
-                    }
-
-                    "notInGroup" - {
-                        val inputDescriptorGroups = mapOf(inputDescriptorId to group + "2")
-
-                        "selected" - {
-                            val selectedInputDescriptorIds = listOf(inputDescriptorId)
-
-                            "shouldBeFalse" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe false
-                            }
-                        }
-                        "notSelected" - {
-                            val selectedInputDescriptorIds = listOf<String>()
-
-                            "shouldBeFalse" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe false
-                            }
-                        }
-                    }
-                }
-
-                "2" - {
-                    val inputDescriptor0Id = "0"
-                    val inputDescriptor1Id = "1"
-
-                    "bothInGroup" - {
-                        val inputDescriptorGroups = mapOf(
-                            inputDescriptor0Id to group,
-                            inputDescriptor1Id to group,
-                        )
-
-                        "bothSelected" - {
-                            val selectedInputDescriptorIds = listOf(
-                                inputDescriptor0Id,
-                                inputDescriptor1Id,
-                            )
-
-                            "shouldBeTrue" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe true
-                            }
-                        }
-
-                        "secondSelected" - {
-                            val selectedInputDescriptorIds = listOf(
-                                inputDescriptor1Id,
-                            )
-
-                            "shouldBeTrue" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe true
-                            }
-                        }
-
-                        "firstSelected" - {
-                            val selectedInputDescriptorIds = listOf(
-                                inputDescriptor0Id,
-                            )
-
-                            "shouldBeTrue" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe true
-                            }
-                        }
-
-                        "neitherSelected" - {
-                            val selectedInputDescriptorIds = listOf<String>()
-
-                            "shouldBeFalse" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe false
-                            }
-                        }
-                    }
-
-                    "when descriptors are in different groups, but descriptor 0 is in the selected group" - {
-                        val inputDescriptorGroups = mapOf(
-                            inputDescriptor0Id to group,
-                            inputDescriptor1Id to (group + "2"),
-                        )
-
-                        "bothSelected" - {
-                            val selectedInputDescriptorIds = listOf(
-                                inputDescriptor0Id,
-                                inputDescriptor1Id,
-                            )
-
-                            "shouldBeTrue" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe true
-                            }
-                        }
-
-                        "when only the descriptor in the intended group is selected" - {
-                            val selectedInputDescriptorIds = listOf(
-                                inputDescriptor0Id,
-                            )
-
-                            "shouldBeTrue" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe true
-                            }
-                        }
-
-                        "when only the descriptor not in the intended group is selected" - {
-                            val selectedInputDescriptorIds = listOf(
-                                inputDescriptor1Id,
-                            )
-
-                            "shouldBeFalse" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe false
-                            }
-                        }
-
-                        "neitherSelected" - {
-                            val selectedInputDescriptorIds = listOf(
-                                inputDescriptor1Id,
-                            )
-
-                            "shouldBeFalse" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe false
-                            }
-                        }
-                    }
-
-                    "when descriptors are in same groups, but the group is not the intended one" - {
-                        val actualGroup = group + "2"
-                        val inputDescriptorGroups = mapOf(
-                            inputDescriptor0Id to actualGroup,
-                            inputDescriptor1Id to actualGroup,
-                        )
-
-                        "bothSelected" - {
-                            val selectedInputDescriptorIds = listOf(
-                                inputDescriptor0Id,
-                                inputDescriptor1Id,
-                            )
-
-                            "shouldBeFalse" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe false
-                            }
-                        }
-
-                        "oneSelected" - {
-                            val selectionPossibilities = listOf(
-                                listOf(inputDescriptor0Id),
-                                listOf(inputDescriptor1Id),
-                            )
-
-                            "shouldBeFalse" {
-                                selectionPossibilities.forEach {
-                                    submissionRequirement.evaluate(
-                                        inputDescriptorGroups = inputDescriptorGroups,
-                                        selectedInputDescriptorIds = it
-                                    ) shouldBe false
-                                }
-                            }
-                        }
-
-                        "neitherSelected" - {
-                            val selectedInputDescriptorIds = listOf<String>()
-
-                            "shouldBeFalse" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe false
-                            }
-                        }
-                    }
-
-                    "groups01" - {
-                        val inputDescriptorGroups = mapOf(
-                            inputDescriptor0Id to group + "2",
-                            inputDescriptor1Id to group + "3",
-                        )
-
-                        "bothSelected" - {
-                            val selectedInputDescriptorIds = listOf(
-                                inputDescriptor0Id,
-                                inputDescriptor1Id,
-                            )
-
-                            "shouldBeFalse" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe false
-                            }
-                        }
-
-                        "oneSelected" - {
-                            val selectionPossibilities = listOf(
-                                listOf(inputDescriptor0Id),
-                                listOf(inputDescriptor1Id),
-                            )
-
-                            "shouldBeFalse" {
-                                selectionPossibilities.forEach {
-                                    submissionRequirement.evaluate(
-                                        inputDescriptorGroups = inputDescriptorGroups,
-                                        selectedInputDescriptorIds = it
-                                    ) shouldBe false
-                                }
-                            }
-                        }
-
-                        "neitherSelected" - {
-                            val selectedInputDescriptorIds = listOf<String>()
-
-                            "shouldBeFalse" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe false
-                            }
-                        }
-                    }
-                }
-            }
-            "max" - {
-                val submissionRequirement = SubmissionRequirement(
-                    rule = SubmissionRequirementRuleEnum.PICK, from = group, max = 1
-                )
-
-                "1" - {
-                    val inputDescriptorId = "0"
-
-                    "inGroup" - {
-                        val inputDescriptorGroups = mapOf(inputDescriptorId to group)
-
-                        "selected" - {
-                            val selectedInputDescriptorIds = listOf(inputDescriptorId)
-
-                            "shouldBeTrue" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe true
-                            }
-                        }
-                        "notSelected" - {
-                            val selectedInputDescriptorIds = listOf<String>()
-
-                            "shouldBeTrue" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe true
-                            }
-                        }
-                    }
-
-                    "notInGroup" - {
-                        val inputDescriptorGroups = mapOf(inputDescriptorId to group + "2")
-
-                        "selected" - {
-                            val selectedInputDescriptorIds = listOf(inputDescriptorId)
-
-                            "shouldBeTrue" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe true
-                            }
-                        }
-                        "notSelected" - {
-                            val selectedInputDescriptorIds = listOf<String>()
-
-                            "shouldBeTrue" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe true
-                            }
-                        }
-                    }
-                }
-
-                "2" - {
-                    val inputDescriptor0Id = "0"
-                    val inputDescriptor1Id = "1"
-
-                    "bothInGroup" - {
-                        val inputDescriptorGroups = mapOf(
-                            inputDescriptor0Id to group,
-                            inputDescriptor1Id to group,
-                        )
-
-                        "bothSelected" - {
-                            val selectedInputDescriptorIds = listOf(
-                                inputDescriptor0Id,
-                                inputDescriptor1Id,
-                            )
-
-                            "shouldBeFalse" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe false
-                            }
-                        }
-
-                        "secondSelected" - {
-                            val selectedInputDescriptorIds = listOf(
-                                inputDescriptor1Id,
-                            )
-
-                            "shouldBeTrue" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe true
-                            }
-                        }
-
-                        "firstSelected" - {
-                            val selectedInputDescriptorIds = listOf(
-                                inputDescriptor0Id,
-                            )
-
-                            "shouldBeTrue" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe true
-                            }
-                        }
-
-                        "neitherSelected" - {
-                            val selectedInputDescriptorIds = listOf<String>()
-
-                            "shouldBeTrue" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe true
-                            }
-                        }
-                    }
-
-                    "when descriptors are in different groups, but descriptor 0 is in the selected group" - {
-                        val inputDescriptorGroups = mapOf(
-                            inputDescriptor0Id to group,
-                            inputDescriptor1Id to (group + "2"),
-                        )
-
-                        "bothSelected" - {
-                            val selectedInputDescriptorIds = listOf(
-                                inputDescriptor0Id,
-                                inputDescriptor1Id,
-                            )
-
-                            "shouldBeTrue" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe true
-                            }
-                        }
-
-                        "when only the descriptor in the intended group is selected" - {
-                            val selectedInputDescriptorIds = listOf(
-                                inputDescriptor0Id,
-                            )
-
-                            "shouldBeTrue" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe true
-                            }
-                        }
-
-                        "when only the descriptor not in the intended group is selected" - {
-                            val selectedInputDescriptorIds = listOf(
-                                inputDescriptor1Id,
-                            )
-
-                            "shouldBeTrue" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe true
-                            }
-                        }
-
-                        "neitherSelected" - {
-                            val selectedInputDescriptorIds = listOf(
-                                inputDescriptor1Id,
-                            )
-
-                            "shouldBeTrue" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe true
-                            }
-                        }
-                    }
-
-                    "when descriptors are in same groups, but the group is not the intended one" - {
-                        val actualGroup = group + "2"
-                        val inputDescriptorGroups = mapOf(
-                            inputDescriptor0Id to actualGroup,
-                            inputDescriptor1Id to actualGroup,
-                        )
-
-                        "bothSelected" - {
-                            val selectedInputDescriptorIds = listOf(
-                                inputDescriptor0Id,
-                                inputDescriptor1Id,
-                            )
-
-                            "shouldBeTrue" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe true
-                            }
-                        }
-
-                        "oneSelected" - {
-                            val selectionPossibilities = listOf(
-                                listOf(inputDescriptor0Id),
-                                listOf(inputDescriptor1Id),
-                            )
-
-                            "shouldBeTrue" {
-                                selectionPossibilities.forEach {
-                                    submissionRequirement.evaluate(
-                                        inputDescriptorGroups = inputDescriptorGroups,
-                                        selectedInputDescriptorIds = it
-                                    ) shouldBe true
-                                }
-                            }
-                        }
-
-                        "neitherSelected" - {
-                            val selectedInputDescriptorIds = listOf<String>()
-
-                            "shouldBeTrue" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe true
-                            }
-                        }
-                    }
-
-                    "groups01" - {
-                        val inputDescriptorGroups = mapOf(
-                            inputDescriptor0Id to group + "2",
-                            inputDescriptor1Id to group + "3",
-                        )
-
-                        "bothSelected" - {
-                            val selectedInputDescriptorIds = listOf(
-                                inputDescriptor0Id,
-                                inputDescriptor1Id,
-                            )
-
-                            "shouldBeTrue" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe true
-                            }
-                        }
-
-                        "oneSelected" - {
-                            val selectionPossibilities = listOf(
-                                listOf(inputDescriptor0Id),
-                                listOf(inputDescriptor1Id),
-                            )
-
-                            "shouldBeTrue" {
-                                selectionPossibilities.forEach {
-                                    submissionRequirement.evaluate(
-                                        inputDescriptorGroups = inputDescriptorGroups,
-                                        selectedInputDescriptorIds = it
-                                    ) shouldBe true
-                                }
-                            }
-                        }
-
-                        "neitherSelected" - {
-                            val selectedInputDescriptorIds = listOf<String>()
-
-                            "shouldBeTrue" {
-                                submissionRequirement.evaluate(
-                                    inputDescriptorGroups = inputDescriptorGroups,
-                                    selectedInputDescriptorIds = selectedInputDescriptorIds
-                                ) shouldBe true
-                            }
-                        }
-                    }
-                }
+                submissionRequirement.evaluate(
+                    inputDescriptorGroups = inputDescriptorGroups,
+                    selectedInputDescriptorIds = selectedInputDescriptorIds
+                ) shouldBe false
             }
         }
 
-        "nested" - {
-            "count" - {
-                "1" - {
-                    val nestedGroup = "A"
-                    val inputDescriptorId = "0"
-                    val inputDescriptorGroups = mapOf(inputDescriptorId to nestedGroup)
-                    val submissionRequirement = SubmissionRequirement(
-                        rule = SubmissionRequirementRuleEnum.PICK, fromNested = listOf(
-                            SubmissionRequirement(
-                                rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup
-                            )
-                        ), count = 1
-                    )
+        "two" - {
+            val nestedGroup0 = "A"
+            val nestedGroup1 = "B"
+            val inputDescriptor0Id = "0"
+            val inputDescriptor1Id = "1"
+            val inputDescriptorGroups = mapOf(
+                inputDescriptor0Id to nestedGroup0,
+                inputDescriptor1Id to nestedGroup1,
+            )
 
-                    "isSatisfied" - {
-                        val selectedInputDescriptorIds = listOf(inputDescriptorId)
+            val nestedRequirements = listOf(
+                SubmissionRequirement(
+                    rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup0
+                ),
+                SubmissionRequirement(
+                    rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup1
+                ),
+            )
+            val submissionRequirement = SubmissionRequirement(
+                rule = SubmissionRequirementRuleEnum.PICK,
+                fromNested = nestedRequirements,
+                min = 1
+            )
 
-                        "shouldBeTrue" {
-                            submissionRequirement.evaluate(
-                                inputDescriptorGroups = inputDescriptorGroups,
-                                selectedInputDescriptorIds = selectedInputDescriptorIds
-                            ) shouldBe true
-                        }
-                    }
+            "both satisfied" {
+                val selectedInputDescriptorIds = listOf(
+                    inputDescriptor0Id,
+                    inputDescriptor1Id,
+                )
 
-                    "isNotSatisfied" - {
-                        val selectedInputDescriptorIds = listOf<String>()
-
-                        "shouldBeFalse" {
-                            submissionRequirement.evaluate(
-                                inputDescriptorGroups = inputDescriptorGroups,
-                                selectedInputDescriptorIds = selectedInputDescriptorIds
-                            ) shouldBe false
-                        }
-                    }
+                nestedRequirements.forEach {
+                    it.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds,
+                    ) shouldBe true
                 }
+                withClue("shouldBeTrue") {
+                    submissionRequirement.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds
+                    ) shouldBe true
+                }
+            }
 
-                "2" - {
-                    val nestedGroup0 = "A"
-                    val nestedGroup1 = "B"
-                    val inputDescriptor0Id = "0"
-                    val inputDescriptor1Id = "1"
-                    val inputDescriptorGroups = mapOf(
-                        inputDescriptor0Id to nestedGroup0,
-                        inputDescriptor1Id to nestedGroup1,
-                    )
+            "0 is satisfied" {
+                val selectedInputDescriptorIds = listOf(
+                    inputDescriptor0Id,
+                )
+                nestedRequirements[0].evaluate(
+                    inputDescriptorGroups = inputDescriptorGroups,
+                    selectedInputDescriptorIds = selectedInputDescriptorIds,
+                ) shouldBe true
+                nestedRequirements[1].evaluate(
+                    inputDescriptorGroups = inputDescriptorGroups,
+                    selectedInputDescriptorIds = selectedInputDescriptorIds,
+                ) shouldBe false
+                withClue("shouldBeTrue") {
+                    submissionRequirement.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds,
+                    ) shouldBe true
+                }
+            }
 
-                    val nestedRequirements = listOf(
-                        SubmissionRequirement(
-                            rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup0
-                        ),
-                        SubmissionRequirement(
-                            rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup1
-                        ),
-                    )
-                    val submissionRequirement = SubmissionRequirement(
-                        rule = SubmissionRequirementRuleEnum.PICK,
-                        fromNested = nestedRequirements,
-                        count = 1
-                    )
+            "1 is satisfied" {
+                val selectedInputDescriptorIds = listOf(
+                    inputDescriptor1Id,
+                )
+                nestedRequirements[0].evaluate(
+                    inputDescriptorGroups = inputDescriptorGroups,
+                    selectedInputDescriptorIds = selectedInputDescriptorIds,
+                ) shouldBe false
+                nestedRequirements[1].evaluate(
+                    inputDescriptorGroups = inputDescriptorGroups,
+                    selectedInputDescriptorIds = selectedInputDescriptorIds,
+                ) shouldBe true
+                withClue("shouldBeFalse") {
+                    submissionRequirement.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds,
+                    ) shouldBe true
+                }
+            }
 
-                    "bothSatisfied" - {
-                        val selectedInputDescriptorIds = listOf(
-                            inputDescriptor0Id,
-                            inputDescriptor1Id,
-                        )
-
-                        nestedRequirements.forEach {
-                            it.evaluate(
-                                inputDescriptorGroups = inputDescriptorGroups,
-                                selectedInputDescriptorIds = selectedInputDescriptorIds,
-                            ) shouldBe true
-                        }
-                        "shouldBeFalse" {
-                            submissionRequirement.evaluate(
-                                inputDescriptorGroups = inputDescriptorGroups,
-                                selectedInputDescriptorIds = selectedInputDescriptorIds
-                            ) shouldBe false
-                        }
-                    }
-
-                    "firstSatisfied" - {
-                        val selectedInputDescriptorIds = listOf(
-                            inputDescriptor0Id,
-                        )
-                        nestedRequirements[0].evaluate(
-                            inputDescriptorGroups = inputDescriptorGroups,
-                            selectedInputDescriptorIds = selectedInputDescriptorIds,
-                        ) shouldBe true
-                        nestedRequirements[1].evaluate(
-                            inputDescriptorGroups = inputDescriptorGroups,
-                            selectedInputDescriptorIds = selectedInputDescriptorIds,
-                        ) shouldBe false
-                        "shouldBeTrue" {
-                            submissionRequirement.evaluate(
-                                inputDescriptorGroups = inputDescriptorGroups,
-                                selectedInputDescriptorIds = selectedInputDescriptorIds,
-                            ) shouldBe true
-                        }
-                    }
-
-                    "secondSatisfied" - {
-                        val selectedInputDescriptorIds = listOf(
-                            inputDescriptor1Id,
-                        )
-                        nestedRequirements[0].evaluate(
-                            inputDescriptorGroups = inputDescriptorGroups,
-                            selectedInputDescriptorIds = selectedInputDescriptorIds,
-                        ) shouldBe false
-                        nestedRequirements[1].evaluate(
-                            inputDescriptorGroups = inputDescriptorGroups,
-                            selectedInputDescriptorIds = selectedInputDescriptorIds,
-                        ) shouldBe true
-                        "shouldBeTrue" {
-                            submissionRequirement.evaluate(
-                                inputDescriptorGroups = inputDescriptorGroups,
-                                selectedInputDescriptorIds = selectedInputDescriptorIds,
-                            ) shouldBe true
-                        }
-                    }
-
-                    "neitherSatisfied" - {
-                        val selectedInputDescriptorIds = listOf<String>()
-                        nestedRequirements[0].evaluate(
-                            inputDescriptorGroups = inputDescriptorGroups,
-                            selectedInputDescriptorIds = selectedInputDescriptorIds,
-                        ) shouldBe false
-                        nestedRequirements[1].evaluate(
-                            inputDescriptorGroups = inputDescriptorGroups,
-                            selectedInputDescriptorIds = selectedInputDescriptorIds,
-                        ) shouldBe false
-                        "shouldBeFalse" {
-                            submissionRequirement.evaluate(
-                                inputDescriptorGroups = inputDescriptorGroups,
-                                selectedInputDescriptorIds = selectedInputDescriptorIds,
-                            ) shouldBe false
-                        }
-                    }
+            "neitherSatisfied" {
+                val selectedInputDescriptorIds = listOf<String>()
+                nestedRequirements[0].evaluate(
+                    inputDescriptorGroups = inputDescriptorGroups,
+                    selectedInputDescriptorIds = selectedInputDescriptorIds,
+                ) shouldBe false
+                nestedRequirements[1].evaluate(
+                    inputDescriptorGroups = inputDescriptorGroups,
+                    selectedInputDescriptorIds = selectedInputDescriptorIds,
+                ) shouldBe false
+                withClue("shouldBeFalse") {
+                    submissionRequirement.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds,
+                    ) shouldBe false
                 }
             }
         }
-        "min" - {
-            "1" - {
-                val nestedGroup = "A"
-                val inputDescriptorId = "0"
-                val inputDescriptorGroups = mapOf(inputDescriptorId to nestedGroup)
-                val submissionRequirement = SubmissionRequirement(
-                    rule = SubmissionRequirementRuleEnum.PICK, fromNested = listOf(
-                        SubmissionRequirement(
-                            rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup
-                        )
-                    ), min = 1
-                )
+    }
+    "max" - {
+        "one" - {
+            val nestedGroup = "A"
+            val inputDescriptorId = "0"
+            val inputDescriptorGroups = mapOf(inputDescriptorId to nestedGroup)
+            val submissionRequirement = SubmissionRequirement(
+                rule = SubmissionRequirementRuleEnum.PICK, fromNested = listOf(
+                    SubmissionRequirement(
+                        rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup
+                    )
+                ), max = 1
+            )
 
-                "satisfied" - {
-                    val selectedInputDescriptorIds = listOf(inputDescriptorId)
+            "satisfied" {
+                val selectedInputDescriptorIds = listOf(inputDescriptorId)
 
-                    "shouldBeTrue" {
-                        submissionRequirement.evaluate(
-                            inputDescriptorGroups = inputDescriptorGroups,
-                            selectedInputDescriptorIds = selectedInputDescriptorIds
-                        ) shouldBe true
-                    }
-                }
-
-                "isNotSatisfied" - {
-                    val selectedInputDescriptorIds = listOf<String>()
-
-                    "shouldBeFalse" {
-                        submissionRequirement.evaluate(
-                            inputDescriptorGroups = inputDescriptorGroups,
-                            selectedInputDescriptorIds = selectedInputDescriptorIds
-                        ) shouldBe false
-                    }
-                }
+                submissionRequirement.evaluate(
+                    inputDescriptorGroups = inputDescriptorGroups,
+                    selectedInputDescriptorIds = selectedInputDescriptorIds
+                ) shouldBe true
             }
 
-            "2" - {
-                val nestedGroup0 = "A"
-                val nestedGroup1 = "B"
-                val inputDescriptor0Id = "0"
-                val inputDescriptor1Id = "1"
-                val inputDescriptorGroups = mapOf(
-                    inputDescriptor0Id to nestedGroup0,
-                    inputDescriptor1Id to nestedGroup1,
-                )
+            "unsatisfied" {
+                val selectedInputDescriptorIds = listOf<String>()
 
-                val nestedRequirements = listOf(
-                    SubmissionRequirement(
-                        rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup0
-                    ),
-                    SubmissionRequirement(
-                        rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup1
-                    ),
-                )
-                val submissionRequirement = SubmissionRequirement(
-                    rule = SubmissionRequirementRuleEnum.PICK,
-                    fromNested = nestedRequirements,
-                    min = 1
-                )
-
-                "both satisfied" - {
-                    val selectedInputDescriptorIds = listOf(
-                        inputDescriptor0Id,
-                        inputDescriptor1Id,
-                    )
-
-                    nestedRequirements.forEach {
-                        it.evaluate(
-                            inputDescriptorGroups = inputDescriptorGroups,
-                            selectedInputDescriptorIds = selectedInputDescriptorIds,
-                        ) shouldBe true
-                    }
-                    "shouldBeTrue" {
-                        submissionRequirement.evaluate(
-                            inputDescriptorGroups = inputDescriptorGroups,
-                            selectedInputDescriptorIds = selectedInputDescriptorIds
-                        ) shouldBe true
-                    }
-                }
-
-                "0 is satisfied" - {
-                    val selectedInputDescriptorIds = listOf(
-                        inputDescriptor0Id,
-                    )
-                    nestedRequirements[0].evaluate(
-                        inputDescriptorGroups = inputDescriptorGroups,
-                        selectedInputDescriptorIds = selectedInputDescriptorIds,
-                    ) shouldBe true
-                    nestedRequirements[1].evaluate(
-                        inputDescriptorGroups = inputDescriptorGroups,
-                        selectedInputDescriptorIds = selectedInputDescriptorIds,
-                    ) shouldBe false
-                    "shouldBeTrue" {
-                        submissionRequirement.evaluate(
-                            inputDescriptorGroups = inputDescriptorGroups,
-                            selectedInputDescriptorIds = selectedInputDescriptorIds,
-                        ) shouldBe true
-                    }
-                }
-
-                "1 is satisfied" - {
-                    val selectedInputDescriptorIds = listOf(
-                        inputDescriptor1Id,
-                    )
-                    nestedRequirements[0].evaluate(
-                        inputDescriptorGroups = inputDescriptorGroups,
-                        selectedInputDescriptorIds = selectedInputDescriptorIds,
-                    ) shouldBe false
-                    nestedRequirements[1].evaluate(
-                        inputDescriptorGroups = inputDescriptorGroups,
-                        selectedInputDescriptorIds = selectedInputDescriptorIds,
-                    ) shouldBe true
-                    "shouldBeFalse" {
-                        submissionRequirement.evaluate(
-                            inputDescriptorGroups = inputDescriptorGroups,
-                            selectedInputDescriptorIds = selectedInputDescriptorIds,
-                        ) shouldBe true
-                    }
-                }
-
-                "neitherSatisfied" - {
-                    val selectedInputDescriptorIds = listOf<String>()
-                    nestedRequirements[0].evaluate(
-                        inputDescriptorGroups = inputDescriptorGroups,
-                        selectedInputDescriptorIds = selectedInputDescriptorIds,
-                    ) shouldBe false
-                    nestedRequirements[1].evaluate(
-                        inputDescriptorGroups = inputDescriptorGroups,
-                        selectedInputDescriptorIds = selectedInputDescriptorIds,
-                    ) shouldBe false
-                    "shouldBeFalse" {
-                        submissionRequirement.evaluate(
-                            inputDescriptorGroups = inputDescriptorGroups,
-                            selectedInputDescriptorIds = selectedInputDescriptorIds,
-                        ) shouldBe false
-                    }
-                }
+                submissionRequirement.evaluate(
+                    inputDescriptorGroups = inputDescriptorGroups,
+                    selectedInputDescriptorIds = selectedInputDescriptorIds
+                ) shouldBe true
             }
         }
-        "max" - {
-            "1" - {
-                val nestedGroup = "A"
-                val inputDescriptorId = "0"
-                val inputDescriptorGroups = mapOf(inputDescriptorId to nestedGroup)
-                val submissionRequirement = SubmissionRequirement(
-                    rule = SubmissionRequirementRuleEnum.PICK, fromNested = listOf(
-                        SubmissionRequirement(
-                            rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup
-                        )
-                    ), max = 1
+
+        "two" - {
+            val nestedGroup0 = "A"
+            val nestedGroup1 = "B"
+            val inputDescriptor0Id = "0"
+            val inputDescriptor1Id = "1"
+            val inputDescriptorGroups = mapOf(
+                inputDescriptor0Id to nestedGroup0,
+                inputDescriptor1Id to nestedGroup1,
+            )
+
+            val nestedRequirements = listOf(
+                SubmissionRequirement(
+                    rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup0
+                ),
+                SubmissionRequirement(
+                    rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup1
+                ),
+            )
+            val submissionRequirement = SubmissionRequirement(
+                rule = SubmissionRequirementRuleEnum.PICK,
+                fromNested = nestedRequirements,
+                max = 1
+            )
+
+            "both satisfied" {
+                val selectedInputDescriptorIds = listOf(
+                    inputDescriptor0Id,
+                    inputDescriptor1Id,
                 )
 
-                "satisfied" - {
-                    val selectedInputDescriptorIds = listOf(inputDescriptorId)
-
-                    "shouldBeTrue" {
-                        submissionRequirement.evaluate(
-                            inputDescriptorGroups = inputDescriptorGroups,
-                            selectedInputDescriptorIds = selectedInputDescriptorIds
-                        ) shouldBe true
-                    }
+                nestedRequirements.forEach {
+                    it.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds,
+                    ) shouldBe true
                 }
-
-                "unsatisfied" - {
-                    val selectedInputDescriptorIds = listOf<String>()
-
-                    "shouldBeFalse" {
-                        submissionRequirement.evaluate(
-                            inputDescriptorGroups = inputDescriptorGroups,
-                            selectedInputDescriptorIds = selectedInputDescriptorIds
-                        ) shouldBe true
-                    }
+                withClue("shouldBeFalse") {
+                    submissionRequirement.evaluate(
+                        inputDescriptorGroups = inputDescriptorGroups,
+                        selectedInputDescriptorIds = selectedInputDescriptorIds
+                    ) shouldBe false
                 }
             }
 
-            "2" - {
-                val nestedGroup0 = "A"
-                val nestedGroup1 = "B"
-                val inputDescriptor0Id = "0"
-                val inputDescriptor1Id = "1"
-                val inputDescriptorGroups = mapOf(
-                    inputDescriptor0Id to nestedGroup0,
-                    inputDescriptor1Id to nestedGroup1,
+            "first satisfied" {
+                val selectedInputDescriptorIds = listOf(
+                    inputDescriptor0Id,
                 )
-
-                val nestedRequirements = listOf(
-                    SubmissionRequirement(
-                        rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup0
-                    ),
-                    SubmissionRequirement(
-                        rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup1
-                    ),
-                )
-                val submissionRequirement = SubmissionRequirement(
-                    rule = SubmissionRequirementRuleEnum.PICK,
-                    fromNested = nestedRequirements,
-                    max = 1
-                )
-
-                "both satisfied" - {
-                    val selectedInputDescriptorIds = listOf(
-                        inputDescriptor0Id,
-                        inputDescriptor1Id,
-                    )
-
-                    nestedRequirements.forEach {
-                        it.evaluate(
-                            inputDescriptorGroups = inputDescriptorGroups,
-                            selectedInputDescriptorIds = selectedInputDescriptorIds,
-                        ) shouldBe true
-                    }
-                    "shouldBeFalse" {
-                        submissionRequirement.evaluate(
-                            inputDescriptorGroups = inputDescriptorGroups,
-                            selectedInputDescriptorIds = selectedInputDescriptorIds
-                        ) shouldBe false
-                    }
-                }
-
-                "first satisfied" - {
-                    val selectedInputDescriptorIds = listOf(
-                        inputDescriptor0Id,
-                    )
-                    nestedRequirements[0].evaluate(
+                nestedRequirements[0].evaluate(
+                    inputDescriptorGroups = inputDescriptorGroups,
+                    selectedInputDescriptorIds = selectedInputDescriptorIds,
+                ) shouldBe true
+                nestedRequirements[1].evaluate(
+                    inputDescriptorGroups = inputDescriptorGroups,
+                    selectedInputDescriptorIds = selectedInputDescriptorIds,
+                ) shouldBe false
+                withClue("shouldBeTrue") {
+                    submissionRequirement.evaluate(
                         inputDescriptorGroups = inputDescriptorGroups,
                         selectedInputDescriptorIds = selectedInputDescriptorIds,
                     ) shouldBe true
-                    nestedRequirements[1].evaluate(
-                        inputDescriptorGroups = inputDescriptorGroups,
-                        selectedInputDescriptorIds = selectedInputDescriptorIds,
-                    ) shouldBe false
-                    "shouldBeTrue" {
-                        submissionRequirement.evaluate(
-                            inputDescriptorGroups = inputDescriptorGroups,
-                            selectedInputDescriptorIds = selectedInputDescriptorIds,
-                        ) shouldBe true
-                    }
                 }
+            }
 
-                "second satisfied" - {
-                    val selectedInputDescriptorIds = listOf(
-                        inputDescriptor1Id,
-                    )
-                    nestedRequirements[0].evaluate(
-                        inputDescriptorGroups = inputDescriptorGroups,
-                        selectedInputDescriptorIds = selectedInputDescriptorIds,
-                    ) shouldBe false
-                    nestedRequirements[1].evaluate(
+            "second satisfied" {
+                val selectedInputDescriptorIds = listOf(
+                    inputDescriptor1Id,
+                )
+                nestedRequirements[0].evaluate(
+                    inputDescriptorGroups = inputDescriptorGroups,
+                    selectedInputDescriptorIds = selectedInputDescriptorIds,
+                ) shouldBe false
+                nestedRequirements[1].evaluate(
+                    inputDescriptorGroups = inputDescriptorGroups,
+                    selectedInputDescriptorIds = selectedInputDescriptorIds,
+                ) shouldBe true
+                withClue("shouldBeTrue") {
+                    submissionRequirement.evaluate(
                         inputDescriptorGroups = inputDescriptorGroups,
                         selectedInputDescriptorIds = selectedInputDescriptorIds,
                     ) shouldBe true
-                    "shouldBeTrue" {
-                        submissionRequirement.evaluate(
-                            inputDescriptorGroups = inputDescriptorGroups,
-                            selectedInputDescriptorIds = selectedInputDescriptorIds,
-                        ) shouldBe true
-                    }
                 }
+            }
 
-                "neither satisfied" - {
-                    val selectedInputDescriptorIds = listOf<String>()
-                    nestedRequirements[0].evaluate(
+            "neither satisfied" {
+                val selectedInputDescriptorIds = listOf<String>()
+                nestedRequirements[0].evaluate(
+                    inputDescriptorGroups = inputDescriptorGroups,
+                    selectedInputDescriptorIds = selectedInputDescriptorIds,
+                ) shouldBe false
+                nestedRequirements[1].evaluate(
+                    inputDescriptorGroups = inputDescriptorGroups,
+                    selectedInputDescriptorIds = selectedInputDescriptorIds,
+                ) shouldBe false
+                withClue("shouldBeTrue") {
+                    submissionRequirement.evaluate(
                         inputDescriptorGroups = inputDescriptorGroups,
                         selectedInputDescriptorIds = selectedInputDescriptorIds,
-                    ) shouldBe false
-                    nestedRequirements[1].evaluate(
-                        inputDescriptorGroups = inputDescriptorGroups,
-                        selectedInputDescriptorIds = selectedInputDescriptorIds,
-                    ) shouldBe false
-                    "shouldBeTrue" {
-                        submissionRequirement.evaluate(
-                            inputDescriptorGroups = inputDescriptorGroups,
-                            selectedInputDescriptorIds = selectedInputDescriptorIds,
-                        ) shouldBe true
-                    }
+                    ) shouldBe true
                 }
             }
         }

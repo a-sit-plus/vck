@@ -30,7 +30,7 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.openid.toOAuth2Error
-import de.infix.testBalloon.framework.testSuite
+import de.infix.testBalloon.framework.core.testSuite
 import io.github.aakira.napier.Napier
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.ktor.client.*

@@ -2,7 +2,7 @@ package at.asitplus.openid.dcql
 
 import at.asitplus.testballoon.minus
 import at.asitplus.testballoon.withData
-import de.infix.testBalloon.framework.testSuite
+import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.Json
 
