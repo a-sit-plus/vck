@@ -14,6 +14,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.matthewnelson.encoding.base64.Base64
@@ -38,9 +39,7 @@ val JwsServiceTest by testSuite {
         "signed object with bytes can be verified" {
             val payload = it.randomPayload.encodeToByteArray()
             val signed = it.signJwt(JwsContentTypeConstants.JWT, payload, ByteArraySerializer()).getOrThrow()
-
-            val result = it.verifierJwsService(signed)
-            result shouldBe true
+            it.verifierJwsService(signed).getOrThrow()
         }
 
         "Object can be reconstructed" {
@@ -51,25 +50,19 @@ val JwsServiceTest by testSuite {
             val parsed = JwsSigned.deserialize<ByteArray>(ByteArraySerializer(), signed).getOrThrow()
             parsed.serialize() shouldBe signed
             parsed.payload shouldBe payload
-
-            val result = it.verifierJwsService(parsed)
-            result shouldBe true
+            it.verifierJwsService(parsed).getOrThrow()
         }
 
         "signed object can be verified" {
             val payload = it.randomPayload.encodeToByteArray()
             val signed = it.signJwt(JwsContentTypeConstants.JWT, payload, ByteArraySerializer()).getOrThrow()
-
-            val result = it.verifierJwsService(signed)
-            result shouldBe true
+            it.verifierJwsService(signed).getOrThrow()
         }
 
         "signed object with jsonWebKey can be verified" {
             val signer = SignJwt<String>(it.keyMaterial, JwsHeaderJwk())
             val signed = signer(null, it.randomPayload, String.serializer()).getOrThrow()
-
-            val result = it.verifierJwsService(signed)
-            result shouldBe true
+            it.verifierJwsService(signed).getOrThrow()
         }
 
         "signed object with kid from jku can be verified" {
@@ -78,7 +71,7 @@ val JwsServiceTest by testSuite {
             val signed = signer(null, it.randomPayload, String.serializer()).getOrThrow()
             val validKey = it.keyMaterial.jsonWebKey
             val jwkSetRetriever = JwkSetRetrieverFunction { JsonWebKeySet(keys = listOf(validKey)) }
-            VerifyJwsObject(jwkSetRetriever = jwkSetRetriever)(signed) shouldBe true
+            VerifyJwsObject(jwkSetRetriever = jwkSetRetriever)(signed).getOrThrow()
         }
 
         "signed object with kid from jku, returning invalid key, can not be verified" {
@@ -87,22 +80,22 @@ val JwsServiceTest by testSuite {
             val signed = signer(null, it.randomPayload, String.serializer()).getOrThrow()
             val invalidKey = EphemeralKeyWithoutCert().jsonWebKey
             val jwkSetRetriever = JwkSetRetrieverFunction { JsonWebKeySet(keys = listOf(invalidKey)) }
-            VerifyJwsObject(jwkSetRetriever = jwkSetRetriever)(signed) shouldBe false
+            shouldThrowAny { VerifyJwsObject(jwkSetRetriever = jwkSetRetriever)(signed).getOrThrow() }
         }
 
         "signed object without public key in header can not be verified" {
             val signer = SignJwt<String>(it.keyMaterial, JwsHeaderNone())
             val signed = signer(null, it.randomPayload, String.serializer()).getOrThrow()
 
-            VerifyJwsObject()(signed) shouldBe false
-        }
+        shouldThrowAny { VerifyJwsObject()(signed).getOrThrow() }
+    }
 
         "signed object without public key in header, but retrieved out-of-band can be verified" {
             val signer = SignJwt<String>(it.keyMaterial, JwsHeaderNone())
             val signed = signer(null, it.randomPayload, String.serializer()).getOrThrow()
 
             val publicKeyLookup = PublicJsonWebKeyLookup { jwsSigned -> setOf(it.keyMaterial.jsonWebKey) }
-            VerifyJwsObject(publicKeyLookup = publicKeyLookup)(signed) shouldBe true
+            VerifyJwsObject(publicKeyLookup = publicKeyLookup)(signed).getOrThrow()
         }
 
         "encrypted object can be decrypted" {

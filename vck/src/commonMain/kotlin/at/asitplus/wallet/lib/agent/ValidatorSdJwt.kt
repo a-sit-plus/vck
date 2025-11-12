@@ -67,8 +67,8 @@ class ValidatorSdJwt(
                 return VerifyPresentationResult.ValidationError("Key binding JWT not verified (from cnf)")
             }
         } ?: run {
-            if (!verifyJwsObject(keyBindingSigned)) {
-                return VerifyPresentationResult.ValidationError("Key binding JWT not verified")
+            verifyJwsObject(keyBindingSigned).getOrElse {
+                return VerifyPresentationResult.ValidationError("Key binding JWT not verified. $it")
             }
         }
         val keyBinding = keyBindingSigned.payload

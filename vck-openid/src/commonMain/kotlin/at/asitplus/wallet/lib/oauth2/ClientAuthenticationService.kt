@@ -52,8 +52,8 @@ class ClientAuthenticationService(
             ).getOrElse {
                 throw InvalidClient("could not parse client attestation", it)
             }
-            if (!verifyJwsObject(clientAttestationJwt)) {
-                throw InvalidClient("client attestation JWT not verified")
+            verifyJwsObject(clientAttestationJwt).getOrElse {
+                throw InvalidClient("client attestation JWT not verified. $it")
             }
             if (clientId != null) {
                 if (clientAttestationJwt.payload.subject != clientId) {

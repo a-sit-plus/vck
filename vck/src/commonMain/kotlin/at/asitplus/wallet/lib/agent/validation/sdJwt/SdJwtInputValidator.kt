@@ -65,7 +65,7 @@ data class SdJwtInputValidator(
 
         return SdJwtInputValidationResult(
             input = sdJwtSigned,
-            isIntegrityGood = verifyJwsObject(sdJwtSigned.jws),
+            isIntegrityGood = verifyJwsObject(sdJwtSigned.jws).isSuccess,
             payloadCredentialValidationSummary = payloadCredentialValidationSummary,
             payloadJsonValidationSummary = payloadJsonValidationSummary,
             payload = payloadValidationSummary,
