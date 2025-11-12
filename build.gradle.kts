@@ -26,9 +26,7 @@ tasks.getByName("dokkaHtmlMultiModule") {
     }
 }
 
-
 subprojects {
-    repositories {mavenLocal()}
     afterEvaluate {
         //doesn't build with latest signum, but doesn't matter either
         tasks.findByName("iosX64Test")?.let { it.enabled = false }
