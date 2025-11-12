@@ -43,9 +43,7 @@ import de.infix.testBalloon.framework.core.TestConfig
 import de.infix.testBalloon.framework.core.aroundEach
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.collections.shouldContain
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldNotBeInstanceOf
 import kotlinx.serialization.json.JsonObject
@@ -353,7 +351,9 @@ val AgentSdJwtTest by testSuite {
             val certStatusKey = EphemeralKeyWithoutCert()
             val noCertStatusListIssuer = StatusListAgent(
                 keyMaterial = certStatusKey,
-                signStatusListJwt = SignJwt(certStatusKey, CertChainRemoverJwsHeaderFun())
+                signStatusListJwt = SignJwt(
+                    certStatusKey,
+                    JwsHeaderIdentifierFun { header, _ -> header.copy(certificateChain = null) }),
             )
 
             val haipTokenStatusResolver = TokenStatusResolverImpl(
@@ -394,10 +394,6 @@ val AgentSdJwtTest by testSuite {
                 .shouldBeInstanceOf<TokenStatusValidationResult.Rejected>()
         }
     }
-}
-
-private class CertChainRemoverJwsHeaderFun : JwsHeaderIdentifierFun {
-    override suspend fun invoke(jwsHeader: JwsHeader, keyMaterial: KeyMaterial): JwsHeader = jwsHeader.copy(certificateChain = null)
 }
 
 private fun buildDCQLQuery(vararg claimsQueries: DCQLJsonClaimsQuery) = DCQLQuery(
