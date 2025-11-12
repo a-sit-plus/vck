@@ -164,7 +164,7 @@ val OpenId4VpInteropTest by testSuite {
                 val verifierRequestSigningKey = it.verifierKeyMaterial.jsonWebKey.shouldNotBeNull()
                 VerifyJwsSignatureWithKey()(jar, verifierRequestSigningKey).isSuccess shouldBe true
             } else {
-                VerifyJwsObject()(jar) shouldBe true
+                VerifyJwsObject()(jar).getOrThrow()
             }
 
             val response = it.holderOid4vp.finalizeAuthorizationResponse(state, null).getOrThrow()

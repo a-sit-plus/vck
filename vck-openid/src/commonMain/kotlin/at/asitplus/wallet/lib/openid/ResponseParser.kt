@@ -67,7 +67,9 @@ class ResponseParser(
     @Throws(IllegalArgumentException::class, CancellationException::class)
     internal suspend fun ResponseParametersFrom.extractFromJar() = parameters.response?.let { encodedResponse ->
         encodedResponse.fromJws()?.let { jws ->
-            require(verifyJwsObject(jws)) { "JWS not verified: $encodedResponse" }
+            verifyJwsObject(jws).getOrElse {
+                throw IllegalArgumentException("JWS not verified: $encodedResponse. $it")
+            }
             ResponseParametersFrom.JwsSigned(jws, this, jws.payload)
         } ?: encodedResponse.fromJwe()?.let { jwe ->
             ResponseParametersFrom.JweDecrypted(jwe, this, jwe.payload)

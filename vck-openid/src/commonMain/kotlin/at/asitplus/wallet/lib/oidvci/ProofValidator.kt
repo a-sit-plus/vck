@@ -100,8 +100,8 @@ class ProofValidator(
         if (payload.issuedAt == null || payload.issuedAt!! > (clock.now() + timeLeeway)) {
             throw InvalidProof("issuedAt in future: ${payload.issuedAt}")
         }
-        if (!verifyJwsObject(this)) {
-            throw InvalidProof("invalid signature: $this")
+        verifyJwsObject(this).getOrElse {
+            throw InvalidProof("invalid signature: $this. Error: $it")
         }
         // OID4VCI F.1.: The Credential Issuer SHOULD issue a Credential for each cryptographic public key specified
         // in the attested_keys claim within the key_attestation parameter.

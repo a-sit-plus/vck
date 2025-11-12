@@ -57,7 +57,7 @@ class ValidatorVcJws(
         clientId: String,
     ): VerifyPresentationResult {
         Napier.d("Verifying VP $input with $challenge and $clientId")
-        require (verifyJwsObject(input)) { "signature invalid" }
+        verifyJwsObject(input).getOrThrow()
         val vpJws = input.payload.validate(challenge, clientId)
         val vcValidationResults = vpJws.vp.verifiableCredential
             .map { it to verifyVcJws(it, null, input) }
