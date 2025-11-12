@@ -13,6 +13,7 @@ import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
@@ -32,6 +33,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusVal
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.extensions.sdHashInput
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.jws.JwsHeaderIdentifierFun
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
@@ -41,7 +43,9 @@ import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.engine.runBlocking
 import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldNotBeInstanceOf
 import kotlinx.serialization.json.JsonObject
@@ -294,13 +298,11 @@ val AgentSdJwtTest by testSuite {
                 verifyJwsObjectIntegrity = VerifyStatusListTokenHAIP(),
             )
 
-            val haipValidator = ValidatorSdJwt(
-                validator = Validator(tokenStatusResolver = haipTokenStatusResolver),
-            )
-
             val haipVerifier = VerifierAgent(
                 identifier = verifierId,
-                validatorSdJwt = haipValidator,
+                validatorSdJwt = ValidatorSdJwt(
+                    validator = Validator(tokenStatusResolver = haipTokenStatusResolver),
+                ),
             )
 
             val presentationParameters = holder.createDefaultPresentation(
@@ -319,8 +321,59 @@ val AgentSdJwtTest by testSuite {
 
             haipVerifier.verifyPresentationSdJwt(vp.sdJwt, challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+                .freshnessSummary.tokenStatusValidationResult
+                .shouldBeInstanceOf<TokenStatusValidationResult.Valid>()
+        }
+
+        "sd-jwt vc request rejected without HAIP status list certificate chain" {
+            val certStatusKey = EphemeralKeyWithoutCert()
+            val noCertStatusListIssuer = StatusListAgent(
+                keyMaterial = certStatusKey,
+                signStatusListJwt = SignJwt(certStatusKey, CertChainRemoverJwsHeaderFun())
+            )
+
+            val haipTokenStatusResolver = TokenStatusResolverImpl(
+                resolveStatusListToken = StatusListTokenResolver {
+                    noCertStatusListIssuer.provideStatusListToken(
+                        listOf(StatusListTokenMediaType.Jwt),
+                        Clock.System.now(),
+                    ).second
+                },
+                verifyJwsObjectIntegrity = VerifyStatusListTokenHAIP(),
+            )
+
+            val haipVerifier = VerifierAgent(
+                identifier = verifierId,
+                validatorSdJwt = ValidatorSdJwt(
+                    validator = Validator(tokenStatusResolver = haipTokenStatusResolver),
+                ),
+            )
+
+            val presentationParameters = holder.createDefaultPresentation(
+                request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
+                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
+                    buildDCQLQuery(
+                        DCQLJsonClaimsQuery(
+                            path = DCQLClaimsPathPointer(CLAIM_GIVEN_NAME),
+                        )
+                    ),
+                )
+            ).getOrThrow() as PresentationResponseParameters.DCQLParameters
+
+            val vp = presentationParameters.verifiablePresentations.values.first()
+                .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
+
+            val test = haipVerifier.verifyPresentationSdJwt(vp.sdJwt, challenge)
+
+            test.shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+                .freshnessSummary.tokenStatusValidationResult
+                .shouldBeInstanceOf<TokenStatusValidationResult.Rejected>()
         }
     }
+}
+
+private class CertChainRemoverJwsHeaderFun : JwsHeaderIdentifierFun {
+    override suspend fun invoke(jwsHeader: JwsHeader, keyMaterial: KeyMaterial): JwsHeader = jwsHeader.copy(certificateChain = null)
 }
 
 private fun buildDCQLQuery(vararg claimsQueries: DCQLJsonClaimsQuery) = DCQLQuery(
