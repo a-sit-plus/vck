@@ -1,11 +1,13 @@
 # Changelog
 
-Release 5.10.0 (Unreleased):
+Release 5.10.0 (Unreleased)
+ - Make `VerifyJwsObject` return `KmmResult<Unit>` and propagate verification failures with descriptive errors
  - StatusListToken:
    - Remove `StatusTokenValidator`
    - Remove `StatusTokenIntegrityValidator` class
    - Refactor `StatusListToken.StatusListJwt` to `StatusListJwt`
    - Refactor `StatusListToken.StatusListCwt` to `StatusListCwt`
+   - Add `VerifyStatusListTokenHAIP` and related resolver/tests to enforce HAIP d04 certificate chain rules for status list JWTs
  - OAuth 2.0:
    - Use correct path for metadata retrieval (inserting strings between host component and path component)
    - Support reading resource-server provided nonce for [OAuth 2.0 Demonstrating Proof of Possession (DPoP)](https://datatracker.ietf.org/doc/html/rfc9449)
