@@ -170,9 +170,9 @@ class SimpleAuthorizationService(
 
     /**
      * Serve this result JSON-serialized under `/.well-known/openid-configuration`,
-     * see [OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION],
+     * see [OpenIdConstants.WellKnownPaths.OpenidConfiguration],
      * and under `/.well-known/oauth-authorization-server`,
-     * see [OpenIdConstants.PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER]
+     * see [OpenIdConstants.WellKnownPaths.OauthAuthorizationServer].
      */
     override suspend fun metadata(): OAuth2AuthorizationServerMetadata = _metadata
 

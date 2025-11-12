@@ -10,7 +10,7 @@ import kotlinx.serialization.Serializable
  *
  * Issuers publishing JWT VC Issuer Metadata MUST make a JWT VC Issuer Metadata configuration available at the location
  * formed by inserting the well-known string `/.well-known/jwt-vc-issuer` (see
- * [OpenIdConstants.PATH_WELL_KNOWN_JWT_VC_ISSUER_METADATA]) between the host component and the path component (if any)
+ * [OpenIdConstants.WellKnownPaths.JwtVcIssuer]) between the host component and the path component (if any)
  * of the `iss` claim value in the JWT. The iss MUST be a case-sensitive URL using the HTTPS scheme that contains
  * scheme, host and, optionally, port number and path components, but no query or fragment components.
  */

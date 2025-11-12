@@ -3,14 +3,14 @@ package at.asitplus.wallet.lib.ktor.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
-import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER
-import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION
+import at.asitplus.openid.OpenIdConstants.WellKnownPaths
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
+import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.TokenVerificationService
 import at.asitplus.wallet.lib.oidvci.DefaultNonceService
@@ -82,14 +82,17 @@ class RemoteOAuth2AuthorizationServerAdapter(
     }
 
     private val _metadata: Deferred<OAuth2AuthorizationServerMetadata> by scope.lazyDeferred {
-        catching {
-            client.get("$publicContext$PATH_WELL_KNOWN_OPENID_CONFIGURATION")
-                .body<OAuth2AuthorizationServerMetadata>()
-        }.getOrElse {
-            client.get("$publicContext$PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER")
-                .body<OAuth2AuthorizationServerMetadata>()
-        }
+        catching { loadOauthASMetadata() }
+            .getOrElse { loadOpenidConfiguration() }
     }
+
+    private suspend fun loadOauthASMetadata() =
+        client.get(insertWellKnownPath(publicContext, WellKnownPaths.OauthAuthorizationServer))
+            .body<OAuth2AuthorizationServerMetadata>()
+
+    private suspend fun loadOpenidConfiguration() =
+        client.get(insertWellKnownPath(publicContext, WellKnownPaths.OpenidConfiguration))
+            .body<OAuth2AuthorizationServerMetadata>()
 
     @Deprecated("Use [validateAccessToken] instead")
     override val tokenVerificationService: TokenVerificationService

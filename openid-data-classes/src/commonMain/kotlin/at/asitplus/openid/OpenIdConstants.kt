@@ -70,6 +70,20 @@ object OpenIdConstants {
     /** `/.well-known/jar-issuer` */
     const val PATH_WELL_KNOWN_JAR_ISSUER = "/.well-known/jar-issuer"
 
+    object WellKnownPaths {
+        /** `/.well-known/openid-credential-issuer` for [io.ktor.http.URLBuilder.pathSegments] */
+        val CredentialIssuer = listOf(".well-known", "openid-credential-issuer")
+
+        /** `/.well-known/oauth-authorization-server` for [io.ktor.http.URLBuilder.pathSegments] */
+        val OauthAuthorizationServer = listOf(".well-known", "oauth-authorization-server")
+
+        /** `/.well-known/openid-configuration` for [io.ktor.http.URLBuilder.pathSegments] */
+        val OpenidConfiguration = listOf(".well-known", "openid-configuration")
+
+        /** `/.well-known/jwt-vc-issuer` for [io.ktor.http.URLBuilder.pathSegments] */
+        val JwtVcIssuer = listOf(".well-known", "jwt-vc-issuer")
+    }
+
     /** `openid` */
     const val SCOPE_OPENID = "openid"
 

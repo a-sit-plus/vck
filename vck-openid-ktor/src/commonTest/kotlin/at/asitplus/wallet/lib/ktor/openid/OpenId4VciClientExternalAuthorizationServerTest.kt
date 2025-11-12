@@ -10,9 +10,7 @@ import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
-import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_CREDENTIAL_ISSUER
-import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER
-import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenIntrospectionRequest
@@ -104,7 +102,7 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
 
 
 
-     suspend fun verifySdJwtCredential(
+    suspend fun verifySdJwtCredential(
         success: CredentialIssuanceResult.Success,
         expectedFamilyName: String,
     ) {
@@ -122,7 +120,7 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
         }
     }
 
-     fun verifyIsoMdocCredential(
+    fun verifyIsoMdocCredential(
         success: CredentialIssuanceResult.Success,
         expectedGivenName: String,
     ) {
@@ -136,7 +134,7 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
         }
     }
 
-     fun setup(
+    fun setup(
         scheme: ConstantIndex.CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation,
         attributes: Map<String, String>,
@@ -203,17 +201,14 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
 
         mockEngine = MockEngine { request ->
             when {
-                request.url.toString() == "$issuerPublicContext${PATH_WELL_KNOWN_CREDENTIAL_ISSUER}" -> respond(
+                request.url.toString().startsWith(issuerPublicContext) &&
+                        request.url.rawSegments.drop(1) == OpenIdConstants.WellKnownPaths.CredentialIssuer -> respond(
                     vckJsonSerializer.encodeToString<IssuerMetadata>(credentialIssuer.metadata),
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
 
-                request.url.toString() == "$authServerPublicContext${PATH_WELL_KNOWN_OPENID_CONFIGURATION}" -> respond(
-                    vckJsonSerializer.encodeToString<OAuth2AuthorizationServerMetadata>(externalAuthorizationServer.metadata()),
-                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                )
-
-                request.url.toString() == "$authServerPublicContext${PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER}" -> respond(
+                request.url.toString().startsWith(authServerPublicContext) &&
+                        request.url.rawSegments.drop(1) == OpenIdConstants.WellKnownPaths.OauthAuthorizationServer -> respond(
                     vckJsonSerializer.encodeToString<OAuth2AuthorizationServerMetadata>(externalAuthorizationServer.metadata()),
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )

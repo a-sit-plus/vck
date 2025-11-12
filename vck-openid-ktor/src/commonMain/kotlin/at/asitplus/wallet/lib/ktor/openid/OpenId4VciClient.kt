@@ -7,9 +7,7 @@ import at.asitplus.openid.CredentialOffer
 import at.asitplus.openid.CredentialResponseParameters
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
-import at.asitplus.openid.OpenIdConstants
-import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER
-import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION
+import at.asitplus.openid.OpenIdConstants.WellKnownPaths
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
@@ -26,6 +24,7 @@ import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
+import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
 import at.asitplus.wallet.lib.oidvci.WalletService
 import at.asitplus.wallet.lib.oidvci.toRepresentation
 import com.benasher44.uuid.uuid4
@@ -125,7 +124,7 @@ class OpenId4VciClient(
     ): KmmResult<Collection<CredentialIdentifierInfo>> = catching {
         Napier.i("loadCredentialMetadata: $host")
         val issuerMetadata = client
-            .get("$host${OpenIdConstants.PATH_WELL_KNOWN_CREDENTIAL_ISSUER}")
+            .get(insertWellKnownPath(host, WellKnownPaths.CredentialIssuer))
             .body<IssuerMetadata>()
         val supported = issuerMetadata.supportedCredentialConfigurations
             ?: throw Exception("No supported credential configurations")
@@ -169,17 +168,10 @@ class OpenId4VciClient(
         credentialIdentifierInfo: CredentialIdentifierInfo,
     ): KmmResult<CredentialIssuanceResult.OpenUrlForAuthnRequest> = catching {
         Napier.i("startProvisioningWithAuthRequest: $credentialIssuerUrl with $credentialIdentifierInfo")
-
         val issuerMetadata = credentialIdentifierInfo.issuerMetadata
         val authorizationServer = issuerMetadata.authorizationServers?.firstOrNull()
             ?: credentialIssuerUrl
-        val oauthMetadata = catching {
-            client.get("$authorizationServer$PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER")
-                .body<OAuth2AuthorizationServerMetadata>()
-        }.getOrElse {
-            client.get("$authorizationServer$PATH_WELL_KNOWN_OPENID_CONFIGURATION")
-                .body<OAuth2AuthorizationServerMetadata>()
-        }
+        val oauthMetadata = loadOauthMetadata(authorizationServer)
 
         oauth2Client.startAuthorization(
             oauthMetadata = oauthMetadata,
@@ -201,6 +193,18 @@ class OpenId4VciClient(
             )
         }
     }
+
+    private suspend fun loadOauthMetadata(authorizationServer: String): OAuth2AuthorizationServerMetadata =
+        catching { loadOauthASMetadata(authorizationServer) }
+            .getOrElse { loadOpenidConfiguration(authorizationServer) }
+
+    private suspend fun loadOauthASMetadata(publicContext: String) =
+        client.get(insertWellKnownPath(publicContext, WellKnownPaths.OauthAuthorizationServer))
+            .body<OAuth2AuthorizationServerMetadata>()
+
+    private suspend fun loadOpenidConfiguration(publicContext: String) =
+        client.get(insertWellKnownPath(publicContext, WellKnownPaths.OpenidConfiguration))
+            .body<OAuth2AuthorizationServerMetadata>()
 
     /**
      * Called after getting the redirect back from the authorization server to the credential issuer.
@@ -396,15 +400,8 @@ class OpenId4VciClient(
         val issuerMetadata = credentialIdentifierInfo.issuerMetadata
         val authorizationServer = issuerMetadata.authorizationServers?.firstOrNull()
             ?: credentialOffer.credentialIssuer
-        val oauthMetadata = catching {
-            client.get("$authorizationServer$PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER")
-                .body<OAuth2AuthorizationServerMetadata>()
-        }.getOrElse {
-            client.get("$authorizationServer$PATH_WELL_KNOWN_OPENID_CONFIGURATION")
-                .body<OAuth2AuthorizationServerMetadata>()
-        }
+        val oauthMetadata = loadOauthMetadata(authorizationServer)
         val state = uuid4().toString()
-
         credentialOffer.grants?.preAuthorizedCode?.let {
             val credentialScheme = credentialIdentifierInfo.supportedCredentialFormat.resolveCredentialScheme()
                 ?: throw Exception("Unknown credential scheme in $credentialIdentifierInfo")

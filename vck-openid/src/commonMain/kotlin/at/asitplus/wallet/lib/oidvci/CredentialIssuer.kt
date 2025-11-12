@@ -109,7 +109,7 @@ class CredentialIssuer(
 
     /**
      * Serve this result serialized at the path formed by inserting the string `/.well-known/openid-credential-issuer`
-     * (see [OpenIdConstants.PATH_WELL_KNOWN_CREDENTIAL_ISSUER]) into the Credential Issuer Identifier between the host
+     * (see [OpenIdConstants.WellKnownPaths.CredentialIssuer]) into the Credential Issuer Identifier between the host
      * component and the path component, if any.
      * Use `application/json` (see [at.asitplus.wallet.lib.data.MediaTypes.Application.JSON]) as the `Content-Type`
      * header (see [io.ktor.http.HttpHeaders.ContentType]) in the response.
@@ -131,7 +131,7 @@ class CredentialIssuer(
 
     /**
      * Serve this result serialized at the path formed by inserting the string `/.well-known/openid-credential-issuer`
-     * (see [OpenIdConstants.PATH_WELL_KNOWN_CREDENTIAL_ISSUER]) into the Credential Issuer Identifier between the host
+     * (see [OpenIdConstants.WellKnownPaths.CredentialIssuer]) into the Credential Issuer Identifier between the host
      * component and the path component, if any.
      * Use this only when the client accepts (see `Accept` header [io.ktor.http.HttpHeaders.Accept]) the media type
      * `application/jwt` (see [at.asitplus.wallet.lib.data.MediaTypes.Application.JWT]), otherwise serve [metadata].
@@ -145,7 +145,7 @@ class CredentialIssuer(
      *
      * Issuers publishing JWT VC Issuer Metadata MUST make a JWT VC Issuer Metadata configuration available at the
      * location formed by inserting the well-known string `/.well-known/jwt-vc-issuer` (see
-     * [OpenIdConstants.PATH_WELL_KNOWN_JWT_VC_ISSUER_METADATA]) between the host component and the path component (if
+     * [OpenIdConstants.WellKnownPaths.JwtVcIssuer]) between the host component and the path component (if
      * any) of the `iss` claim value in the JWT. The iss MUST be a case-sensitive URL using the HTTPS scheme that
      * contains scheme, host and, optionally, port number and path components, but no query or fragment components.
      */

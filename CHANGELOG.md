@@ -1,11 +1,13 @@
 # Changelog
 
-Release 5.10.0 (Unreleased)
+Release 5.10.0 (Unreleased):
  - StatusListToken:
    - Remove `StatusTokenValidator`
    - Remove `StatusTokenIntegrityValidator` class
    - Refactor `StatusListToken.StatusListJwt` to `StatusListJwt`
    - Refactor `StatusListToken.StatusListCwt` to `StatusListCwt`
+ - OAuth 2.0:
+    - Use correct path for metadata retrieval (inserting strings between host component and path component)
 
 Release 5.9.0
  - Refactor `RqesWalletService` to be stateless
