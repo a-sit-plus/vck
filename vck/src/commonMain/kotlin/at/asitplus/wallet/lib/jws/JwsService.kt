@@ -24,6 +24,9 @@ import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.jsonWebKeyBytes
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
+import at.asitplus.signum.indispensable.pki.CertificateChain
+import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.requireSupported
 import at.asitplus.signum.indispensable.symmetric.AuthCapability
 import at.asitplus.signum.indispensable.symmetric.KeyType
 import at.asitplus.signum.indispensable.symmetric.NonceTrait
@@ -42,8 +45,10 @@ import at.asitplus.signum.supreme.agree.Ephemeral
 import at.asitplus.signum.supreme.agree.keyAgreement
 import at.asitplus.signum.supreme.asKmmResult
 import at.asitplus.signum.supreme.hash.digest
+import at.asitplus.signum.supreme.sign.SignatureInput
 import at.asitplus.signum.supreme.sign.Signer
 import at.asitplus.signum.supreme.sign.Verifier
+import at.asitplus.signum.supreme.sign.verifierFor
 import at.asitplus.signum.supreme.symmetric.decrypt
 import at.asitplus.signum.supreme.symmetric.encrypt
 import at.asitplus.wallet.lib.agent.KeyMaterial
@@ -543,10 +548,60 @@ class VerifyJwsSignatureWithCnf(
 
 }
 
+/**
+ * The public key used to validate the signature on the Status List Token
+ * defined in [I-D.ietf-oauth-status-list] MUST be included in the x5c JOSE header of the Token.
+ * The X.509 certificate of the trust anchor MUST NOT be included in the x5c JOSE header of the Status List Token.
+ * The X.509 certificate signing the request MUST NOT be self-signed.
+ */
+class VerifyStatusListTokenHAIP(
+    val verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(),
+    /** Need to implement if valid keys for JWS are transported somehow out-of-band, e.g. provided by a trust store */
+    val trustStoreLookup: TrustStoreLookup = TrustStoreLookup { null },
+) : VerifyJwsObjectFun {
+
+    override suspend operator fun invoke(jwsObject: JwsSigned<*>) = catching {
+        val trustStore: Set<X509Certificate>? = trustStoreLookup(jwsObject)
+        val certChain: CertificateChain? = jwsObject.header.certificateChain
+        val signingCert: X509Certificate = certChain?.first() ?: throw Exception("Certificate Chain MUST not be empty")
+        signingCert.decodedPublicKey
+            .getOrThrow()
+            .let { key ->
+                require(verifyJwsSignature(jwsObject, key).isSuccess) { "Invalid Signature" }
+            }
+        require(!signingCert.isSelfSigned()) {
+            "The certificate signing the request MUST NOT be self-signed"
+        }
+        if (trustStore != null) {
+            require(
+                certChain.intersect(trustStore.toSet()).isEmpty()
+            ) { "The certificate chain must not contain any trusted certificates" }
+
+            require(validCertPath(certChain, trustStore)) {
+                "Certificate path to trusted Certs could not be established"
+            }
+        }
+    }
+
+    private fun validCertPath(certChain: List<X509Certificate>, trustStore: Set<X509Certificate>): Boolean =
+        TODO("require cert path to trust anchor (Not implemented in Signum yet)")
+
+    private fun X509Certificate.isSelfSigned(): Boolean =
+        signatureAlgorithm.let {
+            it.requireSupported()
+            it.verifierFor(decodedPublicKey.getOrThrow()).transform { verifier ->
+                verifier.verify(
+                    SignatureInput(rawSignature.content),
+                    decodedSignature.getOrThrow()
+                )
+            }.isSuccess
+        }
+}
+
 fun interface VerifyJwsObjectFun {
     suspend operator fun invoke(
         jwsObject: JwsSigned<*>,
-    ): Boolean
+    ): KmmResult<Unit>
 }
 
 class VerifyJwsObject(
@@ -559,8 +614,11 @@ class VerifyJwsObject(
     /** Need to implement if valid keys for JWS are transported somehow out-of-band, e.g. provided by a trust store */
     val publicKeyLookup: PublicJsonWebKeyLookup = PublicJsonWebKeyLookup { null },
 ) : VerifyJwsObjectFun {
-    override suspend operator fun invoke(jwsObject: JwsSigned<*>) =
-        jwsObject.loadPublicKeys().any { verifyJwsSignature(jwsObject, it).isSuccess }
+    override suspend operator fun invoke(jwsObject: JwsSigned<*>) = catching {
+        require(jwsObject.loadPublicKeys().any { verifyJwsSignature(jwsObject, it).isSuccess }) {
+            "Invalid Signature"
+        }
+    }
 
     /**
      * Returns a list of public keys that may have been used to sign this [JwsSigned]

@@ -60,8 +60,8 @@ class ResponseParser(
     internal suspend fun extractAuthnResponse(input: ResponseParametersFrom): ResponseParametersFrom =
         input.parameters.response?.let { encodedResponse ->
             encodedResponse.fromJws()?.let { jarm ->
-                if (!verifyJwsObject(jarm)) {
-                    throw IllegalArgumentException("JWS not verified: $encodedResponse")
+                verifyJwsObject(jarm).getOrElse {
+                    throw IllegalArgumentException("JWS not verified: $encodedResponse. $it")
                 }
                 ResponseParametersFrom.JwsSigned(jarm, input, jarm.payload)
             } ?: encodedResponse.fromJwe()?.let { jarm ->
@@ -69,8 +69,8 @@ class ResponseParser(
             } ?: encodedResponse.fromJweString()?.let { jarm ->
                 val nested = jarm.payload.fromJws()
                     ?: throw IllegalArgumentException("JWS inside JWE not verified")
-                if (!verifyJwsObject(nested)) {
-                    throw IllegalArgumentException("JWS inside JWE not verified: $encodedResponse")
+                verifyJwsObject(nested).getOrElse {
+                    throw IllegalArgumentException("JWS inside JWE not verified: $encodedResponse. $it")
                 }
                 ResponseParametersFrom.JwsSigned(
                     nested,

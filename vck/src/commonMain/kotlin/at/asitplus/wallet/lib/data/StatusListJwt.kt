@@ -48,8 +48,8 @@ data class StatusListJwt(
     ): KmmResult<StatusListTokenPayload> =
         catching {
             val jwsSigned = statusListToken.value
-            if (!verifyJwsObject(jwsSigned)) {
-                throw IllegalStateException("Invalid Signature")
+            verifyJwsObject(jwsSigned).getOrElse {
+                throw IllegalStateException(it)
             }
             val type = jwsSigned.header.type?.lowercase()
                 ?: throw IllegalArgumentException("Invalid type header")

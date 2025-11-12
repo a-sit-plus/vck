@@ -32,7 +32,7 @@ data class VcJwsInputValidator(
         return VcJwsInputValidationResult.ContentValidationSummary(
             input = input,
             parsed = jws,
-            isIntegrityGood = verifyJwsObject(jws),
+            isIntegrityGood = verifyJwsObject(jws).isSuccess,
             subjectMatchingResult = publicKey?.let {
                 SubjectMatchingResult(
                     subject = vcJws.subject,

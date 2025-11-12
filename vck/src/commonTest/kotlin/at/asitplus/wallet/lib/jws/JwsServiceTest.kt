@@ -15,6 +15,7 @@ import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.TestConfig
 import de.infix.testBalloon.framework.core.aroundEach
 import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.matthewnelson.encoding.base64.Base64
@@ -31,7 +32,7 @@ val JwsServiceTest by testSuite {
     lateinit var verifierJwsService: VerifyJwsObjectFun
     lateinit var randomPayload: String
 
-   testConfig = TestConfig.aroundEach {
+    testConfig = TestConfig.aroundEach {
         keyId = Random.nextBytes(16).encodeToString(Base64())
         keyMaterial = EphemeralKeyWithoutCert(customKeyId = keyId)
         signJwt = SignJwt(keyMaterial, JwsHeaderCertOrJwk())
@@ -43,9 +44,7 @@ val JwsServiceTest by testSuite {
     "signed object with bytes can be verified" {
         val payload = randomPayload.encodeToByteArray()
         val signed = signJwt(JwsContentTypeConstants.JWT, payload, ByteArraySerializer()).getOrThrow()
-
-        val result = verifierJwsService(signed)
-        result shouldBe true
+        verifierJwsService(signed).getOrThrow()
     }
 
     "Object can be reconstructed" {
@@ -55,25 +54,19 @@ val JwsServiceTest by testSuite {
         val parsed = JwsSigned.deserialize<ByteArray>(ByteArraySerializer(), signed).getOrThrow()
         parsed.serialize() shouldBe signed
         parsed.payload shouldBe payload
-
-        val result = verifierJwsService(parsed)
-        result shouldBe true
+        verifierJwsService(parsed).getOrThrow()
     }
 
     "signed object can be verified" {
         val payload = randomPayload.encodeToByteArray()
         val signed = signJwt(JwsContentTypeConstants.JWT, payload, ByteArraySerializer()).getOrThrow()
-
-        val result = verifierJwsService(signed)
-        result shouldBe true
+        verifierJwsService(signed).getOrThrow()
     }
 
     "signed object with jsonWebKey can be verified" {
         val signer = SignJwt<String>(keyMaterial, JwsHeaderJwk())
         val signed = signer(null, randomPayload, String.serializer()).getOrThrow()
-
-        val result = verifierJwsService(signed)
-        result shouldBe true
+        verifierJwsService(signed).getOrThrow()
     }
 
     "signed object with kid from jku can be verified" {
@@ -83,7 +76,7 @@ val JwsServiceTest by testSuite {
         val validKey = keyMaterial.jsonWebKey
         val jwkSetRetriever = JwkSetRetrieverFunction { JsonWebKeySet(keys = listOf(validKey)) }
         verifierJwsService = VerifyJwsObject(jwkSetRetriever = jwkSetRetriever)
-        verifierJwsService(signed) shouldBe true
+        verifierJwsService(signed).getOrThrow()
     }
 
     "signed object with kid from jku, returning invalid key, can not be verified" {
@@ -93,7 +86,7 @@ val JwsServiceTest by testSuite {
         val invalidKey = EphemeralKeyWithoutCert().jsonWebKey
         val jwkSetRetriever = JwkSetRetrieverFunction { JsonWebKeySet(keys = listOf(invalidKey)) }
         verifierJwsService = VerifyJwsObject(jwkSetRetriever = jwkSetRetriever)
-        verifierJwsService(signed) shouldBe false
+        shouldThrowAny { verifierJwsService(signed).getOrThrow() }
     }
 
     "signed object without public key in header can not be verified" {
@@ -101,7 +94,7 @@ val JwsServiceTest by testSuite {
         val signed = signer(null, randomPayload, String.serializer()).getOrThrow()
 
         verifierJwsService = VerifyJwsObject()
-        verifierJwsService(signed) shouldBe false
+        shouldThrowAny { verifierJwsService(signed).getOrThrow() }
     }
 
     "signed object without public key in header, but retrieved out-of-band can be verified" {
@@ -110,7 +103,7 @@ val JwsServiceTest by testSuite {
 
         val publicKeyLookup = PublicJsonWebKeyLookup { setOf(keyMaterial.jsonWebKey) }
         verifierJwsService = VerifyJwsObject(publicKeyLookup = publicKeyLookup)
-        verifierJwsService(signed) shouldBe true
+        verifierJwsService(signed).getOrThrow()
     }
 
     "encrypted object can be decrypted" {
