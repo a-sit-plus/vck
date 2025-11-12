@@ -10,6 +10,6 @@ class TestConfig : TestSession() {
         Napier.base(DebugAntilog())
         at.asitplus.wallet.eupid.Initializer.initWithVCK()
         at.asitplus.wallet.mdl.Initializer.initWithVCK()
-        FreeSpec.maxLength = 5 //work around Android test name length limit
+        FreeSpec.defaultMaxLength = 3 //work around Android test name length limit
     }
 }

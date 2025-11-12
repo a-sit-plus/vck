@@ -9,6 +9,6 @@ class TestConfig : TestSession() {
     init {
         Napier.takeLogarithm()
         Napier.base(DebugAntilog())
-        FreeSpec.maxLength = 5 //work around Android test name length limit
+        FreeSpec.defaultMaxLength = 3 //work around Android test name length limit
     }
 }
