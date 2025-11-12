@@ -119,7 +119,7 @@ val JwsServiceJvmTest by testSuite {
                     ).getOrThrow()
                     val selfVerify = verifyJwsSignatureObject(signed)
                     withClue("$algo: Signature: ${signed.signature.encodeToTlv().toDerHexString()}") {
-                        selfVerify shouldBe true
+                        selfVerify.getOrThrow()
                     }
                 }
 
@@ -150,8 +150,7 @@ val JwsServiceJvmTest by testSuite {
                     }
 
                     withClue("$algo: Signature: ${parsedJwsSigned.signature.encodeToTlv().toDerHexString()}") {
-                        val result = verifyJwsSignatureObject(parsedJwsSigned)
-                        result shouldBe true
+                        verifyJwsSignatureObject(parsedJwsSigned).getOrThrow()
                     }
                 }
 
