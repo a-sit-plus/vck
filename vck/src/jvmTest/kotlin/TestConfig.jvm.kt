@@ -1,1 +1,1 @@
-actual val testNameLengths: Pair<Int, Int> = 64 to 1000
+actual val testNameLengths: Pair<Int, Int> = 64 to -1
