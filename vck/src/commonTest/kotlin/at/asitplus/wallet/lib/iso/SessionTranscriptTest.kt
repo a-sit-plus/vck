@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.dcapi.NFCHandover
-import at.asitplus.dcapi.OID4VPHandover
 import at.asitplus.iso.OpenId4VpHandover
 import at.asitplus.iso.OpenId4VpHandoverInfo
 import at.asitplus.iso.SessionTranscript
@@ -194,7 +193,7 @@ val SessionTranscriptTest by testSuite {
             eReaderKeyBytes = coseCompliantSerializer.encodeToByteArray(eReaderCoseKey),
             nfcHandover = nfcHandover
         ).apply {
-            oid4VPHandover shouldBe null
+            openId4VpHandover shouldBe null
             nfcHandover shouldNotBe null
         }
 
@@ -319,43 +318,7 @@ val SessionTranscriptTest by testSuite {
             deviceEngagementBytes = encodedDeviceEngagement,
             eReaderKeyBytes = coseCompliantSerializer.encodeToByteArray(eReaderCoseKey)
         ).apply {
-            oid4VPHandover shouldBe null
-            nfcHandover shouldBe null
-        }
-        coseCompliantSerializer.encodeToByteArray(sessionTranscript) shouldBe expectedEncodedSessionTranscript
-    }
-
-    "OpenID4VP pre-1.0" {
-        val clientIdToHash = "543ad47d06158882c74cd2869dbbb09bd9f42b47cd0e15bf8809a7a83510ee3c"
-            .decodeToByteArray(Base16)
-        val responseUriToHash = "8ced6c43f0633b651ba7298d057c7fb3b01f983b079550d00171a495f0297382"
-            .decodeToByteArray(Base16)
-        val nonce = "7c25a392-ecd5-448e-b08a-067d077bc96b"
-        val expectedEncodedSessionTranscript = """
-            83                                        # array(3)
-               f6                                     #   null, simple(22)
-               f6                                     #   null, simple(22)
-               83                                     #   array(3)
-                  58 20                               #     bytes(32)
-                     543ad47d06158882c74cd2869dbbb09b #       "T:\xd4}\x06\x15\x88\x82\xc7L\xd2\x86\x9d\xbb\xb0\x9b"
-                     d9f42b47cd0e15bf8809a7a83510ee3c #       "\xd9\xf4+G\xcd\x0e\x15\xbf\x88\t\xa7\xa85\x10\xee<"
-                  58 20                               #     bytes(32)
-                     8ced6c43f0633b651ba7298d057c7fb3 #       "\x8c\xedlC\xf0c;e\x1b\xa7)\x8d\x05|\x7f\xb3"
-                     b01f983b079550d00171a495f0297382 #       "\xb0\x1f\x98;\x07\x95P\xd0\x01q\xa4\x95\xf0)s\x82"
-                  78 24                               #     text(36)
-                     37633235613339322d656364352d3434 #       "7c25a392-ecd5-44"
-                     38652d623038612d3036376430373762 #       "8e-b08a-067d077b"
-                     63393662                         #       "c96b"
-        """.decodeFromAnnotatedCbor()
-
-        val sessionTranscript = SessionTranscript.forOpenId(
-            OID4VPHandover(
-                clientIdHash = clientIdToHash,
-                responseUriHash = responseUriToHash,
-                nonce = nonce
-            ),
-        ).apply {
-            oid4VPHandover shouldNotBe null
+            openId4VpHandover shouldBe null
             nfcHandover shouldBe null
         }
         coseCompliantSerializer.encodeToByteArray(sessionTranscript) shouldBe expectedEncodedSessionTranscript

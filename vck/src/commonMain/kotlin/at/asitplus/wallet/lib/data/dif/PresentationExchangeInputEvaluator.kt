@@ -70,10 +70,8 @@ object PresentationExchangeInputEvaluator {
         } ?: mapOf()
     }
 
-    @Suppress("DEPRECATION")
     private fun FormatHolder.toSupportedFormats(): List<CredentialFormatEnum> = listOf(
         jwtVp to CredentialFormatEnum.JWT_VC,
-        jwtSd to CredentialFormatEnum.DC_SD_JWT,
         sdJwt to CredentialFormatEnum.DC_SD_JWT,
         msoMdoc to CredentialFormatEnum.MSO_MDOC,
     ).filter {

@@ -106,7 +106,7 @@ val KeyBindingTests by testSuite {
                             "urn:ietf:params:oauth:jwk-thumbprint"
                         ],
                         "vp_formats": {
-                            "vc+sd-jwt": {
+                            "dc+sd-jwt": {
                                 "sd-jwt_alg_values": [
                                     "ES256"
                                 ],
@@ -139,7 +139,7 @@ val KeyBindingTests by testSuite {
                                 "name": "niko kao",
                                 "purpose": "hajduk iz splita",
                                 "format": {
-                                    "vc+sd-jwt": {
+                                    "dc+sd-jwt": {
                                         "sd-jwt_alg_values": [
                                             "ES256"
                                         ],

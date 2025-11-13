@@ -15,9 +15,6 @@ data class FormatHolder(
     val jwtVp: FormatContainerJwt? = null,
     @SerialName("jwt_vc")
     val jwtVc: FormatContainerJwt? = null,
-    @Deprecated("Deprecated in SD-JWT VC since draft 06", replaceWith = ReplaceWith("sdJwt"))
-    @SerialName("vc+sd-jwt")
-    val jwtSd: FormatContainerSdJwt? = null,
     @SerialName("dc+sd-jwt")
     val sdJwt: FormatContainerSdJwt? = null,
     @SerialName("ldp")

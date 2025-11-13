@@ -12,8 +12,6 @@ enum class ClaimFormat(val text: String) {
     JWT("jwt"),
     JWT_VC("jwt_vc"),
     JWT_VP("jwt_vp"),
-    @Deprecated("Deprecated in SD-JWT VC since draft 06", replaceWith = ReplaceWith("SD_JWT"))
-    JWT_SD("vc+sd-jwt"),
     SD_JWT("dc+sd-jwt"),
     LDP("ldp"),
     LDP_VC("ldp_vc"),

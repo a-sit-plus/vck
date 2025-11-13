@@ -3,10 +3,7 @@ package at.asitplus.wallet.lib.ktor.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
-import at.asitplus.dcapi.request.DCAPIRequest
-import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
@@ -107,13 +104,6 @@ class OpenId4VpWallet(
         requestObjectJwsVerifier = { _ -> true }, // unsure about this one?
     )
 
-    @Deprecated("Use [startAuthorizationResponsePreparation] instead")
-    suspend fun parseAuthenticationRequestParameters(
-        input: String,
-        dcApiRequest: Oid4vpDCAPIRequest? = null,
-    ): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> =
-        openId4VpHolder.parseAuthenticationRequestParameters(input)
-
     /**
      * Sends an error response with the appropriate method.
      * Returns nothing as we don't expect a useful response from the remote verifier.
@@ -161,23 +151,6 @@ class OpenId4VpWallet(
                 is AuthenticationResponseResult.Redirect -> redirectResponse(it)
                 is AuthenticationResponseResult.DcApi -> throw UnsupportedOperationException("Returning a URL not supported for DC API")
             }
-        }
-    }
-
-    @Suppress("DEPRECATION")
-    @Deprecated("Use finalizeAuthorizationResponse with AuthorizationResponsePreparationState")
-    suspend fun finalizeAuthorizationResponse(
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
-        clientMetadata: RelyingPartyMetadata?,
-        credentialPresentation: CredentialPresentation,
-    ): KmmResult<AuthenticationResult> = catching {
-        Napier.i("startPresentation: $request")
-        openId4VpHolder.finalizeAuthorizationResponse(
-            request = request,
-            clientMetadata = clientMetadata,
-            credentialPresentation = credentialPresentation
-        ).getOrThrow().let {
-            handleResponseResult(it)
         }
     }
 

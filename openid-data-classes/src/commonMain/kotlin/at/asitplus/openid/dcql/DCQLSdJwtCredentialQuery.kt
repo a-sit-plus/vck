@@ -37,8 +37,7 @@ data class DCQLSdJwtCredentialQuery(
     companion object {
         fun validate(query: DCQLSdJwtCredentialQuery) = query.run {
             DCQLCredentialQuery.validate(this)
-
-            if (format.coerceDeprecations() != CredentialFormatEnum.DC_SD_JWT) {
+            if (format != CredentialFormatEnum.DC_SD_JWT) {
                 throw IllegalArgumentException("Value has an invalid format identifier in this context.")
             }
         }

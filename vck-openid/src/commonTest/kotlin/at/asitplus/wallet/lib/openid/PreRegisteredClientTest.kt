@@ -4,6 +4,7 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.invoke
@@ -48,6 +49,7 @@ val PreRegisteredClientTest by testSuite {
     lateinit var redirectUrl: String
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var verifierKeyMaterial: KeyMaterial
+    lateinit var decryptionKeyMaterial: KeyMaterial
     lateinit var holderAgent: Holder
     lateinit var holderOid4vp: OpenId4VpHolder
     lateinit var verifierOid4vp: OpenId4VpVerifier
@@ -55,7 +57,8 @@ val PreRegisteredClientTest by testSuite {
     testConfig = TestConfig.aroundEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         verifierKeyMaterial = EphemeralKeyWithoutCert()
-        clientId = "PRE-REGISTERED-CLIENT"
+        decryptionKeyMaterial = EphemeralKeyWithoutCert()
+        clientId = "PRE-REGISTERED-CLIENT-${uuid4()}"
         redirectUrl = "https://example.com/rp/${uuid4()}"
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent(holderKeyMaterial)
@@ -76,10 +79,14 @@ val PreRegisteredClientTest by testSuite {
         holderOid4vp = OpenId4VpHolder(
             holder = holderAgent,
             randomSource = RandomSource.Default,
+            lookupJsonWebKeysForClient = {
+                if (it.clientId == clientId) JsonWebKeySet(listOf(decryptionKeyMaterial.jsonWebKey)) else null
+            }
         )
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = ClientIdScheme.PreRegistered(clientId, redirectUrl),
+            decryptionKeyMaterial = decryptionKeyMaterial
         )
         defaultRequestOptions = RequestOptions(
             credentials = setOf(

@@ -109,8 +109,6 @@ internal class PresentationFactory(
         ).getOrElse {
             throw AccessDenied("Could not create presentation", it)
         }.also { presentation ->
-            @Suppress("DEPRECATION")
-            clientMetadata?.vpFormats?.verifyFormatSupport(presentation)
             clientMetadata?.vpFormatsSupported?.verifyFormatSupport(presentation)
         }
     }
@@ -310,13 +308,10 @@ internal class PresentationFactory(
         is CreatePresentationResult.Signed -> ClaimFormat.JWT_VP
     }
 
-    @Suppress("DEPRECATION")
     private fun FormatHolder.supportsAlgorithm(claimFormat: ClaimFormat): Boolean = when (claimFormat) {
         ClaimFormat.JWT_VP -> jwtVp?.algorithms?.any { supportedJwsAlgorithms.contains(it) } == true
-        ClaimFormat.JWT_SD, ClaimFormat.SD_JWT ->
-            if (jwtSd?.sdJwtAlgorithms?.any { supportedJwsAlgorithms.contains(it) } == true) true
-            else if (jwtSd?.kbJwtAlgorithms?.any { supportedJwsAlgorithms.contains(it) } == true) true
-            else if (sdJwt?.sdJwtAlgorithms?.any { supportedJwsAlgorithms.contains(it) } == true) true
+        ClaimFormat.SD_JWT ->
+            if (sdJwt?.sdJwtAlgorithms?.any { supportedJwsAlgorithms.contains(it) } == true) true
             else if (sdJwt?.kbJwtAlgorithms?.any { supportedJwsAlgorithms.contains(it) } == true) true
             else false
 
@@ -324,13 +319,10 @@ internal class PresentationFactory(
         else -> false
     }
 
-    @Suppress("DEPRECATION")
     private fun VpFormatsSupported.supportsAlgorithm(claimFormat: ClaimFormat): Boolean = when (claimFormat) {
         ClaimFormat.JWT_VP -> vcJwt?.algorithms?.any { supportedJwsAlgorithms.contains(it) } == true
-        ClaimFormat.JWT_SD, ClaimFormat.SD_JWT ->
+        ClaimFormat.SD_JWT ->
             if (dcSdJwt?.sdJwtAlgorithms?.any { supportedJwsAlgorithms.contains(it) } == true) true
-            else if (dcSdJwt?.kbJwtAlgorithms?.any { supportedJwsAlgorithms.contains(it) } == true) true
-            else if (dcSdJwt?.sdJwtAlgorithms?.any { supportedJwsAlgorithms.contains(it) } == true) true
             else if (dcSdJwt?.kbJwtAlgorithms?.any { supportedJwsAlgorithms.contains(it) } == true) true
             else false
 

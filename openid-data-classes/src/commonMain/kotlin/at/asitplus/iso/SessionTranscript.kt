@@ -2,7 +2,6 @@ package at.asitplus.iso
 
 import at.asitplus.dcapi.DCAPIHandover
 import at.asitplus.dcapi.NFCHandover
-import at.asitplus.dcapi.OID4VPHandover
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.ByteString
 import kotlinx.serialization.cbor.CborArray
@@ -30,15 +29,13 @@ data class SessionTranscript private constructor(
     val deviceEngagementBytesOid: Int? = 42,
     /** Set to `null` for OID4VP with ISO/IEC 18013-7 */
     val eReaderKeyBytesOid: Int? = 42,
-    @Deprecated("Use [openId4VpHandover] instead")
-    val oid4VPHandover: OID4VPHandover? = null,
     /** Set either this or [openId4VpHandover] or [deviceEngagementBytesOid] to `null` for QR engagement */
     val nfcHandover: NFCHandover? = null,
     val dcapiHandover: DCAPIHandover? = null,
     val openId4VpHandover: OpenId4VpHandover? = null,
 ) {
     init {
-        val nrOfHandovers = listOf(oid4VPHandover, nfcHandover, dcapiHandover, openId4VpHandover)
+        val nrOfHandovers = listOf(nfcHandover, dcapiHandover, openId4VpHandover)
             .count { it != null }
         check(nrOfHandovers == 1 || (deviceEngagementBytesOid == null && nrOfHandovers == 0)) {
             "Exactly one handover element must be set (or null for QR Handover)"
@@ -55,7 +52,6 @@ data class SessionTranscript private constructor(
         if (eReaderKeyBytesOid != other.eReaderKeyBytesOid) return false
         if (!deviceEngagementBytes.contentEquals(other.deviceEngagementBytes)) return false
         if (!eReaderKeyBytes.contentEquals(other.eReaderKeyBytes)) return false
-        if (oid4VPHandover != other.oid4VPHandover) return false
         if (nfcHandover != other.nfcHandover) return false
         if (dcapiHandover != other.dcapiHandover) return false
         if (openId4VpHandover != other.openId4VpHandover) return false
@@ -68,7 +64,6 @@ data class SessionTranscript private constructor(
         result = 31 * result + (eReaderKeyBytesOid ?: 0)
         result = 31 * result + (deviceEngagementBytes?.contentHashCode() ?: 0)
         result = 31 * result + (eReaderKeyBytes?.contentHashCode() ?: 0)
-        result = 31 * result + (oid4VPHandover?.hashCode() ?: 0)
         result = 31 * result + (nfcHandover?.hashCode() ?: 0)
         result = 31 * result + (dcapiHandover?.hashCode() ?: 0)
         result = 31 * result + (openId4VpHandover?.hashCode() ?: 0)
@@ -85,15 +80,6 @@ data class SessionTranscript private constructor(
             deviceEngagementBytes = deviceEngagementBytes,
             eReaderKeyBytes = eReaderKeyBytes,
             nfcHandover = nfcHandover
-        )
-
-        @Deprecated("Use [forOpenId] with [OpenId4VpHandover] instead")
-        fun forOpenId(
-            handover: OID4VPHandover,
-        ): SessionTranscript = SessionTranscript(
-            deviceEngagementBytesOid = null,
-            eReaderKeyBytesOid = null,
-            oid4VPHandover = handover,
         )
 
         fun forOpenId(

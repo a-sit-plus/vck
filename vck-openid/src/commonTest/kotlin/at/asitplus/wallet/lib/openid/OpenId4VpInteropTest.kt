@@ -116,7 +116,6 @@ val OpenId4VpInteropTest by testSuite {
     }
 
     "process with cross-device flow with request_uri and pre-trusted" {
-        val verifierJarMetadata = verifierOid4vp.jarMetadata
         val responseNonce = uuid4().toString()
         val requestNonce = uuid4().toString()
         val requestUrl = "https://verifier.example.com/request/$requestNonce"
@@ -168,10 +167,8 @@ val OpenId4VpInteropTest by testSuite {
         jar.payload.responseMode shouldBe OpenIdConstants.ResponseMode.DirectPost
         jar.payload.responseUrl.shouldNotBeNull()
 
-        verifierJarMetadata.issuer shouldBe verifierIssuerUrl
         if (jar.header.keyId != null) { // web-based key lookup is optional in profile 2.0
-            val verifierJwks = verifierJarMetadata.jsonWebKeySet.shouldNotBeNull()
-            val verifierRequestSigningKey = verifierJwks.keys.first { it.keyId == jar.header.keyId }
+            val verifierRequestSigningKey = verifierKeyMaterial.jsonWebKey.shouldNotBeNull()
             VerifyJwsSignatureWithKey()(jar, verifierRequestSigningKey).isSuccess shouldBe true
         } else {
             VerifyJwsObject()(jar) shouldBe true

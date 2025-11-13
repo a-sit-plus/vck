@@ -1,6 +1,5 @@
 package at.asitplus.openid
 
-import at.asitplus.dif.FormatHolder
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
@@ -105,15 +104,6 @@ data class RelyingPartyMetadata(
      */
     @SerialName("subject_syntax_types_supported")
     val subjectSyntaxTypesSupported: Set<String>? = null,
-
-    /**
-     * OID4VP: REQUIRED. An object defining the formats and proof types of Verifiable Presentations and Verifiable
-     * Credentials that a Verifier supports. Deployments can extend the formats supported, provided Issuers, Holders
-     * and Verifiers all understand the new format.
-     */
-    @SerialName("vp_formats")
-    @Deprecated("Renamed to vp_formats_supported in OID4VP Draft 27", ReplaceWith("vpFormatsSupported"))
-    val vpFormats: FormatHolder? = null,
 
     /**
      * OID4VP 1.0: REQUIRED. An object containing a list of name/value pairs, where the name is a Credential Format

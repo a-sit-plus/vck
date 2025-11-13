@@ -3,20 +3,16 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
-import at.asitplus.dcapi.OID4VPHandover
 import at.asitplus.dif.ClaimFormat
 import at.asitplus.dif.FormatContainerJwt
 import at.asitplus.dif.FormatContainerSdJwt
-import at.asitplus.dif.FormatHolder
 import at.asitplus.dif.PresentationSubmissionDescriptor
-import at.asitplus.iso.ClientIdToHash
 import at.asitplus.iso.DeviceAuthentication
 import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.Document
 import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.OpenId4VpHandover
 import at.asitplus.iso.OpenId4VpHandoverInfo
-import at.asitplus.iso.ResponseUriToHash
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.sha256
 import at.asitplus.iso.wrapInCborTag
@@ -29,7 +25,6 @@ import at.asitplus.openid.IdTokenType
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.JarRequestParameters.RequestUriMethod
 import at.asitplus.openid.JarRequestParameters.RequestUriMethod.POST
-import at.asitplus.openid.JwtVcIssuerMetadata
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestObjectParameters
@@ -85,9 +80,12 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Clock
 import kotlin.time.DurationUnit
@@ -151,29 +149,14 @@ class OpenId4VpVerifier(
         kbJwtAlgorithmStrings = supportedJwsAlgorithms.toSet()
     )
 
-    @Deprecated("This is not covered by any current spec")
-    val jarMetadata: JwtVcIssuerMetadata by lazy {
-        JwtVcIssuerMetadata(
-            issuer = clientIdScheme.issuerUri ?: clientIdScheme.clientId,
-            jsonWebKeySet = JsonWebKeySet(setOf(keyMaterial.jsonWebKey))
-        )
-    }
-
     /**
      * Creates the [at.asitplus.openid.RelyingPartyMetadata], without encryption (see [metadataWithEncryption])
      */
-    @Suppress("DEPRECATION")
     val metadata by lazy {
         RelyingPartyMetadata(
             redirectUris = listOfNotNull((clientIdScheme as? ClientIdScheme.RedirectUri)?.redirectUri),
             jsonWebKeySet = JsonWebKeySet(listOf(decryptionKeyMaterial.publicKey.toJsonWebKey())),
             authorizationSignedResponseAlgString = supportedSignatureVerificationAlgorithm,
-            vpFormats = FormatHolder(
-                msoMdoc = containerJwt,
-                jwtVp = containerJwt,
-                jwtSd = containerSdJwt,
-                sdJwt = containerSdJwt
-            ),
             vpFormatsSupported = VpFormatsSupported(
                 vcJwt = SupportedAlgorithmsContainerJwt(
                     algorithmStrings = supportedJwsAlgorithms.toSet()
@@ -368,7 +351,7 @@ class OpenId4VpVerifier(
         requestObjectParameters: RequestObjectParameters? = null,
     ) = requestOptions.toAuthnRequest(requestObjectParameters)
 
-    @Suppress("DEPRECATION")
+
     private suspend fun RequestOptions.toAuthnRequest(
         requestObjectParameters: RequestObjectParameters?,
     ): AuthenticationRequestParameters = AuthenticationRequestParameters(
@@ -380,8 +363,7 @@ class OpenId4VpVerifier(
         scope = if (isSiop) buildScope() else null,
         nonce = nonceService.provideNonce(),
         walletNonce = requestObjectParameters?.walletNonce,
-        clientMetadata = clientMetadata(this),
-        clientMetadataUri = clientMetadataUrl,
+        clientMetadata = clientMetadata(),
         idTokenType = if (isSiop) IdTokenType.SUBJECT_SIGNED.text else null,
         responseMode = responseMode,
         state = state,
@@ -402,14 +384,15 @@ class OpenId4VpVerifier(
         authenticationRequestParameters,
     )
 
-    // OpenID4VP: Metadata MUST be passed as parameter if client_id_scheme is "redirect_uri"
-    @Suppress("DEPRECATION")
-    private fun clientMetadata(options: RequestOptions): RelyingPartyMetadata? =
-        if (options.clientMetadataUrl != null && clientIdScheme !is ClientIdScheme.RedirectUri) {
-            null
-        } else {
-            if (options.encryption || options.responseMode.requiresEncryption) metadataWithEncryption else metadata
-        }
+    private fun RequestOptions.clientMetadata(): RelyingPartyMetadata? = when (clientIdScheme) {
+        is ClientIdScheme.RedirectUri,
+        is ClientIdScheme.VerifierAttestation,
+        is ClientIdScheme.CertificateSanDns,
+        is ClientIdScheme.CertificateHash ->
+            if (encryption || responseMode.requiresEncryption) metadataWithEncryption else metadata
+
+        else -> null
+    }
 
     /**
      * Validates an Authentication Response from the Wallet, where [input] is a map of POST parameters received.
@@ -574,17 +557,9 @@ class OpenId4VpVerifier(
     }
 
     private fun CredentialFormatEnum.toClaimFormat(): ClaimFormat = when (this) {
-        CredentialFormatEnum.JWT_VC,
-            -> ClaimFormat.JWT_VP
-
-        @Suppress("DEPRECATION")
-        CredentialFormatEnum.VC_SD_JWT,
-        CredentialFormatEnum.DC_SD_JWT,
-            -> ClaimFormat.SD_JWT
-
-        CredentialFormatEnum.MSO_MDOC,
-            -> ClaimFormat.MSO_MDOC
-
+        CredentialFormatEnum.JWT_VC -> ClaimFormat.JWT_VP
+        CredentialFormatEnum.DC_SD_JWT -> ClaimFormat.SD_JWT
+        CredentialFormatEnum.MSO_MDOC -> ClaimFormat.MSO_MDOC
         CredentialFormatEnum.NONE,
         CredentialFormatEnum.JWT_VC_JSON_LD,
         CredentialFormatEnum.JSON_LD,
@@ -600,7 +575,6 @@ class OpenId4VpVerifier(
      * [OpenID for VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html),
      * as referenced by [OpenID for VP](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html).
      */
-    @Suppress("DEPRECATION")
     private suspend fun verifyPresentationResult(
         claimFormat: ClaimFormat,
         relatedPresentation: JsonElement,
@@ -610,8 +584,8 @@ class OpenId4VpVerifier(
         responseUrl: String?,
         transactionData: List<TransactionDataBase64Url>?,
     ) = when (claimFormat) {
-        ClaimFormat.JWT_SD, ClaimFormat.SD_JWT -> verifier.verifyPresentationSdJwt(
-            input = SdJwtSigned.parseCatching(relatedPresentation.jsonPrimitive.content).getOrElse {
+        ClaimFormat.SD_JWT -> verifier.verifyPresentationSdJwt(
+            input = SdJwtSigned.parseCatching(relatedPresentation.extractContent()).getOrElse {
                 throw IllegalArgumentException("relatedPresentation")
             },
             challenge = expectedNonce,
@@ -621,7 +595,7 @@ class OpenId4VpVerifier(
         ClaimFormat.JWT_VP -> verifier.verifyPresentationVcJwt(
             input = JwsSigned.deserialize(
                 VerifiablePresentationJws.serializer(),
-                relatedPresentation.jsonPrimitive.content,
+                relatedPresentation.extractContent(),
                 vckJsonSerializer
             ).getOrThrow(),
             challenge = expectedNonce
@@ -634,7 +608,7 @@ class OpenId4VpVerifier(
                 ?.jweDecrypted?.header?.agreementPartyUInfo
             val apuNested = ((input as? ResponseParametersFrom.JwsSigned)?.parent as? ResponseParametersFrom.JweForJws)
                 ?.jweDecrypted?.header?.agreementPartyUInfo
-            val deviceResponse = relatedPresentation.jsonPrimitive.content.decodeToByteArray(Base64UrlStrict)
+            val deviceResponse = relatedPresentation.extractContent().decodeToByteArray(Base64UrlStrict)
                 .let { coseCompliantSerializer.decodeFromByteArray<DeviceResponse>(it) }
 
             val mdocGeneratedNonce = apuDirect?.decodeToString()
@@ -647,6 +621,14 @@ class OpenId4VpVerifier(
         }
 
         else -> throw IllegalArgumentException("descriptor.format: $claimFormat")
+    }
+
+    // To be reconsidered when supporting [DCQLCredentialQueryInstance.multiple]
+    private fun JsonElement.extractContent(): String = when (this) {
+        is JsonArray -> first().extractContent()
+        is JsonObject -> toString()
+        is JsonPrimitive -> content
+        JsonNull -> throw IllegalArgumentException("Can't extract string from JsonNull")
     }
 
     /**
@@ -675,18 +657,7 @@ class OpenId4VpVerifier(
         ).wrapAsExpectedPayload()
 
         verifyCoseSignature(deviceSignature, walletKey, byteArrayOf(), expected).onFailure {
-            val legacy = document.calcDeviceAuthentication(
-                nonce = nonce,
-                mdocGeneratedNonce = mdocGeneratedNonce,
-                clientId = clientId,
-                responseUrl = responseUrl
-            ).wrapAsExpectedPayload()
-            verifyCoseSignature(deviceSignature, walletKey, byteArrayOf(), legacy).onFailure {
-                throw IllegalArgumentException(
-                    "deviceSignature not verified, expected ${expected.encodeToString(Base16())} " +
-                            "or ${legacy.encodeToString(Base16())}", it
-                )
-            }
+            throw IllegalArgumentException("deviceSignature not matching ${expected.encodeToString(Base16())}", it)
         }
         true
     }
@@ -724,34 +695,6 @@ class OpenId4VpVerifier(
         docType = docType,
         namespaces = deviceSigned.namespaces
     )
-
-    /**
-     * Performs calculation of the [at.asitplus.iso.SessionTranscript] and [at.asitplus.iso.DeviceAuthentication],
-     * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024
-     */
-    @Suppress("DEPRECATION")
-    private fun Document.calcDeviceAuthentication(
-        nonce: String,
-        mdocGeneratedNonce: String,
-        clientId: String,
-        responseUrl: String,
-    ): DeviceAuthentication = DeviceAuthentication(
-        type = DeviceAuthentication.TYPE,
-        sessionTranscript = SessionTranscript.forOpenId(
-            OID4VPHandover(
-                clientIdHash = coseCompliantSerializer.encodeToByteArray(
-                    ClientIdToHash(clientId, mdocGeneratedNonce)
-                ).sha256(),
-                responseUriHash = coseCompliantSerializer.encodeToByteArray(
-                    ResponseUriToHash(responseUrl, mdocGeneratedNonce)
-                ).sha256(),
-                nonce = nonce
-            ),
-        ),
-        docType = docType,
-        namespaces = deviceSigned.namespaces
-    )
-
 
     private fun VerifyPresentationResult.mapToAuthnResponseResult(state: String) = when (this) {
         is VerifyPresentationResult.ValidationError -> AuthnResponseResult.ValidationError("vpToken", state, cause)

@@ -38,9 +38,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import com.benasher44.uuid.uuid4
 import kotlinx.serialization.json.JsonPrimitive
 
-@Deprecated("Will be removed in future release", replaceWith= ReplaceWith("RequestOptions"))
-typealias OpenIdRequestOptions = RequestOptions
-
 // TODO Should be NormalizedJsonPath
 typealias RequestedAttributes = Set<String>
 
@@ -75,29 +72,22 @@ data class RequestOptions(
     /** Opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]. */
     val state: String = uuid4().toString(),
 
-    @Deprecated("Removed in OpenID4VP Draft 21")
-    val clientMetadataUrl: String? = null,
-
     /**
-     * Set this value to include metadata with encryption parameters set. Beware if setting this value and also
-     * [clientMetadataUrl], that the URL shall point to [OpenId4VpVerifier.metadataWithEncryption].
+     * Set this value to include metadata with encryption parameters set.
      */
     val encryption: Boolean = false,
 
     /**
-     *  Non-empty array of strings, where each string is a base64url-encoded JSON object that contains a typed parameter set
-     *  with details about the transaction that the Verifier is requesting the End-User to authorize.
+     * Non-empty array of strings, where each string is a base64url-encoded JSON object that contains a typed parameter
+     * set with details about the transaction that the Verifier is requesting the End-User to authorize.
      */
     val transactionData: List<TransactionData>? = null,
 ) {
     init {
         if (!transactionData.isNullOrEmpty()) {
-            val transactionIds =
-                transactionData.mapNotNull { it.credentialIds?.toList() }.flatten()?.sorted()?.distinct()
+            val transactionIds = transactionData.map { it.credentialIds.toList() }.flatten().sorted().distinct()
             val credentialIds = credentials.map { it.id }.sorted().distinct()
-            transactionIds?.let {
-                require(it == credentialIds) { "OpenId4VP defines that the credential_ids that must be part of a transaction_data element have to be an ID from InputDescriptor" }
-            }
+            require(transactionIds == credentialIds) { "OpenId4VP defines that the credential_ids that must be part of a transaction_data element have to be an ID from InputDescriptor" }
         }
     }
 
@@ -259,7 +249,7 @@ data class RequestOptionsCredential(
     fun toFormatHolder(containerJwt: FormatContainerJwt, containerSdJwt: FormatContainerSdJwt) =
         when (representation) {
             CredentialRepresentation.PLAIN_JWT -> FormatHolder(jwtVp = containerJwt)
-            CredentialRepresentation.SD_JWT -> FormatHolder(jwtSd = containerSdJwt, sdJwt = containerSdJwt)
+            CredentialRepresentation.SD_JWT -> FormatHolder(sdJwt = containerSdJwt)
             CredentialRepresentation.ISO_MDOC -> FormatHolder(msoMdoc = containerJwt)
         }
 

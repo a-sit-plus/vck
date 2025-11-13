@@ -27,16 +27,6 @@ import kotlinx.serialization.json.JsonObject
  */
 interface Verifier {
 
-    @Deprecated(
-        message = "The Flow enum will be removed in a future release",
-        replaceWith = ReplaceWith("verifyPresentationSdJwt(input, challenge, transactionData?.second)")
-    )
-    suspend fun verifyPresentationSdJwt(
-        input: SdJwtSigned,
-        challenge: String,
-        transactionData: Pair<PresentationRequestParameters.Flow, List<TransactionDataBase64Url>>,
-    ): VerifyPresentationResult = verifyPresentationSdJwt(input, challenge, transactionData.second)
-
     /**
      * Verifies a presentation of some credentials in [ConstantIndex.CredentialRepresentation.SD_JWT] from a holder,
      * that shall include the [challenge] (sent by this verifier).
