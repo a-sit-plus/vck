@@ -25,14 +25,14 @@ internal data class CwtStatusListTokenPayload(
     @SerialName(CwtSubjectClaim.Specification.CLAIM_NAME)
     val subject: CwtSubjectClaim,
     /**
-e     * 6 (issued at): REQUIRED. As generally defined in RFC8392. The issued at claim MUST specify
+     * 6 (issued at): REQUIRED. As generally defined in RFC8392. The issued at claim MUST specify
      * the time at which the Status List Token was issued.
      */
     @CborLabel(CwtIssuedAtClaim.Specification.CLAIM_KEY)
     @SerialName(CwtIssuedAtClaim.Specification.CLAIM_NAME)
     val issuedAt: CwtIssuedAtClaim,
     /**
-     * 4 (expiration time): OPTIONAL. As generally defined in RFC8392. The expiration time claim,
+     * 4 (expiration time): RECOMMENDED. As generally defined in RFC8392. The expiration time claim,
      * if present, MUST specify the time at which the Status List Token is considered expired by
      * its issuer.
      */
@@ -40,7 +40,7 @@ e     * 6 (issued at): REQUIRED. As generally defined in RFC8392. The issued at 
     @SerialName(CwtExpirationTimeClaim.Specification.CLAIM_NAME)
     val expirationTime: CwtExpirationTimeClaim? = null,
     /**
-     * 65534 (time to live): OPTIONAL. Unsigned integer (Major Type 0). The time to live claim, if
+     * 65534 (time to live): RECOMMENDED. Unsigned integer (Major Type 0). The time to live claim, if
      * present, MUST specify the maximum amount of time, in seconds, that the Status List Token can
      * be cached by a consumer before a fresh copy SHOULD be retrieved. The value of the claim MUST
      * be a positive number.
