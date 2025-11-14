@@ -569,7 +569,7 @@ class VerifyStatusListTokenHAIP(
     val trustStoreLookup: TrustStoreLookup = TrustStoreLookup { null },
 ) : VerifyJwsObjectFun {
 
-    override suspend operator fun invoke(jwsObject: JwsSigned<*>) = catchingUnwrapped {
+    override suspend operator fun invoke(jwsObject: JwsSigned<*>) = catching {
         val trustStore: Set<X509Certificate>? = trustStoreLookup(jwsObject)
         val certChain: CertificateChain? = jwsObject.header.certificateChain
         val signingCert: X509Certificate = certChain?.first() ?: throw Exception("Certificate Chain MUST not be empty")
