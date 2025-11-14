@@ -202,7 +202,7 @@ val PreRegisteredClientTest by testSuite {
             .shouldNotBeNull()
         val jwsObject = JwsSigned.deserialize(AuthenticationRequestParameters.serializer(), jar, vckJsonSerializer)
             .getOrThrow()
-        VerifyJwsObject().invoke(jwsObject).shouldBeTrue()
+        VerifyJwsObject().invoke(jwsObject).getOrThrow()
 
         val authnResponse = holderOid4vp.createAuthnResponse(jar).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()

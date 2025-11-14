@@ -13,9 +13,11 @@ import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.minus
+import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
@@ -26,13 +28,16 @@ import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.StatusListCwt
 import at.asitplus.wallet.lib.data.StatusListJwt
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.extensions.sdHashInput
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.jws.JwsHeaderIdentifierFun
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
+import at.asitplus.wallet.lib.jws.VerifyStatusListTokenHAIP
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.TestConfig
 import de.infix.testBalloon.framework.core.aroundEach
@@ -302,6 +307,91 @@ val AgentSdJwtTest by testSuite {
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
                 .freshnessSummary.tokenStatusValidationResult
                 .shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
+        }
+
+        "sd-jwt vc request verified with HAIP status list rules" {
+            val haipTokenStatusResolver = TokenStatusResolverImpl(
+                resolveStatusListToken = StatusListTokenResolver {
+                    statusListIssuer.provideStatusListToken(
+                        listOf(StatusListTokenMediaType.Jwt),
+                        Clock.System.now(),
+                    ).second
+                },
+                verifyJwsObjectIntegrity = VerifyStatusListTokenHAIP(),
+            )
+
+            val haipVerifier = VerifierAgent(
+                identifier = verifierId,
+                validatorSdJwt = ValidatorSdJwt(
+                    validator = Validator(tokenStatusResolver = haipTokenStatusResolver),
+                ),
+            )
+
+            val presentationParameters = holder.createDefaultPresentation(
+                request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
+                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
+                    buildDCQLQuery(
+                        DCQLJsonClaimsQuery(
+                            path = DCQLClaimsPathPointer(CLAIM_GIVEN_NAME),
+                        )
+                    ),
+                )
+            ).getOrThrow() as PresentationResponseParameters.DCQLParameters
+
+            val vp = presentationParameters.verifiablePresentations.values.first()
+                .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
+
+            haipVerifier.verifyPresentationSdJwt(vp.sdJwt, challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+                .freshnessSummary.tokenStatusValidationResult
+                .shouldBeInstanceOf<TokenStatusValidationResult.Valid>()
+        }
+
+        "sd-jwt vc request rejected without HAIP status list certificate chain" {
+            val certStatusKey = EphemeralKeyWithoutCert()
+            val noCertStatusListIssuer = StatusListAgent(
+                keyMaterial = certStatusKey,
+                signStatusListJwt = SignJwt(
+                    certStatusKey,
+                    JwsHeaderIdentifierFun { header, _ -> header.copy(certificateChain = null) }),
+            )
+
+            val haipTokenStatusResolver = TokenStatusResolverImpl(
+                resolveStatusListToken = StatusListTokenResolver {
+                    noCertStatusListIssuer.provideStatusListToken(
+                        listOf(StatusListTokenMediaType.Jwt),
+                        Clock.System.now(),
+                    ).second
+                },
+                verifyJwsObjectIntegrity = VerifyStatusListTokenHAIP(),
+            )
+
+            val haipVerifier = VerifierAgent(
+                identifier = verifierId,
+                validatorSdJwt = ValidatorSdJwt(
+                    validator = Validator(tokenStatusResolver = haipTokenStatusResolver),
+                ),
+            )
+
+            val presentationParameters = holder.createDefaultPresentation(
+                request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
+                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
+                    buildDCQLQuery(
+                        DCQLJsonClaimsQuery(
+                            path = DCQLClaimsPathPointer(CLAIM_GIVEN_NAME),
+                        )
+                    ),
+                )
+            ).getOrThrow() as PresentationResponseParameters.DCQLParameters
+
+            val vp = presentationParameters.verifiablePresentations.values.first()
+                .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
+
+            val test = haipVerifier.verifyPresentationSdJwt(vp.sdJwt, challenge)
+
+            test.shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+                .freshnessSummary.tokenStatusValidationResult
+                .shouldBeInstanceOf<TokenStatusValidationResult.Rejected>()
         }
     }
 }
