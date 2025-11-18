@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.data
 
+import at.asitplus.wallet.lib.data.iso18013.IdentifierListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -12,9 +13,15 @@ import kotlinx.serialization.Serializable
  * reference to a Status List Token as defined in this specification. Other members of the "status"
  * object may be defined by other specifications. This is analogous to "cnf" claim in Section 3.1
  * of RFC7800 in which different authenticity confirmation methods can be included.
+ *
+ * ISO 18013-5 defines new mechanism "IdentifierList".
+ * Either the StatusList OR IdentifierList may be used but not both at the same time.
  */
 @Serializable
 data class Status(
     @SerialName("status_list")
-    val statusList: StatusListInfo
+    val statusList: StatusListInfo? = null,
+
+    @SerialName("identifier_list")
+    val identifierList: IdentifierListInfo? = null,
 )
