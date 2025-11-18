@@ -14,6 +14,7 @@ Release 5.10.0 (Unreleased):
    - Remove code elements deprecated in 5.9.0
    - Drop single `proof` in credential request
    - Support credential response encryption correctly, see changed API in `CredentialIssuer.credential()`
+   - Introduce duration to subtract for the issuance date of credentials, see `IssuerAgent.issuanceOffset`
  - OpenID for Verifiable Presentations:
    - Update implementation to 1.0 from 2025-07-09
    - Remove code elements deprecated in 5.9.0

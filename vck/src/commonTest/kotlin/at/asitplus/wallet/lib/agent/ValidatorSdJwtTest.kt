@@ -23,6 +23,8 @@ import de.infix.testBalloon.framework.core.TestConfig
 import de.infix.testBalloon.framework.core.aroundEach
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.collections.shouldBeSingleton
+import io.kotest.matchers.comparables.shouldBeLessThan
+import io.kotest.matchers.comparables.shouldNotBeGreaterThan
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -33,6 +35,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.minutes
 
 
 val ValidatorSdJwtTest by testSuite {
@@ -115,7 +118,11 @@ val ValidatorSdJwtTest by testSuite {
 
     "credentials are valid for holder's key" {
         val credential = issuer.issueCredential(buildCredentialData()).getOrThrow()
-            .shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>()
+            .shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>().apply {
+                // Assert the issuanceOffset in IssuerAgent
+                sdJwtVc.issuedAt.shouldNotBeNull() shouldBeLessThan Clock.System.now().minus(1.minutes)
+                sdJwtVc.issuedAt.shouldNotBeNull() shouldNotBeGreaterThan Clock.System.now()
+            }
 
         validator.verifySdJwt(credential.signedSdJwtVc, holderKeyMaterial.publicKey)
             .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessSdJwt>()

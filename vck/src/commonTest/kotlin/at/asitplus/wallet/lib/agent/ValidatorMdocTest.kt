@@ -13,13 +13,15 @@ import at.asitplus.wallet.lib.data.StatusListJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import de.infix.testBalloon.framework.core.TestExecutionScope
-import de.infix.testBalloon.framework.core.TestSuite
 import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.matchers.comparables.shouldBeLessThan
+import io.kotest.matchers.comparables.shouldNotBeGreaterThan
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlin.random.Random
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.minutes
 
 private data class Config(
     val issuer: Issuer,
@@ -78,7 +80,13 @@ val ValidatorMdocTest by testSuite {
                     ISO_MDOC,
                 ).getOrThrow()
             ).getOrThrow()
-            credential.shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
+                .shouldBeInstanceOf<Issuer.IssuedCredential.Iso>().apply {
+                    // Assert the issuanceOffset in IssuerAgent
+                    issuerSigned.issuerAuth.payload.shouldNotBeNull().apply {
+                        validityInfo.validFrom shouldBeLessThan Clock.System.now().minus(1.minutes)
+                        validityInfo.validFrom shouldNotBeGreaterThan Clock.System.now()
+                    }
+                }
 
             val issuerKey: CoseKey? =
                 credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull()?.let {
@@ -100,7 +108,7 @@ val ValidatorMdocTest by testSuite {
                     ISO_MDOC,
                 ).getOrThrow()
             ).getOrThrow()
-            credential.shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
+                .shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
 
             val issuerKey: CoseKey? =
                 credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull()?.let {

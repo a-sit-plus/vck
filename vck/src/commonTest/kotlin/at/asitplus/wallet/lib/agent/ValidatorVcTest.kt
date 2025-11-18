@@ -27,11 +27,14 @@ import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.TestConfig
 import de.infix.testBalloon.framework.core.aroundEach
 import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.matchers.comparables.shouldBeLessThan
+import io.kotest.matchers.comparables.shouldNotBeGreaterThan
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
@@ -165,7 +168,12 @@ val ValidatorVcTest by testSuite {
                 PLAIN_JWT,
             ).getOrThrow()
         ).getOrThrow()
-        credential.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
+            .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>().apply {
+                // Assert the issuanceOffset in IssuerAgent
+                vc.issuanceDate shouldBeLessThan Clock.System.now().minus(1.minutes)
+                vc.issuanceDate shouldNotBeGreaterThan Clock.System.now()
+            }
+
 
         validator.verifyVcJws(credential.signedVcJws, verifierKeyMaterial.publicKey)
             .shouldBeInstanceOf<VerifyCredentialResult.SuccessJwt>()
@@ -179,7 +187,7 @@ val ValidatorVcTest by testSuite {
                 PLAIN_JWT,
             ).getOrThrow()
         ).getOrThrow()
-        credential.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
+            .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
         val value = validator.verifyVcJws(credential.signedVcJws, verifierKeyMaterial.publicKey)
             .shouldBeInstanceOf<VerifyCredentialResult.SuccessJwt>()
@@ -205,7 +213,7 @@ val ValidatorVcTest by testSuite {
                 PLAIN_JWT,
             ).getOrThrow()
         ).getOrThrow()
-        credential.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
+            .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
         validator.verifyVcJws(credential.signedVcJws, verifierKeyMaterial.publicKey)
             .shouldBeInstanceOf<VerifyCredentialResult.ValidationError>()
@@ -219,7 +227,7 @@ val ValidatorVcTest by testSuite {
                 PLAIN_JWT,
             ).getOrThrow()
         ).getOrThrow()
-        credential.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
+            .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
         validator.verifyVcJws(
             credential.signedVcJws.serialize().replaceFirstChar { "f" },
