@@ -211,8 +211,6 @@ class IssuerAgent(
             sdJwt.forEach {
                 put(it.key, it.value)
             }
-            // TODO make sure this only get's inserted at the top-level
-            put(SD_ALG, credential.sdAlgorithm.toIanaName().toJsonElement())
             vcSdJwtObject.forEach {
                 put(it.key, it.value)
             }

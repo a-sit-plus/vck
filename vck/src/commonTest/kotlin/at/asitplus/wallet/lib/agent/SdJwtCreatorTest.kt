@@ -8,9 +8,11 @@ import at.asitplus.wallet.lib.data.SdJwtConstants
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 
 val SdJwtCreatorTest by testSuite {
 
@@ -59,6 +61,50 @@ val SdJwtCreatorTest by testSuite {
             first["..."] shouldBe null
         }
     }
+
+    "nested structures with sd elements are added to the top level" {
+        listOf(
+            ClaimToBeIssued("outer", uuid4(), true),
+            ClaimToBeIssued("nested", listOf(ClaimToBeIssued("inner", uuid4(), true)), false)
+        ).toSdJsonObject().apply {
+            second.shouldHaveSize(2)
+            first["nested"] shouldNotBe null
+            first["nested"]!!.jsonObject["_sd"] shouldNotBe null
+        }
+    }
+
+    "nested structures with elements are added to the top level" {
+        listOf(
+            ClaimToBeIssued("outer", uuid4(), true),
+            ClaimToBeIssued("nested", listOf(ClaimToBeIssued("inner", uuid4(), false)), false)
+        ).toSdJsonObject().apply {
+            second.shouldHaveSize(1)
+            first["nested"] shouldNotBe null
+            first["nested"].shouldNotBeNull().jsonObject["_sd"] shouldBe null
+        }
+    }
+
+    "nested sd structures with inner sd elements are not added to the top level" {
+        listOf(
+            ClaimToBeIssued("outer", uuid4(), true),
+            ClaimToBeIssued("nested", listOf(ClaimToBeIssued("inner", uuid4(), true)), true)
+        ).toSdJsonObject().apply {
+            second.shouldHaveSize(3)
+            first["nested"] shouldBe null
+        }
+    }
+
+    "nested sd structures with inner elements are not added to the top level" {
+        listOf(
+            ClaimToBeIssued("outer", uuid4(), true),
+            ClaimToBeIssued("nested", listOf(ClaimToBeIssued("inner", uuid4(), false)), true)
+        ).toSdJsonObject().apply {
+            second.shouldHaveSize(2)
+            first["nested"] shouldBe null
+        }
+    }
+
+    // TODO also test
 
 }
 

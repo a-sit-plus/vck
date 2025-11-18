@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.wallet.lib.agent.SdJwtCreator.disallowedNames
-import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
+import at.asitplus.wallet.lib.agent.SdJwtCreator.toIntSdJsonObject
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
 import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.SdJwtConstants.NAME_SD
@@ -15,6 +15,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.addAll
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.putJsonArray
+import kotlin.collections.plus
 
 
 /**
@@ -36,15 +37,25 @@ object SdJwtCreator {
     fun Collection<ClaimToBeIssued>.toSdJsonObject(
         randomSource: RandomSource = RandomSource.Secure,
         digest: Digest = Digest.SHA256,
+    ): Pair<JsonObject, Collection<String>> {
+        val result = toIntSdJsonObject(randomSource, digest)
+        return result.first.withAlg(digest) to result.second
+    }
+
+    private fun JsonObject.withAlg(digest: Digest): JsonObject =
+        JsonObject(this + (SD_ALG to digest.toIanaName().toJsonElement()))
+
+    fun Collection<ClaimToBeIssued>.toIntSdJsonObject(
+        randomSource: RandomSource = RandomSource.Secure,
+        digest: Digest = Digest.SHA256,
     ): Pair<JsonObject, Collection<String>> = mutableListOf<String>().let { disclosures ->
         buildJsonObject {
             with(honorNotDisclosableClaims().customPartition()) {
                 val objectClaimDigests: Collection<String> = recursiveClaims.mapNotNull { claim ->
                     claim.value as Collection<*>
-                    (claim.value.filterIsInstance<ClaimToBeIssued>()).toSdJsonObject(randomSource, digest).let {
+                    (claim.value.filterIsInstance<ClaimToBeIssued>()).toIntSdJsonObject(randomSource, digest).let {
                         if (claim.selectivelyDisclosable) {
                             disclosures.addAll(it.second)
-                            put(claim.name, it.first)
                             claim.toSdItem(it.first, randomSource).toDisclosure()
                                 .also { disclosures.add(it) }
                                 .hashDisclosure(digest)
@@ -56,7 +67,7 @@ object SdJwtCreator {
                     }
                 }
                 val dotNotationClaims: Collection<String> = dotNotation.groupByDots().mapNotNull { (key, claims) ->
-                    claims.toSdJsonObject(randomSource, digest).let {
+                    claims.toIntSdJsonObject(randomSource, digest).let {
                         disclosures.addAll(it.second)
                         put(key, it.first)
                         key.toSdItem(it.first, randomSource).toDisclosure()
@@ -66,7 +77,7 @@ object SdJwtCreator {
                 }
                 val dotNotationClaimsPlain: Collection<String> =
                     dotNotationPlain.groupByDots().mapNotNull { (key, claims) ->
-                        claims.toSdJsonObject(randomSource, digest).let {
+                        claims.toIntSdJsonObject(randomSource, digest).let {
                             disclosures.addAll(it.second)
                             put(key, it.first)
                             null
@@ -85,7 +96,6 @@ object SdJwtCreator {
                 (objectClaimDigests + dotNotationClaims + dotNotationClaimsPlain + singleClaimsDigests).let { digests ->
                     if (digests.isNotEmpty()) {
                         putJsonArray(NAME_SD) { addAll(digests) }
-                        put(SD_ALG, digest.toIanaName().toJsonElement())
                     }
                 }
             }
@@ -119,7 +129,7 @@ object SdJwtCreator {
     ).toMap()
 
     /**
-     * Holds all the claims to be issued split up into four categories, for easy use in [toSdJsonObject]
+     * Holds all the claims to be issued split up into four categories, for easy use in [toIntSdJsonObject]
      */
     data class Partitioned(
         val recursiveClaims: Collection<ClaimToBeIssued>,
@@ -157,7 +167,7 @@ object SdJwtCreator {
         }.filterNot { it.name in disallowedNames }
 
     /**
-     * Partitions the claims to be issued into four categories, for easy use in [toSdJsonObject]
+     * Partitions the claims to be issued into four categories, for easy use in [toIntSdJsonObject]
      */
     private fun Collection<ClaimToBeIssued>.customPartition(): Partitioned {
         val isDotNotation: (ClaimToBeIssued) -> Boolean = { it.name.contains('.') }
