@@ -12,6 +12,7 @@ data class ClientAuthRequest(
     val issuedCode: String,
     val userInfo: OidcUserInfoExtended,
     val scope: String? = null,
+    /** Validated [AuthorizationDetails] */
     val authnDetails: Collection<AuthorizationDetails>? = null,
     val codeChallenge: String? = null,
 )

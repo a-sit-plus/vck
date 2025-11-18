@@ -2,11 +2,10 @@ package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.CscAuthorizationDetails
-import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.wallet.lib.oauth2.AuthorizationServiceStrategy
-import at.asitplus.wallet.lib.oauth2.ClientAuthRequest
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidAuthorizationDetails
 
 /**
  * Implements Authorization for QTSP as necessary for Potential UC5
@@ -20,28 +19,42 @@ class QtspAuthorizationServiceStrategy(
      */
     override fun validateAuthorizationDetails(
         authorizationDetails: Collection<AuthorizationDetails>,
-    ): Set<AuthorizationDetails> = authorizationDetails.filterIsInstance<CscAuthorizationDetails>().toSet().apply {
-        if (this.size != authorizationDetails.size)
-            throw OAuth2Exception.InvalidAuthorizationDetails("Request may only contain CSC specific authorization details")
+    ) {
+        authorizationDetails
+            .filterIsInstance<CscAuthorizationDetails>()
+            .toSet()
+            .apply {
+                if (this.size != authorizationDetails.size)
+                    throw InvalidAuthorizationDetails("Request may only contain CSC specific authorization details")
+            }
     }
 
+    private fun validateAndThrowAuthorizationDetails(
+        authorizationDetails: Collection<AuthorizationDetails>,
+    ): Set<AuthorizationDetails> = authorizationDetails
+        .filterIsInstance<CscAuthorizationDetails>()
+        .toSet().apply {
+            if (this.size != authorizationDetails.size)
+                throw InvalidAuthorizationDetails("Request may only contain CSC specific authorization details")
+        }
+
     /**
-     * Reject if authorization details from [tokenRequest] do not match 1:1 the ones from [authRequest]
+     * Reject if authorization details from [tokenRequestAuthnDetails] do not match 1:1 the ones from [authRequest]
      */
-    override fun matchAuthorizationDetails(
-        authRequest: ClientAuthRequest,
-        tokenRequest: TokenRequestParameters,
-    ): Set<AuthorizationDetails> = tokenRequest.authorizationDetails.apply {
-        val validAuthCscDetails = authRequest.authnDetails
-            ?.let { validateAuthorizationDetails(it) }
+    @Throws(InvalidAuthorizationDetails::class)
+    override fun matchAndFilterAuthorizationDetailsForTokenResponse(
+        authnRequestAuthnDetails: Collection<AuthorizationDetails>?,
+        tokenRequestAuthnDetails: Set<AuthorizationDetails>,
+    ): Set<AuthorizationDetails> {
+        val validAuthCscDetails = authnRequestAuthnDetails
+            ?.let { validateAndThrowAuthorizationDetails(it) }
             ?: emptySet()
-        val validTokenCscDetails = tokenRequest.authorizationDetails
-            ?.let { validateAuthorizationDetails(it) }
-            ?: emptySet()
-        //Matching irrespective of order
+        val validTokenCscDetails = validateAndThrowAuthorizationDetails(tokenRequestAuthnDetails)
+        // Matching irrespective of order
         if (!validAuthCscDetails.containsAll(validTokenCscDetails))
-            throw OAuth2Exception.InvalidAuthorizationDetails("Authorization details do not match")
+            throw InvalidAuthorizationDetails("Authorization details do not match")
         if (!validTokenCscDetails.containsAll(validAuthCscDetails))
-            throw OAuth2Exception.InvalidAuthorizationDetails("Authorization details do not match")
-    } ?: emptySet()
+            throw InvalidAuthorizationDetails("Authorization details do not match")
+        return validTokenCscDetails
+    }
 }

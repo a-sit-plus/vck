@@ -5,6 +5,7 @@ import at.asitplus.csc.collection_entries.OAuthDocumentDigest
 import at.asitplus.csc.enums.SignatureQualifier
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
+import at.asitplus.signum.indispensable.contentEqualsIfArray
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
@@ -27,6 +28,7 @@ data class OpenIdAuthorizationDetails(
      * Credential being described in [IssuerMetadata.supportedCredentialConfigurations].
      * The referenced object in [IssuerMetadata.supportedCredentialConfigurations] conveys the details, such as the
      * format and format-specific parameters like `vct` for SD-JWT VC or `doctype` for ISO mdoc.
+     * Note: Set by the Wallet in the token request.
      */
     @SerialName("credential_configuration_id")
     val credentialConfigurationId: String? = null,
@@ -50,18 +52,11 @@ data class OpenIdAuthorizationDetails(
      * the Access Token returned in this response. Each of these Credential Datasets corresponds to the same
      * Credential Configuration in the [IssuerMetadata.supportedCredentialConfigurations]. The Wallet MUST use these
      * identifiers together with an Access Token in subsequent Credential Requests.
-     * Note: Is only required in the token response!
+     * Note: Set by the AS in the token response.
      */
     @SerialName("credential_identifiers")
     val credentialIdentifiers: Set<String>? = null,
-) : AuthorizationDetails() {
-
-    @Transient
-    @Deprecated("Use claimDescription instead")
-    val claims: JsonElement? = null
-
-}
-
+) : AuthorizationDetails()
 
 /**
  * CSC-API v2.0.0.2

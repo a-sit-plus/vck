@@ -145,7 +145,7 @@ val OidvciCodeFlowTest by testSuite {
                 }
             }
         }
-        strategy.validAuthorizationDetails().shouldNotBeEmpty().forEach {
+        strategy.validAuthorizationDetails("empty").shouldNotBeEmpty().forEach {
             it.shouldBeInstanceOf<OpenIdAuthorizationDetails>()
                 .credentialConfigurationId.shouldNotBeEmpty()
                 .shouldBeIn(issuerCredentialFormats.keys)
@@ -404,7 +404,7 @@ val OidvciCodeFlowTest by testSuite {
         serializedCredential.assertSdJwtReceived()
     }
 
-    "request credential in SD-JWT, using authorization details is access token different to auth code" {
+    "request credential in SD-JWT, using authorization details in access token different to auth code" {
         val authCodeAuthnDetails = client.buildAuthorizationDetails(
             credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(SD_JWT),
             authorizationServers = issuer.metadata.authorizationServers
@@ -427,6 +427,35 @@ val OidvciCodeFlowTest by testSuite {
             state = state,
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
             authorizationDetails = tokenAuthnDetails // this is wrong, should be same as in authn request
+        )
+        shouldThrow<OAuth2Exception> {
+            authorizationService.token(tokenRequest, null).getOrThrow()
+        }
+    }
+
+    "request credential in SD-JWT, using more authorization details in access token than in auth code" {
+        val authCodeAuthnDetails = client.buildAuthorizationDetails(
+            credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(SD_JWT),
+            authorizationServers = issuer.metadata.authorizationServers
+        )
+        val tokenAuthnDetails = client.buildAuthorizationDetails(
+            credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(ISO_MDOC),
+            authorizationServers = issuer.metadata.authorizationServers
+        )
+        val authnRequest = oauth2Client.createAuthRequestJar(
+            state = state,
+            authorizationDetails = authCodeAuthnDetails
+        )
+        val input = authnRequest as RequestParameters
+        val authnResponse = authorizationService.authorize(input) { catching { DummyUserProvider.user } }
+            .getOrThrow()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+        val code = authnResponse.params?.code
+            .shouldNotBeNull()
+        val tokenRequest = oauth2Client.createTokenRequestParameters(
+            state = state,
+            authorization = OAuth2Client.AuthorizationForToken.Code(code),
+            authorizationDetails = tokenAuthnDetails + authCodeAuthnDetails // this is wrong, should be same as in authn request
         )
         shouldThrow<OAuth2Exception> {
             authorizationService.token(tokenRequest, null).getOrThrow()
@@ -499,9 +528,9 @@ val OidvciCodeFlowTest by testSuite {
             credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(SD_JWT),
             authorizationServers = issuer.metadata.authorizationServers
         )
-        val token = getToken(authorizationService, authorizationDetails)
 
         shouldThrow<OAuth2Exception> {
+            val token = getToken(authorizationService, authorizationDetails)
             issuer.credential(
                 authorizationHeader = token.toHttpHeaderValue(),
                 params = client.createCredential(
@@ -549,6 +578,7 @@ val OidvciCodeFlowTest by testSuite {
     }
 
 }
+
 private fun String.assertSdJwtReceived() {
     JwsSigned.deserialize(
         VerifiableCredentialSdJwt.serializer(),

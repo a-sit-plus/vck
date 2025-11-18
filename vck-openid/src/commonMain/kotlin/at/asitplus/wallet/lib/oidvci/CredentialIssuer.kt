@@ -287,18 +287,22 @@ class CredentialIssuer(
         authorizationHeader = authorizationHeader,
         httpRequest = request,
     ).getOrThrow().let {
-        credentialIdentifier?.let { credentialIdentifier ->
-            if (it.authorizationDetails == null)
-                throw InvalidToken("no authorization details stored for access token $authorizationHeader")
+        if (it.authorizationDetails != null) {
+            if (credentialIdentifier == null)
+                throw InvalidCredentialRequest("credential_identifier expected to be set")
+            if (credentialConfigurationId != null)
+                throw InvalidCredentialRequest("credential_configuration_id must not be set when credential_identifier is set")
             if (!it.validCredentialIdentifiers.contains(credentialIdentifier))
                 throw InvalidToken("credential_identifier $credentialIdentifier expected to be in $it")
-        } ?: credentialConfigurationId?.let { credentialConfigurationId ->
-            if (it.scope == null)
-                throw InvalidToken("no scope stored for access token $authorizationHeader")
-            if (!it.scope.contains(credentialConfigurationId))
-                throw InvalidToken("credential_configuration_id $credentialConfigurationId expected to be $it")
-        } ?: authorizationHeader.run {
-            throw InvalidToken("neither credential_identifier nor credential_configuration_id set")
+        } else if (it.scope != null) {
+            if (credentialConfigurationId == null)
+                throw InvalidCredentialRequest("credential_configuration_id expected to be set")
+            if (credentialIdentifier != null)
+                throw InvalidCredentialRequest("credential_identifier must not be set when credential_configuration_id is set")
+            if (!it.scope.contains(credentialConfigurationId!!))
+                throw InvalidToken("credential_configuration_id $credentialConfigurationId expected to be in $it")
+        } else {
+            throw InvalidToken("Neither scope nor authorization details stored for access token")
         }
     }
 

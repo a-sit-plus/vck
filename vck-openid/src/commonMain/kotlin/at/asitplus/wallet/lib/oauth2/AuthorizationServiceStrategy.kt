@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OpenIdAuthorizationDetails
-import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 
 /**
@@ -21,23 +20,27 @@ interface AuthorizationServiceStrategy {
      *  + contains fields of the wrong type for the authorization details type,
      *  + contains fields with invalid values for the authorization details type
      *  + is missing required fields for the authorization details type.
-     *
-     *  @return Set of potentially transformed [AuthorizationDetails] (function may have side effects)
      */
     @Throws(OAuth2Exception.InvalidAuthorizationDetails::class)
-    fun validateAuthorizationDetails(authorizationDetails: Collection<AuthorizationDetails>): Set<AuthorizationDetails>
+    fun validateAuthorizationDetails(authorizationDetails: Collection<AuthorizationDetails>)
 
     /**
-     * RFC9396. (Ch. 6 paraphrased) Check if [TokenRequestParameters.authorizationDetails] in [tokenRequest] have at
-     * most the same scope or are implied by [ClientAuthRequest.authnDetails] in [authRequest].
+     * Filters the authorization details received in the authorization request to include in the token response.
+     */
+    fun filterAuthorizationDetailsForTokenResponse(
+        authorizationDetails: Collection<AuthorizationDetails>
+    ): Set<AuthorizationDetails>
+
+    /**
+     * RFC9396. (Ch. 6 paraphrased) Check if [tokenRequestAuthnDetails] have at
+     * most the same scope or are implied by [authnRequestAuthnDetails].
      *
-     * For credential requests semantic matching is used.
-     * @return Set of potentially transformed [AuthorizationDetails] from [tokenRequest] (function may have side effects)
+     * @return Set of transformed [AuthorizationDetails] from [tokenRequestAuthnDetails]
      */
     @Throws(OAuth2Exception.InvalidAuthorizationDetails::class)
-    fun matchAuthorizationDetails(
-        authRequest: ClientAuthRequest,
-        tokenRequest: TokenRequestParameters,
+    fun matchAndFilterAuthorizationDetailsForTokenResponse(
+        authnRequestAuthnDetails: Collection<AuthorizationDetails>?,
+        tokenRequestAuthnDetails: Set<AuthorizationDetails>,
     ): Set<AuthorizationDetails>
 
     /** Filter the requested scope in the access token request to ones valid for credential issuance */
@@ -47,7 +50,7 @@ interface AuthorizationServiceStrategy {
     fun validScopes(): String
 
     /** Return all valid authorization details for pre-authorized codes, that the client may use in token requests */
-    fun validAuthorizationDetails(): Collection<AuthorizationDetails>
+    fun validAuthorizationDetails(location: String): Collection<AuthorizationDetails>
 
     /** Return all valid credential identifiers for all schemes. */
     fun allCredentialIdentifier(): Collection<String>

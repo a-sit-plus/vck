@@ -116,8 +116,9 @@ val OidvciPreAuthTest by testSuite {
 
         authnDetails.forEach {
             it.shouldBeInstanceOf<OpenIdAuthorizationDetails>()
-            val credentialFormat =
-                issuer.metadata.supportedCredentialConfigurations!![it.credentialIdentifiers!!.first()].shouldNotBeNull()
+            val credentialFormat = issuer.metadata.supportedCredentialConfigurations
+                .shouldNotBeNull()[it.credentialIdentifiers.shouldNotBeNull().first()]
+                .shouldNotBeNull()
             val credentialRequest = client.createCredential(
                 tokenResponse = token,
                 metadata = issuer.metadata,

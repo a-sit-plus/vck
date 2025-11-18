@@ -450,7 +450,10 @@ class SimpleAuthorizationService(
             tokenService.generation.buildToken(
                 httpRequest = httpRequest,
                 userInfo = clientAuthRequest.userInfo,
-                authorizationDetails = strategy.matchAuthorizationDetails(clientAuthRequest, request),
+                authorizationDetails = strategy.matchAndFilterAuthorizationDetailsForTokenResponse(
+                    clientAuthRequest.authnDetails,
+                    request.authorizationDetails!!
+                ),
                 scope = null,
                 validatedClientKey = validatedClientKey,
             )
@@ -466,7 +469,7 @@ class SimpleAuthorizationService(
             tokenService.generation.buildToken(
                 httpRequest = httpRequest,
                 userInfo = clientAuthRequest.userInfo,
-                authorizationDetails = strategy.validateAuthorizationDetails(clientAuthRequest.authnDetails),
+                authorizationDetails = strategy.filterAuthorizationDetailsForTokenResponse(clientAuthRequest.authnDetails),
                 scope = null,
                 validatedClientKey = validatedClientKey,
             )
@@ -547,7 +550,7 @@ class SimpleAuthorizationService(
                 issuedCode = it,
                 userInfo = userInfo,
                 scope = strategy.validScopes(),
-                authnDetails = strategy.validAuthorizationDetails()
+                authnDetails = strategy.validAuthorizationDetails(publicContext)
             )
         )
     }

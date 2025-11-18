@@ -2,12 +2,12 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OpenIdAuthorizationDetails
-import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oauth2.AuthorizationServiceStrategy
-import at.asitplus.wallet.lib.oauth2.ClientAuthRequest
 import at.asitplus.wallet.lib.oidvci.CredentialSchemeMapping.toSupportedCredentialFormat
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidAuthorizationDetails
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.contract
 
 
 /**
@@ -26,9 +26,9 @@ class CredentialAuthorizationServiceStrategy(
 
     override fun allCredentialIdentifier(): Collection<String> = supportedCredentialSchemes.map { it.key }
 
-    override fun validAuthorizationDetails(): Collection<OpenIdAuthorizationDetails> =
+    override fun validAuthorizationDetails(location: String): Collection<OpenIdAuthorizationDetails> =
         supportedCredentialSchemes.entries.map {
-            OpenIdAuthorizationDetails(credentialConfigurationId = it.key)
+            OpenIdAuthorizationDetails(credentialConfigurationId = it.key, locations = setOf(location))
         }
 
     override fun filterScope(scope: String): String = scope.trim().split(" ")
@@ -37,51 +37,95 @@ class CredentialAuthorizationServiceStrategy(
             else null
         }.joinToString(" ")
 
+    @Throws(InvalidAuthorizationDetails::class)
     override fun validateAuthorizationDetails(
         authorizationDetails: Collection<AuthorizationDetails>,
-    ) = authorizationDetails.map { it.validateAndTransform() }.toSet().ifEmpty {
-        throw InvalidAuthorizationDetails("Token request for credential must contain authorization details")
+    ) {
+        authorizationDetails
+            .filter { it.validate() }
+            .ifEmpty {
+                throw InvalidAuthorizationDetails("Invalid authorization details")
+            }
     }
 
     /**
-     * For credential issuing authorization details need to be present and need to match at least semantically
+     * Filters the authorization details received in the authorization request to include in the token response.
      */
-    override fun matchAuthorizationDetails(
-        authRequest: ClientAuthRequest,
-        tokenRequest: TokenRequestParameters,
-    ) = tokenRequest.authorizationDetails.let {
-        if (it.isNullOrEmpty())
-            throw InvalidAuthorizationDetails("Token request for credential must contain authorization details")
+    override fun filterAuthorizationDetailsForTokenResponse(
+        authorizationDetails: Collection<AuthorizationDetails>
+    ): Set<AuthorizationDetails> = authorizationDetails
+        .filterIsInstance<OpenIdAuthorizationDetails>()
+        .filter { it.validate() }
+        .forTokenResponse()
+        .toSet()
 
-        validateAuthorizationDetails(it).onEach { filter ->
-            if (authRequest.authnDetails?.all { authDetails -> !filter.matches(authDetails) } == true)
-                throw InvalidAuthorizationDetails("Authorization details not from auth code: $filter")
+    /**
+     * For credential issuing authorization details need to be present and need to match at least semantically
+     * the ones from the authentication request.
+     */
+    @Throws(InvalidAuthorizationDetails::class)
+    override fun matchAndFilterAuthorizationDetailsForTokenResponse(
+        authnRequestAuthnDetails: Collection<AuthorizationDetails>?,
+        tokenRequestAuthnDetails: Set<AuthorizationDetails>,
+    ): Set<AuthorizationDetails> {
+        if (tokenRequestAuthnDetails.isEmpty())
+            throw InvalidAuthorizationDetails("AuthnDetails in token request are empty")
+        if (authnRequestAuthnDetails == null)
+            throw InvalidAuthorizationDetails("No AuthnDetails from authn request")
+        val filtered = tokenRequestAuthnDetails
+            .filterIsInstance<OpenIdAuthorizationDetails>()
+            .filter { it.credentialConfigurationId != null }
+        if (filtered.size != tokenRequestAuthnDetails.size)
+            throw InvalidAuthorizationDetails("Invalid authn details: More than in authn request")
+        if (!authnRequestAuthnDetails.containsAll(filtered))
+            throw InvalidAuthorizationDetails("AuthnDetails from token request not matching those from authn request")
+        return filtered
+            .matchesAuthnRequest(authnRequestAuthnDetails)
+            .forTokenResponse()
+            .toSet().apply {
+                if (isEmpty())
+                    throw InvalidAuthorizationDetails("No matching AuthnDetails in token request")
+            }
+    }
+
+    @OptIn(ExperimentalContracts::class)
+    private fun AuthorizationDetails.validate(): Boolean {
+        contract {
+            returns(true) implies (this@validate is OpenIdAuthorizationDetails)
+        }
+        return when (this) {
+            is OpenIdAuthorizationDetails -> when {
+                credentialConfigurationId != null -> supportedCredentialSchemes.containsKey(credentialConfigurationId)
+                else -> false
+            }
+
+            else -> false
         }
     }
 
-    @Suppress("DEPRECATION")
-    private fun AuthorizationDetails.validateAndTransform() = when (this) {
-        is OpenIdAuthorizationDetails -> when {
-            credentialConfigurationId != null -> filterCredentialConfigurationId()
-            else -> null
-        } ?: throw InvalidAuthorizationDetails("Not a valid OpenIdAuthorizationDetail: $this")
+}
 
-        else -> throw InvalidAuthorizationDetails("Wrong type for issuance: $this")
-    }
+private fun Collection<OpenIdAuthorizationDetails>.matchesAuthnRequest(
+    authnDetailsFromAuthRequest: Collection<AuthorizationDetails>?
+) = filter { tokenAuthnDetail ->
+    authnDetailsFromAuthRequest
+        ?.filterIsInstance<OpenIdAuthorizationDetails>()
+        ?.none { authnRequestAuthnDetail ->
+            authnRequestAuthnDetail.credentialConfigurationId == tokenAuthnDetail.credentialConfigurationId
+        } != true
+}
 
-    private fun OpenIdAuthorizationDetails.filterCredentialConfigurationId(): OpenIdAuthorizationDetails? =
-        if (supportedCredentialSchemes.containsKey(credentialConfigurationId)) {
-            copy(credentialIdentifiers = setOf(credentialConfigurationId!!))
-        } else {
-            null
-        }
+private fun Collection<OpenIdAuthorizationDetails>.forTokenResponse() = map {
+    it.copy(
+        credentialConfigurationId = null,
+        credentialIdentifiers = setOf(it.credentialConfigurationId!!),
+    )
 }
 
 /**
  * Returns `true` if the [other] authorization detail is semantically the same,
  * i.e., it has the same [OpenIdAuthorizationDetails.credentialConfigurationId].
  */
-@Suppress("DEPRECATION")
 fun OpenIdAuthorizationDetails.matches(other: AuthorizationDetails): Boolean = when {
     other !is OpenIdAuthorizationDetails -> false
     credentialConfigurationId != null -> other.credentialConfigurationId == credentialConfigurationId
