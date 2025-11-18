@@ -17,13 +17,4 @@ data class SupportedCredentialFormatDefinition(
     @SerialName("type")
     val types: Set<String>? = null,
 
-    /**
-     * OID4VCI:
-     * W3C VC: OPTIONAL. Object containing a list of name/value pairs, where each name identifies
-     * a claim offered in the Credential. The value can be another such object (nested data structures), or an array
-     * of such objects
-     */
-    @SerialName("credentialSubject")
-    val credentialSubject: Map<String, CredentialSubjectMetadataSingle>? = null,
-
 )
