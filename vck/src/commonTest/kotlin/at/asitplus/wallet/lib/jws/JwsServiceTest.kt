@@ -123,7 +123,6 @@ val JwsServiceTest by testSuite {
             JweHeader(
                 algorithm = JweAlgorithm.ECDH_ES,
                 encryption = JweEncryption.A256GCM,
-                jsonWebKey = encrypterKey.jsonWebKey,
                 type = "anything",
             ),
             randomPayload,
