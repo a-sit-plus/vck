@@ -3,13 +3,16 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.CredentialRequestParameters
+import at.asitplus.openid.CredentialResponseParameters
 import at.asitplus.openid.SupportedAlgorithmsContainer
+import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.jws.DecryptJwe
@@ -38,25 +41,29 @@ class IssuerEncryptionService(
     /** Whether credential request encryption is required, also needs [decryptionKeyMaterial]. */
     internal val requireRequestEncryption: Boolean = false,
     /** Key to offer for credential request encryption. */
-    private val decryptionKeyMaterial: KeyMaterial? = null,
+    private val decryptionKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     /** Used to decrypt the credential request sent by the client. */
-    private val decryptCredentialRequest: DecryptJweFun? = decryptionKeyMaterial?.let { DecryptJwe(it) },
+    private val decryptCredentialRequest: DecryptJweFun? = DecryptJwe(decryptionKeyMaterial),
 ) {
 
-    val metadataCredentialRequestEncryption = decryptionKeyMaterial?.let {
+    val metadataCredentialRequestEncryption = if (requireResponseEncryption || requireRequestEncryption)
+        SupportedAlgorithmsContainer(
+            //supportedAlgorithmsStrings = supportedJweAlgorithms.map { it.identifier }.toSet(),
+            supportedEncryptionAlgorithmsStrings = supportedJweEncryptionAlgorithms
+                .map { it.identifier }.toSet(),
+            encryptionRequired = requireRequestEncryption,
+            jsonWebKeySet = JsonWebKeySet(
+                listOf(decryptionKeyMaterial.publicKey.toJsonWebKey(decryptionKeyMaterial.identifier).forEncryption())
+            )
+        )
+    else null
+
+    val metadataCredentialResponseEncryption = if (requireResponseEncryption || requireRequestEncryption)
         SupportedAlgorithmsContainer(
             supportedAlgorithmsStrings = supportedJweAlgorithms.map { it.identifier }.toSet(),
             supportedEncryptionAlgorithmsStrings = supportedJweEncryptionAlgorithms.map { it.identifier }.toSet(),
-            encryptionRequired = requireRequestEncryption,
-            jsonWebKeySet = JsonWebKeySet(listOf(decryptionKeyMaterial.jsonWebKey))
-        )
-    }
-
-    val metadataCredentialResponseEncryption = SupportedAlgorithmsContainer(
-        supportedAlgorithmsStrings = supportedJweAlgorithms.map { it.identifier }.toSet(),
-        supportedEncryptionAlgorithmsStrings = supportedJweEncryptionAlgorithms.map { it.identifier }.toSet(),
-        encryptionRequired = requireResponseEncryption,
-    )
+            encryptionRequired = requireResponseEncryption,
+        ) else null
 
     /** Decrypts credential requests from the client. */
     internal suspend fun decrypt(
@@ -82,7 +89,7 @@ class IssuerEncryptionService(
                 Napier.d("encrypting response for ${it.jsonWebKey.keyId}")
                 encryptCredentialResponse(
                     header = JweHeader(
-                        algorithm = it.jweAlgorithm,
+                        algorithm = it.jweAlgorithm ?: (it.jsonWebKey.algorithm as? JweAlgorithm),
                         encryption = jweEncryption,
                         keyId = it.jsonWebKey.keyId,
                     ),
@@ -97,4 +104,31 @@ class IssuerEncryptionService(
         }
     }
 
+    internal suspend fun encryptResponse(
+        response: CredentialResponseParameters,
+        request: CredentialRequestParameters,
+    ): CredentialIssuer.CredentialResponse =
+        request.credentialResponseEncryption?.let {
+            it.jweEncryption?.let { jweEncryption ->
+                Napier.d("encrypting response for ${it.jsonWebKey.keyId}")
+                val ciphertext: JweEncrypted = encryptCredentialResponse(
+                    header = JweHeader(
+                        algorithm = it.jweAlgorithm ?: (it.jsonWebKey.algorithm as? JweAlgorithm),
+                        encryption = jweEncryption,
+                        keyId = it.jsonWebKey.keyId,
+                    ),
+                    payload = joseCompliantSerializer.encodeToString(response),
+                    recipientKey = it.jsonWebKey,
+                ).getOrThrow()
+                CredentialIssuer.CredentialResponse.Encrypted(ciphertext)
+            } ?: throw InvalidEncryptionParameters("Unsupported enc: ${it.jweEncryptionString}")
+        } ?: run {
+            if (requireResponseEncryption)
+                throw InvalidEncryptionParameters("Response encryption required, no params sent")
+            CredentialIssuer.CredentialResponse.Plain(response)
+        }
+
+    // should always be ecdh-es for encryption
+    private fun JsonWebKey.forEncryption(): JsonWebKey =
+        this.copy(algorithm = JweAlgorithm.ECDH_ES, publicKeyUse = "enc")
 }

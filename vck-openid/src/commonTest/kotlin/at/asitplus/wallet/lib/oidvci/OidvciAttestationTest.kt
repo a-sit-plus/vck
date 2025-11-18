@@ -105,10 +105,12 @@ val OidvciAttestationTest by testSuite {
         ).getOrThrow().forEach {
             it.shouldBeInstanceOf<WalletService.CredentialRequest.Plain>()
             val credential = issuer.credential(
-                token.toHttpHeaderValue(),
-                it.request,
+                authorizationHeader = token.toHttpHeaderValue(),
+                params = it,
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
+                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .response
 
             JwsSigned.deserialize(
                 VerifiableCredentialJws.serializer(),
@@ -153,8 +155,8 @@ val OidvciAttestationTest by testSuite {
             it.shouldBeInstanceOf<WalletService.CredentialRequest.Plain>()
             shouldThrow<OAuth2Exception> {
                 issuer.credential(
-                    token.toHttpHeaderValue(),
-                    it.request,
+                    authorizationHeader = token.toHttpHeaderValue(),
+                    params = it,
                     credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
                 ).getOrThrow()
             }
@@ -186,6 +188,7 @@ val OidvciAttestationTest by testSuite {
 
 
 }
+
 private fun buildClientWithKeyAttestation(): WalletService {
     val keyMaterial = EphemeralKeyWithoutCert()
     val signKeyAttestation = SignJwt<KeyAttestationJwt>(keyMaterial, JwsHeaderCertOrJwk())

@@ -99,9 +99,9 @@ val OidvciEncryptionTest by testSuite {
             clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
         ).getOrThrow().forEach {
             it.shouldBeInstanceOf<WalletService.CredentialRequest.Encrypted>()
-            issuer.credentialEncryptedRequest(
+            issuer.credential(
                 authorizationHeader = token.toHttpHeaderValue(),
-                input = it.request.serialize(),
+                params = it,
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow().let { credential ->
                 client.parseCredentialResponse(credential, PLAIN_JWT, ConstantIndex.AtomicAttribute2023)
@@ -159,7 +159,7 @@ val OidvciEncryptionTest by testSuite {
 
         client.createCredential(
             tokenResponse = token,
-            metadata = issuer.metadata,
+            metadata = issuer.metadata.copy(credentialRequestEncryption = null), // trick wallet into not encrypting
             credentialFormat = credentialFormat,
             clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
         ).getOrThrow().forEach {

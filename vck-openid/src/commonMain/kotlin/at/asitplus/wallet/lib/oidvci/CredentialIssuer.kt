@@ -12,6 +12,7 @@ import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
+import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
@@ -69,6 +70,20 @@ class CredentialIssuer(
     /** Handles credential request decryption and credential response encryption. */
     private val encryptionService: IssuerEncryptionService = IssuerEncryptionService(),
 ) {
+
+    sealed interface CredentialResponse {
+        /**
+         * Send [response] as JSON-serialized content to the client with media
+         * type `application/json` (see [at.asitplus.wallet.lib.data.MediaTypes.Application.JSON]).
+         */
+        data class Plain(val response: CredentialResponseParameters) : CredentialResponse
+
+        /**
+         * Send [response] as JWE-serialized content to the client with media
+         * type `application/jwt` (see [at.asitplus.wallet.lib.data.MediaTypes.Application.JWT]).
+         */
+        data class Encrypted(val response: JweEncrypted) : CredentialResponse
+    }
 
     private val supportedCredentialConfigurations = credentialSchemes
         .flatMap { it.toSupportedCredentialFormat().entries }
@@ -144,22 +159,7 @@ class CredentialIssuer(
         Nonce(proofValidator.nonce(), authorizationService.getDpopNonce())
     }
 
-    /**
-     * Verifies the [authorizationHeader] to contain a token from [authorizationService],
-     * verifies the proof sent by the client (must contain a nonce sent from [authorizationService]),
-     * and issues credentials to the client.
-     *
-     * Callers need to send the result JSON-serialized back to the client.
-     * HTTP status code MUST be 200.
-     *
-     * @param authorizationHeader value of HTTP header `Authorization` sent by the client, with all prefixes
-     * @param input Input sent by the client, probably encrypted
-     * @param request information about the HTTP request the client has made, to validate authentication
-     * @param credentialDataProvider Extract data from the authenticated user and prepares it for issuing
-     *
-     * @return If the result is an instance of [OAuth2Exception] send [OAuth2Exception.toOAuth2Error] back to the
-     * client, except for instances of [OAuthAuthorizationError]
-     */
+    @Deprecated("Use [credential] with [WalletService.CredentialRequest] instead")
     suspend fun credentialEncryptedRequest(
         authorizationHeader: String,
         input: String,
@@ -168,54 +168,46 @@ class CredentialIssuer(
     ): KmmResult<CredentialResponseParameters> = catching {
         credentialInternal(
             authorizationHeader = authorizationHeader,
-            params = encryptionService.decrypt(input).getOrThrow(),
+            request = encryptionService.decrypt(input).getOrThrow(),
             credentialDataProvider = credentialDataProvider,
-            request = request,
+            requestInfo = request,
             hasBeenEncrypted = true,
-        ).getOrThrow()
+        ).getOrThrow().toCredentialResponseParameters()
     }
 
-    /**
-     * Verifies the [authorizationHeader] to contain a token from [authorizationService],
-     * verifies the proof sent by the client (must contain a nonce sent from [authorizationService]),
-     * and issues credentials to the client.
-     *
-     * Callers need to send the result JSON-serialized back to the client.
-     * HTTP status code MUST be 200.
-     *
-     * @param authorizationHeader value of HTTP header `Authorization` sent by the client, with all prefixes
-     * @param params Parameters the client sent JSON-serialized in the HTTP body
-     * @param request information about the HTTP request the client has made, to validate authentication
-     * @param credentialDataProvider Extract data from the authenticated user and prepares it for issuing
-     *
-     * @return If the result is an instance of [OAuth2Exception] send [OAuth2Exception.toOAuth2Error] back to the
-     * client, except for instances of [OAuthAuthorizationError]
-     */
+    private fun CredentialResponse.toCredentialResponseParameters() = when (this) {
+        is CredentialResponse.Encrypted -> TODO()
+        is CredentialResponse.Plain -> response
+    }
+
+    @Deprecated("Use [credential] with [WalletService.CredentialRequest] instead")
     suspend fun credential(
         authorizationHeader: String,
         params: CredentialRequestParameters,
         credentialDataProvider: CredentialDataProviderFun,
         request: RequestInfo? = null,
-    ): KmmResult<CredentialResponseParameters> = credentialInternal(
-        authorizationHeader = authorizationHeader,
-        params = params,
-        credentialDataProvider = credentialDataProvider,
-        request = request,
-        hasBeenEncrypted = false,
-    )
+    ): KmmResult<CredentialResponseParameters> = catching {
+        credentialInternal(
+            authorizationHeader = authorizationHeader,
+            request = params,
+            credentialDataProvider = credentialDataProvider,
+            requestInfo = request,
+            hasBeenEncrypted = false,
+        ).getOrThrow().toCredentialResponseParameters()
+    }
 
     /**
      * Verifies the [authorizationHeader] to contain a token from [authorizationService],
      * verifies the proof sent by the client (must contain a nonce sent from [authorizationService]),
-     * and issues credentials to the client.
+     * and issues credentials to the client by calling [credentialDataProvider].
      *
-     * Callers need to send the result JSON-serialized back to the client.
-     * HTTP status code MUST be 200.
+     * Callers need to send the result as HTTP status code 200 back to the client, see [CredentialResponse].
      *
      * @param authorizationHeader value of HTTP header `Authorization` sent by the client, with all prefixes
-     * @param params Parameters the client sent JSON-serialized in the HTTP body
-     * @param request information about the HTTP request the client has made, to validate authentication
+     * @param params Parameters the client sent in the HTTP body, either JSON serialized or as a string,
+     * see [WalletService.CredentialRequest.parse]
      * @param credentialDataProvider Extract data from the authenticated user and prepares it for issuing
+     * @param request information about the HTTP request the client has made, to validate authentication
      *
      * @return If the result is an instance of [OAuth2Exception] send [OAuth2Exception.toOAuth2Error] back to the
      * client, except for instances of [OAuthAuthorizationError]
@@ -225,13 +217,13 @@ class CredentialIssuer(
         params: WalletService.CredentialRequest,
         credentialDataProvider: CredentialDataProviderFun,
         request: RequestInfo? = null,
-    ): KmmResult<CredentialResponseParameters> = catching {
+    ): KmmResult<CredentialResponse> = catching {
         credentialInternal(
             authorizationHeader = authorizationHeader,
-            params = params.decryptIfNeeded(),
+            request = params.decryptIfNeeded(),
             credentialDataProvider = credentialDataProvider,
-            request = request,
-            hasBeenEncrypted = false,
+            requestInfo = request,
+            hasBeenEncrypted = params is WalletService.CredentialRequest.Encrypted,
         ).getOrThrow()
     }
 
@@ -242,19 +234,20 @@ class CredentialIssuer(
 
     private suspend fun credentialInternal(
         authorizationHeader: String,
-        params: CredentialRequestParameters,
+        request: CredentialRequestParameters,
         credentialDataProvider: CredentialDataProviderFun,
-        request: RequestInfo? = null,
+        requestInfo: RequestInfo? = null,
         hasBeenEncrypted: Boolean = false,
-    ): KmmResult<CredentialResponseParameters> = catching {
+    ): KmmResult<CredentialResponse> = catching {
         Napier.i("credential called")
-        Napier.d("credential called with $authorizationHeader, $params")
+        Napier.d("credential called with $authorizationHeader, $request")
         if (!hasBeenEncrypted && encryptionService.requireRequestEncryption)
             throw InvalidEncryptionParameters("Credential request has not been encrypted")
-        authorizationService.validateAccessToken(authorizationHeader, request).getOrThrow()
-        val userInfo = params.introspectTokenLoadUserInfo(authorizationHeader, request)
-        val (scheme, representation) = params.extractCredentialRepresentation()
-        proofValidator.validateProofExtractSubjectPublicKeys(params).map { subjectPublicKey ->
+        authorizationService.validateAccessToken(authorizationHeader, requestInfo).getOrThrow()
+        val userInfo = request.introspectTokenLoadUserInfo(authorizationHeader, requestInfo)
+        val (scheme, representation) = request.extractCredentialRepresentation()
+        val responseParameters = proofValidator.validateProofExtractSubjectPublicKeys(request).map { subjectPublicKey ->
+            // TODO into one array?
             issuer.issueCredential(
                 credentialDataProvider(
                     CredentialDataProviderInput(
@@ -269,7 +262,8 @@ class CredentialIssuer(
             ).getOrElse {
                 throw CredentialRequestDenied("No credential from issuer", it)
             }
-        }.toCredentialResponseParameters(encryptionService.encryptResponseIfNecessary(params))
+        }.toCredentialResponseParameters()
+        encryptionService.encryptResponse(responseParameters, request)
             .also { Napier.i("credential returns"); Napier.d("credential returns $it") }
     }
 

@@ -95,7 +95,10 @@ val OidvciPreAuthTest by testSuite {
             params = credentialRequest.first(),
             credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
         ).getOrThrow()
-        credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
+            .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+            .response
+        credential.credentials.shouldNotBeEmpty()
+            .first().credentialString.shouldNotBeNull()
     }
 
     "process with pre-authorized code, credential offer, and authorization details for all credentials" {
@@ -127,6 +130,8 @@ val OidvciPreAuthTest by testSuite {
                 credentialRequest.first(),
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
+                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .response
                 .credentials.shouldNotBeEmpty().first()
                 .credentialString.shouldNotBeNull()
         }
@@ -165,6 +170,8 @@ val OidvciPreAuthTest by testSuite {
             credentialRequest.first(),
             credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
         ).getOrThrow()
+            .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+            .response
             .credentials.shouldNotBeEmpty().first()
             .credentialString.shouldNotBeNull()
     }
@@ -197,10 +204,12 @@ val OidvciPreAuthTest by testSuite {
         )
 
         val credentials = issuer.credential(
-            token.toHttpHeaderValue(),
-            credentialRequest,
+            authorizationHeader = token.toHttpHeaderValue(),
+            params = WalletService.CredentialRequest.Plain(credentialRequest),
             credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
         ).getOrThrow()
+            .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+            .response
             .credentials.shouldNotBeEmpty()
             .shouldHaveSize(2)
         // subject identifies the key of the client, here the keys of different proofs, so they should be unique
