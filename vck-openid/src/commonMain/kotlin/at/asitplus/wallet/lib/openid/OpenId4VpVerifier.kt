@@ -39,10 +39,10 @@ import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
-import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
@@ -140,9 +140,6 @@ class OpenId4VpVerifier(
         .mapNotNull { it.toCoseAlgorithm().getOrNull()?.coseValue }
     private val responseParser = ResponseParser(decryptJwe, verifyJwsObject)
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
-    private val supportedSignatureVerificationAlgorithm =
-        supportedJwsAlgorithms.firstOrNull { it == JwsAlgorithm.Signature.EC.ES256.identifier }
-            ?: supportedJwsAlgorithms.first()
     private val containerJwt = FormatContainerJwt(algorithmStrings = supportedJwsAlgorithms)
     private val containerSdJwt = FormatContainerSdJwt(
         sdJwtAlgorithmStrings = supportedJwsAlgorithms.toSet(),
@@ -155,8 +152,11 @@ class OpenId4VpVerifier(
     val metadata by lazy {
         RelyingPartyMetadata(
             redirectUris = listOfNotNull((clientIdScheme as? ClientIdScheme.RedirectUri)?.redirectUri),
-            jsonWebKeySet = JsonWebKeySet(listOf(decryptionKeyMaterial.publicKey.toJsonWebKey())),
-            authorizationSignedResponseAlgString = supportedSignatureVerificationAlgorithm,
+            jsonWebKeySet = JsonWebKeySet(
+                listOf(
+                    decryptionKeyMaterial.publicKey.toJsonWebKey(decryptionKeyMaterial.identifier).withAlgorithm()
+                )
+            ),
             vpFormatsSupported = VpFormatsSupported(
                 vcJwt = SupportedAlgorithmsContainerJwt(
                     algorithmStrings = supportedJwsAlgorithms.toSet()
@@ -175,14 +175,14 @@ class OpenId4VpVerifier(
 
     /**
      * Creates the [RelyingPartyMetadata], but with parameters set to request encryption of pushed authentication
-     * responses, see [RelyingPartyMetadata.authorizationEncryptedResponseAlg]
-     * and [RelyingPartyMetadata.authorizationEncryptedResponseEncoding].
+     * responses, see [RelyingPartyMetadata.encryptedResponseEncValues].
      */
+    @Suppress("DEPRECATION")
     val metadataWithEncryption by lazy {
         metadata.copy(
-            authorizationSignedResponseAlgString = null,
             authorizationEncryptedResponseAlgString = supportedJweAlgorithm.identifier,
             authorizationEncryptedResponseEncodingString = supportedJweEncryptionAlgorithm.identifier,
+            encryptedResponseEncValuesSupportedString = setOf(supportedJweEncryptionAlgorithm.identifier),
             jsonWebKeySet = metadata.jsonWebKeySet?.let {
                 JsonWebKeySet(it.keys.map { it.copy(publicKeyUse = "enc") })
             }
@@ -388,7 +388,8 @@ class OpenId4VpVerifier(
         is ClientIdScheme.RedirectUri,
         is ClientIdScheme.VerifierAttestation,
         is ClientIdScheme.CertificateSanDns,
-        is ClientIdScheme.CertificateHash ->
+        is ClientIdScheme.CertificateHash,
+            ->
             if (encryption || responseMode.requiresEncryption) metadataWithEncryption else metadata
 
         else -> null
@@ -709,7 +710,11 @@ class OpenId4VpVerifier(
             freshnessSummary = freshnessSummary,
         )
     }
+
+    // should always be ecdh-es for encryption
+    private fun JsonWebKey.withAlgorithm(): JsonWebKey = this.copy(algorithm = JweAlgorithm.ECDH_ES)
 }
+
 
 private val PresentationSubmissionDescriptor.cumulativeJsonPath: String
     get() {

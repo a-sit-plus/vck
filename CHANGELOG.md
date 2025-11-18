@@ -23,6 +23,7 @@ Release 5.10.0 (Unreleased):
    - Drop session transcript implementation from ISO/IEC 18013-7:2024 Annex B, which was pre-OpenID4VP 1.0
    - Remove deprecated format identifier `vc+sd-jwt` (now `dc+sd-jwt`)
    - Remove deprecated client identifier prefix scheme `x509_san_uri`
+   - Use correct response encryption acc. to values stated in `encrypted_response_enc_values_supported` inside `client_metadata`
  - SD-JWT:
    - Fix creation of SD JWTs containing structures that are selectivey disclosable
 

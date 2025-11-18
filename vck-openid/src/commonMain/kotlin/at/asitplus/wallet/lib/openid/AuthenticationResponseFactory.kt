@@ -152,7 +152,8 @@ internal class AuthenticationResponseFactory(
         val recipientKey = response.jsonWebKeys?.getEncryptionTargetKey()
             ?: throw InvalidRequest("no suitable ECDH ES key found")
         val algorithm = JweAlgorithm.ECDH_ES
-        val encryption = response.clientMetadata?.authorizationEncryptedResponseEncoding
+        val encryption = response.clientMetadata?.encryptedResponseEncValues?.firstNotNullOfOrNull { it }
+            ?: response.clientMetadata?.authorizationEncryptedResponseEncoding
             ?: JweEncryption.A128GCM
         val apv = request.parameters.nonce?.encodeToByteArray()
             ?: randomSource.nextBytes(16)
@@ -180,5 +181,7 @@ internal class AuthenticationResponseFactory(
 internal fun AuthenticationResponse.requestsEncryption(): Boolean =
     (clientMetadata != null && jsonWebKeys != null && clientMetadata.requestsEncryption())
 
+@Suppress("DEPRECATION")
 internal fun RelyingPartyMetadata.requestsEncryption() =
     (authorizationEncryptedResponseAlg != null && authorizationEncryptedResponseEncoding != null)
+            || (encryptedResponseEncValues != null)

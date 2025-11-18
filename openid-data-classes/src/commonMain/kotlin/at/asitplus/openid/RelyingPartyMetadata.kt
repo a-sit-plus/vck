@@ -57,29 +57,27 @@ data class RelyingPartyMetadata(
     val idTokenSignedResponseAlgString: String? = null,
 
     /**
-     * OID JARM: JWS (RFC7515) `alg` algorithm JWA (RFC7518). REQUIRED for signing authorization responses.
-     * If this is specified, the response will be signed using JWS and the configured algorithm.
-     * The algorithm `none` is not allowed. The default, if omitted, is `RS256`.
-     */
-    @SerialName("authorization_signed_response_alg")
-    val authorizationSignedResponseAlgString: String? = null,
-
-    /**
      * OID JARM: JWE (RFC7516) `alg` algorithm JWA (RFC7518). REQUIRED for encrypting authorization responses.
      * If both signing and encryption are requested, the response will be signed then encrypted, with the result being
      * a Nested JWT, as defined in JWT (RFC7519). The default, if omitted, is that no encryption is performed.
      */
+    @Deprecated("Not used in OpenID4VP 1.0, use [encryptedResponseEncValuesSupported] instead")
     @SerialName("authorization_encrypted_response_alg")
     val authorizationEncryptedResponseAlgString: String? = null,
 
-    /**
-     * OID JARM: JWE (RFC7516) `enc` algorithm JWA (RFC7518). REQUIRED for encrypting authorization responses.
-     * If [authorizationEncryptedResponseAlg] is specified, the default for this value is `A128CBC-HS256`.
-     * When [authorizationEncryptedResponseEncoding] is included, [authorizationEncryptedResponseAlg] MUST also be
-     * provided.
-     */
+    @Deprecated("Not used in OpenID4VP 1.0, use [encryptedResponseEncValuesSupported] instead")
     @SerialName("authorization_encrypted_response_enc")
     val authorizationEncryptedResponseEncodingString: String? = null,
+
+    /**
+     * OpenID4VP: OPTIONAL. Non-empty array of strings, where each string is a JWE
+     * [RFC7516](https://datatracker.ietf.org/doc/html/rfc7516) `enc` algorithm that can be used as the content
+     * encryption algorithm for encrypting the Response. When a `response_mode` requiring encryption of the Response
+     * (such as `dc_api.jwt` or `direct_post.jwt`) is specified, this MUST be present for anything other than the
+     * default single value of `A128GCM`. Otherwise, this SHOULD be absent.
+     */
+    @SerialName("encrypted_response_enc_values_supported")
+    val encryptedResponseEncValuesSupportedString: Set<String>? = null,
 
     /**
      * OIDC Registration: OPTIONAL. JWE alg algorithm REQUIRED for encrypting the ID Token issued to this Client.
@@ -123,12 +121,9 @@ data class RelyingPartyMetadata(
     val clientIdScheme: OpenIdConstants.ClientIdScheme? = OpenIdConstants.ClientIdScheme.PreRegistered,
 ) {
 
-    /**
-     * OID JARM: JWE (RFC7516) `alg` algorithm JWA (RFC7518). REQUIRED for encrypting authorization responses.
-     * If both signing and encryption are requested, the response will be signed then encrypted, with the result being
-     * a Nested JWT, as defined in JWT (RFC7519). The default, if omitted, is that no encryption is performed.
-     */
+    @Suppress("DEPRECATION")
     @Transient
+    @Deprecated("Not used in OpenID4VP 1.0, use [encryptedResponseEncValues] instead")
     val authorizationEncryptedResponseAlg: JweAlgorithm? = authorizationEncryptedResponseAlgString
         ?.let { s -> JweAlgorithm.entries.firstOrNull { it.identifier == s } }
 
@@ -152,23 +147,22 @@ data class RelyingPartyMetadata(
     @Transient
     val idTokenSignedResponseAlg: JwsAlgorithm? = idTokenSignedResponseAlgString?.toJwsAlgorithm()
 
-    /**
-     * OID JARM: JWS (RFC7515) `alg` algorithm JWA (RFC7518). REQUIRED for signing authorization responses.
-     * If this is specified, the response will be signed using JWS and the configured algorithm.
-     * The algorithm `none` is not allowed. The default, if omitted, is [JwsAlgorithm.Signature.RS256].
-     */
+    @Suppress("DEPRECATION")
     @Transient
-    val authorizationSignedResponseAlg: JwsAlgorithm? = authorizationSignedResponseAlgString?.toJwsAlgorithm()
-
-    /**
-     * OID JARM: JWE (RFC7516) `enc` algorithm JWA (RFC7518). REQUIRED for encrypting authorization responses.
-     * If [authorizationEncryptedResponseAlg] is specified, the default for this value is [JweEncryption.A128CBC_HS256].
-     * When [authorizationEncryptedResponseEncoding] is included, [authorizationEncryptedResponseAlg] MUST also be
-     * provided.
-     */
-    @Transient
+    @Deprecated("Not used in OpenID4VP 1.0, use [encryptedResponseEncValues] instead")
     val authorizationEncryptedResponseEncoding: JweEncryption? = authorizationEncryptedResponseEncodingString
         ?.let { s -> JweEncryption.entries.firstOrNull { it.identifier == s } }
+
+    /**
+     * OpenID4VP: OPTIONAL. Non-empty array of strings, where each string is a JWE
+     * [RFC7516](https://datatracker.ietf.org/doc/html/rfc7516) `enc` algorithm that can be used as the content
+     * encryption algorithm for encrypting the Response. When a `response_mode` requiring encryption of the Response
+     * (such as `dc_api.jwt` or `direct_post.jwt`) is specified, this MUST be present for anything other than the
+     * default single value of `A128GCM`. Otherwise, this SHOULD be absent.
+     */
+    @Transient
+    val encryptedResponseEncValues: Set<JweEncryption?>? = encryptedResponseEncValuesSupportedString
+        ?.mapNotNull { s -> JweEncryption.entries.firstOrNull { it.identifier == s } }?.toSet()
 
     /**
      * OIDC Registration: OPTIONAL. JWE enc algorithm REQUIRED for encrypting the ID Token issued to this Client.

@@ -74,7 +74,6 @@ val JarmTest by testSuite {
             clientMetadata = authnRequest.clientMetadata?.copy(
                 jsonWebKeySet = null,
                 jsonWebKeySetUrl = null,
-                authorizationSignedResponseAlgString = null
             )
         )
 
