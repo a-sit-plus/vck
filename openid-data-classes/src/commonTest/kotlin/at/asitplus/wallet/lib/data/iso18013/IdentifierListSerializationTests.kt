@@ -23,30 +23,43 @@ private val cbor = Cbor {
  *     "certificate": h'aa'
  *   }
  * }
- *    A1                                   # map(1)
- *    6F                                   # text(15)
- *       6964656E7469666965725F6C697374    # "identifier_list"
- *    A3                                   # map(3)
- *       62                                # text(2)
- *          6964                           # "id"
- *       42                                # bytes(2)
- *          CCCC                           # "\xCC\xCC"
- *       63                                # text(3)
- *          757269                         # "uri"
- *       78 25                             # text(37)
- *          68747470733A2F2F6578616D706C652E636F6D2F6964656E7469666965726C697374732F31 # "https://example.com/identifierlists/1"
- *       6B                                # text(11)
- *          6365727469666963617465         # "certificate"
- *       41                                # bytes(1)
- *          AA                             # "\xAA"
- *
  */
-val status_test_vec =
+private const val statusTestVec =
     "A16F6964656E7469666965725F6C697374A362696442CCCC63757269782568747470733A2F2F6578616D706C652E636F6D2F6964656E7469666965726C697374732F316B636572746966696361746541AA"
 
+/**
+ * Modified Testcase from Annex D.7
+ * {
+ *   "identifiers": {
+ *      h'abcd': {
+ *        "note": {}
+ *      },
+ *      h'aaaa': {},
+ *      h'cccc': {},
+ *   },
+ *   "aggregation_uri": "https://example.com/identifierlists/aggregation"
+ * }
+ */
+private const val identifierListTestVec =
+    "A26B6964656E74696669657273A342ABCDA1646E6F7465A042AAAAA042CCCCA06F6167677265676174696F6E5F757269782F68747470733A2F2F6578616D706C652E636F6D2F6964656E7469666965726C697374732F6167677265676174696F6E"
+
+/**
+ * Extended testcase from Annex D.7 with some IdentifierInfo entries
+ * {
+ *   "identifiers": {
+ *     h'bbbb': {
+ *       "note": {},
+ *       42: { "some": "value"}
+ *      }
+ *   },
+ *   "aggregation_uri": "https://example.com/identifierlists/aggregation"
+ * }
+ */
+private const val extendedIdentifierListTestVec =
+    "A26B6964656E74696669657273A142BBBBA2646E6F7465A0182AA164736F6D656576616C75656F6167677265676174696F6E5F757269782F68747470733A2F2F6578616D706C652E636F6D2F6964656E7469666965726C697374732F6167677265676174696F6E"
+
 val IdentifierListTest by testSuite {
-    "status can be decoded" {
-        val actual = cbor.decodeFromByteArray(Status.serializer(), status_test_vec.decodeToByteArray(Base16Strict))
+    "status containing IdentifierListInfo can be serialized" {
         val expected = Status(
             identifierList = IdentifierListInfo(
                 identifier = byteArrayOf(0xcc.toByte(), 0xcc.toByte()),
@@ -54,10 +67,48 @@ val IdentifierListTest by testSuite {
                 certificate = byteArrayOf(0xaa.toByte())
             )
         )
-        val serialized = cbor.encodeToByteArray(Status.serializer(), expected)
-        val deserialized = cbor.decodeFromByteArray(Status.serializer(), serialized)
-        actual shouldBe expected
-        deserialized shouldBe expected
-        serialized.encodeToString(Base16Strict) shouldBe status_test_vec
+        val deserialized = cbor.decodeFromByteArray(Status.serializer(), statusTestVec.decodeToByteArray(Base16Strict))
+
+        val serialized = cbor.encodeToByteArray(Status.serializer(), deserialized)
+        deserialized shouldBe expected //sanity check
+        serialized.encodeToString(Base16Strict) shouldBe statusTestVec
+    }
+
+    "IdentifierList can be serialized" {
+        val expected = IdentifierList(
+            identifiers = mapOf(
+                Identifier(byteArrayOf(0xab.toByte(), 0xcd.toByte())) to IdentifierInfo(
+                    mapOf(IdentifierInfoKey.KeyString("note") to RFU())
+                ),
+                Identifier(byteArrayOf(0xaa.toByte(), 0xaa.toByte())) to IdentifierInfo(),
+                Identifier(byteArrayOf(0xcc.toByte(), 0xcc.toByte())) to IdentifierInfo(),
+            ),
+            aggregationUri = "https://example.com/identifierlists/aggregation"
+        )
+        val deserialized =
+            cbor.decodeFromByteArray(IdentifierList.serializer(), identifierListTestVec.decodeToByteArray(Base16Strict))
+        val serialized = cbor.encodeToByteArray(IdentifierList.serializer(), deserialized)
+        deserialized shouldBe expected //sanity check
+        serialized.encodeToString(Base16Strict) shouldBe identifierListTestVec
+    }
+
+    //This test is not required to pass
+    "IdentifierList can handle IdentifierInfo Entries" {
+        //We expect RFU to not contain any data and ignore any provided content
+        val expected = IdentifierList(
+            identifiers = mapOf(
+                Identifier(byteArrayOf(0xbb.toByte(), 0xbb.toByte())) to IdentifierInfo(
+                    mapOf(
+                        IdentifierInfoKey.KeyString("note") to RFU(),
+                        IdentifierInfoKey.KeyInt(42) to RFU(),
+                    )
+                ),
+            )
+        )
+        val expectedKeys = expected.identifiers.values.flatMap { it.keys as List<*> }
+        val deserialized =
+            cbor.decodeFromByteArray(IdentifierList.serializer(), extendedIdentifierListTestVec.decodeToByteArray(Base16Strict))
+        val deserializedKeys = deserialized.identifiers.values.flatMap { it.keys as List<*> }
+        deserializedKeys shouldBe expectedKeys
     }
 }
