@@ -17,7 +17,7 @@ data class SupportedAlgorithmsContainerJwt(
      * or Verifiable Presentation MUST match one of the array values.
      */
     @SerialName("alg_values")
-    val algorithmStrings: Set<String>,
+    val algorithmStrings: Set<String>?=null,
 ) {
 
     /**
@@ -27,6 +27,6 @@ data class SupportedAlgorithmsContainerJwt(
      * or Verifiable Presentation MUST match one of the array values.
      */
     @Transient
-    val algorithms: Set<JsonWebAlgorithm> = algorithmStrings
-        .mapNotNull { s -> JsonWebAlgorithm.entries.firstOrNull { it.identifier == s } }.toSet()
+    val algorithms: Set<JsonWebAlgorithm>? = algorithmStrings
+        ?.mapNotNull { s -> JsonWebAlgorithm.entries.firstOrNull { it.identifier == s } }?.toSet()
 }

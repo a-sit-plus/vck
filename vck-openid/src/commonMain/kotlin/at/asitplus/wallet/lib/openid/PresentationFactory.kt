@@ -4,9 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.dcapi.DCAPIHandover
 import at.asitplus.dcapi.OpenID4VPDCAPIHandoverInfo
-import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
 import at.asitplus.dif.ClaimFormat
-import at.asitplus.dif.FormatHolder
 import at.asitplus.iso.DeviceAuthentication
 import at.asitplus.iso.DeviceNameSpaces
 import at.asitplus.iso.OpenId4VpHandover
@@ -25,12 +23,14 @@ import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.VpFormatsSupported
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.SignatureAlgorithm
+import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
@@ -110,15 +110,6 @@ internal class PresentationFactory(
             throw AccessDenied("Could not create presentation", it)
         }.also { presentation ->
             clientMetadata?.vpFormatsSupported?.verifyFormatSupport(presentation)
-        }
-    }
-
-    private fun FormatHolder.verifyFormatSupport(
-        presentation: PresentationResponseParameters,
-    ) {
-        when (presentation) {
-            is DCQLParameters -> presentation.verifyFormatSupport(this)
-            is PresentationExchangeParameters -> presentation.verifyFormatSupport(this)
         }
     }
 
@@ -268,36 +259,18 @@ internal class PresentationFactory(
 
     @Throws(OAuth2Exception::class)
     private fun PresentationExchangeParameters.verifyFormatSupport(
-        supportedFormats: FormatHolder,
-    ) = presentationSubmission.descriptorMap?.mapIndexed { _, descriptor ->
-        if (!supportedFormats.supportsAlgorithm(descriptor.format)) {
-            throw RegistrationValueNotSupported("incompatible algorithms: $supportedFormats")
-        }
-    }
-
-    @Throws(OAuth2Exception::class)
-    private fun PresentationExchangeParameters.verifyFormatSupport(
         supportedFormats: VpFormatsSupported,
     ) = presentationSubmission.descriptorMap?.mapIndexed { _, descriptor ->
-        if (!supportedFormats.supportsAlgorithm(descriptor.format)) {
+        if (!supportedFormats.supportsAlgorithm(descriptor.format, supportedJwsAlgorithms, supportedCoseAlgorithms)) {
             throw RegistrationValueNotSupported("incompatible algorithms: $supportedFormats")
         }
     }
-
-    @Throws(OAuth2Exception::class)
-    private fun DCQLParameters.verifyFormatSupport(supportedFormats: FormatHolder) =
-        verifiablePresentations.entries.mapIndexed { _, descriptor ->
-            val format = this.verifiablePresentations.entries.first().value.toFormat()
-            if (!supportedFormats.supportsAlgorithm(format)) {
-                throw RegistrationValueNotSupported("incompatible algorithms: $supportedFormats")
-            }
-        }
 
     @Throws(OAuth2Exception::class)
     private fun DCQLParameters.verifyFormatSupport(supportedFormats: VpFormatsSupported) =
-        verifiablePresentations.entries.mapIndexed { _, descriptor ->
+        verifiablePresentations.entries.mapIndexed { _, _ ->
             val format = this.verifiablePresentations.entries.first().value.toFormat()
-            if (!supportedFormats.supportsAlgorithm(format)) {
+            if (!supportedFormats.supportsAlgorithm(format, supportedJwsAlgorithms, supportedCoseAlgorithms)) {
                 throw RegistrationValueNotSupported("incompatible algorithms: $supportedFormats")
             }
         }
@@ -308,30 +281,45 @@ internal class PresentationFactory(
         is CreatePresentationResult.Signed -> ClaimFormat.JWT_VP
     }
 
-    private fun FormatHolder.supportsAlgorithm(claimFormat: ClaimFormat): Boolean = when (claimFormat) {
-        ClaimFormat.JWT_VP -> jwtVp?.algorithms?.any { supportedJwsAlgorithms.contains(it) } == true
-        ClaimFormat.SD_JWT ->
-            if (sdJwt?.sdJwtAlgorithms?.any { supportedJwsAlgorithms.contains(it) } == true) true
-            else if (sdJwt?.kbJwtAlgorithms?.any { supportedJwsAlgorithms.contains(it) } == true) true
-            else false
+}
 
-        ClaimFormat.MSO_MDOC -> msoMdoc?.algorithms?.any { supportedJwsAlgorithms.contains(it) } == true
-        else -> false
-    }
+/**
+ * Empty objects are fine, since they are not imposing any restrictions on the supported algorithms
+ */
+internal fun VpFormatsSupported.supportsAlgorithm(
+    claimFormat: ClaimFormat,
+    supportedJwsAlgorithms: Collection<JwsAlgorithm>,
+    supportedCoseAlgorithms: Collection<CoseAlgorithm.Signature>
+): Boolean = when (claimFormat) {
+    ClaimFormat.JWT_VP -> vcJwt?.let { vcJwt ->
+        var result = true
+        vcJwt.algorithms?.let {
+            result = result and it.any { supportedJwsAlgorithms.contains(it) }
+        }
+        result
+    } ?: false
 
-    private fun VpFormatsSupported.supportsAlgorithm(claimFormat: ClaimFormat): Boolean = when (claimFormat) {
-        ClaimFormat.JWT_VP -> vcJwt?.algorithms?.any { supportedJwsAlgorithms.contains(it) } == true
-        ClaimFormat.SD_JWT ->
-            if (dcSdJwt?.sdJwtAlgorithms?.any { supportedJwsAlgorithms.contains(it) } == true) true
-            else if (dcSdJwt?.kbJwtAlgorithms?.any { supportedJwsAlgorithms.contains(it) } == true) true
-            else false
+    ClaimFormat.SD_JWT -> dcSdJwt?.let { dcSdJwt ->
+        var result = true
+        dcSdJwt.sdJwtAlgorithms?.let {
+            result = result and it.any { supportedJwsAlgorithms.contains(it) }
+        }
+        dcSdJwt.kbJwtAlgorithms?.let {
+            result = result and it.any { supportedJwsAlgorithms.contains(it) }
+        }
+        result
+    } ?: false
 
-        ClaimFormat.MSO_MDOC ->
-            if (msoMdoc?.issuerAuthAlgorithms?.any { supportedCoseAlgorithms.contains(it) } == true) true
-            else if (msoMdoc?.deviceAuthAlgorithms?.any { supportedCoseAlgorithms.contains(it) } == true) true
-            else false
+    ClaimFormat.MSO_MDOC -> msoMdoc?.let { msoMdoc ->
+        var result = true // empty object is fine
+        msoMdoc.issuerAuthAlgorithms?.let {
+            result = result and it.any { supportedCoseAlgorithms.contains(it) }
+        }
+        msoMdoc.deviceAuthAlgorithms?.let {
+            result = result and it.any { supportedCoseAlgorithms.contains(it) }
+        }
+        result
+    } ?: false
 
-        else -> false
-    }
-
+    else -> false
 }
