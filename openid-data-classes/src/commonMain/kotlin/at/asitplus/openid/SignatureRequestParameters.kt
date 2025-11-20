@@ -35,16 +35,7 @@ data class SignatureRequestParameters(
     @SerialName("client_id")
     val clientId: String,
 
-    /**
-     * OID4VP: OPTIONAL. A string identifying the scheme of the value in the `client_id` Authorization Request parameter
-     * (Client Identifier scheme). The [clientIdScheme] parameter namespaces the respective Client Identifier. If an
-     * Authorization Request uses the [clientIdScheme] parameter, the Wallet MUST interpret the Client Identifier of
-     * the Verifier in the context of the Client Identifier scheme. If the parameter is not present, the Wallet MUST
-     * behave as specified in RFC6749. If the same Client Identifier is used with different Client Identifier schemes,
-     * those occurrences MUST be treated as different Verifiers. Note that the Verifier needs to determine which Client
-     * Identifier schemes the Wallet supports prior to sending the Authorization Request in order to choose a supported
-     * scheme.
-     */
+    @Deprecated("Removed in OpenID4VP 1.0, is encoded in client_id")
     @SerialName("client_id_scheme")
     val clientIdScheme: OpenIdConstants.ClientIdScheme? = null,
 

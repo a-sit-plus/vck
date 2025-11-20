@@ -225,13 +225,20 @@ data class OAuth2AuthorizationServerMetadata(
     @SerialName("vp_formats_supported")
     val vpFormatsSupported: VpFormatsSupported? = null,
 
-    /**
-     * OID4VP: OPTIONAL. Array of JSON Strings containing the values of the Client Identifier schemes that the Wallet
-     * supports. The values defined by this specification are `pre-registered`, `redirect_uri`, `entity_id`, `did`.
-     * If omitted, the default value is pre-registered.
-     */
+    @Deprecated("Removed in OpenID4VP 1.0", ReplaceWith("clientIdPrefixesSupported"))
     @SerialName("client_id_schemes_supported")
     val clientIdSchemesSupported: Set<String>? = null,
+
+    /**
+     * OID4VP: OPTIONAL. A non-empty array of strings containing the values of the Client Identifier Prefixes that the
+     * Wallet supports. The values defined by this specification are `pre-registered` (which represents the behavior
+     * when no Client Identifier Prefix is used), `redirect_uri`, `openid_federation`, `verifier_attestation`,
+     * `decentralized_identifier`, `x509_san_dns` and `x509_hash`.
+     * If omitted, the default value is `pre-registered`.
+     * Other values may be used when defined in the profiles or extensions of this specification.
+     */
+    @SerialName("client_id_prefixes_supported")
+    val clientIdPrefixesSupported: Set<String>? = null,
 
     /**
      * RFC 9449: A JSON array containing a list of the JWS alg values (from the `IANA.JOSE.ALGS` registry) supported

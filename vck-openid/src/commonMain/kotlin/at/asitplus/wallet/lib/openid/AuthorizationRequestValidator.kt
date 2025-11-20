@@ -90,7 +90,7 @@ internal class AuthorizationRequestValidator(
     @Throws(OAuth2Exception::class)
     private fun AuthenticationRequestParameters.verifyClientMetadata() {
         if (clientMetadata == null) {
-            throw InvalidRequest("client_metadata is null, but client_id_scheme is redirect_uri")
+            throw InvalidRequest("client_metadata is null, but client_id_prefix is redirect_uri")
         }
     }
 

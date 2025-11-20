@@ -112,12 +112,8 @@ data class RelyingPartyMetadata(
     @SerialName("vp_formats_supported")
     val vpFormatsSupported: VpFormatsSupported? = null,
 
-    /**
-     * OID4VP: OPTIONAL. JSON String identifying the Client Identifier scheme. The value range defined by this
-     * specification is `pre-registered`, `redirect_uri`, `entity_id`, `did`.
-     * If omitted, the default value is `pre-registered`.
-     */
     @SerialName("client_id_scheme")
+    @Deprecated("Removed in OpenID4VP 1.0, is encoded in client_id")
     val clientIdScheme: OpenIdConstants.ClientIdScheme? = OpenIdConstants.ClientIdScheme.PreRegistered,
 ) {
 

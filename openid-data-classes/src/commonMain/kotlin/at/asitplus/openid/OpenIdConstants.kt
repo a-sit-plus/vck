@@ -164,6 +164,17 @@ object OpenIdConstants {
                 STRING_VERIFIER_ATTESTATION -> VerifierAttestation
                 else -> if (clientId.contains(":")) Other(clientId) else PreRegistered
             }
+
+            val entries by lazy {
+                setOf(
+                    RedirectUri,
+                    X509SanDns,
+                    X509Hash,
+                    EntityId,
+                    Did,
+                    VerifierAttestation
+                )
+            }
         }
 
         /**
@@ -292,6 +303,17 @@ object OpenIdConstants {
             private const val STRING_FRAGMENT = "fragment"
             private const val STRING_DC_API = "dc_api"
             private const val STRING_DC_API_JWT = "dc_api.jwt"
+
+            val entries by lazy {
+                setOf(
+                    DirectPost,
+                    DirectPostJwt,
+                    Query,
+                    Fragment,
+                    DcApi,
+                    DcApiJwt
+                )
+            }
         }
 
         /**

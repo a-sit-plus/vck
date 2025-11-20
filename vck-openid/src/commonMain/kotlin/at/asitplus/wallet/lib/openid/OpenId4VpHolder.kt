@@ -134,20 +134,21 @@ class OpenId4VpHolder(
         OAuth2AuthorizationServerMetadata(
             issuer = clientId,
             authorizationEndpoint = authorizationEndpoint,
-            responseTypesSupported = setOf(OpenIdConstants.ID_TOKEN),
+            responseTypesSupported = setOf(OpenIdConstants.ID_TOKEN, OpenIdConstants.VP_TOKEN),
             scopesSupported = setOf(OpenIdConstants.SCOPE_OPENID),
-            subjectTypesSupported = setOf("pairwise", "public"),
             idTokenSigningAlgorithmsSupportedStrings = supportedJwsAlgorithms.toSet(),
             requestObjectSigningAlgorithmsSupportedStrings = supportedJwsAlgorithms.toSet(),
             subjectSyntaxTypesSupported = setOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY, BINDING_METHOD_JWK),
             idTokenTypesSupported = setOf(IdTokenType.SUBJECT_SIGNED),
             presentationDefinitionUriSupported = false,
-            clientIdSchemesSupported = listOf(
+            clientIdPrefixesSupported = listOf(
                 ClientIdScheme.PreRegistered,
                 ClientIdScheme.RedirectUri,
                 ClientIdScheme.VerifierAttestation,
-                ClientIdScheme.X509SanDns
+                ClientIdScheme.X509SanDns,
+                ClientIdScheme.X509Hash
             ).map { it.stringRepresentation }.toSet(),
+            responseModesSupported = OpenIdConstants.ResponseMode.entries.map { it.stringRepresentation }.toSet(),
             vpFormatsSupported = VpFormatsSupported(
                 vcJwt = SupportedAlgorithmsContainerJwt(
                     algorithmStrings = supportedJwsAlgorithms.toSet()
