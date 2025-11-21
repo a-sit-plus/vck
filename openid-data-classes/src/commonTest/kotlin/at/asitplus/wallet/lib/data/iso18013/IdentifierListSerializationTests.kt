@@ -12,6 +12,7 @@ import kotlinx.serialization.cbor.Cbor
 private val cbor = Cbor {
     ignoreUnknownKeys = true
     useDefiniteLengthEncoding = true
+    alwaysUseByteString = true
 }
 
 /**
@@ -30,33 +31,16 @@ private const val statusTestVec =
 /**
  * Modified Testcase from Annex D.7
  * {
- *   "identifiers": {
- *      h'abcd': {
- *        "note": {}
- *      },
- *      h'aaaa': {},
- *      h'cccc': {},
- *   },
- *   "aggregation_uri": "https://example.com/identifierlists/aggregation"
+ * 	"identifiers": {
+ * 		h'abcd': {},
+ * 		h'aaaa': { "note": {} },
+ * 		h'cccc': { 7: {} },
+ * 	},
+ * 	"aggregation_uri": "https://example.com/identifierlists/aggregation"
  * }
  */
 private const val identifierListTestVec =
-    "A26B6964656E74696669657273A342ABCDA1646E6F7465A042AAAAA042CCCCA06F6167677265676174696F6E5F757269782F68747470733A2F2F6578616D706C652E636F6D2F6964656E7469666965726C697374732F6167677265676174696F6E"
-
-/**
- * Extended testcase from Annex D.7 with some IdentifierInfo entries
- * {
- *   "identifiers": {
- *     h'bbbb': {
- *       "note": {},
- *       42: { "some": "value"}
- *      }
- *   },
- *   "aggregation_uri": "https://example.com/identifierlists/aggregation"
- * }
- */
-private const val extendedIdentifierListTestVec =
-    "A26B6964656E74696669657273A142BBBBA2646E6F7465A0182AA164736F6D656576616C75656F6167677265676174696F6E5F757269782F68747470733A2F2F6578616D706C652E636F6D2F6964656E7469666965726C697374732F6167677265676174696F6E"
+    "A26B6964656E74696669657273A342ABCDA042AAAAA1646E6F7465A042CCCCA107A06F6167677265676174696F6E5F757269782F68747470733A2F2F6578616D706C652E636F6D2F6964656E7469666965726C697374732F6167677265676174696F6E"
 
 val IdentifierListTest by testSuite {
     "status containing IdentifierListInfo can be serialized" {
@@ -74,14 +58,22 @@ val IdentifierListTest by testSuite {
         serialized.encodeToString(Base16Strict) shouldBe statusTestVec
     }
 
+    "Identifier is correct surrogate for type 2 bytearray" {
+        val encoded = cbor.encodeToByteArray(
+            Identifier.serializer(),
+            Identifier(byteArrayOf(0xcc.toByte(), 0xcc.toByte()))
+        ).encodeToString(Base16Strict)
+        encoded shouldBe "42CCCC"
+    }
+
     "IdentifierList can be serialized" {
         val expected = IdentifierList(
             identifiers = mapOf(
-                Identifier(byteArrayOf(0xab.toByte(), 0xcd.toByte())) to IdentifierInfo(
-                    mapOf(IdentifierInfoKey.KeyString("note") to RFU())
-                ),
-                Identifier(byteArrayOf(0xaa.toByte(), 0xaa.toByte())) to IdentifierInfo(),
-                Identifier(byteArrayOf(0xcc.toByte(), 0xcc.toByte())) to IdentifierInfo(),
+                Identifier(byteArrayOf(0xab.toByte(), 0xcd.toByte())) to IdentifierInfo(),
+                Identifier(byteArrayOf(0xaa.toByte(), 0xaa.toByte())) to IdentifierInfo(
+                    mapOf(IdentifierInfoKey.KeyString("note") to null)),
+                Identifier(byteArrayOf(0xcc.toByte(), 0xcc.toByte())) to IdentifierInfo(
+                    mapOf(IdentifierInfoKey.KeyInt(7) to null)),
             ),
             aggregationUri = "https://example.com/identifierlists/aggregation"
         )
@@ -90,25 +82,5 @@ val IdentifierListTest by testSuite {
         val serialized = cbor.encodeToByteArray(IdentifierList.serializer(), deserialized)
         deserialized shouldBe expected //sanity check
         serialized.encodeToString(Base16Strict) shouldBe identifierListTestVec
-    }
-
-    //This test is not required to pass
-    "IdentifierList can handle IdentifierInfo Entries" {
-        //We expect RFU to not contain any data and ignore any provided content
-        val expected = IdentifierList(
-            identifiers = mapOf(
-                Identifier(byteArrayOf(0xbb.toByte(), 0xbb.toByte())) to IdentifierInfo(
-                    mapOf(
-                        IdentifierInfoKey.KeyString("note") to RFU(),
-                        IdentifierInfoKey.KeyInt(42) to RFU(),
-                    )
-                ),
-            )
-        )
-        val expectedKeys = expected.identifiers.values.flatMap { it.keys as List<*> }
-        val deserialized =
-            cbor.decodeFromByteArray(IdentifierList.serializer(), extendedIdentifierListTestVec.decodeToByteArray(Base16Strict))
-        val deserializedKeys = deserialized.identifiers.values.flatMap { it.keys as List<*> }
-        deserializedKeys shouldBe expectedKeys
     }
 }
