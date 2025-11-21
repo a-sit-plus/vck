@@ -430,6 +430,9 @@ class OpenId4VpVerifier(
             ?: return AuthnResponseResult.ValidationError("state", params.state)
         val authnRequest = stateToAuthnRequestStore.get(state)
             ?: return AuthnResponseResult.ValidationError("state", state)
+        if (authnRequest.responseMode?.requiresEncryption == true)
+            if (!input.hasBeenEncrypted)
+                return AuthnResponseResult.ValidationError("response", state)
 
         // TODO: support concurrent presentation of ID token and VP token?
         val responseType = authnRequest.responseType

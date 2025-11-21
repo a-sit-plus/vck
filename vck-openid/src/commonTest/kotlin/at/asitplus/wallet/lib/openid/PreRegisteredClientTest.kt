@@ -258,6 +258,26 @@ val PreRegisteredClientTest by testSuite {
             .vp.freshVerifiableCredentials.shouldNotBeEmpty()
     }
 
+    "test with direct_post.jwt, no key for client, leads to error" {
+        holderOid4vp = OpenId4VpHolder(
+            holder = holderAgent,
+            randomSource = RandomSource.Default,
+            lookupJsonWebKeysForClient = { null } // provide no key for pre-registered client
+        )
+        val authnRequest = verifierOid4vp.createAuthnRequest(
+            RequestOptions(
+                credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
+                responseUrl = redirectUrl
+            ),
+            OpenId4VpVerifier.CreationOptions.Query(walletUrl)
+        ).getOrThrow().url
+
+        shouldThrow<OAuth2Exception> {
+            holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+        }
+    }
+
     "test with deserializing" {
         val authnRequest = verifierOid4vp.createAuthnRequest(defaultRequestOptions)
         val authnRequestUrlParams = authnRequest.encodeToParameters().formUrlEncode()
