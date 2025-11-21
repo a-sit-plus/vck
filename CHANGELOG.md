@@ -26,6 +26,7 @@ Release 5.10.0 (Unreleased):
    - Use correct response encryption acc. to values stated in `encrypted_response_enc_values_supported` inside `client_metadata`
    - Correct evaluation of `vp_formats_supported` inside `client_metadata`
    - Advertise correct wallet metadata for retrieving authn requests, e.g. `client_id_prefixes_supported`
+   - Drop support for signed-then-encrypted responses
  - SD-JWT:
    - Fix creation of SD JWTs containing structures that are selectivey disclosable
 

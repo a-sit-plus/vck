@@ -14,7 +14,6 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
-import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -32,68 +31,58 @@ class ResponseParser(
      * - parameters encoded as a POST body, e.g. `id_token=...&vp_token=...`
      */
     @Throws(IllegalArgumentException::class, CancellationException::class)
-    suspend fun parseAuthnResponse(input: String): ResponseParametersFrom {
-        val paramsFrom = catchingUnwrapped {
-            val url = Url(input)
-            if (url.encodedFragment.isNotEmpty()) {
-                url.encodedFragment.decodeFromUrlQuery<AuthenticationResponseParameters>().let {
-                    ResponseParametersFrom.Uri(url, it)
-                }
-            } else {
-                url.encodedQuery.decodeFromUrlQuery<AuthenticationResponseParameters>().let {
-                    ResponseParametersFrom.Uri(url, it)
-                }
-            }
-        }.getOrNull() ?: if (input.contains("=")) {
-            input.decodeFromPostBody<AuthenticationResponseParameters>().let {
-                ResponseParametersFrom.Post(it)
-            }
-        } else throw IllegalArgumentException("Can't parse input: $input")
-        return extractAuthnResponse(paramsFrom)
+    suspend fun parseAuthnResponse(input: String) = input.parseResponseParameters().extractFromJar()
+
+    private fun String.parseResponseParameters() = parseUrlSafe(this)
+        ?: parsePostBodySafe(this)
+        ?: throw IllegalArgumentException("Can't parse input: $this")
+
+    private fun parsePostBodySafe(input: String) =
+        catchingUnwrapped { input.parseAsPostBody() }.getOrNull()
+
+    /** Treat input as POST body, parse parameters */
+    private fun String.parseAsPostBody() = if (contains("=")) {
+        decodeFromPostBody<AuthenticationResponseParameters>()
+            .let { ResponseParametersFrom.Post(it) }
+    } else null
+
+    private fun parseUrlSafe(input: String) =
+        catchingUnwrapped { input.parseAsUrl() }.getOrNull()
+
+    /** Treat input as URL, parse fragment or query */
+    private fun String.parseAsUrl() = with(Url(this)) {
+        if (encodedFragment.isNotEmpty()) {
+            encodedFragment.decodeFromUrlQuery<AuthenticationResponseParameters>()
+                .let { ResponseParametersFrom.Uri(this, it) }
+        } else {
+            encodedQuery.decodeFromUrlQuery<AuthenticationResponseParameters>()
+                .let { ResponseParametersFrom.Uri(this, it) }
+        }
     }
 
     /**
-     * Extracts [AuthenticationResponseParameters] from [input] if it is encoded there as
+     * Extracts [AuthenticationResponseParameters] from [this@extractFromJar] if it is encoded there as
      * [AuthenticationResponseParameters.response], which may be a JWS or JWE.
      */
     @Throws(IllegalArgumentException::class, CancellationException::class)
-    internal suspend fun extractAuthnResponse(input: ResponseParametersFrom): ResponseParametersFrom =
-        input.parameters.response?.let { encodedResponse ->
-            encodedResponse.fromJws()?.let { jarm ->
-                if (!verifyJwsObject(jarm)) {
-                    throw IllegalArgumentException("JWS not verified: $encodedResponse")
-                }
-                ResponseParametersFrom.JwsSigned(jarm, input, jarm.payload)
-            } ?: encodedResponse.fromJwe()?.let { jarm ->
-                ResponseParametersFrom.JweDecrypted(jarm, input, jarm.payload)
-            } ?: encodedResponse.fromJweString()?.let { jarm ->
-                val nested = jarm.payload.fromJws()
-                    ?: throw IllegalArgumentException("JWS inside JWE not verified")
-                if (!verifyJwsObject(nested)) {
-                    throw IllegalArgumentException("JWS inside JWE not verified: $encodedResponse")
-                }
-                ResponseParametersFrom.JwsSigned(
-                    nested,
-                    ResponseParametersFrom.JweForJws(jarm, input, nested.payload),
-                    nested.payload
-                )
-            } ?: throw IllegalArgumentException("Got encoded response, but could not deserialize it from $input")
-        } ?: input
+    internal suspend fun ResponseParametersFrom.extractFromJar() = parameters.response?.let { encodedResponse ->
+        encodedResponse.fromJws()?.let { jws ->
+            require(verifyJwsObject(jws)) { "JWS not verified: $encodedResponse" }
+            ResponseParametersFrom.JwsSigned(jws, this, jws.payload)
+        } ?: encodedResponse.fromJwe()?.let { jwe ->
+            ResponseParametersFrom.JweDecrypted(jwe, this, jwe.payload)
+        } ?: throw IllegalArgumentException("Got encoded response, but could not deserialize it from $this")
+    } ?: this
 
     private suspend fun String.fromJwe(): JweDecrypted<AuthenticationResponseParameters>? =
         JweEncrypted.deserialize(this).getOrNull()?.let { encrypted ->
             decryptJwe(encrypted).getOrThrow().let { decrypted ->
-                JweDecrypted(
-                    decrypted.header,
-                    vckJsonSerializer.decodeFromString<AuthenticationResponseParameters>(decrypted.payload)
-                )
+                JweDecrypted(decrypted.header, decrypted.parseResponseParams())
             }
         }
 
-    private suspend fun String.fromJweString(): JweDecrypted<String>? =
-        JweEncrypted.deserialize(this).getOrNull()?.let {
-            decryptJwe(it).getOrNull()
-        }
+    private fun JweDecrypted<String>.parseResponseParams(): AuthenticationResponseParameters =
+        vckJsonSerializer.decodeFromString<AuthenticationResponseParameters>(payload)
 
     private fun String.fromJws(): JwsSigned<AuthenticationResponseParameters>? =
         JwsSigned.deserialize(AuthenticationResponseParameters.serializer(), this, vckJsonSerializer).getOrNull()
