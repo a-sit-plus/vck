@@ -4,7 +4,10 @@ import kotlinx.serialization.Serializable
 
 /**
  * Placeholder class used in cbor/ISO
- * assumes cbor serializer uses `ignoreUnknownKeys`
+ * Throws away anything that would be associated with this class
  */
 @Serializable
-class RFU()
+class RFU {
+    override fun equals(other: Any?): Boolean = other is RFU
+    override fun hashCode(): Int = 0
+}
