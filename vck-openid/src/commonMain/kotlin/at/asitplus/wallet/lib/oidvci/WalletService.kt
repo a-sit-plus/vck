@@ -81,11 +81,13 @@ class WalletService(
          */
         data class Encrypted(val request: JweEncrypted) : CredentialRequest
 
-        fun parse(input: String): KmmResult<CredentialRequest> = catching {
-            if (input.count { it == '.' } == 4)
-                Encrypted(JweEncrypted.deserialize(input).getOrThrow())
-            else
-                Plain(joseCompliantSerializer.decodeFromString<CredentialRequestParameters>(input))
+        companion object {
+            fun parse(input: String): KmmResult<CredentialRequest> = catching {
+                if (input.count { it == '.' } == 4)
+                    Encrypted(JweEncrypted.deserialize(input).getOrThrow())
+                else
+                    Plain(joseCompliantSerializer.decodeFromString<CredentialRequestParameters>(input))
+            }
         }
     }
 
@@ -208,17 +210,9 @@ class WalletService(
             previouslyRequestedScope = previouslyRequestedScope,
             clock = clock
         ).getOrThrow().map {
-            if (metadata.shouldEncryptRequest()) {
-                CredentialRequest.Encrypted(encryptionService.encrypt(it, metadata).getOrThrow())
-            } else {
-                CredentialRequest.Plain(it)
-            }
+            encryptionService.wrapCredentialRequest(it, metadata).getOrThrow()
         }
     }
-
-    private fun IssuerMetadata.shouldEncryptRequest(): Boolean =
-        credentialRequestEncryption?.encryptionRequired == true ||
-                (encryptionService.requestEncryption && credentialRequestEncryption?.jsonWebKeySet != null)
 
     private suspend fun createCredentialRequestInternal(
         tokenResponse: TokenResponseParameters,

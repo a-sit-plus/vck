@@ -16,6 +16,7 @@ Release 5.10.0 (Unreleased):
    - Support credential response encryption correctly, see changed API in `CredentialIssuer.credential()`
    - Introduce duration to subtract for the issuance date of credentials, see `IssuerAgent.issuanceOffset`
    - Correctly verify credential request regarding `credential_configuration_id` and `credential_identifiers`
+   - Support credential request encryption correctly, if metadata is set at Issuer
  - OpenID for Verifiable Presentations:
    - Update implementation to 1.0 from 2025-07-09
    - Remove code elements deprecated in 5.9.0

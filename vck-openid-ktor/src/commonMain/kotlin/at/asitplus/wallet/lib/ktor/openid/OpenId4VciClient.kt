@@ -319,7 +319,7 @@ class OpenId4VciClient(
     }.onSuccessCredential { response ->
         oid4vciService.parseCredentialResponse(
             response = this,
-            isEncrypted = response.contentType() == ContentType.parse(MediaTypes.Application.JWT),
+            isEncrypted = response.contentType()?.match(ContentType.parse(MediaTypes.Application.JWT)) == true,
             representation = credentialFormat.format.toRepresentation(),
             scheme = credentialScheme
         ).getOrThrow()

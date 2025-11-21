@@ -4,7 +4,6 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.CredentialRequestParameters
 import at.asitplus.openid.CredentialResponseEncryption
-import at.asitplus.openid.CredentialResponseParameters
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.SupportedAlgorithmsContainer
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
@@ -31,19 +30,36 @@ import io.github.aakira.napier.Napier
  * 1.0 from 2025-09-16.
  */
 class WalletEncryptionService(
-    /** Whether to request credential response encryption */
-    internal val requestEncryption: Boolean = false,
-    /** Encrypt credential request, if requested by the issuer or [requestEncryption] is set. */
+    /** Whether to request credential response encryption from the issuer. */
+    internal val requestResponseEncryption: Boolean = false,
+    /** Whether to encrypt the credential request, if supported by the issuer.*/
+    internal val requireRequestEncryption: Boolean = false,
+    /** Encrypt credential request, if requested by the issuer. */
     private val encryptCredentialRequest: EncryptJweFun = EncryptJwe(EphemeralKeyWithoutCert()),
     /** Algorithms to indicate support for credential response encryption. */
     private val supportedJweAlgorithm: JweAlgorithm = JweAlgorithm.ECDH_ES,
     /** Algorithms to indicate support for credential response encryption. */
     private val supportedJweEncryptionAlgorithm: JweEncryption = JweEncryption.A256GCM,
     /** Key to offer for credential response encryption. */
-    private val decryptionKeyMaterial: KeyMaterial? = null,
+    private val decryptionKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     /** Used to decrypt the credential response sent by the issuer. */
-    private val decryptCredentialResponse: DecryptJweFun? = decryptionKeyMaterial?.let { DecryptJwe(it) },
+    private val decryptCredentialResponse: DecryptJweFun? = DecryptJwe(decryptionKeyMaterial),
 ) {
+
+    internal suspend fun wrapCredentialRequest(
+        input: CredentialRequestParameters,
+        metadata: IssuerMetadata
+    ): KmmResult<WalletService.CredentialRequest> = catching {
+        if (metadata.shouldEncryptRequest()) {
+            WalletService.CredentialRequest.Encrypted(encrypt(input, metadata).getOrThrow())
+        } else {
+            WalletService.CredentialRequest.Plain(input)
+        }
+    }
+
+    private fun IssuerMetadata.shouldEncryptRequest(): Boolean =
+        credentialRequestEncryption?.encryptionRequired == true ||
+                (requireRequestEncryption && credentialRequestEncryption?.jsonWebKeySet != null)
 
     /** Encrypts the credential request. */
     internal suspend fun encrypt(
@@ -80,13 +96,15 @@ class WalletEncryptionService(
 
     /** Appends credential response encryption information to the request. */
     internal fun credentialResponseEncryption(metadata: IssuerMetadata): CredentialResponseEncryption? =
-        if (requestEncryption && decryptionKeyMaterial != null && metadata.credentialResponseEncryption != null) {
-            CredentialResponseEncryption(
-                jsonWebKey = decryptionKeyMaterial.jsonWebKey,
-                jweAlgorithm = supportedJweAlgorithm,
-                jweEncryptionString = supportedJweEncryptionAlgorithm.identifier,
-            )
-        } else null
+        if (metadata.credentialResponseEncryption != null)
+            if (requestResponseEncryption || metadata.credentialResponseEncryption?.encryptionRequired == true) {
+                CredentialResponseEncryption(
+                    jsonWebKey = decryptionKeyMaterial.jsonWebKey,
+                    jweAlgorithm = supportedJweAlgorithm,
+                    jweEncryptionString = supportedJweEncryptionAlgorithm.identifier,
+                )
+            } else null
+        else null
 
     /** Decrypts encrypted credentials (strings in the credential response) from the issuer. */
     internal suspend fun decrypt(

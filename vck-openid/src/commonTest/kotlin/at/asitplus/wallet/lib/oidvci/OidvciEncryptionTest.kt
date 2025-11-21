@@ -78,8 +78,8 @@ val OidvciEncryptionTest by testSuite {
         state = uuid4().toString()
         client = WalletService(
             encryptionService = WalletEncryptionService(
-                requestEncryption = true, // this is important
-                decryptionKeyMaterial = EphemeralKeyWithoutCert() // this is important
+                requestResponseEncryption = true, // this is important
+                requireRequestEncryption = true, // this is important
             )
         )
         oauth2Client = OAuth2Client()

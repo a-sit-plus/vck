@@ -1,39 +1,28 @@
 package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.catching
-import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.openid.CredentialFormatEnum
-import at.asitplus.openid.CredentialRequestParameters
 import at.asitplus.openid.CredentialResponseParameters
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
-import at.asitplus.openid.OidcUserInfo
-import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
-import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.TokenIntrospectionRequest
-import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.eupid.EuPidScheme
-import at.asitplus.wallet.lib.agent.ClaimToBeIssued
-import at.asitplus.wallet.lib.agent.CredentialToBeIssued.Iso
-import at.asitplus.wallet.lib.agent.CredentialToBeIssued.VcSd
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.ktor.openid.TestUtils.credentialDataProviderFun
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.dummyUser
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respond
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondOAuth2Error
@@ -46,14 +35,12 @@ import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oauth2.TokenService
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
-import at.asitplus.wallet.lib.oidvci.CredentialDataProviderFun
 import at.asitplus.wallet.lib.oidvci.CredentialIssuer
+import at.asitplus.wallet.lib.oidvci.IssuerEncryptionService
 import at.asitplus.wallet.lib.oidvci.WalletService
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.TestConfig
-import de.infix.testBalloon.framework.core.aroundEach
 import de.infix.testBalloon.framework.core.testSuite
 import io.github.aakira.napier.Napier
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -63,180 +50,122 @@ import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.util.*
-import kotlinx.serialization.json.JsonObject
-import kotlin.random.Random
-import kotlin.time.Clock
 
 /**
- * Tests [OpenId4VciClient] against [CredentialIssuer] that uses [RemoteOAuth2AuthorizationServerAdapter]
- * to simulate an external OAuth2.0 Authorization Server (which is still our own internal [SimpleAuthorizationService]).
+ * Tests [OpenId4VciClient] against [at.asitplus.wallet.lib.oidvci.CredentialIssuer] with our own internal [at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService].
  */
-val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
+val OpenId4VciClientWithEncryptionTest by testSuite {
 
     lateinit var credentialKeyMaterial: KeyMaterial
-    lateinit var walletDpopKeyMaterial: KeyMaterial
-    lateinit var walletClientAuthKeyMaterial: KeyMaterial
+    lateinit var dpopKeyMaterial: KeyMaterial
+    lateinit var clientAuthKeyMaterial: KeyMaterial
     lateinit var refreshTokenStore: RefreshTokenInfo
 
     lateinit var mockEngine: MockEngine
     lateinit var credentialIssuer: CredentialIssuer
-    lateinit var externalAuthorizationServer: SimpleAuthorizationService
+    lateinit var authorizationService: SimpleAuthorizationService
     lateinit var client: OpenId4VciClient
-
-    lateinit var issuerDpopKeyMaterial: KeyMaterial
-    lateinit var issuerClientAuthKeyMaterial: KeyMaterial
-    lateinit var issuerPublicContext: String
-
-    testConfig = TestConfig.aroundEach {
-        credentialKeyMaterial = EphemeralKeyWithoutCert()
-        walletDpopKeyMaterial = EphemeralKeyWithoutCert()
-        walletClientAuthKeyMaterial = EphemeralKeyWithoutCert()
-        issuerDpopKeyMaterial = EphemeralKeyWithoutCert()
-        issuerClientAuthKeyMaterial = EphemeralKeyWithoutCert()
-        it()
-    }
 
     fun setup(
         scheme: ConstantIndex.CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation,
         attributes: Map<String, String>,
     ) {
-        val credentialDataProvider = CredentialDataProviderFun {
-            catching {
-                require(it.credentialScheme == scheme)
-                require(it.credentialRepresentation == representation)
-                var digestId = 0u
-                when (representation) {
-                    PLAIN_JWT -> TODO()
-                    SD_JWT -> VcSd(
-                        attributes.map { ClaimToBeIssued(it.key, it.value) },
-                        Clock.System.now(),
-                        it.credentialScheme,
-                        it.subjectPublicKey,
-                        OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
-                        sdAlgorithm = supportedSdAlgorithms.random()
-                    )
-
-                    ISO_MDOC -> Iso(
-                        attributes.map {
-                            IssuerSignedItem(digestId++, Random.nextBytes(32), it.key, it.value)
-                        },
-                        Clock.System.now(),
-                        it.credentialScheme,
-                        it.subjectPublicKey,
-                        OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
-                    )
-                }
-            }
-        }
+        credentialKeyMaterial = EphemeralKeyWithoutCert()
+        dpopKeyMaterial = EphemeralKeyWithoutCert()
+        clientAuthKeyMaterial = EphemeralKeyWithoutCert()
         val credentialSchemes = setOf(EuPidScheme)
         val authorizationEndpointPath = "/authorize"
         val tokenEndpointPath = "/token"
         val credentialEndpointPath = "/credential"
         val nonceEndpointPath = "/nonce"
         val parEndpointPath = "/par"
-        val userInfoEndpointPath = "/userinfo"
-        val introspectionEndpointPath = "/introspection"
-        issuerPublicContext = "https://issuer.example.com"
-        val authServerPublicContext = "https://auth.example.com"
-        val tokenService = TokenService.jwt(
-            issueRefreshTokens = true
-        )
-        externalAuthorizationServer = SimpleAuthorizationService(
+        val publicContext = "https://issuer.example.com"
+        authorizationService = SimpleAuthorizationService(
             strategy = CredentialAuthorizationServiceStrategy(credentialSchemes),
-            publicContext = authServerPublicContext,
+            publicContext = publicContext,
             authorizationEndpointPath = authorizationEndpointPath,
             tokenEndpointPath = tokenEndpointPath,
             pushedAuthorizationRequestEndpointPath = parEndpointPath,
-            userInfoEndpointPath = userInfoEndpointPath,
-            introspectionEndpointPath = introspectionEndpointPath,
             clientAuthenticationService = ClientAuthenticationService(
                 enforceClientAuthentication = true,
             ),
-            tokenService = tokenService,
+            tokenService = TokenService.jwt(
+                issueRefreshTokens = true
+            ),
         )
         val issuer = IssuerAgent(
             keyMaterial = EphemeralKeyWithSelfSignedCert(),
             identifier = "https://issuer.example.com/".toUri(),
             randomSource = RandomSource.Default
         )
-
-        mockEngine = MockEngine { request ->
+        credentialIssuer = CredentialIssuer(
+            authorizationService = authorizationService,
+            issuer = issuer,
+            credentialSchemes = credentialSchemes,
+            publicContext = publicContext,
+            credentialEndpointPath = credentialEndpointPath,
+            nonceEndpointPath = nonceEndpointPath,
+            // that's crucial: require encryption
+            encryptionService = IssuerEncryptionService(
+                requireResponseEncryption = true,
+                requireRequestEncryption = true
+            )
+        )
+        mockEngine = MockEngine.Companion { request ->
             when {
-                request.url.toString().startsWith(issuerPublicContext) &&
-                        request.url.rawSegments.drop(1) == OpenIdConstants.WellKnownPaths.CredentialIssuer -> respond(
+                request.url.rawSegments.drop(1) == OpenIdConstants.WellKnownPaths.CredentialIssuer -> respond(
                     vckJsonSerializer.encodeToString<IssuerMetadata>(credentialIssuer.metadata),
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
 
-                request.url.toString().startsWith(authServerPublicContext) &&
-                        request.url.rawSegments.drop(1) == OpenIdConstants.WellKnownPaths.OauthAuthorizationServer -> respond(
-                    vckJsonSerializer.encodeToString<OAuth2AuthorizationServerMetadata>(externalAuthorizationServer.metadata()),
+                request.url.rawSegments.drop(1) == OpenIdConstants.WellKnownPaths.OauthAuthorizationServer -> respond(
+                    vckJsonSerializer.encodeToString<OAuth2AuthorizationServerMetadata>(authorizationService.metadata()),
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
 
-                request.url.toString() == "$authServerPublicContext$parEndpointPath" -> {
+                request.url.fullPath.startsWith(parEndpointPath) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val authnRequest: RequestParameters = requestBody.decodeFromPostBody()
-                    externalAuthorizationServer.par(authnRequest, request.toRequestInfo()).fold(
+                    authorizationService.par(authnRequest, request.toRequestInfo()).fold(
                         onSuccess = { respond(it) },
                         onFailure = { respondOAuth2Error(it) }
                     )
                 }
 
-                request.url.toString().startsWith("$authServerPublicContext$authorizationEndpointPath") -> {
+                request.url.fullPath.startsWith(authorizationEndpointPath) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val queryParameters: Map<String, String> =
                         request.url.parameters.toMap().entries.associate { it.key to it.value.first() }
                     val authnRequest: RequestParameters =
                         if (requestBody.isEmpty()) queryParameters.decodeFromUrlQuery()
                         else requestBody.decodeFromPostBody()
-                    externalAuthorizationServer.authorize(authnRequest) { catching { dummyUser() } }.fold(
+                    authorizationService.authorize(authnRequest) { catching { dummyUser() } }.fold(
                         onSuccess = { respondRedirect(it.url) },
                         onFailure = { respondOAuth2Error(it) }
                     )
                 }
 
-                request.url.toString() == "$authServerPublicContext$tokenEndpointPath" -> {
+                request.url.fullPath.startsWith(tokenEndpointPath) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val params: TokenRequestParameters = requestBody.decodeFromPostBody<TokenRequestParameters>()
-                    externalAuthorizationServer.token(params, request.toRequestInfo()).fold(
+                    authorizationService.token(params, request.toRequestInfo()).fold(
                         onSuccess = { respond(it) },
                         onFailure = { respondOAuth2Error(it) }
                     )
                 }
 
-                request.url.toString() == "$authServerPublicContext$userInfoEndpointPath" -> {
-                    val authn = request.headers[HttpHeaders.Authorization]
-                    externalAuthorizationServer.userInfo(authn!!, request.toRequestInfo()).fold(
-                        onSuccess = { respond(it) },
-                        onFailure = { respondOAuth2Error(it) }
-                    )
-
-                }
-
-                request.url.toString() == "$authServerPublicContext$introspectionEndpointPath" -> {
-                    val requestBody = request.body.toByteArray().decodeToString()
-                    val params = requestBody.decodeFromPostBody<TokenIntrospectionRequest>()
-                    externalAuthorizationServer.tokenIntrospection(params, request.toRequestInfo()).fold(
-                        onSuccess = { respond(it) },
-                        onFailure = { respondOAuth2Error(it) }
-                    )
-
-                }
-
-                request.url.toString() == "$issuerPublicContext$nonceEndpointPath" -> {
+                request.url.fullPath.startsWith(nonceEndpointPath) -> {
                     respond(credentialIssuer.nonceWithDpopNonce().getOrThrow())
                 }
 
-                request.url.toString() == "$issuerPublicContext$credentialEndpointPath" -> {
+                request.url.fullPath.startsWith(credentialEndpointPath) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val authn = request.headers[HttpHeaders.Authorization].shouldNotBeNull()
-                    val params = vckJsonSerializer.decodeFromString<CredentialRequestParameters>(requestBody)
                     credentialIssuer.credential(
                         authorizationHeader = authn,
-                        params = WalletService.CredentialRequest.Plain(params),
-                        credentialDataProvider = credentialDataProvider,
+                        params = WalletService.CredentialRequest.parse(requestBody).getOrThrow(),
+                        credentialDataProvider = credentialDataProviderFun(scheme, representation, attributes),
                         request = request.toRequestInfo(),
                     ).fold(
                         onSuccess = { respond(it) },
@@ -245,14 +174,14 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
                 }
 
                 else -> respondError(HttpStatusCode.NotFound)
-                    .also { Napier.w("NOT MATCHED ${request.url}") }
+                    .also { Napier.w("NOT MATCHED ${request.url.fullPath}") }
             }
         }
-        val walletClientId = "https://example.com/rp"
+        val clientId = "https://example.com/rp"
         client = OpenId4VciClient(
             engine = mockEngine,
             oid4vciService = WalletService(
-                clientId = walletClientId,
+                clientId = clientId,
                 keyMaterial = credentialKeyMaterial,
             ),
             oauth2Client = OAuth2KtorClient(
@@ -260,45 +189,17 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
                 loadClientAttestationJwt = {
                     BuildClientAttestationJwt(
                         SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
-                        clientId = walletClientId,
+                        clientId = clientId,
                         issuer = "issuer",
-                        clientKey = walletClientAuthKeyMaterial.jsonWebKey
+                        clientKey = clientAuthKeyMaterial.jsonWebKey
                     ).serialize()
                 },
-                signClientAttestationPop = SignJwt(walletClientAuthKeyMaterial, JwsHeaderNone()),
-                signDpop = SignJwt(walletDpopKeyMaterial, JwsHeaderCertOrJwk()),
-                dpopAlgorithm = walletDpopKeyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
-                oAuth2Client = OAuth2Client(clientId = walletClientId),
+                signClientAttestationPop = SignJwt(clientAuthKeyMaterial, JwsHeaderNone()),
+                signDpop = SignJwt(dpopKeyMaterial, JwsHeaderCertOrJwk()),
+                dpopAlgorithm = dpopKeyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
+                oAuth2Client = OAuth2Client(clientId = clientId),
                 randomSource = RandomSource.Default,
             )
-        )
-        credentialIssuer = CredentialIssuer(
-            authorizationService = RemoteOAuth2AuthorizationServerAdapter(
-                publicContext = authServerPublicContext,
-                engine = mockEngine,
-                oauth2Client = OAuth2KtorClient(
-                    engine = mockEngine,
-                    loadClientAttestationJwt = {
-                        BuildClientAttestationJwt(
-                            SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
-                            clientId = issuerPublicContext,
-                            issuer = "issuer",
-                            clientKey = issuerClientAuthKeyMaterial.jsonWebKey
-                        ).serialize()
-                    },
-                    signClientAttestationPop = SignJwt(issuerClientAuthKeyMaterial, JwsHeaderNone()),
-                    signDpop = SignJwt(issuerDpopKeyMaterial, JwsHeaderCertOrJwk()),
-                    dpopAlgorithm = issuerDpopKeyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
-                    oAuth2Client = OAuth2Client(clientId = issuerPublicContext),
-                    randomSource = RandomSource.Default,
-                ),
-                internalTokenVerificationService = tokenService.verification,
-            ),
-            issuer = issuer,
-            credentialSchemes = credentialSchemes,
-            publicContext = issuerPublicContext,
-            credentialEndpointPath = credentialEndpointPath,
-            nonceEndpointPath = nonceEndpointPath,
         )
     }
 
@@ -306,18 +207,18 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
         val expectedFamilyName = uuid4().toString()
         setup(
             scheme = EuPidScheme,
-            representation = SD_JWT,
+            representation = ConstantIndex.CredentialRepresentation.SD_JWT,
             attributes = mapOf(EuPidScheme.Attributes.FAMILY_NAME to expectedFamilyName),
         )
 
         // Load credential identifier infos from Issuing service
-        val credentialIdentifierInfos = client.loadCredentialMetadata(issuerPublicContext).getOrThrow()
+        val credentialIdentifierInfos = client.loadCredentialMetadata("http://localhost").getOrThrow()
         // just pick the first credential in SD-JWT that is available
         val selectedCredential = credentialIdentifierInfos
             .first { it.supportedCredentialFormat.format == CredentialFormatEnum.DC_SD_JWT }
         // client will call clientBrowser.openUrlExternally
         client.startProvisioningWithAuthRequestReturningResult(
-            credentialIssuerUrl = issuerPublicContext,
+            credentialIssuerUrl = "http://localhost",
             credentialIdentifierInfo = selectedCredential,
         ).getOrThrow().also {
             // Simulates the browser, handling authorization to get the authCode
@@ -348,19 +249,19 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
         val expectedGivenName = uuid4().toString()
         setup(
             scheme = EuPidScheme,
-            representation = ISO_MDOC,
+            representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
             attributes = mapOf(
                 EuPidScheme.Attributes.GIVEN_NAME to expectedGivenName
             )
         )
 
         // Load credential identifier infos from Issuing service
-        val credentialIdentifierInfos = client.loadCredentialMetadata(issuerPublicContext).getOrThrow()
+        val credentialIdentifierInfos = client.loadCredentialMetadata("http://localhost").getOrThrow()
         // just pick the first credential in MSO_MDOC that is available
         val selectedCredential = credentialIdentifierInfos
             .first { it.supportedCredentialFormat.format == CredentialFormatEnum.MSO_MDOC }
 
-        val offer = externalAuthorizationServer.credentialOfferWithPreAuthnForUser(
+        val offer = authorizationService.credentialOfferWithPreAuthnForUser(
             dummyUser(),
             credentialIssuer.metadata.credentialIssuer
         )
@@ -376,5 +277,4 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
         }
 
     }
-
 }

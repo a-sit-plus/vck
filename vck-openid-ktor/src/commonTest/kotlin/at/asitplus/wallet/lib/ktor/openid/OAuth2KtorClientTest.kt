@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.catching
-import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenRequestParameters
@@ -17,17 +16,18 @@ import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.ktor.openid.TestUtils.dummyUser
+import at.asitplus.wallet.lib.ktor.openid.TestUtils.respond
+import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondOAuth2Error
+import at.asitplus.wallet.lib.ktor.openid.TestUtils.toRequestInfo
 import at.asitplus.wallet.lib.oauth2.ClientAuthenticationService
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
-import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oauth2.TokenService
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
-import at.asitplus.wallet.lib.openid.toOAuth2Error
 import de.infix.testBalloon.framework.core.testSuite
 import io.github.aakira.napier.Napier
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -79,12 +79,7 @@ val OAuth2KtorClientTest by testSuite {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val authnRequest: RequestParameters = requestBody.decodeFromPostBody()
                     authorizationService.par(authnRequest, request.toRequestInfo()).fold(
-                        onSuccess = {
-                            respond(
-                                vckJsonSerializer.encodeToString<PushedAuthenticationResponseParameters>(it),
-                                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                            )
-                        },
+                        onSuccess = { respond(it) },
                         onFailure = { respondOAuth2Error(it) }
                     )
                 }
@@ -106,14 +101,7 @@ val OAuth2KtorClientTest by testSuite {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val params: TokenRequestParameters = requestBody.decodeFromPostBody<TokenRequestParameters>()
                     authorizationService.token(params, request.toRequestInfo()).fold(
-                        onSuccess = {
-                            respond(
-                                vckJsonSerializer.encodeToString<TokenResponseParameters>(it),
-                                headers = headers {
-                                    append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                                }
-                            )
-                        },
+                        onSuccess = { respond(it) },
                         onFailure = { respondOAuth2Error(it) },
                     )
                 }
@@ -143,8 +131,6 @@ val OAuth2KtorClientTest by testSuite {
 
     val strategy = CredentialAuthorizationServiceStrategy(setOf(EuPidScheme))
     val requestedScope = strategy.validScopes().split(" ").first()
-
-
 
     listOf<Pair<Boolean, Set<JwsAlgorithm.Signature>?>>(
         false to null,
@@ -176,26 +162,4 @@ val OAuth2KtorClientTest by testSuite {
         }
 
     }
-
-
 }
-
-private fun dummyUser(): OidcUserInfoExtended = OidcUserInfoExtended.deserialize("{\"sub\": \"foo\"}").getOrThrow()
-
-private fun MockRequestHandleScope.respondOAuth2Error(throwable: Throwable): HttpResponseData = respond(
-    vckJsonSerializer.encodeToString(throwable.toOAuth2Error(null)),
-    headers = headers {
-        append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-        (throwable as? OAuth2Exception.UseDpopNonce)?.dpopNonce
-            ?.let { append(HttpHeaders.DPoPNonce, it) }
-    },
-    status = HttpStatusCode.BadRequest
-).also { Napier.w("Server error: ${throwable.message}", throwable) }
-
-private fun HttpRequestData.toRequestInfo(): RequestInfo = RequestInfo(
-    url = url.toString(),
-    method = method,
-    dpop = headers["DPoP"],
-    clientAttestation = headers["OAuth-Client-Attestation"],
-    clientAttestationPop = headers["OAuth-Client-Attestation-PoP"],
-)
