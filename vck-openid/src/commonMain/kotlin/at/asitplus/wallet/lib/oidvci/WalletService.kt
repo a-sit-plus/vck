@@ -258,16 +258,15 @@ class WalletService(
         representation: CredentialRepresentation,
         scheme: ConstantIndex.CredentialScheme,
     ): KmmResult<Collection<Holder.StoreCredentialInput>> = catching {
-        response.decryptResponse(isEncrypted)
+        response.decryptIfNeeded(isEncrypted)
             .extractCredentials()
-            .map { encryptionService.decrypt(it).getOrThrow() }
             .map { it.toStoreCredentialInput(representation, scheme) }
     }
 
-    private suspend fun String.decryptResponse(encrypted: Boolean) =
-        vckJsonSerializer.decodeFromString<CredentialResponseParameters>(
-            if (encrypted) encryptionService.decrypt(this).getOrThrow() else this
-        )
+    private suspend fun String.decryptIfNeeded(encrypted: Boolean) = if (encrypted)
+        encryptionService.decryptToCredentialResponse(this).getOrThrow()
+    else
+        joseCompliantSerializer.decodeFromString<CredentialResponseParameters>(this)
 
     /**
      * Parses [response] received from the credential issuer, mapping to [Holder.StoreCredentialInput],
@@ -278,16 +277,14 @@ class WalletService(
         representation: CredentialRepresentation,
         scheme: ConstantIndex.CredentialScheme,
     ): KmmResult<Collection<Holder.StoreCredentialInput>> = catching {
-        response.decryptResponse()
+        response.decryptIfNeeded()
             .extractCredentials()
-            .map { encryptionService.decrypt(it).getOrThrow() }
             .map { it.toStoreCredentialInput(representation, scheme) }
     }
 
-    private suspend fun CredentialResponse.decryptResponse() = when (this) {
+    private suspend fun CredentialResponse.decryptIfNeeded() = when (this) {
         is CredentialResponse.Plain -> response
-        is CredentialResponse.Encrypted -> encryptionService.decrypt(response.serialize()).getOrThrow()
-            .decryptResponse(true)
+        is CredentialResponse.Encrypted -> encryptionService.decryptToCredentialResponse(response).getOrThrow()
     }
 
     private fun Set<AuthorizationDetails>.toCredentialRequest(): List<CredentialRequestParameters> =

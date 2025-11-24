@@ -67,41 +67,26 @@ class IssuerEncryptionService(
 
     /** Decrypts credential requests from the client. */
     internal suspend fun decrypt(
+        input: JweEncrypted,
+    ): KmmResult<CredentialRequestParameters> = catching {
+        if (decryptCredentialRequest == null)
+            throw InvalidEncryptionParameters("Client sent encrypted request, we can't decode it")
+        val decrypted = decryptCredentialRequest(input).getOrElse {
+            throw InvalidEncryptionParameters("Decryption of request failed", it)
+        }.also { Napier.d("decrypt got $it") }
+        joseCompliantSerializer.decodeFromString<CredentialRequestParameters>(decrypted.payload)
+    }
+
+    /** Decrypts credential requests from the client. */
+    internal suspend fun decrypt(
         input: String,
     ): KmmResult<CredentialRequestParameters> = catching {
         if (decryptCredentialRequest == null)
             throw InvalidEncryptionParameters("Client sent encrypted request, we can't decode it")
         val jwe = JweEncrypted.deserialize(input).getOrElse {
             throw InvalidEncryptionParameters("Parsing of JWE failed", it)
-        }.also { Napier.d("decrypt got $it") }
-        val decrypted = decryptCredentialRequest(jwe).getOrElse {
-            throw InvalidEncryptionParameters("Decryption of request failed", it)
-        }.also { Napier.d("decrypt got $it") }
-        joseCompliantSerializer.decodeFromString<CredentialRequestParameters>(decrypted.payload)
-    }
-
-    /** Encrypts the issued credential, if requested so by the client, or required by [requireResponseEncryption]. */
-    internal fun encryptResponseIfNecessary(
-        parameters: CredentialRequestParameters,
-    ): (suspend (String) -> String) = { input: String ->
-        parameters.credentialResponseEncryption?.let {
-            it.jweEncryption?.let { jweEncryption ->
-                Napier.d("encrypting response for ${it.jsonWebKey.keyId}")
-                encryptCredentialResponse(
-                    header = JweHeader(
-                        algorithm = it.jweAlgorithm ?: (it.jsonWebKey.algorithm as? JweAlgorithm),
-                        encryption = jweEncryption,
-                        keyId = it.jsonWebKey.keyId,
-                    ),
-                    payload = input,
-                    recipientKey = it.jsonWebKey,
-                ).getOrThrow().serialize()
-            } ?: throw InvalidEncryptionParameters("Unsupported enc: ${it.jweEncryptionString}")
-        } ?: run {
-            if (requireResponseEncryption)
-                throw InvalidEncryptionParameters("Response encryption required, no params sent")
-            else input
         }
+        decrypt(jwe).getOrThrow()
     }
 
     internal suspend fun encryptResponse(

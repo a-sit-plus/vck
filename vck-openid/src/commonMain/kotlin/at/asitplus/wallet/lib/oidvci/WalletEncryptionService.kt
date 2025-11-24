@@ -4,6 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.CredentialRequestParameters
 import at.asitplus.openid.CredentialResponseEncryption
+import at.asitplus.openid.CredentialResponseParameters
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.SupportedAlgorithmsContainer
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
@@ -106,21 +107,29 @@ class WalletEncryptionService(
             } else null
         else null
 
-    /** Decrypts encrypted credentials (strings in the credential response) from the issuer. */
-    internal suspend fun decrypt(
+    /** Decrypts encrypted credential response from the issuer. */
+    internal suspend fun decryptToCredentialResponse(
         input: String,
-    ): KmmResult<String> = catching {
+    ): KmmResult<CredentialResponseParameters> = catching {
         if (input.count { it == '.' } != 4)
-            return@catching input
-        if (decryptCredentialResponse == null)
-            throw InvalidEncryptionParameters("Issuer sent encrypted response, we can't decode it")
+            throw InvalidEncryptionParameters("Parsing of JWE failed, not five parts")
         val jwe = JweEncrypted.deserialize(input).getOrElse {
             throw InvalidEncryptionParameters("Parsing of JWE failed", it)
-        }.also { Napier.d("decrypt got $it") }
-        val decrypted = decryptCredentialResponse(jwe).getOrElse {
+        }
+        decryptToCredentialResponse(jwe).getOrThrow()
+    }
+
+    /** Decrypts encrypted credential response from the issuer. */
+    internal suspend fun decryptToCredentialResponse(
+        input: JweEncrypted,
+    ): KmmResult<CredentialResponseParameters> = catching {
+        if (decryptCredentialResponse == null)
+            throw InvalidEncryptionParameters("Issuer sent encrypted response, we can't decode it")
+        val decrypted = decryptCredentialResponse(input).getOrElse {
             throw InvalidEncryptionParameters("Decryption of response failed", it)
         }.also { Napier.d("decrypt got $it") }
-        decrypted.payload
+        joseCompliantSerializer.decodeFromString<CredentialResponseParameters>(decrypted.payload)
     }
+
 
 }

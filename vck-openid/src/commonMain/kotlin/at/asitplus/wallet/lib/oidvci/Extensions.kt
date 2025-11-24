@@ -27,27 +27,10 @@ fun CredentialFormatEnum.toRepresentation() = when (this) {
     else -> CredentialRepresentation.PLAIN_JWT
 }
 
-suspend fun Issuer.IssuedCredential.toCredentialResponseParameters() = when (this) {
-    is Issuer.IssuedCredential.Iso -> CredentialResponseParameters(
-        credentials = setOf(toCredentialResponseSingleCredential()),
-    )
-
-    is Issuer.IssuedCredential.VcJwt -> CredentialResponseParameters(
-        credentials = setOf(toCredentialResponseSingleCredential()),
-    )
-
-    is Issuer.IssuedCredential.VcSdJwt -> CredentialResponseParameters(
-        credentials = setOf(toCredentialResponseSingleCredential()),
-    )
-}
-
-suspend fun Collection<Issuer.IssuedCredential>.toCredentialResponseParameters() = if (size == 1) {
-    first().toCredentialResponseParameters()
-} else {
+fun Collection<Issuer.IssuedCredential>.toCredentialResponseParameters() =
     CredentialResponseParameters(
         credentials = this.map { it.toCredentialResponseSingleCredential() }.toSet()
     )
-}
 
 fun Issuer.IssuedCredential.toCredentialResponseSingleCredential() = CredentialResponseSingleCredential(
     when (this) {

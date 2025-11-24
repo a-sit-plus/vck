@@ -52,7 +52,7 @@ import io.ktor.http.*
 import io.ktor.util.*
 
 /**
- * Tests [OpenId4VciClient] against [at.asitplus.wallet.lib.oidvci.CredentialIssuer] with our own internal [at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService].
+ * Tests [OpenId4VciClient] against [CredentialIssuer] with our own internal [SimpleAuthorizationService].
  */
 val OpenId4VciClientWithEncryptionTest by testSuite {
 

@@ -228,8 +228,8 @@ class CredentialIssuer(
     }
 
     private suspend fun WalletService.CredentialRequest.decryptIfNeeded() = when (this) {
-        is WalletService.CredentialRequest.Encrypted -> encryptionService.decrypt(request.serialize()).getOrThrow()
         is WalletService.CredentialRequest.Plain -> request
+        is WalletService.CredentialRequest.Encrypted -> encryptionService.decrypt(request).getOrThrow()
     }
 
     private suspend fun credentialInternal(
@@ -247,7 +247,6 @@ class CredentialIssuer(
         val userInfo = request.introspectTokenLoadUserInfo(authorizationHeader, requestInfo)
         val (scheme, representation) = request.extractCredentialRepresentation()
         val responseParameters = proofValidator.validateProofExtractSubjectPublicKeys(request).map { subjectPublicKey ->
-            // TODO into one array?
             issuer.issueCredential(
                 credentialDataProvider(
                     CredentialDataProviderInput(
