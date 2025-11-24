@@ -26,7 +26,6 @@ import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsSigned
@@ -79,9 +78,6 @@ internal class PresentationFactory(
         request.verifyResponseType()
         val responseWillBeEncrypted = jsonWebKeys != null
                 && (clientMetadata?.requestsEncryption() == true || request.responseMode?.requiresEncryption == true)
-        val mdocGeneratedNonce = if (responseWillBeEncrypted)
-            randomSource.nextBytes(16).encodeToString(Base64UrlStrict)
-        else ""
         val vpRequestParams = PresentationRequestParameters(
             nonce = nonce,
             audience = audience,
@@ -96,8 +92,7 @@ internal class PresentationFactory(
                     jsonWebKeys = jsonWebKeys,
                     responseWillBeEncrypted = responseWillBeEncrypted
                 )
-            },
-            mdocGeneratedNonce = mdocGeneratedNonce
+            }
         )
 
         holder.createPresentation(

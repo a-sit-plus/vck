@@ -28,6 +28,7 @@ Release 5.10.0 (Unreleased):
    - Correct evaluation of `vp_formats_supported` inside `client_metadata`
    - Advertise correct wallet metadata for retrieving authn requests, e.g. `client_id_prefixes_supported`
    - Drop support for signed-then-encrypted responses, as in OpenID4VP 1.0
+   - Drop support for mdoc generated nonces, as in OpenID4VP 1.0
    - Deprecate method `validateAuthnResponse(input: Map<String, String>)` in `OpenId4VpVerifier` because it eluded correct input parsing
    - When returning multiple ISO mDoc credentials, make sure to create one device response object per document, wrapping in separate VP tokens
  - SD-JWT:

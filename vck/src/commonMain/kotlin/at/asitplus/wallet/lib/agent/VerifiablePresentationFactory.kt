@@ -196,8 +196,7 @@ class VerifiablePresentationFactory(
                 version = "1.0",
                 documents = documents.toTypedArray(),
                 status = 0U,
-            ),
-            mdocGeneratedNonce = request.mdocGeneratedNonce
+            )
         )
     }
 

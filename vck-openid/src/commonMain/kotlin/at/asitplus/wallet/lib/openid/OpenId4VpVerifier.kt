@@ -602,19 +602,16 @@ class OpenId4VpVerifier(
             challenge = expectedNonce
         )
 
-        ClaimFormat.MSO_MDOC -> {
-            // if the response is not encrypted, the wallet could not transfer the mdocGeneratedNonce,
-            // so we'll use the empty string
-            val apuDirect = (input as? ResponseParametersFrom.JweDecrypted)
-                ?.jweDecrypted?.header?.agreementPartyUInfo
-            val mdocGeneratedNonce = apuDirect?.decodeToString() ?: ""
-            val deviceResponse = relatedPresentation.extractContent().decodeToByteArray(Base64UrlStrict)
-                .let { coseCompliantSerializer.decodeFromByteArray<DeviceResponse>(it) }
-            verifier.verifyPresentationIsoMdoc(
-                input = deviceResponse,
-                verifyDocument = verifyDocument(mdocGeneratedNonce, clientId, responseUrl, expectedNonce)
+        ClaimFormat.MSO_MDOC -> verifier.verifyPresentationIsoMdoc(
+            input = relatedPresentation.extractContent().decodeToByteArray(Base64UrlStrict)
+                .let { coseCompliantSerializer.decodeFromByteArray<DeviceResponse>(it) },
+            verifyDocument = verifyDocument(
+                clientId = clientId,
+                responseUrl = responseUrl,
+                nonce = expectedNonce,
+                hasBeenEncrypted = input.hasBeenEncrypted
             )
-        }
+        )
 
         else -> throw IllegalArgumentException("descriptor.format: $claimFormat")
     }
@@ -633,10 +630,10 @@ class OpenId4VpVerifier(
      */
     @Throws(IllegalArgumentException::class, IllegalStateException::class)
     private fun verifyDocument(
-        mdocGeneratedNonce: String,
         clientId: String?,
         responseUrl: String?,
         nonce: String,
+        hasBeenEncrypted: Boolean,
     ): suspend (MobileSecurityObject, Document) -> Boolean = { mso, document ->
         val deviceSignature = document.deviceSigned.deviceAuth.deviceSignature
             ?: throw IllegalArgumentException("deviceSignature is null")
@@ -646,7 +643,7 @@ class OpenId4VpVerifier(
             clientId = clientId,
             responseUrl = responseUrl,
             nonce = nonce,
-            encrypted = mdocGeneratedNonce.isNotEmpty()
+            hasBeenEncrypted = hasBeenEncrypted
         ).wrapAsExpectedPayload()
 
         verifyCoseSignature(
@@ -672,7 +669,7 @@ class OpenId4VpVerifier(
         clientId: String,
         responseUrl: String,
         nonce: String,
-        encrypted: Boolean,
+        hasBeenEncrypted: Boolean,
     ) = DeviceAuthentication(
         type = DeviceAuthentication.TYPE,
         sessionTranscript = SessionTranscript.forOpenId(
@@ -682,7 +679,7 @@ class OpenId4VpVerifier(
                     OpenId4VpHandoverInfo(
                         clientId = clientId,
                         nonce = nonce,
-                        jwkThumbprint = if (encrypted) {
+                        jwkThumbprint = if (hasBeenEncrypted) {
                             decryptionKeyMaterial.jsonWebKey.sessionTranscriptThumbprint()
                         } else null,
                         responseUrl = responseUrl,
@@ -729,24 +726,22 @@ class JwsHeaderClientIdScheme(val clientIdScheme: ClientIdScheme) : JwsHeaderIde
     override suspend operator fun invoke(
         it: JwsHeader,
         keyMaterial: KeyMaterial,
-    ) = run {
-        when (clientIdScheme) {
-            is ClientIdScheme.CertificateHash -> it.copy(
-                certificateChain = clientIdScheme.chain,
-            )
+    ) = when (clientIdScheme) {
+        is ClientIdScheme.CertificateHash -> it.copy(
+            certificateChain = clientIdScheme.chain,
+        )
 
-            is ClientIdScheme.CertificateSanDns -> it.copy(
-                certificateChain = clientIdScheme.chain,
-            )
+        is ClientIdScheme.CertificateSanDns -> it.copy(
+            certificateChain = clientIdScheme.chain,
+        )
 
-            is ClientIdScheme.VerifierAttestation -> it.copy(
-                jsonWebKey = keyMaterial.jsonWebKey,
-                attestationJwt = clientIdScheme.attestationJwt.serialize()
-            )
+        is ClientIdScheme.VerifierAttestation -> it.copy(
+            jsonWebKey = keyMaterial.jsonWebKey,
+            attestationJwt = clientIdScheme.attestationJwt.serialize()
+        )
 
-            else -> it.copy(
-                jsonWebKey = keyMaterial.jsonWebKey
-            )
-        }
+        else -> it.copy(
+            jsonWebKey = keyMaterial.jsonWebKey
+        )
     }
 }

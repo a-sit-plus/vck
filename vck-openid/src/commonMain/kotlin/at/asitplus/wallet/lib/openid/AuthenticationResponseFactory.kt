@@ -155,10 +155,8 @@ internal class AuthenticationResponseFactory(
         val encryption = response.clientMetadata?.encryptedResponseEncValues?.firstNotNullOfOrNull { it }
             ?: response.clientMetadata?.authorizationEncryptedResponseEncoding
             ?: JweEncryption.A128GCM
-        val apv = request.parameters.nonce?.encodeToByteArray()
-            ?: randomSource.nextBytes(16)
-        val apu = response.mdocGeneratedNonce?.encodeToByteArray()
-            ?: randomSource.nextBytes(16)
+        val apv = request.parameters.nonce?.encodeToByteArray() ?: randomSource.nextBytes(16)
+        val apu = randomSource.nextBytes(16)
         val header = JweHeader(
             algorithm = algorithm,
             encryption = encryption,

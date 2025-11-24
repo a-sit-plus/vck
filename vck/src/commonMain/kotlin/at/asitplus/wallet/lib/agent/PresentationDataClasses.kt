@@ -41,11 +41,6 @@ data class PresentationRequestParameters(
      * (OpenID4VP with ISO/IEC 18013-7)
      */
     val calcIsoDeviceSignaturePlain: (suspend (input: IsoDeviceSignatureInput) -> CoseSigned<ByteArray>?) = { null },
-    /**
-     * mdocGeneratedNonce to be used for the presentation and [calcIsoDeviceSignaturePlain]
-     * (OpenID4VP with ISO/IEC 18013-7)
-     */
-    val mdocGeneratedNonce: String? = null,
 ) {
     /**
      * According to OID4VP 1.0 B3.3.1 every TransactionData entry may define different Digest algorithms
@@ -66,7 +61,6 @@ data class IsoDeviceSignatureInput(
 sealed interface PresentationResponseParameters {
     val vpToken: JsonElement?
     val presentationSubmission: PresentationSubmission?
-    val mdocGeneratedNonce: String?
 
     data class DCQLParameters(
         val verifiablePresentations: Map<DCQLCredentialQueryIdentifier, CreatePresentationResult>,
@@ -81,10 +75,6 @@ sealed interface PresentationResponseParameters {
                 }
             }
 
-        override val mdocGeneratedNonce
-            get() = verifiablePresentations.values.filterIsInstance<CreatePresentationResult.DeviceResponse>()
-                .singleOrNull()?.mdocGeneratedNonce
-
         override val presentationSubmission
             get() = null
     }
@@ -96,10 +86,6 @@ sealed interface PresentationResponseParameters {
         override val vpToken = presentationResults.map {
             it.toJsonPrimitive()
         }.singleOrArray()
-
-        override val mdocGeneratedNonce =
-            presentationResults.filterIsInstance<CreatePresentationResult.DeviceResponse>()
-                .singleOrNull()?.mdocGeneratedNonce
 
         private fun List<JsonPrimitive>.singleOrArray() = if (size == 1) {
             this[0]
@@ -133,11 +119,6 @@ sealed class CreatePresentationResult {
 
     data class DeviceResponse(
         val deviceResponse: at.asitplus.iso.DeviceResponse,
-        /**
-         * has been used to calculate the session transcript, and needs to be set into `apu` of the
-         * JWE, see ISO/IEC 18013-7:2024 B.4.3.3.2.
-         */
-        val mdocGeneratedNonce: String?,
     ) : CreatePresentationResult()
 }
 

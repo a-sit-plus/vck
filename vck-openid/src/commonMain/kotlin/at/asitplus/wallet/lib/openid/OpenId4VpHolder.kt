@@ -319,8 +319,7 @@ class OpenId4VpHolder(
             AuthenticationResponse.Success(
                 params = parameters,
                 clientMetadata = clientMetadata,
-                jsonWebKeys = jsonWebKeys,
-                mdocGeneratedNonce = resultContainer?.mdocGeneratedNonce
+                jsonWebKeys = jsonWebKeys
             )
         }
     }
