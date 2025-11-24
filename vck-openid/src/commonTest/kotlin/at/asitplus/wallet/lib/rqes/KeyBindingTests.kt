@@ -27,6 +27,7 @@ import at.asitplus.wallet.lib.data.toBase64UrlJsonString
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
+import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.ClientIdScheme
@@ -249,7 +250,7 @@ val KeyBindingTests by testSuite {
             ).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
-            verifierOid4Vp.validateAuthnResponse(malignResponse.params)
+            verifierOid4Vp.validateAuthnResponse(malignResponse.params.formUrlEncode())
                 .shouldBeInstanceOf<AuthnResponseResult.ValidationError>()
         }
 
@@ -277,7 +278,7 @@ val KeyBindingTests by testSuite {
             ).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
-            lenientVerifier.validateAuthnResponse(malignResponse.params)
+            lenientVerifier.validateAuthnResponse(malignResponse.params.formUrlEncode())
                 .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
         }
 
@@ -297,7 +298,7 @@ val KeyBindingTests by testSuite {
             val authnResponse = holderOid4vp.createAuthnResponse(state.request).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
-            verifierOid4Vp.validateAuthnResponse(authnResponse.params)
+            verifierOid4Vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
                 .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
                 .sdJwtSigned.keyBindingJws.shouldNotBeNull().payload.transactionDataHashes!!.first()
                 .shouldBe(referenceHash)

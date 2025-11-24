@@ -63,7 +63,6 @@ import io.ktor.client.engine.*
 import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
 import io.ktor.http.*
-import io.ktor.util.*
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.Dispatchers
@@ -473,10 +472,9 @@ private suspend fun setupRelyingPartyService(
             request.url.fullPath.startsWith(responseEndpointPath) or request.url.toString()
                 .startsWith(redirectUri) -> {
                 val requestBody = request.body.toByteArray().decodeToString()
-                val queryParameters: Map<String, String> =
-                    request.url.parameters.toMap().entries.associate { it.key to it.value.first() }
-                val result = if (requestBody.isNotEmpty()) verifier.validateAuthnResponse(requestBody)
-                else verifier.validateAuthnResponse(queryParameters)
+                val result =
+                    if (requestBody.isNotEmpty()) verifier.validateAuthnResponse(requestBody)
+                    else verifier.validateAuthnResponse(request.url.toString())
                 validate(result)
                 respondOk()
             }

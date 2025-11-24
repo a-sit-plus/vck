@@ -31,6 +31,7 @@ import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
+import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.TestConfig
 import de.infix.testBalloon.framework.core.aroundEach
@@ -220,7 +221,7 @@ val OpenId4VpInteropTest by testSuite {
             }
         }
 
-        verifierOid4vp.validateAuthnResponse(response.params)
+        verifierOid4vp.validateAuthnResponse(response.params.formUrlEncode())
             .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
     }
 

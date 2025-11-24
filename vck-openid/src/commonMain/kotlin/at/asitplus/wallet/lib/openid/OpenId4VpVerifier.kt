@@ -388,16 +388,13 @@ class OpenId4VpVerifier(
         is ClientIdScheme.RedirectUri,
         is ClientIdScheme.VerifierAttestation,
         is ClientIdScheme.CertificateSanDns,
-        is ClientIdScheme.CertificateHash,
-            ->
+        is ClientIdScheme.CertificateHash ->
             if (encryption || responseMode.requiresEncryption) metadataWithEncryption else metadata
 
         else -> null
     }
 
-    /**
-     * Validates an Authentication Response from the Wallet, where [input] is a map of POST parameters received.
-     */
+    @Deprecated("Use validateAuthnResponse(input: String) instead")
     suspend fun validateAuthnResponse(input: Map<String, String>): AuthnResponseResult =
         catchingUnwrapped {
             ResponseParametersFrom.Post(input.decode<AuthenticationResponseParameters>())
@@ -610,14 +607,9 @@ class OpenId4VpVerifier(
             // so we'll use the empty string
             val apuDirect = (input as? ResponseParametersFrom.JweDecrypted)
                 ?.jweDecrypted?.header?.agreementPartyUInfo
-            val apuNested = ((input as? ResponseParametersFrom.JwsSigned)?.parent as? ResponseParametersFrom.JweForJws)
-                ?.jweDecrypted?.header?.agreementPartyUInfo
+            val mdocGeneratedNonce = apuDirect?.decodeToString() ?: ""
             val deviceResponse = relatedPresentation.extractContent().decodeToByteArray(Base64UrlStrict)
                 .let { coseCompliantSerializer.decodeFromByteArray<DeviceResponse>(it) }
-
-            val mdocGeneratedNonce = apuDirect?.decodeToString()
-                ?: apuNested?.decodeToString()
-                ?: ""
             verifier.verifyPresentationIsoMdoc(
                 input = deviceResponse,
                 verifyDocument = verifyDocument(mdocGeneratedNonce, clientId, responseUrl, expectedNonce)

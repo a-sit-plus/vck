@@ -31,6 +31,7 @@ import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.TestConfig
 import de.infix.testBalloon.framework.core.aroundEach
@@ -380,7 +381,7 @@ val OpenId4VpEuRefInteropTest by testSuite {
         val state = holderOid4vp.startAuthorizationResponsePreparation(walletUrl).getOrThrow()
         val response = holderOid4vp.finalizeAuthorizationResponse(state).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
-        verifierOid4vp.validateAuthnResponse(response.params)
+        verifierOid4vp.validateAuthnResponse(response.params.formUrlEncode())
             .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
     }
 }
