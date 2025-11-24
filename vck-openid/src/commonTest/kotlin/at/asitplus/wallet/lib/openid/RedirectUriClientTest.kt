@@ -21,8 +21,8 @@ import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.CreationOptions
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.TestConfig
-import de.infix.testBalloon.framework.core.aroundEach
+import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.testballoon.minus
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldNotBeEmpty
@@ -33,233 +33,229 @@ import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
+import io.kotest.engine.runBlocking
 
 val RedirectUriClientTest by testSuite {
 
-    lateinit var clientId: String
-    lateinit var walletUrl: String
-    lateinit var holderKeyMaterial: KeyMaterial
-    lateinit var verifierKeyMaterial: KeyMaterial
-    lateinit var holderAgent: Holder
-    lateinit var holderOid4vp: OpenId4VpHolder
-    lateinit var verifierOid4vp: OpenId4VpVerifier
-
-    testConfig = TestConfig.aroundEach {
-        holderKeyMaterial = EphemeralKeyWithoutCert()
-        verifierKeyMaterial = EphemeralKeyWithoutCert()
-        clientId = "https://example.com/rp/${uuid4()}"
-        walletUrl = "https://example.com/wallet/${uuid4()}"
-        holderAgent = HolderAgent(holderKeyMaterial)
-
-        holderAgent.storeCredential(
-            IssuerAgent(
-                identifier = "https://issuer.example.com/".toUri(),
-                randomSource = RandomSource.Default
-            ).issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    holderKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-                ).getOrThrow()
-            ).getOrThrow().toStoreCredentialInput()
-        )
-
-        holderOid4vp = OpenId4VpHolder(
-            holder = holderAgent,
-            randomSource = RandomSource.Default,
-        )
-        verifierOid4vp = OpenId4VpVerifier(
-            keyMaterial = verifierKeyMaterial,
-            clientIdScheme = ClientIdScheme.RedirectUri(clientId),
-        )
-        it()
-    }
-
-    "test with Fragment" {
-        val authnRequest = verifierOid4vp.createAuthnRequest(
-            defaultRequestOptions, CreationOptions.Query(walletUrl)
-        ).getOrThrow().url
-
-        val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
-            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-
-        authnResponse.url.shouldNotContain("?")
-        authnResponse.url.shouldContain("#")
-        authnResponse.url.shouldStartWith(clientId)
-
-        verifierOid4vp.validateAuthnResponse(authnResponse.url)
-            .shouldBeInstanceOf<AuthnResponseResult.Success>()
-            .vp.freshVerifiableCredentials.shouldNotBeEmpty()
-
-        verifySecondProtocolRun(verifierOid4vp, walletUrl, holderOid4vp)
-    }
-
-    "wrong client nonce in id_token should lead to error" {
-        verifierOid4vp = OpenId4VpVerifier(
-            keyMaterial = verifierKeyMaterial,
-            clientIdScheme = ClientIdScheme.RedirectUri(clientId),
-            nonceService = object : NonceService {
-                override suspend fun provideNonce() = uuid4().toString()
-                override suspend fun verifyNonce(it: String) = false
-                override suspend fun verifyAndRemoveNonce(it: String) = false
+    withFixtureGenerator {
+        object {
+            val holderKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert()
+            val verifierKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert()
+            val clientId: String = "https://example.com/rp/${uuid4()}"
+            val walletUrl: String = "https://example.com/wallet/${uuid4()}"
+            val holderAgent: Holder = HolderAgent(holderKeyMaterial).also { agent ->
+                runBlocking {
+                    agent.storeCredential(
+                        IssuerAgent(
+                            identifier = "https://issuer.example.com/".toUri(),
+                            randomSource = RandomSource.Default
+                        ).issueCredential(
+                            DummyCredentialDataProvider.getCredential(
+                                holderKeyMaterial.publicKey,
+                                ConstantIndex.AtomicAttribute2023,
+                                ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                            ).getOrThrow()
+                        ).getOrThrow().toStoreCredentialInput()
+                    )
+                }
             }
-        )
-        val requestOptions = RequestOptions(
-            credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
-            responseType = OpenIdConstants.ID_TOKEN
-        )
-        val authnRequest = verifierOid4vp.createAuthnRequest(
-            requestOptions, CreationOptions.Query(walletUrl)
-        ).getOrThrow().url
-
-        val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
-            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-
-        verifierOid4vp.validateAuthnResponse(authnResponse.url)
-            .shouldBeInstanceOf<AuthnResponseResult.ValidationError>()
-            .field shouldBe "idToken"
-    }
-
-    "wrong client nonce in vp_token should lead to error" {
-        verifierOid4vp = OpenId4VpVerifier(
-            keyMaterial = verifierKeyMaterial,
-            clientIdScheme = ClientIdScheme.RedirectUri(clientId),
-            stateToAuthnRequestStore = object : MapStore<String, AuthenticationRequestParameters> {
-                override suspend fun put(key: String, value: AuthenticationRequestParameters) {}
-                override suspend fun get(key: String): AuthenticationRequestParameters? = null
-                override suspend fun remove(key: String): AuthenticationRequestParameters? = null
-            },
-        )
-        val authnRequest = verifierOid4vp.createAuthnRequest(
-            defaultRequestOptions, CreationOptions.Query(walletUrl)
-        ).getOrThrow().url
-
-        val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
-            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-
-        verifierOid4vp.validateAuthnResponse(authnResponse.url)
-            .shouldBeInstanceOf<AuthnResponseResult.ValidationError>()
-            .field shouldBe "state"
-    }
-
-    "signed requests not allowed for redirect-uri" {
-        shouldThrow<IllegalArgumentException> {
-            verifierOid4vp.createAuthnRequest(
-                defaultRequestOptions, CreationOptions.SignedRequestByValue(walletUrl)
-            ).getOrThrow().url
-        }
-    }
-
-    "signed request by reference not allowed for redirect-uri" {
-        shouldThrow<IllegalArgumentException> {
-            verifierOid4vp.createAuthnRequest(
-                defaultRequestOptions,
-                CreationOptions.SignedRequestByReference(walletUrl, "https://example.com")
-            ).getOrThrow().url
-        }
-    }
-
-    "test with direct_post" {
-        val authnRequest = verifierOid4vp.createAuthnRequest(
-            RequestOptions(
-                credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
-                responseMode = OpenIdConstants.ResponseMode.DirectPost,
-                responseUrl = clientId,
-            ),
-            CreationOptions.Query(walletUrl)
-        ).getOrThrow().url
-
-        val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
-            .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
-        authnResponse.url.shouldBe(clientId)
-
-        verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
-            .shouldBeInstanceOf<AuthnResponseResult.Success>()
-            .vp.freshVerifiableCredentials.shouldNotBeEmpty()
-    }
-
-    "test with direct_post.jwt" {
-        val authnRequest = verifierOid4vp.createAuthnRequest(
-            RequestOptions(
-                credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
-                responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
-                responseUrl = clientId,
-            ),
-            CreationOptions.Query(walletUrl)
-        ).getOrThrow().url
-
-        val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
-            .shouldBeInstanceOf<AuthenticationResponseResult.Post>().apply {
-                url.shouldBe(clientId)
-                params.shouldHaveSize(1) // only the "response" object
-            }
-
-        verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
-            .shouldBeInstanceOf<AuthnResponseResult.Success>()
-            .vp.freshVerifiableCredentials.shouldNotBeEmpty()
-    }
-
-    "test with Query" {
-        val expectedState = uuid4().toString()
-        val authnRequest = verifierOid4vp.createAuthnRequest(
-            RequestOptions(
-                credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
-                responseMode = OpenIdConstants.ResponseMode.Query,
-                state = expectedState
-            ),
-            CreationOptions.Query(walletUrl)
-        ).getOrThrow().url
-
-        val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
-            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-
-        authnResponse.url.shouldContain("?")
-        authnResponse.url.shouldNotContain("#")
-        authnResponse.url.shouldStartWith(clientId)
-
-        verifierOid4vp.validateAuthnResponse(authnResponse.url)
-            .shouldBeInstanceOf<AuthnResponseResult.Success>().apply {
-                vp.freshVerifiableCredentials.shouldNotBeEmpty()
-                state.shouldBe(expectedState)
-            }
-    }
-
-    "test with deserializing" {
-        val authnRequest = verifierOid4vp.createAuthnRequest(defaultRequestOptions)
-        val authnRequestUrlParams = authnRequest.encodeToParameters().formUrlEncode()
-
-        val parsedAuthnRequest: AuthenticationRequestParameters =
-            authnRequestUrlParams.decodeFromUrlQuery()
-        val authnResponse = holderOid4vp.createAuthnResponse(
-            RequestParametersFrom.Uri(
-                Url(authnRequestUrlParams),
-                parsedAuthnRequest
+            val holderOid4vp: OpenId4VpHolder = OpenId4VpHolder(
+                holder = holderAgent,
+                randomSource = RandomSource.Default,
             )
-        ).getOrThrow()
-            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-            .params
-        val authnResponseParams = authnResponse.encodeToParameters().formUrlEncode()
+            val verifierOid4vp: OpenId4VpVerifier = OpenId4VpVerifier(
+                keyMaterial = verifierKeyMaterial,
+                clientIdScheme = ClientIdScheme.RedirectUri(clientId),
+            )
+        }
+    } - {
 
-        verifierOid4vp.validateAuthnResponse(authnResponseParams)
-            .shouldBeInstanceOf<AuthnResponseResult.Success>()
-            .vp.freshVerifiableCredentials.shouldNotBeEmpty()
-    }
+        "test with Fragment" {
+            val authnRequest = it.verifierOid4vp.createAuthnRequest(
+                defaultRequestOptions, CreationOptions.Query(it.walletUrl)
+            ).getOrThrow().url
 
-    "test specific credential" {
-        val authnRequest = verifierOid4vp.createAuthnRequest(
-            requestOptionsAtomicAttribute(),
-            CreationOptions.Query(walletUrl)
-        ).getOrThrow().url
+            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-        val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
-            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+            authnResponse.url.shouldNotContain("?")
+            authnResponse.url.shouldContain("#")
+            authnResponse.url.shouldStartWith(it.clientId)
 
-        verifierOid4vp.validateAuthnResponse(authnResponse.url)
-            .shouldBeInstanceOf<AuthnResponseResult.Success>()
-            .vp.freshVerifiableCredentials.shouldNotBeEmpty()
-            .map { it.vcJws }.forEach {
-                it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
+                .shouldBeInstanceOf<AuthnResponseResult.Success>()
+                .vp.freshVerifiableCredentials.shouldNotBeEmpty()
+
+            verifySecondProtocolRun(it.verifierOid4vp, it.walletUrl, it.holderOid4vp)
+        }
+
+        "wrong client nonce in id_token should lead to error" {
+            val verifierOid4vp = OpenId4VpVerifier(
+                keyMaterial = it.verifierKeyMaterial,
+                clientIdScheme = ClientIdScheme.RedirectUri(it.clientId),
+                nonceService = object : NonceService {
+                    override suspend fun provideNonce() = uuid4().toString()
+                    override suspend fun verifyNonce(it: String) = false
+                    override suspend fun verifyAndRemoveNonce(it: String) = false
+                }
+            )
+            val requestOptions = RequestOptions(
+                credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                responseType = OpenIdConstants.ID_TOKEN
+            )
+            val authnRequest = verifierOid4vp.createAuthnRequest(
+                requestOptions, CreationOptions.Query(it.walletUrl)
+            ).getOrThrow().url
+
+            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+
+            verifierOid4vp.validateAuthnResponse(authnResponse.url)
+                .shouldBeInstanceOf<AuthnResponseResult.ValidationError>()
+                .field shouldBe "idToken"
+        }
+
+        "wrong client nonce in vp_token should lead to error" {
+            val verifierOid4vp = OpenId4VpVerifier(
+                keyMaterial = it.verifierKeyMaterial,
+                clientIdScheme = ClientIdScheme.RedirectUri(it.clientId),
+                stateToAuthnRequestStore = object : MapStore<String, AuthenticationRequestParameters> {
+                    override suspend fun put(key: String, value: AuthenticationRequestParameters) {}
+                    override suspend fun get(key: String): AuthenticationRequestParameters? = null
+                    override suspend fun remove(key: String): AuthenticationRequestParameters? = null
+                },
+            )
+            val authnRequest = verifierOid4vp.createAuthnRequest(
+                defaultRequestOptions, CreationOptions.Query(it.walletUrl)
+            ).getOrThrow().url
+
+            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+
+            verifierOid4vp.validateAuthnResponse(authnResponse.url)
+                .shouldBeInstanceOf<AuthnResponseResult.ValidationError>()
+                .field shouldBe "state"
+        }
+
+        "signed requests not allowed for redirect-uri" {
+            shouldThrow<IllegalArgumentException> {
+                it.verifierOid4vp.createAuthnRequest(
+                    defaultRequestOptions, CreationOptions.SignedRequestByValue(it.walletUrl)
+                ).getOrThrow().url
             }
+        }
+
+        "signed request by reference not allowed for redirect-uri" {
+            shouldThrow<IllegalArgumentException> {
+                it.verifierOid4vp.createAuthnRequest(
+                    defaultRequestOptions,
+                    CreationOptions.SignedRequestByReference(it.walletUrl, "https://example.com")
+                ).getOrThrow().url
+            }
+        }
+
+        "test with direct_post" {
+            val authnRequest = it.verifierOid4vp.createAuthnRequest(
+                RequestOptions(
+                    credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                    responseMode = OpenIdConstants.ResponseMode.DirectPost,
+                    responseUrl = it.clientId,
+                ),
+                CreationOptions.Query(it.walletUrl)
+            ).getOrThrow().url
+
+            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
+            authnResponse.url.shouldBe(it.clientId)
+
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
+                .shouldBeInstanceOf<AuthnResponseResult.Success>()
+                .vp.freshVerifiableCredentials.shouldNotBeEmpty()
+        }
+
+        "test with direct_post.jwt" {
+            val authnRequest = it.verifierOid4vp.createAuthnRequest(
+                RequestOptions(
+                    credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                    responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
+                    responseUrl = it.clientId,
+                ),
+                CreationOptions.Query(it.walletUrl)
+            ).getOrThrow().url
+
+            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.Post>().apply {
+                    url.shouldBe(it.clientId)
+                    params.shouldHaveSize(1) // only the "response" object
+                }
+
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
+                .shouldBeInstanceOf<AuthnResponseResult.Success>()
+                .vp.freshVerifiableCredentials.shouldNotBeEmpty()
+        }
+
+        "test with Query" {
+            val expectedState = uuid4().toString()
+            val authnRequest = it.verifierOid4vp.createAuthnRequest(
+                RequestOptions(
+                    credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                    responseMode = OpenIdConstants.ResponseMode.Query,
+                    state = expectedState
+                ),
+                CreationOptions.Query(it.walletUrl)
+            ).getOrThrow().url
+
+            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+
+            authnResponse.url.shouldContain("?")
+            authnResponse.url.shouldNotContain("#")
+            authnResponse.url.shouldStartWith(it.clientId)
+
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
+                .shouldBeInstanceOf<AuthnResponseResult.Success>().apply {
+                    vp.freshVerifiableCredentials.shouldNotBeEmpty()
+                    state.shouldBe(expectedState)
+                }
+        }
+
+        "test with deserializing" {
+            val authnRequest = it.verifierOid4vp.createAuthnRequest(defaultRequestOptions)
+            val authnRequestUrlParams = authnRequest.encodeToParameters().formUrlEncode()
+
+            val parsedAuthnRequest: AuthenticationRequestParameters =
+                authnRequestUrlParams.decodeFromUrlQuery()
+            val authnResponse = it.holderOid4vp.createAuthnResponse(
+                RequestParametersFrom.Uri(
+                    Url(authnRequestUrlParams),
+                    parsedAuthnRequest
+                )
+            ).getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+                .params
+            val authnResponseParams = authnResponse.encodeToParameters().formUrlEncode()
+
+            it.verifierOid4vp.validateAuthnResponse(authnResponseParams)
+                .shouldBeInstanceOf<AuthnResponseResult.Success>()
+                .vp.freshVerifiableCredentials.shouldNotBeEmpty()
+        }
+
+        "test specific credential" {
+            val authnRequest = it.verifierOid4vp.createAuthnRequest(
+                requestOptionsAtomicAttribute(),
+                CreationOptions.Query(it.walletUrl)
+            ).getOrThrow().url
+
+            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
+                .shouldBeInstanceOf<AuthnResponseResult.Success>()
+                .vp.freshVerifiableCredentials.shouldNotBeEmpty()
+                .map { it.vcJws }.forEach {
+                    it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
+                }
+        }
     }
 }
 

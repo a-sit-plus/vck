@@ -9,32 +9,30 @@ import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
-import de.infix.testBalloon.framework.core.TestConfig
-import de.infix.testBalloon.framework.core.aroundEach
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.encodeToHexString
 
 val PresentationFactoryTest by testSuite {
 
-    lateinit var presentationFactory: PresentationFactory
-
-    testConfig = TestConfig.aroundEach {
-        val keyMaterial = EphemeralKeyWithoutCert()
-        presentationFactory = PresentationFactory(
-            supportedAlgorithms = setOf(SignatureAlgorithm.ECDSAwithSHA256),
-            signDeviceAuthDetached = SignCoseDetached(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
-            signIdToken = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
-            randomSource = RandomSource.Default
-        )
-        it()
-    }
+    withFixtureGenerator {
+        object {
+            private val keyMaterial = EphemeralKeyWithoutCert()
+            val presentationFactory = PresentationFactory(
+                supportedAlgorithms = setOf(SignatureAlgorithm.ECDSAwithSHA256),
+                signDeviceAuthDetached = SignCoseDetached(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
+                signIdToken = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
+                randomSource = RandomSource.Default
+            )
+        }
+    } - {
 
     // https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#name-a-set-of-static-configurati
     "Sample vp_formats_supported entries" {
@@ -193,7 +191,7 @@ val PresentationFactoryTest by testSuite {
             joseCompliantSerializer.decodeFromString<JsonWebKey>(it)
         }
 
-        presentationFactory.calcSessionTranscript(
+        it.presentationFactory.calcSessionTranscript(
             clientId = "x509_san_dns:example.com",
             responseUrl = "https://example.com/response",
             nonce = "exc7gBkxjx1rdc9udRrveKvSsJIq80avlXeLHhGwqtA",
@@ -223,7 +221,7 @@ val PresentationFactoryTest by testSuite {
             joseCompliantSerializer.decodeFromString<JsonWebKey>(it)
         }
 
-        presentationFactory.calcSessionTranscriptForDcApi(
+        it.presentationFactory.calcSessionTranscriptForDcApi(
             callingOrigin = "https://example.com",
             nonce = "exc7gBkxjx1rdc9udRrveKvSsJIq80avlXeLHhGwqtA",
             jsonWebKeys = listOf(jsonWebKey),
@@ -235,4 +233,5 @@ val PresentationFactoryTest by testSuite {
             """.trimIndent().replace("\n", "")
         }
     }
+}
 }

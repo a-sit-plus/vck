@@ -10,12 +10,11 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.SdJwtDecoded
 import at.asitplus.wallet.lib.agent.ValidatorSdJwt
@@ -33,8 +32,6 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.TestConfig
-import de.infix.testBalloon.framework.core.aroundEach
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -43,190 +40,182 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * Tests our OpenID4VP/SIOP implementation against POTENTIAL Piloting Definition Scope
  */
 val OpenId4VpInteropTest by testSuite {
-    lateinit var issuerKeyId: String
-    lateinit var issuerIdentifier: String
-    lateinit var holderKeyMaterial: KeyMaterial
-    lateinit var holderAgent: Holder
-    lateinit var holderOid4vp: OpenId4VpHolder
-    lateinit var verifierClientId: String
-    lateinit var verifierRedirectUrl: String
-    lateinit var verifierIssuerUrl: String
-    lateinit var verifierKeyId: String
-    lateinit var verifierKeyMaterial: KeyMaterial
-    lateinit var verifierOid4vp: OpenId4VpVerifier
-    var sdAlgorithm: Digest? = null
-
-    testConfig = TestConfig.aroundEach {
-        issuerKeyId = uuid4().toString()
-        issuerIdentifier = "https://issuer.example.com"
-        val issuerKeyMaterial = EphemeralKeyWithoutCert(customKeyId = issuerKeyId)
-        val issuerAgent = IssuerAgent(
-            issuerKeyMaterial, identifier = issuerIdentifier.toUri(),
-            randomSource = RandomSource.Default
-        )
-
-        holderKeyMaterial = EphemeralKeyWithoutCert()
-        holderAgent = HolderAgent(
-            holderKeyMaterial,
-            validatorSdJwt = ValidatorSdJwt(
-                verifyJwsObject = VerifyJwsObject(publicKeyLookup = { setOf(issuerKeyMaterial.publicKey.toJsonWebKey()) })
+    withFixtureGenerator {
+        object {
+            var sdAlgorithm: Digest? = null
+            val issuerKeyId = uuid4().toString()
+            val issuerIdentifier = "https://issuer.example.com"
+            val issuerKeyMaterial = EphemeralKeyWithoutCert(customKeyId = issuerKeyId)
+            val issuerAgent = IssuerAgent(
+                issuerKeyMaterial, identifier = issuerIdentifier.toUri(),
+                randomSource = RandomSource.Default
             )
-        )
-        holderAgent.storeCredential(
-            issuerAgent.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    holderKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.SD_JWT,
-                ).getOrThrow().also {
-                    sdAlgorithm = (it as CredentialToBeIssued.VcSd).sdAlgorithm
-                }
-            ).getOrThrow().toStoreCredentialInput()
-        )
-        holderOid4vp = OpenId4VpHolder(holderKeyMaterial, holderAgent, randomSource = RandomSource.Default)
-
-        verifierKeyId = uuid4().toString()
-        verifierClientId = "AT-GV-EGIZ-CUSTOMVERIFIER"
-        verifierRedirectUrl = "https://verifier.example.com/cb"
-        verifierIssuerUrl = "https://verifier.example.com/"
-        val clientIdScheme = ClientIdScheme.PreRegistered(verifierClientId, verifierRedirectUrl, verifierIssuerUrl)
-        verifierKeyMaterial = EphemeralKeyWithoutCert(customKeyId = verifierKeyId)
-        verifierOid4vp = OpenId4VpVerifier(
-            keyMaterial = verifierKeyMaterial,
-            verifier = VerifierAgent(
-                identifier = clientIdScheme.clientId,
+            val holderKeyMaterial = EphemeralKeyWithoutCert()
+            val holderAgent = HolderAgent(
+                holderKeyMaterial,
                 validatorSdJwt = ValidatorSdJwt(
-                    verifyJwsObject = VerifyJwsObject(
-                        publicKeyLookup = {
-                            setOf(
-                                issuerKeyMaterial.publicKey.toJsonWebKey(),
-                                holderKeyMaterial.publicKey.toJsonWebKey(),
-                            )
-                        })
+                    verifyJwsObject = VerifyJwsObject(publicKeyLookup = { setOf(issuerKeyMaterial.publicKey.toJsonWebKey()) })
                 )
-            ),
-            clientIdScheme = clientIdScheme,
-        )
-        it()
-    }
-
-    "process with cross-device flow with request_uri and pre-trusted" {
-        val responseNonce = uuid4().toString()
-        val requestNonce = uuid4().toString()
-        val requestUrl = "https://verifier.example.com/request/$requestNonce"
-        val (requestUrlForWallet, requestObject) = verifierOid4vp.createAuthnRequest(
-            RequestOptions(
-                responseMode = OpenIdConstants.ResponseMode.DirectPost,
-                responseUrl = "https://verifier.example.com/response/$responseNonce",
-                credentials = setOf(
-                    RequestOptionsCredential(
-                        ConstantIndex.AtomicAttribute2023,
-                        ConstantIndex.CredentialRepresentation.SD_JWT,
-                        setOf(CLAIM_FAMILY_NAME, CLAIM_GIVEN_NAME)
+            ).also {
+                runBlocking {
+                    it.storeCredential(
+                        issuerAgent.issueCredential(
+                            DummyCredentialDataProvider.getCredential(
+                                holderKeyMaterial.publicKey,
+                                ConstantIndex.AtomicAttribute2023,
+                                ConstantIndex.CredentialRepresentation.SD_JWT,
+                            ).getOrThrow().also {
+                                sdAlgorithm = (it as CredentialToBeIssued.VcSd).sdAlgorithm
+                            }
+                        ).getOrThrow().toStoreCredentialInput()
                     )
-                )
-            ),
-            OpenId4VpVerifier.CreationOptions.SignedRequestByReference("haip://", requestUrl)
-        ).getOrThrow()
-        requestObject.shouldNotBeNull()
-
-        requestUrlForWallet shouldContain "request_uri="
-        requestUrlForWallet shouldContain verifierClientId.encodeURLParameter()
-        requestUrlForWallet shouldStartWith "haip://"
-
-        holderOid4vp = OpenId4VpHolder(
-            keyMaterial = holderKeyMaterial,
-            holder = holderAgent,
-            remoteResourceRetriever = {
-                if (it.url == requestUrl) requestObject.invoke(it.requestObjectParameters).getOrThrow() else null
-            },
-            randomSource = RandomSource.Default,
-        )
-
-        val state = holderOid4vp.startAuthorizationResponsePreparation(requestUrlForWallet).getOrThrow()
-        val parameters = state.request
-            .shouldBeInstanceOf<RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>>()
-
-        val jar = parameters.jwsSigned
-        jar.header.algorithm shouldBe JwsAlgorithm.Signature.ES256
-        jar.header.type shouldBe "oauth-authz-req+jwt"
-
-        jar.payload.issuer shouldBe verifierIssuerUrl
-        jar.payload.audience shouldBe "https://self-issued.me/v2"
-        jar.payload.clientId shouldBe verifierClientId
-        jar.payload.clientIdWithoutPrefix shouldBe verifierClientId
-        jar.payload.presentationDefinition.shouldNotBeNull()
-        jar.payload.nonce.shouldNotBeNull()
-        jar.payload.state.shouldNotBeNull()
-        jar.payload.responseType shouldBe "vp_token"
-        jar.payload.responseMode shouldBe OpenIdConstants.ResponseMode.DirectPost
-        jar.payload.responseUrl.shouldNotBeNull()
-
-        if (jar.header.keyId != null) { // web-based key lookup is optional in profile 2.0
-            val verifierRequestSigningKey = verifierKeyMaterial.jsonWebKey.shouldNotBeNull()
-            VerifyJwsSignatureWithKey()(jar, verifierRequestSigningKey).isSuccess shouldBe true
-        } else {
-            VerifyJwsObject()(jar) shouldBe true
-        }
-
-        val response = holderOid4vp.finalizeAuthorizationResponse(state, null).getOrThrow()
-            .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
-
-        response.params.entries.firstOrNull { it.key == "vp_token" }.shouldNotBeNull().value.let { vpToken ->
-            val sdJwt = SdJwtSigned.parseCatching(vpToken).getOrThrow()
-            sdJwt.keyBindingJws.shouldNotBeNull().also {
-                it.header.also {
-                    it.algorithm shouldBe JwsAlgorithm.Signature.ES256
-                    it.type shouldBe "kb+jwt"
-                }
-                it.payload.also {
-                    it.issuedAt.shouldNotBeNull()
-                    it.audience shouldBe jar.payload.clientId
-                    it.challenge shouldBe jar.payload.nonce
-                    it.sdHash.shouldNotBeNull()
                 }
             }
-            sdJwt.jws.header.also {
-                if (it.keyId != null)
-                    it.keyId shouldBe issuerKeyId
-                else
-                    it.jsonWebKey.shouldNotBeNull()
-                it.algorithm shouldBe JwsAlgorithm.Signature.ES256
-                it.type shouldBe "dc+sd-jwt"
+            var holderOid4vp = OpenId4VpHolder(holderKeyMaterial, holderAgent, randomSource = RandomSource.Default)
+
+            val verifierKeyId = uuid4().toString()
+            val verifierClientId = "AT-GV-EGIZ-CUSTOMVERIFIER"
+            val verifierRedirectUrl = "https://verifier.example.com/cb"
+            val verifierIssuerUrl = "https://verifier.example.com/"
+            val clientIdScheme = ClientIdScheme.PreRegistered(verifierClientId, verifierRedirectUrl, verifierIssuerUrl)
+            val verifierKeyMaterial = EphemeralKeyWithoutCert(customKeyId = verifierKeyId)
+            val verifierOid4vp = OpenId4VpVerifier(
+                keyMaterial = verifierKeyMaterial,
+                verifier = VerifierAgent(
+                    identifier = clientIdScheme.clientId,
+                    validatorSdJwt = ValidatorSdJwt(
+                        verifyJwsObject = VerifyJwsObject(
+                            publicKeyLookup = {
+                                setOf(
+                                    issuerKeyMaterial.publicKey.toJsonWebKey(),
+                                    holderKeyMaterial.publicKey.toJsonWebKey(),
+                                )
+                            })
+                    )
+                ),
+                clientIdScheme = clientIdScheme,
+            )
+        }
+    } - {
+
+        "process with cross-device flow with request_uri and pre-trusted" {
+            val responseNonce = uuid4().toString()
+            val requestNonce = uuid4().toString()
+            val requestUrl = "https://verifier.example.com/request/$requestNonce"
+            val (requestUrlForWallet, requestObject) = it.verifierOid4vp.createAuthnRequest(
+                RequestOptions(
+                    responseMode = OpenIdConstants.ResponseMode.DirectPost,
+                    responseUrl = "https://verifier.example.com/response/$responseNonce",
+                    credentials = setOf(
+                        RequestOptionsCredential(
+                            ConstantIndex.AtomicAttribute2023,
+                            ConstantIndex.CredentialRepresentation.SD_JWT,
+                            setOf(CLAIM_FAMILY_NAME, CLAIM_GIVEN_NAME)
+                        )
+                    )
+                ),
+                OpenId4VpVerifier.CreationOptions.SignedRequestByReference("haip://", requestUrl)
+            ).getOrThrow()
+            requestObject.shouldNotBeNull()
+
+            requestUrlForWallet shouldContain "request_uri="
+            requestUrlForWallet shouldContain it.verifierClientId.encodeURLParameter()
+            requestUrlForWallet shouldStartWith "haip://"
+
+            it.holderOid4vp = OpenId4VpHolder(
+                keyMaterial = it.holderKeyMaterial,
+                holder = it.holderAgent,
+                remoteResourceRetriever = {
+                    if (it.url == requestUrl) requestObject.invoke(it.requestObjectParameters).getOrThrow() else null
+                },
+                randomSource = RandomSource.Default,
+            )
+
+            val state = it.holderOid4vp.startAuthorizationResponsePreparation(requestUrlForWallet).getOrThrow()
+            val parameters = state.request
+                .shouldBeInstanceOf<RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>>()
+
+            val jar = parameters.jwsSigned
+            jar.header.algorithm shouldBe JwsAlgorithm.Signature.ES256
+            jar.header.type shouldBe "oauth-authz-req+jwt"
+
+            jar.payload.issuer shouldBe it.verifierIssuerUrl
+            jar.payload.audience shouldBe "https://self-issued.me/v2"
+            jar.payload.clientId shouldBe it.verifierClientId
+            jar.payload.clientIdWithoutPrefix shouldBe it.verifierClientId
+            jar.payload.presentationDefinition.shouldNotBeNull()
+            jar.payload.nonce.shouldNotBeNull()
+            jar.payload.state.shouldNotBeNull()
+            jar.payload.responseType shouldBe "vp_token"
+            jar.payload.responseMode shouldBe OpenIdConstants.ResponseMode.DirectPost
+            jar.payload.responseUrl.shouldNotBeNull()
+
+            if (jar.header.keyId != null) { // web-based key lookup is optional in profile 2.0
+                val verifierRequestSigningKey = it.verifierKeyMaterial.jsonWebKey.shouldNotBeNull()
+                VerifyJwsSignatureWithKey()(jar, verifierRequestSigningKey).isSuccess shouldBe true
+            } else {
+                VerifyJwsObject()(jar) shouldBe true
             }
-            sdJwt.getPayloadAsVerifiableCredentialSdJwt().getOrThrow().also {
-                it.issuer shouldBe issuerIdentifier
-                it.issuedAt.shouldNotBeNull()
-                it.expiration.shouldNotBeNull()
-                it.verifiableCredentialType.shouldNotBeNull()
-                it.selectiveDisclosureAlgorithm shouldBe sdAlgorithm?.toIanaName()
-                it.confirmationClaim.shouldNotBeNull().also {
-                    it.jsonWebKey.shouldNotBeNull()
+
+            val response = it.holderOid4vp.finalizeAuthorizationResponse(state, null).getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
+
+            response.params.entries.firstOrNull { it.key == "vp_token" }.shouldNotBeNull().value.let { vpToken ->
+                val sdJwt = SdJwtSigned.parseCatching(vpToken).getOrThrow()
+                sdJwt.keyBindingJws.shouldNotBeNull().apply {
+                    header.apply {
+                        algorithm shouldBe JwsAlgorithm.Signature.ES256
+                        type shouldBe "kb+jwt"
+                    }
+                    payload.apply {
+                        issuedAt.shouldNotBeNull()
+                        audience shouldBe jar.payload.clientId
+                        challenge shouldBe jar.payload.nonce
+                        sdHash.shouldNotBeNull()
+                    }
+                }
+                sdJwt.jws.header.apply {
+                    if (keyId != null)
+                        keyId shouldBe it.issuerKeyId
+                    else
+                        jsonWebKey.shouldNotBeNull()
+                    algorithm shouldBe JwsAlgorithm.Signature.ES256
+                    type shouldBe "dc+sd-jwt"
+                }
+                sdJwt.getPayloadAsVerifiableCredentialSdJwt().getOrThrow().apply {
+                    issuer shouldBe it.issuerIdentifier
+                    issuedAt.shouldNotBeNull()
+                    expiration.shouldNotBeNull()
+                    verifiableCredentialType.shouldNotBeNull()
+                    selectiveDisclosureAlgorithm shouldBe it.sdAlgorithm?.toIanaName()
+                    confirmationClaim.shouldNotBeNull().apply {
+                        jsonWebKey.shouldNotBeNull()
+                    }
                 }
             }
-        }
-        response.params.entries.firstOrNull { it.key == "state" }.shouldNotBeNull()
-        response.params.entries.first { it.key == "presentation_submission" }.value.let { presentationSubmission ->
-            val presSub = vckJsonSerializer.decodeFromString<PresentationSubmission>(presentationSubmission)
-            presSub.definitionId.shouldNotBeNull()
-            presSub.descriptorMap.shouldNotBeNull().first().also {
-                it.path shouldBe "$"
-                it.format shouldBe ClaimFormat.SD_JWT
+            response.params.entries.firstOrNull { it.key == "state" }.shouldNotBeNull()
+            response.params.entries.first { it.key == "presentation_submission" }.value.let { presentationSubmission ->
+                val presSub = vckJsonSerializer.decodeFromString<PresentationSubmission>(presentationSubmission)
+                presSub.definitionId.shouldNotBeNull()
+                presSub.descriptorMap.shouldNotBeNull().first().apply {
+                    path shouldBe "$"
+                    format shouldBe ClaimFormat.SD_JWT
+                }
             }
+
+            it.verifierOid4vp.validateAuthnResponse(response.params.formUrlEncode())
+                .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
         }
 
-        verifierOid4vp.validateAuthnResponse(response.params.formUrlEncode())
-            .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
-    }
-
-    "parse JAR sample from document" {
-        val input = """
+        "parse JAR sample from document" {
+            val input = """
             eyJhbGciOiJFUzI1NiIsInR5cCI6IiBvYXV0aC1hdXRoei1yZXErand0ICJ9
             .eyJpc3MiOiJodHRwczovL2Jkci5kZS9qd2siLCJhdWQiOiIgaHR0cHM6Ly9zZWxmLWlzc3VlZC5tZS92MiIsImNsaWVudF9pZCI6Imh0dHB
             zOi8vYmRyLmRlIiwicHJlc2VudGF0aW9uX2RlZmluaXRpb24iOnsiaWQiOiIzMmY1NDE2My03MTY2LTQ4ZjEtOTNkOC1mZjIxN2JkYjA2NTU
@@ -239,31 +228,31 @@ val OpenId4VpInteropTest by testSuite {
             .i7Kli1T5RZzo2-TvWsw9-JpxjYPBUae8Lrc_ORfTdabHlXmuPucGVrE5lkBu7vLss2RKKEmdFFy57-ZvRFn4Tg
         """.trimIndent()
 
-        val jar = JwsSigned.deserialize<AuthenticationRequestParameters>(
-            AuthenticationRequestParameters.serializer(),
-            input,
-            vckJsonSerializer
-        ).getOrThrow()
+            val jar = JwsSigned.deserialize<AuthenticationRequestParameters>(
+                AuthenticationRequestParameters.serializer(),
+                input,
+                vckJsonSerializer
+            ).getOrThrow()
 
-        jar.header.algorithm shouldBe JwsAlgorithm.Signature.ES256
-        jar.header.type shouldBe " oauth-authz-req+jwt " // that's a typo in the document ...
+            jar.header.algorithm shouldBe JwsAlgorithm.Signature.ES256
+            jar.header.type shouldBe " oauth-authz-req+jwt " // that's a typo in the document ...
 
-        jar.payload.issuer shouldBe "https://bdr.de/jwk"
-        jar.payload.audience shouldBe " https://self-issued.me/v2" // that's a typo in the document ...
-        jar.payload.clientId shouldBe "https://bdr.de"
-        jar.payload.nonce shouldBe "n-0S6_WzA2Mj"
-        jar.payload.state shouldBe "af0ifjsldkj"
-        jar.payload.responseUrl shouldBe "https://nwr-be.de/response"
-        val pres = jar.payload.presentationDefinition.shouldNotBeNull()
-        pres.id.shouldNotBeNull()
-        val inputdesc = pres.inputDescriptors.first()
-        inputdesc.purpose shouldBe "Request presentation holding Power of Representation attestation"
-        val field = inputdesc.constraints!!.fields!!.first { it.path == listOf("$.vct") }
-        field.filter!!.pattern shouldBe "urn:eu.europa.ec.eudi:por:1"
-    }
+            jar.payload.issuer shouldBe "https://bdr.de/jwk"
+            jar.payload.audience shouldBe " https://self-issued.me/v2" // that's a typo in the document ...
+            jar.payload.clientId shouldBe "https://bdr.de"
+            jar.payload.nonce shouldBe "n-0S6_WzA2Mj"
+            jar.payload.state shouldBe "af0ifjsldkj"
+            jar.payload.responseUrl shouldBe "https://nwr-be.de/response"
+            val pres = jar.payload.presentationDefinition.shouldNotBeNull()
+            pres.id.shouldNotBeNull()
+            val inputdesc = pres.inputDescriptors.first()
+            inputdesc.purpose shouldBe "Request presentation holding Power of Representation attestation"
+            val field = inputdesc.constraints!!.fields!!.first { it.path == listOf("$.vct") }
+            field.filter!!.pattern shouldBe "urn:eu.europa.ec.eudi:por:1"
+        }
 
-    "parse SD-JWT from document" {
-        val input = """
+        "parse SD-JWT from document" {
+            val input = """
             eyJhbGciOiJFUzI1NiIsInR5cCI6IiB2YytzZC1qd3QgIn0
             .eyJfc2QiOlsiRnZZUTBXcDV6RFgybnlIOEtxWExsQ3lrM3kxQ2tEZ2ozREpyRnNpdFNBOCIsImM4SGN4SHl1OFRTMTZkTkdTc3J0MjFkOEx
             3aDJ2eTE4TDJqUnBKc0RTUlkiLCJDN1lNQ3lnZ0xtdFB2YUFOcmxjX3daQThSdUFhV3FWR0JMS1BESXp3QUVBIiwidi0ybU94eUc0bUthM3R
@@ -280,18 +269,19 @@ val OpenId4VpInteropTest by testSuite {
             ~WyJlbHVWNU9nM2dTTklJOEVZbnN4QV9BIiwgImZhbWlseV9uYW1lIiwgIkRvZSJd~
         """.trimIndent()
 
-        val sdJwt = SdJwtSigned.parseCatching(input).getOrThrow().also {
-            it.keyBindingJws.shouldBeNull()
-            it.getPayloadAsVerifiableCredentialSdJwt().getOrThrow().also {
-                it.issuer shouldBe "https://rvig.nl/jwk"
-                it.verifiableCredentialType shouldBe "urn:eu.europa.ec.eudi:pid:1"
-                it.selectiveDisclosureAlgorithm shouldBe SdJwtConstants.SHA_256
+            val sdJwt = SdJwtSigned.parseCatching(input).getOrThrow().apply {
+                keyBindingJws.shouldBeNull()
+                getPayloadAsVerifiableCredentialSdJwt().getOrThrow().apply {
+                    issuer shouldBe "https://rvig.nl/jwk"
+                    verifiableCredentialType shouldBe "urn:eu.europa.ec.eudi:pid:1"
+                    selectiveDisclosureAlgorithm shouldBe SdJwtConstants.SHA_256
+                }
             }
-        }
 
-        SdJwtDecoded(sdJwt).reconstructedJsonObject.shouldNotBeNull().apply {
-            this["given_name"]!!.jsonPrimitive.content shouldBe "John"
-            this["family_name"]!!.jsonPrimitive.content shouldBe "Doe"
+            SdJwtDecoded(sdJwt).reconstructedJsonObject.shouldNotBeNull().apply {
+                this["given_name"]!!.jsonPrimitive.content shouldBe "John"
+                this["family_name"]!!.jsonPrimitive.content shouldBe "Doe"
+            }
         }
     }
 }

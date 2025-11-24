@@ -1,14 +1,21 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
+import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
+import at.asitplus.openid.dcql.DCQLClaimsPathPointer
+import at.asitplus.openid.dcql.DCQLClaimsQueryList
+import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
+import at.asitplus.openid.dcql.DCQLCredentialQueryList
+import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
+import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
+import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.minus
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
-import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
-import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
-import at.asitplus.wallet.lib.data.CredentialPresentationRequest.PresentationExchangeRequest
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import com.benasher44.uuid.uuid4
@@ -20,8 +27,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
-
-val AgentComplexSdJwtTest by testSuite {
+val AgentComplexSdJwtDcqlTest by testSuite {
 
     withFixtureGenerator {
         object {
@@ -51,16 +57,16 @@ val AgentComplexSdJwtTest by testSuite {
                 nonsenseClaim()
             ).apply { issueAndStoreCredential(it.holder, it.issuer, this, it.holderKeyMaterial) }
 
-            val presentationRequest = PresentationExchangeRequest.forAttributeNames(
-                "$['$CLAIM_ADDRESS']['$CLAIM_ADDRESS_REGION']",
-                "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
+            val dcqlQuery = buildDCQLQuery(
+                DCQLJsonClaimsQuery(
+                    path = DCQLClaimsPathPointer(CLAIM_ADDRESS) + CLAIM_ADDRESS_REGION,
+                ),
+                DCQLJsonClaimsQuery(
+                    path = DCQLClaimsPathPointer(CLAIM_ADDRESS) + CLAIM_ADDRESS_COUNTRY,
+                ),
             )
 
-            val vp = it.holder.createDefaultPresentation(
-                request = PresentationRequestParameters(nonce = it.challenge, audience = it.verifierId),
-                credentialPresentationRequest = presentationRequest
-            ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
-                .presentationResults.firstOrNull()
+            val vp = createPresentation(it.holder, it.challenge, dcqlQuery, it.verifierId)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
             it.verifier.verifyPresentationSdJwt(vp.sdJwt, it.challenge)
@@ -84,21 +90,22 @@ val AgentComplexSdJwtTest by testSuite {
                 nonsenseClaim()
             ).apply { issueAndStoreCredential(it.holder, it.issuer, this, it.holderKeyMaterial) }
 
-            val presentationRequest = PresentationExchangeRequest.forAttributeNames(
-                "$['$CLAIM_ADDRESS']['$CLAIM_ADDRESS_REGION']",
-                "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
+            val dcqlQuery = buildDCQLQuery(
+                DCQLJsonClaimsQuery(
+                    path = DCQLClaimsPathPointer(CLAIM_ADDRESS) + CLAIM_ADDRESS_REGION,
+                ),
+                DCQLJsonClaimsQuery(
+                    path = DCQLClaimsPathPointer(CLAIM_ADDRESS) + CLAIM_ADDRESS_COUNTRY,
+                ),
             )
 
-            val vp = it.holder.createDefaultPresentation(
-                request = PresentationRequestParameters(nonce = it.challenge, audience = it.verifierId),
-                credentialPresentationRequest = presentationRequest
-            ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
-                .presentationResults.firstOrNull()
+            val vp = createPresentation(it.holder, it.challenge, dcqlQuery, it.verifierId)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
             it.verifier.verifyPresentationSdJwt(vp.sdJwt, it.challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     disclosures.size shouldBe 2 // for region, country
+
                     reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
                         ?.jsonPrimitive?.content shouldBe "Vienna"
                     reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
@@ -112,22 +119,22 @@ val AgentComplexSdJwtTest by testSuite {
                     CLAIM_ADDRESS,
                     listOf(
                         ClaimToBeIssued(CLAIM_ADDRESS_REGION, "Vienna"),
-                        ClaimToBeIssued(CLAIM_ADDRESS_COUNTRY, "AT"),
+                        ClaimToBeIssued(CLAIM_ADDRESS_COUNTRY, "AT")
                     ),
                 ),
                 nonsenseClaim()
             ).apply { issueAndStoreCredential(it.holder, it.issuer, this, it.holderKeyMaterial) }
 
-            val presentationRequest = PresentationExchangeRequest.forAttributeNames(
-                "$['$CLAIM_ADDRESS']['$CLAIM_ADDRESS_REGION']",
-                "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
+            val dcqlQuery = buildDCQLQuery(
+                DCQLJsonClaimsQuery(
+                    path = DCQLClaimsPathPointer(CLAIM_ADDRESS) + CLAIM_ADDRESS_REGION,
+                ),
+                DCQLJsonClaimsQuery(
+                    path = DCQLClaimsPathPointer(CLAIM_ADDRESS) + CLAIM_ADDRESS_COUNTRY,
+                ),
             )
 
-            val vp = it.holder.createDefaultPresentation(
-                request = PresentationRequestParameters(nonce = it.challenge, audience = it.verifierId),
-                credentialPresentationRequest = presentationRequest
-            ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
-                .presentationResults.firstOrNull()
+            val vp = createPresentation(it.holder, it.challenge, dcqlQuery, it.verifierId)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
             it.verifier.verifyPresentationSdJwt(vp.sdJwt, it.challenge)
@@ -140,7 +147,7 @@ val AgentComplexSdJwtTest by testSuite {
                 }
         }
 
-        "with claims in address selectively disclosable, getting all inner disclosures" {
+        "with claims in address recursively selectively disclosable, getting inner disclosures" {
             listOf(
                 ClaimToBeIssued(
                     CLAIM_ADDRESS,
@@ -152,13 +159,9 @@ val AgentComplexSdJwtTest by testSuite {
                 nonsenseClaim()
             ).apply { issueAndStoreCredential(it.holder, it.issuer, this, it.holderKeyMaterial) }
 
-            val presentationRequest = PresentationExchangeRequest.forAttributeNames("$.$CLAIM_ADDRESS")
+            val dcqlQuery = buildDCQLQuery(DCQLJsonClaimsQuery(path = DCQLClaimsPathPointer(CLAIM_ADDRESS)))
 
-            val vp = it.holder.createDefaultPresentation(
-                request = PresentationRequestParameters(nonce = it.challenge, audience = it.verifierId),
-                credentialPresentationRequest = presentationRequest
-            ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
-                .presentationResults.firstOrNull()
+            val vp = createPresentation(it.holder, it.challenge, dcqlQuery, it.verifierId)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
             it.verifier.verifyPresentationSdJwt(vp.sdJwt, it.challenge)
@@ -178,16 +181,16 @@ val AgentComplexSdJwtTest by testSuite {
                 nonsenseClaim()
             ).apply { issueAndStoreCredential(it.holder, it.issuer, this, it.holderKeyMaterial) }
 
-            val presentationRequest = PresentationExchangeRequest.forAttributeNames(
-                "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_REGION",
-                "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
+            val dcqlQuery = buildDCQLQuery(
+                DCQLJsonClaimsQuery(
+                    path = DCQLClaimsPathPointer(CLAIM_ADDRESS) + CLAIM_ADDRESS_REGION,
+                ),
+                DCQLJsonClaimsQuery(
+                    path = DCQLClaimsPathPointer(CLAIM_ADDRESS) + CLAIM_ADDRESS_COUNTRY,
+                ),
             )
 
-            val vp = it.holder.createDefaultPresentation(
-                request = PresentationRequestParameters(nonce = it.challenge, audience = it.verifierId),
-                credentialPresentationRequest = presentationRequest
-            ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
-                .presentationResults.firstOrNull()
+            val vp = createPresentation(it.holder, it.challenge, dcqlQuery, it.verifierId)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
             it.verifier.verifyPresentationSdJwt(vp.sdJwt, it.challenge)
@@ -202,31 +205,27 @@ val AgentComplexSdJwtTest by testSuite {
 
         "simple walk-through success" {
             listOf(
-                ClaimToBeIssued(CLAIM_GIVEN_NAME, "Susanne"),
-                ClaimToBeIssued(CLAIM_FAMILY_NAME, "Meier"),
+                ClaimToBeIssued(AtomicAttribute2023.CLAIM_GIVEN_NAME, "Susanne"),
+                ClaimToBeIssued(AtomicAttribute2023.CLAIM_FAMILY_NAME, "Meier"),
                 ClaimToBeIssued(CLAIM_ALWAYS_VISIBLE, "anything", selectivelyDisclosable = false),
                 nonsenseClaim()
             ).apply { issueAndStoreCredential(it.holder, it.issuer, this, it.holderKeyMaterial) }
 
-            val presentationRequest = PresentationExchangeRequest.forAttributeNames(
-                "$['$CLAIM_GIVEN_NAME']",
-                "$['$CLAIM_FAMILY_NAME']",
-                "$.$CLAIM_ALWAYS_VISIBLE"
+            val dcqlQuery = buildDCQLQuery(
+                DCQLJsonClaimsQuery(path = DCQLClaimsPathPointer(AtomicAttribute2023.CLAIM_GIVEN_NAME)),
+                DCQLJsonClaimsQuery(path = DCQLClaimsPathPointer(AtomicAttribute2023.CLAIM_FAMILY_NAME)),
+                DCQLJsonClaimsQuery(path = DCQLClaimsPathPointer(CLAIM_ALWAYS_VISIBLE)),
             )
 
-            val vp = it.holder.createDefaultPresentation(
-                request = PresentationRequestParameters(nonce = it.challenge, audience = it.verifierId),
-                credentialPresentationRequest = presentationRequest
-            ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
-                .presentationResults.firstOrNull()
+            val vp = createPresentation(it.holder, it.challenge, dcqlQuery, it.verifierId)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
             it.verifier.verifyPresentationSdJwt(vp.sdJwt, it.challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     disclosures.size shouldBe 2 // claim_given_name, claim_family_name
-                    reconstructedJsonObject[CLAIM_GIVEN_NAME]
+                    reconstructedJsonObject[AtomicAttribute2023.CLAIM_GIVEN_NAME]
                         ?.jsonPrimitive?.content shouldBe "Susanne"
-                    reconstructedJsonObject[CLAIM_FAMILY_NAME]
+                    reconstructedJsonObject[AtomicAttribute2023.CLAIM_FAMILY_NAME]
                         ?.jsonPrimitive?.content shouldBe "Meier"
                     reconstructedJsonObject[CLAIM_ALWAYS_VISIBLE]
                         ?.jsonPrimitive?.content shouldBe "anything"
@@ -257,6 +256,28 @@ private suspend fun issueAndStoreCredential(
     )
 }
 
+private fun buildDCQLQuery(vararg claimsQueries: DCQLJsonClaimsQuery) = DCQLQuery(
+    credentials = DCQLCredentialQueryList(
+        DCQLSdJwtCredentialQuery(
+            id = DCQLCredentialQueryIdentifier(uuid4().toString()),
+            format = CredentialFormatEnum.DC_SD_JWT,
+            claims = DCQLClaimsQueryList(claimsQueries.toList().toNonEmptyList()),
+            meta = DCQLSdJwtCredentialMetadataAndValidityConstraints(listOf(AtomicAttribute2023.sdJwtType))
+        )
+    )
+)
+
+private suspend fun createPresentation(
+    holder: Holder,
+    challenge: String,
+    dcqlQuery: DCQLQuery,
+    verifierId: String,
+) = holder.createDefaultPresentation(
+    request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
+    credentialPresentationRequest = DCQLRequest(dcqlQuery),
+).getOrThrow().let {
+    it as PresentationResponseParameters.DCQLParameters
+}.verifiablePresentations.values.firstOrNull()
 
 private const val CLAIM_ALWAYS_VISIBLE = "alwaysVisible"
 private const val CLAIM_ADDRESS = "address"

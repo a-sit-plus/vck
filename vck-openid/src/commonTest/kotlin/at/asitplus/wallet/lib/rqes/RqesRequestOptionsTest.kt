@@ -8,29 +8,20 @@ import at.asitplus.openid.QesAuthorization
 import at.asitplus.openid.TransactionData
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.eupid.EuPidScheme.SdJwtAttributes.FAMILY_NAME
 import at.asitplus.wallet.eupid.EuPidScheme.SdJwtAttributes.GIVEN_NAME
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.RandomSource
-import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.SdJwtConstants
-import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.toTransactionData
 import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.RequestOptions
 import at.asitplus.wallet.lib.openid.RequestOptionsCredential
-import at.asitplus.wallet.lib.rqes.helper.DummyCredentialDataProvider
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.TestConfig
-import de.infix.testBalloon.framework.core.aroundEach
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -38,45 +29,32 @@ import io.kotest.matchers.shouldNotBe
 
 val RqesRequestOptionsTest by testSuite {
 
-    lateinit var holderKeyMaterial: KeyMaterial
-    lateinit var holderAgent: Holder
-    lateinit var verifierOid4Vp: OpenId4VpVerifier
+    withFixtureGenerator {
+        object {
+            val verifierOid4Vp: OpenId4VpVerifier = OpenId4VpVerifier(
+                keyMaterial = EphemeralKeyWithoutCert(),
+                clientIdScheme = ClientIdScheme.RedirectUri("https://example.com/rp/${uuid4()}"),
+            )
+        }
+    } - {
 
-    testConfig = TestConfig.aroundEach {
-        holderKeyMaterial = EphemeralKeyWithoutCert()
-        holderAgent = HolderAgent(holderKeyMaterial)
-
-        holderAgent.storeCredential(
-            IssuerAgent(
-                identifier = "https://issuer.example.com/".toUri(),
-                randomSource = RandomSource.Default
-            ).issueCredential(
-                DummyCredentialDataProvider.getCredential(holderKeyMaterial.publicKey, EuPidScheme, SD_JWT)
-                    .getOrThrow()
-            ).getOrThrow().toStoreCredentialInput()
-        )
-        verifierOid4Vp = OpenId4VpVerifier(
-            keyMaterial = EphemeralKeyWithoutCert(),
-            clientIdScheme = ClientIdScheme.RedirectUri("https://example.com/rp/${uuid4()}"),
-        )
-        it()
-    }
-
-    "Authentication request contains transactionData" {
-        val requestOptions = buildRequestOptions(transactionDataHashAlgorithms = setOf(SdJwtConstants.SHA_256))
-        verifierOid4Vp.createAuthnRequest(requestOptions = requestOptions).apply {
-            val inputDescriptor = presentationDefinition.shouldNotBeNull().inputDescriptors.first()
-            transactionData.shouldNotBeNull().first().toTransactionData().apply {
-                transactionDataHashAlgorithms shouldNotBe null
-                credentialIds.first() shouldBe inputDescriptor.id
+        "Authentication request contains transactionData" {
+            val requestOptions = buildRequestOptions(transactionDataHashAlgorithms = setOf(SdJwtConstants.SHA_256))
+            it.verifierOid4Vp.createAuthnRequest(requestOptions = requestOptions).apply {
+                val inputDescriptor = presentationDefinition.shouldNotBeNull().inputDescriptors.first()
+                transactionData.shouldNotBeNull().first().toTransactionData().apply {
+                    transactionDataHashAlgorithms shouldNotBe null
+                    credentialIds.first() shouldBe inputDescriptor.id
+                }
             }
         }
     }
 }
+
 internal fun buildRequestOptions(
     responseMode: OpenIdConstants.ResponseMode = OpenIdConstants.ResponseMode.Fragment,
     transactionDataHashAlgorithms: Set<String>?,
-): RequestOptions = uuid4().toString().let{ credentialId ->
+): RequestOptions = uuid4().toString().let { credentialId ->
     return RequestOptions(
         responseMode = responseMode,
         responseUrl = if (responseMode == OpenIdConstants.ResponseMode.DirectPost)

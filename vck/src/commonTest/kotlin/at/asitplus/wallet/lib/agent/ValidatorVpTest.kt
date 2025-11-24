@@ -1,10 +1,9 @@
-@file:Suppress("unused")
-
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -21,11 +20,9 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
-import at.asitplus.wallet.lib.jws.SignJwtFun
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.TestConfig
-import de.infix.testBalloon.framework.core.aroundEach
 import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.engine.runBlocking
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSize
@@ -46,258 +43,249 @@ val ValidatorVpTest by testSuite {
         ),
     )
 
-    lateinit var validator: ValidatorVcJws
-    lateinit var issuer: Issuer
-    lateinit var statusListIssuer: StatusListIssuer
-    lateinit var issuerCredentialStore: IssuerCredentialStore
-    lateinit var holder: HolderAgent
-    lateinit var verifiablePresentationFactory: VerifiablePresentationFactory
-    lateinit var holderCredentialStore: SubjectCredentialStore
-    lateinit var holderSignVp: SignJwtFun<VerifiablePresentationJws>
-    lateinit var holderKeyMaterial: KeyMaterial
-    lateinit var verifierId: String
-    lateinit var verifier: Verifier
-    lateinit var challenge: String
-
-    testConfig = TestConfig.aroundEach {
-        validator = ValidatorVcJws(
-            validator = Validator(
-                tokenStatusResolver = TokenStatusResolverImpl(
-                    resolveStatusListToken = {
-                        if (Random.nextBoolean()) StatusListJwt(
-                            statusListIssuer.issueStatusListJwt(),
-                            resolvedAt = Clock.System.now()
-                        ) else {
-                            StatusListCwt(
-                                statusListIssuer.issueStatusListCwt(),
+    withFixtureGenerator {
+        object {
+            val issuerCredentialStore = InMemoryIssuerCredentialStore()
+            val issuer = IssuerAgent(
+                issuerCredentialStore = issuerCredentialStore,
+                identifier = "https://issuer.example.com/".toUri(),
+                randomSource = RandomSource.Default
+            )
+            val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
+            val validator = ValidatorVcJws(
+                validator = Validator(
+                    tokenStatusResolver = TokenStatusResolverImpl(
+                        resolveStatusListToken = {
+                            if (Random.nextBoolean()) StatusListJwt(
+                                statusListIssuer.issueStatusListJwt(),
                                 resolvedAt = Clock.System.now()
-                            )
-                        }
-                    },
+                            ) else {
+                                StatusListCwt(
+                                    statusListIssuer.issueStatusListCwt(),
+                                    resolvedAt = Clock.System.now()
+                                )
+                            }
+                        },
+                    )
                 )
             )
-        )
-        issuerCredentialStore = InMemoryIssuerCredentialStore()
-        issuer = IssuerAgent(
-            issuerCredentialStore = issuerCredentialStore,
-            identifier = "https://issuer.example.com/".toUri(),
-            randomSource = RandomSource.Default
-        )
-        statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
-        holderCredentialStore = InMemorySubjectCredentialStore()
-        holderKeyMaterial = EphemeralKeyWithoutCert()
-        holder = HolderAgent(
-            holderKeyMaterial,
-            holderCredentialStore,
-            validatorVcJws = validator,
-        )
-        verifiablePresentationFactory = VerifiablePresentationFactory(holderKeyMaterial)
-        holderSignVp = SignJwt(holderKeyMaterial, JwsHeaderCertOrJwk())
-        verifierId = "urn:${uuid4()}"
-        verifier = VerifierAgent(
-            identifier = verifierId,
-            validatorVcJws = validator
-        )
-        challenge = uuid4().toString()
-
-        holder.storeCredential(
-            issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    holderKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    PLAIN_JWT,
-                ).getOrThrow()
-            ).getOrThrow().toStoreCredentialInput()
-        ).getOrThrow()
-        it()
-    }
-
-    "correct challenge in VP leads to Success" {
-        val presentationParameters = holder.createPresentation(
-            request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
-            credentialPresentation = singularPresentationDefinition,
-        ).getOrNull().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
-
-        val vp = presentationParameters.presentationResults.first()
-            .shouldBeInstanceOf<CreatePresentationResult.Signed>()
-        verifier.verifyPresentationVcJwt(vp.jwsSigned, challenge)
-            .shouldBeInstanceOf<VerifyPresentationResult.Success>()
-    }
-
-    "Presentation of VC from different holder is detected" {
-        val otherHolderKeyMaterial = EphemeralKeyWithoutCert()
-        val otherHolder = HolderAgent(otherHolderKeyMaterial)
-        otherHolder.storeCredential(
-            issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    otherHolderKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    PLAIN_JWT,
-                ).getOrThrow()
-            ).getOrThrow().toStoreCredentialInput()
-        ).getOrThrow()
-        val holderVc = otherHolder.getCredentials()
-            .shouldNotBeNull()
-            .shouldBeSingleton()
-            .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
-        val vp = verifiablePresentationFactory.createVcPresentation(
-            holderVc,
-            PresentationRequestParameters(nonce = challenge, audience = verifierId)
-        ).shouldBeInstanceOf<CreatePresentationResult.Signed>()
-
-        verifier.verifyPresentationVcJwt(vp.jwsSigned, challenge).also {
-            it.shouldBeInstanceOf<VerifyPresentationResult.Success>()
-            it.vp.freshVerifiableCredentials.shouldBeEmpty()
-            it.vp.notVerifiablyFreshVerifiableCredentials.shouldBeEmpty()
-            it.vp.invalidVerifiableCredentials.shouldBe(holderVc.map { it.vcSerialized })
+            val holderCredentialStore = InMemorySubjectCredentialStore()
+            val holderKeyMaterial = EphemeralKeyWithoutCert()
+            val holder = HolderAgent(
+                holderKeyMaterial,
+                holderCredentialStore,
+                validatorVcJws = validator,
+            ).also {
+                runBlocking {
+                    it.storeCredential(
+                        issuer.issueCredential(
+                            DummyCredentialDataProvider.getCredential(
+                                holderKeyMaterial.publicKey,
+                                ConstantIndex.AtomicAttribute2023,
+                                PLAIN_JWT,
+                            ).getOrThrow()
+                        ).getOrThrow().toStoreCredentialInput()
+                    ).getOrThrow()
+                }
+            }
+            val verifiablePresentationFactory = VerifiablePresentationFactory(holderKeyMaterial)
+            val holderSignVp = SignJwt<VerifiablePresentationJws>(holderKeyMaterial, JwsHeaderCertOrJwk())
+            val verifierId = "urn:${uuid4()}"
+            val verifier = VerifierAgent(
+                identifier = verifierId,
+                validatorVcJws = validator
+            )
+            val challenge = uuid4().toString()
         }
-    }
+    } - {
 
-    "wrong challenge in VP leads to error" {
-        val presentationParameters = holder.createPresentation(
-            request = PresentationRequestParameters(nonce = "challenge", audience = verifierId),
-            credentialPresentation = singularPresentationDefinition,
-        ).getOrNull().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
+        "correct challenge in VP leads to Success" {
+            val presentationParameters = it.holder.createPresentation(
+                request = PresentationRequestParameters(nonce = it.challenge, audience = it.verifierId),
+                credentialPresentation = singularPresentationDefinition,
+            ).getOrNull().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
 
-        val vp = presentationParameters.presentationResults.firstOrNull()
-            .shouldBeInstanceOf<CreatePresentationResult.Signed>()
-        verifier.verifyPresentationVcJwt(vp.jwsSigned, challenge)
-            .shouldBeInstanceOf<VerifyPresentationResult.ValidationError>()
-    }
-
-    "wrong audience in VP leads to error" {
-        val presentationParameters = holder.createPresentation(
-            request = PresentationRequestParameters(nonce = challenge, audience = "keyId"),
-            credentialPresentation = singularPresentationDefinition,
-        ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
-
-        val vp = presentationParameters.presentationResults.first()
-            .shouldBeInstanceOf<CreatePresentationResult.Signed>()
-        verifier.verifyPresentationVcJwt(vp.jwsSigned, challenge)
-            .shouldBeInstanceOf<VerifyPresentationResult.ValidationError>()
-    }
-
-    "valid parsed presentation should separate revoked and valid credentials" {
-        val presentationResults = holder.createPresentation(
-            request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
-            credentialPresentation = singularPresentationDefinition,
-        ).getOrNull().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
-
-        val vp = presentationResults.presentationResults.first()
-            .shouldBeInstanceOf<CreatePresentationResult.Signed>()
-        holderCredentialStore.getCredentials().getOrThrow()
-            .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
-            .map { it.vc }
-            .forEach {
-                issuerCredentialStore.setStatus(
-                    timePeriod = FixedTimePeriodProvider.timePeriod,
-                    index = it.vc.credentialStatus!!.statusList.index,
-                    status = TokenStatus.Invalid,
-                ) shouldBe true
-            }
-
-        verifier.verifyPresentationVcJwt(vp.jwsSigned, challenge).also {
-            it.shouldBeInstanceOf<VerifyPresentationResult.Success>()
-            it.vp.freshVerifiableCredentials.shouldBeEmpty()
+            val vp = presentationParameters.presentationResults.first()
+                .shouldBeInstanceOf<CreatePresentationResult.Signed>()
+            it.verifier.verifyPresentationVcJwt(vp.jwsSigned, it.challenge)
+                .shouldBeInstanceOf<VerifyPresentationResult.Success>()
         }
-        holderCredentialStore.getCredentials().getOrThrow()
-            .shouldHaveSize(1)
-    }
 
-    "Manually created and presentation with jwkThumbprint is valid" {
-        val credentials = holderCredentialStore.getCredentials().getOrThrow()
-        val validCredentials = credentials
-            .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
-            .filter {
-                validator.checkRevocationStatus(it.vc) !is TokenStatusValidationResult.Invalid
+        "Presentation of VC from different holder is detected" {
+            val otherHolderKeyMaterial = EphemeralKeyWithoutCert()
+            val otherHolder = HolderAgent(otherHolderKeyMaterial)
+            otherHolder.storeCredential(
+                it.issuer.issueCredential(
+                    DummyCredentialDataProvider.getCredential(
+                        otherHolderKeyMaterial.publicKey,
+                        ConstantIndex.AtomicAttribute2023,
+                        PLAIN_JWT,
+                    ).getOrThrow()
+                ).getOrThrow().toStoreCredentialInput()
+            ).getOrThrow()
+            val holderVc = otherHolder.getCredentials()
+                .shouldNotBeNull()
+                .shouldBeSingleton()
+                .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
+            val vp = it.verifiablePresentationFactory.createVcPresentation(
+                holderVc,
+                PresentationRequestParameters(nonce = it.challenge, audience = it.verifierId)
+            ).shouldBeInstanceOf<CreatePresentationResult.Signed>()
+
+            it.verifier.verifyPresentationVcJwt(vp.jwsSigned, it.challenge).also {
+                it.shouldBeInstanceOf<VerifyPresentationResult.Success>()
+                it.vp.freshVerifiableCredentials.shouldBeEmpty()
+                it.vp.notVerifiablyFreshVerifiableCredentials.shouldBeEmpty()
+                it.vp.invalidVerifiableCredentials.shouldBe(holderVc.map { it.vcSerialized })
             }
-            .map { it.vcSerialized }
-        (validCredentials.isEmpty()) shouldBe false
+        }
 
-        val vp = VerifiablePresentation(validCredentials)
-        val vpSerialized = vp.toJws(
-            challenge = challenge,
-            issuerId = holder.keyMaterial.jsonWebKey.jwkThumbprint,
-            audienceId = verifierId,
-        )
-        val vpJws = holderSignVp(
-            JwsContentTypeConstants.JWT,
-            vpSerialized,
-            VerifiablePresentationJws.serializer()
-        ).getOrThrow()
+        "wrong challenge in VP leads to error" {
+            val presentationParameters = it.holder.createPresentation(
+                request = PresentationRequestParameters(nonce = "challenge", audience = it.verifierId),
+                credentialPresentation = singularPresentationDefinition,
+            ).getOrNull().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
 
-        verifier.verifyPresentationVcJwt(vpJws, challenge)
-            .shouldBeInstanceOf<VerifyPresentationResult.Success>()
-    }
+            val vp = presentationParameters.presentationResults.firstOrNull()
+                .shouldBeInstanceOf<CreatePresentationResult.Signed>()
+            it.verifier.verifyPresentationVcJwt(vp.jwsSigned, it.challenge)
+                .shouldBeInstanceOf<VerifyPresentationResult.ValidationError>()
+        }
 
-    "Manually created and presentation with did is valid" {
-        val credentials = holderCredentialStore.getCredentials().getOrThrow()
-        val validCredentials = credentials
-            .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
-            .filter {
-                validator.checkRevocationStatus(it.vc) !is TokenStatusValidationResult.Invalid
+        "wrong audience in VP leads to error" {
+            val presentationParameters = it.holder.createPresentation(
+                request = PresentationRequestParameters(nonce = it.challenge, audience = "keyId"),
+                credentialPresentation = singularPresentationDefinition,
+            ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
+
+            val vp = presentationParameters.presentationResults.first()
+                .shouldBeInstanceOf<CreatePresentationResult.Signed>()
+            it.verifier.verifyPresentationVcJwt(vp.jwsSigned, it.challenge)
+                .shouldBeInstanceOf<VerifyPresentationResult.ValidationError>()
+        }
+
+        "valid parsed presentation should separate revoked and valid credentials" {
+            val presentationResults = it.holder.createPresentation(
+                request = PresentationRequestParameters(nonce = it.challenge, audience = it.verifierId),
+                credentialPresentation = singularPresentationDefinition,
+            ).getOrNull().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
+
+            val vp = presentationResults.presentationResults.first()
+                .shouldBeInstanceOf<CreatePresentationResult.Signed>()
+            it.holderCredentialStore.getCredentials().getOrThrow()
+                .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
+                .map { it.vc }
+                .forEach { vcjws ->
+                    it.issuerCredentialStore.setStatus(
+                        timePeriod = FixedTimePeriodProvider.timePeriod,
+                        index = vcjws.vc.credentialStatus!!.statusList.index,
+                        status = TokenStatus.Invalid,
+                    ) shouldBe true
+                }
+
+            it.verifier.verifyPresentationVcJwt(vp.jwsSigned, it.challenge).also {
+                it.shouldBeInstanceOf<VerifyPresentationResult.Success>()
+                it.vp.freshVerifiableCredentials.shouldBeEmpty()
             }
-            .map { it.vcSerialized }
-        (validCredentials.isEmpty()) shouldBe false
+            it.holderCredentialStore.getCredentials().getOrThrow()
+                .shouldHaveSize(1)
+        }
 
-        val vp = VerifiablePresentation(validCredentials)
-        val vpSerialized = vp.toJws(
-            challenge = challenge,
-            issuerId = holder.keyMaterial.jsonWebKey.didEncoded!!,
-            audienceId = verifierId,
-        )
-        val vpJws = holderSignVp(
-            JwsContentTypeConstants.JWT,
-            vpSerialized,
-            VerifiablePresentationJws.serializer()
-        ).getOrThrow()
+        "Manually created and presentation with jwkThumbprint is valid" {
+            val credentials = it.holderCredentialStore.getCredentials().getOrThrow()
+            val validCredentials = credentials
+                .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
+                .filter { storeEntry ->
+                    it.validator.checkRevocationStatus(storeEntry.vc) !is TokenStatusValidationResult.Invalid
+                }
+                .map { it.vcSerialized }
+            (validCredentials.isEmpty()) shouldBe false
 
-        verifier.verifyPresentationVcJwt(vpJws, challenge)
-            .shouldBeInstanceOf<VerifyPresentationResult.Success>()
-    }
+            val vp = VerifiablePresentation(validCredentials)
+            val vpSerialized = vp.toJws(
+                challenge = it.challenge,
+                issuerId = it.holder.keyMaterial.jsonWebKey.jwkThumbprint,
+                audienceId = it.verifierId,
+            )
+            val vpJws = it.holderSignVp(
+                JwsContentTypeConstants.JWT,
+                vpSerialized,
+                VerifiablePresentationJws.serializer()
+            ).getOrThrow()
 
-    "Wrong jwtId in VP is not valid" {
-        val credentials = holderCredentialStore.getCredentials().getOrThrow()
-            .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
-        val vp = VerifiablePresentation(credentials.map { it.vcSerialized })
-        val vpSerialized = VerifiablePresentationJws(
-            vp = vp,
-            challenge = challenge,
-            issuer = credentials.first().vc.vc.credentialSubject.id,
-            audience = verifierId,
-            jwtId = "wrong_jwtId",
-        )
-        val vpJws = holderSignVp(
-            JwsContentTypeConstants.JWT,
-            vpSerialized,
-            VerifiablePresentationJws.serializer()
-        ).getOrThrow()
+            it.verifier.verifyPresentationVcJwt(vpJws, it.challenge)
+                .shouldBeInstanceOf<VerifyPresentationResult.Success>()
+        }
 
-        verifier.verifyPresentationVcJwt(vpJws, challenge)
-            .shouldBeInstanceOf<VerifyPresentationResult.ValidationError>()
-    }
+        "Manually created and presentation with did is valid" {
+            val credentials = it.holderCredentialStore.getCredentials().getOrThrow()
+            val validCredentials = credentials
+                .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
+                .filter { storeEntry ->
+                    it.validator.checkRevocationStatus(storeEntry.vc) !is TokenStatusValidationResult.Invalid
+                }
+                .map { it.vcSerialized }
+            (validCredentials.isEmpty()) shouldBe false
 
-    "Wrong type in VP is not valid" {
-        val credentials = holderCredentialStore.getCredentials().getOrThrow()
-            .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
-        val vp = VerifiablePresentation(
-            id = "urn:uuid:${uuid4()}",
-            type = "wrong_type",
-            verifiableCredential = credentials.map { it.vcSerialized }
-        )
+            val vp = VerifiablePresentation(validCredentials)
+            val vpSerialized = vp.toJws(
+                challenge = it.challenge,
+                issuerId = it.holder.keyMaterial.jsonWebKey.didEncoded!!,
+                audienceId = it.verifierId,
+            )
+            val vpJws = it.holderSignVp(
+                JwsContentTypeConstants.JWT,
+                vpSerialized,
+                VerifiablePresentationJws.serializer()
+            ).getOrThrow()
 
-        val vpSerialized = vp.toJws(
-            challenge = challenge,
-            issuerId = credentials.first().vc.vc.credentialSubject.id,
-            audienceId = verifierId,
-        )
-        val vpJws = holderSignVp(
-            JwsContentTypeConstants.JWT,
-            vpSerialized,
-            VerifiablePresentationJws.serializer()
-        ).getOrThrow()
+            it.verifier.verifyPresentationVcJwt(vpJws, it.challenge)
+                .shouldBeInstanceOf<VerifyPresentationResult.Success>()
+        }
 
-        verifier.verifyPresentationVcJwt(vpJws, challenge)
-            .shouldBeInstanceOf<VerifyPresentationResult.ValidationError>()
+        "Wrong jwtId in VP is not valid" {
+            val credentials = it.holderCredentialStore.getCredentials().getOrThrow()
+                .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
+            val vp = VerifiablePresentation(credentials.map { it.vcSerialized })
+            val vpSerialized = VerifiablePresentationJws(
+                vp = vp,
+                challenge = it.challenge,
+                issuer = credentials.first().vc.vc.credentialSubject.id,
+                audience = it.verifierId,
+                jwtId = "wrong_jwtId",
+            )
+            val vpJws = it.holderSignVp(
+                JwsContentTypeConstants.JWT,
+                vpSerialized,
+                VerifiablePresentationJws.serializer()
+            ).getOrThrow()
+
+            it.verifier.verifyPresentationVcJwt(vpJws, it.challenge)
+                .shouldBeInstanceOf<VerifyPresentationResult.ValidationError>()
+        }
+
+        "Wrong type in VP is not valid" {
+            val credentials = it.holderCredentialStore.getCredentials().getOrThrow()
+                .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
+            val vp = VerifiablePresentation(
+                id = "urn:uuid:${uuid4()}",
+                type = "wrong_type",
+                verifiableCredential = credentials.map { it.vcSerialized }
+            )
+
+            val vpSerialized = vp.toJws(
+                challenge = it.challenge,
+                issuerId = credentials.first().vc.vc.credentialSubject.id,
+                audienceId = it.verifierId,
+            )
+            val vpJws = it.holderSignVp(
+                JwsContentTypeConstants.JWT,
+                vpSerialized,
+                VerifiablePresentationJws.serializer()
+            ).getOrThrow()
+
+            it.verifier.verifyPresentationVcJwt(vpJws, it.challenge)
+                .shouldBeInstanceOf<VerifyPresentationResult.ValidationError>()
+        }
     }
 }

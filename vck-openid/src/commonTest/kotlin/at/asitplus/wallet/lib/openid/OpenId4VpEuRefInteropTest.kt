@@ -14,13 +14,12 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -33,14 +32,13 @@ import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.TestConfig
-import de.infix.testBalloon.framework.core.aroundEach
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlinx.coroutines.runBlocking
 import kotlin.time.Instant
 
 /**
@@ -49,47 +47,46 @@ import kotlin.time.Instant
  */
 @Suppress("DEPRECATION")
 val OpenId4VpEuRefInteropTest by testSuite {
-    lateinit var holderKeyMaterial: KeyMaterial
-    lateinit var holderAgent: Holder
-    lateinit var holderOid4vp: OpenId4VpHolder
-    lateinit var verifierKeyMaterial: KeyMaterial
-    lateinit var verifierOid4vp: OpenId4VpVerifier
+    withFixtureGenerator {
 
-    testConfig = TestConfig.aroundEach {
-        holderKeyMaterial = EphemeralKeyWithoutCert()
-        holderAgent = HolderAgent(holderKeyMaterial)
-        val issuerAgent = IssuerAgent(
-            identifier = "https://issuer.example.com/".toUri(),
-            randomSource = RandomSource.Default
-        )
-        holderAgent.storeCredential(
-            issuerAgent.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    holderKeyMaterial.publicKey,
-                    EuPidScheme,
-                    ConstantIndex.CredentialRepresentation.SD_JWT,
-                ).getOrThrow()
-            ).getOrThrow().toStoreCredentialInput()
-        )
-        holderAgent.storeCredential(
-            issuerAgent.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    holderKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.SD_JWT,
-                ).getOrThrow()
-            ).getOrThrow().toStoreCredentialInput()
-        )
-        holderOid4vp = OpenId4VpHolder(holderKeyMaterial, holderAgent, randomSource = RandomSource.Default)
-        it()
-    }
+        object {
+            val holderKeyMaterial = EphemeralKeyWithoutCert()
+            val holderAgent = HolderAgent(holderKeyMaterial).also {
+                runBlocking {
+                    val issuerAgent = IssuerAgent(
+                        identifier = "https://issuer.example.com/".toUri(),
+                        randomSource = RandomSource.Default
+                    )
+                    it.storeCredential(
+                        issuerAgent.issueCredential(
+                            DummyCredentialDataProvider.getCredential(
+                                holderKeyMaterial.publicKey,
+                                EuPidScheme,
+                                ConstantIndex.CredentialRepresentation.SD_JWT,
+                            ).getOrThrow()
+                        ).getOrThrow().toStoreCredentialInput()
+                    )
+                    it.storeCredential(
+                        issuerAgent.issueCredential(
+                            DummyCredentialDataProvider.getCredential(
+                                holderKeyMaterial.publicKey,
+                                ConstantIndex.AtomicAttribute2023,
+                                ConstantIndex.CredentialRepresentation.SD_JWT,
+                            ).getOrThrow()
+                        ).getOrThrow().toStoreCredentialInput()
+                    )
+                }
+            }
+            var holderOid4vp = OpenId4VpHolder(holderKeyMaterial, holderAgent, randomSource = RandomSource.Default)
+        }
+    } - {
 
-    "EUDI from URL 2024-05-17" {
-        val url = """
+        "EUDI from URL 2024-05-17" {
+            val url = """
             eudi-openid4vp://verifier-backend.eudiw.dev?client_id=verifier-backend.eudiw.dev&request_uri=https%3A%2F%2Fverifier-backend.eudiw.dev%2Fwallet%2Frequest.jwt%2FVu3g2FXDeqday-wS0Xmty0bYzzq3MeVGrPSGTdk3Y60tWNLHkr_bg9WJMK3xktNsqWpEXPsDgBw5g3r80MQyTw
         """.trimIndent().replace("\n", "")
 
-        val requestObject = """
+            val requestObject = """
         eyJ4NWMiOlsiTUlJREtqQ0NBckNnQXdJQkFnSVVmeTl1NlNMdGdOdWY5UFhZYmgvUURxdVh6NTB3Q2dZSUtvWkl6ajBFQXdJd1hERWVNQndHQTFV
         RUF3d1ZVRWxFSUVsemMzVmxjaUJEUVNBdElGVlVJREF4TVMwd0t3WURWUVFLRENSRlZVUkpJRmRoYkd4bGRDQlNaV1psY21WdVkyVWdTVzF3YkdW
         dFpXNTBZWFJwYjI0eEN6QUpCZ05WQkFZVEFsVlVNQjRYRFRJME1ESXlOakF5TXpZek0xb1hEVEkyTURJeU5UQXlNell6TWxvd2FURWRNQnNHQTFV
@@ -163,7 +160,7 @@ val OpenId4VpEuRefInteropTest by testSuite {
         jwCtloSDgk1LwO-Fwd7HYBaDbZtkbpFkWhSU7Vw
         """.trimIndent()
 
-        val jwkset = """
+            val jwkset = """
         {
             "keys": [
                 {
@@ -179,23 +176,23 @@ val OpenId4VpEuRefInteropTest by testSuite {
         }
         """.trimIndent()
 
-        val jwksUrl =
-            "https://verifier-backend.eudiw.dev/wallet/jarm/Vu3g2FXDeqday-wS0Xmty0bYzzq3MeVGrPSGTdk3Y60tWNLHkr_bg9WJMK3xktNsqWpEXPsDgBw5g3r80MQyTw/jwks.json"
-        val requestUrl =
-            "https://verifier-backend.eudiw.dev/wallet/request.jwt/Vu3g2FXDeqday-wS0Xmty0bYzzq3MeVGrPSGTdk3Y60tWNLHkr_bg9WJMK3xktNsqWpEXPsDgBw5g3r80MQyTw"
-        holderOid4vp = OpenId4VpHolder(
-            holder = holderAgent,
-            remoteResourceRetriever = {
-                if (it.url == jwksUrl) jwkset else if (it.url == requestUrl) requestObject else null
-            },
-            randomSource = RandomSource.Default,
-        )
+            val jwksUrl =
+                "https://verifier-backend.eudiw.dev/wallet/jarm/Vu3g2FXDeqday-wS0Xmty0bYzzq3MeVGrPSGTdk3Y60tWNLHkr_bg9WJMK3xktNsqWpEXPsDgBw5g3r80MQyTw/jwks.json"
+            val requestUrl =
+                "https://verifier-backend.eudiw.dev/wallet/request.jwt/Vu3g2FXDeqday-wS0Xmty0bYzzq3MeVGrPSGTdk3Y60tWNLHkr_bg9WJMK3xktNsqWpEXPsDgBw5g3r80MQyTw"
+            it.holderOid4vp = OpenId4VpHolder(
+                holder = it.holderAgent,
+                remoteResourceRetriever = {
+                    if (it.url == jwksUrl) jwkset else if (it.url == requestUrl) requestObject else null
+                },
+                randomSource = RandomSource.Default,
+            )
 
-        holderOid4vp.startAuthorizationResponsePreparation(url).getOrThrow()
-    }
+            it.holderOid4vp.startAuthorizationResponsePreparation(url).getOrThrow()
+        }
 
-    "EUDI AuthnRequest can be parsed" {
-        val input = """
+        "EUDI AuthnRequest can be parsed" {
+            val input = """
             {
             "response_uri": "https://verifier-backend.eudiw.dev/wallet/direct_post",
             "client_id_scheme": "x509_san_dns",
@@ -259,129 +256,130 @@ val OpenId4VpEuRefInteropTest by testSuite {
         }
         """.trimIndent()
 
-        val parsed = vckJsonSerializer.decodeFromString<AuthenticationRequestParameters>(input)
-        parsed.shouldNotBeNull()
+            val parsed = vckJsonSerializer.decodeFromString<AuthenticationRequestParameters>(input)
+            parsed.shouldNotBeNull()
 
-        parsed.responseUrl shouldBe "https://verifier-backend.eudiw.dev/wallet/direct_post"
-        parsed.responseType shouldBe "vp_token"
-        parsed.nonce shouldBe "nonce"
-        parsed.clientId shouldBe "verifier-backend.eudiw.dev"
-        parsed.clientIdWithoutPrefix shouldBe "verifier-backend.eudiw.dev"
-        parsed.responseMode shouldBe OpenIdConstants.ResponseMode.DirectPostJwt
-        parsed.audience shouldBe "https://self-issued.me/v2"
-        parsed.scope shouldBe ""
-        val pd = parsed.presentationDefinition
-        pd.shouldNotBeNull()
-        pd.id shouldBe "32f54163-7166-48f1-93d8-ff217bdb0653"
-        val id = pd.inputDescriptors.firstOrNull()
-        id.shouldNotBeNull()
-        id.id shouldBe "eudi_pid"
-        id.name shouldBe "EUDI PID"
-        id.purpose shouldBe "We need to verify your identity"
-        val fields = id.constraints?.fields
-        fields.shouldNotBeNull()
-        fields.filter { it.path.contains("$.mdoc.doctype") }.shouldBeSingleton()
-        fields.filter { it.path.contains("$.mdoc.namespace") }.shouldBeSingleton()
-        fields.filter { it.path.contains("$.mdoc.given_name") }.shouldBeSingleton()
-        parsed.state shouldBe "xgagB1vsIrWhMLixoJTCVZZvOHsZ8QrulEFxc0bjJdMRyzqO6j2-UB00gmOZraocfoknlxXY-kaoLlX8kygqxw"
-        parsed.issuedAt shouldBe Instant.Companion.fromEpochSeconds(1710313534)
-        val cm = parsed.clientMetadata
-        cm.shouldNotBeNull()
-        cm.subjectSyntaxTypesSupported.shouldNotBeNull() shouldHaveSingleElement "urn:ietf:params:oauth:jwk-thumbprint"
-        cm.authorizationEncryptedResponseAlg shouldBe JweAlgorithm.ECDH_ES
-        cm.authorizationEncryptedResponseEncoding shouldBe JweEncryption.A128CBC_HS256
-        cm.idTokenEncryptedResponseAlg shouldBe JweAlgorithm.RSA_OAEP_256
-        cm.idTokenEncryptedResponseEncoding shouldBe JweEncryption.A128CBC_HS256
-        cm.idTokenSignedResponseAlg shouldBe JwsAlgorithm.Signature.RS256
-        cm.jsonWebKeySetUrl shouldBe "https://verifier-backend.eudiw.dev/wallet/jarm/" +
-                "xgagB1vsIrWhMLixoJTCVZZvOHsZ8QrulEFxc0bjJdMRyzqO6j2-UB00gmOZraocfoknlxXY-kaoLlX8kygqxw/jwks.json"
-    }
-
-    "Request in request URI" {
-        val input = "mdoc-openid4vp://?client_id=https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02" +
-                "&request_uri=https%3A%2F%2Fexample.com%2Fd15b5b6f-7821-4031-9a18-ebe491b720a6"
-        val signer = SignJwt<AuthenticationRequestParameters>(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk())
-        val jws = signer(
-            JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST,
-            AuthenticationRequestParameters(
-                nonce = "RjEQKQeG8OUaKT4ij84E8mCvry6pVSgDyqRBMW5eBTPItP4DIfbKaT6M6v6q2Dvv8fN7Im7Ifa6GI2j6dHsJaQ==",
-                state = "ef391e30-bacc-4441-af5d-7f42fb682e02",
-                responseUrl = "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02",
-                clientId = "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02",
-                responseType = "vp_token",
-            ),
-            AuthenticationRequestParameters.serializer(),
-        ).getOrThrow().serialize()
-
-        val wallet = OpenId4VpHolder(
-            remoteResourceRetriever = {
-                if (it.url == "https://example.com/d15b5b6f-7821-4031-9a18-ebe491b720a6") jws else null
-            },
-            randomSource = RandomSource.Default,
-        )
-
-        wallet.startAuthorizationResponsePreparation(input).getOrThrow().apply {
-            request.parameters.state shouldBe "ef391e30-bacc-4441-af5d-7f42fb682e02"
-            request.parameters.responseUrl shouldBe "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02"
-            request.parameters.clientIdWithoutPrefix shouldBe request.parameters.responseUrl
+            parsed.responseUrl shouldBe "https://verifier-backend.eudiw.dev/wallet/direct_post"
+            parsed.responseType shouldBe "vp_token"
+            parsed.nonce shouldBe "nonce"
+            parsed.clientId shouldBe "verifier-backend.eudiw.dev"
+            parsed.clientIdWithoutPrefix shouldBe "verifier-backend.eudiw.dev"
+            parsed.responseMode shouldBe OpenIdConstants.ResponseMode.DirectPostJwt
+            parsed.audience shouldBe "https://self-issued.me/v2"
+            parsed.scope shouldBe ""
+            val pd = parsed.presentationDefinition
+            pd.shouldNotBeNull()
+            pd.id shouldBe "32f54163-7166-48f1-93d8-ff217bdb0653"
+            val id = pd.inputDescriptors.firstOrNull()
+            id.shouldNotBeNull()
+            id.id shouldBe "eudi_pid"
+            id.name shouldBe "EUDI PID"
+            id.purpose shouldBe "We need to verify your identity"
+            val fields = id.constraints?.fields
+            fields.shouldNotBeNull()
+            fields.filter { it.path.contains("$.mdoc.doctype") }.shouldBeSingleton()
+            fields.filter { it.path.contains("$.mdoc.namespace") }.shouldBeSingleton()
+            fields.filter { it.path.contains("$.mdoc.given_name") }.shouldBeSingleton()
+            parsed.state shouldBe "xgagB1vsIrWhMLixoJTCVZZvOHsZ8QrulEFxc0bjJdMRyzqO6j2-UB00gmOZraocfoknlxXY-kaoLlX8kygqxw"
+            parsed.issuedAt shouldBe Instant.Companion.fromEpochSeconds(1710313534)
+            val cm = parsed.clientMetadata
+            cm.shouldNotBeNull()
+            cm.subjectSyntaxTypesSupported.shouldNotBeNull() shouldHaveSingleElement "urn:ietf:params:oauth:jwk-thumbprint"
+            cm.authorizationEncryptedResponseAlg shouldBe JweAlgorithm.ECDH_ES
+            cm.authorizationEncryptedResponseEncoding shouldBe JweEncryption.A128CBC_HS256
+            cm.idTokenEncryptedResponseAlg shouldBe JweAlgorithm.RSA_OAEP_256
+            cm.idTokenEncryptedResponseEncoding shouldBe JweEncryption.A128CBC_HS256
+            cm.idTokenSignedResponseAlg shouldBe JwsAlgorithm.Signature.RS256
+            cm.jsonWebKeySetUrl shouldBe "https://verifier-backend.eudiw.dev/wallet/jarm/" +
+                    "xgagB1vsIrWhMLixoJTCVZZvOHsZ8QrulEFxc0bjJdMRyzqO6j2-UB00gmOZraocfoknlxXY-kaoLlX8kygqxw/jwks.json"
         }
-    }
 
-    "process with cross-device flow with request_uri and x509_san_dns" {
-        val clientId = "example.com"
-        val extensions = listOf(
-            X509CertificateExtension(
-                KnownOIDs.subjectAltName_2_5_29_17,
-                critical = false,
-                Asn1EncapsulatingOctetString(
-                    listOf(
-                        Asn1.Sequence {
-                            +Asn1Primitive(
-                                SubjectAltNameImplicitTags.dNSName,
-                                Asn1String.UTF8(clientId).encodeToTlv().content
-                            )
-                        }
-                    ))))
-        verifierKeyMaterial = EphemeralKeyWithSelfSignedCert(extensions = extensions)
-        verifierOid4vp = OpenId4VpVerifier(
-            keyMaterial = verifierKeyMaterial,
-            clientIdScheme = ClientIdScheme.CertificateSanDns(
-                listOf(verifierKeyMaterial.getCertificate()!!),
-                clientId,
-                clientId
-            ),
-        )
-        val nonce = uuid4().toString()
-        val requestUrl = "https://example.com/request/$nonce"
-        val (walletUrl, jar) = verifierOid4vp.createAuthnRequest(
-            RequestOptions(
-                responseMode = OpenIdConstants.ResponseMode.DirectPost,
-                responseUrl = "https://example.com/response",
-                credentials = setOf(
-                    RequestOptionsCredential(
-                        ConstantIndex.AtomicAttribute2023,
-                        ConstantIndex.CredentialRepresentation.SD_JWT,
-                        setOf(CLAIM_FAMILY_NAME, CLAIM_GIVEN_NAME)
+        "Request in request URI" {
+            val input = "mdoc-openid4vp://?client_id=https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02" +
+                    "&request_uri=https%3A%2F%2Fexample.com%2Fd15b5b6f-7821-4031-9a18-ebe491b720a6"
+            val signer = SignJwt<AuthenticationRequestParameters>(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk())
+            val jws = signer(
+                JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST,
+                AuthenticationRequestParameters(
+                    nonce = "RjEQKQeG8OUaKT4ij84E8mCvry6pVSgDyqRBMW5eBTPItP4DIfbKaT6M6v6q2Dvv8fN7Im7Ifa6GI2j6dHsJaQ==",
+                    state = "ef391e30-bacc-4441-af5d-7f42fb682e02",
+                    responseUrl = "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02",
+                    clientId = "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02",
+                    responseType = "vp_token",
+                ),
+                AuthenticationRequestParameters.serializer(),
+            ).getOrThrow().serialize()
+
+            val wallet = OpenId4VpHolder(
+                remoteResourceRetriever = {
+                    if (it.url == "https://example.com/d15b5b6f-7821-4031-9a18-ebe491b720a6") jws else null
+                },
+                randomSource = RandomSource.Default,
+            )
+
+            wallet.startAuthorizationResponsePreparation(input).getOrThrow().apply {
+                request.parameters.state shouldBe "ef391e30-bacc-4441-af5d-7f42fb682e02"
+                request.parameters.responseUrl shouldBe "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02"
+                request.parameters.clientIdWithoutPrefix shouldBe request.parameters.responseUrl
+            }
+        }
+
+        "process with cross-device flow with request_uri and x509_san_dns" {
+            val clientId = "example.com"
+            val extensions = listOf(
+                X509CertificateExtension(
+                    KnownOIDs.subjectAltName_2_5_29_17,
+                    critical = false,
+                    Asn1EncapsulatingOctetString(
+                        listOf(
+                            Asn1.Sequence {
+                                +Asn1Primitive(
+                                    SubjectAltNameImplicitTags.dNSName,
+                                    Asn1String.UTF8(clientId).encodeToTlv().content
+                                )
+                            }
+                        ))))
+            val verifierKeyMaterial = EphemeralKeyWithSelfSignedCert(extensions = extensions)
+            val verifierOid4vp = OpenId4VpVerifier(
+                keyMaterial = verifierKeyMaterial,
+                clientIdScheme = ClientIdScheme.CertificateSanDns(
+                    listOf(verifierKeyMaterial.getCertificate()!!),
+                    clientId,
+                    clientId
+                ),
+            )
+            val nonce = uuid4().toString()
+            val requestUrl = "https://example.com/request/$nonce"
+            val (walletUrl, jar) = verifierOid4vp.createAuthnRequest(
+                RequestOptions(
+                    responseMode = OpenIdConstants.ResponseMode.DirectPost,
+                    responseUrl = "https://example.com/response",
+                    credentials = setOf(
+                        RequestOptionsCredential(
+                            ConstantIndex.AtomicAttribute2023,
+                            ConstantIndex.CredentialRepresentation.SD_JWT,
+                            setOf(CLAIM_FAMILY_NAME, CLAIM_GIVEN_NAME)
+                        )
                     )
-                )
-            ),
-            OpenId4VpVerifier.CreationOptions.SignedRequestByReference("https://wallet.a-sit.at/mobile", requestUrl)
-        ).getOrThrow()
-        jar.shouldNotBeNull()
+                ),
+                OpenId4VpVerifier.CreationOptions.SignedRequestByReference("https://wallet.a-sit.at/mobile", requestUrl)
+            ).getOrThrow()
+            jar.shouldNotBeNull()
 
-        holderOid4vp = OpenId4VpHolder(
-            keyMaterial = holderKeyMaterial,
-            holder = holderAgent,
-            remoteResourceRetriever = {
-                if (it.url == requestUrl) jar.invoke(it.requestObjectParameters).getOrThrow() else null
-            },
-            randomSource = RandomSource.Default,
-        )
+            it.holderOid4vp = OpenId4VpHolder(
+                keyMaterial = it.holderKeyMaterial,
+                holder = it.holderAgent,
+                remoteResourceRetriever = {
+                    if (it.url == requestUrl) jar.invoke(it.requestObjectParameters).getOrThrow() else null
+                },
+                randomSource = RandomSource.Default,
+            )
 
-        val state = holderOid4vp.startAuthorizationResponsePreparation(walletUrl).getOrThrow()
-        val response = holderOid4vp.finalizeAuthorizationResponse(state).getOrThrow()
-            .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
-        verifierOid4vp.validateAuthnResponse(response.params.formUrlEncode())
-            .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
+            val state = it.holderOid4vp.startAuthorizationResponsePreparation(walletUrl).getOrThrow()
+            val response = it.holderOid4vp.finalizeAuthorizationResponse(state).getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
+            verifierOid4vp.validateAuthnResponse(response.params.formUrlEncode())
+                .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
+        }
     }
 }

@@ -28,11 +28,10 @@ import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.data.LocalDateOrInstant
 import at.asitplus.wallet.lib.data.LocalDateOrInstantSerializer
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.TestConfig
-import de.infix.testBalloon.framework.core.aroundEach
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -56,165 +55,167 @@ import kotlin.time.Instant
 @OptIn(ExperimentalSerializationApi::class, ExperimentalStdlibApi::class)
 val IssuerSignedItemSerializationTest by testSuite {
 
-    lateinit var elementId: String
-    lateinit var namespace: String
+    withFixtureGenerator {
+        object {
+            val namespace = uuid4().toString()
+            val elementId = uuid4().toString()
 
-    testConfig = TestConfig.aroundEach {
-        namespace = uuid4().toString()
-        elementId = uuid4().toString()
-        it()
-    }
+        }
+    } - {
 
-    "serialization with String" {
-        val item = IssuerSignedItem(
-            digestId = Random.nextUInt(),
-            random = Random.nextBytes(16),
-            elementIdentifier = elementId,
-            elementValue = uuid4().toString(),
-        )
-        val serialized =
-            coseCompliantSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementId), item)
-        serialized.encodeToString(Base16()).shouldNotContain("D903EC")
-
-        coseCompliantSerializer.decodeFromByteArray(IssuerSignedItemSerializer("", elementId), serialized) shouldBe item
-    }
-
-    "serialization with Instant" {
-        CborCredentialSerializer.register(mapOf(elementId to Instant.serializer()), namespace)
-        val item = IssuerSignedItem(
-            digestId = Random.nextUInt(),
-            random = Random.nextBytes(16),
-            elementIdentifier = elementId,
-            elementValue = Clock.System.now(),
-        )
-
-        val serialized =
-            coseCompliantSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementId), item)
-                .also {
-                    it.encodeToString(Base16()).shouldContain(
-                        "elementValue".toHex()
-                                + "C0" // tag(0)
-                                + "78" // text(..)
-                    )
-                }
-
-        coseCompliantSerializer.decodeFromByteArray(
-            IssuerSignedItemSerializer(namespace, elementId),
-            serialized
-        ) shouldBe item
-    }
-
-    "serialization with LocalDate" {
-        CborCredentialSerializer.register(mapOf(elementId to LocalDate.serializer()), namespace)
-        val item = IssuerSignedItem(
-            digestId = Random.nextUInt(),
-            random = Random.nextBytes(16),
-            elementIdentifier = elementId,
-            elementValue = LocalDate.fromEpochDays(Random.nextInt(32768))
-        )
-
-        val serialized =
-            coseCompliantSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementId), item)
-                .also {
-                    it.encodeToString(Base16()).shouldContain(
-                        "elementValue".toHex()
-                                + "D903EC" // tag(1004)
-                                + "6A" // text(10)
-                    )
-                }
-
-        coseCompliantSerializer.decodeFromByteArray(
-            IssuerSignedItemSerializer(namespace, elementId),
-            serialized
-        ) shouldBe item
-    }
-
-    "document serialization with ByteArray" {
-        CborCredentialSerializer.register(mapOf(elementId to ByteArraySerializer()), namespace)
-        val digestId = 13u
-        val item = IssuerSignedItem(
-            digestId = digestId,
-            random = Random.nextBytes(16),
-            elementIdentifier = elementId,
-            elementValue = Random.nextBytes(32),
-        )
-        val protectedHeader = CoseHeader(algorithm = CoseAlgorithm.Signature.RS256)
-        val mso = MobileSecurityObject(
-            version = "1.0",
-            digestAlgorithm = "SHA-256",
-            valueDigests = mapOf(
-                namespace to ValueDigestList(
-                    listOf(ValueDigest.fromIssuerSignedItem(item, namespace))
-                )
-            ),
-            deviceKeyInfo = DeviceKeyInfo(
-                CoseKey(
-                    CoseKeyType.EC2,
-                    keyParams = CoseKeyParams.EcYBoolParams(CoseEllipticCurve.P256)
-                )
-            ),
-            docType = namespace,
-            validityInfo = ValidityInfo(Clock.System.now(), Clock.System.now(), Clock.System.now()),
-        )
-        val issuerAuth = CoseSigned.create(
-            protectedHeader,
-            null,
-            mso,
-            CryptoSignature.RSA(byteArrayOf()),
-            MobileSecurityObject.serializer()
-        )
-        val doc = Document(
-            docType = uuid4().toString(),
-            issuerSigned = IssuerSigned.fromIssuerSignedItems(
-                mapOf(namespace to listOf(item)),
-                issuerAuth
-            ),
-            deviceSigned = DeviceSigned(
-                ByteStringWrapper(DeviceNameSpaces(mapOf())),
-                DeviceAuth()
+        "serialization with String" {
+            val item = IssuerSignedItem(
+                digestId = Random.nextUInt(),
+                random = Random.nextBytes(16),
+                elementIdentifier = it.elementId,
+                elementValue = uuid4().toString(),
             )
-        )
-        val serialized = coseCompliantSerializer.encodeToByteArray(doc).also {
-            it.encodeToString(Base16()).also {
-                it.shouldNotContain("D903EC")
-                val itemSerialized = coseCompliantSerializer.encodeToByteArray(
-                    IssuerSignedItemSerializer(namespace, item.elementIdentifier), item
-                )
-                val itemBytes = coseCompliantSerializer.encodeToByteArray(ByteArraySerializer(), itemSerialized)
-                it.shouldContain( // inside the document
-                    "nameSpaces".toHex()
-                            + "A1" // map(1)
-                            + "7824" // text(36)
-                            + namespace.toHex()
-                            + "81" // array(1)
-                            + "D818" // tag(24)
-                            + itemBytes.encodeToString(Base16())
-                )
-                // important here is wrapping in D818 before hashing it!
-                val itemHash = itemBytes.wrapInCborTag(24).sha256()
-                it.shouldContain( // inside the mso
-                    namespace.toHex()
-                            + "A1" // map(1)
-                            + "0D" // unsigned 13, the digestId
-                            + "5820" // bytes(32)
-                            + itemHash.encodeToString(Base16())
-                )
-            }
+            val serialized =
+                coseCompliantSerializer.encodeToByteArray(IssuerSignedItemSerializer(it.namespace, it.elementId), item)
+            serialized.encodeToString(Base16()).shouldNotContain("D903EC")
+
+            coseCompliantSerializer.decodeFromByteArray(
+                IssuerSignedItemSerializer("", it.elementId),
+                serialized
+            ) shouldBe item
         }
 
-        coseCompliantSerializer.decodeFromByteArray<Document>(serialized) shouldBe doc
-    }
+        "serialization with Instant" {
+            CborCredentialSerializer.register(mapOf(it.elementId to Instant.serializer()), it.namespace)
+            val item = IssuerSignedItem(
+                digestId = Random.nextUInt(),
+                random = Random.nextBytes(16),
+                elementIdentifier = it.elementId,
+                elementValue = Clock.System.now(),
+            )
 
-    // Contains LocalDates instead of Instants, as we expected, so we'll handle this with LocalDateOrInstantSerializer
-    "deserialize DeviceResponse from EUDI Ref Impl" {
-        CborCredentialSerializer.register(
-            serializerMap = mapOf(
-                "expiry_date" to LocalDateOrInstantSerializer,
-                "birth_date" to LocalDateOrInstantSerializer
-            ),
-            isoNamespace = "eu.europa.ec.eudi.pid.1"
-        )
-        val input = """
+            val serialized =
+                coseCompliantSerializer.encodeToByteArray(IssuerSignedItemSerializer(it.namespace, it.elementId), item)
+                    .apply {
+                        encodeToString(Base16()).shouldContain(
+                            "elementValue".toHex()
+                                    + "C0" // tag(0)
+                                    + "78" // text(..)
+                        )
+                    }
+
+            coseCompliantSerializer.decodeFromByteArray(
+                IssuerSignedItemSerializer(it.namespace, it.elementId),
+                serialized
+            ) shouldBe item
+        }
+
+        "serialization with LocalDate" {
+            CborCredentialSerializer.register(mapOf(it.elementId to LocalDate.serializer()), it.namespace)
+            val item = IssuerSignedItem(
+                digestId = Random.nextUInt(),
+                random = Random.nextBytes(16),
+                elementIdentifier = it.elementId,
+                elementValue = LocalDate.fromEpochDays(Random.nextInt(32768))
+            )
+
+            val serialized =
+                coseCompliantSerializer.encodeToByteArray(IssuerSignedItemSerializer(it.namespace, it.elementId), item)
+                    .apply {
+                        encodeToString(Base16()).shouldContain(
+                            "elementValue".toHex()
+                                    + "D903EC" // tag(1004)
+                                    + "6A" // text(10)
+                        )
+                    }
+
+            coseCompliantSerializer.decodeFromByteArray(
+                IssuerSignedItemSerializer(it.namespace, it.elementId),
+                serialized
+            ) shouldBe item
+        }
+
+        "document serialization with ByteArray" {
+            CborCredentialSerializer.register(mapOf(it.elementId to ByteArraySerializer()), it.namespace)
+            val digestId = 13u
+            val item = IssuerSignedItem(
+                digestId = digestId,
+                random = Random.nextBytes(16),
+                elementIdentifier = it.elementId,
+                elementValue = Random.nextBytes(32),
+            )
+            val protectedHeader = CoseHeader(algorithm = CoseAlgorithm.Signature.RS256)
+            val mso = MobileSecurityObject(
+                version = "1.0",
+                digestAlgorithm = "SHA-256",
+                valueDigests = mapOf(
+                    it.namespace to ValueDigestList(
+                        listOf(ValueDigest.fromIssuerSignedItem(item, it.namespace))
+                    )
+                ),
+                deviceKeyInfo = DeviceKeyInfo(
+                    CoseKey(
+                        CoseKeyType.EC2,
+                        keyParams = CoseKeyParams.EcYBoolParams(CoseEllipticCurve.P256)
+                    )
+                ),
+                docType = it.namespace,
+                validityInfo = ValidityInfo(Clock.System.now(), Clock.System.now(), Clock.System.now()),
+            )
+            val issuerAuth = CoseSigned.create(
+                protectedHeader,
+                null,
+                mso,
+                CryptoSignature.RSA(byteArrayOf()),
+                MobileSecurityObject.serializer()
+            )
+            val doc = Document(
+                docType = uuid4().toString(),
+                issuerSigned = IssuerSigned.fromIssuerSignedItems(
+                    mapOf(it.namespace to listOf(item)),
+                    issuerAuth
+                ),
+                deviceSigned = DeviceSigned(
+                    ByteStringWrapper(DeviceNameSpaces(mapOf())),
+                    DeviceAuth()
+                )
+            )
+            val serialized = coseCompliantSerializer.encodeToByteArray(doc).apply {
+                encodeToString(Base16()).apply {
+                    shouldNotContain("D903EC")
+                    val itemSerialized = coseCompliantSerializer.encodeToByteArray(
+                        IssuerSignedItemSerializer(it.namespace, item.elementIdentifier), item
+                    )
+                    val itemBytes = coseCompliantSerializer.encodeToByteArray(ByteArraySerializer(), itemSerialized)
+                    shouldContain( // inside the document
+                        "nameSpaces".toHex()
+                                + "A1" // map(1)
+                                + "7824" // text(36)
+                                + it.namespace.toHex()
+                                + "81" // array(1)
+                                + "D818" // tag(24)
+                                + itemBytes.encodeToString(Base16())
+                    )
+                    // important here is wrapping in D818 before hashing it!
+                    val itemHash = itemBytes.wrapInCborTag(24).sha256()
+                    shouldContain( // inside the mso
+                        it.namespace.toHex()
+                                + "A1" // map(1)
+                                + "0D" // unsigned 13, the digestId
+                                + "5820" // bytes(32)
+                                + itemHash.encodeToString(Base16())
+                    )
+                }
+            }
+
+            coseCompliantSerializer.decodeFromByteArray<Document>(serialized) shouldBe doc
+        }
+
+        // Contains LocalDates instead of Instants, as we expected, so we'll handle this with LocalDateOrInstantSerializer
+        "deserialize DeviceResponse from EUDI Ref Impl" {
+            CborCredentialSerializer.register(
+                serializerMap = mapOf(
+                    "expiry_date" to LocalDateOrInstantSerializer,
+                    "birth_date" to LocalDateOrInstantSerializer
+                ),
+                isoNamespace = "eu.europa.ec.eudi.pid.1"
+            )
+            val input = """
             o2d2ZXJzaW9uYzEuMGlkb2N1bWVudHOBo2dkb2NUeXBld2V1LmV1cm9wYS5lYy5ldWRpLnBpZC4xbGlzc3VlclNpZ25lZKJqbmFtZVNwYWNl
             c6F3ZXUuZXVyb3BhLmVjLmV1ZGkucGlkLjGI2BhYbKRmcmFuZG9tWCAYEd2zTYDimiBjUeC_955trB4a2hZlPCQF5NPKX9uGB2hkaWdlc3RJ
             RAhsZWxlbWVudFZhbHVl2QPsajE5NjUtMDEtMDFxZWxlbWVudElkZW50aWZpZXJqYmlydGhfZGF0ZdgYWG2kZnJhbmRvbVggkqce2jGkon0M
@@ -253,24 +254,24 @@ val IssuerSignedItemSerializationTest by testSuite {
             VeJakU_LiF4mJwXG4JRLiu3htGtmc3RhdHVzAA
         """.trimIndent()
 
-        input.decodeToByteArray(Base64UrlStrict)
-            .let { coseCompliantSerializer.decodeFromByteArray<DeviceResponse>(it) }
-            .apply {
-                documents.shouldNotBeNull().first().apply {
-                    issuerSigned.namespaces.shouldNotBeNull().values.first().apply {
-                        entries.shouldHaveSize(8)
-                        entries.first { it.value.elementIdentifier == "expiry_date" }
-                            .value.elementValue shouldBe LocalDateOrInstant.LocalDate(LocalDate.parse("2025-08-25"))
-                        entries.first { it.value.elementIdentifier == "birth_date" }
-                            .value.elementValue shouldBe LocalDateOrInstant.LocalDate(LocalDate.parse("1965-01-01"))
+            input.decodeToByteArray(Base64UrlStrict)
+                .let { coseCompliantSerializer.decodeFromByteArray<DeviceResponse>(it) }
+                .apply {
+                    documents.shouldNotBeNull().first().apply {
+                        issuerSigned.namespaces.shouldNotBeNull().values.first().apply {
+                            entries.shouldHaveSize(8)
+                            entries.first { it.value.elementIdentifier == "expiry_date" }
+                                .value.elementValue shouldBe LocalDateOrInstant.LocalDate(LocalDate.parse("2025-08-25"))
+                            entries.first { it.value.elementIdentifier == "birth_date" }
+                                .value.elementValue shouldBe LocalDateOrInstant.LocalDate(LocalDate.parse("1965-01-01"))
+                        }
                     }
                 }
-            }
-    }
+        }
 
-    "deserialize IssuerSigned from EUDI Ref Impl" {
-        CborCredentialSerializer.register(mapOf("birth_date" to LocalDate.serializer()), "eu.europa.ec.eudi.pid.1")
-        val input = """
+        "deserialize IssuerSigned from EUDI Ref Impl" {
+            CborCredentialSerializer.register(mapOf("birth_date" to LocalDate.serializer()), "eu.europa.ec.eudi.pid.1")
+            val input = """
             A26A697373756572417574688443A10126A118215902E9308202E53082026AA003020102021419040C2598027AD6AC99063EE39AB8C3
             6FA6DAE4300A06082A8648CE3D040302305C311E301C06035504030C1550494420497373756572204341202D204555203031312D302B
             060355040A0C24455544492057616C6C6574205265666572656E636520496D706C656D656E746174696F6E310B300906035504061302
@@ -317,22 +318,22 @@ val IssuerSignedItemSerializationTest by testSuite {
             656E744964656E7469666965727169737375696E675F617574686F72697479
         """.trimIndent().replace("\n", "")
 
-        val parsed = coseCompliantSerializer.decodeFromByteArray<IssuerSigned>(input.decodeToByteArray(Base16()))
+            val parsed = coseCompliantSerializer.decodeFromByteArray<IssuerSigned>(input.decodeToByteArray(Base16()))
 
-        val namespaces = parsed.namespaces
-            .shouldNotBeNull()
-        val issuerSignedList = namespaces.values.first()
-        val issuerSignedItems = issuerSignedList.entries.map { it.value }
-        issuerSignedItems.first { it.elementIdentifier == "given_name" }
-            .elementValue shouldBe "javier"
-        issuerSignedItems.first { it.elementIdentifier == "family_name" }
-            .elementValue shouldBe "Garcia"
-        issuerSignedItems.first { it.elementIdentifier == "issuing_authority" }
-            .elementValue shouldBe "Test PID issuer"
-        issuerSignedItems.first { it.elementIdentifier == "birth_date" }
-            .elementValue shouldBe LocalDate.parse("1965-01-01")
+            val namespaces = parsed.namespaces
+                .shouldNotBeNull()
+            val issuerSignedList = namespaces.values.first()
+            val issuerSignedItems = issuerSignedList.entries.map { it.value }
+            issuerSignedItems.first { it.elementIdentifier == "given_name" }
+                .elementValue shouldBe "javier"
+            issuerSignedItems.first { it.elementIdentifier == "family_name" }
+                .elementValue shouldBe "Garcia"
+            issuerSignedItems.first { it.elementIdentifier == "issuing_authority" }
+                .elementValue shouldBe "Test PID issuer"
+            issuerSignedItems.first { it.elementIdentifier == "birth_date" }
+                .elementValue shouldBe LocalDate.parse("1965-01-01")
+        }
     }
-
 }
 
 private fun String.toHex(): String = encodeToByteArray().encodeToString(Base16())

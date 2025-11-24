@@ -20,6 +20,7 @@ import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstrain
 import at.asitplus.openid.dcql.DCQLIsoMdocCredentialQuery
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
@@ -27,7 +28,6 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -50,8 +50,6 @@ import at.asitplus.wallet.lib.openid.RequestOptions
 import at.asitplus.wallet.lib.openid.RequestOptionsCredential
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.TestConfig
-import de.infix.testBalloon.framework.core.aroundEach
 import de.infix.testBalloon.framework.core.testSuite
 import io.github.aakira.napier.Napier
 import io.kotest.assertions.throwables.shouldThrow
@@ -66,7 +64,6 @@ import io.ktor.http.*
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -78,101 +75,144 @@ import kotlin.time.Duration.Companion.minutes
 
 val OpenId4VpWalletTest by testSuite {
 
-    lateinit var countdownLatch: Mutex
-    lateinit var keyMaterial: KeyMaterial
-    lateinit var holderAgent: HolderAgent
+    withFixtureGenerator {
+        object {
+            val countdownLatch = Mutex(true)
+            val keyMaterial = EphemeralKeyWithoutCert()
+            val holderAgent = HolderAgent(keyMaterial)
+            lateinit var wallet: OpenId4VpWallet
+            lateinit var url: String
+            lateinit var mockEngine: HttpClientEngine
 
-    testConfig = TestConfig.aroundEach {
-        countdownLatch = Mutex(true)
-        keyMaterial = EphemeralKeyWithoutCert()
-        holderAgent = HolderAgent(keyMaterial)
-        it()
-    }
-
-    fun setupWallet(mockEngine: HttpClientEngine): OpenId4VpWallet = OpenId4VpWallet(
-        engine = mockEngine,
-        keyMaterial = keyMaterial,
-        holderAgent = holderAgent,
-    )
-
-
-    fun ConstantIndex.CredentialRepresentation.toCredentialToBeIssued(
-        scheme: ConstantIndex.CredentialScheme,
-        attributes: Map<String, Any>,
-    ): CredentialToBeIssued = when (this) {
-        SD_JWT -> CredentialToBeIssued.VcSd(
-            claims = attributes.map { it.toClaimToBeIssued() },
-            expiration = Clock.System.now().plus(1.minutes),
-            scheme = scheme,
-            subjectPublicKey = keyMaterial.publicKey,
-            userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
-            sdAlgorithm = supportedSdAlgorithms.random()
-        )
-
-        ISO_MDOC -> CredentialToBeIssued.Iso(
-            issuerSignedItems = attributes.map { it.toIssuerSignedItem() },
-            expiration = Clock.System.now().plus(1.minutes),
-            scheme = scheme,
-            subjectPublicKey = keyMaterial.publicKey,
-            userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
-        )
-
-        else -> TODO()
-    }
-
-
-    suspend fun HolderAgent.storeMockCredentials(
-        scheme: ConstantIndex.CredentialScheme,
-        representation: ConstantIndex.CredentialRepresentation,
-        attributes: Map<String, Any>,
-    ) = storeCredential(
-        IssuerAgent(
-            keyMaterial = EphemeralKeyWithSelfSignedCert(),
-            identifier = "https://issuer.example.com/".toUri(),
-            randomSource = RandomSource.Default
-        ).issueCredential(
-            representation.toCredentialToBeIssued(scheme, attributes)
-        ).getOrThrow().toStoreCredentialInput()
-    ).getOrThrow()
-
-    fun AuthnResponseResult.verifyReceivedAttributes(expectedAttributes: Map<String, String>) {
-        if (this.containsAllAttributes(expectedAttributes)) {
-            countdownLatch.unlock()
-        }
-    }
-
-
-    suspend fun setup(
-        scheme: ConstantIndex.CredentialScheme,
-        representation: ConstantIndex.CredentialRepresentation,
-        attributes: Map<String, String>,
-        responseMode: ResponseMode,
-        clientId: String,
-    ): Triple<OpenId4VpWallet, String, HttpClientEngine> {
-        val requestOptions = RequestOptions(
-            credentials = setOf(
-                RequestOptionsCredential(
-                    credentialScheme = scheme,
-                    representation = representation,
-                    requestedAttributes = attributes.keys
+            suspend fun setup(
+                scheme: ConstantIndex.CredentialScheme,
+                representation: ConstantIndex.CredentialRepresentation,
+                attributes: Map<String, String>,
+                responseMode: ResponseMode,
+                clientId: String,
+                storeCredentials: Boolean = true,
+            ) {
+                val requestOptions = RequestOptions(
+                    credentials = setOf(
+                        RequestOptionsCredential(
+                            credentialScheme = scheme,
+                            representation = representation,
+                            requestedAttributes = attributes.keys
+                        )
+                    ),
+                    responseMode = responseMode,
                 )
-            ),
-            responseMode = responseMode,
-        )
-        holderAgent.storeMockCredentials(scheme, representation, attributes)
-        val (mockEngine, url) = setupRelyingPartyService(clientId, requestOptions) {
-            it.verifyReceivedAttributes(attributes)
+                if (storeCredentials)
+                    storeMockCredentials(scheme, representation, attributes)
+                setupRelyingPartyService(clientId, requestOptions) {
+                    verifyReceivedAttributes(it, attributes)
+                }
+                setupWallet(this.mockEngine)
+            }
+
+            fun setupWallet(engine: HttpClientEngine) = OpenId4VpWallet(
+                engine = engine,
+                keyMaterial = keyMaterial,
+                holderAgent = holderAgent,
+            ).also { this.wallet = it }
+
+            fun verifyReceivedAttributes(
+                authnResponseResult: AuthnResponseResult,
+                expectedAttributes: Map<String, String>
+            ) {
+                if (authnResponseResult.containsAllAttributes(expectedAttributes)) {
+                    countdownLatch.unlock()
+                }
+            }
+
+            suspend fun storeMockCredentials(
+                scheme: ConstantIndex.CredentialScheme,
+                representation: ConstantIndex.CredentialRepresentation,
+                attributes: Map<String, Any>,
+            ) = holderAgent.storeCredential(
+                IssuerAgent(
+                    keyMaterial = EphemeralKeyWithSelfSignedCert(),
+                    identifier = "https://issuer.example.com/".toUri(),
+                    randomSource = RandomSource.Default
+                ).issueCredential(
+                    representation.toCredentialToBeIssued(scheme, attributes)
+                ).getOrThrow().toStoreCredentialInput()
+            ).getOrThrow()
+
+            fun ConstantIndex.CredentialRepresentation.toCredentialToBeIssued(
+                scheme: ConstantIndex.CredentialScheme,
+                attributes: Map<String, Any>,
+            ): CredentialToBeIssued = when (this) {
+                SD_JWT -> CredentialToBeIssued.VcSd(
+                    claims = attributes.map { it.toClaimToBeIssued() },
+                    expiration = Clock.System.now().plus(1.minutes),
+                    scheme = scheme,
+                    subjectPublicKey = keyMaterial.publicKey,
+                    userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+                    sdAlgorithm = supportedSdAlgorithms.random()
+                )
+
+                ISO_MDOC -> CredentialToBeIssued.Iso(
+                    issuerSignedItems = attributes.map { it.toIssuerSignedItem() },
+                    expiration = Clock.System.now().plus(1.minutes),
+                    scheme = scheme,
+                    subjectPublicKey = keyMaterial.publicKey,
+                    userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+                )
+
+                else -> TODO()
+            }
+
+            /**
+             * Setup the mock relying party service, for getting requests (referenced by `request_uri`) and to decode posted
+             * authentication responses
+             */
+            suspend fun setupRelyingPartyService(
+                clientId: String,
+                requestOptions: RequestOptions,
+                validate: (AuthnResponseResult) -> Unit,
+            ) {
+                val requestEndpointPath = "/request/${uuid4()}"
+                val redirectUri = "http://rp.example.com/cb"
+                val verifier = OpenId4VpVerifier(
+                    clientIdScheme = ClientIdScheme.PreRegistered(clientId, redirectUri),
+                )
+                val responseEndpointPath = "/response"
+                val (url, jar) = verifier.createAuthnRequest(
+                    requestOptions.copy(responseUrl = responseEndpointPath),
+                    CreationOptions.SignedRequestByReference(
+                        "http://wallet.example.com/",
+                        "http://rp.example.com$requestEndpointPath"
+                    )
+                ).getOrThrow()
+                jar.shouldNotBeNull()
+
+                this.mockEngine = MockEngine { request ->
+                    when {
+                        request.url.fullPath == requestEndpointPath -> respond(jar.invoke(null).getOrThrow())
+
+                        request.url.fullPath.startsWith(responseEndpointPath) or request.url.toString()
+                            .startsWith(redirectUri) -> {
+                            val requestBody = request.body.toByteArray().decodeToString()
+                            val result =
+                                if (requestBody.isNotEmpty()) verifier.validateAuthnResponse(requestBody)
+                                else verifier.validateAuthnResponse(request.url.toString())
+                            validate(result)
+                            respondOk()
+                        }
+
+                        else -> respondError(HttpStatusCode.NotFound)
+                            .also { Napier.w("NOT MATCHED ${request.url.fullPath}") }
+                    }
+                }
+                this.url = url
+            }
+
         }
-        val wallet = setupWallet(mockEngine)
-        return Triple(wallet, url, mockEngine)
-    }
+    } - {
 
-
-
-
-    test("presentEuPidCredentialSdJwtDirectPost") {
-        runBlocking {
-            val (wallet, url, mockEngine) = setup(
+        test("presentEuPidCredentialSdJwtDirectPost") {
+            it.setup(
                 scheme = EuPidScheme,
                 representation = SD_JWT,
                 attributes = mapOf(
@@ -182,20 +222,18 @@ val OpenId4VpWalletTest by testSuite {
                 clientId = uuid4().toString()
             )
 
-            val state = wallet.startAuthorizationResponsePreparation(url).getOrThrow()
+            val state = it.wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
             // sends the response to the mock RP, which calls verifyReceivedAttributes, which unlocks the latch
-            wallet.finalizeAuthorizationResponse(state).getOrThrow()
+            it.wallet.finalizeAuthorizationResponse(state).getOrThrow()
                 .shouldBeInstanceOf<OpenId4VpWallet.AuthenticationSuccess>()
-                .redirectUri?.let { HttpClient(mockEngine).get(it) }
+                .redirectUri?.let { uri -> HttpClient(it.mockEngine).get(uri) }
 
-            assertPresentation(countdownLatch)
+            assertPresentation(it.countdownLatch)
         }
-    }
 
 
-    test("presentEuPidCredentialIsoQuery") {
-        runBlocking {
-            val (wallet, url, mockEngine) = setup(
+        test("presentEuPidCredentialIsoQuery") {
+            it.setup(
                 scheme = EuPidScheme,
                 representation = ISO_MDOC,
                 attributes = mapOf(
@@ -205,19 +243,17 @@ val OpenId4VpWalletTest by testSuite {
                 clientId = uuid4().toString()
             )
 
-            val state = wallet.startAuthorizationResponsePreparation(url).getOrThrow()
+            val state = it.wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
             // sends the response to the mock RP, which calls verifyReceivedAttributes, which unlocks the latch
-            wallet.finalizeAuthorizationResponse(state).getOrThrow()
+            it.wallet.finalizeAuthorizationResponse(state).getOrThrow()
                 .shouldBeInstanceOf<OpenId4VpWallet.AuthenticationSuccess>()
-                .redirectUri?.let { HttpClient(mockEngine).get(it) }
+                .redirectUri?.let { uri -> HttpClient(it.mockEngine).get(uri) }
 
-            assertPresentation(countdownLatch)
+            assertPresentation(it.countdownLatch)
         }
-    }
 
-    test("DC API") {
-        runBlocking {
-            val wallet = setupWallet(HttpClient().engine)
+        test("DC API") {
+            it.setupWallet(HttpClient().engine)
 
             val attributes = mapOf(
                 "family_name" to "XXXMûstérfřău",
@@ -225,7 +261,7 @@ val OpenId4VpWalletTest by testSuite {
                 "age_over_21" to true
             )
 
-            val credential = holderAgent.storeMockCredentials(MobileDrivingLicenceScheme, ISO_MDOC, attributes)
+            val credential = it.storeMockCredentials(MobileDrivingLicenceScheme, ISO_MDOC, attributes)
 
             val dcqlQuery = DCQLQuery(
                 credentials = DCQLCredentialQueryList(
@@ -358,9 +394,9 @@ val OpenId4VpWalletTest by testSuite {
             )
 
             val input = joseCompliantSerializer.encodeToString(dcApiRequest)
-            val preparationState = wallet.startAuthorizationResponsePreparation(input).getOrThrow()
+            val preparationState = it.wallet.startAuthorizationResponsePreparation(input).getOrThrow()
             val presentation = DCQLPresentation(DCQLRequest(dcqlQuery), credentialQuerySubmissions)
-            wallet.finalizeAuthorizationResponse(preparationState, presentation)
+            it.wallet.finalizeAuthorizationResponse(preparationState, presentation)
                 .getOrThrow()
                 .shouldBeInstanceOf<OpenId4VpWallet.AuthenticationForward>()
                 .authenticationResponseResult.shouldBeInstanceOf<AuthenticationResponseResult.DcApi>().apply {
@@ -368,35 +404,23 @@ val OpenId4VpWalletTest by testSuite {
                     params.response shouldContain "cred1"
                 }
         }
-    }
 
-    test("No matching credential test") {
-        val scheme = EuPidScheme
-        val representation = ISO_MDOC
-        val attributes = mapOf(
-            EuPidScheme.Attributes.GIVEN_NAME to randomString()
-        )
-        val responseMode = ResponseMode.Query
-        val clientId = uuid4().toString()
+        test("No matching credential test") {
+            it.setup(
+                scheme = EuPidScheme,
+                representation = ISO_MDOC,
+                attributes = mapOf(
+                    EuPidScheme.Attributes.GIVEN_NAME to randomString()
+                ),
+                responseMode = ResponseMode.Query,
+                clientId = uuid4().toString(),
+                storeCredentials = false
+            )
 
-        val requestOptions = RequestOptions(
-            credentials = setOf(
-                RequestOptionsCredential(
-                    credentialScheme = scheme,
-                    representation = representation,
-                    requestedAttributes = attributes.keys
-                )
-            ),
-            responseMode = responseMode,
-        )
-        val (mockEngine, url) = setupRelyingPartyService(clientId, requestOptions) {
-            it.verifyReceivedAttributes(attributes)
-        }
-        val wallet = setupWallet(mockEngine)
-
-        val preparationState = wallet.startAuthorizationResponsePreparation(url).getOrThrow()
-        shouldThrow<OAuth2Exception.AccessDenied> {
-            wallet.getMatchingCredentials(preparationState).getOrThrow()
+            val preparationState = it.wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
+            shouldThrow<OAuth2Exception.AccessDenied> {
+                it.wallet.getMatchingCredentials(preparationState).getOrThrow()
+            }
         }
     }
 }
@@ -439,50 +463,6 @@ private suspend fun assertPresentation(countdownLatch: Mutex) {
             countdownLatch.lock()
         }
     }
-}
-
-/**
- * Setup the mock relying party service, for getting requests (referenced by `request_uri`) and to decode posted
- * authentication responses
- */
-private suspend fun setupRelyingPartyService(
-    clientId: String,
-    requestOptions: RequestOptions,
-    validate: (AuthnResponseResult) -> Unit,
-): Pair<HttpClientEngine, String> {
-    val requestEndpointPath = "/request/${uuid4()}"
-    val redirectUri = "http://rp.example.com/cb"
-    val verifier = OpenId4VpVerifier(
-        clientIdScheme = ClientIdScheme.PreRegistered(clientId, redirectUri),
-    )
-    val responseEndpointPath = "/response"
-    val (url, jar) = verifier.createAuthnRequest(
-        requestOptions.copy(responseUrl = responseEndpointPath),
-        CreationOptions.SignedRequestByReference(
-            "http://wallet.example.com/",
-            "http://rp.example.com$requestEndpointPath"
-        )
-    ).getOrThrow()
-    jar.shouldNotBeNull()
-
-    return MockEngine { request ->
-        when {
-            request.url.fullPath == requestEndpointPath -> respond(jar.invoke(null).getOrThrow())
-
-            request.url.fullPath.startsWith(responseEndpointPath) or request.url.toString()
-                .startsWith(redirectUri) -> {
-                val requestBody = request.body.toByteArray().decodeToString()
-                val result =
-                    if (requestBody.isNotEmpty()) verifier.validateAuthnResponse(requestBody)
-                    else verifier.validateAuthnResponse(request.url.toString())
-                validate(result)
-                respondOk()
-            }
-
-            else -> respondError(HttpStatusCode.NotFound)
-                .also { Napier.w("NOT MATCHED ${request.url.fullPath}") }
-        }
-    } to url
 }
 
 

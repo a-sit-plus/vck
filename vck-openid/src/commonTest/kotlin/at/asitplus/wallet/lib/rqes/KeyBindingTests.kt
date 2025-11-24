@@ -8,7 +8,7 @@ import at.asitplus.openid.QCertCreationAcceptance
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.minus
+import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
@@ -36,8 +36,6 @@ import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.rqes.helper.DummyCredentialDataProvider
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.TestConfig
-import de.infix.testBalloon.framework.core.aroundEach
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldBeNull
@@ -48,48 +46,51 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 import io.ktor.utils.io.charsets.*
 import io.ktor.utils.io.core.*
+import kotlinx.coroutines.runBlocking
+
+private fun malignTransactionData(): List<TransactionDataBase64Url> = listOf(
+    QCertCreationAcceptance(
+        credentialIds = setOf(),
+        qcTermsConditionsUri = uuid4().toString(),
+        qcHash = uuid4().bytes,
+        qcHashAlgorithmOid = Digest.SHA256.oid,
+    ).toBase64UrlJsonString()
+)
 
 val KeyBindingTests by testSuite {
 
-    lateinit var holderKeyMaterial: KeyMaterial
-    lateinit var holderAgent: Holder
-    lateinit var holderOid4vp: OpenId4VpHolder
-
-    val externalMapStore = DefaultMapStore<String, AuthenticationRequestParameters>()
-
-    testConfig = TestConfig.aroundEach {
-        holderKeyMaterial = EphemeralKeyWithoutCert()
-        holderAgent = HolderAgent(holderKeyMaterial)
-        holderAgent.storeCredential(
-            IssuerAgent(
-                identifier = "https://issuer.example.com/".toUri(),
+    withFixtureGenerator {
+        object {
+            val holderKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert()
+            val holderAgent: Holder = HolderAgent(holderKeyMaterial).also { agent ->
+                runBlocking {
+                    agent.storeCredential(
+                        IssuerAgent(
+                            identifier = "https://issuer.example.com/".toUri(),
+                            randomSource = RandomSource.Default
+                        ).issueCredential(
+                            DummyCredentialDataProvider.getCredential(holderKeyMaterial.publicKey, EuPidScheme, SD_JWT)
+                                .getOrThrow()
+                        ).getOrThrow().toStoreCredentialInput()
+                    )
+                }
+            }
+            val holderOid4vp = OpenId4VpHolder(
+                holder = holderAgent,
                 randomSource = RandomSource.Default
-            ).issueCredential(
-                DummyCredentialDataProvider.getCredential(holderKeyMaterial.publicKey, EuPidScheme, SD_JWT)
-                    .getOrThrow()
-            ).getOrThrow().toStoreCredentialInput()
-        )
-        holderOid4vp = OpenId4VpHolder(holder = holderAgent, randomSource = RandomSource.Default)
-        it()
-    }
+            )
+            val externalMapStore = DefaultMapStore<String, AuthenticationRequestParameters>()
 
-    "Rqes Request with EU PID credential" - {
-        val walletUrl = "https://example.com/wallet/${uuid4()}"
-        val clientId = "https://example.com/rp/${uuid4()}"
-        val verifierOid4Vp = OpenId4VpVerifier(
-            keyMaterial = EphemeralKeyWithoutCert(),
-            clientIdScheme = ClientIdScheme.RedirectUri(clientId),
-            stateToAuthnRequestStore = externalMapStore
-        )
-
-        val cibaWalletTransactionData = """
+            val walletUrl = "https://example.com/wallet/${uuid4()}"
+            val clientId = "https://example.com/rp/${uuid4()}"
+            val cibaWalletTransactionData = """
             eyJ0eXBlIjoicWNlcnRfY3JlYXRpb25fYWNjZXB0YW5jZSIsImNyZWRlbnRpYWxfaWRzIjpbIjYwNzUxMGE5LWM5NTctNDA5NS05MDZkLWY5
             OWZkMDA2YzRhZSJdLCJRQ190ZXJtc19jb25kaXRpb25zX3VyaSI6Imh0dHBzOi8vd3d3LmQtdHJ1c3QubmV0L2RlL2FnYiIsIlFDX2hhc2gi
             OiI3UXptNUVqdXpYS1NIRmxjME9IOVBQOXFVYUgtVkJsMmFHTmJ3WWoxb09BIiwiUUNfaGFzaEFsZ29yaXRobU9JRCI6IjIuMTYuODQwLjEu
             MTAxLjMuNC4yLjEiLCJ0cmFuc2FjdGlvbl9kYXRhX2hhc2hlc19hbGciOlsic2hhLTI1NiJdfQ
         """.trimIndent().replace("\n", "")
 
-        val cibaWalletTestVector = """
+            val cibaWalletTestVector = """
                 {
                     "response_type": "vp_token",
                     "client_id": "redirect_uri:$clientId",
@@ -186,44 +187,56 @@ val KeyBindingTests by testSuite {
                     ]
                 }
             """.trimIndent()
+        }
+    } - {
 
         "KB-JWT contains transaction data" {
-           val requestOptions = buildRequestOptions(transactionDataHashAlgorithms = null)
+            val verifierOid4Vp = OpenId4VpVerifier(
+                keyMaterial = EphemeralKeyWithoutCert(),
+                clientIdScheme = ClientIdScheme.RedirectUri(it.clientId),
+                stateToAuthnRequestStore = it.externalMapStore
+            )
+            val requestOptions = buildRequestOptions(transactionDataHashAlgorithms = null)
             val authnRequest = verifierOid4Vp.createAuthnRequest(requestOptions)
 
-            val authnRequestUrl = URLBuilder(walletUrl).apply {
+            val authnRequestUrl = URLBuilder(it.walletUrl).apply {
                 authnRequest.encodeToParameters()
                     .forEach { parameters.append(it.key, it.value) }
             }.buildString().apply {
                 this shouldContain "transaction_data"
             }
 
-            val authnResponse = holderOid4vp.createAuthnResponse(authnRequestUrl).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequestUrl).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             verifierOid4Vp.validateAuthnResponse(authnResponse.url)
                 .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
                 .sdJwtSigned.keyBindingJws.shouldNotBeNull().payload.apply {
-                transactionDataHashes.shouldNotBeNull()
-                transactionDataHashes.contentEquals(requestOptions.transactionData!!.map { it.digest(Digest.SHA256) })
-                transactionDataHashesAlgorithmString.shouldBeNull()
-                transactionDataHashesAlgorithm.shouldBe(Digest.SHA256)
-            }
+                    transactionDataHashes.shouldNotBeNull()
+                    transactionDataHashes.contentEquals(requestOptions.transactionData!!.map { it.digest(Digest.SHA256) })
+                    transactionDataHashesAlgorithmString.shouldBeNull()
+                    transactionDataHashesAlgorithm.shouldBe(Digest.SHA256)
+                }
         }
 
         "KB-JWT transaction data hashed with SHA384" {
             //[AuthenticationRequestParameters] do not contain [transactionData] in [presentationDefinition]
+            val verifierOid4Vp = OpenId4VpVerifier(
+                keyMaterial = EphemeralKeyWithoutCert(),
+                clientIdScheme = ClientIdScheme.RedirectUri(it.clientId),
+                stateToAuthnRequestStore = it.externalMapStore
+            )
             val requestOptions = buildRequestOptions(transactionDataHashAlgorithms = setOf(SdJwtConstants.SHA_384))
             val authnRequest = verifierOid4Vp.createAuthnRequest(requestOptions)
 
-            val authnRequestUrl = URLBuilder(walletUrl).apply {
+            val authnRequestUrl = URLBuilder(it.walletUrl).apply {
                 authnRequest.encodeToParameters()
                     .forEach { parameters.append(it.key, it.value) }
             }.buildString()
 
             authnRequestUrl shouldContain "transaction_data"
 
-            val authnResponse = holderOid4vp.createAuthnResponse(authnRequestUrl).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequestUrl).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             val result = verifierOid4Vp.validateAuthnResponse(authnResponse.url)
@@ -237,11 +250,16 @@ val KeyBindingTests by testSuite {
         }
 
         "Incorrect TransactionData is rejected" {
+            val verifierOid4Vp = OpenId4VpVerifier(
+                keyMaterial = EphemeralKeyWithoutCert(),
+                clientIdScheme = ClientIdScheme.RedirectUri(it.clientId),
+                stateToAuthnRequestStore = it.externalMapStore
+            )
             val requestOptions =
                 buildRequestOptions(OpenIdConstants.ResponseMode.DirectPost, setOf(SdJwtConstants.SHA_256))
             val authnRequest = verifierOid4Vp.createAuthnRequest(requestOptions)
 
-            val malignResponse = holderOid4vp.createAuthnResponse(
+            val malignResponse = it.holderOid4vp.createAuthnResponse(
                 vckJsonSerializer.encodeToString(
                     authnRequest.copy(
                         transactionData = malignTransactionData()
@@ -255,11 +273,11 @@ val KeyBindingTests by testSuite {
         }
 
         "Transaction Data validation can be turned off" {
-            val clientIdScheme = ClientIdScheme.RedirectUri(clientId)
+            val clientIdScheme = ClientIdScheme.RedirectUri(it.clientId)
             val lenientVerifier = OpenId4VpVerifier(
                 keyMaterial = EphemeralKeyWithoutCert(),
                 clientIdScheme = clientIdScheme,
-                stateToAuthnRequestStore = externalMapStore,
+                stateToAuthnRequestStore = it.externalMapStore,
                 verifier = VerifierAgent(
                     identifier = clientIdScheme.clientId,
                     validatorSdJwt = ValidatorSdJwt(verifyTransactionData = false)
@@ -269,7 +287,7 @@ val KeyBindingTests by testSuite {
             val requestOptions = buildRequestOptions(OpenIdConstants.ResponseMode.DirectPost, null)
             val authnRequest = lenientVerifier.createAuthnRequest(requestOptions)
 
-            val malignResponse = holderOid4vp.createAuthnResponse(
+            val malignResponse = it.holderOid4vp.createAuthnResponse(
                 vckJsonSerializer.encodeToString(
                     authnRequest.copy(
                         transactionData = malignTransactionData()
@@ -283,19 +301,25 @@ val KeyBindingTests by testSuite {
         }
 
         "Hash of transaction data is not changed during processing" {
-            val referenceHash = cibaWalletTransactionData.toByteArray(Charsets.UTF_8).sha256()
+            val referenceHash = it.cibaWalletTransactionData.toByteArray(Charsets.UTF_8).sha256()
 
-            val state = holderOid4vp.startAuthorizationResponsePreparation(cibaWalletTestVector)
+            val verifierOid4Vp = OpenId4VpVerifier(
+                keyMaterial = EphemeralKeyWithoutCert(),
+                clientIdScheme = ClientIdScheme.RedirectUri(it.clientId),
+                stateToAuthnRequestStore = it.externalMapStore
+            )
+
+            val state = it.holderOid4vp.startAuthorizationResponsePreparation(it.cibaWalletTestVector)
                 .getOrThrow().apply {
                     request.parameters.transactionData.shouldNotBeEmpty().shouldNotBeNull()
                 }
 
-            externalMapStore.put(
+            it.externalMapStore.put(
                 "iTGlKl-AJxmncWPbXHp2xy58bNy18wqZ4TR9EzhBl2R4ulxeTEO0VyWYR2qMDpCDV5JWeOxecTqcEJ61bFKrUg",
                 state.request.parameters
             )
 
-            val authnResponse = holderOid4vp.createAuthnResponse(state.request).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthnResponse(state.request).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
             verifierOid4Vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
@@ -305,11 +329,3 @@ val KeyBindingTests by testSuite {
         }
     }
 }
-private fun malignTransactionData(): List<TransactionDataBase64Url> = listOf(
-    QCertCreationAcceptance(
-        credentialIds = setOf(),
-        qcTermsConditionsUri = uuid4().toString(),
-        qcHash = uuid4().bytes,
-        qcHashAlgorithmOid = Digest.SHA256.oid,
-    ).toBase64UrlJsonString()
-)

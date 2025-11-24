@@ -10,8 +10,6 @@ import at.asitplus.iso.ValueDigestList
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.testballoon.invoke
-import de.infix.testBalloon.framework.core.TestConfig
-import de.infix.testBalloon.framework.core.aroundEach
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -24,16 +22,13 @@ import kotlin.time.Instant
 
 val Iso18013SpecTest by testSuite {
 
-    testConfig = TestConfig.aroundEach {
-        CborCredentialSerializer.register(
-            serializerMap = mapOf(
-                "issue_date" to LocalDate.serializer(),
-                "expiry_date" to LocalDate.serializer(),
-            ),
-            isoNamespace = "org.iso.18013.5.1"
-        )
-        it()
-    }
+    CborCredentialSerializer.register(
+        serializerMap = mapOf(
+            "issue_date" to LocalDate.serializer(),
+            "expiry_date" to LocalDate.serializer(),
+        ),
+        isoNamespace = "org.iso.18013.5.1"
+    )
 
     // From ISO/IEC 18013-5:2021(E), D4.1.1, page 115
     "mdoc request" {
