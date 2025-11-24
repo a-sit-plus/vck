@@ -21,7 +21,7 @@ jobs:
             ~/.gradle/caches
             ~/.gradle/wrapper
             ~/.m2/repository
-          key: Android-${{ hashFiles('./conventions-vclib/src/main/resources/vcLibVersions.properties', './gradle/wrapper/gradle-wrapper.properties') }}
+          key: Android-${{ hashFiles('./gradle/libs.versions.toml', './gradle/wrapper/gradle-wrapper.properties') }}
       - name: Run tests
         run: ./gradlew jvmTest
       - name: Run ISO mDL tests
