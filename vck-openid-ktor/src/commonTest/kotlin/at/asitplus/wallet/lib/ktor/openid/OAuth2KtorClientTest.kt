@@ -1,10 +1,8 @@
 package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.catching
-import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenRequestParameters
-import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.eupid.EuPidScheme
@@ -12,7 +10,6 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -39,26 +36,26 @@ import io.ktor.util.*
 
 val OAuth2KtorClientTest by testSuite {
 
-    lateinit var dpopKeyMaterial: KeyMaterial
-    lateinit var clientAuthKeyMaterial: KeyMaterial
-
-    lateinit var mockEngine: MockEngine
-    lateinit var authorizationService: SimpleAuthorizationService
-    lateinit var client: OAuth2KtorClient
-
+    data class Context(
+        val dpopKeyMaterial: KeyMaterial,
+        val clientAuthKeyMaterial: KeyMaterial,
+        val mockEngine: MockEngine,
+        val authorizationService: SimpleAuthorizationService,
+        val client: OAuth2KtorClient,
+    )
 
     fun setup(
         strategy: CredentialAuthorizationServiceStrategy,
         requestObjectSigningAlgorithms: Set<JwsAlgorithm.Signature>?,
         requirePAR: Boolean
-    ) {
-        dpopKeyMaterial = EphemeralKeyWithoutCert()
-        clientAuthKeyMaterial = EphemeralKeyWithoutCert()
+    ): Context {
+        val dpopKeyMaterial = EphemeralKeyWithoutCert()
+        val clientAuthKeyMaterial = EphemeralKeyWithoutCert()
         val authorizationEndpointPath = "/authorize"
         val tokenEndpointPath = "/token"
         val parEndpointPath = "/par"
         val publicContext = "https://issuer.example.com"
-        authorizationService = SimpleAuthorizationService(
+        val authorizationService = SimpleAuthorizationService(
             strategy = strategy,
             publicContext = publicContext,
             authorizationEndpointPath = authorizationEndpointPath,
@@ -73,7 +70,7 @@ val OAuth2KtorClientTest by testSuite {
             requestObjectSigningAlgorithms = requestObjectSigningAlgorithms,
             requirePushedAuthorizationRequests = requirePAR,
         )
-        mockEngine = MockEngine { request ->
+        val mockEngine = MockEngine { request ->
             when {
                 request.url.fullPath.startsWith(parEndpointPath) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
@@ -111,21 +108,27 @@ val OAuth2KtorClientTest by testSuite {
             }
         }
         val clientId = "https://example.com/rp"
-        client = OAuth2KtorClient(
-            engine = mockEngine,
-            loadClientAttestationJwt = {
-                BuildClientAttestationJwt(
-                    SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
-                    clientId = clientId,
-                    issuer = "issuer",
-                    clientKey = clientAuthKeyMaterial.jsonWebKey
-                ).serialize()
-            },
-            signClientAttestationPop = SignJwt(clientAuthKeyMaterial, JwsHeaderNone()),
-            signDpop = SignJwt(dpopKeyMaterial, JwsHeaderCertOrJwk()),
-            dpopAlgorithm = dpopKeyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
-            oAuth2Client = OAuth2Client(clientId = clientId),
-            randomSource = RandomSource.Default,
+        return Context(
+            dpopKeyMaterial = dpopKeyMaterial,
+            clientAuthKeyMaterial = clientAuthKeyMaterial,
+            mockEngine = mockEngine,
+            authorizationService = authorizationService,
+            client = OAuth2KtorClient(
+                engine = mockEngine,
+                loadClientAttestationJwt = {
+                    BuildClientAttestationJwt(
+                        SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
+                        clientId = clientId,
+                        issuer = "issuer",
+                        clientKey = clientAuthKeyMaterial.jsonWebKey
+                    ).serialize()
+                },
+                signClientAttestationPop = SignJwt(clientAuthKeyMaterial, JwsHeaderNone()),
+                signDpop = SignJwt(dpopKeyMaterial, JwsHeaderCertOrJwk()),
+                dpopAlgorithm = dpopKeyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
+                oAuth2Client = OAuth2Client(clientId = clientId),
+                randomSource = RandomSource.Default,
+            )
         )
     }
 
@@ -139,27 +142,27 @@ val OAuth2KtorClientTest by testSuite {
         true to setOf(JwsAlgorithm.Signature.ES256),
     ).forEach { (requirePAR, enableJAR) ->
         test("auth code and token; JAR=${enableJAR != null} PAR=$requirePAR") {
-            setup(strategy, enableJAR, requirePAR)
-            client.startAuthorization(
-                oauthMetadata = authorizationService.metadata(),
-                authorizationServer = authorizationService.publicContext,
-                scope = requestedScope,
-            ).getOrThrow().also {
-                // Simulates the browser, handling authorization to get the authCode
-                val httpClient = HttpClient(mockEngine) { followRedirects = false }
-                val authCodeUrl = httpClient.get(it.url).headers[HttpHeaders.Location].shouldNotBeNull()
-                client.requestTokenWithAuthCode(
+            with(setup(strategy, enableJAR, requirePAR)) {
+                client.startAuthorization(
                     oauthMetadata = authorizationService.metadata(),
-                    url = authCodeUrl,
                     authorizationServer = authorizationService.publicContext,
-                    state = it.state,
                     scope = requestedScope,
-                    authorizationDetails = setOf()
                 ).getOrThrow().also {
-                    it.params.accessToken.shouldNotBeNull()
+                    // Simulates the browser, handling authorization to get the authCode
+                    val httpClient = HttpClient(mockEngine) { followRedirects = false }
+                    val authCodeUrl = httpClient.get(it.url).headers[HttpHeaders.Location].shouldNotBeNull()
+                    client.requestTokenWithAuthCode(
+                        oauthMetadata = authorizationService.metadata(),
+                        url = authCodeUrl,
+                        authorizationServer = authorizationService.publicContext,
+                        state = it.state,
+                        scope = requestedScope,
+                        authorizationDetails = setOf()
+                    ).getOrThrow().also {
+                        it.params.accessToken.shouldNotBeNull()
+                    }
                 }
             }
         }
-
     }
 }

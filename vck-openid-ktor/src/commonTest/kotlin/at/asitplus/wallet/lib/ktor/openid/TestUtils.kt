@@ -4,6 +4,8 @@ import at.asitplus.catching
 import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.openid.ClientNonceResponse
 import at.asitplus.openid.CredentialResponseParameters
+import at.asitplus.openid.IssuerMetadata
+import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.PushedAuthenticationResponseParameters
@@ -172,5 +174,14 @@ object TestUtils {
         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
     )
 
+    fun MockRequestHandleScope.respond(result: IssuerMetadata): HttpResponseData = respond(
+        vckJsonSerializer.encodeToString<IssuerMetadata>(result),
+        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+    )
+
+    fun MockRequestHandleScope.respond(result: OAuth2AuthorizationServerMetadata): HttpResponseData = respond(
+        vckJsonSerializer.encodeToString<OAuth2AuthorizationServerMetadata>(result),
+        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+    )
 
 }
