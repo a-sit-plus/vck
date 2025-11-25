@@ -6,7 +6,6 @@ import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
 import kotlin.time.Duration.Companion.minutes
 
-//Supercharge tests with concurrency!
 class TestConfig : TestSession(
     testConfig = DefaultConfiguration.invocation(TestInvocation.SEQUENTIAL)
         .testScope(isEnabled = true, timeout = 20.minutes)
