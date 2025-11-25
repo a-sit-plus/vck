@@ -11,7 +11,7 @@ import kotlin.time.Duration.Companion.minutes
 expect val testNameLengths: Pair<Int, Int>
 
 class TestConfig : TestSession(
-    testConfig = DefaultConfiguration.invocation(TestInvocation.SEQUENTIAL)
+    testConfig = DefaultConfiguration.invocation(TestInvocation.CONCURRENT)
         .testScope(isEnabled = true, timeout = 20.minutes)
 ) {
     init {
