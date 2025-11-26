@@ -6,13 +6,10 @@ import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
-import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.Status
-import at.asitplus.wallet.lib.data.StatusListCwt
-import at.asitplus.wallet.lib.data.StatusListJwt
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
@@ -23,13 +20,13 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.randomCwtOrJwtResolver
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.comparables.shouldBeLessThan
 import io.kotest.matchers.comparables.shouldNotBeGreaterThan
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
@@ -42,23 +39,6 @@ val ValidatorVcTest by testSuite {
     withFixtureGenerator {
         object {
             val revocationListUrl: String = "https://wallet.a-sit.at/backend/credentials/status/1"
-            val validator = ValidatorVcJws(
-                validator = Validator(
-                    tokenStatusResolver = TokenStatusResolverImpl(
-                        resolveStatusListToken = {
-                            if (Random.nextBoolean()) StatusListJwt(
-                                statusListIssuer.issueStatusListJwt(),
-                                resolvedAt = Clock.System.now(),
-                            ) else {
-                                StatusListCwt(
-                                    statusListIssuer.issueStatusListCwt(),
-                                    resolvedAt = Clock.System.now(),
-                                )
-                            }
-                        },
-                    )
-                )
-            )
             val issuerCredentialStore = InMemoryIssuerCredentialStore()
             val issuerKeyMaterial = EphemeralKeyWithoutCert()
             val issuerIdentifier = "https://issuer.example.com/"
@@ -69,6 +49,11 @@ val ValidatorVcTest by testSuite {
                 randomSource = RandomSource.Default
             )
             val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
+            val validator = ValidatorVcJws(
+                validator = Validator(
+                    tokenStatusResolver = randomCwtOrJwtResolver(statusListIssuer)
+                )
+            )
             val issuerSignVc = SignJwt<VerifiableCredentialJws>(issuerKeyMaterial, JwsHeaderCertOrJwk())
             val verifierKeyMaterial = EphemeralKeyWithoutCert()
 

@@ -18,6 +18,7 @@ import at.asitplus.wallet.lib.data.StatusListCwt
 import at.asitplus.wallet.lib.data.StatusListJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.rfc3986.toUri
+import at.asitplus.wallet.lib.randomCwtOrJwtResolver
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -33,22 +34,6 @@ val AgentTest by testSuite {
 
     withFixtureGenerator {
         object {
-            val validator = Validator(
-                tokenStatusResolver = TokenStatusResolverImpl(
-                    resolveStatusListToken = {
-                        if (Random.nextBoolean()) StatusListJwt(
-                            statusListIssuer.issueStatusListJwt(),
-                            resolvedAt = Clock.System.now()
-                        ) else {
-                            StatusListCwt(
-                                statusListIssuer.issueStatusListCwt(),
-                                resolvedAt = Clock.System.now()
-                            )
-                        }
-                    },
-                )
-            )
-
             val issuerCredentialStore = InMemoryIssuerCredentialStore()
             val holderCredentialStore = InMemorySubjectCredentialStore()
 
@@ -59,7 +44,9 @@ val AgentTest by testSuite {
                 randomSource = RandomSource.Default
             )
             val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
-
+            val validator = Validator(
+                tokenStatusResolver = randomCwtOrJwtResolver(statusListIssuer)
+            )
             val holderKeyMaterial = EphemeralKeyWithoutCert()
             val verifierId = "urn:${uuid4()}"
             val holder = HolderAgent(
@@ -120,10 +107,7 @@ val AgentTest by testSuite {
             ).getOrThrow()
 
             val presentationParameters = it.holder.createPresentation(
-                request = PresentationRequestParameters(
-                    nonce = it.challenge,
-                    audience = it.issuerIdentifier,
-                ),
+                request = PresentationRequestParameters(nonce = it.challenge, audience = it.issuerIdentifier),
                 credentialPresentation = singularPresentationDefinition,
             ).getOrThrow()
                 .shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()

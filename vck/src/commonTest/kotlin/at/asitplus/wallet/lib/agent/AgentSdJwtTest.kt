@@ -16,7 +16,6 @@ import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
-import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
@@ -24,8 +23,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.KeyBindingJws
-import at.asitplus.wallet.lib.data.StatusListCwt
-import at.asitplus.wallet.lib.data.StatusListJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.extensions.sdHashInput
@@ -33,6 +30,7 @@ import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
+import at.asitplus.wallet.lib.randomCwtOrJwtResolver
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.engine.runBlocking
@@ -42,7 +40,6 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldNotBeInstanceOf
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlin.random.Random
 import kotlin.time.Clock
 
 
@@ -50,23 +47,6 @@ val AgentSdJwtTest by testSuite {
 
     withFixtureGenerator {
         object {
-            val validator = ValidatorSdJwt(
-                validator = Validator(
-                    tokenStatusResolver = TokenStatusResolverImpl(
-                        resolveStatusListToken = {
-                            if (Random.nextBoolean()) StatusListJwt(
-                                statusListIssuer.issueStatusListJwt(),
-                                resolvedAt = Clock.System.now()
-                            ) else {
-                                StatusListCwt(
-                                    statusListIssuer.issueStatusListCwt(),
-                                    resolvedAt = Clock.System.now(),
-                                )
-                            }
-                        },
-                    )
-                )
-            )
             val issuerCredentialStore = InMemoryIssuerCredentialStore()
             val holderCredentialStore = InMemorySubjectCredentialStore()
             val issuer = IssuerAgent(
@@ -75,6 +55,9 @@ val AgentSdJwtTest by testSuite {
                 randomSource = RandomSource.Default
             )
             val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
+            val validator = ValidatorSdJwt(
+                validator = Validator(tokenStatusResolver = randomCwtOrJwtResolver(statusListIssuer))
+            )
             val holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
             val holder = HolderAgent(
                 holderKeyMaterial,

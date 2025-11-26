@@ -5,13 +5,10 @@ import at.asitplus.dif.PresentationDefinition
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
-import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
-import at.asitplus.wallet.lib.data.StatusListCwt
-import at.asitplus.wallet.lib.data.StatusListJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentation
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
@@ -20,6 +17,7 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.randomCwtOrJwtResolver
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.engine.runBlocking
@@ -29,8 +27,6 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlin.random.Random
-import kotlin.time.Clock
 
 
 val ValidatorVpTest by testSuite {
@@ -54,19 +50,7 @@ val ValidatorVpTest by testSuite {
             val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
             val validator = ValidatorVcJws(
                 validator = Validator(
-                    tokenStatusResolver = TokenStatusResolverImpl(
-                        resolveStatusListToken = {
-                            if (Random.nextBoolean()) StatusListJwt(
-                                statusListIssuer.issueStatusListJwt(),
-                                resolvedAt = Clock.System.now()
-                            ) else {
-                                StatusListCwt(
-                                    statusListIssuer.issueStatusListCwt(),
-                                    resolvedAt = Clock.System.now()
-                                )
-                            }
-                        },
-                    )
+                    tokenStatusResolver = randomCwtOrJwtResolver(statusListIssuer)
                 )
             )
             val holderCredentialStore = InMemorySubjectCredentialStore()

@@ -5,21 +5,18 @@ import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.testballoon.invoke
-import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
-import at.asitplus.wallet.lib.data.StatusListCwt
-import at.asitplus.wallet.lib.data.StatusListJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.rfc3986.toUri
+import at.asitplus.wallet.lib.randomCwtOrJwtResolver
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.comparables.shouldBeLessThan
 import io.kotest.matchers.comparables.shouldNotBeGreaterThan
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
@@ -40,19 +37,7 @@ private data class Config(
             return Config(
                 validator = ValidatorMdoc(
                     validator = Validator(
-                        tokenStatusResolver = TokenStatusResolverImpl(
-                            resolveStatusListToken = {
-                                if (Random.nextBoolean()) StatusListJwt(
-                                    statusListIssuer.issueStatusListJwt(),
-                                    resolvedAt = Clock.System.now(),
-                                ) else {
-                                    StatusListCwt(
-                                        statusListIssuer.issueStatusListCwt(),
-                                        resolvedAt = Clock.System.now(),
-                                    )
-                                }
-                            },
-                        )
+                        tokenStatusResolver = randomCwtOrJwtResolver(statusListIssuer)
                     )
                 ),
                 issuerCredentialStore = issuerCredentialStore,
