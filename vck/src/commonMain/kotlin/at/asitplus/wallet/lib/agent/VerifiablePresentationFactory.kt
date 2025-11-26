@@ -13,6 +13,8 @@ import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
+import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult
+import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.ClaimsQueryResults
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.josef.JwsSigned
@@ -45,16 +47,6 @@ class VerifiablePresentationFactory(
         SignJwt(keyMaterial, JwsHeaderNone()),
 ) {
 
-    suspend fun createVerifiablePresentationForIsoCredentials(
-        request: PresentationRequestParameters,
-        credentialAndDisclosedAttributes: Map<SubjectCredentialStore.StoreEntry.Iso, Collection<NormalizedJsonPath>>,
-    ): KmmResult<CreatePresentationResult> = catching {
-        createIsoPresentation(
-            request = request,
-            credentialAndRequestedClaims = credentialAndDisclosedAttributes,
-        )
-    }
-
     suspend fun createVerifiablePresentation(
         request: PresentationRequestParameters,
         credential: SubjectCredentialStore.StoreEntry,
@@ -85,7 +77,7 @@ class VerifiablePresentationFactory(
         disclosedAttributes: DCQLCredentialQueryMatchingResult,
     ): KmmResult<CreatePresentationResult> = catching {
         when (credential) {
-            is SubjectCredentialStore.StoreEntry.Vc -> if (disclosedAttributes !is DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult) {
+            is SubjectCredentialStore.StoreEntry.Vc -> if (disclosedAttributes !is AllClaimsMatchingResult) {
                 throw IllegalArgumentException("Credential type only allows disclosure of all attributes.")
             } else createVcPresentation(
                 request = request,
@@ -96,11 +88,11 @@ class VerifiablePresentationFactory(
                 request = request,
                 validSdJwtCredential = credential,
                 requestedClaims = when (disclosedAttributes) {
-                    DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult -> credential.disclosures.entries.map {
+                    AllClaimsMatchingResult -> credential.disclosures.entries.map {
                         NormalizedJsonPath() + it.value!!.claimName!!
                     }
 
-                    is DCQLCredentialQueryMatchingResult.ClaimsQueryResults -> disclosedAttributes.claimsQueryResults.map {
+                    is ClaimsQueryResults -> disclosedAttributes.claimsQueryResults.map {
                         it as DCQLClaimsQueryResult.JsonResult
                     }.map {
                         it.nodeList.map {
@@ -120,13 +112,13 @@ class VerifiablePresentationFactory(
     private fun DCQLCredentialQueryMatchingResult.toRequestedIsoClaims(
         credential: SubjectCredentialStore.StoreEntry.Iso,
     ) = when (this) {
-        DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult -> credential.issuerSigned.namespaces!!.entries.flatMap { namespace ->
+        AllClaimsMatchingResult -> credential.issuerSigned.namespaces!!.entries.flatMap { namespace ->
             namespace.value.entries.map {
                 NormalizedJsonPath() + namespace.key + it.value.elementIdentifier
             }
         }
 
-        is DCQLCredentialQueryMatchingResult.ClaimsQueryResults -> claimsQueryResults.map {
+        is ClaimsQueryResults -> claimsQueryResults.map {
             it as DCQLClaimsQueryResult.IsoMdocResult
         }.map {
             NormalizedJsonPath() + it.namespace + it.claimName

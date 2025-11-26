@@ -29,8 +29,9 @@ Release 5.10.0 (Unreleased):
    - Advertise correct wallet metadata for retrieving authn requests, e.g. `client_id_prefixes_supported`
    - Drop support for signed-then-encrypted responses, as in OpenID4VP 1.0
    - Deprecate method `validateAuthnResponse(input: Map<String, String>)` in `OpenId4VpVerifier` because it eluded correct input parsing
+   - When returning multiple ISO mDoc credentials, make sure to create one device response object per document, wrapping in separate VP tokens
  - SD-JWT:
-   - Fix creation of SD JWTs containing structures that are selectivey disclosable
+   - Fix creation of SD JWTs containing structures that are selectively disclosable
 
 Release 5.9.0
  - Refactor `RqesWalletService` to be stateless
