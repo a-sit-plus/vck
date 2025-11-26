@@ -72,7 +72,7 @@ class VcLibConventions : K2Conventions() {
                     sourceSets.forEach {
                         it.languageSettings.enableLanguageFeature("ContextParameters")
                     }
-                    sourceSets.commonMain.get()
+                    sourceSets.commonTest.get()
                         .dependencies { implementation("at.asitplus.gradle:testballoon-shim:$buildDate") }
                 }
                 tasks.withType<Test>().configureEach {

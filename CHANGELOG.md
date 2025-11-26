@@ -1,5 +1,8 @@
 # Changelog
 
+Release 5.9.1
+- Remove bogus testballoon-shim dependency
+
 Release 5.9.0
  - Refactor `RqesWalletService` to be stateless
  - Remove code elements deprecated in 5.8.0
