@@ -573,23 +573,22 @@ class VerifyStatusListTokenHAIP(
         val trustStore: Set<X509Certificate>? = trustStoreLookup(jwsObject)
         val certChain: CertificateChain? = jwsObject.header.certificateChain
         val signingCert: X509Certificate = certChain?.first() ?: throw Exception("Certificate Chain MUST not be empty")
-        signingCert.decodedPublicKey
-            .getOrThrow()
-            .let { key ->
-                require(verifyJwsSignature(jwsObject, key).isSuccess) { "Invalid Signature" }
-            }
+        signingCert.decodedPublicKey.getOrThrow().let { key ->
+            require(verifyJwsSignature(jwsObject, key).isSuccess) { "Invalid Signature" }
+        }
         require(!signingCert.isSelfSigned()) {
             "The certificate signing the request MUST NOT be self-signed"
         }
         if (trustStore != null) {
-            require(
-                certChain.intersect(trustStore.toSet()).isEmpty()
-            ) { "The certificate chain must not contain any trusted certificates" }
+            require(certChain.intersect(trustStore.toSet()).isEmpty()) {
+                "The certificate chain must not contain any trusted certificates"
+            }
 
             require(validCertPath(certChain, trustStore)) {
                 "Certificate path to trusted Certs could not be established"
             }
         }
+        Verifier.Success
     }
 
     private fun validCertPath(certChain: List<X509Certificate>, trustStore: Set<X509Certificate>): Boolean =
@@ -610,7 +609,7 @@ class VerifyStatusListTokenHAIP(
 fun interface VerifyJwsObjectFun {
     suspend operator fun invoke(
         jwsObject: JwsSigned<*>,
-    ): KmmResult<Unit>
+    ): KmmResult<Verifier.Success>
 }
 
 class VerifyJwsObject(
@@ -627,6 +626,7 @@ class VerifyJwsObject(
         require(jwsObject.loadPublicKeys().any { verifyJwsSignature(jwsObject, it).isSuccess }) {
             "Invalid Signature"
         }
+        Verifier.Success
     }
 
     /**
