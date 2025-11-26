@@ -1,19 +1,13 @@
 package at.asitplus.wallet.lib.data.iso18013
 
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.data.Status
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.serialization.cbor.Cbor
-
-private val cbor = Cbor {
-    ignoreUnknownKeys = true
-    useDefiniteLengthEncoding = true
-    alwaysUseByteString = true
-}
 
 /**
  * From Annex D.7
@@ -51,15 +45,15 @@ val IdentifierListTest by testSuite {
                 certificate = byteArrayOf(0xaa.toByte())
             )
         )
-        val deserialized = cbor.decodeFromByteArray(Status.serializer(), statusTestVec.decodeToByteArray(Base16Strict))
+        val deserialized = coseCompliantSerializer.decodeFromByteArray(Status.serializer(), statusTestVec.decodeToByteArray(Base16Strict))
 
-        val serialized = cbor.encodeToByteArray(Status.serializer(), deserialized)
+        val serialized = coseCompliantSerializer.encodeToByteArray(Status.serializer(), deserialized)
         deserialized shouldBe expected //sanity check
         serialized.encodeToString(Base16Strict) shouldBe statusTestVec
     }
 
     "Identifier is correct surrogate for type 2 bytearray" {
-        val encoded = cbor.encodeToByteArray(
+        val encoded = coseCompliantSerializer.encodeToByteArray(
             Identifier.serializer(),
             Identifier(byteArrayOf(0xcc.toByte(), 0xcc.toByte()))
         ).encodeToString(Base16Strict)
@@ -71,15 +65,17 @@ val IdentifierListTest by testSuite {
             identifiers = mapOf(
                 Identifier(byteArrayOf(0xab.toByte(), 0xcd.toByte())) to IdentifierInfo(),
                 Identifier(byteArrayOf(0xaa.toByte(), 0xaa.toByte())) to IdentifierInfo(
-                    mapOf(IdentifierInfoKey.KeyString("note") to null)),
+                    mapOf(IdentifierInfoKey.KeyString("note") to null)
+                ),
                 Identifier(byteArrayOf(0xcc.toByte(), 0xcc.toByte())) to IdentifierInfo(
-                    mapOf(IdentifierInfoKey.KeyInt(7) to null)),
+                    mapOf(IdentifierInfoKey.KeyInt(7) to null)
+                ),
             ),
             aggregationUri = "https://example.com/identifierlists/aggregation"
         )
         val deserialized =
-            cbor.decodeFromByteArray(IdentifierList.serializer(), identifierListTestVec.decodeToByteArray(Base16Strict))
-        val serialized = cbor.encodeToByteArray(IdentifierList.serializer(), deserialized)
+            coseCompliantSerializer.decodeFromByteArray(IdentifierList.serializer(), identifierListTestVec.decodeToByteArray(Base16Strict))
+        val serialized = coseCompliantSerializer.encodeToByteArray(IdentifierList.serializer(), deserialized)
         deserialized shouldBe expected //sanity check
         serialized.encodeToString(Base16Strict) shouldBe identifierListTestVec
     }
