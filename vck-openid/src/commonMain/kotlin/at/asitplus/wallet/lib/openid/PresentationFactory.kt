@@ -15,8 +15,6 @@ import at.asitplus.iso.wrapInCborTag
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.IdToken
 import at.asitplus.openid.OpenIdConstants
-import at.asitplus.openid.OpenIdConstants.ResponseMode.DcApiJwt
-import at.asitplus.openid.OpenIdConstants.ResponseMode.DirectPostJwt
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestParametersFrom
@@ -79,9 +77,8 @@ internal class PresentationFactory(
         dcApiRequestCallingOrigin: String?,
     ): KmmResult<PresentationResponseParameters> = catching {
         request.verifyResponseType()
-        val responseModeIsJwt = request.responseMode == DcApiJwt || request.responseMode == DirectPostJwt
-        val responseWillBeEncrypted =
-            jsonWebKeys != null && (clientMetadata?.requestsEncryption() == true || responseModeIsJwt)
+        val responseWillBeEncrypted = jsonWebKeys != null
+                && (clientMetadata?.requestsEncryption() == true || request.responseMode?.requiresEncryption == true)
         val mdocGeneratedNonce = if (responseWillBeEncrypted)
             randomSource.nextBytes(16).encodeToString(Base64UrlStrict)
         else ""
@@ -135,90 +132,75 @@ internal class PresentationFactory(
         dcApiRequestCallingOrigin: String?,
         jsonWebKeys: Collection<JsonWebKey>?,
         responseWillBeEncrypted: Boolean,
-    ): CoseSigned<ByteArray> {
-        val sessionTranscript: SessionTranscript = if (dcApiRequestCallingOrigin != null) {
-            calcSessionTranscriptForDcApi(
-                callingOrigin = dcApiRequestCallingOrigin,
-                nonce = nonce,
-                jsonWebKeys = jsonWebKeys,
-                responseWillBeEncrypted = responseWillBeEncrypted
-            )
-        } else if (clientId != null && responseUrl != null) {
-            calcSessionTranscript(
+    ): CoseSigned<ByteArray> = signDeviceAuthDetached(
+        protectedHeader = null,
+        unprotectedHeader = null,
+        payload = DeviceAuthentication(
+            type = DeviceAuthentication.TYPE,
+            sessionTranscript = calcSessionTranscript(
                 clientId = clientId,
                 responseUrl = responseUrl,
                 nonce = nonce,
+                dcApiRequestCallingOrigin = dcApiRequestCallingOrigin,
                 jsonWebKeys = jsonWebKeys,
                 responseWillBeEncrypted = responseWillBeEncrypted
-            )
-        } else {
-            throw IllegalStateException("Neither dcApiRequest nor clientId is set")
-        }
-
-        val deviceAuthentication = DeviceAuthentication(
-            type = DeviceAuthentication.TYPE,
-            sessionTranscript = sessionTranscript,
+            ),
             docType = docType,
             namespaces = ByteStringWrapper(DeviceNameSpaces(mapOf()))
-        )
-        val deviceAuthenticationBytes = coseCompliantSerializer
-            .encodeToByteArray(ByteStringWrapper(deviceAuthentication))
-            .wrapInCborTag(24)
-            .also {
-                Napier.d("Device authentication signature input is ${it.encodeToString(Base16())}")
-            }
-
-        return signDeviceAuthDetached(
-            protectedHeader = null,
-            unprotectedHeader = null,
-            payload = deviceAuthenticationBytes,
-            serializer = ByteArraySerializer()
-        ).getOrElse {
-            throw PresentationException("signDeviceAuthDetached failed", it)
-        }
+        ).wrap(),
+        serializer = ByteArraySerializer()
+    ).getOrElse {
+        throw PresentationException("signDeviceAuthDetached failed", it)
     }
 
     internal fun calcSessionTranscript(
-        clientId: String,
-        responseUrl: String,
+        clientId: String? = null,
+        responseUrl: String? = null,
         nonce: String,
+        dcApiRequestCallingOrigin: String? = null,
         jsonWebKeys: Collection<JsonWebKey>?,
-        responseWillBeEncrypted: Boolean,
-    ) = SessionTranscript.forOpenId(
-        OpenId4VpHandover(
-            type = OpenId4VpHandover.TYPE_OPENID4VP,
-            hash = coseCompliantSerializer.encodeToByteArray(
-                OpenId4VpHandoverInfo(
-                    clientId = clientId,
-                    nonce = nonce,
-                    jwkThumbprint = if (responseWillBeEncrypted && !jsonWebKeys.isNullOrEmpty()) {
-                        jsonWebKeys.firstSessionTranscriptThumbprint()
-                    } else null,
-                    responseUrl = responseUrl,
-                )
-            ).sha256(),
-        ),
-    )
-
-    internal fun calcSessionTranscriptForDcApi(
-        callingOrigin: String,
-        nonce: String,
-        jsonWebKeys: Collection<JsonWebKey>?,
-        responseWillBeEncrypted: Boolean,
-    ) = SessionTranscript.forDcApi(
-        DCAPIHandover(
-            type = DCAPIHandover.TYPE_OPENID4VP,
-            hash = coseCompliantSerializer.encodeToByteArray(
-                OpenID4VPDCAPIHandoverInfo(
-                    origin = callingOrigin,
-                    nonce = nonce,
-                    jwkThumbprint = if (responseWillBeEncrypted && !jsonWebKeys.isNullOrEmpty()) {
-                        jsonWebKeys.firstSessionTranscriptThumbprint()
-                    } else null
-                )
-            ).sha256()
+        responseWillBeEncrypted: Boolean
+    ) = if (dcApiRequestCallingOrigin != null) {
+        SessionTranscript.forDcApi(
+            DCAPIHandover(
+                type = DCAPIHandover.TYPE_OPENID4VP,
+                hash = coseCompliantSerializer.encodeToByteArray<OpenID4VPDCAPIHandoverInfo>(
+                    OpenID4VPDCAPIHandoverInfo(
+                        origin = dcApiRequestCallingOrigin,
+                        nonce = nonce,
+                        jwkThumbprint = if (responseWillBeEncrypted && !jsonWebKeys.isNullOrEmpty()) {
+                            jsonWebKeys.firstSessionTranscriptThumbprint()
+                        } else null
+                    )
+                ).sha256()
+            )
         )
-    )
+    } else if (clientId != null && responseUrl != null) {
+        SessionTranscript.forOpenId(
+            OpenId4VpHandover(
+                type = OpenId4VpHandover.TYPE_OPENID4VP,
+                hash = coseCompliantSerializer.encodeToByteArray<OpenId4VpHandoverInfo>(
+                    OpenId4VpHandoverInfo(
+                        clientId = clientId,
+                        nonce = nonce,
+                        jwkThumbprint = if (responseWillBeEncrypted && !jsonWebKeys.isNullOrEmpty()) {
+                            jsonWebKeys.firstSessionTranscriptThumbprint()
+                        } else null,
+                        responseUrl = responseUrl,
+                    )
+                ).sha256(),
+            ),
+        )
+    } else {
+        throw IllegalStateException("Neither dcApiRequest nor clientId is set")
+    }
+
+    private fun DeviceAuthentication.wrap(): ByteArray = coseCompliantSerializer
+        .encodeToByteArray(ByteStringWrapper(this))
+        .wrapInCborTag(24)
+        .also {
+            Napier.d("Device authentication signature input is ${it.encodeToString(Base16())}")
+        }
 
     suspend fun createSignedIdToken(
         clock: Clock,

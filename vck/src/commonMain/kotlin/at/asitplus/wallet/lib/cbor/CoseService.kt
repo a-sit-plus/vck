@@ -312,7 +312,6 @@ class VerifyCoseSignatureWithKey<P : Any>(
         detachedPayload: ByteArray?,
     ) = catching {
         val signatureInput = coseSigned.prepareCoseSignatureInput(externalAad, detachedPayload)
-            .also { Napier.d("verifyCose input is ${it.encodeToString(Base16())}") }
         val algorithm = coseSigned.protectedHeader.algorithm
             ?: throw IllegalArgumentException("Algorithm not specified")
         require(algorithm is CoseAlgorithm.Signature) { "CoseAlgorithm not supported: $algorithm" }
@@ -347,7 +346,6 @@ class VerifyCoseMacWithKey<P : Any>(
         detachedPayload: ByteArray?
     ) = catching {
         val macInput = coseMac.prepareCoseMacInput(externalAad, detachedPayload)
-            .also { Napier.d("verifyCose input is ${it.encodeToString(Base16())}") }
         val algorithm = coseMac.protectedHeader.algorithm
             ?: throw IllegalArgumentException("Algorithm not specified")
         require(algorithm is CoseAlgorithm.MAC) { "CoseAlgorithm not supported: ${algorithm}" }

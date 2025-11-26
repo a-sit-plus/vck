@@ -640,11 +640,8 @@ class OpenId4VpVerifier(
     ): suspend (MobileSecurityObject, Document) -> Boolean = { mso, document ->
         val deviceSignature = document.deviceSigned.deviceAuth.deviceSignature
             ?: throw IllegalArgumentException("deviceSignature is null")
-
-        val walletKey = mso.deviceKeyInfo.deviceKey
         if (clientId == null || responseUrl == null)
             throw IllegalStateException("Missing required parameters: clientId, responseUrl")
-
         val expected = document.calcDeviceAuthenticationOpenId4VpFinal(
             clientId = clientId,
             responseUrl = responseUrl,
@@ -652,7 +649,12 @@ class OpenId4VpVerifier(
             encrypted = mdocGeneratedNonce.isNotEmpty()
         ).wrapAsExpectedPayload()
 
-        verifyCoseSignature(deviceSignature, walletKey, byteArrayOf(), expected).onFailure {
+        verifyCoseSignature(
+            coseSigned = deviceSignature,
+            signer = mso.deviceKeyInfo.deviceKey,
+            externalAad = byteArrayOf(),
+            detachedPayload = expected
+        ).onFailure {
             throw IllegalArgumentException("deviceSignature not matching ${expected.encodeToString(Base16())}", it)
         }
         true
