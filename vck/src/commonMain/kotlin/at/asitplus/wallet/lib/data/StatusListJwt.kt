@@ -49,7 +49,7 @@ data class StatusListJwt(
         catching {
             val jwsSigned = statusListToken.value
             verifyJwsObject(jwsSigned).getOrElse {
-                throw IllegalStateException(it)
+                throw IllegalStateException("Invalid signature", it)
             }
             val type = jwsSigned.header.type?.lowercase()
                 ?: throw IllegalArgumentException("Invalid type header")
