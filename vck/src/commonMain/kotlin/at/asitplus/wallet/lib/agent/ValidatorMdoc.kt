@@ -9,6 +9,7 @@ import at.asitplus.iso.ValueDigestList
 import at.asitplus.iso.sha256
 import at.asitplus.iso.wrapInCborTag
 import at.asitplus.signum.indispensable.cosef.CoseKey
+import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseKey
@@ -118,10 +119,13 @@ class ValidatorMdoc(
     private fun ByteStringWrapper<IssuerSignedItem>.verify(mdlItems: ValueDigestList?): Boolean {
         val issuerHash = mdlItems?.entries?.firstOrNull { it.key == value.digestId }
             ?: return false
-        val verifierHash = coseCompliantSerializer
+        // TODO Only true in AgentIsoMdocTest when we are not deserializing the ByteStringWrappe in the issuerSignedItems
+        val inputToVerifierHash = if (serialized.encodeToString(Base16Strict).uppercase().startsWith("D818"))
+            serialized
+        else coseCompliantSerializer
             .encodeToByteArray(ByteArraySerializer(), serialized)
             .wrapInCborTag(24)
-            .sha256()
+        val verifierHash = inputToVerifierHash.sha256()
         return verifierHash.contentEquals(issuerHash.value)
     }
 
