@@ -6,13 +6,12 @@ import at.asitplus.signum.indispensable.io.TransformingSerializerTemplate
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.cbor.ByteString
-import kotlinx.serialization.cbor.Cbor.Default.CoseCompliant
 
 /**
  * Identifier = bstr
  *
  * This only works correctly if the cbor serializer uses `alwaysUseByteString = true`
- * which holds for any serializer which implements [CoseCompliant] such as [coseCompliantSerializer].
+ * which holds for [coseCompliantSerializer].
  *
  * The `@ByteString` annotation is currently only cosmetic because a custom serializer cannot not honor it
  * due to how it's wired in the backend.
