@@ -10,19 +10,28 @@ sealed class RequestParametersFrom<S : RequestParameters> {
 
     abstract val parameters: S
 
+    /**
+     * Common ancestor for request parameters that are represented with a JWS signature
+     * (e.g., classic OpenID requests or DC-API signed requests).
+     */
+    @Serializable
+    sealed class RequestParametersSigned<T : RequestParameters> : RequestParametersFrom<T>() {
+        abstract val jwsSigned: at.asitplus.signum.indispensable.josef.JwsSigned<T>
+    }
+
     @Serializable
     @SerialName(SerialNames.TYPE_JWS_SIGNED)
     data class JwsSigned<T : RequestParameters>(
         @Serializable(JwsSignedSerializer::class)
         @SerialName(SerialNames.JWS_SIGNED)
-        val jwsSigned: at.asitplus.signum.indispensable.josef.JwsSigned<T>,
+        override val jwsSigned: at.asitplus.signum.indispensable.josef.JwsSigned<T>,
         @SerialName(SerialNames.PARAMETERS)
         override val parameters: T,
         @SerialName(SerialNames.VERIFIED)
         val verified: Boolean,
         @SerialName(SerialNames.PARENT)
         val parent: Url?,
-    ) : RequestParametersFrom<T>() {
+    ) : RequestParametersSigned<T>() {
         override fun toString(): String {
             return "JwsSigned(parent='$parent', jwsSigned=${jwsSigned.serialize()}, parameters=$parameters, verified=$verified)"
         }
@@ -37,8 +46,8 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         override val parameters: T,
         @Serializable(JwsSignedSerializer::class)
         @SerialName(SerialNames.JWS_SIGNED)
-        val jwsSigned: at.asitplus.signum.indispensable.josef.JwsSigned<T>,
-    ) : RequestParametersFrom<T>() {
+        override val jwsSigned: at.asitplus.signum.indispensable.josef.JwsSigned<T>,
+    ) : RequestParametersSigned<T>() {
         override fun toString(): String {
             return "DcApiSigned(dcApiRequest=$dcApiRequest, parameters=$parameters, jwsSigned=${jwsSigned.serialize()})"
         }

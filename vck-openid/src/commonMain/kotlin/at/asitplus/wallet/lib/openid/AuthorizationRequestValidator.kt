@@ -115,8 +115,8 @@ internal class AuthorizationRequestValidator(
         val clientIdScheme = parameters.clientIdSchemeExtracted
         val responseModeIsDirectPost = parameters.responseMode.isAnyDirectPost()
         val responseModeIsDcApi = parameters.responseMode.isAnyDcApi()
-        if (this !is RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>
-            || jwsSigned.header.certificateChain == null || jwsSigned.header.certificateChain?.isEmpty() == true
+        if (this !is RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>
+            || jwsSigned.header.certificateChain.isNullOrEmpty()
         ) {
             throw InvalidRequest("x5c is null, and metadata is not set")
         }
@@ -131,7 +131,7 @@ internal class AuthorizationRequestValidator(
         // TODO Trust Model: Verify root of trust for certificate chain
     }
 
-    private fun RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>.verifyX509SanDns(
+    private fun RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>.verifyX509SanDns(
         leaf: X509Certificate,
         responseModeIsDirectPost: Boolean,
         responseModeIsDcApi: Boolean,
@@ -155,7 +155,7 @@ internal class AuthorizationRequestValidator(
         }
     }
 
-    private fun RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>.verifyX509SanUri(
+    private fun RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>.verifyX509SanUri(
         leaf: X509Certificate,
     ) {
         if (leaf.tbsCertificate.extensions == null || leaf.tbsCertificate.extensions!!.isEmpty()) {
@@ -171,7 +171,7 @@ internal class AuthorizationRequestValidator(
         }
     }
 
-    private fun RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>.verifyX509SanHash(
+    private fun RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>.verifyX509SanHash(
         leaf: X509Certificate,
     ) {
         val calculatedHash = leaf.encodeToDerSafe()
