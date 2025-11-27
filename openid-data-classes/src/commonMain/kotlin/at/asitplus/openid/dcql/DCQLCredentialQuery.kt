@@ -198,13 +198,13 @@ sealed interface DCQLCredentialQuery {
         }
 
         val isTrustedAuthorityMatching = trustedAuthorities?.any { trustedAuthority ->
-            when (trustedAuthority.type) { // TODO: move this to matching function?
+            when (trustedAuthority.type) {
                 DCQLTrustedAuthorityType.aki -> authorityKeyIdentifiersBase64Extractor(credential).any {
                     it in trustedAuthority.values
                 }
 
-                DCQLTrustedAuthorityType.etsi_tl -> TODO()
-                DCQLTrustedAuthorityType.openid_federation -> TODO()
+                DCQLTrustedAuthorityType.etsi_tl,
+                DCQLTrustedAuthorityType.openid_federation -> throw UnsupportedOperationException("Trusted authority type is not supported: `${trustedAuthority.type}`")
             }
         } ?: true
 
