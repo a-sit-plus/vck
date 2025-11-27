@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.data
 import at.asitplus.openid.TransactionData
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.digest
-import at.asitplus.openid.sha256
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
@@ -46,9 +45,5 @@ fun TransactionData.toBase64UrlJsonString(): TransactionDataBase64Url = vckJsonS
         this
     )
 ) as TransactionDataBase64Url
-
-@Suppress("DEPRECATION")
-@Deprecated("Use digest()", ReplaceWith("digest(Digest.SHA256)"))
-fun TransactionData.sha256(): ByteArray = toBase64UrlJsonString().sha256()
 
 fun TransactionData.digest(digest: Digest): ByteArray = toBase64UrlJsonString().digest(digest)

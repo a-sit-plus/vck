@@ -22,10 +22,6 @@ sealed class ClientIdScheme(
             else -> scheme.prefix + clientIdWithoutPrefix
         }
 
-    @Deprecated("Deprecated clientIdScheme  is no longer supported", level = DeprecationLevel.ERROR)
-    val clientIdScheme: OpenIdConstants.ClientIdScheme?
-        get() = null
-
     /**
      * This Client Identifier Scheme allows the Verifier to authenticate using a JWT that is bound to a certain
      * public key. When the Client Identifier Scheme is `verifier_attestation`, the Client Identifier MUST equal

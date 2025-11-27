@@ -96,12 +96,6 @@ interface Verifier {
             val issuerSigned: IssuerSigned,
         ) : VerifyCredentialResult()
 
-        @Deprecated("Has been replaced with ValidationError")
-        data class InvalidStructure(
-            val input: String,
-            val reason: String,
-        ) : VerifyCredentialResult()
-
         data class ValidationError(
             val cause: Throwable,
         ) : VerifyCredentialResult() {

@@ -138,10 +138,6 @@ class SimpleAuthorizationService(
     private val requestObjectSigningAlgorithms: Set<JwsAlgorithm.Signature>? = setOf(JwsAlgorithm.Signature.ES256),
 ) : OAuth2AuthorizationServerAdapter, AuthorizationService {
 
-    @Deprecated("Use [validateAccessToken] instead")
-    override val tokenVerificationService: TokenVerificationService
-        get() = tokenService.verification
-
     private val _metadata: OAuth2AuthorizationServerMetadata by lazy {
         OAuth2AuthorizationServerMetadata(
             issuer = publicContext,
@@ -164,9 +160,6 @@ class SimpleAuthorizationService(
             )
         )
     }
-
-    @Deprecated("Use [metadata()] instead")
-    override val metadata: OAuth2AuthorizationServerMetadata by lazy { _metadata }
 
     /**
      * Serve this result JSON-serialized under `/.well-known/openid-configuration`,
@@ -220,42 +213,6 @@ class SimpleAuthorizationService(
                 preAuthorizedCode = providePreAuthorizedCode(user),
                 authorizationServer = publicContext
             )
-        )
-    )
-
-    @Deprecated(
-        "Use par with RequestInfo instead",
-        ReplaceWith("par(input, RequestInfo(clientAttestation = clientAttestation, clientAttestationPop = clientAttestationPop))")
-    )
-    suspend fun par(
-        input: String,
-        clientAttestation: String?,
-        clientAttestationPop: String?,
-    ) = par(
-        input,
-        RequestInfo(
-            "url",
-            HttpMethod.Get,
-            clientAttestation = clientAttestation,
-            clientAttestationPop = clientAttestationPop
-        )
-    )
-
-    @Deprecated(
-        "Use par with RequestInfo instead",
-        ReplaceWith("par(request, RequestInfo(clientAttestation = clientAttestation, clientAttestationPop = clientAttestationPop))")
-    )
-    suspend fun par(
-        request: AuthenticationRequestParameters,
-        clientAttestation: String?,
-        clientAttestationPop: String?,
-    ) = par(
-        request as RequestParameters,
-        RequestInfo(
-            "url",
-            HttpMethod.Get,
-            clientAttestation = clientAttestation,
-            clientAttestationPop = clientAttestationPop
         )
     )
 
@@ -334,15 +291,6 @@ class SimpleAuthorizationService(
                 .also { Napier.i("authorize returns $it") }
         }
     }
-
-    @Deprecated(
-        "Use authorize with RequestParameters instead",
-        replaceWith = ReplaceWith("authorize(input, RequestInfo(loadUserFun))")
-    )
-    suspend fun authorize(
-        input: AuthenticationRequestParameters,
-        loadUserFun: OAuth2LoadUserFun,
-    ) = authorize(input as RequestParameters, loadUserFun)
 
     internal suspend fun issueCodeForUserInfo(
         userInfo: OidcUserInfoExtended,

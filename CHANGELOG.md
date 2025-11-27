@@ -33,9 +33,10 @@ Release 5.10.0 (Unreleased):
    - When returning multiple ISO mDoc credentials, make sure to create one device response object per document, wrapping in separate VP tokens
  - SD-JWT:
    - Fix creation of SD JWTs containing structures that are selectively disclosable
+ - Remote Qualified Electronic Signatures:
+   - Remove modules deprecated in 5.9.0: `vck-rqes`, `rqes-data-classes`
 
 Release 5.9.0
- - Refactor `RqesWalletService` to be stateless
  - Remove code elements deprecated in 5.8.0
  - Gradle modules: 
    - Change dependency structure of modules
@@ -45,6 +46,7 @@ Release 5.9.0
    - Move OpenId-related classes to `openid-data-classes`
    - Remove class `Initializer` from `vck-openid`
  - Remote Qualified Electronic Signatures:
+   - Refactor `RqesWalletService` to be stateless
    - Remove "UC5-flow" option in RQES flows
    - Remove `transactionData` from `KeyBindingJws`
    - Remove `QesAuthorizationDetails`

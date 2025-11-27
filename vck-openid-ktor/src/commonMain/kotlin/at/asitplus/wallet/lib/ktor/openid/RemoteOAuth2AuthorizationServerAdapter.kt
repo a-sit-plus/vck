@@ -7,7 +7,6 @@ import at.asitplus.openid.OpenIdConstants.WellKnownPaths
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenResponseParameters
-import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
@@ -34,7 +33,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 
 /**
@@ -93,44 +91,6 @@ class RemoteOAuth2AuthorizationServerAdapter(
     private suspend fun loadOpenidConfiguration() =
         client.get(insertWellKnownPath(publicContext, WellKnownPaths.OpenidConfiguration))
             .body<OAuth2AuthorizationServerMetadata>()
-
-    @Deprecated("Use [validateAccessToken] instead")
-    override val tokenVerificationService: TokenVerificationService
-        get() = object : TokenVerificationService {
-
-            override suspend fun getTokenInfo(
-                tokenOrAuthHeader: String,
-            ): TokenInfo {
-                TODO("Not yet implemented")
-            }
-
-            override suspend fun validateAccessToken(
-                tokenOrAuthHeader: String,
-                httpRequest: RequestInfo?,
-                dpopNonceService: NonceService?,
-            ): KmmResult<Unit> {
-                TODO("Not yet implemented")
-            }
-
-            override suspend fun validateRefreshToken(
-                refreshToken: String,
-                httpRequest: RequestInfo?,
-                validatedClientKey: JsonWebKey?,
-            ): String {
-                TODO("Not yet implemented")
-            }
-
-            override suspend fun extractValidatedClientKey(httpRequest: RequestInfo?): KmmResult<JsonWebKey?> {
-                TODO("Not yet implemented")
-            }
-        }
-
-    @Deprecated("Use [metadata()] instead")
-    override val metadata: OAuth2AuthorizationServerMetadata by lazy {
-        runBlocking {
-            _metadata.await()
-        }
-    }
 
     override suspend fun metadata(): OAuth2AuthorizationServerMetadata = _metadata.await()
 
