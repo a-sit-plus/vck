@@ -1,6 +1,6 @@
 package at.asitplus.openid
 
-import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
+import at.asitplus.dcapi.request.DCAPIWalletRequest
 import at.asitplus.openid.RequestParametersFrom.SerialNames.DC_API_REQUEST
 import at.asitplus.openid.RequestParametersFrom.SerialNames.JSON_STRING
 import at.asitplus.openid.RequestParametersFrom.SerialNames.JWS_SIGNED
@@ -41,7 +41,7 @@ import kotlinx.serialization.json.jsonObject
 class RequestParametersFromSerializer<T : RequestParameters>(
     private val parameterSerializer: KSerializer<T>,
 ) : KSerializer<RequestParametersFrom<T>> {
-    val dcApiRequestSerializer = Oid4vpDCAPIRequest.serializer()
+    val dcApiRequestSerializer = DCAPIWalletRequest.Oid4Vp.serializer()
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor("RequestParametersFrom") {
         element(TYPE_JWS_SIGNED, buildClassSerialDescriptor(TYPE_JWS_SIGNED) {
             element(JWS_SIGNED, JwsSignedSerializer.descriptor)
