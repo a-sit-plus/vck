@@ -236,12 +236,13 @@ class OpenId4VpVerifier(
     suspend fun createAuthnRequest(
         requestOptions: RequestOptions,
         creationOptions: CreationOptions,
+        id: String,
     ): KmmResult<CreatedRequest> = catching {
         when (creationOptions) {
             is CreationOptions.Query -> {
                 require(clientIdScheme !is ClientIdScheme.CertificateSanDns) // per OpenID4VP d23 5.10.4
                 URLBuilder(creationOptions.walletUrl).apply {
-                    createAuthnRequest(requestOptions).encodeToParameters()
+                    createAuthnRequest(requestOptions, id).encodeToParameters()
                         .forEach { parameters.append(it.key, it.value) }
                 }.buildString().toCreatedRequest()
             }
@@ -257,7 +258,7 @@ class OpenId4VpVerifier(
                         .forEach { parameters.append(it.key, it.value) }
                 }.buildString().toCreatedRequest {
                     catching {
-                        vckJsonSerializer.encodeToString(createAuthnRequest(requestOptions, it))
+                        vckJsonSerializer.encodeToString(createAuthnRequest(requestOptions, id, it))
                     }
                 }
             }
@@ -267,7 +268,7 @@ class OpenId4VpVerifier(
                 URLBuilder(creationOptions.walletUrl).apply {
                     JarRequestParameters(
                         clientId = clientIdScheme.clientId,
-                        request = createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow().serialize(),
+                        request = createAuthnRequestAsSignedRequestObject(requestOptions, id).getOrThrow().serialize(),
                     ).encodeToParameters()
                         .forEach { parameters.append(it.key, it.value) }
                 }.buildString().toCreatedRequest()
@@ -285,7 +286,7 @@ class OpenId4VpVerifier(
                 }.buildString()
                     .toCreatedRequest {
                         catching {
-                            createAuthnRequestAsSignedRequestObject(requestOptions, it).getOrThrow().serialize()
+                            createAuthnRequestAsSignedRequestObject(requestOptions, id, it).getOrThrow().serialize()
                         }
                     }
             }
@@ -313,9 +314,10 @@ class OpenId4VpVerifier(
      */
     suspend fun createAuthnRequestAsSignedRequestObject(
         requestOptions: RequestOptions,
+        id: String,
         requestObjectParameters: RequestObjectParameters? = null,
     ): KmmResult<JwsSigned<AuthenticationRequestParameters>> = catching {
-        val requestObject = createAuthnRequest(requestOptions, requestObjectParameters)
+        val requestObject = createAuthnRequest(requestOptions, id, requestObjectParameters)
         val siopClientId = "https://self-issued.me/v2"
         val issuer = when (clientIdScheme) {
             is ClientIdScheme.PreRegistered -> clientIdScheme.issuerUri ?: clientIdScheme.clientId
@@ -337,6 +339,7 @@ class OpenId4VpVerifier(
      */
     suspend fun createAuthnRequest(
         requestOptions: RequestOptions,
+        id: String,
         requestObjectParameters: RequestObjectParameters? = null,
     ) = prepareAuthnRequest(
         requestOptions = requestOptions,
@@ -557,7 +560,7 @@ class OpenId4VpVerifier(
         val vpToken = responseParameters.parameters.vpToken
             ?: throw IllegalArgumentException("vp_token")
 
-        return authnRequest.presentationDefinition?.let { presentationDefinition ->
+        return authnRequest.presentationDefinition?.let { _ ->
             val presentationSubmission = responseParameters.parameters.presentationSubmission?.descriptorMap
                 ?: throw IllegalArgumentException("Presentation Exchange need to present a presentation submission.")
 
