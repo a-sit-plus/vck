@@ -115,11 +115,14 @@ val DCQLJsonClaimsQueryTest by testSuite {
             credentialStructureExtractor = {
                 DCQLCredentialClaimStructure.JsonBasedStructure(it)
             },
-            credentialQuery = DCQLCredentialQueryInstance(
+            credentialQuery = DCQLSdJwtCredentialQuery(
                 id = DCQLCredentialQueryIdentifier(
                     Random.nextBytes(32).encodeToString(Base64UrlStrict),
                 ),
                 format = CredentialFormatEnum.DC_SD_JWT,
+                meta = DCQLSdJwtCredentialMetadataAndValidityConstraints(
+                    vctValues = listOf("anything")
+                )
             )
         ).getOrThrow().shouldBeInstanceOf<DCQLClaimsQueryResult.JsonResult>().let {
             it.nodeList shouldHaveSize 3
@@ -139,11 +142,14 @@ val DCQLJsonClaimsQueryTest by testSuite {
             credentialStructureExtractor = {
                 DCQLCredentialClaimStructure.JsonBasedStructure(it)
             },
-            credentialQuery = DCQLCredentialQueryInstance(
+            credentialQuery = DCQLIsoMdocCredentialQuery(
                 id = DCQLCredentialQueryIdentifier(
                     Random.nextBytes(32).encodeToString(Base64UrlStrict),
                 ),
                 format = CredentialFormatEnum.MSO_MDOC,
+                meta = DCQLIsoMdocCredentialMetadataAndValidityConstraints(
+                    doctypeValue = "anything"
+                )
             )
         ).isSuccess shouldBe false
     }

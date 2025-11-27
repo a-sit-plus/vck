@@ -26,21 +26,19 @@ data class DCQLSdJwtCredentialQuery(
     @SerialName(DCQLCredentialQuery.SerialNames.MULTIPLE)
     override val multiple: Boolean? = false,
     @SerialName(DCQLCredentialQuery.SerialNames.TRUSTED_AUTHORITIES)
-    override val trustedAuthorities: List<String>? = null,
+    override val trustedAuthorities: NonEmptyList<DCQLTrustedAuthority>? = null,
     @SerialName(DCQLCredentialQuery.SerialNames.REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING)
     override val requireCryptographicHolderBinding: Boolean? = true,
 ) : DCQLCredentialQuery {
-    init {
-        validate(this)
+    override fun validate() {
+        super.validate()
+
+        if (format.coerceDeprecations() != CredentialFormatEnum.DC_SD_JWT) {
+            throw IllegalArgumentException("Value has an invalid format identifier in this context.")
+        }
     }
 
-    companion object {
-        fun validate(query: DCQLSdJwtCredentialQuery) = query.run {
-            DCQLCredentialQuery.validate(this)
-
-            if (format.coerceDeprecations() != CredentialFormatEnum.DC_SD_JWT) {
-                throw IllegalArgumentException("Value has an invalid format identifier in this context.")
-            }
-        }
+    init {
+        validate()
     }
 }

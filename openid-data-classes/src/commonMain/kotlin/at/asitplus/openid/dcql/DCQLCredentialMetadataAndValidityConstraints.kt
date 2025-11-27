@@ -3,7 +3,7 @@ package at.asitplus.openid.dcql
 import kotlinx.serialization.Serializable
 
 @Serializable(with = DCQLCredentialMetadataAndValidityConstraintsSerializer::class)
-interface DCQLCredentialMetadataAndValidityConstraints
+sealed interface DCQLCredentialMetadataAndValidityConstraints
 
 /**
  * Passes an empty constraint object as per https://github.com/openid/OpenID4VP/issues/590

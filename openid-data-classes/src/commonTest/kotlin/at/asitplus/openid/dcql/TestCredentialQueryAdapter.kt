@@ -31,6 +31,12 @@ value class TestCredentialQueryAdapter(val dcqlQuery: DCQLQuery) {
                 is TestCredential.SdJwtCredential -> it.type
                 else -> throw IllegalArgumentException("Json Credentials do not have an MDOC document type.")
             }
+        },
+        satisfiesCryptographicHolderBinding = {
+            true
+        },
+        authorityKeyIdentifiersBase64Extractor = {
+            listOf()
         }
     )
 }

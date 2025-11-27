@@ -10,6 +10,7 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
@@ -27,7 +28,7 @@ val DCQLCredentialQueryTest by testSuite {
         }
     }
     "serialization" {
-        val value = DCQLCredentialQueryInstance(
+        val value = DCQLSdJwtCredentialQuery(
             id = DCQLCredentialQueryIdentifier(
                 Random.nextBytes(32).encodeToString(Base64UrlStrict)
             ),
@@ -36,14 +37,29 @@ val DCQLCredentialQueryTest by testSuite {
                 DCQLJsonClaimsQuery(
                     path = DCQLClaimsPathPointer(null)
                 )
+            ),
+            meta = DCQLSdJwtCredentialMetadataAndValidityConstraints(
+                vctValues = listOf("mustmatch")
             )
         )
 
         val expectedJsonObject = buildJsonObject {
             put(DCQLCredentialQuery.SerialNames.ID, JsonPrimitive(value.id.string))
+            put(DCQLCredentialQuery.SerialNames.META, JsonPrimitive(value.id.string))
             put(
                 DCQLCredentialQuery.SerialNames.FORMAT,
                 JsonPrimitive(CredentialFormatEnum.DC_SD_JWT.text)
+            )
+            put(
+                DCQLCredentialQuery.SerialNames.META,
+                buildJsonObject {
+                    put(
+                        DCQLSdJwtCredentialMetadataAndValidityConstraints.SerialNames.VCT_VALUES,
+                        buildJsonArray {
+                            add("mustmatch")
+                        }
+                    )
+                }
             )
             put(DCQLCredentialQuery.SerialNames.CLAIMS, buildJsonArray {
                 add(buildJsonObject {
@@ -55,6 +71,6 @@ val DCQLCredentialQueryTest by testSuite {
         }
 
         Json.encodeToJsonElement(value) shouldBe expectedJsonObject
-        Json.decodeFromJsonElement<DCQLCredentialQueryInstance>(expectedJsonObject) shouldBe value
+        Json.decodeFromJsonElement<DCQLCredentialQuery>(expectedJsonObject) shouldBe value
     }
 }

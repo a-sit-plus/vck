@@ -2,13 +2,15 @@
 
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
-import at.asitplus.openid.dcql.DCQLCredentialQueryInstance
 import at.asitplus.openid.dcql.DCQLCredentialQueryList
 import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.openid.dcql.DCQLW3CVerifiableCredentialMetadataAndValidityConstraints
+import at.asitplus.openid.dcql.DCQLW3CVerifiableCredentialQuery
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.minus
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
@@ -287,9 +289,12 @@ val AgentTest by testSuite {
     "when using dcql" - {
         val singularDCQLRequest = DCQLQuery(
             credentials = DCQLCredentialQueryList(
-                DCQLCredentialQueryInstance(
+                DCQLW3CVerifiableCredentialQuery(
                     id = DCQLCredentialQueryIdentifier(uuid4().toString()),
-                    format = CredentialFormatEnum.JWT_VC
+                    format = CredentialFormatEnum.JWT_VC,
+                    meta = DCQLW3CVerifiableCredentialMetadataAndValidityConstraints(
+                        typeValues = listOf(listOf("").toNonEmptyList()).toNonEmptyList()
+                    ),
                 )
             ),
         )

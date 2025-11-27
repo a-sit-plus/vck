@@ -22,15 +22,15 @@ import at.asitplus.openid.TransactionData
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment
 import at.asitplus.openid.dcql.DCQLClaimsQueryList
+import at.asitplus.openid.dcql.DCQLCredentialQuery
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
-import at.asitplus.openid.dcql.DCQLCredentialQueryInstance
 import at.asitplus.openid.dcql.DCQLCredentialQueryList
-import at.asitplus.openid.dcql.DCQLEmptyCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLIsoMdocClaimsQuery
 import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
+import at.asitplus.openid.dcql.DCQLW3CVerifiableCredentialMetadataAndValidityConstraints
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
@@ -117,15 +117,22 @@ data class RequestOptions(
     fun buildScope(): String = listOf(SCOPE_OPENID, SCOPE_PROFILE).joinToString(" ")
 
     fun toDCQLQuery(): DCQLQuery? = if (credentials.isEmpty()) null else DCQLQuery(
-        credentials = DCQLCredentialQueryList<DCQLCredentialQueryInstance>(
-            credentials.map<RequestOptionsCredential, DCQLCredentialQueryInstance> { credential ->
+        credentials = DCQLCredentialQueryList(
+            credentials.map { credential ->
                 val format = when (credential.representation) {
                     CredentialRepresentation.PLAIN_JWT -> CredentialFormatEnum.JWT_VC
                     CredentialRepresentation.SD_JWT -> CredentialFormatEnum.DC_SD_JWT
                     CredentialRepresentation.ISO_MDOC -> CredentialFormatEnum.MSO_MDOC
                 }
                 val meta = when (credential.representation) {
-                    CredentialRepresentation.PLAIN_JWT -> DCQLEmptyCredentialMetadataAndValidityConstraints
+                    CredentialRepresentation.PLAIN_JWT -> DCQLW3CVerifiableCredentialMetadataAndValidityConstraints(
+                        typeValues = listOf(
+                            listOf(
+                                credential.credentialScheme.vcType!!
+                            ).toNonEmptyList()
+                        ).toNonEmptyList()
+                    )
+
                     CredentialRepresentation.SD_JWT -> DCQLSdJwtCredentialMetadataAndValidityConstraints(
                         vctValues = listOf(credential.credentialScheme.sdJwtType!!)
                     )
@@ -161,7 +168,7 @@ data class RequestOptions(
                     DCQLClaimsQueryList(it)
                 }
 
-                DCQLCredentialQueryInstance(
+                DCQLCredentialQuery(
                     id = DCQLCredentialQueryIdentifier(credential.id),
                     format = format,
                     meta = meta,
@@ -230,7 +237,7 @@ data class RequestOptionsCredential(
      * ```
      */
     val requestedOptionalAttributes: RequestedAttributes? = null,
-    /** ID to be used in [DifInputDescriptor] or [QesInputDescriptor], or [DCQLCredentialQueryInstance] */
+    /** ID to be used in [DifInputDescriptor] or [QesInputDescriptor], or [DCQLCredentialQuery] */
     val id: String = uuid4().toString(),
 ) {
     fun buildId() = if (isMdoc) credentialScheme.isoDocType!! else id

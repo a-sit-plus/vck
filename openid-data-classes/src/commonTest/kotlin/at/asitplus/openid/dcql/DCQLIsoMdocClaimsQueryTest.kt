@@ -80,11 +80,14 @@ val DCQLIsoMdocClaimsQueryTest by testSuite {
             credentialStructureExtractor = {
                 DCQLCredentialClaimStructure.IsoMdocStructure(it)
             },
-            credentialQuery = DCQLCredentialQueryInstance(
+            credentialQuery = DCQLIsoMdocCredentialQuery(
                 id = DCQLCredentialQueryIdentifier(
                     Random.nextBytes(32).encodeToString(Base64UrlStrict),
                 ),
                 format = CredentialFormatEnum.MSO_MDOC,
+                meta = DCQLIsoMdocCredentialMetadataAndValidityConstraints(
+                    doctypeValue = "anything"
+                )
             )
         ).getOrThrow().shouldBeInstanceOf<DCQLClaimsQueryResult.IsoMdocResult>().let {
             it.claimValue shouldBe 0
@@ -104,11 +107,14 @@ val DCQLIsoMdocClaimsQueryTest by testSuite {
             credentialStructureExtractor = {
                 DCQLCredentialClaimStructure.IsoMdocStructure(it)
             },
-            credentialQuery = DCQLCredentialQueryInstance(
+            credentialQuery = DCQLIsoMdocCredentialQuery(
                 id = DCQLCredentialQueryIdentifier(
                     Random.nextBytes(32).encodeToString(Base64UrlStrict),
                 ),
                 format = CredentialFormatEnum.MSO_MDOC,
+                meta = DCQLIsoMdocCredentialMetadataAndValidityConstraints(
+                    doctypeValue = "anything"
+                )
             )
         ).isSuccess shouldBe false
 
@@ -126,11 +132,14 @@ val DCQLIsoMdocClaimsQueryTest by testSuite {
             credentialStructureExtractor = {
                 DCQLCredentialClaimStructure.IsoMdocStructure(it)
             },
-            credentialQuery = DCQLCredentialQueryInstance(
+            credentialQuery = DCQLSdJwtCredentialQuery(
                 id = DCQLCredentialQueryIdentifier(
                     Random.nextBytes(32).encodeToString(Base64UrlStrict),
                 ),
                 format = CredentialFormatEnum.DC_SD_JWT,
+                meta = DCQLSdJwtCredentialMetadataAndValidityConstraints(
+                    vctValues = listOf("anything")
+                )
             )
         ).isSuccess shouldBe false
     }

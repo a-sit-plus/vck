@@ -13,10 +13,11 @@ object DCQLCredentialQuerySerializer : JsonContentPolymorphicSerializer<DCQLCred
         val credentialFormatIdentifier = parameters[DCQLCredentialQuery.SerialNames.FORMAT]?.jsonPrimitive?.content?.let {
             CredentialFormatEnum.parse(it)
         }
-        return when {
-            credentialFormatIdentifier == CredentialFormatEnum.MSO_MDOC -> DCQLIsoMdocCredentialQuery.serializer()
-            credentialFormatIdentifier?.coerceDeprecations() == CredentialFormatEnum.DC_SD_JWT -> DCQLSdJwtCredentialQuery.serializer()
-            else -> DCQLCredentialQueryInstance.serializer()
+        return when(credentialFormatIdentifier?.coerceDeprecations()) {
+            CredentialFormatEnum.MSO_MDOC -> DCQLIsoMdocCredentialQuery.serializer()
+            CredentialFormatEnum.DC_SD_JWT -> DCQLSdJwtCredentialQuery.serializer()
+            CredentialFormatEnum.JWT_VC -> DCQLW3CVerifiableCredentialQuery.serializer()
+            else -> throw IllegalArgumentException("Credential format not recognized: ${credentialFormatIdentifier}")
         }
     }
 }

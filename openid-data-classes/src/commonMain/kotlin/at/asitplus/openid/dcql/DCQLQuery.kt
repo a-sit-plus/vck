@@ -61,6 +61,8 @@ data class DCQLQuery(
         mdocCredentialDoctypeExtractor: (Credential) -> String,
         sdJwtCredentialTypeExtractor: (Credential) -> String,
         credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
+        satisfiesCryptographicHolderBinding: (Credential) -> Boolean,
+        authorityKeyIdentifiersBase64Extractor: (Credential) -> List<String>,
     ): KmmResult<DCQLQueryResult<Credential>> = Procedures.executeQuery(
         credentialQueries = credentials,
         requestedCredentialSetQueries = requestedCredentialSetQueries,
@@ -69,6 +71,8 @@ data class DCQLQuery(
         mdocCredentialDoctypeExtractor = mdocCredentialDoctypeExtractor,
         sdJwtCredentialTypeExtractor = sdJwtCredentialTypeExtractor,
         credentialClaimStructureExtractor = credentialClaimStructureExtractor,
+        satisfiesCryptographicHolderBinding = satisfiesCryptographicHolderBinding,
+        authorityKeyIdentifiersBase64Extractor = authorityKeyIdentifiersBase64Extractor,
     )
 
     object Procedures {
@@ -97,6 +101,8 @@ data class DCQLQuery(
             mdocCredentialDoctypeExtractor: (Credential) -> String,
             sdJwtCredentialTypeExtractor: (Credential) -> String,
             credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
+            satisfiesCryptographicHolderBinding: (Credential) -> Boolean,
+            authorityKeyIdentifiersBase64Extractor: (Credential) -> List<String>,
         ): KmmResult<DCQLQueryResult<Credential>> = catching {
             val credentialQueryMatches = findCredentialQueryMatches(
                 credentialQueries,
@@ -105,6 +111,8 @@ data class DCQLQuery(
                 mdocCredentialDoctypeExtractor = mdocCredentialDoctypeExtractor,
                 sdJwtCredentialTypeExtractor = sdJwtCredentialTypeExtractor,
                 credentialClaimStructureExtractor = credentialClaimStructureExtractor,
+                satisfiesCryptographicHolderBinding = satisfiesCryptographicHolderBinding,
+                authorityKeyIdentifiersBase64Extractor = authorityKeyIdentifiersBase64Extractor,
             )
 
             val satisfiableCredentialSetQueryOptions = findSatisfactoryCredentialSetQueryOptions(
@@ -127,6 +135,8 @@ data class DCQLQuery(
             mdocCredentialDoctypeExtractor: (Credential) -> String,
             sdJwtCredentialTypeExtractor: (Credential) -> String,
             credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
+            satisfiesCryptographicHolderBinding: (Credential) -> Boolean,
+            authorityKeyIdentifiersBase64Extractor: (Credential) -> List<String>,
         ): Map<DCQLCredentialQueryIdentifier, List<DCQLCredentialSubmissionOption<Credential>>> {
             return credentialQueries.associate { credentialQuery ->
                 credentialQuery.id to availableCredentials.mapNotNull { credential ->
@@ -136,6 +146,8 @@ data class DCQLQuery(
                         mdocCredentialDoctypeExtractor = mdocCredentialDoctypeExtractor,
                         sdJwtCredentialTypeExtractor = sdJwtCredentialTypeExtractor,
                         credentialClaimStructureExtractor = credentialClaimStructureExtractor,
+                        satisfiesCryptographicHolderBinding = satisfiesCryptographicHolderBinding,
+                        authorityKeyIdentifiersBase64Extractor = authorityKeyIdentifiersBase64Extractor,
                     ).getOrNull()?.let {
                         DCQLCredentialSubmissionOption(
                             credential = credential,

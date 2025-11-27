@@ -50,6 +50,19 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
                     CredentialToJsonConverter.toJsonElement(it)
                 )
             }
+        },
+        satisfiesCryptographicHolderBinding = {
+            // TODO: how to extract authority key identifiers of corresponding valid certificate chain
+            true
+        },
+        authorityKeyIdentifiersBase64Extractor = {
+//            when(it) {
+//                is SubjectCredentialStore.StoreEntry.Iso -> TODO()
+//                is SubjectCredentialStore.StoreEntry.SdJwt -> TODO()
+//                is SubjectCredentialStore.StoreEntry.Vc -> TODO()
+//            }
+            // TODO: how to extract authority key identifiers of corresponding valid certificate chain
+            listOf()
         }
     )
 }
