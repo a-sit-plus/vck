@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
-import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
+import at.asitplus.dcapi.request.DCAPIWalletRequest
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.OpenIdConstants
@@ -84,7 +84,7 @@ class RequestParser(
     }.getOrNull()
 
     private fun String.parseAsDcApiRequest(): RequestParametersFrom<*>? = catchingUnwrapped {
-        vckJsonSerializer.decodeFromString(Oid4vpDCAPIRequest.serializer(), this)
+        vckJsonSerializer.decodeFromString(DCAPIWalletRequest.Oid4Vp.serializer(), this)
     }.getOrNull()?.let { dcApiRequest ->
         catchingUnwrapped {
             vckJsonSerializer.decodeFromString(RequestParameters.serializer(), dcApiRequest.request)

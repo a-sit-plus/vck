@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
+import at.asitplus.dcapi.request.Oid4VpDCAPIWalletRequest
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JwsSigned
@@ -159,8 +159,8 @@ val OpenIdRequestParserTests by testSuite {
 
         "signed request from DCAPI" { requestParser ->
             val input = vckJsonSerializer.encodeToString(
-                Oid4vpDCAPIRequest(
-                    protocol = Oid4vpDCAPIRequest.PROTOCOL_V1_SIGNED,
+                Oid4VpDCAPIWalletRequest(
+                    protocol = Oid4VpDCAPIWalletRequest.PROTOCOL_V1_SIGNED,
                     request = jws,
                     credentialId = "1",
                     callingPackageName = "com.example.app",
@@ -182,8 +182,8 @@ val OpenIdRequestParserTests by testSuite {
 
         "unsigned request from DCAPI" { requestParser ->
             val input = vckJsonSerializer.encodeToString(
-                Oid4vpDCAPIRequest(
-                    protocol = Oid4vpDCAPIRequest.PROTOCOL_V1_UNSIGNED,
+                Oid4VpDCAPIWalletRequest(
+                    protocol = Oid4VpDCAPIWalletRequest.PROTOCOL_V1_UNSIGNED,
                     request = authnRequestSerialized,
                     credentialId = "1",
                     callingPackageName = "com.example.app",

@@ -1,6 +1,6 @@
 package at.asitplus.openid
 
-import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
+import at.asitplus.dcapi.request.DCAPIWalletRequest
 import io.ktor.http.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -32,7 +32,7 @@ sealed class RequestParametersFrom<S : RequestParameters> {
     @SerialName(SerialNames.TYPE_DCAPI_SIGNED)
     data class DcApiSigned<T : RequestParameters>(
         @SerialName(SerialNames.DC_API_REQUEST)
-        val dcApiRequest: Oid4vpDCAPIRequest,
+        val dcApiRequest: DCAPIWalletRequest.Oid4Vp,
         @SerialName(SerialNames.PARAMETERS)
         override val parameters: T,
         @Serializable(JwsSignedSerializer::class)
@@ -48,7 +48,7 @@ sealed class RequestParametersFrom<S : RequestParameters> {
     @SerialName(SerialNames.TYPE_DCAPI_UNSIGNED)
     data class DcApiUnsigned<T : RequestParameters>(
         @SerialName(SerialNames.DC_API_REQUEST)
-        val dcApiRequest: Oid4vpDCAPIRequest,
+        val dcApiRequest: DCAPIWalletRequest.Oid4Vp,
         @SerialName(SerialNames.PARAMETERS)
         override val parameters: T,
         @SerialName(SerialNames.JSON_STRING)
