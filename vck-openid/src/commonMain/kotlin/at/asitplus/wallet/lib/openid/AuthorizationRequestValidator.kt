@@ -103,11 +103,27 @@ internal class AuthorizationRequestValidator(
 
     @Throws(OAuth2Exception::class)
     private fun AuthenticationRequestParameters.verifyExpectedOrigin(actualOrigin: String?) {
-        expectedOrigins.run {
-            if (this == null || !this.contains(actualOrigin)) {
-                throw InvalidRequest("origin $actualOrigin not in expected_origins")
+        val expected = expectedOrigins
+
+        if (expected.isNullOrEmpty() || actualOrigin.isNullOrBlank()) {
+            throw InvalidRequest("origin $actualOrigin not in expected_origins ($expectedOrigins)")
+        }
+
+        val actualUrl = runCatching { Url(actualOrigin) }.getOrNull()
+
+        val matches = expected.any { exp ->
+            val expUrl = runCatching { Url(exp) }.getOrNull()
+            when {
+                actualUrl != null && expUrl != null ->
+                    expUrl.protocol == actualUrl.protocol &&
+                            expUrl.host.equals(actualUrl.host, ignoreCase = true) &&
+                            expUrl.port == actualUrl.port
+
+                else -> exp.trimEnd('/') == actualOrigin.trimEnd('/')
             }
         }
+
+        if (!matches) throw InvalidRequest("origin $actualOrigin not in expected_origins ($expectedOrigins)")
     }
 
     @Throws(OAuth2Exception::class)
