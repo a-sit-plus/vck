@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.catchingUnwrapped
+import at.asitplus.dcapi.DCAPIBrowserResponse
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.ResponseParametersFrom
 import at.asitplus.signum.indispensable.josef.JweDecrypted
@@ -34,6 +35,7 @@ class ResponseParser(
     suspend fun parseAuthnResponse(input: String) = input.parseResponseParameters().extractFromJar()
 
     private fun String.parseResponseParameters() = parseUrlSafe(this)
+        ?: parseDcApiBodySafe(this)
         ?: parsePostBodySafe(this)
         ?: throw IllegalArgumentException("Can't parse input: $this")
 
@@ -58,6 +60,17 @@ class ResponseParser(
             encodedQuery.decodeFromUrlQuery<AuthenticationResponseParameters>()
                 .let { ResponseParametersFrom.Uri(this, it) }
         }
+    }
+
+    private fun parseDcApiBodySafe(input: String) =
+        catchingUnwrapped { input.parseAsDcApiBody() }.getOrNull()
+
+    /** Treat input as DC API body, try to parse content */
+    private fun String.parseAsDcApiBody()  {
+        val browserResponse = vckJsonSerializer.decodeFromString(
+            DCAPIBrowserResponse.serializer(), input
+        )
+        ResponseParametersFrom.DcApi(browserResponse.data)
     }
 
     /**

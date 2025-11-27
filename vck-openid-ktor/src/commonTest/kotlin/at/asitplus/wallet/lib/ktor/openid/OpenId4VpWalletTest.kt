@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
-import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
+import at.asitplus.dcapi.request.Oid4VpDCAPIWalletRequest
 import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.OidcUserInfo
@@ -399,8 +399,8 @@ val OpenId4VpWalletTest by testSuite {
                        "response_type" : "vp_token"
                     }
                     """.trimIndent()
-            val dcApiRequest = Oid4vpDCAPIRequest(
-                protocol = Oid4vpDCAPIRequest.PROTOCOL_V1_UNSIGNED,
+            val dcApiRequest = Oid4VpDCAPIWalletRequest(
+                protocol = Oid4VpDCAPIWalletRequest.PROTOCOL_V1_UNSIGNED,
                 request = request,
                 credentialId = "c72a2a8a6e94564cd8dea6ef0c7eb47b31a31947620ebcc0f07177bb71078def",
                 callingPackageName = "com.android.chrome",

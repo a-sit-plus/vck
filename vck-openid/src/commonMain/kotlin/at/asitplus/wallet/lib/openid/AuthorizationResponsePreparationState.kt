@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
-import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.VerifierInfo

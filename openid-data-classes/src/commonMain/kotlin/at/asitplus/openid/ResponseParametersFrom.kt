@@ -39,6 +39,10 @@ sealed class ResponseParametersFrom {
         override val hasBeenEncrypted: Boolean = false
     }
 
+    data class DcApi(
+        override val parameters: AuthenticationResponseParameters,
+        ) : ResponseParametersFrom()
+
 }
 
 
