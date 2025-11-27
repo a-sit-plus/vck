@@ -370,7 +370,8 @@ class OpenId4VpVerifier(
         dcqlQuery = if (isDcql) toDCQLQuery() else null,
         presentationDefinition = if (isPresentationExchange)
             toPresentationDefinition(containerJwt, containerSdJwt) else null,
-        transactionData = transactionData?.map { it.toBase64UrlJsonString() }
+        transactionData = transactionData?.map { it.toBase64UrlJsonString() },
+        expectedOrigins = expectedOrigins,
     )
 
     /**
