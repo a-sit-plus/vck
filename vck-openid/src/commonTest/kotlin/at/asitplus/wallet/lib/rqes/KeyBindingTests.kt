@@ -277,7 +277,7 @@ val KeyBindingTests by testSuite {
             val lenientVerifier = OpenId4VpVerifier(
                 keyMaterial = EphemeralKeyWithoutCert(),
                 clientIdScheme = clientIdScheme,
-                stateToAuthnRequestStore = it.externalMapStore,
+                idToAuthnRequestStore = it.externalMapStore,
                 verifier = VerifierAgent(
                     identifier = clientIdScheme.clientId,
                     validatorSdJwt = ValidatorSdJwt(verifyTransactionData = false)
