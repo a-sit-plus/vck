@@ -80,12 +80,26 @@ data class RequestOptions(
      * set with details about the transaction that the Verifier is requesting the End-User to authorize.
      */
     val transactionData: List<TransactionData>? = null,
+
+    /**
+     * REQUIRED when signed requests defined in Appendix A.3.2 are used with the
+     * Digital Credentials API(DC API). A non-empty array of strings, each string representing an Origin of the Verifier
+     * that is making the request. The Wallet MUST compare values in this parameter to the Origin to detect replay of
+     * the request from a malicious Verifier. If the Origin does not match any of the entries in expected_origins,
+     * the Wallet MUST return an error. This error SHOULD be an invalid_request error. This parameter is not for use in
+     * unsigned requests and therefore a Wallet MUST ignore this parameter if it is present in an unsigned request.
+     */
+    val expectedOrigins: List<String>? = null,
 ) {
     init {
         if (!transactionData.isNullOrEmpty()) {
             val transactionIds = transactionData.map { it.credentialIds.toList() }.flatten().sorted().distinct()
             val credentialIds = credentials.map { it.id }.sorted().distinct()
             require(transactionIds == credentialIds) { "OpenId4VP defines that the credential_ids that must be part of a transaction_data element have to be an ID from InputDescriptor" }
+        }
+        if (isAnyDcApi) {
+            require(isDcql) { "DC API only supports DCQL" }
+            requireNotNull(expectedOrigins) { "Expected origins must be set for DC API" }
         }
     }
 
@@ -99,9 +113,8 @@ data class RequestOptions(
         get() = (responseMode == OpenIdConstants.ResponseMode.DirectPost) ||
                 (responseMode == OpenIdConstants.ResponseMode.DirectPostJwt)
 
-    val isDcApi: Boolean
-        get() = (responseMode == OpenIdConstants.ResponseMode.DcApi) ||
-                (responseMode == OpenIdConstants.ResponseMode.DcApiJwt)
+    val isAnyDcApi: Boolean
+        get() = responseMode == OpenIdConstants.ResponseMode.DcApi || responseMode == OpenIdConstants.ResponseMode.DcApiJwt
 
     val isSiop: Boolean
         get() = responseType.contains(OpenIdConstants.ID_TOKEN)
