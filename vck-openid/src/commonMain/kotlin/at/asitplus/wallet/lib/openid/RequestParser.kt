@@ -86,14 +86,26 @@ class RequestParser(
     private fun String.parseAsDcApiRequest(): RequestParametersFrom<*>? = catchingUnwrapped {
         vckJsonSerializer.decodeFromString(DCAPIWalletRequest.Oid4Vp.serializer(), this)
     }.getOrNull()?.let { dcApiRequest ->
-        catchingUnwrapped {
-            vckJsonSerializer.decodeFromString(RequestParameters.serializer(), dcApiRequest.request)
-        }.getOrNull()?.let {
-            RequestParametersFrom.DcApiUnsigned(dcApiRequest, it, this)
-        } ?: JwsSigned.deserialize(RequestParameters.serializer(), dcApiRequest.request, vckJsonSerializer).getOrNull()
-            ?.let {
+        return if (dcApiRequest.protocol.isUnsignedOpenId4VpRequest) {
+            catchingUnwrapped {
+                vckJsonSerializer.decodeFromString(RequestParameters.serializer(), dcApiRequest.request)
+            }.getOrNull()?.let {
+                RequestParametersFrom.DcApiUnsigned(dcApiRequest, it, this)
+            }
+        } else if (dcApiRequest.protocol.isSignedOpenId4VpRequest) {
+            catchingUnwrapped {
+                vckJsonSerializer.decodeFromString(
+                    JarRequestParameters.serializer(),
+                    dcApiRequest.request
+                ).request?.let {
+                    JwsSigned.deserialize(RequestParameters.serializer(), it, vckJsonSerializer).getOrNull()
+                }
+            }.getOrNull()?.let {
                 RequestParametersFrom.DcApiSigned(dcApiRequest, it.payload, it)
             }
+        } else {
+            null
+        }
     }
 
     suspend fun extractRequest(
