@@ -23,10 +23,11 @@ suspend fun X509Certificate.Companion.generateSelfSignedCertificate(
     algorithm: X509SignatureAlgorithm,
     lifetimeInSeconds: Long = 30,
     extensions: List<X509CertificateExtension> = listOf(),
+    clock: Clock = Clock.System,
     signer: suspend (ByteArray) -> KmmResult<CryptoSignature>,
 ): KmmResult<X509Certificate> = catching {
     Napier.d { "Generating self-signed Certificate" }
-    val notBeforeDate = Clock.System.now()
+    val notBeforeDate = clock.now()
     val notAfterDate = notBeforeDate.plus(lifetimeInSeconds, DateTimeUnit.SECOND)
     val tbsCertificate = TbsCertificate(
         version = 2,

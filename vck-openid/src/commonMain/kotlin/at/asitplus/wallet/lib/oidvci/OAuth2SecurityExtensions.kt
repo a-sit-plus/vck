@@ -25,7 +25,8 @@ object BuildDPoPHeader {
         httpMethod: String = "POST",
         accessToken: String? = null,
         nonce: String? = null,
-        randomSource: RandomSource = RandomSource.Secure
+        randomSource: RandomSource = RandomSource.Secure,
+        clock: Clock = Clock.System,
     ) = signDpop(
         JwsContentTypeConstants.DPOP_JWT,
         JsonWebToken(
@@ -33,7 +34,7 @@ object BuildDPoPHeader {
             httpMethod = httpMethod,
             httpTargetUrl = url,
             accessTokenHash = accessToken?.encodeToByteArray()?.sha256()?.encodeToString(Base64UrlStrict),
-            issuedAt = Clock.System.now(),
+            issuedAt = clock.now(),
             nonce = nonce,
         ).also {
             Napier.d("Building DPoP JWT: $it")
@@ -65,19 +66,23 @@ object BuildClientAttestationJwt {
         walletLink: String? = null,
         lifetime: Duration = 60.minutes,
         clockSkew: Duration = 5.minutes,
+        clock: Clock = Clock.System,
     ) = signJwt(
         JwsContentTypeConstants.CLIENT_ATTESTATION_JWT,
-        JsonWebToken(
-            issuer = issuer,
-            subject = clientId,
-            issuedAt = Clock.System.now() - clockSkew,
-            expiration = Clock.System.now() - clockSkew + lifetime,
-            walletName = walletName,
-            walletLink = walletLink,
-            confirmationClaim = ConfirmationClaim(
-                jsonWebKey = clientKey,
+        run {
+            val now = clock.now()
+            JsonWebToken(
+                issuer = issuer,
+                subject = clientId,
+                issuedAt = now - clockSkew,
+                expiration = now - clockSkew + lifetime,
+                walletName = walletName,
+                walletLink = walletLink,
+                confirmationClaim = ConfirmationClaim(
+                    jsonWebKey = clientKey,
+                )
             )
-        ).also {
+        }.also {
             Napier.d("Building client attestation JWT: $it")
         },
         JsonWebToken.serializer(),
@@ -103,17 +108,21 @@ object BuildClientAttestationPoPJwt {
         nonce: String? = null,
         lifetime: Duration = 10.minutes,
         clockSkew: Duration = 5.minutes,
-        randomSource: RandomSource = RandomSource.Secure
+        randomSource: RandomSource = RandomSource.Secure,
+        clock: Clock = Clock.System,
     ) = signJwt(
         JwsContentTypeConstants.CLIENT_ATTESTATION_POP_JWT,
-        JsonWebToken(
-            issuer = clientId,
-            audience = audience,
-            jwtId = randomSource.nextBytes(12).encodeToString(Base64UrlStrict),
-            nonce = nonce,
-            issuedAt = Clock.System.now() - clockSkew,
-            expiration = Clock.System.now() - clockSkew + lifetime,
-        ).also {
+        run {
+            val now = clock.now()
+            JsonWebToken(
+                issuer = clientId,
+                audience = audience,
+                jwtId = randomSource.nextBytes(12).encodeToString(Base64UrlStrict),
+                nonce = nonce,
+                issuedAt = now - clockSkew,
+                expiration = now - clockSkew + lifetime,
+            )
+        }.also {
             Napier.d("Building client attestation PoP JWT: $it")
         },
         JsonWebToken.serializer(),

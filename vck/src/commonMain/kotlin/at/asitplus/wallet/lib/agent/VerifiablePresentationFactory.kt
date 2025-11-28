@@ -45,6 +45,7 @@ class VerifiablePresentationFactory(
         SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     private val signKeyBinding: SignJwtFun<KeyBindingJws> =
         SignJwt(keyMaterial, JwsHeaderNone()),
+    private val clock: Clock = Clock.System,
 ) {
 
     suspend fun createVerifiablePresentation(
@@ -252,7 +253,7 @@ class VerifiablePresentationFactory(
     ): JwsSigned<KeyBindingJws> = signKeyBinding(
         JwsContentTypeConstants.KB_JWT,
         KeyBindingJws(
-            issuedAt = Clock.System.now(),
+            issuedAt = clock.now(),
             audience = request.audience,
             challenge = request.nonce,
             sdHash = issuerJwtPlusDisclosures.encodeToByteArray().sha256(),

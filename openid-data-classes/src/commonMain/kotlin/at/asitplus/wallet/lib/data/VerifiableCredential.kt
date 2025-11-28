@@ -39,8 +39,9 @@ data class VerifiableCredential(
         credentialStatus: Status,
         credentialSubject: CredentialSubject,
         credentialType: String,
-        issuanceDate: Instant = Clock.System.now(),
-        expirationDate: Instant? = Clock.System.now() + lifetime,
+        clock: Clock = Clock.System,
+        issuanceDate: Instant = clock.now(),
+        expirationDate: Instant? = issuanceDate + lifetime,
     ) : this(
         id = id,
         type = listOf(VERIFIABLE_CREDENTIAL, credentialType),
