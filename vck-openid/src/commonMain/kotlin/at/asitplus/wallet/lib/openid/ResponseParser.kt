@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.catchingUnwrapped
-import at.asitplus.dcapi.DCAPIBrowserResponse
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.ResponseParametersFrom
 import at.asitplus.signum.indispensable.josef.JweDecrypted
@@ -67,10 +66,9 @@ class ResponseParser(
 
     /** Treat input as DC API body, try to parse content */
     private fun String.parseAsDcApiBody()  {
-        val browserResponse = vckJsonSerializer.decodeFromString(
-            DCAPIBrowserResponse.serializer(), input
+        vckJsonSerializer.decodeFromString(
+            ResponseParametersFrom.DcApi.serializer(), input
         )
-        ResponseParametersFrom.DcApi(browserResponse.data)
     }
 
     /**

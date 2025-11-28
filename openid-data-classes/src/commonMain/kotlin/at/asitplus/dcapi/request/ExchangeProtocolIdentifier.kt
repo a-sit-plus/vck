@@ -42,7 +42,7 @@ value class ExchangeProtocolIdentifier(
     }
 
     init {
-        if (protocol != PROTOCOL_ISO_MDOC_ANNEX_C) {
+        if (protocol != ORG_ISO_MDOC) {
             checkOpenId4VpProtocolIdentifier()
         }
     }
@@ -69,12 +69,14 @@ value class ExchangeProtocolIdentifier(
         /** `unsigned` */
         const val PART_UNSIGNED = "unsigned"
 
+        const val ORG_ISO_MDOC = "org-iso-mdoc"
+
         /** `openid4vp-v1-unsigned` */
         val PROTOCOL_V1_UNSIGNED = ExchangeProtocolIdentifier("$PART_OPENID4VP$DELIMITER$PART_V1$DELIMITER$PART_UNSIGNED")
 
         /** `openid4vp-v1-signed` */
         val PROTOCOL_V1_SIGNED = ExchangeProtocolIdentifier("$PART_OPENID4VP$DELIMITER$PART_V1$DELIMITER$PART_SIGNED")
 
-        const val PROTOCOL_ISO_MDOC_ANNEX_C = "org-iso-mdoc"
+        val PROTOCOL_ISO_MDOC_ANNEX_C = ExchangeProtocolIdentifier(ORG_ISO_MDOC)
     }
 }

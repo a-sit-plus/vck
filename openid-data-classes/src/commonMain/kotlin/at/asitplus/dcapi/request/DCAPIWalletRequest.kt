@@ -9,27 +9,27 @@ import kotlinx.serialization.Serializable
  * Abstract base class for requests received by the wallet via the Digital Credentials API.
  */
 @Serializable
-sealed class DCAPIWalletRequest {
+sealed interface DCAPIWalletRequest {
     @SerialName("credentialId")
-    abstract val credentialId: String
+    val credentialId: String
     @SerialName("callingPackageName")
-    abstract val callingPackageName: String
+    val callingPackageName: String
     @SerialName("callingOrigin")
-    abstract val callingOrigin: String
+    val callingOrigin: String
 
     @Serializable
     data class IsoMdoc(
         @SerialName("deviceRequest")
-        val deviceRequest: DeviceRequest,
+        override val deviceRequest: DeviceRequest,
         @SerialName("encryptionInfo")
-        val encryptionInfo: EncryptionInfo,
+        override val encryptionInfo: EncryptionInfo,
         @SerialName("credentialId")
         override val credentialId: String,
         @SerialName("callingPackageName")
         override val callingPackageName: String,
         @SerialName("callingOrigin")
         override val callingOrigin: String
-    ) : DCAPIWalletRequest()
+    ) : DCAPIWalletRequest, IsoMdocRequest
 
     @Serializable
     data class Oid4Vp(
@@ -44,5 +44,5 @@ sealed class DCAPIWalletRequest {
         override val callingPackageName: String,
         @SerialName("callingOrigin")
         override val callingOrigin: String,
-    ) : DCAPIWalletRequest()
+    ) : DCAPIWalletRequest
 }

@@ -20,7 +20,16 @@ sealed class DigitalCredentialGetRequest {
     ) : DigitalCredentialGetRequest()
 
     @Serializable
-    data class UnsignedDigitalCredentialGetRequest(
+    data class Oid4Vp(
+        /** `org-iso-mdoc` or `openid4vp-v<version>-<request-type>`, see [ExchangeProtocolIdentifier]. */
+        @SerialName("protocol")
+        override val protocol: ExchangeProtocolIdentifier,
+        @SerialName("data")
+        val request: RequestParameters,
+    ) : DigitalCredentialGetRequest()
+
+    @Serializable
+    data class IsoMdoc(
         /** `org-iso-mdoc` or `openid4vp-v<version>-<request-type>`, see [ExchangeProtocolIdentifier]. */
         @SerialName("protocol")
         override val protocol: ExchangeProtocolIdentifier,

@@ -361,7 +361,7 @@ class OpenId4VpVerifier(
         requestObjectParameters: RequestObjectParameters?,
     ): AuthenticationRequestParameters = AuthenticationRequestParameters(
         responseType = responseType,
-        clientId = clientIdScheme.clientId,
+        clientId = if (populateClientId) clientIdScheme.clientId else null,
         redirectUrl = if (!isAnyDirectPost) clientIdScheme.redirectUri else null,
         responseUrl = responseUrl,
         // Using scope as an alias for a well-defined Presentation Exchange or DCQL is not supported
@@ -559,6 +559,7 @@ class OpenId4VpVerifier(
             ?: throw IllegalArgumentException("nonce")
         val vpToken = responseParameters.parameters.vpToken
             ?: throw IllegalArgumentException("vp_token")
+        val clientIdRequired = responseParameters.clientIdRequired
 
         return authnRequest.presentationDefinition?.let { _ ->
             val presentationSubmission = responseParameters.parameters.presentationSubmission?.descriptorMap
@@ -573,6 +574,7 @@ class OpenId4VpVerifier(
                     clientId = authnRequest.clientId,
                     responseUrl = authnRequest.responseUrl ?: authnRequest.redirectUrlExtracted,
                     transactionData = authnRequest.transactionData,
+                    clientIdRequired = clientIdRequired,
                 ).mapToAuthnResponseResult(responseParameters.parameters.state)
             }.firstOrList()
         } ?: authnRequest.dcqlQuery?.let { query ->
@@ -591,6 +593,7 @@ class OpenId4VpVerifier(
                         clientId = authnRequest.clientId,
                         responseUrl = authnRequest.responseUrl ?: authnRequest.redirectUrlExtracted,
                         transactionData = authnRequest.transactionData,
+                        clientIdRequired = clientIdRequired,
                     ).mapToAuthnResponseResult(responseParameters.parameters.state)
                 }.getOrElse {
                     return AuthnResponseResult.ValidationError(
@@ -600,6 +603,8 @@ class OpenId4VpVerifier(
                     )
                 }
             }
+            // TODO: Validation errors are (sometimes) put into a VerifiableDCQLPresentationValidationResults which means that the success page is shown
+            // However, if we return a ValidationError, a BadRequest is sent, which is not shown to the user in the UI
             AuthnResponseResult.VerifiableDCQLPresentationValidationResults(presentation)
         } ?: throw IllegalArgumentException("Unsupported presentation mechanism")
     }
@@ -637,6 +642,7 @@ class OpenId4VpVerifier(
         clientId: String?,
         responseUrl: String?,
         transactionData: List<TransactionDataBase64Url>?,
+        clientIdRequired: Boolean,
     ) = when (claimFormat) {
         ClaimFormat.SD_JWT -> verifier.verifyPresentationSdJwt(
             input = SdJwtSigned.parseCatching(relatedPresentation.extractContent()).getOrElse {
@@ -662,7 +668,8 @@ class OpenId4VpVerifier(
                 clientId = clientId,
                 responseUrl = responseUrl,
                 nonce = expectedNonce,
-                hasBeenEncrypted = input.hasBeenEncrypted
+                hasBeenEncrypted = input.hasBeenEncrypted,
+                clientIdRequired = clientIdRequired,
             )
         )
 
@@ -686,12 +693,13 @@ class OpenId4VpVerifier(
         clientId: String?,
         responseUrl: String?,
         nonce: String,
+        clientIdRequired: Boolean,
         hasBeenEncrypted: Boolean,
     ): suspend (MobileSecurityObject, Document) -> Boolean = { mso, document ->
         val deviceSignature = document.deviceSigned.deviceAuth.deviceSignature
             ?: throw IllegalArgumentException("deviceSignature is null")
-        if (clientId == null || responseUrl == null)
-            throw IllegalStateException("Missing required parameters: clientId, responseUrl")
+        if ((clientIdRequired && clientId == null) || responseUrl == null)
+            throw IllegalStateException("Missing required parameters: clientId and/or responseUrl")
         val expected = document.calcDeviceAuthenticationOpenId4VpFinal(
             clientId = clientId,
             responseUrl = responseUrl,
@@ -719,7 +727,7 @@ class OpenId4VpVerifier(
      * acc. to OpenID4VP 1.0
      */
     private fun Document.calcDeviceAuthenticationOpenId4VpFinal(
-        clientId: String,
+        clientId: String?,
         responseUrl: String,
         nonce: String,
         hasBeenEncrypted: Boolean,
