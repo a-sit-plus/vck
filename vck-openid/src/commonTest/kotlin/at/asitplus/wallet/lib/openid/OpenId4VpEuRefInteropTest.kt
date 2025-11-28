@@ -38,7 +38,6 @@ import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.coroutines.runBlocking
 import kotlin.time.Instant
 
 /**
@@ -47,39 +46,38 @@ import kotlin.time.Instant
  */
 @Suppress("DEPRECATION")
 val OpenId4VpEuRefInteropTest by testSuite {
-    withFixtureGenerator {
-
+    withFixtureGenerator(suspend {
+        val holderKeyMaterial = EphemeralKeyWithoutCert()
+        val agent = HolderAgent(holderKeyMaterial).also {
+            val issuerAgent = IssuerAgent(
+                identifier = "https://issuer.example.com/".toUri(),
+                randomSource = RandomSource.Default
+            )
+            it.storeCredential(
+                issuerAgent.issueCredential(
+                    DummyCredentialDataProvider.getCredential(
+                        holderKeyMaterial.publicKey,
+                        EuPidScheme,
+                        ConstantIndex.CredentialRepresentation.SD_JWT,
+                    ).getOrThrow()
+                ).getOrThrow().toStoreCredentialInput()
+            )
+            it.storeCredential(
+                issuerAgent.issueCredential(
+                    DummyCredentialDataProvider.getCredential(
+                        holderKeyMaterial.publicKey,
+                        ConstantIndex.AtomicAttribute2023,
+                        ConstantIndex.CredentialRepresentation.SD_JWT,
+                    ).getOrThrow()
+                ).getOrThrow().toStoreCredentialInput()
+            )
+        }
         object {
-            val holderKeyMaterial = EphemeralKeyWithoutCert()
-            val holderAgent = HolderAgent(holderKeyMaterial).also {
-                runBlocking {
-                    val issuerAgent = IssuerAgent(
-                        identifier = "https://issuer.example.com/".toUri(),
-                        randomSource = RandomSource.Default
-                    )
-                    it.storeCredential(
-                        issuerAgent.issueCredential(
-                            DummyCredentialDataProvider.getCredential(
-                                holderKeyMaterial.publicKey,
-                                EuPidScheme,
-                                ConstantIndex.CredentialRepresentation.SD_JWT,
-                            ).getOrThrow()
-                        ).getOrThrow().toStoreCredentialInput()
-                    )
-                    it.storeCredential(
-                        issuerAgent.issueCredential(
-                            DummyCredentialDataProvider.getCredential(
-                                holderKeyMaterial.publicKey,
-                                ConstantIndex.AtomicAttribute2023,
-                                ConstantIndex.CredentialRepresentation.SD_JWT,
-                            ).getOrThrow()
-                        ).getOrThrow().toStoreCredentialInput()
-                    )
-                }
-            }
+            val holderKeyMaterial = holderKeyMaterial
+            val holderAgent = agent
             var holderOid4vp = OpenId4VpHolder(holderKeyMaterial, holderAgent, randomSource = RandomSource.Default)
         }
-    } - {
+    }) - {
 
         "EUDI from URL 2024-05-17" {
             val url = """

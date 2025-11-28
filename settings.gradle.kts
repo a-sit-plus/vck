@@ -4,6 +4,7 @@ import java.io.FileInputStream
 pluginManagement {
     includeBuild("conventions-vclib")
     repositories {
+        mavenLocal()
         google()
         gradlePluginPortal()
         mavenCentral()

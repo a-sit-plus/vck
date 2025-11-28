@@ -1,10 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.dcapi.DCAPIHandover
-import at.asitplus.dcapi.OpenID4VPDCAPIHandoverInfo
 import at.asitplus.dif.ClaimFormat
-import at.asitplus.iso.SessionTranscript
-import at.asitplus.iso.sha256
 import at.asitplus.openid.VpFormatsSupported
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
@@ -20,10 +16,8 @@ import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
-import at.asitplus.wallet.lib.oidvci.firstSessionTranscriptThumbprint
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe
-import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.encodeToHexString
 
 val PresentationFactoryTest by testSuite {

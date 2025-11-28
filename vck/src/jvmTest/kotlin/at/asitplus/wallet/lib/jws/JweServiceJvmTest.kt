@@ -1,51 +1,39 @@
 package at.asitplus.wallet.lib.jws
 
+import at.asitplus.signum.HazardousMaterials
 import at.asitplus.signum.indispensable.ECCurve
 import at.asitplus.signum.indispensable.ECCurve.*
+import at.asitplus.signum.indispensable.SecretExposure
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
+import at.asitplus.signum.indispensable.josef.JweAlgorithm.*
 import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JweEncryption.*
 import at.asitplus.signum.indispensable.josef.JweHeader
-import at.asitplus.signum.indispensable.nativeDigest
-import at.asitplus.signum.indispensable.toJcaPublicKey
-import at.asitplus.signum.HazardousMaterials
-import at.asitplus.signum.indispensable.SecretExposure
-import at.asitplus.signum.indispensable.josef.JweAlgorithm.A128GCMKW
-import at.asitplus.signum.indispensable.josef.JweAlgorithm.A128KW
-import at.asitplus.signum.indispensable.josef.JweAlgorithm.A192GCMKW
-import at.asitplus.signum.indispensable.josef.JweAlgorithm.A192KW
-import at.asitplus.signum.indispensable.josef.JweAlgorithm.A256GCMKW
-import at.asitplus.signum.indispensable.josef.JweAlgorithm.A256KW
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.signum.indispensable.symmetric.AuthCapability
-import at.asitplus.signum.indispensable.symmetric.KeyType
-import at.asitplus.signum.indispensable.symmetric.NonceTrait
-import at.asitplus.signum.indispensable.symmetric.SymmetricEncryptionAlgorithm
-import at.asitplus.signum.indispensable.symmetric.SymmetricEncryptionAlgorithm.Companion.AES_128
-import at.asitplus.signum.indispensable.symmetric.SymmetricEncryptionAlgorithm.Companion.AES_192
-import at.asitplus.signum.indispensable.symmetric.SymmetricEncryptionAlgorithm.Companion.AES_256
+import at.asitplus.signum.indispensable.nativeDigest
 import at.asitplus.signum.indispensable.symmetric.SymmetricKey
-import at.asitplus.signum.indispensable.symmetric.hasDedicatedMacKey
-import at.asitplus.signum.indispensable.symmetric.isAuthenticated
 import at.asitplus.signum.indispensable.symmetric.randomKey
-import at.asitplus.signum.indispensable.symmetric.secretKey
+import at.asitplus.signum.indispensable.toJcaPublicKey
 import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
 import at.asitplus.signum.supreme.sign.EphemeralKey
+import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.minus
+import at.asitplus.testballoon.withData
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import com.benasher44.uuid.uuid4
-import com.nimbusds.jose.*
+import com.nimbusds.jose.EncryptionMethod
+import com.nimbusds.jose.JOSEObjectType
+import com.nimbusds.jose.JWEAlgorithm
+import com.nimbusds.jose.JWEHeader
+import com.nimbusds.jose.JWEObject
+import com.nimbusds.jose.Payload
 import com.nimbusds.jose.crypto.AESDecrypter
 import com.nimbusds.jose.crypto.AESEncrypter
 import com.nimbusds.jose.crypto.ECDHDecrypter
 import com.nimbusds.jose.crypto.ECDHEncrypter
 import com.nimbusds.jose.jwk.JWK
 import de.infix.testBalloon.framework.core.testSuite
-import at.asitplus.testballoon.*
-import io.kotest.matchers.collections.shouldHaveSize
-import io.kotest.matchers.shouldBe
-import io.kotest.matchers.types.shouldBeInstanceOf
-import io.kotest.engine.runBlocking
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import java.security.interfaces.ECPrivateKey
@@ -60,7 +48,7 @@ val JweServiceJvmTest by testSuite {
         EcdhesConfiguration(SECP_521_R_1, listOf(A256CBC_HS512, A256GCM)),
     )
 
-    ecdhesConfiguration.forEach { config ->
+    withData(ecdhesConfiguration) { config ->
         val ephemeralKey = EphemeralKey {
             ec {
                 curve = config.curve
@@ -122,53 +110,52 @@ val JweServiceJvmTest by testSuite {
         SymmetricConfiguration(A256GCMKW, listOf(A256CBC_HS512, A256GCM)),
     )
 
-    symmetricConfiguration.forEach { config ->
-        runBlocking {
-            val ephemeralKey = (config.algorithm as JweAlgorithm.Symmetric).algorithm.randomKey()
-            require(ephemeralKey is SymmetricKey.Integrated)
+    withData(symmetricConfiguration) { config ->
+        val ephemeralKey = (config.algorithm as JweAlgorithm.Symmetric).algorithm.randomKey()
+        require(ephemeralKey is SymmetricKey.Integrated)
 
-            val jvmEncrypter = AESEncrypter(ephemeralKey.secretKey.getOrThrow())
-            val jvmDecrypter = AESDecrypter(ephemeralKey.secretKey.getOrThrow())
+        val jvmEncrypter = AESEncrypter(ephemeralKey.secretKey.getOrThrow())
+        val jvmDecrypter = AESDecrypter(ephemeralKey.secretKey.getOrThrow())
 
-            val encrypter = EncryptJweSymmetric(ephemeralKey)
-            val decrypter = DecryptJweSymmetric(ephemeralKey)
-            val randomPayload = uuid4().toString()
+        val encrypter = EncryptJweSymmetric(ephemeralKey)
+        val decrypter = DecryptJweSymmetric(ephemeralKey)
+        val randomPayload = uuid4().toString()
 
-            config.encryption.forEach { encryptionMethod ->
-                "${config.algorithm.identifier}, ${encryptionMethod}" - {
-                    "Encrypted object from ext. library can be decrypted with int. library" {
-                        val libJweHeader =
-                            JWEHeader.Builder(JWEAlgorithm(config.algorithm.identifier), encryptionMethod.joseAlgorithm)
-                                .type(JOSEObjectType("something"))
-                                .build()
-                        val libJweObject = JWEObject(libJweHeader, Payload(randomPayload))
-                            .apply { encrypt(jvmEncrypter) }
-                        val encryptedJwe = libJweObject.serialize()
+        config.encryption.forEach { encryptionMethod ->
+            "${config.algorithm.identifier}, ${encryptionMethod}" - {
+                "Encrypted object from ext. library can be decrypted with int. library" {
+                    val libJweHeader =
+                        JWEHeader.Builder(JWEAlgorithm(config.algorithm.identifier), encryptionMethod.joseAlgorithm)
+                            .type(JOSEObjectType("something"))
+                            .build()
+                    val libJweObject = JWEObject(libJweHeader, Payload(randomPayload))
+                        .apply { encrypt(jvmEncrypter) }
+                    val encryptedJwe = libJweObject.serialize()
 
-                        val parsedJwe = JweEncrypted.deserialize(encryptedJwe).getOrThrow()
-                        val result = decrypter(parsedJwe).getOrThrow()
-                        result.payload shouldBe randomPayload
-                    }
+                    val parsedJwe = JweEncrypted.deserialize(encryptedJwe).getOrThrow()
+                    val result = decrypter(parsedJwe).getOrThrow()
+                    result.payload shouldBe randomPayload
+                }
 
-                    "Encrypted object from int. library can be decrypted with ext. library" {
-                        val encrypted = encrypter(
-                            JweHeader(
-                                algorithm = config.algorithm,
-                                encryption = encryptionMethod,
-                            ),
-                            randomPayload,
-                        ).getOrThrow().serialize()
+                "Encrypted object from int. library can be decrypted with ext. library" {
+                    val encrypted = encrypter(
+                        JweHeader(
+                            algorithm = config.algorithm,
+                            encryption = encryptionMethod,
+                        ),
+                        randomPayload,
+                    ).getOrThrow().serialize()
 
-                        val parsed = JWEObject.parse(encrypted).shouldNotBeNull()
+                    val parsed = JWEObject.parse(encrypted).shouldNotBeNull()
 
-                        parsed.decrypt(jvmDecrypter)
-                        parsed.payload.toBytes().decodeToString() shouldBe randomPayload
-                    }
+                    parsed.decrypt(jvmDecrypter)
+                    parsed.payload.toBytes().decodeToString() shouldBe randomPayload
                 }
             }
         }
     }
 }
+
 private data class SymmetricConfiguration(
     val algorithm: JweAlgorithm,
     val encryption: Collection<JweEncryption>,

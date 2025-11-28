@@ -31,7 +31,6 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.randomCwtOrJwtResolver
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
-import io.kotest.engine.runBlocking
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -42,38 +41,40 @@ import kotlinx.serialization.builtins.ByteArraySerializer
 
 val AgentIsoMdocTest by testSuite {
 
-    withFixtureGenerator {
-        object {
-            val issuerCredentialStore = InMemoryIssuerCredentialStore()
-            val holderCredentialStore = InMemorySubjectCredentialStore()
-            val issuer = IssuerAgent(
-                keyMaterial = EphemeralKeyWithSelfSignedCert(),
-                issuerCredentialStore = issuerCredentialStore,
-                identifier = "https://issuer.example.com/".toUri(),
-                randomSource = RandomSource.Default
-            )
-            val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
-            val validator = ValidatorMdoc(
-                validator = Validator(tokenStatusResolver = randomCwtOrJwtResolver(statusListIssuer))
-            )
-            val holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
-            val holder = HolderAgent(
-                holderKeyMaterial,
-                holderCredentialStore,
-                validatorMdoc = validator,
-            ).also {
-                runBlocking {
-                    it.storeCredential(
-                        issuer.issueCredential(
-                            DummyCredentialDataProvider.getCredential(
-                                holderKeyMaterial.publicKey,
-                                ConstantIndex.AtomicAttribute2023,
-                                ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                            ).getOrThrow()
-                        ).getOrThrow().toStoreCredentialInput()
+    withFixtureGenerator(suspend {
+        val holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
+        val issuerCredentialStore = InMemoryIssuerCredentialStore()
+        val holderCredentialStore = InMemorySubjectCredentialStore()
+        val issuer = IssuerAgent(
+            keyMaterial = EphemeralKeyWithSelfSignedCert(),
+            issuerCredentialStore = issuerCredentialStore,
+            identifier = "https://issuer.example.com/".toUri(),
+            randomSource = RandomSource.Default
+        )
+        val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
+        val validator = ValidatorMdoc(
+            validator = Validator(tokenStatusResolver = randomCwtOrJwtResolver(statusListIssuer))
+        )
+        val holder = HolderAgent(
+            holderKeyMaterial,
+            holderCredentialStore,
+            validatorMdoc = validator,
+        ).also {
+            it.storeCredential(
+                issuer.issueCredential(
+                    DummyCredentialDataProvider.getCredential(
+                        holderKeyMaterial.publicKey,
+                        ConstantIndex.AtomicAttribute2023,
+                        ConstantIndex.CredentialRepresentation.ISO_MDOC,
                     ).getOrThrow()
-                }
-            }
+                ).getOrThrow().toStoreCredentialInput()
+            ).getOrThrow()
+        }
+        object {
+            val holderCredentialStore = holderCredentialStore
+            val statusListIssuer = statusListIssuer
+
+            val holder = holder
             val verifierId = "urn:${uuid4()}"
             val verifier = VerifierAgent(
                 identifier = verifierId,
@@ -82,7 +83,7 @@ val AgentIsoMdocTest by testSuite {
             val challenge = uuid4().toString()
             val signer = SignCose<ByteArray>(keyMaterial = holderKeyMaterial)
         }
-    } - {
+    }) - {
 
         "presex: simple walk-through success" {
             val presentationParameters = it.holder.createPresentation(

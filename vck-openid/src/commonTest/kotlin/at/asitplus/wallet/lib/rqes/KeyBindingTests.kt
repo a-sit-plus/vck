@@ -46,7 +46,6 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 import io.ktor.utils.io.charsets.*
 import io.ktor.utils.io.core.*
-import kotlinx.coroutines.runBlocking
 
 private fun malignTransactionData(): List<TransactionDataBase64Url> = listOf(
     QCertCreationAcceptance(
@@ -59,22 +58,21 @@ private fun malignTransactionData(): List<TransactionDataBase64Url> = listOf(
 
 val KeyBindingTests by testSuite {
 
-    withFixtureGenerator {
+    withFixtureGenerator(suspend {
+        val holderKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert()
+        val holderAgent: Holder = HolderAgent(holderKeyMaterial).also { agent ->
+            agent.storeCredential(
+                IssuerAgent(
+                    identifier = "https://issuer.example.com/".toUri(),
+                    randomSource = RandomSource.Default
+                ).issueCredential(
+                    DummyCredentialDataProvider.getCredential(holderKeyMaterial.publicKey, EuPidScheme, SD_JWT)
+                        .getOrThrow()
+                ).getOrThrow().toStoreCredentialInput()
+            )
+        }
+
         object {
-            val holderKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert()
-            val holderAgent: Holder = HolderAgent(holderKeyMaterial).also { agent ->
-                runBlocking {
-                    agent.storeCredential(
-                        IssuerAgent(
-                            identifier = "https://issuer.example.com/".toUri(),
-                            randomSource = RandomSource.Default
-                        ).issueCredential(
-                            DummyCredentialDataProvider.getCredential(holderKeyMaterial.publicKey, EuPidScheme, SD_JWT)
-                                .getOrThrow()
-                        ).getOrThrow().toStoreCredentialInput()
-                    )
-                }
-            }
             val holderOid4vp = OpenId4VpHolder(
                 holder = holderAgent,
                 randomSource = RandomSource.Default
@@ -188,7 +186,7 @@ val KeyBindingTests by testSuite {
                 }
             """.trimIndent()
         }
-    } - {
+    }) - {
 
         "KB-JWT contains transaction data" {
             val verifierOid4Vp = OpenId4VpVerifier(

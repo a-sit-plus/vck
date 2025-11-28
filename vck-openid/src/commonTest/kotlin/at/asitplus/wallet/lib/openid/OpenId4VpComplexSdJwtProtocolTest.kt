@@ -24,7 +24,6 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Clock
@@ -32,40 +31,43 @@ import kotlin.time.Duration.Companion.minutes
 
 val OpenId4VpComplexSdJwtProtocolTest by testSuite {
 
-    withFixtureGenerator {
+    withFixtureGenerator(suspend {
+        val randomRegion = uuid4().toString()
+        val randomCountry = uuid4().toString()
+        val holderKeyMaterial = EphemeralKeyWithoutCert()
+        val holderAgent = HolderAgent(holderKeyMaterial).also {
+            it.storeCredential(
+                IssuerAgent(
+                    identifier = "https://issuer.example.com/".toUri(),
+                    randomSource = RandomSource.Default
+                ).issueCredential(
+                    CredentialToBeIssued.VcSd(
+                        claims = listOf(
+                            ClaimToBeIssued(
+                                CLAIM_ADDRESS, listOf(
+                                    ClaimToBeIssued(CLAIM_ADDRESS_REGION, randomRegion),
+                                    ClaimToBeIssued(CLAIM_ADDRESS_COUNTRY, randomCountry)
+                                )
+                            )
+                        ),
+                        expiration = Clock.System.now().plus(5.minutes),
+                        scheme = AtomicAttribute2023,
+                        subjectPublicKey = holderKeyMaterial.publicKey,
+                        userInfo = DummyUserProvider.user,
+                        sdAlgorithm = supportedSdAlgorithms.random(),
+                    )
+                ).getOrThrow().toStoreCredentialInput()
+            )
+        }
         object {
-            val randomRegion = uuid4().toString()
-            val randomCountry = uuid4().toString()
-            val holderKeyMaterial = EphemeralKeyWithoutCert()
+
+            val randomRegion = randomRegion
+            val randomCountry = randomCountry
+
             val verifierKeyMaterial = EphemeralKeyWithoutCert()
             val clientId = "https://example.com/rp/${uuid4()}"
             val walletUrl = "https://example.com/wallet/${uuid4()}"
-            val holderAgent = HolderAgent(holderKeyMaterial).also {
-                runBlocking {
-                    it.storeCredential(
-                        IssuerAgent(
-                            identifier = "https://issuer.example.com/".toUri(),
-                            randomSource = RandomSource.Default
-                        ).issueCredential(
-                            CredentialToBeIssued.VcSd(
-                                claims = listOf(
-                                    ClaimToBeIssued(
-                                        CLAIM_ADDRESS, listOf(
-                                            ClaimToBeIssued(CLAIM_ADDRESS_REGION, randomRegion),
-                                            ClaimToBeIssued(CLAIM_ADDRESS_COUNTRY, randomCountry)
-                                        )
-                                    )
-                                ),
-                                expiration = Clock.System.now().plus(5.minutes),
-                                scheme = AtomicAttribute2023,
-                                subjectPublicKey = holderKeyMaterial.publicKey,
-                                userInfo = DummyUserProvider.user,
-                                sdAlgorithm = supportedSdAlgorithms.random(),
-                            )
-                        ).getOrThrow().toStoreCredentialInput()
-                    )
-                }
-            }
+
             val holderOid4vp = OpenId4VpHolder(
                 holder = holderAgent,
                 randomSource = RandomSource.Default,
@@ -75,7 +77,7 @@ val OpenId4VpComplexSdJwtProtocolTest by testSuite {
                 clientIdScheme = ClientIdScheme.RedirectUri(clientId)
             )
         }
-    } - {
+    }) - {
 
         "Nested paths with presentation exchange" {
             val requestedClaims = setOf(

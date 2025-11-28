@@ -28,7 +28,6 @@ import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.engine.runBlocking
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.maps.shouldHaveSize
@@ -42,30 +41,30 @@ import io.ktor.http.*
 
 val PreRegisteredClientTest by testSuite {
 
-    withFixtureGenerator {
+    withFixtureGenerator(suspend {
+        val holderKeyMaterial = EphemeralKeyWithoutCert()
+        val holderAgent = HolderAgent(holderKeyMaterial).also {
+            it.storeCredential(
+                IssuerAgent(
+                    identifier = "https://issuer.example.com/".toUri(),
+                    randomSource = RandomSource.Default
+                ).issueCredential(
+                    DummyCredentialDataProvider.getCredential(
+                        holderKeyMaterial.publicKey,
+                        ConstantIndex.AtomicAttribute2023,
+                        ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                    ).getOrThrow()
+                ).getOrThrow().toStoreCredentialInput()
+            )
+        }
         object {
-            val holderKeyMaterial = EphemeralKeyWithoutCert()
+            val holderAgent = holderAgent
             val verifierKeyMaterial = EphemeralKeyWithoutCert()
             val decryptionKeyMaterial = EphemeralKeyWithoutCert()
             val clientId = "PRE-REGISTERED-CLIENT-${uuid4()}"
             val redirectUrl = "https://example.com/rp/${uuid4()}"
             val walletUrl = "https://example.com/wallet/${uuid4()}"
-            val holderAgent = HolderAgent(holderKeyMaterial).also {
-                runBlocking {
-                    it.storeCredential(
-                        IssuerAgent(
-                            identifier = "https://issuer.example.com/".toUri(),
-                            randomSource = RandomSource.Default
-                        ).issueCredential(
-                            DummyCredentialDataProvider.getCredential(
-                                holderKeyMaterial.publicKey,
-                                ConstantIndex.AtomicAttribute2023,
-                                ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-                            ).getOrThrow()
-                        ).getOrThrow().toStoreCredentialInput()
-                    )
-                }
-            }
+
             var holderOid4vp = OpenId4VpHolder(
                 holder = holderAgent,
                 randomSource = RandomSource.Default,
@@ -84,7 +83,7 @@ val PreRegisteredClientTest by testSuite {
                 ),
             )
         }
-    } - {
+    }) - {
 
         "test with Fragment" {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
