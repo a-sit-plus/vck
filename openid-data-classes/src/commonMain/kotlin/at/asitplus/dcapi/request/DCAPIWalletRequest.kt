@@ -29,7 +29,7 @@ sealed interface DCAPIWalletRequest {
         override val callingPackageName: String,
         @SerialName("callingOrigin")
         override val callingOrigin: String
-    ) : DCAPIWalletRequest, IsoMdocRequest
+    ) : DCAPIWalletRequest, IsoMdocRequestInterface
 
     @Serializable
     data class Oid4Vp(
