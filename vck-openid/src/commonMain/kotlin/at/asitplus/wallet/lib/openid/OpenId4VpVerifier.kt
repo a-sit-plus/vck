@@ -656,6 +656,9 @@ class OpenId4VpVerifier(
             hasBeenEncrypted = hasBeenEncrypted
         ).wrapAsExpectedPayload()
 
+        // TODO verify expectedOrigins
+
+        //TODO probably an issue with missing client ID or audience
         verifyCoseSignature(
             coseSigned = deviceSignature,
             signer = mso.deviceKeyInfo.deviceKey,
