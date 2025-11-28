@@ -89,7 +89,7 @@ class RequestParser(
         return if (dcApiRequest.protocol.isUnsignedOpenId4VpRequest) {
             catchingUnwrapped {
                 vckJsonSerializer.decodeFromString(RequestParameters.serializer(), dcApiRequest.request)
-            }.getOrNull()?.let {
+            }.getOrThrow().let {
                 RequestParametersFrom.DcApiUnsigned(dcApiRequest, it, this)
             }
         } else if (dcApiRequest.protocol.isSignedOpenId4VpRequest) {
@@ -98,9 +98,9 @@ class RequestParser(
                     JarRequestParameters.serializer(),
                     dcApiRequest.request
                 ).request?.let {
-                    JwsSigned.deserialize(RequestParameters.serializer(), it, vckJsonSerializer).getOrNull()
-                }
-            }.getOrNull()?.let {
+                    JwsSigned.deserialize(RequestParameters.serializer(), it, vckJsonSerializer).getOrThrow()
+                } ?: throw IllegalArgumentException("Failed to parse signed request")
+            }.getOrThrow().let {
                 RequestParametersFrom.DcApiSigned(dcApiRequest, it.payload, it)
             }
         } else {
