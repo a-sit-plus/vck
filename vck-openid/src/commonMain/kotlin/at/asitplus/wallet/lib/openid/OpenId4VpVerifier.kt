@@ -509,7 +509,7 @@ class OpenId4VpVerifier(
         val jwsSigned = JwsSigned.deserialize(IdToken.serializer(), idTokenJws, vckJsonSerializer)
             .getOrElse { throw IllegalArgumentException("idToken", it) }
         verifyJwsObject(jwsSigned).getOrElse {
-            throw IllegalArgumentException("idToken. $it")
+            throw IllegalArgumentException("idToken.", it)
                 .also { Napier.w { "JWS of idToken not verified: $idTokenJws" } }
         }
         val idToken = jwsSigned.payload

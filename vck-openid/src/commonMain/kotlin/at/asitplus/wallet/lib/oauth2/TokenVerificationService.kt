@@ -208,7 +208,7 @@ class JwtTokenVerificationService(
             throw InvalidDpopProof("could not parse DPoP JWT", it)
         }.also {
             verifyJwsObject(it).getOrElse {
-                throw InvalidDpopProof("DPoP JWT not verified. $it")
+                throw InvalidDpopProof("DPoP JWT not verified.", it)
             }
         }
 

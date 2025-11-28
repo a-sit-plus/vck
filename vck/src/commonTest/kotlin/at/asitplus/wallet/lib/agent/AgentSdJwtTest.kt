@@ -289,8 +289,8 @@ val AgentSdJwtTest by testSuite {
 
         "sd-jwt vc request verified with HAIP status list rules" {
             val haipTokenStatusResolver = TokenStatusResolverImpl(
-                resolveStatusListToken = StatusListTokenResolver {
-                    statusListIssuer.provideStatusListToken(
+                resolveStatusListToken = { _ ->
+                    it.statusListIssuer.provideStatusListToken(
                         listOf(StatusListTokenMediaType.Jwt),
                         Clock.System.now(),
                     ).second
@@ -299,14 +299,14 @@ val AgentSdJwtTest by testSuite {
             )
 
             val haipVerifier = VerifierAgent(
-                identifier = verifierId,
+                identifier = it.verifierId,
                 validatorSdJwt = ValidatorSdJwt(
                     validator = Validator(tokenStatusResolver = haipTokenStatusResolver),
                 ),
             )
 
-            val presentationParameters = holder.createDefaultPresentation(
-                request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
+            val presentationParameters = it.holder.createDefaultPresentation(
+                request = PresentationRequestParameters(nonce = it.challenge, audience = it.verifierId),
                 credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
                     buildDCQLQuery(
                         DCQLJsonClaimsQuery(
@@ -319,7 +319,7 @@ val AgentSdJwtTest by testSuite {
             val vp = presentationParameters.verifiablePresentations.values.first()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            haipVerifier.verifyPresentationSdJwt(vp.sdJwt, challenge)
+            haipVerifier.verifyPresentationSdJwt(vp.sdJwt, it.challenge)
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
                 .freshnessSummary.tokenStatusValidationResult
                 .shouldBeInstanceOf<TokenStatusValidationResult.Valid>()
@@ -345,14 +345,14 @@ val AgentSdJwtTest by testSuite {
             )
 
             val haipVerifier = VerifierAgent(
-                identifier = verifierId,
+                identifier = it.verifierId,
                 validatorSdJwt = ValidatorSdJwt(
                     validator = Validator(tokenStatusResolver = haipTokenStatusResolver),
                 ),
             )
 
-            val presentationParameters = holder.createDefaultPresentation(
-                request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
+            val presentationParameters = it.holder.createDefaultPresentation(
+                request = PresentationRequestParameters(nonce = it.challenge, audience = it.verifierId),
                 credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
                     buildDCQLQuery(
                         DCQLJsonClaimsQuery(
@@ -365,7 +365,7 @@ val AgentSdJwtTest by testSuite {
             val vp = presentationParameters.verifiablePresentations.values.first()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            val test = haipVerifier.verifyPresentationSdJwt(vp.sdJwt, challenge)
+            val test = haipVerifier.verifyPresentationSdJwt(vp.sdJwt, it.challenge)
 
             test.shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
                 .freshnessSummary.tokenStatusValidationResult
