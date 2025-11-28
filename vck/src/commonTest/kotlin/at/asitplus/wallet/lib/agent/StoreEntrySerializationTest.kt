@@ -36,7 +36,7 @@ val StoreEntrySerializationTest by testSuite {
         }
     }- {
 
-        "serialize stored VC" {
+        "serialize stored VC" { it ->
             val credentials = it.issuer.issueCredential(
                 DummyCredentialDataProvider.getCredential(
                     it.holderKeyMaterial.publicKey,
@@ -55,7 +55,7 @@ val StoreEntrySerializationTest by testSuite {
 
         }
 
-        "serialize stored SD-JWT" {
+        "serialize stored SD-JWT" { it ->
             val credentials = it.issuer.issueCredential(
                 DummyCredentialDataProvider.getCredential(
                     it.holderKeyMaterial.publicKey,
@@ -73,7 +73,7 @@ val StoreEntrySerializationTest by testSuite {
             vckJsonSerializer.decodeFromString<SubjectCredentialStore.StoreEntry.SdJwt>(serialized) shouldBe entry
         }
 
-        "serialize stored ISO mDoc" {
+        "serialize stored ISO mDoc" { it ->
             CborCredentialSerializer.register(
                 mapOf(
                     ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT to ByteArraySerializer(),
@@ -98,7 +98,7 @@ val StoreEntrySerializationTest by testSuite {
             vckJsonSerializer.decodeFromString<SubjectCredentialStore.StoreEntry.Iso>(serialized) shouldBe entry
         }
 
-        "from OID4VCI credential response" {
+        "from OID4VCI credential response" { it ->
             val input = """
             ompuYW1lU3BhY2VzoXVhdC5ndi5pZC1hdXN0cmlhLjIwMjOG2BhYcKRoZGlnZXN0SUQAZnJhbmRvbVANNfVntNqVZrEiz788RhxacWVsZW1lb
             nRJZGVudGlmaWVyY2Jwa2xlbGVtZW50VmFsdWV4KFhGTis0MzY5MjBmOlYvUzQzVjZKeUk0T0JsR3ZUT1NMZGQyYjEvTT3YGFhVpGhkaWdlc3

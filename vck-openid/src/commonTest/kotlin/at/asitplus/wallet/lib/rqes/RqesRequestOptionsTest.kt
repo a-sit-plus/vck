@@ -38,7 +38,7 @@ val RqesRequestOptionsTest by testSuite {
         }
     } - {
 
-        "Authentication request contains transactionData" {
+        "Authentication request contains transactionData" { it ->
             val requestOptions = buildRequestOptions(transactionDataHashAlgorithms = setOf(SdJwtConstants.SHA_256))
             it.verifierOid4Vp.createAuthnRequest(requestOptions = requestOptions).apply {
                 val inputDescriptor = presentationDefinition.shouldNotBeNull().inputDescriptors.first()

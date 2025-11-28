@@ -49,7 +49,7 @@ val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
         }
     } - {
 
-        "matching: only credentials of the correct format are matched" {
+        "matching: only credentials of the correct format are matched" { it ->
             it.holderAgent.storeIsoCredential(it.holderKeyMaterial, AtomicAttribute2023)
             it.holderAgent.storeIsoCredential(it.holderKeyMaterial, AtomicAttribute2023)
             it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, AtomicAttribute2023)
@@ -78,7 +78,7 @@ val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
                 }
         }
 
-        "submission requirements need to match: all credentials matching an input descriptor should be presentable" {
+        "submission requirements need to match: all credentials matching an input descriptor should be presentable" { it ->
             it.holderAgent.storeIsoCredential(it.holderKeyMaterial, AtomicAttribute2023)
             it.holderAgent.storeIsoCredential(it.holderKeyMaterial, AtomicAttribute2023)
             it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, AtomicAttribute2023)
@@ -129,7 +129,7 @@ val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
             }
         }
 
-        "submission requirements need to match: not all optional claims need to be presented" {
+        "submission requirements need to match: not all optional claims need to be presented" { it ->
             it.holderAgent.storeIsoCredential(it.holderKeyMaterial, AtomicAttribute2023)
 
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
@@ -184,7 +184,7 @@ val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
         }
 
 
-        "submission requirements need to match: credentials not matching an input descriptor should not yield a valid submission" {
+        "submission requirements need to match: credentials not matching an input descriptor should not yield a valid submission" { it ->
             it.holderAgent.storeIsoCredential(it.holderKeyMaterial, AtomicAttribute2023)
             it.holderAgent.storeIsoCredential(it.holderKeyMaterial, AtomicAttribute2023)
             it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, AtomicAttribute2023)

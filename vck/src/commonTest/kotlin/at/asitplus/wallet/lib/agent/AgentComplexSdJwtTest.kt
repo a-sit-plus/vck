@@ -40,7 +40,7 @@ val AgentComplexSdJwtTest by testSuite {
         }
     } - {
 
-        "with flat address" {
+        "with flat address" { it ->
             listOf(
                 ClaimToBeIssued(
                     CLAIM_ADDRESS, listOf(
@@ -73,7 +73,7 @@ val AgentComplexSdJwtTest by testSuite {
                 }
         }
 
-        "with claims in address selectively disclosable, but address not" {
+        "with claims in address selectively disclosable, but address not" { it ->
             listOf(
                 ClaimToBeIssued(
                     CLAIM_ADDRESS, listOf(
@@ -106,7 +106,7 @@ val AgentComplexSdJwtTest by testSuite {
                 }
         }
 
-        "with claims in address recursively selectively disclosable" {
+        "with claims in address recursively selectively disclosable" { it ->
             listOf(
                 ClaimToBeIssued(
                     CLAIM_ADDRESS,
@@ -140,7 +140,7 @@ val AgentComplexSdJwtTest by testSuite {
                 }
         }
 
-        "with claims in address selectively disclosable, getting all inner disclosures" {
+        "with claims in address selectively disclosable, getting all inner disclosures" { it ->
             listOf(
                 ClaimToBeIssued(
                     CLAIM_ADDRESS,
@@ -171,7 +171,7 @@ val AgentComplexSdJwtTest by testSuite {
                 }
         }
 
-        "with claims in address in dot-notation" {
+        "with claims in address in dot-notation" { it ->
             listOf(
                 ClaimToBeIssued("$CLAIM_ADDRESS.$CLAIM_ADDRESS_REGION", "Vienna"),
                 ClaimToBeIssued("$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY", "AT"),
@@ -200,7 +200,7 @@ val AgentComplexSdJwtTest by testSuite {
                 }
         }
 
-        "simple walk-through success" {
+        "simple walk-through success" { it ->
             listOf(
                 ClaimToBeIssued(CLAIM_GIVEN_NAME, "Susanne"),
                 ClaimToBeIssued(CLAIM_FAMILY_NAME, "Meier"),

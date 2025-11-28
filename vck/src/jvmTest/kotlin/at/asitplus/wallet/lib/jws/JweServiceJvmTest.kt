@@ -34,6 +34,7 @@ import com.nimbusds.jose.crypto.ECDHDecrypter
 import com.nimbusds.jose.crypto.ECDHEncrypter
 import com.nimbusds.jose.jwk.JWK
 import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.engine.runBlocking
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import java.security.interfaces.ECPrivateKey
@@ -48,7 +49,7 @@ val JweServiceJvmTest by testSuite {
         EcdhesConfiguration(SECP_521_R_1, listOf(A256CBC_HS512, A256GCM)),
     )
 
-    withData(ecdhesConfiguration) { config ->
+    withData(ecdhesConfiguration) - { config ->
         val ephemeralKey = EphemeralKey {
             ec {
                 curve = config.curve
@@ -65,7 +66,7 @@ val JweServiceJvmTest by testSuite {
         val decrypter = DecryptJwe(keyMaterial)
         val randomPayload = uuid4().toString()
 
-        config.encryption.forEach { encryptionMethod ->
+        withData(config.encryption) - { encryptionMethod ->
             "${config.curve}, ${encryptionMethod}" - {
                 "Encrypted object from ext. library can be decrypted with int. library" {
                     val libJweHeader =
@@ -110,8 +111,8 @@ val JweServiceJvmTest by testSuite {
         SymmetricConfiguration(A256GCMKW, listOf(A256CBC_HS512, A256GCM)),
     )
 
-    withData(symmetricConfiguration) { config ->
-        val ephemeralKey = (config.algorithm as JweAlgorithm.Symmetric).algorithm.randomKey()
+    withData(symmetricConfiguration) - { config ->
+        val ephemeralKey = runBlocking { (config.algorithm as JweAlgorithm.Symmetric).algorithm.randomKey() }
         require(ephemeralKey is SymmetricKey.Integrated)
 
         val jvmEncrypter = AESEncrypter(ephemeralKey.secretKey.getOrThrow())
@@ -121,7 +122,7 @@ val JweServiceJvmTest by testSuite {
         val decrypter = DecryptJweSymmetric(ephemeralKey)
         val randomPayload = uuid4().toString()
 
-        config.encryption.forEach { encryptionMethod ->
+        withData(config.encryption) - { encryptionMethod ->
             "${config.algorithm.identifier}, ${encryptionMethod}" - {
                 "Encrypted object from ext. library can be decrypted with int. library" {
                     val libJweHeader =

@@ -39,7 +39,7 @@ val OidvciMetadataTest by testSuite {
             )
         }
     } - {
-        "metadata for ISO_MDOC" {
+        "metadata for ISO_MDOC" { it ->
             vckJsonSerializer.encodeToJsonElement(it.issuer.metadata).jsonObject.apply {
                 get("credential_configurations_supported").shouldNotBeNull().jsonObject.apply {
                     get("org.iso.18013.5.1").shouldNotBeNull().jsonObject.apply {

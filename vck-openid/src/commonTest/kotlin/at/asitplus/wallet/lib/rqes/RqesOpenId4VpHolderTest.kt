@@ -41,7 +41,7 @@ val RqesOpenId4VpHolderTest by testSuite {
         }
     } - {
 
-        "Invalid signing certificate throws" {
+        "Invalid signing certificate throws" { it ->
             it.dummyValueProvider.getCredentialInfo(
                 CertificateParameters.CertStatus.VALID,
                 KeyParameters.KeyStatusOptions.DISABLED
@@ -71,7 +71,7 @@ val RqesOpenId4VpHolderTest by testSuite {
             }
         }
 
-        "certificate without certParameters is invalid" {
+        "certificate without certParameters is invalid" { it ->
             val validCert = it.dummyValueProvider.getCredentialInfo()
             validCert.copy(
                 certParameters = null
@@ -80,7 +80,7 @@ val RqesOpenId4VpHolderTest by testSuite {
             }
         }
 
-        "certificate without status is valid" {
+        "certificate without status is valid" { it ->
             val validCert = it.dummyValueProvider.getCredentialInfo()
             validCert.copy(
                 certParameters = CertificateParameters(
@@ -95,7 +95,7 @@ val RqesOpenId4VpHolderTest by testSuite {
             }
         }
 
-        "certificate without certparameters is invalid" {
+        "certificate without certparameters is invalid" { it ->
             val validCert = it.dummyValueProvider.getCredentialInfo()
             validCert.copy(
                 certParameters = it.dummyValueProvider.getCredentialInfo().certParameters!!.copy(certificates = null)
@@ -104,7 +104,7 @@ val RqesOpenId4VpHolderTest by testSuite {
             }
         }
 
-        "CscAuthDetails respects SigningCredential" {
+        "CscAuthDetails respects SigningCredential" { it ->
             val digests = it.dummyValueProvider.buildDocumentDigests()
             val validCert = it.dummyValueProvider.getCredentialInfo()
             val validSigningAlgo = validCert.keyParameters.algo.shuffled().firstNotNullOf { oid ->
@@ -130,7 +130,7 @@ val RqesOpenId4VpHolderTest by testSuite {
                 .shouldBe(authDetails)
         }
 
-        "CscDocumentDigest respects SigningCredential" {
+        "CscDocumentDigest respects SigningCredential" { it ->
             val digests = it.dummyValueProvider.buildDocumentDigests()
             val signatureProperties = it.baseSignatureProperties.copy(
                 signatureFormat = SignatureFormat.entries.random(),
@@ -156,7 +156,7 @@ val RqesOpenId4VpHolderTest by testSuite {
             deserialized shouldBe testDocumentDigests
         }
 
-        "AuthenticationRequest SERVICE" {
+        "AuthenticationRequest SERVICE" { it ->
             val request = it.rqesWalletService.createServiceAuthenticationRequest()
             request.credentialID shouldBe null
             request.signatureQualifier shouldBe null
@@ -167,7 +167,7 @@ val RqesOpenId4VpHolderTest by testSuite {
                 .shouldBe(request)
         }
 
-        "AuthenticationRequest CREDENTIAL" {
+        "AuthenticationRequest CREDENTIAL" { it ->
             val documentDigests = it.dummyValueProvider.buildDocumentDigests()
             val validCert = it.dummyValueProvider.getCredentialInfo()
             val signatureProperties = it.baseSignatureProperties.copy(
@@ -193,7 +193,7 @@ val RqesOpenId4VpHolderTest by testSuite {
                 .shouldBe(request)
         }
 
-        "TokenRequest" {
+        "TokenRequest" { it ->
             val validCert = it.dummyValueProvider.getCredentialInfo()
             val signatureProperties = it.baseSignatureProperties.copy(
                 signatureFormat = SignatureFormat.entries.random(),
@@ -218,7 +218,7 @@ val RqesOpenId4VpHolderTest by testSuite {
                 .shouldBe(request)
         }
 
-        "SignHash" {
+        "SignHash" { it ->
             val validCert = it.dummyValueProvider.getCredentialInfo()
             val validSigningAlgo = validCert.keyParameters.algo.shuffled().firstNotNullOf { oid ->
                 catchingUnwrapped { X509SignatureAlgorithm.entries.first { it.oid == oid } }.getOrNull()

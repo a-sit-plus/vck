@@ -108,7 +108,7 @@ val ValidatorSdJwtTest by testSuite {
         }
     }- {
 
-        "credentials are valid for holder's key" {
+        "credentials are valid for holder's key" { it ->
             val credential = it.issuer.issueCredential(it.buildCredentialData()).getOrThrow()
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>().apply {
                     // Assert the issuanceOffset in IssuerAgent
@@ -120,7 +120,7 @@ val ValidatorSdJwtTest by testSuite {
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessSdJwt>()
         }
 
-        "credentials are not valid for some other key" {
+        "credentials are not valid for some other key" { it ->
             val credential = it.issuer.issueCredential(it.buildCredentialData()).getOrThrow()
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>()
 
@@ -128,7 +128,7 @@ val ValidatorSdJwtTest by testSuite {
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.ValidationError>()
         }
 
-        "credentials without cnf are not valid" {
+        "credentials without cnf are not valid" { it ->
             val credential = it.issueVcSd(
                 it.buildCredentialData(),
                 it.holderKeyMaterial,
@@ -139,7 +139,7 @@ val ValidatorSdJwtTest by testSuite {
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.ValidationError>()
         }
 
-        "credentials with random subject are valid" {
+        "credentials with random subject are valid" { it ->
             val credential = it.issueVcSd(
                 it.buildCredentialData(),
                 it.holderKeyMaterial,
@@ -150,7 +150,7 @@ val ValidatorSdJwtTest by testSuite {
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessSdJwt>()
         }
 
-        "credentials are valid with vctm added" {
+        "credentials are valid with vctm added" { it ->
             val typeMetadata = SdJwtTypeMetadata(
                 verifiableCredentialType = "https://www.w3.org/2018/credentials/v1"
             )

@@ -133,7 +133,7 @@ val ValidatorVcTest by testSuite {
 
         }
     } - {
-        "credentials are valid for" {
+        "credentials are valid for" { it ->
             val credential = it.issuer.issueCredential(
                 DummyCredentialDataProvider.getCredential(
                     it.verifierKeyMaterial.publicKey,
@@ -152,7 +152,7 @@ val ValidatorVcTest by testSuite {
                 .shouldBeInstanceOf<VerifyCredentialResult.SuccessJwt>()
         }
 
-        "revoked credentials are not valid" {
+        "revoked credentials are not valid" { it ->
             val credential = it.issuer.issueCredential(
                 DummyCredentialDataProvider.getCredential(
                     it.verifierKeyMaterial.publicKey,
@@ -178,7 +178,7 @@ val ValidatorVcTest by testSuite {
                 .tokenStatus shouldBe TokenStatus.Invalid
         }
 
-        "wrong subject keyId is not be valid" {
+        "wrong subject keyId is not be valid" { it ->
             val credential = it.issuer.issueCredential(
                 DummyCredentialDataProvider.getCredential(
                     EphemeralKeyWithoutCert().publicKey,
@@ -192,7 +192,7 @@ val ValidatorVcTest by testSuite {
                 .shouldBeInstanceOf<VerifyCredentialResult.ValidationError>()
         }
 
-        "credential with invalid JWS format is not valid" {
+        "credential with invalid JWS format is not valid" { it ->
             val credential = it.issuer.issueCredential(
                 DummyCredentialDataProvider.getCredential(
                     it.verifierKeyMaterial.publicKey,

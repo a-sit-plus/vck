@@ -63,7 +63,7 @@ val IssuerSignedItemSerializationTest by testSuite {
         }
     } - {
 
-        "serialization with String" {
+        "serialization with String" { it ->
             val item = IssuerSignedItem(
                 digestId = Random.nextUInt(),
                 random = Random.nextBytes(16),
@@ -80,7 +80,7 @@ val IssuerSignedItemSerializationTest by testSuite {
             ) shouldBe item
         }
 
-        "serialization with Instant" {
+        "serialization with Instant" { it ->
             CborCredentialSerializer.register(mapOf(it.elementId to Instant.serializer()), it.namespace)
             val item = IssuerSignedItem(
                 digestId = Random.nextUInt(),
@@ -105,7 +105,7 @@ val IssuerSignedItemSerializationTest by testSuite {
             ) shouldBe item
         }
 
-        "serialization with LocalDate" {
+        "serialization with LocalDate" { it ->
             CborCredentialSerializer.register(mapOf(it.elementId to LocalDate.serializer()), it.namespace)
             val item = IssuerSignedItem(
                 digestId = Random.nextUInt(),
@@ -130,7 +130,7 @@ val IssuerSignedItemSerializationTest by testSuite {
             ) shouldBe item
         }
 
-        "document serialization with ByteArray" {
+        "document serialization with ByteArray" { it ->
             CborCredentialSerializer.register(mapOf(it.elementId to ByteArraySerializer()), it.namespace)
             val digestId = 13u
             val item = IssuerSignedItem(

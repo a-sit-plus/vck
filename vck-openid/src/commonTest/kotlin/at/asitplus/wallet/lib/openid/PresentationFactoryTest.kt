@@ -175,7 +175,7 @@ val PresentationFactoryTest by testSuite {
         }
 
         // https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#appendix-B.2.6.1-7
-        "Sample from OpenID4VP 1.0" {
+        "Sample from OpenID4VP 1.0" { it ->
             val jsonWebKey = """
                 {
                   "kty": "EC",
@@ -205,7 +205,7 @@ val PresentationFactoryTest by testSuite {
         }
 
         // https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#appendix-B.2.6.2-7
-        "Sample from OpenID4VP 1.0 for DCAPI" {
+        "Sample from OpenID4VP 1.0 for DCAPI" { it ->
             val jsonWebKey = """
                 {
                   "kty": "EC",
