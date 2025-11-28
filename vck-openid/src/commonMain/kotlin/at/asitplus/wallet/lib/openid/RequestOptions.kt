@@ -90,6 +90,15 @@ data class RequestOptions(
      * unsigned requests and therefore a Wallet MUST ignore this parameter if it is present in an unsigned request.
      */
     val expectedOrigins: List<String>? = null,
+
+    /**
+     * Whether the client_id should be added to the request. Required for DC API:
+     * The client_id parameter MUST be omitted in unsigned requests defined in Appendix A.3.1.
+     * The client_id parameter MUST be present in signed requests defined in Appendix A.3.2, as it communicates to the
+     * Wallet which Client Identifier Prefix and Client Identifier to use when authenticating the client through
+     * verification of the request signature or retrieving client metadata.
+     */
+    val populateClientId: Boolean = true,
 ) {
     init {
         if (!transactionData.isNullOrEmpty()) {
@@ -101,6 +110,7 @@ data class RequestOptions(
             require(isDcql) { "DC API only supports DCQL" }
             requireNotNull(expectedOrigins) { "Expected origins must be set for DC API" }
         }
+        require(if (responseMode == OpenIdConstants.ResponseMode.DcApi) !populateClientId else populateClientId)
     }
 
     val isDcql: Boolean

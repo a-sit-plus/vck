@@ -1,6 +1,9 @@
 package at.asitplus.openid
 
+import at.asitplus.dcapi.request.ExchangeProtocolIdentifier
 import io.ktor.http.*
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Intermediate class to transport the source of parsed [AuthenticationResponseParameters]
@@ -8,6 +11,7 @@ import io.ktor.http.*
 sealed class ResponseParametersFrom {
 
     abstract val parameters: AuthenticationResponseParameters
+    open val clientIdRequired: Boolean = true
     abstract val hasBeenEncrypted: Boolean
 
     data class JwsSigned(
@@ -39,9 +43,18 @@ sealed class ResponseParametersFrom {
         override val hasBeenEncrypted: Boolean = false
     }
 
+    @Serializable
     data class DcApi(
+        /** Format `openid4vp-v<version>-<request-type>`, see [ExchangeProtocolIdentifier]. */
+        @SerialName("protocol")
+        val protocol: ExchangeProtocolIdentifier,
+        @SerialName("data")
         override val parameters: AuthenticationResponseParameters,
-        ) : ResponseParametersFrom()
+        @SerialName("origin")
+        val origin: String,
+    ): ResponseParametersFrom() {
+        override val clientIdRequired get() = run { !protocol.isUnsignedOpenId4VpRequest }
+    }
 
 }
 
