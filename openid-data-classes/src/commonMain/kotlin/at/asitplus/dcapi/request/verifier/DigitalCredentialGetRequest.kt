@@ -1,6 +1,7 @@
 package at.asitplus.dcapi.request.verifier
 
 import at.asitplus.dcapi.request.ExchangeProtocolIdentifier
+import at.asitplus.dcapi.request.IsoMdocRequest
 import at.asitplus.openid.RequestParameters
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -9,19 +10,9 @@ import kotlinx.serialization.Serializable
 sealed class DigitalCredentialGetRequest {
     abstract val protocol: ExchangeProtocolIdentifier
 
-    // TODO remove this?
-    @Serializable
-    data class SignedDigitalCredentialGetRequest(
-        /** `org-iso-mdoc` or `openid4vp-v<version>-<request-type>`, see [ExchangeProtocolIdentifier]. */
-        @SerialName("protocol")
-        override val protocol: ExchangeProtocolIdentifier,
-        @SerialName("data")
-        val data: String,
-    ) : DigitalCredentialGetRequest()
-
     @Serializable
     data class Oid4Vp(
-        /** `org-iso-mdoc` or `openid4vp-v<version>-<request-type>`, see [ExchangeProtocolIdentifier]. */
+        /** `openid4vp-v<version>-<request-type>`, see [ExchangeProtocolIdentifier]. */
         @SerialName("protocol")
         override val protocol: ExchangeProtocolIdentifier,
         @SerialName("data")
@@ -30,10 +21,10 @@ sealed class DigitalCredentialGetRequest {
 
     @Serializable
     data class IsoMdoc(
-        /** `org-iso-mdoc` or `openid4vp-v<version>-<request-type>`, see [ExchangeProtocolIdentifier]. */
+        /** `org-iso-mdoc`. */
         @SerialName("protocol")
         override val protocol: ExchangeProtocolIdentifier,
         @SerialName("data")
-        val request: RequestParameters,
+        val request: IsoMdocRequest,
     ) : DigitalCredentialGetRequest()
 }

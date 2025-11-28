@@ -6,9 +6,10 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class IsoMdocRequest(
+sealed interface IsoMdocRequestInterface {
     @SerialName("deviceRequest")
-    override val deviceRequest: DeviceRequest,
+    val deviceRequest: DeviceRequest
+
     @SerialName("encryptionInfo")
-    override val encryptionInfo: EncryptionInfo,
-) : IsoMdocRequestInterface
+    val encryptionInfo: EncryptionInfo
+}
