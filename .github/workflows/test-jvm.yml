@@ -23,9 +23,7 @@ jobs:
             ~/.m2/repository
           key: Android-${{ hashFiles('./gradle/libs.versions.toml', './gradle/wrapper/gradle-wrapper.properties') }}
       - name: Run tests
-        run: |
-          killall -9 java
-          taskset -c 0 ./gradlew jvmTest
+        run: taskset -c 0 ./gradlew jvmTest
       - name: Run ISO mDL tests
         run: |
           cd mobile-driving-licence-credential
