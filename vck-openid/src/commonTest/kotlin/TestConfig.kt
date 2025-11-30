@@ -12,7 +12,7 @@ expect val testNameLengths: Pair<Int, Int>
 
 class TestConfig : TestSession(
     testConfig = DefaultConfiguration.invocation(TestInvocation.CONCURRENT)
-        .testScope(isEnabled = true, timeout = 20.minutes)
+        .testScope(isEnabled = false)
 ) {
     init {
         Napier.takeLogarithm()

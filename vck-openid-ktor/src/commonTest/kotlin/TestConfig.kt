@@ -11,8 +11,8 @@ import kotlin.time.Duration.Companion.minutes
 internal expect val testInvocation: TestInvocation
 
 class TestConfig : TestSession(
-    testConfig = DefaultConfiguration.invocation(testInvocation)
-        .testScope(isEnabled = true, timeout = 20.minutes)
+    testConfig = DefaultConfiguration.invocation(TestInvocation.CONCURRENT)
+        .testScope(isEnabled = false)
 ) {
     init {
         Napier.takeLogarithm()
