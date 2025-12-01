@@ -2,8 +2,8 @@ package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.PositiveDuration
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
-import kotlin.time.Instant
 import kotlinx.serialization.Serializable
+import kotlin.time.Instant
 
 /**
  * The following content applies to the JWT Claims Set:
@@ -23,8 +23,9 @@ import kotlinx.serialization.Serializable
  * SHOULD be retrieved. The value of the claim MUST be a positive number encoded in JSON as a
  * number.
  *
- * status_list: REQUIRED. The status_list (status list) claim MUST specify the Status List
+ * status_list: REQUIRED*. The status_list (status list) claim MUST specify the Status List
  * conforming to the rules outlined in Section 4.1.
+ * TODO update docs
  */
 @Serializable(with = StatusListTokenPayloadSerializer::class)
 data class StatusListTokenPayload(
@@ -32,6 +33,5 @@ data class StatusListTokenPayload(
     val issuedAt: Instant,
     val expirationTime: Instant? = null,
     val timeToLive: PositiveDuration? = null,
-    val statusList: StatusList,
+    val revocationList: RevocationList,
 )
-
