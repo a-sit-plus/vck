@@ -22,4 +22,6 @@ data class IdentifierList(
     val identifiers: Map<Identifier, IdentifierInfo>,
     @SerialName("aggregation_uri")
     val aggregationUri: String? = null,
-)
+) : RevocationList() {
+    override val kind: Kind = Kind.IDENTIFIER_LIST
+}
