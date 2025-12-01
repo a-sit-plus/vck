@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.data.iso18013
+package at.asitplus.wallet.lib.data.rfc.tokenStatusList.iso18013
 
 import at.asitplus.signum.indispensable.io.TransformingSerializerTemplate
 import kotlinx.serialization.Serializable

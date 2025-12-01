@@ -1,5 +1,6 @@
-package at.asitplus.wallet.lib.data.iso18013
+package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
+import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.ByteString
@@ -17,7 +18,7 @@ data class IdentifierListInfo(
     @ByteString
     val identifier: ByteArray,
     @SerialName("uri")
-    val uri: String,
+    val uri: UniformResourceIdentifier,
     /**
      * The identifier_list and status_list in the MSO may contain the Certificate element. If the
      * Certificate element is present, it shall contain a certificate containing the public key that signed the
