@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents
 
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListAggregation
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
 import kotlin.time.Instant
@@ -14,7 +15,8 @@ interface StatusProvider<StatusListToken : Any> {
      */
     suspend fun provideStatusListToken(
         acceptedContentTypes: List<StatusListTokenMediaType>,
-        time: Instant? = null
+        time: Instant? = null,
+        kind: RevocationList.Kind = RevocationList.Kind.STATUS_LIST,
     ): Pair<StatusListTokenMediaType, StatusListToken>
 
     /**

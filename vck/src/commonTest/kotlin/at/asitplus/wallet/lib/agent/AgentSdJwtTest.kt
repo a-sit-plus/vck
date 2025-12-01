@@ -167,7 +167,7 @@ val AgentSdJwtTest by testSuite {
                 .forEach { storeEntry ->
                     it.statusListIssuer.revokeCredential(
                         FixedTimePeriodProvider.timePeriod,
-                        storeEntry.sdJwt.credentialStatus!!.statusList.index
+                        storeEntry.sdJwt.credentialStatus!!.statusList!!.index
                     ) shouldBe true
                 }
             it.verifier.verifyPresentationSdJwt(vp.sdJwt, it.challenge)
@@ -268,7 +268,7 @@ val AgentSdJwtTest by testSuite {
                 .forEach { storeEntry ->
                     it.statusListIssuer.revokeCredential(
                         FixedTimePeriodProvider.timePeriod,
-                        storeEntry.sdJwt.credentialStatus!!.statusList.index,
+                        storeEntry.sdJwt.credentialStatus!!.statusList!!.index,
                     ) shouldBe true
                 }
             it.verifier.verifyPresentationSdJwt(vp.sdJwt, it.challenge)

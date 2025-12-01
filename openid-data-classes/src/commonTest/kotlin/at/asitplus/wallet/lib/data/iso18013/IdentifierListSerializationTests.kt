@@ -3,7 +3,13 @@ package at.asitplus.wallet.lib.data.iso18013
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.testballoon.invoke
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierList
 import at.asitplus.wallet.lib.data.Status
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.iso18013.Identifier
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.iso18013.IdentifierInfo
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.iso18013.IdentifierInfoKey
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierListInfo
+import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
@@ -41,7 +47,7 @@ val IdentifierListTest by testSuite {
         val expected = Status(
             identifierList = IdentifierListInfo(
                 identifier = byteArrayOf(0xcc.toByte(), 0xcc.toByte()),
-                uri = "https://example.com/identifierlists/1",
+                uri = UniformResourceIdentifier("https://example.com/identifierlists/1"),
                 certificate = byteArrayOf(0xaa.toByte())
             )
         )

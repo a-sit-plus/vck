@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.wallet.lib.data.iso18013.IdentifierListInfo
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -16,6 +16,8 @@ import kotlinx.serialization.Serializable
  *
  * ISO 18013-5 defines new mechanism "IdentifierList".
  * Either the StatusList OR IdentifierList may be used but not both at the same time.
+ *
+ * TODO Replace with on the fly surrogate serializer?
  */
 @Serializable
 data class Status(

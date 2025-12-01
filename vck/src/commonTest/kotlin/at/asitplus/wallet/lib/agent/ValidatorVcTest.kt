@@ -166,7 +166,7 @@ val ValidatorVcTest by testSuite {
                 .shouldBeInstanceOf<VerifyCredentialResult.SuccessJwt>()
             it.issuerCredentialStore.setStatus(
                 timePeriod = FixedTimePeriodProvider.timePeriod,
-                index = value.jws.vc.credentialStatus!!.statusList.index,
+                index = value.jws.vc.credentialStatus!!.statusList!!.index,
                 status = TokenStatus.Invalid,
             ) shouldBe true
 

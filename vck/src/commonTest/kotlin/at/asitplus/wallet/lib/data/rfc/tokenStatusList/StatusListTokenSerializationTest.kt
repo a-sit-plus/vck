@@ -8,6 +8,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBit
 import at.asitplus.wallet.lib.extensions.toView
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.Json
 import kotlin.time.DurationUnit
 import kotlin.time.Instant
@@ -45,10 +46,10 @@ val StatusListTokenSerializationTest by testSuite {
                             it.expirationTime!! shouldBe Instant.fromEpochSeconds(2291720170)
                         },
                         "statuslist bitsize" to {
-                            it.statusList.statusBitSize shouldBe TokenStatusBitSize.ONE
+                            (it.revocationList as StatusList).statusBitSize shouldBe TokenStatusBitSize.ONE
                         },
                         "statuslist status" to {
-                            it.statusList.toView()[0u] shouldBe TokenStatus(1u)
+                            (it.revocationList as StatusList).toView()[0u] shouldBe TokenStatus(1u)
                         },
                     ),
                 ),
@@ -65,7 +66,8 @@ val StatusListTokenSerializationTest by testSuite {
                 }
                 Json.decodeFromString<StatusListTokenPayload>(Json.encodeToString(value)) shouldBe value
                 val value2 = Json.decodeFromString<StatusListTokenPayload>(Json.encodeToString(value))
-                value2.statusList shouldBe value.statusList
+                value2.revocationList.shouldBeInstanceOf<StatusList>()
+                value2.revocationList shouldBe value.revocationList
                 value2.timeToLive shouldBe value.timeToLive
                 value2.subject shouldBe value.subject
                 value2.expirationTime shouldBe value.expirationTime
