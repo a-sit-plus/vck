@@ -48,7 +48,7 @@ class TokenStatusResolverImpl(
         ).getOrThrow()
 
         extractTokenStatus(
-            revocationList = payload.revocationList as StatusList,
+            revocationList = payload.revocationList,
             revocationListInfo = revocationListInfo,
             zlibService = zlibService,
         ).getOrThrow()
@@ -78,7 +78,7 @@ fun StatusListTokenResolver.toTokenStatusResolver(
         ).getOrThrow()
 
         extractTokenStatus(
-            revocationList = payload.revocationList as StatusList,
+            revocationList = payload.revocationList,
             revocationListInfo = revocationListInfo,
             zlibService = zlibService,
         ).getOrThrow()
