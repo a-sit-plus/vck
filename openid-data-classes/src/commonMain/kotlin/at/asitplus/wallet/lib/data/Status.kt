@@ -12,10 +12,7 @@ import kotlinx.serialization.Serializable
  * which enforces the single-choice constraint and aligns with JOSE/COSE field names.
  */
 @Deprecated(
-    message = "Use RevocationListInfo using StatusSurrogateSerializer instead",
-    replaceWith = ReplaceWith(
-        "at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo"
-    )
+    message = "Use RevocationListInfo directly with StatusSurrogateSerializer instead",
 )
 @Serializable
 data class Status(
