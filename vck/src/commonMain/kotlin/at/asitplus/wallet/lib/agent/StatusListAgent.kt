@@ -1,7 +1,9 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.openid.truncateToSeconds
+import at.asitplus.catching
 import at.asitplus.signum.indispensable.cosef.CoseHeader
+import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.cbor.CoseHeaderCertificate
@@ -11,8 +13,9 @@ import at.asitplus.wallet.lib.cbor.SignCoseFun
 import at.asitplus.wallet.lib.data.StatusListCwt
 import at.asitplus.wallet.lib.data.StatusListJwt
 import at.asitplus.wallet.lib.data.StatusListToken
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.MediaTypes
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListAggregation
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
@@ -50,13 +53,20 @@ class StatusListAgent(
     /**
      * Wraps the revocation information from [issuerCredentialStore] into a Status List Token,
      * returns a JWS representation of that.
+     *
+     * JWT only supports [RevocationList.Kind.STATUS_LIST]
      */
-    override suspend fun issueStatusListJwt(time: Instant?) =
-        signStatusListJwt(
-            type = MediaTypes.STATUSLIST_JWT,
-            payload = buildStatusListTokenPayload(time.toTimePeriod()),
-            serializer = StatusListTokenPayload.serializer(),
-        ).getOrElse {
+    override suspend fun issueStatusListJwt(
+        time: Instant?,
+        kind: RevocationList.Kind
+    ): JwsSigned<StatusListTokenPayload> =
+        catching { require(kind == RevocationList.Kind.STATUS_LIST) { "JWT only supports revocation list kind StatusList" } }.transform {
+            signStatusListJwt(
+                type = MediaTypes.STATUSLIST_JWT,
+                payload = buildStatusListTokenPayload(time.toTimePeriod(), RevocationList.Kind.STATUS_LIST),
+                serializer = StatusListTokenPayload.serializer(),
+            )
+        }.getOrElse {
             throw IllegalStateException("Status token could not be created.", it)
         }
 
@@ -64,11 +74,11 @@ class StatusListAgent(
      * Wraps the revocation information from [issuerCredentialStore] into a Status List Token,
      * returns a CWS representation of that.
      */
-    override suspend fun issueStatusListCwt(time: Instant?) =
+    override suspend fun issueStatusListCwt(time: Instant?, kind: RevocationList.Kind) =
         signStatusListCwt(
             protectedHeader = CoseHeader(type = MediaTypes.Application.STATUSLIST_CWT),
             unprotectedHeader = null,
-            payload = buildStatusListTokenPayload(time.toTimePeriod()),
+            payload = buildStatusListTokenPayload(time.toTimePeriod(), kind),
             serializer = StatusListTokenPayload.serializer(),
         ).getOrElse {
             throw IllegalStateException("Status token could not be created", it)
@@ -77,24 +87,32 @@ class StatusListAgent(
     /**
      * Wraps the revocation information from [issuerCredentialStore] into a Token Payload
      */
-    private fun buildStatusListTokenPayload(timePeriod: Int?): StatusListTokenPayload =
+    private fun buildStatusListTokenPayload(timePeriod: Int?, kind: RevocationList.Kind): StatusListTokenPayload =
         StatusListTokenPayload(
-            statusList = buildStatusList(timePeriod),
+            revocationList = buildRevocationList(timePeriod, kind),
             issuedAt = clock.now().truncateToSeconds(),
             timeToLive = PositiveDuration(revocationListLifetime),
             subject = UniformResourceIdentifier(
                 getRevocationListUrlFor(timePeriod ?: timePeriodProvider.getCurrentTimePeriod(clock))
             ),
         ).also {
-            Napier.d("revocation status list: ${it.statusList}")
+            Napier.d("revocation status list: ${it.revocationList}")
         }
 
     /**
      * Returns a status list, where the entry at "revocationListIndex" (of the credential) is INVALID if it is revoked
      */
-    override fun buildStatusList(timePeriod: Int?): StatusList =
-        issuerCredentialStore.getStatusListView(timePeriod ?: timePeriodProvider.getCurrentTimePeriod(clock))
-            .toStatusList(zlibService, statusListAggregationUrl)
+    override fun buildRevocationList(timePeriod: Int?, kind: RevocationList.Kind): RevocationList =
+        when (kind) {
+            RevocationList.Kind.STATUS_LIST -> issuerCredentialStore.getStatusListView(
+                timePeriod ?: timePeriodProvider.getCurrentTimePeriod(
+                    clock
+                )
+            ).toStatusList(zlibService, statusListAggregationUrl)
+
+            RevocationList.Kind.IDENTIFIER_LIST -> IdentifierList(mapOf(), null)
+
+        }
 
     /**
      * Sets the status of one specific credential to [TokenStatus.Invalid].
@@ -106,13 +124,14 @@ class StatusListAgent(
     override suspend fun provideStatusListToken(
         acceptedContentTypes: List<StatusListTokenMediaType>,
         time: Instant?,
+        kind: RevocationList.Kind
     ): Pair<StatusListTokenMediaType, StatusListToken> {
         val preferedType = acceptedContentTypes.firstOrNull()
             ?: throw IllegalArgumentException("Argument `acceptedContentTypes` must contain at least one item.")
 
         return preferedType to when (preferedType) {
-            StatusListTokenMediaType.Jwt -> StatusListJwt(issueStatusListJwt(time), resolvedAt = clock.now())
-            StatusListTokenMediaType.Cwt -> StatusListCwt(issueStatusListCwt(time), resolvedAt = clock.now())
+            StatusListTokenMediaType.Jwt -> StatusListJwt(issueStatusListJwt(time, kind), resolvedAt = clock.now())
+            StatusListTokenMediaType.Cwt -> StatusListCwt(issueStatusListCwt(time, kind), resolvedAt = clock.now())
         }
     }
 
