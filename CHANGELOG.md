@@ -9,6 +9,8 @@ Release 5.10.0 (Unreleased):
  - OAuth 2.0:
    - Use correct path for metadata retrieval (inserting strings between host component and path component)
    - Support reading resource-server provided nonce for [OAuth 2.0 Demonstrating Proof of Possession (DPoP)](https://datatracker.ietf.org/doc/html/rfc9449)
+   - Use pushed authorization requests when AS supports it
+   - Use signed authorization requests when AS supports it (but not necessarily when using PAR)
  - OpenID for Verifiable Credential Issuance:
    - Update implementation to 1.0 from 2025-09-16
    - Remove code elements deprecated in 5.9.0

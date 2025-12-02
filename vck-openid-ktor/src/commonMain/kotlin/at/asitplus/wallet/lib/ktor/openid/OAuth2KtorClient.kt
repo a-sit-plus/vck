@@ -290,44 +290,59 @@ class OAuth2KtorClient(
     ) = catching {
         val authorizationEndpointUrl = oauthMetadata.authorizationEndpoint
             ?: throw Exception("no authorizationEndpoint in $oauthMetadata")
-        val wrapAsJar =
-            oauthMetadata.requestObjectSigningAlgorithmsSupported?.contains(JwsAlgorithm.Signature.ES256) == true
-        val authRequest = if (wrapAsJar) oAuth2Client.createAuthRequestJar(
-            state = state,
-            authorizationDetails = if (scope == null) authorizationDetails else null,
-            issuerState = issuerState,
-            scope = scope,
-        ) else oAuth2Client.createAuthRequest(
-            state = state,
-            authorizationDetails = if (scope == null) authorizationDetails else null,
-            issuerState = issuerState,
-            scope = scope,
-        )
         val requiresPar = oauthMetadata.requirePushedAuthorizationRequests == true
         val parEndpointUrl = oauthMetadata.pushedAuthorizationRequestEndpoint
-        val authorizationUrl = if (parEndpointUrl != null && requiresPar) {
-            val authRequestAfterPar = pushAuthorizationRequest(
-                oauthMetadata = oauthMetadata,
-                authRequest = authRequest,
+        if (requiresPar)
+            require(parEndpointUrl != null) { "PAR required, but pushedAuthorizationRequestEndpoint is null" }
+        // use PAR when available, in accordance with OpenID4VCI HAIP
+        val usePar = parEndpointUrl != null || requiresPar
+
+        val requiresJar = oauthMetadata.requireSignedRequestObject == true
+        val supportsJar = oauthMetadata.requestObjectSigningAlgorithmsSupported.supportsEs256()
+        if (requiresJar)
+            require(supportsJar) { "JAR required, but requestObjectSigningAlgorithmsSupported does not support ES256" }
+        // use JAR when required, or when it's not PAR (because then it doesn't increase security)
+        val useJar = requiresJar || (supportsJar && !usePar)
+
+        val authRequest = if (useJar)
+            oAuth2Client.createAuthRequestJar(
                 state = state,
-                popAudience = authorizationServer,
+                authorizationDetails = if (scope == null) authorizationDetails else null,
+                issuerState = issuerState,
+                scope = scope,
             )
+        else
+            oAuth2Client.createAuthRequest(
+                state = state,
+                authorizationDetails = if (scope == null) authorizationDetails else null,
+                issuerState = issuerState,
+                scope = scope,
+            )
+
+        val authorizationUrl = if (usePar)
             URLBuilder(authorizationEndpointUrl).also { builder ->
-                authRequestAfterPar.encodeToParameters().forEach {
+                pushAuthorizationRequest(
+                    oauthMetadata = oauthMetadata,
+                    authRequest = authRequest,
+                    state = state,
+                    popAudience = authorizationServer,
+                ).encodeToParameters().forEach {
                     builder.parameters.append(it.key, it.value)
                 }
             }.build().toString()
-        } else {
+        else
             URLBuilder(authorizationEndpointUrl).also { builder ->
                 authRequest.encodeToParameters().forEach {
                     builder.parameters.append(it.key, it.value)
                 }
                 builder.parameters.append(OpenIdConstants.PARAMETER_PROMPT, OpenIdConstants.PARAMETER_PROMPT_LOGIN)
             }.build().toString()
-        }
         Napier.i("Provisioning starts by returning URL to open: $authorizationUrl")
         OpenUrlForAuthnRequest(authorizationUrl, state)
     }
+
+    private fun Set<JwsAlgorithm>?.supportsEs256(): Boolean =
+        this?.contains(JwsAlgorithm.Signature.ES256) == true
 
     private suspend fun pushAuthorizationRequest(
         oauthMetadata: OAuth2AuthorizationServerMetadata,

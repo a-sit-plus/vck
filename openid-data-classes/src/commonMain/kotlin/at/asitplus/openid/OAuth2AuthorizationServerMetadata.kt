@@ -193,6 +193,15 @@ data class OAuth2AuthorizationServerMetadata(
     val requestObjectSigningAlgorithmsSupportedStrings: Set<String>? = null,
 
     /**
+     * RFC 9101: Indicates where authorization request needs to be protected as Request Object and provided through
+     * either `request` or `request_uri` parameter.
+     *
+     * See [RFC 9101](https://datatracker.ietf.org/doc/html/rfc9101#section-9.2)
+     */
+    @SerialName("require_signed_request_object")
+    val requireSignedRequestObject: Boolean? = null,
+
+    /**
      * OIDC SIOPv2: REQUIRED. A JSON array of strings representing URI scheme identifiers and optionally method names of
      * supported Subject Syntax Types.
      * Valid values include `urn:ietf:params:oauth:jwk-thumbprint`, `did:example` and others.
