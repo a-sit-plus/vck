@@ -21,6 +21,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.extensions.toView
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
+import io.ktor.util.*
 import kotlin.time.Clock
 
 /**
@@ -101,7 +102,8 @@ private fun extractTokenStatus(
         revocationList.toView(zlibService).getOrNull(revocationListInfo.index)
             ?: throw IndexOutOfBoundsException("The index specified in the status list info is out of bounds of the status list.")
     } else if (revocationList is IdentifierList && revocationListInfo is IdentifierListInfo) {
-        if (revocationList.identifiers.keys.map { it.value }.contains(revocationListInfo.identifier)) {
+        if (revocationList.identifiers.keys.map { it.value.encodeBase64() }
+                .contains(revocationListInfo.identifier.encodeBase64())) {
             TokenStatus.Invalid
         } else TokenStatus.Valid
     } else throw IllegalArgumentException("RevocationList / RevocationListInfo mismatch")
