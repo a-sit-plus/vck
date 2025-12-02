@@ -83,7 +83,7 @@ class SdJwtDecoded(sdJwtSigned: SdJwtSigned) {
     }
 
     private fun JsonElement.asArrayDisclosure() =
-        if (this is JsonObject && this.size == 1 && this["..."] is JsonPrimitive)
+        if (this is JsonObject && this["..."] is JsonPrimitive)
             this["..."] as JsonPrimitive
         else null
 
@@ -100,6 +100,7 @@ class SdJwtDecoded(sdJwtSigned: SdJwtSigned) {
         disclosure.toValidatedItem(digest)?.let { sdItem ->
             when (val element = sdItem.claimValue) {
                 is JsonObject -> sdItem.claimName?.let { putIfNotEmpty(it, element.reconstructValues(digest)) }
+                is JsonArray -> sdItem.claimName?.let { putIfNotEmpty(it, element.reconstructValues(digest)) }
                 else -> sdItem.claimName?.let { put(it, element) }
             }
         }

@@ -5,18 +5,21 @@ import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
 import at.asitplus.wallet.lib.data.SdJwtConstants
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.jws.JwsHeaderNone
+import at.asitplus.wallet.lib.jws.SdJwtSigned
+import at.asitplus.wallet.lib.jws.SignJwt
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
-import io.kotest.assertions.withClue
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSize
-import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 
@@ -75,6 +78,13 @@ val SdJwtCreatorTest by testSuite {
         ).toSdJsonObject().apply {
             second.shouldHaveSize(2)
             first["nested"].shouldNotBeNull().jsonObject["_sd"] shouldNotBe null
+            signDecodeReconstruct().apply {
+                this["outer"].shouldBeInstanceOf<JsonPrimitive>()
+                this["nested"].shouldBeInstanceOf<JsonObject>().apply {
+                    entries.shouldHaveSize(1)
+                    this["inner"].shouldBeInstanceOf<JsonPrimitive>()
+                }
+            }
         }
     }
 
@@ -85,6 +95,13 @@ val SdJwtCreatorTest by testSuite {
         ).toSdJsonObject().apply {
             second.shouldHaveSize(1)
             first["nested"].shouldNotBeNull().jsonObject["_sd"] shouldBe null
+            signDecodeReconstruct().apply {
+                this["outer"].shouldBeInstanceOf<JsonPrimitive>()
+                this["nested"].shouldBeInstanceOf<JsonObject>().apply {
+                    entries.shouldHaveSize(1)
+                    this["inner"].shouldBeInstanceOf<JsonPrimitive>()
+                }
+            }
         }
     }
 
@@ -95,6 +112,13 @@ val SdJwtCreatorTest by testSuite {
         ).toSdJsonObject().apply {
             second.shouldHaveSize(3)
             first["nested"] shouldBe null
+            signDecodeReconstruct().apply {
+                this["outer"].shouldBeInstanceOf<JsonPrimitive>()
+                this["nested"].shouldBeInstanceOf<JsonObject>().apply {
+                    entries.shouldHaveSize(1)
+                    this["inner"].shouldBeInstanceOf<JsonPrimitive>()
+                }
+            }
         }
     }
 
@@ -105,6 +129,13 @@ val SdJwtCreatorTest by testSuite {
         ).toSdJsonObject().apply {
             second.shouldHaveSize(2)
             first["nested"] shouldBe null
+            signDecodeReconstruct().apply {
+                this["outer"].shouldBeInstanceOf<JsonPrimitive>()
+                this["nested"].shouldBeInstanceOf<JsonObject>().apply {
+                    entries.shouldHaveSize(1)
+                    this["inner"].shouldBeInstanceOf<JsonPrimitive>()
+                }
+            }
         }
     }
 
@@ -118,18 +149,25 @@ val SdJwtCreatorTest by testSuite {
             )
         ).toSdJsonObject().apply {
             second.shouldHaveSize(1)
-            first["array"].shouldNotBeNull().jsonArray.apply {
+            first["array"].shouldBeInstanceOf<JsonArray>().apply {
                 shouldHaveSize(2)
                 first() shouldBe JsonPrimitive("1")
-                get(1).jsonObject.shouldNotBeNull().apply {
+                get(1).shouldBeInstanceOf<JsonObject>().apply {
                     entries.shouldBeSingleton()
                     get("...").shouldNotBeNull()
+                }
+            }
+            signDecodeReconstruct().apply {
+                this["array"].shouldBeInstanceOf<JsonArray>().apply {
+                    shouldHaveSize(2)
+                    get(0) shouldBe JsonPrimitive("1")
+                    get(1) shouldBe JsonPrimitive("2")
                 }
             }
         }
     }
 
-    "array selectively disclosable, and elements within too" {
+    test("array selectively disclosable, and elements within too") {
         listOf(
             ClaimToBeIssued(
                 "array", listOf(
@@ -140,10 +178,28 @@ val SdJwtCreatorTest by testSuite {
         ).toSdJsonObject().apply {
             second.shouldHaveSize(3)
             first["array"] shouldBe null
+
+            signDecodeReconstruct().apply {
+                this["array"].shouldBeInstanceOf<JsonArray>().apply {
+                    shouldHaveSize(2)
+                    get(0) shouldBe JsonPrimitive("1")
+                    get(1) shouldBe JsonPrimitive("2")
+                }
+            }
         }
     }
 
 }
+
+private suspend fun Pair<JsonObject, Collection<String>>.signDecodeReconstruct() = SdJwtDecoded(
+    SdJwtSigned.issued(
+        SignJwt<JsonObject>(EphemeralKeyWithoutCert(), JwsHeaderNone())(
+            JwsContentTypeConstants.SD_JWT,
+            payload = first,
+            serializer = JsonObject.serializer()
+        ).getOrThrow(), second.toList()
+    )
+).reconstructedJsonObject.shouldNotBeNull()
 
 private fun listOfClaims(vararg claimName: String): List<ClaimToBeIssued> =
     claimName.map { ClaimToBeIssued(it, uuid4(), true) }

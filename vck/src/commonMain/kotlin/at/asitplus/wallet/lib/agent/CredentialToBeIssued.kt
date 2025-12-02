@@ -56,4 +56,8 @@ sealed class CredentialToBeIssued {
  */
 data class ClaimToBeIssued(val name: String, val value: Any, val selectivelyDisclosable: Boolean = true)
 
+/**
+ * Represents an element of an array inside an SD-JWT that shall be issued to the holder.
+ * Use this in any collection inside [ClaimToBeIssued.value] to correctly serialize the array.
+ */
 data class ClaimToBeIssuedArrayElement(val value: Any, val selectivelyDisclosable: Boolean = true)

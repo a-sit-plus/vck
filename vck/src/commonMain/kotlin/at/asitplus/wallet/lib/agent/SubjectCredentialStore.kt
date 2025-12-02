@@ -7,6 +7,7 @@ import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.sha256
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.IsoMdocFallbackCredentialScheme
@@ -18,6 +19,7 @@ import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import io.ktor.utils.io.core.toByteArray
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToByteArray
@@ -138,7 +140,7 @@ interface SubjectCredentialStore {
             is Vc -> vc.jwtId
             is SdJwt -> sdJwt.jwtId
                 ?: sdJwt.subject
-                ?: vckJsonSerializer.encodeToString(sdJwt)
+                ?: joseCompliantSerializer.encodeToString(sdJwt).toByteArray().sha256().toHexString()
 
             is Iso -> coseCompliantSerializer.encodeToByteArray(issuerSigned).sha256().toHexString()
         }
