@@ -37,8 +37,8 @@ data class StatusListInfo(
      * the Referenced Token. The value of uri MUST be a URI conforming to RFC3986.
      */
     @SerialName("uri")
-    val uri: UniformResourceIdentifier,
-)
+    override val uri: UniformResourceIdentifier,
+) : RevocationListInfo()
 
 
 

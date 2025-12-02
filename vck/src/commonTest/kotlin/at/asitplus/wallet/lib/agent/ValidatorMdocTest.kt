@@ -7,6 +7,7 @@ import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.rfc3986.toUri
@@ -106,7 +107,7 @@ val ValidatorMdocTest by testSuite {
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessIso>()
             issuerCredentialStore.setStatus(
                 timePeriod = FixedTimePeriodProvider.timePeriod,
-                index = credential.issuerSigned.issuerAuth.payload.shouldNotBeNull().status.shouldNotBeNull().statusList.shouldNotBeNull().index,
+                index = credential.issuerSigned.issuerAuth.payload.shouldNotBeNull().status.shouldBeInstanceOf<StatusListInfo>().index,
                 status = TokenStatus.Invalid,
             ) shouldBe true
             validator.checkRevocationStatus(value.issuerSigned)
