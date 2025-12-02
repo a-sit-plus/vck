@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
 
-//TODO Double check ob jetzt 'type' serialisiert wird
 sealed class RevocationList {
     abstract val kind: Kind
 

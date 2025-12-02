@@ -16,6 +16,8 @@ import kotlinx.serialization.Serializable
  *
  * ISO 18013-5 defines new mechanism "IdentifierList".
  * Either the StatusList OR IdentifierList may be used but not both at the same time.
+ *
+ * TODO Replace with on the fly surrogate serializer?
  */
 @Serializable
 data class Status(
