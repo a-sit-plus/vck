@@ -19,7 +19,6 @@ import at.asitplus.wallet.lib.jws.JwsHeaderModifierFun
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
-import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.comparables.shouldBeLessThan
@@ -62,7 +61,6 @@ val ValidatorSdJwtTest by testSuite {
             ): Issuer.IssuedCredential {
                 val issuanceDate = Clock.System.now()
                 val signIssuedSdJwt: SignJwtFun<JsonObject> = SignJwt(holderKeyMaterial, JwsHeaderCertOrJwk())
-                val vcId = "urn:uuid:${uuid4()}"
                 val expirationDate = credential.expiration
                 val subjectId = credential.subjectPublicKey.didEncoded
                 val (sdJwt, disclosures) = credential.claims.toSdJsonObject(RandomSource.Default, credential.sdAlgorithm)
@@ -72,7 +70,6 @@ val ValidatorSdJwtTest by testSuite {
                     issuer = "https://issuer.example.com/",
                     expiration = expirationDate,
                     issuedAt = issuanceDate,
-                    jwtId = vcId,
                     verifiableCredentialType = credential.scheme.sdJwtType ?: credential.scheme.schemaUri,
                     selectiveDisclosureAlgorithm = credential.sdAlgorithm.toIanaName(),
                     confirmationClaim = if (!buildCnf) null else
