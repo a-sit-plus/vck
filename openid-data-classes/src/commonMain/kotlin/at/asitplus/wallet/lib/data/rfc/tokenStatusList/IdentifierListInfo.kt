@@ -12,7 +12,7 @@ data class IdentifierListInfo(
     @ByteString
     val identifier: ByteArray,
     @SerialName("uri")
-    val uri: UniformResourceIdentifier,
+    override val uri: UniformResourceIdentifier,
     /**
      * The identifier_list and status_list in the MSO may contain the Certificate element. If the
      * Certificate element is present, it shall contain a certificate containing the public key that signed the
@@ -25,7 +25,7 @@ data class IdentifierListInfo(
     @SerialName("certificate")
     @ByteString
     val certificate: ByteArray? = null,
-) {
+) : RevocationListInfo() {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false

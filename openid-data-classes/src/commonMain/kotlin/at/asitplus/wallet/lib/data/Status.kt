@@ -18,12 +18,12 @@ import kotlinx.serialization.Serializable
  * Either the StatusList OR IdentifierList may be used but not both at the same time.
  *
  * TODO Replace with on the fly surrogate serializer?
- */
-@Serializable
-data class Status(
-    @SerialName("status_list")
-    val statusList: StatusListInfo? = null,
-
-    @SerialName("identifier_list")
-    val identifierList: IdentifierListInfo? = null,
-)
+// */
+//@Serializable
+//data class Status(
+//    @SerialName("status_list")
+//    val statusList: StatusListInfo? = null,
+//
+//    @SerialName("identifier_list")
+//    val identifierList: IdentifierListInfo? = null,
+//)
