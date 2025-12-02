@@ -46,7 +46,7 @@ Many classes define several constructor parameters, some of them with default va
 VC-K implements multiple credential formats to ensure maximum interoperability:
 
 - **W3C Verifiable Credentials Data Model**: Rudimentary implementation of the  [W3C VC Data Model](https://w3c.github.io/vc-data-model/) (skipping everything around DIDs)
-- **SD-JWT (Selective Disclosure JWT)**: Privacy-preserving credential format with selective disclosure capabilities, see [SD-JWT VC](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-08.html) (including key binding JWT, JWT VC issuer metadata). We're also following [SD-JWT](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-15.html), including features like key binding JWT and nested structures.
+- **SD-JWT (Selective Disclosure JWT)**: Privacy-preserving credential format with selective disclosure capabilities, see [SD-JWT VC](https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/) (including key binding JWT, JWT VC issuer metadata). We're also following [Selective Disclosure for JSON Web Tokens](https://www.rfc-editor.org/rfc/rfc9901.html), including features like key binding JWT and nested structures.
 - **ISO 18013-5 and 18013-7**: ISO standard defining Mobile Driving Licence and its generalization mDoc credentials as a CBOR-based credential format
 
 When using the plain JWT representation, the single credential itself is an instance of `CredentialSubject`. For ISO mDoc claims see `IssuerSignedItems` and related classes like `Document` and `MobileSecurityObject`. For SD-JWT claims see `SelectiveDisclosureItem` and `SdJwtSigned`.

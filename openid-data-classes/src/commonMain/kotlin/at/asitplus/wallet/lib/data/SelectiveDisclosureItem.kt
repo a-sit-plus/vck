@@ -21,8 +21,8 @@ data class SelectiveDisclosureItem(
 ) {
 
     /**
-     * Creates a disclosure, as described in section 5.2 of
-     * [draft-ietf-oauth-selective-disclosure-jwt-08](https://datatracker.ietf.org/doc/draft-ietf-oauth-selective-disclosure-jwt/)
+     * Creates a disclosure, as described in section 4 of
+     * [RFC 9901](https://www.rfc-editor.org/rfc/rfc9901.html#name-disclosures)
      */
     fun toDisclosure() = joseCompliantSerializer.encodeToString<SelectiveDisclosureItem>(this)
         .encodeToByteArray().encodeToString(Base64UrlStrict)
@@ -55,8 +55,8 @@ data class SelectiveDisclosureItem(
 
     companion object {
         /**
-         * Hashes a disclosure from [SelectiveDisclosureItem.toDisclosure] according to section 5.2.3 of
-         * [draft-ietf-oauth-selective-disclosure-jwt-08](https://datatracker.ietf.org/doc/draft-ietf-oauth-selective-disclosure-jwt/)
+         * Hashes a disclosure from [SelectiveDisclosureItem.toDisclosure] according to section 4.2.3 of
+         * [RFC 9901](https://www.rfc-editor.org/rfc/rfc9901.html#name-hashing-disclosures)
          **/
         fun String.hashDisclosure(digest: Digest = Digest.SHA256) =
             digest.digest(this.encodeToByteArray()).encodeToString(Base64UrlStrict)

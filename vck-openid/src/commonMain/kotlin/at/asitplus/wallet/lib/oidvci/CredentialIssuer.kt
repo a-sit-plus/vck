@@ -136,7 +136,7 @@ class CredentialIssuer(
 
     /**
      * Metadata about the credential issuer in
-     * [SD-JWT VC](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-10.html#name-jwt-vc-issuer-metadata)
+     * [SD-JWT VC](https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/)
      *
      * Issuers publishing JWT VC Issuer Metadata MUST make a JWT VC Issuer Metadata configuration available at the
      * location formed by inserting the well-known string `/.well-known/jwt-vc-issuer` (see

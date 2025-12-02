@@ -4,7 +4,6 @@ import at.asitplus.signum.indispensable.Digest
 import at.asitplus.wallet.lib.agent.SdJwtCreator.disallowedNames
 import at.asitplus.wallet.lib.agent.SdJwtCreator.toIntSdJsonObject
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
-import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.SdJwtConstants.NAME_SD
 import at.asitplus.wallet.lib.data.SdJwtConstants.SD_ALG
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
@@ -19,7 +18,7 @@ import kotlin.collections.plus
 
 
 /**
- * See [Selective Disclosure for JWTs (SD-JWT)](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-13.html)
+ * See [Selective Disclosure for JSON Web Tokens](https://www.rfc-editor.org/rfc/rfc9901.html)
  */
 object SdJwtCreator {
 
@@ -51,7 +50,7 @@ object SdJwtCreator {
     ): Pair<JsonObject, Collection<String>> = mutableListOf<String>().let { disclosures ->
         buildJsonObject {
             with(honorNotDisclosableClaims().customPartition()) {
-                val objectClaimDigests: Collection<String> = recursiveClaims.mapNotNull { claim ->
+                val recursiveDigests = recursive.mapNotNull { claim ->
                     claim.value as Collection<*>
                     (claim.value.filterIsInstance<ClaimToBeIssued>()).toIntSdJsonObject(randomSource, digest).let {
                         if (claim.selectivelyDisclosable) {
@@ -66,7 +65,7 @@ object SdJwtCreator {
                         }
                     }
                 }
-                val dotNotationClaims: Collection<String> = dotNotation.groupByDots().mapNotNull { (key, claims) ->
+                val dotNotationDigests = dotNotation.groupByDots().mapNotNull { (key, claims) ->
                     claims.toIntSdJsonObject(randomSource, digest).let {
                         disclosures.addAll(it.second)
                         put(key, it.first)
@@ -75,15 +74,14 @@ object SdJwtCreator {
                             .hashDisclosure(digest)
                     }
                 }
-                val dotNotationClaimsPlain: Collection<String> =
-                    dotNotationPlain.groupByDots().mapNotNull { (key, claims) ->
-                        claims.toIntSdJsonObject(randomSource, digest).let {
-                            disclosures.addAll(it.second)
-                            put(key, it.first)
-                            null
-                        }
+                val dotNotationPlainDigests = dotNotationPlain.groupByDots().mapNotNull { (key, claims) ->
+                    claims.toIntSdJsonObject(randomSource, digest).let {
+                        disclosures.addAll(it.second)
+                        put(key, it.first)
+                        null
                     }
-                val singleClaimsDigests: Collection<String> = claimsWithSimpleValue.mapNotNull { claim ->
+                }
+                val simpleDigests = simpleValues.mapNotNull { claim ->
                     if (claim.selectivelyDisclosable) {
                         claim.toSdItem(randomSource).toDisclosure()
                             .also { disclosures.add(it) }
@@ -93,7 +91,7 @@ object SdJwtCreator {
                         null
                     }
                 }
-                (objectClaimDigests + dotNotationClaims + dotNotationClaimsPlain + singleClaimsDigests).let { digests ->
+                (recursiveDigests + dotNotationDigests + dotNotationPlainDigests + simpleDigests).let { digests ->
                     if (digests.isNotEmpty()) {
                         putJsonArray(NAME_SD) { addAll(digests) }
                     }
@@ -132,26 +130,26 @@ object SdJwtCreator {
      * Holds all the claims to be issued split up into four categories, for easy use in [toIntSdJsonObject]
      */
     data class Partitioned(
-        val recursiveClaims: Collection<ClaimToBeIssued>,
+        val recursive: Collection<ClaimToBeIssued>,
         val dotNotation: Collection<ClaimToBeIssued>,
         val dotNotationPlain: Collection<ClaimToBeIssued>,
-        val claimsWithSimpleValue: Collection<ClaimToBeIssued>,
+        val simpleValues: Collection<ClaimToBeIssued>,
+        val arrays: Collection<ClaimToBeIssued>,
     )
 
-    /**
-     * See [registered JWT claims](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-10.html#section-3.2.2.2)
-     */
+    /** See [registered JWT claims](https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/). */
     private val notDisclosableClaims = listOf(
         "iss", "nbf", "exp", "cnf", "vct", "status"
     )
 
+    /** See [RFC 9901](https://www.rfc-editor.org/rfc/rfc9901.html#name-issuer-signed-jwt). */
     private val disallowedNames = listOf(
-        SdJwtConstants.SD_ALG, "..."
+        SD_ALG, "..."
     )
 
     /**
      * Honors list of
-     * [registered JWT claims](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-10.html#section-3.2.2.2)
+     * [registered JWT claims](https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/)
      * and prevents claims of that names to be selectively disclosed,
      * as well as [disallowedNames] which covers constants used in the SD-JWT VC itself.
      */
@@ -171,16 +169,20 @@ object SdJwtCreator {
      */
     private fun Collection<ClaimToBeIssued>.customPartition(): Partitioned {
         val isDotNotation: (ClaimToBeIssued) -> Boolean = { it.name.contains('.') }
+        val isArrayClaim: (ClaimToBeIssued) -> Boolean =
+            { it.value is Collection<*> && it.value.first() is ClaimToBeIssuedArrayElement }
         val isDisclosable: (ClaimToBeIssued) -> Boolean = { it.selectivelyDisclosable }
-        val hasCollectionValue: (ClaimToBeIssued) -> Boolean =
+        val hasNestedElements: (ClaimToBeIssued) -> Boolean =
             { it.value is Collection<*> && it.value.first() is ClaimToBeIssued }
-        val (collectionClaims, simpleValueClaims) = partition(hasCollectionValue)
+        val (recursiveClaims, simpleValueClaims) = partition(hasNestedElements)
         val dotNotationClaims = simpleValueClaims.filter(isDotNotation)
+        val arrayClaims = simpleValueClaims.filter(isArrayClaim)
         return Partitioned(
-            collectionClaims,
-            dotNotationClaims.filter(isDisclosable),
-            dotNotationClaims.filterNot(isDisclosable),
-            simpleValueClaims.filterNot(isDotNotation)
+            recursive = recursiveClaims,
+            dotNotation = dotNotationClaims.filter(isDisclosable),
+            dotNotationPlain = dotNotationClaims.filterNot(isDisclosable),
+            simpleValues = simpleValueClaims - dotNotationClaims - arrayClaims,
+            arrays = arrayClaims
         )
     }
 

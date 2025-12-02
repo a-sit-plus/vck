@@ -9,7 +9,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 
 /**
- * Verifies examples from [IETF-OAuth-SD-JWT](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-13.html)
+ * Verifies examples from [RFC 9901](https://www.rfc-editor.org/rfc/rfc9901.html)
  */
 val SdJwtVerificationTest by testSuite {
 
@@ -61,7 +61,7 @@ val SdJwtVerificationTest by testSuite {
         reconstructed shouldBe vckJsonSerializer.parseToJsonElement(expected)
     }
 
-    " A.2. Complex Structured SD-JWT" {
+    "A.2. Complex Structured SD-JWT" {
         val input = """
             eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImV4YW1wbGUrc2Qtand0In0.eyJfc2QiOiBb
             Ii1hU3puSWQ5bVdNOG9jdVFvbENsbHN4VmdncTEtdkhXNE90bmhVdFZtV3ciLCAiSUti
@@ -136,7 +136,7 @@ val SdJwtVerificationTest by testSuite {
         reconstructed shouldBe vckJsonSerializer.parseToJsonElement(expected)
     }
 
-    " A.3. SD-JWT-based Verifiable Credentials (SD-JWT VC)" {
+    "A.3. SD-JWT-based Verifiable Credentials (SD-JWT VC)" {
         val input = """
             eyJhbGciOiAiRVMyNTYiLCAidHlwIjogInZjK3NkLWp3dCJ9.eyJfc2QiOiBbIjBIWm1
             uU0lQejMzN2tTV2U3QzM0bC0tODhnekppLWVCSjJWel9ISndBVGciLCAiOVpicGxDN1R
@@ -245,6 +245,98 @@ val SdJwtVerificationTest by testSuite {
                     "crv": "P-256",
                     "x": "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc",
                     "y": "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ"
+                }
+              }
+            }
+        """.trimIndent()
+        reconstructed shouldBe vckJsonSerializer.parseToJsonElement(expected)
+    }
+
+    "A.4. W3C Verifiable Credentials Data Model v2.0" {
+        val input = """
+            eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImV4YW1wbGUrc2Qtand0In0.eyJAY29udGV4
+            dCI6IFsiaHR0cHM6Ly93d3cudzMub3JnLzIwMTgvY3JlZGVudGlhbHMvdjEiLCAiaHR0
+            cHM6Ly93M2lkLm9yZy92YWNjaW5hdGlvbi92MSJdLCAidHlwZSI6IFsiVmVyaWZpYWJs
+            ZUNyZWRlbnRpYWwiLCAiVmFjY2luYXRpb25DZXJ0aWZpY2F0ZSJdLCAiaXNzdWVyIjog
+            Imh0dHBzOi8vZXhhbXBsZS5jb20vaXNzdWVyIiwgImlzc3VhbmNlRGF0ZSI6ICIyMDIz
+            LTAyLTA5VDExOjAxOjU5WiIsICJleHBpcmF0aW9uRGF0ZSI6ICIyMDI4LTAyLTA4VDEx
+            OjAxOjU5WiIsICJuYW1lIjogIkNPVklELTE5IFZhY2NpbmF0aW9uIENlcnRpZmljYXRl
+            IiwgImRlc2NyaXB0aW9uIjogIkNPVklELTE5IFZhY2NpbmF0aW9uIENlcnRpZmljYXRl
+            IiwgImNyZWRlbnRpYWxTdWJqZWN0IjogeyJfc2QiOiBbIjFWX0stOGxEUThpRlhCRlhi
+            Wlk5ZWhxUjRIYWJXQ2k1VDB5Ykl6WlBld3ciLCAiSnpqTGd0UDI5ZFAtQjN0ZDEyUDY3
+            NGdGbUsyenk4MUhNdEJnZjZDSk5XZyIsICJSMmZHYmZBMDdaX1lsa3FtTlp5bWExeHl5
+            eDFYc3RJaVM2QjFZYmwySlo0IiwgIlRDbXpybDdLMmdldl9kdTdwY01JeXpSTEhwLVll
+            Zy1GbF9jeHRyVXZQeGciLCAiVjdrSkJMSzc4VG1WRE9tcmZKN1p1VVBIdUtfMmNjN3la
+            UmE0cVYxdHh3TSIsICJiMGVVc3ZHUC1PRERkRm9ZNE5semxYYzN0RHNsV0p0Q0pGNzVO
+            dzhPal9nIiwgInpKS19lU01YandNOGRYbU1aTG5JOEZHTTA4ekozX3ViR2VFTUotNVRC
+            eTAiXSwgInZhY2NpbmUiOiB7Il9zZCI6IFsiMWNGNWhMd2toTU5JYXFmV0pyWEk3Tk1X
+            ZWRMLTlmNlkyUEE1MnlQalNaSSIsICJIaXk2V1d1ZUxENWJuMTYyOTh0UHY3R1hobWxk
+            TURPVG5CaS1DWmJwaE5vIiwgIkxiMDI3cTY5MWpYWGwtakM3M3ZpOGViT2o5c214M0Mt
+            X29nN2dBNFRCUUUiXSwgInR5cGUiOiAiVmFjY2luZSJ9LCAicmVjaXBpZW50IjogeyJf
+            c2QiOiBbIjFsU1FCTlkyNHEwVGg2T0d6dGhxLTctNGw2Y0FheHJZWE9HWnBlV19sbkEi
+            LCAiM256THE4MU0yb04wNndkdjFzaEh2T0VKVnhaNUtMbWREa0hFREpBQldFSSIsICJQ
+            bjFzV2kwNkc0TEpybm4tX1JUMFJiTV9IVGR4blBKUXVYMmZ6V3ZfSk9VIiwgImxGOXV6
+            ZHN3N0hwbEdMYzcxNFRyNFdPN01HSnphN3R0N1FGbGVDWDRJdHciXSwgInR5cGUiOiAi
+            VmFjY2luZVJlY2lwaWVudCJ9LCAidHlwZSI6ICJWYWNjaW5hdGlvbkV2ZW50In0sICJf
+            c2RfYWxnIjogInNoYS0yNTYiLCAiY25mIjogeyJqd2siOiB7Imt0eSI6ICJFQyIsICJj
+            cnYiOiAiUC0yNTYiLCAieCI6ICJUQ0FFUjE5WnZ1M09IRjRqNFc0dmZTVm9ISVAxSUxp
+            bERsczd2Q2VHZW1jIiwgInkiOiAiWnhqaVdXYlpNUUdIVldLVlE0aGJTSWlyc1ZmdWVj
+            Q0U2dDRqVDlGMkhaUSJ9fX0.OZomvwO8iw4db89MYCeeomBVStXkT6u7G7FkicPWZnd2
+            _hGgr0l_u1NHgPVocuOt-m32Uu6kwtPmYFxKk0AOeA
+            ~WyJQYzMzSk0yTGNoY1VfbEhnZ3ZfdWZRIiwgIm9yZGVyIiwgIjMvMyJd
+            ~WyJBSngtMDk1VlBycFR0TjRRTU9xUk9BIiwgImRhdGVPZlZhY2NpbmF0aW9uIiwgIjI
+            wMjEtMDYtMjNUMTM6NDA6MTJaIl0
+            ~WyIyR0xDNDJzS1F2ZUNmR2ZyeU5STjl3IiwgImF0Y0NvZGUiLCAiSjA3QlgwMyJd
+            ~WyJlbHVWNU9nM2dTTklJOEVZbnN4QV9BIiwgIm1lZGljaW5hbFByb2R1Y3ROYW1lIiw
+            gIkNPVklELTE5IFZhY2NpbmUgTW9kZXJuYSJd
+            ~eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImtiK2p3dCJ9
+            .eyJub25jZSI6ICIxMjM0NTY3ODkwIiwgImF1ZCI6ICJodHRwczovL3ZlcmlmaWVyLmV
+            4YW1wbGUub3JnIiwgImlhdCI6IDE3NDg1MzcyNDQsICJzZF9oYXNoIjogIklvV1VIOTF
+            sbGYzWEVybDQyYlEzc3hfNTNWMW8xdWpDejA4aERxSEs3RGsifQ
+            .n0vzyIwCFMDVauEaeJIWEKZZchxXMpXTQewHgAkARbOSZxB09IbXXtHfpoGqO_BtNFN
+            2lShJEIQBGyc-XpHigA
+        """.trimIndent().replace("\n", "").replace(" ", "")
+
+        val sdJwtSigned = SdJwtSigned.parseCatching(input).getOrThrow()
+        val sdJwtDecoded = SdJwtDecoded(sdJwtSigned)
+        val reconstructed = sdJwtDecoded.reconstructedJsonObject.shouldNotBeNull()
+        sdJwtDecoded.validDisclosures.shouldNotBeEmpty()
+        sdJwtSigned.serialize() shouldBe input
+
+        val expected = """
+            {
+              "@context": [
+                "https://www.w3.org/2018/credentials/v1",
+                "https://w3id.org/vaccination/v1"
+              ],
+              "type": [
+                "VerifiableCredential",
+                "VaccinationCertificate"
+              ],
+              "issuer": "https://example.com/issuer",
+              "issuanceDate": "2023-02-09T11:01:59Z",
+              "expirationDate": "2028-02-08T11:01:59Z",
+              "name": "COVID-19 Vaccination Certificate",
+              "description": "COVID-19 Vaccination Certificate",
+              "credentialSubject": {
+                "vaccine": {
+                  "type": "Vaccine",
+                  "atcCode": "J07BX03",
+                  "medicinalProductName": "COVID-19 Vaccine Moderna"
+                },
+                "recipient": {
+                  "type": "VaccineRecipient"
+                },
+                "type": "VaccinationEvent",
+                "order": "3/3",
+                "dateOfVaccination": "2021-06-23T13:40:12Z"
+              },
+              "cnf": {
+                "jwk": {
+                  "kty": "EC",
+                  "crv": "P-256",
+                  "x": "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc",
+                  "y": "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ"
                 }
               }
             }

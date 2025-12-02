@@ -14,7 +14,7 @@ import kotlinx.serialization.json.JsonElement
 /**
  * Metadata for an SD-JWT VC Type
  * According to
- * [SD-JWT-based Verifiable Credentials (SD-JWT VC), Draft 10](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-10.html#name-sd-jwt-vc-type-metadata)
+ * [SD-JWT-based Verifiable Credentials (SD-JWT VC), Draft 10](https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/)
  * .
  */
 @Serializable

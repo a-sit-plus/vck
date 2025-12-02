@@ -8,9 +8,13 @@ import at.asitplus.wallet.lib.data.SdJwtConstants
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 
@@ -68,8 +72,7 @@ val SdJwtCreatorTest by testSuite {
             ClaimToBeIssued("nested", listOf(ClaimToBeIssued("inner", uuid4(), true)), false)
         ).toSdJsonObject().apply {
             second.shouldHaveSize(2)
-            first["nested"] shouldNotBe null
-            first["nested"]!!.jsonObject["_sd"] shouldNotBe null
+            first["nested"].shouldNotBeNull().jsonObject["_sd"] shouldNotBe null
         }
     }
 
@@ -79,7 +82,6 @@ val SdJwtCreatorTest by testSuite {
             ClaimToBeIssued("nested", listOf(ClaimToBeIssued("inner", uuid4(), false)), false)
         ).toSdJsonObject().apply {
             second.shouldHaveSize(1)
-            first["nested"] shouldNotBe null
             first["nested"].shouldNotBeNull().jsonObject["_sd"] shouldBe null
         }
     }
@@ -104,7 +106,36 @@ val SdJwtCreatorTest by testSuite {
         }
     }
 
-    // TODO also test
+    "array not selectively disclosable, but elements within" {
+        listOf(
+            ClaimToBeIssued("array", listOf(
+                ClaimToBeIssuedArrayElement("1", true),
+                ClaimToBeIssuedArrayElement("2", false)
+            ), false)
+        ).toSdJsonObject().apply {
+            second.shouldHaveSize(1)
+            first["array"].shouldNotBeNull().jsonArray.apply {
+                shouldHaveSize(2)
+                first() shouldBe JsonPrimitive("1")
+                get(1).jsonObject.shouldNotBeNull().apply {
+                    shouldHaveSize(1)
+                    get("...").shouldNotBeNull()
+                }
+            }
+        }
+    }
+
+    "array selectively disclosable, and elements within too" {
+        listOf(
+            ClaimToBeIssued("array", listOf(
+                ClaimToBeIssuedArrayElement("1", true),
+                ClaimToBeIssuedArrayElement("2", true)
+            ), true)
+        ).toSdJsonObject().apply {
+            second.shouldHaveSize(3)
+            first["array"] shouldBe null
+        }
+    }
 
 }
 
