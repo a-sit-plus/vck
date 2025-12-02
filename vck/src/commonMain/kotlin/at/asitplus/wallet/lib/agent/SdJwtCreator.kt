@@ -11,7 +11,9 @@ import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclos
 import at.asitplus.wallet.lib.data.fromAnyValue
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.addAll
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.putJsonArray
 import kotlin.collections.plus
@@ -50,9 +52,18 @@ object SdJwtCreator {
     ): Pair<JsonObject, Collection<String>> = mutableListOf<String>().let { disclosures ->
         buildJsonObject {
             with(honorNotDisclosableClaims().customPartition()) {
-                val recursiveDigests = recursive.mapNotNull { claim ->
+                val recursiveDigests: Collection<String> = recursive.mapNotNull { claim ->
                     claim.value as Collection<*>
-                    (claim.value.filterIsInstance<ClaimToBeIssued>()).toIntSdJsonObject(randomSource, digest).let {
+                    val recursiveClaims = claim.value.filterIsInstance<ClaimToBeIssued>()
+                    val arrayClaims = claim.value.filterIsInstance<ClaimToBeIssuedArrayElement>()
+                    require(recursiveClaims.size + arrayClaims.size == claim.value.size) {
+                        "All elements of a recursive claim must be either ClaimToBeIssued or ClaimToBeIssuedArrayElement"
+                    }
+                    val mapped = if (recursiveClaims.isNotEmpty())
+                        recursiveClaims.toIntSdJsonObject(randomSource, digest)
+                    else
+                        arrayClaims.toArraySdJsonObject(randomSource, digest)
+                    mapped.let {
                         if (claim.selectivelyDisclosable) {
                             disclosures.addAll(it.second)
                             claim.toSdItem(it.first, randomSource).toDisclosure()
@@ -65,7 +76,7 @@ object SdJwtCreator {
                         }
                     }
                 }
-                val dotNotationDigests = dotNotation.groupByDots().mapNotNull { (key, claims) ->
+                val dotNotationDigests: Collection<String> = dotNotation.groupByDots().mapNotNull { (key, claims) ->
                     claims.toIntSdJsonObject(randomSource, digest).let {
                         disclosures.addAll(it.second)
                         put(key, it.first)
@@ -74,14 +85,15 @@ object SdJwtCreator {
                             .hashDisclosure(digest)
                     }
                 }
-                val dotNotationPlainDigests = dotNotationPlain.groupByDots().mapNotNull { (key, claims) ->
-                    claims.toIntSdJsonObject(randomSource, digest).let {
-                        disclosures.addAll(it.second)
-                        put(key, it.first)
-                        null
+                val dotNotationPlainDigests: Collection<String> =
+                    dotNotationPlain.groupByDots().mapNotNull { (key, claims) ->
+                        claims.toIntSdJsonObject(randomSource, digest).let {
+                            disclosures.addAll(it.second)
+                            put(key, it.first)
+                            null
+                        }
                     }
-                }
-                val simpleDigests = simpleValues.mapNotNull { claim ->
+                val simpleDigests: Collection<String> = simpleValues.mapNotNull { claim ->
                     if (claim.selectivelyDisclosable) {
                         claim.toSdItem(randomSource).toDisclosure()
                             .also { disclosures.add(it) }
@@ -95,6 +107,26 @@ object SdJwtCreator {
                     if (digests.isNotEmpty()) {
                         putJsonArray(NAME_SD) { addAll(digests) }
                     }
+                }
+            }
+        } to disclosures
+    }
+
+    private fun Collection<ClaimToBeIssuedArrayElement>.toArraySdJsonObject(
+        randomSource: RandomSource = RandomSource.Secure,
+        digest: Digest = Digest.SHA256,
+    ): Pair<JsonElement, Collection<String>> = mutableListOf<String>().let { disclosures ->
+        buildJsonArray {
+            forEach { claim ->
+                if (claim.selectivelyDisclosable) {
+                    val hashed = claim.toSdItem(randomSource).toDisclosure()
+                        .also { disclosures.add(it) }
+                        .hashDisclosure(digest)
+                    add(buildJsonObject {
+                        put("...", JsonPrimitive(hashed))
+                    })
+                } else {
+                    add(claim.value.toJsonElement())
                 }
             }
         } to disclosures
@@ -134,7 +166,6 @@ object SdJwtCreator {
         val dotNotation: Collection<ClaimToBeIssued>,
         val dotNotationPlain: Collection<ClaimToBeIssued>,
         val simpleValues: Collection<ClaimToBeIssued>,
-        val arrays: Collection<ClaimToBeIssued>,
     )
 
     /** See [registered JWT claims](https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/). */
@@ -169,20 +200,18 @@ object SdJwtCreator {
      */
     private fun Collection<ClaimToBeIssued>.customPartition(): Partitioned {
         val isDotNotation: (ClaimToBeIssued) -> Boolean = { it.name.contains('.') }
-        val isArrayClaim: (ClaimToBeIssued) -> Boolean =
-            { it.value is Collection<*> && it.value.first() is ClaimToBeIssuedArrayElement }
         val isDisclosable: (ClaimToBeIssued) -> Boolean = { it.selectivelyDisclosable }
-        val hasNestedElements: (ClaimToBeIssued) -> Boolean =
-            { it.value is Collection<*> && it.value.first() is ClaimToBeIssued }
+        val hasNestedElements: (ClaimToBeIssued) -> Boolean = {
+            it.value is Collection<*> &&
+                    (it.value.first() is ClaimToBeIssued || it.value.first() is ClaimToBeIssuedArrayElement)
+        }
         val (recursiveClaims, simpleValueClaims) = partition(hasNestedElements)
         val dotNotationClaims = simpleValueClaims.filter(isDotNotation)
-        val arrayClaims = simpleValueClaims.filter(isArrayClaim)
         return Partitioned(
             recursive = recursiveClaims,
             dotNotation = dotNotationClaims.filter(isDisclosable),
             dotNotationPlain = dotNotationClaims.filterNot(isDisclosable),
-            simpleValues = simpleValueClaims - dotNotationClaims - arrayClaims,
-            arrays = arrayClaims
+            simpleValues = simpleValueClaims.filterNot(isDotNotation)
         )
     }
 
@@ -196,7 +225,7 @@ object SdJwtCreator {
     )
 
     private fun ClaimToBeIssued.toSdItem(
-        claimValue: JsonObject,
+        claimValue: JsonElement,
         randomSource: RandomSource = RandomSource.Secure,
     ) = SelectiveDisclosureItem(
         salt = randomSource.nextBytes(32),
@@ -209,6 +238,14 @@ object SdJwtCreator {
     ) = SelectiveDisclosureItem.fromAnyValue(
         salt = randomSource.nextBytes(32),
         claimName = name,
+        claimValue = value
+    )
+
+    private fun ClaimToBeIssuedArrayElement.toSdItem(
+        randomSource: RandomSource = RandomSource.Secure,
+    ) = SelectiveDisclosureItem.fromAnyValue(
+        salt = randomSource.nextBytes(32),
+        claimName = null,
         claimValue = value
     )
 

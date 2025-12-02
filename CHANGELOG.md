@@ -33,6 +33,7 @@ Release 5.10.0 (Unreleased):
    - When returning multiple ISO mDoc credentials, make sure to create one device response object per document, wrapping in separate VP tokens
  - SD-JWT:
    - Fix creation of SD JWTs containing structures that are selectively disclosable
+   - Fix creation of arrays in SD JWTs ... issuers are advised to use `ClaimToBeIssuedArrayElement` for such elements
  - Remote Qualified Electronic Signatures:
    - Remove modules deprecated in 5.9.0: `vck-rqes`, `rqes-data-classes`
 
