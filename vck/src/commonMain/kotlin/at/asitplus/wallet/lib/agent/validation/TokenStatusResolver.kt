@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.agent.validation
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.csc.xor
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
@@ -35,7 +36,10 @@ class TokenStatusResolverImpl(
     private val verifyCoseSignature: VerifyCoseSignatureFun<ByteArray> = VerifyCoseSignature(),
 ) : TokenStatusResolver {
     override suspend fun invoke(status: Status): KmmResult<TokenStatus> = catching {
-        val token = resolveStatusListToken(status.statusList!!.uri)
+        require(status.statusList xor status.identifierList) { "Exactly one of StatusList or IdentifierList MUST be present"}
+        val uri = status.statusList?.uri ?: status.identifierList?.uri!!
+
+        val token = resolveStatusListToken(uri)
 
         val payload = token.validate(
             verifyJwsObject = verifyJwsObjectIntegrity,
@@ -45,7 +49,7 @@ class TokenStatusResolverImpl(
         ).getOrThrow()
 
         extractTokenStatus(
-            statusList = payload.statusList,
+            statusList = payload.revocationList as StatusList,
             statusListInfo = status.statusList!!,
             zlibService = zlibService,
         ).getOrThrow()
@@ -75,7 +79,7 @@ fun StatusListTokenResolver.toTokenStatusResolver(
         ).getOrThrow()
 
         extractTokenStatus(
-            statusList = payload.statusList,
+            statusList = payload.revocationList as StatusList,
             statusListInfo = status.statusList!!,
             zlibService = zlibService,
         ).getOrThrow()

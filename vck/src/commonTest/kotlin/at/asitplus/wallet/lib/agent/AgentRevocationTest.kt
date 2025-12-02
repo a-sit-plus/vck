@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
-import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.FixedTimePeriodProvider.timePeriod
@@ -14,7 +13,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_
 import at.asitplus.wallet.lib.data.StatusListCwt
 import at.asitplus.wallet.lib.data.StatusListJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc3986.toUri
@@ -29,7 +27,6 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.json.Json
 import kotlin.random.Random
 import kotlin.time.Clock
@@ -55,8 +52,10 @@ val AgentRevocationTest by testSuite {
     }) - {
 
         "revocation list should contain indices of revoked credential" {
-            val statusList = it.statusListIssuer.issueStatusListJwt()
-                .shouldNotBeNull().payload.statusList
+            val statusListJwt = it.statusListIssuer.issueStatusListJwt()
+            statusListJwt.shouldNotBeNull()
+
+            val statusList = statusListJwt.payload.revocationList.shouldBeInstanceOf<StatusList>()
 
             verifyStatusList(statusList, it.expectedRevokedIndexes)
         }
@@ -96,7 +95,8 @@ val AgentRevocationTest by testSuite {
                 time = timestamp,
             )
             providedToken.shouldBeInstanceOf<StatusListJwt>()
-                .value.payload.statusList shouldBe issuedToken.payload.statusList
+            providedToken.value.payload.revocationList.shouldBeInstanceOf<StatusList>()
+            providedToken.value.payload.revocationList shouldBe issuedToken.payload.revocationList
         }
 
         "issued cwt should have same status list as provided token when asking for cwt" {
@@ -117,9 +117,9 @@ val AgentRevocationTest by testSuite {
                 acceptedContentTypes = listOf(StatusListTokenMediaType.Cwt),
                 time = timestamp,
             )
-            providedToken.shouldBeInstanceOf<StatusListCwt>()
-                .payload.getOrThrow().statusList shouldBe issuedToken.payload.statusList
-
+            providedToken.shouldBeInstanceOf<StatusListCwt>().apply {
+                value.payload.shouldNotBeNull().revocationList.shouldBeInstanceOf<StatusList>() shouldBe issuedToken.payload.revocationList
+            }
         }
 
 
@@ -163,10 +163,9 @@ val AgentRevocationTest by testSuite {
             val expectedRevokedIndexes: List<ULong> = listOf(1U, 2U, 4U, 6U, 7U, 9U, 10U, 12U, 13U, 14U)
             issuerCredentialStore.revokeCredentialsWithIndexes(expectedRevokedIndexes)
 
-            val revocationList = statusListIssuer.buildStatusList(timePeriod)
-                .shouldNotBeNull()
+            val revocationList = statusListIssuer.buildRevocationList(timePeriod).shouldNotBeNull()
 
-            verifyStatusList(revocationList, expectedRevokedIndexes)
+            verifyStatusList(revocationList as StatusList, expectedRevokedIndexes)
         }
 
         "decoding a known value works" {

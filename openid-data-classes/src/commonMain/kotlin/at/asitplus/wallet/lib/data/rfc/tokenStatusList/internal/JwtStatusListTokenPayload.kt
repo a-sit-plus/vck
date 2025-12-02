@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList.internal
 
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierList
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.jwt.claims.JwtStatusListClaim
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.jwt.claims.JwtTimeToLiveClaim
@@ -58,17 +60,19 @@ internal data class JwtStatusListTokenPayload(
         timeToLive = statusListTokenPayload.timeToLive?.let {
             JwtTimeToLiveClaim(it)
         },
-        statusList = JwtStatusListClaim(
-            statusListTokenPayload.statusList
-        ),
+        statusList = when (statusListTokenPayload.revocationList) {
+            is StatusList -> JwtStatusListClaim(statusListTokenPayload.revocationList)
+            is IdentifierList -> throw IllegalArgumentException("Identifier list not supported for JWT")
+        }
     )
+
 
     fun toStatusListTokenPayload() = StatusListTokenPayload(
         subject = subject.uri!!,
         issuedAt = issuedAt.instant,
         expirationTime = expirationTime?.instant,
         timeToLive = timeToLive?.positiveDuration,
-        statusList = statusList.statusList,
+        revocationList = statusList.statusList,
     )
 }
 
