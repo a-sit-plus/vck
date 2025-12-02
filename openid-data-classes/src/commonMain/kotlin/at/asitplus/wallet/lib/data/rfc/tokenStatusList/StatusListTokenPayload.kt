@@ -23,9 +23,9 @@ import kotlin.time.Instant
  * SHOULD be retrieved. The value of the claim MUST be a positive number encoded in JSON as a
  * number.
  *
- * status_list: REQUIRED*. The status_list (status list) claim MUST specify the Status List
- * conforming to the rules outlined in Section 4.1.
- * TODO update docs
+ * ------
+ * revocationList: Helper class; See [RevocationList]
+ *
  */
 @Serializable(with = StatusListTokenPayloadSerializer::class)
 data class StatusListTokenPayload(
