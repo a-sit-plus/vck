@@ -1,7 +1,10 @@
-import at.asitplus.gradle.*
-import org.gradle.kotlin.dsl.withType
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import org.jetbrains.kotlin.konan.target.HostManager
+import at.asitplus.gradle.commonImplementationAndApiDependencies
+import at.asitplus.gradle.envExtra
+import at.asitplus.gradle.exportXCFramework
+import at.asitplus.gradle.ktor
+import at.asitplus.gradle.napier
+import at.asitplus.gradle.setupDokka
+import at.asitplus.gradle.vckAndroid
 
 plugins {
     id("at.asitplus.gradle.vclib-conventions")
@@ -41,7 +44,8 @@ if ("true" != disableAppleTargets) exportXCFramework(
     transitiveExports = true,
     static = false,
     project(":dif-data-classes"),
-            project(":csc-data-classes")
+    project(":csc-data-classes"),
+    ktor("http")
 )
 
 val javadocJar = setupDokka(
