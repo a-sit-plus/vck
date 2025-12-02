@@ -4,11 +4,11 @@ import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierList
-import at.asitplus.wallet.lib.data.Status
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierListInfo
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.iso18013.Identifier
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.iso18013.IdentifierInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.iso18013.IdentifierInfoKey
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierListInfo
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe
@@ -44,16 +44,19 @@ private const val identifierListTestVec =
 
 val IdentifierListTest by testSuite {
     "status containing IdentifierListInfo can be serialized" {
-        val expected = Status(
+        val expected = RevocationListInfo.StatusSurrogate(
             identifierList = IdentifierListInfo(
                 identifier = byteArrayOf(0xcc.toByte(), 0xcc.toByte()),
                 uri = UniformResourceIdentifier("https://example.com/identifierlists/1"),
                 certificate = byteArrayOf(0xaa.toByte())
             )
         )
-        val deserialized = coseCompliantSerializer.decodeFromByteArray(Status.serializer(), statusTestVec.decodeToByteArray(Base16Strict))
+        val deserialized = coseCompliantSerializer.decodeFromByteArray(
+            RevocationListInfo.StatusSurrogate.serializer(),
+            statusTestVec.decodeToByteArray(Base16Strict)
+        )
 
-        val serialized = coseCompliantSerializer.encodeToByteArray(Status.serializer(), deserialized)
+        val serialized = coseCompliantSerializer.encodeToByteArray(RevocationListInfo.StatusSurrogate.serializer(), deserialized)
         deserialized shouldBe expected //sanity check
         serialized.encodeToString(Base16Strict) shouldBe statusTestVec
     }
@@ -80,7 +83,10 @@ val IdentifierListTest by testSuite {
             aggregationUri = "https://example.com/identifierlists/aggregation"
         )
         val deserialized =
-            coseCompliantSerializer.decodeFromByteArray(IdentifierList.serializer(), identifierListTestVec.decodeToByteArray(Base16Strict))
+            coseCompliantSerializer.decodeFromByteArray(
+                IdentifierList.serializer(),
+                identifierListTestVec.decodeToByteArray(Base16Strict)
+            )
         val serialized = coseCompliantSerializer.encodeToByteArray(IdentifierList.serializer(), deserialized)
         deserialized shouldBe expected //sanity check
         serialized.encodeToString(Base16Strict) shouldBe identifierListTestVec

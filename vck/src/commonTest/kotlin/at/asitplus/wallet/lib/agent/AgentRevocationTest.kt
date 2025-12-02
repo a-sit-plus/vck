@@ -12,6 +12,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_
 import at.asitplus.wallet.lib.data.StatusListCwt
 import at.asitplus.wallet.lib.data.StatusListJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
@@ -145,7 +146,7 @@ val AgentRevocationTest by testSuite {
             vcJws.shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
             val credentialStatus = vcJws.jws.vc.credentialStatus
             credentialStatus.shouldNotBeNull()
-            credentialStatus.statusList!!.index.shouldNotBeNull()
+            (credentialStatus as StatusListInfo).index.shouldNotBeNull()
         }
 
         "encoding to a known value works" {

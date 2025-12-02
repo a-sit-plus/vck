@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.data
 
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 
 import kotlin.time.Instant
 import kotlinx.serialization.Polymorphic
@@ -27,7 +28,8 @@ data class VerifiableCredential(
     @SerialName("expirationDate")
     val expirationDate: Instant?,
     @SerialName("status")
-    val credentialStatus: Status? = null,
+    @Serializable(with = RevocationListInfo.StatusSurrogateSerializer::class)
+    val credentialStatus: RevocationListInfo? = null,
     @Polymorphic
     @SerialName("credentialSubject")
     val credentialSubject: CredentialSubject,
@@ -36,7 +38,7 @@ data class VerifiableCredential(
         id: String,
         issuer: String,
         lifetime: Duration,
-        credentialStatus: Status,
+        credentialStatus: RevocationListInfo,
         credentialSubject: CredentialSubject,
         credentialType: String,
         issuanceDate: Instant = Clock.System.now(),
@@ -56,7 +58,7 @@ data class VerifiableCredential(
         issuer: String,
         issuanceDate: Instant,
         expirationDate: Instant?,
-        credentialStatus: Status,
+        credentialStatus: RevocationListInfo,
         credentialSubject: CredentialSubject,
         credentialType: String,
     ) : this(

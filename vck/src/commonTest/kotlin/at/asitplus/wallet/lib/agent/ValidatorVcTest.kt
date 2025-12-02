@@ -9,7 +9,6 @@ import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
-import at.asitplus.wallet.lib.data.Status
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
@@ -78,11 +77,9 @@ val ValidatorVcTest by testSuite {
                     ),
                     FixedTimePeriodProvider.timePeriod
                 ).getOrThrow().statusListIndex
-                val credentialStatus = Status(
-                    statusList = StatusListInfo(
-                        index = statusListIndex,
-                        uri = UniformResourceIdentifier(revocationListUrl),
-                    )
+                val credentialStatus = StatusListInfo(
+                    index = statusListIndex,
+                    uri = UniformResourceIdentifier(revocationListUrl),
                 )
 
                 return VerifiableCredential(
@@ -166,7 +163,7 @@ val ValidatorVcTest by testSuite {
                 .shouldBeInstanceOf<VerifyCredentialResult.SuccessJwt>()
             it.issuerCredentialStore.setStatus(
                 timePeriod = FixedTimePeriodProvider.timePeriod,
-                index = value.jws.vc.credentialStatus!!.statusList!!.index,
+                index = (value.jws.vc.credentialStatus!! as StatusListInfo).index,
                 status = TokenStatus.Invalid,
             ) shouldBe true
 

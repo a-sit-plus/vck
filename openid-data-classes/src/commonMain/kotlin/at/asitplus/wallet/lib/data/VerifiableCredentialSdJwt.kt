@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.data
 import at.asitplus.catchingUnwrapped
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 import kotlin.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -94,7 +95,8 @@ data class VerifiableCredentialSdJwt(
      * See [Token Status List](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-status-list-12).
      */
     @SerialName("status")
-    val statusElement: JsonElement? = null,
+    @Serializable(with = RevocationListInfo.StatusSurrogateSerializer::class)
+    val statusElement: RevocationListInfo? = null,
 
     /**
      * The claim `_sd_alg` indicates the hash algorithm used by the Issuer to generate the digests as described in
@@ -128,11 +130,8 @@ data class VerifiableCredentialSdJwt(
      *
      * See [Token Status List](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-status-list-12).
      */
-    val credentialStatus: Status?
-        get() = statusElement?.let {
-            catchingUnwrapped {
-                joseCompliantSerializer.decodeFromJsonElement<Status>(it)
-            }.getOrNull()
-        }
+    @Deprecated(message = "Replaced by statusElement", replaceWith = ReplaceWith("statusElement"))
+    val credentialStatus: RevocationListInfo?
+        get() = statusElement
 
 }

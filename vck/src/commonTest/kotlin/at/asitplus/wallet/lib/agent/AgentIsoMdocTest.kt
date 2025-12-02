@@ -26,6 +26,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN
 import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest.PresentationExchangeRequest
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.randomCwtOrJwtResolver
@@ -225,7 +226,7 @@ private fun buildPresentationRequestParameters(
     })
 
 private fun SubjectCredentialStore.StoreEntry.Iso.mdocStatusListIndex(): ULong =
-    issuerSigned.issuerAuth.payload.shouldNotBeNull().status.shouldNotBeNull().statusList!!.index
+    (issuerSigned.issuerAuth.payload.shouldNotBeNull().status.shouldNotBeNull() as StatusListInfo).index
 
 // No OpenID4VP, no need to verify the device signature
 private fun documentVerifier(): suspend (MobileSecurityObject, Document) -> Boolean = { _, _ -> true }
