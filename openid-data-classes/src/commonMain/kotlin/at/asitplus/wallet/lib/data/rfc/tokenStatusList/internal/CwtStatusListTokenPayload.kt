@@ -51,17 +51,20 @@ internal data class CwtStatusListTokenPayload(
     @CborLabel(CwtTimeToLiveClaim.Specification.CLAIM_KEY)
     @SerialName(CwtTimeToLiveClaim.Specification.CLAIM_NAME)
     val timeToLive: CwtTimeToLiveClaim? = null,
+
     /**
-     * 65533 (status list): REQUIRED. The status list claim MUST specify the Status List conforming
+     * 65533 (status list): REQUIRED*. The claim MUST specify the Status List conforming
      * to the rules outlined in Section 4.2.
+     * Must not be used when [identifierList] is present
      */
     @CborLabel(CwtStatusListClaim.Specification.CLAIM_KEY)
     @SerialName(CwtStatusListClaim.Specification.CLAIM_NAME)
     val statusList: CwtStatusListClaim? = null,
 
     /**
-     * 65530 (identifier list): REQUIRED. The status list claim MUST specify the Status List conforming
-     * to the rules outlined in Section 4.2.
+     * 65530 (identifier list): REQUIRED*. The claim MUST specify the Identifier List conforming
+     * to the rules outlined in ISO 18013-5 12.3.6
+     * Must not be used when [statusList] is present
      */
     @CborLabel(CwtIdentifierListClaim.Specification.CLAIM_KEY)
     @SerialName(CwtIdentifierListClaim.Specification.CLAIM_NAME)

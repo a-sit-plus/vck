@@ -25,9 +25,13 @@ sealed class RevocationListInfo {
      *
      * ISO 18013-5 defines new mechanism "IdentifierList". Either the StatusList OR IdentifierList
      * may be used but not both at the same time.
+     *
+     * Do not use this class directly! Use [RevocationListInfo] in combination with [StatusSurrogateSerializer] instead!
      */
+    @ConsistentCopyVisibility
     @Serializable
-    data class StatusSurrogate(
+    @SerialName("status")
+    data class StatusSurrogate internal constructor(
         @SerialName("status_list")
         val statusList: StatusListInfo? = null,
 
