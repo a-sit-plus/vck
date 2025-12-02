@@ -101,7 +101,9 @@ private fun extractTokenStatus(
         revocationList.toView(zlibService).getOrNull(revocationListInfo.index)
             ?: throw IndexOutOfBoundsException("The index specified in the status list info is out of bounds of the status list.")
     } else if (revocationList is IdentifierList && revocationListInfo is IdentifierListInfo) {
-        TODO("Identifier logic to be implemented")
+        if (revocationList.identifiers.keys.map { it.value }.contains(revocationListInfo.identifier)) {
+            TokenStatus.Invalid
+        } else TokenStatus.Valid
     } else throw IllegalArgumentException("RevocationList / RevocationListInfo mismatch")
 }
 
