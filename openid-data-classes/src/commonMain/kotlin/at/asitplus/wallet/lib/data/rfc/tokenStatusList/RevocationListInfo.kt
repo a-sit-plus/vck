@@ -6,8 +6,12 @@ import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+/**
+ * Marker type for revocation artefact.
+ * Carries only the URI plus flavour-specific metadata so the resolver can download and
+ * interpret the right [RevocationList].
+ */
 sealed class RevocationListInfo {
-
     abstract val uri: UniformResourceIdentifier
 
     /**
@@ -19,8 +23,8 @@ sealed class RevocationListInfo {
      * object may be defined by other specifications. This is analogous to "cnf" claim in Section 3.1
      * of RFC7800 in which different authenticity confirmation methods can be included.
      *
-     * ISO 18013-5 defines new mechanism "IdentifierList".
-     * Either the StatusList OR IdentifierList may be used but not both at the same time.
+     * ISO 18013-5 defines new mechanism "IdentifierList". Either the StatusList OR IdentifierList
+     * may be used but not both at the same time.
      */
     @Serializable
     data class StatusSurrogate(
@@ -35,6 +39,10 @@ sealed class RevocationListInfo {
         }
     }
 
+    /**
+     * Serializes a sealed [RevocationListInfo] into the JOSE/COSE field structure defined by the
+     * specifications above
+     */
     object StatusSurrogateSerializer : TransformingSerializerTemplate<RevocationListInfo, StatusSurrogate>(
         parent = StatusSurrogate.serializer(),
         encodeAs = {

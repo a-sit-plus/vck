@@ -16,8 +16,6 @@ data class StatusList(
     val aggregationUri: String?,
 ) : RevocationList() {
 
-    override val kind: Kind = Kind.STATUS_LIST
-
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
