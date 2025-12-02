@@ -122,6 +122,7 @@ class StatusListAgent(
     /**
      * Sets the status of one specific credential to [TokenStatus.Invalid].
      * Returns true if this credential has been revoked.
+     * TODO extend for IdentifierInfo!
      */
     override fun revokeCredential(timePeriod: Int, statusListIndex: ULong): Boolean =
         issuerCredentialStore.setStatus(timePeriod, statusListIndex, TokenStatus.Invalid)

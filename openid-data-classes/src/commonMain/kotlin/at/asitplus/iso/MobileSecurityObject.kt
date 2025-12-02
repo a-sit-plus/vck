@@ -1,6 +1,6 @@
 package at.asitplus.iso
 
-import at.asitplus.wallet.lib.data.Status
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -22,5 +22,6 @@ data class MobileSecurityObject(
     @SerialName("validityInfo")
     val validityInfo: ValidityInfo,
     @SerialName("status")
-    val status: Status? = null,
+    @Serializable(with = RevocationListInfo.StatusSurrogateSerializer::class)
+    val status: RevocationListInfo? = null,
 )

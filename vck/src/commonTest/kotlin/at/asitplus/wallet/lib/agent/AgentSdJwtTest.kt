@@ -26,6 +26,7 @@ import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePr
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.extensions.sdHashInput
@@ -169,13 +170,12 @@ val AgentSdJwtTest by testSuite {
 
             val vp = presentationParameters.presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
-
             it.holderCredentialStore.getCredentials().getOrThrow()
                 .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
                 .forEach { storeEntry ->
                     it.statusListIssuer.revokeCredential(
                         FixedTimePeriodProvider.timePeriod,
-                        storeEntry.sdJwt.credentialStatus.shouldNotBeNull().statusList.shouldNotBeNull().index
+                        storeEntry.sdJwt.credentialStatus.shouldBeInstanceOf<StatusListInfo>().index
                     ) shouldBe true
                 }
             it.verifier.verifyPresentationSdJwt(vp.sdJwt, it.challenge)
@@ -276,7 +276,7 @@ val AgentSdJwtTest by testSuite {
                 .forEach { storeEntry ->
                     it.statusListIssuer.revokeCredential(
                         FixedTimePeriodProvider.timePeriod,
-                        storeEntry.sdJwt.credentialStatus.shouldNotBeNull().statusList.shouldNotBeNull().index,
+                        storeEntry.sdJwt.credentialStatus.shouldBeInstanceOf<StatusListInfo>().index,
                     ) shouldBe true
                 }
             it.verifier.verifyPresentationSdJwt(vp.sdJwt, it.challenge)

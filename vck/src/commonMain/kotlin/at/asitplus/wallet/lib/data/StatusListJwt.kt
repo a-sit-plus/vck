@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.data
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
@@ -28,13 +28,13 @@ data class StatusListJwt(
     suspend fun validate(
         /** When using HAIP use [VerifyStatusListTokenHAIP] otherwise [VerifyJwsObject] is sufficient */
         verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
-        statusListInfo: StatusListInfo,
+        revocationListInfo: RevocationListInfo,
         isInstantInThePast: (Instant) -> Boolean,
     ): KmmResult<StatusListTokenPayload> = validateIntegrity(verifyJwsObject, this).transform { payload ->
         validateStatusListTokenPayloadClaims(
             statusListTokenPayload = payload,
             statusListTokenResolvedAt = resolvedAt,
-            statusListInfo = statusListInfo,
+            revocationListInfo = revocationListInfo,
             isInstantInThePast = isInstantInThePast,
         )
     }

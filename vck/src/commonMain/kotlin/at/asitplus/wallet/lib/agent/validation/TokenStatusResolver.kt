@@ -2,16 +2,18 @@ package at.asitplus.wallet.lib.agent.validation
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.csc.xor
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
-import at.asitplus.wallet.lib.data.Status
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierList
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierListInfo
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
@@ -25,7 +27,7 @@ import kotlin.time.Clock
  * Checks the status mechanisms in a given status claim to extract the token status.
  */
 fun interface TokenStatusResolver {
-    suspend operator fun invoke(status: Status): KmmResult<TokenStatus>
+    suspend operator fun invoke(revocationListInfo: RevocationListInfo): KmmResult<TokenStatus>
 }
 
 class TokenStatusResolverImpl(
@@ -35,22 +37,19 @@ class TokenStatusResolverImpl(
     private val verifyJwsObjectIntegrity: VerifyJwsObjectFun = VerifyJwsObject(),
     private val verifyCoseSignature: VerifyCoseSignatureFun<ByteArray> = VerifyCoseSignature(),
 ) : TokenStatusResolver {
-    override suspend fun invoke(status: Status): KmmResult<TokenStatus> = catching {
-        require(status.statusList xor status.identifierList) { "Exactly one of StatusList or IdentifierList MUST be present"}
-        val uri = status.statusList?.uri ?: status.identifierList?.uri!!
-
-        val token = resolveStatusListToken(uri)
+    override suspend fun invoke(revocationListInfo: RevocationListInfo): KmmResult<TokenStatus> = catching {
+        val token = resolveStatusListToken(revocationListInfo.uri)
 
         val payload = token.validate(
             verifyJwsObject = verifyJwsObjectIntegrity,
             verifyCoseSignature = verifyCoseSignature,
-            statusListInfo = status.statusList!!,
+            revocationListInfo = revocationListInfo,
             isInstantInThePast = { it < clock.now() },
         ).getOrThrow()
 
         extractTokenStatus(
-            statusList = payload.revocationList as StatusList,
-            statusListInfo = status.statusList!!,
+            revocationList = payload.revocationList as StatusList,
+            revocationListInfo = revocationListInfo,
             zlibService = zlibService,
         ).getOrThrow()
     }
@@ -58,7 +57,7 @@ class TokenStatusResolverImpl(
 
 /** Fallback implementation: Token status is always valid. */
 object TokenStatusResolverNoop : TokenStatusResolver {
-    override suspend fun invoke(status: Status): KmmResult<TokenStatus> =
+    override suspend fun invoke(revocationListInfo: RevocationListInfo): KmmResult<TokenStatus> =
         catching { TokenStatus.Valid }
 }
 
@@ -67,20 +66,20 @@ fun StatusListTokenResolver.toTokenStatusResolver(
     zlibService: ZlibService = DefaultZlibService(),
     verifyJwsObjectIntegrity: VerifyJwsObjectFun = VerifyJwsObject(),
     verifyCoseSignature: VerifyCoseSignatureFun<ByteArray> = VerifyCoseSignature(),
-) = TokenStatusResolver { status ->
+) = TokenStatusResolver { revocationListInfo ->
     catching {
-        val token = this(status.statusList!!.uri)
+        val token = this(revocationListInfo.uri)
 
         val payload = token.validate(
             verifyJwsObject = verifyJwsObjectIntegrity,
             verifyCoseSignature = verifyCoseSignature,
-            statusListInfo = status.statusList!!,
+            revocationListInfo = revocationListInfo,
             isInstantInThePast = { it < clock.now() },
         ).getOrThrow()
 
         extractTokenStatus(
-            statusList = payload.revocationList as StatusList,
-            statusListInfo = status.statusList!!,
+            revocationList = payload.revocationList as StatusList,
+            revocationListInfo = revocationListInfo,
             zlibService = zlibService,
         ).getOrThrow()
     }
@@ -94,12 +93,16 @@ fun StatusListTokenResolver.toTokenStatusResolver(
  * Section 4. Fail if the provided index is out of bound of the Status List
  */
 private fun extractTokenStatus(
-    statusList: StatusList,
-    statusListInfo: StatusListInfo,
+    revocationList: RevocationList,
+    revocationListInfo: RevocationListInfo,
     zlibService: ZlibService = DefaultZlibService(),
 ): KmmResult<TokenStatus> = catching {
-    statusList.toView(zlibService).getOrNull(statusListInfo.index)
-        ?: throw IndexOutOfBoundsException("The index specified in the status list info is out of bounds of the status list.")
+    if (revocationList is StatusList && revocationListInfo is StatusListInfo) {
+        revocationList.toView(zlibService).getOrNull(revocationListInfo.index)
+            ?: throw IndexOutOfBoundsException("The index specified in the status list info is out of bounds of the status list.")
+    } else if (revocationList is IdentifierList && revocationListInfo is IdentifierListInfo) {
+        TODO("Identifier logic to be implemented")
+    } else throw IllegalArgumentException("RevocationList / RevocationListInfo mismatch")
 }
 
 suspend operator fun TokenStatusResolver.invoke(issuerSigned: IssuerSigned) =

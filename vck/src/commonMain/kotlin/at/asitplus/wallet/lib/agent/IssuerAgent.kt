@@ -91,11 +91,9 @@ class IssuerAgent(
         val coseKey = credential.subjectPublicKey.toCoseKey()
             .getOrElse { throw IllegalStateException("Could not create subject COSE key", it) }
         val deviceKeyInfo = DeviceKeyInfo(coseKey)
-        val credentialStatus = Status(
-            statusList = StatusListInfo(
-                index = reference.statusListIndex,
-                uri = UniformResourceIdentifier(getRevocationListUrlFor(timePeriod)),
-            ),
+        val credentialStatus = StatusListInfo(
+            index = reference.statusListIndex,
+            uri = UniformResourceIdentifier(getRevocationListUrlFor(timePeriod)),
         )
         val mso = MobileSecurityObject(
             version = "1.0",
@@ -142,11 +140,10 @@ class IssuerAgent(
         val expirationDate = credential.expiration
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
         val reference = issuerCredentialStore.createStatusListIndex(credential, timePeriod).getOrThrow()
-        val credentialStatus = Status(
-            statusList = StatusListInfo(
-                index = reference.statusListIndex,
-                uri = UniformResourceIdentifier(getRevocationListUrlFor(timePeriod)),
-            )
+        //TODO extend for IdentifierListInfo
+        val credentialStatus = StatusListInfo(
+            index = reference.statusListIndex,
+            uri = UniformResourceIdentifier(getRevocationListUrlFor(timePeriod)),
         )
         val vc = VerifiableCredential(
             id = vcId,
@@ -185,11 +182,10 @@ class IssuerAgent(
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
         val subjectId = credential.subjectPublicKey.didEncoded // TODO not necessarily!
         val reference = issuerCredentialStore.createStatusListIndex(credential, timePeriod).getOrThrow()
-        val credentialStatus = Status(
-            statusList = StatusListInfo(
-                index = reference.statusListIndex,
-                uri = UniformResourceIdentifier(getRevocationListUrlFor(timePeriod)),
-            )
+        //TODO extend for IdentifierListInfo
+        val credentialStatus = StatusListInfo(
+            index = reference.statusListIndex,
+            uri = UniformResourceIdentifier(getRevocationListUrlFor(timePeriod)),
         )
         val (sdJwt, disclosures) = credential.claims.toSdJsonObject(randomSource, credential.sdAlgorithm)
         val cnf = ConfirmationClaim(jsonWebKey = credential.subjectPublicKey.toJsonWebKey())
@@ -202,7 +198,7 @@ class IssuerAgent(
             verifiableCredentialType = credential.scheme.sdJwtType ?: credential.scheme.schemaUri,
             selectiveDisclosureAlgorithm = credential.sdAlgorithm.toIanaName(),
             confirmationClaim = cnf,
-            statusElement = vckJsonSerializer.encodeToJsonElement(credentialStatus),
+            statusElement = credentialStatus//vckJsonSerializer.encodeToJsonElement(credentialStatus),
         )
         val vcSdJwtObject = vckJsonSerializer.encodeToJsonElement(vcSdJwt).jsonObject
         val entireObject = buildJsonObject {

@@ -4,9 +4,8 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierListInfo
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 import at.asitplus.wallet.lib.extensions.ifTrue
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
@@ -28,18 +27,18 @@ sealed class StatusListToken {
     suspend fun validate(
         verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
         verifyCoseSignature: VerifyCoseSignatureFun<ByteArray> = VerifyCoseSignature(),
-        statusListInfo: StatusListInfo,
+        revocationListInfo: RevocationListInfo,
         isInstantInThePast: (Instant) -> Boolean
     ): KmmResult<StatusListTokenPayload> = when (this) {
         is StatusListJwt -> validate(
             verifyJwsObject = verifyJwsObject,
-            statusListInfo = statusListInfo,
+            revocationListInfo = revocationListInfo,
             isInstantInThePast = isInstantInThePast
         )
 
         is StatusListCwt -> validate(
             verifyCoseSignature = verifyCoseSignature,
-            statusListInfo = statusListInfo,
+            revocationListInfo = revocationListInfo,
             isInstantInThePast = isInstantInThePast
         )
     }
@@ -63,17 +62,14 @@ sealed class StatusListToken {
      */
     internal fun validateStatusListTokenPayloadClaims(
         statusListTokenPayload: StatusListTokenPayload,
-        statusListInfo: StatusListInfo? = null,
-        identifierListInfo: IdentifierListInfo? = null,
+        revocationListInfo: RevocationListInfo? = null,
         statusListTokenResolvedAt: Instant?,
         isInstantInThePast: (Instant) -> Boolean,
     ): KmmResult<StatusListTokenPayload> = catching {
-        if (statusListInfo != null && statusListTokenPayload.subject.string != statusListInfo.uri.string) {
+        if (revocationListInfo != null && statusListTokenPayload.subject.string != revocationListInfo.uri.string) {
             throw IllegalArgumentException("The subject claim of the Status List Token is not equal to the uri claim in the status_list object of the Referenced Token.")
         }
-        if (identifierListInfo != null && statusListTokenPayload.subject.string != identifierListInfo.uri.string) {
-            throw IllegalArgumentException("The subject claim of the Status List Token is not equal to the uri claim in the status_list object of the Referenced Token.")
-        }
+
         statusListTokenPayload.expirationTime?.let(isInstantInThePast)?.ifTrue {
             throw IllegalStateException("The Status List Token is expired.")
         }
