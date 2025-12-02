@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.CryptoSignature
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
@@ -26,7 +27,7 @@ suspend fun X509Certificate.Companion.generateSelfSignedCertificate(
     signer: suspend (ByteArray) -> KmmResult<CryptoSignature>,
 ): KmmResult<X509Certificate> = catching {
     Napier.d { "Generating self-signed Certificate" }
-    val notBeforeDate = Clock.System.now()
+    val notBeforeDate = Clock.System.now().truncateToSeconds()
     val notAfterDate = notBeforeDate.plus(lifetimeInSeconds, DateTimeUnit.SECOND)
     val tbsCertificate = TbsCertificate(
         version = 2,

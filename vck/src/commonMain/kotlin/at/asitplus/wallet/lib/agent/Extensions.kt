@@ -5,7 +5,6 @@ import at.asitplus.openid.digest
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.wallet.lib.data.Base64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.SdJwtConstants
-import at.asitplus.wallet.lib.data.toTransactionData
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.ktor.util.*
 

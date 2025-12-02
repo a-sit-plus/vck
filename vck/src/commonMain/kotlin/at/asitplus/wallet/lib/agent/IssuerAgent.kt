@@ -8,6 +8,7 @@ import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.ValidityInfo
 import at.asitplus.iso.ValueDigest
 import at.asitplus.iso.ValueDigestList
+import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
@@ -73,13 +74,14 @@ class IssuerAgent(
     override suspend fun issueCredential(
         credential: CredentialToBeIssued,
     ): KmmResult<Issuer.IssuedCredential> = catching {
-        val issuanceDate = clock.now().minus(issuanceOffset.absoluteValue)
+        val issuanceDate = clock.now().minus(issuanceOffset.absoluteValue).truncateToSeconds()
         when (credential) {
             is CredentialToBeIssued.Iso -> issueMdoc(credential, issuanceDate)
             is CredentialToBeIssued.VcJwt -> issueVc(credential, issuanceDate)
             is CredentialToBeIssued.VcSd -> issueVcSd(credential, issuanceDate)
         }
     }
+
 
     private suspend fun issueMdoc(
         credential: CredentialToBeIssued.Iso,

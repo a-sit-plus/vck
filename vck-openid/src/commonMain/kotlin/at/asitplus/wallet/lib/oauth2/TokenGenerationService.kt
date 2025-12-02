@@ -5,6 +5,7 @@ import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_BEARER
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -72,6 +73,7 @@ class JwtTokenGenerationService(
     ): TokenResponseParameters = if (httpRequest?.dpop == null) {
         throw InvalidDpopProof("no DPoP header value")
     } else {
+        val notBefore = clock.now().truncateToSeconds()
         TokenResponseParameters(
             expires = 5.minutes,
             tokenType = TOKEN_TYPE_DPOP,
@@ -82,8 +84,8 @@ class JwtTokenGenerationService(
                     jwtId = nonceService.provideNonce().also {
                         jwtIdToUserInfoExtended.put(it, userInfo)
                     },
-                    notBefore = clock.now(),
-                    expiration = clock.now().plus(30.days),
+                    notBefore = notBefore,
+                    expiration = notBefore.plus(30.days),
                     confirmationClaim = validatedClientKey?.let {
                         ConfirmationClaim(
                             jsonWebKeyThumbprint = it.jwkThumbprintPlain
@@ -101,8 +103,8 @@ class JwtTokenGenerationService(
                     jwtId = nonceService.provideNonce().also {
                         jwtIdToUserInfoExtended.put(it, userInfo)
                     },
-                    notBefore = clock.now(),
-                    expiration = clock.now().plus(5.minutes),
+                    notBefore = notBefore,
+                    expiration = notBefore.plus(5.minutes),
                     confirmationClaim = validatedClientKey?.let {
                         ConfirmationClaim(
                             jsonWebKeyThumbprint = it.jwkThumbprintPlain

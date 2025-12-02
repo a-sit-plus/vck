@@ -19,6 +19,7 @@ import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.VpFormatsSupported
+import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
@@ -207,7 +208,7 @@ internal class PresentationFactory(
         }
         val nonce = request.parameters.nonce
             ?: throw InvalidRequest("nonce is null")
-        val now = clock.now()
+        val issuedAt = clock.now().truncateToSeconds()
         // we'll assume jwk-thumbprint
         val agentJsonWebKey = agentPublicKey.toJsonWebKey()
         val audience = request.parameters.clientId
@@ -218,8 +219,8 @@ internal class PresentationFactory(
             subject = agentJsonWebKey.jwkThumbprint,
             subjectJwk = agentJsonWebKey,
             audience = audience,
-            issuedAt = now,
-            expiration = now + 60.seconds,
+            issuedAt = issuedAt,
+            expiration = issuedAt + 60.seconds,
             nonce = nonce,
         )
         signIdToken(null, idToken, IdToken.serializer()).getOrElse {

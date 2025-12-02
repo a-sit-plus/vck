@@ -41,9 +41,7 @@ class TokenStatusResolverImpl(
             verifyJwsObject = verifyJwsObjectIntegrity,
             verifyCoseSignature = verifyCoseSignature,
             statusListInfo = status.statusList,
-            isInstantInThePast = {
-                it < kotlin.time.Instant.fromEpochMilliseconds(clock.now().toEpochMilliseconds())
-            },
+            isInstantInThePast = { it < clock.now() },
         ).getOrThrow()
 
         extractTokenStatus(
@@ -73,9 +71,7 @@ fun StatusListTokenResolver.toTokenStatusResolver(
             verifyJwsObject = verifyJwsObjectIntegrity,
             verifyCoseSignature = verifyCoseSignature,
             statusListInfo = status.statusList,
-            isInstantInThePast = {
-                it < kotlin.time.Instant.fromEpochMilliseconds(clock.now().toEpochMilliseconds())
-            },
+            isInstantInThePast = { it < clock.now() },
         ).getOrThrow()
 
         extractTokenStatus(

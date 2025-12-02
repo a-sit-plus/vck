@@ -14,7 +14,6 @@ Release 5.10.0 (Unreleased):
    - Remove code elements deprecated in 5.9.0
    - Drop single `proof` in credential request
    - Support credential response encryption correctly, see changed API in `CredentialIssuer.credential()`
-   - Introduce duration to subtract for the issuance date of credentials, see `IssuerAgent.issuanceOffset`
    - Correctly verify credential request regarding `credential_configuration_id` and `credential_identifiers`
    - Support credential request encryption correctly, if metadata is set at Issuer
  - OpenID for Verifiable Presentations:
@@ -34,6 +33,10 @@ Release 5.10.0 (Unreleased):
  - SD-JWT:
    - Fix creation of SD JWTs containing structures that are selectively disclosable
    - Fix creation of arrays in SD JWTs ... issuers are advised to use `ClaimToBeIssuedArrayElement` for such elements
+ - Issuance:
+   - Introduce duration to subtract for the issuance date of credentials, see `IssuerAgent.issuanceOffset`
+   - Do not issue SD-JWT credentials with a unique identifier in `jti`
+   - Truncate issuing timestamps to seconds
  - Remote Qualified Electronic Signatures:
    - Remove modules deprecated in 5.9.0: `vck-rqes`, `rqes-data-classes`
 

@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
@@ -79,7 +80,7 @@ class StatusListAgent(
     private fun buildStatusListTokenPayload(timePeriod: Int?): StatusListTokenPayload =
         StatusListTokenPayload(
             statusList = buildStatusList(timePeriod),
-            issuedAt = clock.now(),
+            issuedAt = clock.now().truncateToSeconds(),
             timeToLive = PositiveDuration(revocationListLifetime),
             subject = UniformResourceIdentifier(
                 getRevocationListUrlFor(timePeriod ?: timePeriodProvider.getCurrentTimePeriod(clock))
@@ -110,15 +111,8 @@ class StatusListAgent(
             ?: throw IllegalArgumentException("Argument `acceptedContentTypes` must contain at least one item.")
 
         return preferedType to when (preferedType) {
-            StatusListTokenMediaType.Jwt -> StatusListJwt(
-                issueStatusListJwt(time),
-                resolvedAt = clock.now(),
-            )
-
-            StatusListTokenMediaType.Cwt -> StatusListCwt(
-                issueStatusListCwt(time),
-                resolvedAt = clock.now(),
-            )
+            StatusListTokenMediaType.Jwt -> StatusListJwt(issueStatusListJwt(time), resolvedAt = clock.now())
+            StatusListTokenMediaType.Cwt -> StatusListCwt(issueStatusListCwt(time), resolvedAt = clock.now())
         }
     }
 
