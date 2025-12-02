@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
-
 sealed class RevocationList {
     abstract val kind: Kind
 
