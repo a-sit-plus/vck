@@ -5,6 +5,8 @@ import at.asitplus.iso.EncryptionInfo
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+//TODO remove? or adapt IsoMdocRequest?
+
 @Serializable
 sealed interface IsoMdocRequestInterface {
     @SerialName("deviceRequest")
