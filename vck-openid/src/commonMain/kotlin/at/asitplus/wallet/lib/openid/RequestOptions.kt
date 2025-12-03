@@ -99,6 +99,10 @@ data class RequestOptions(
         get() = (responseMode == OpenIdConstants.ResponseMode.DirectPost) ||
                 (responseMode == OpenIdConstants.ResponseMode.DirectPostJwt)
 
+    val isDcApi: Boolean
+        get() = (responseMode == OpenIdConstants.ResponseMode.DcApi) ||
+                (responseMode == OpenIdConstants.ResponseMode.DcApiJwt)
+
     val isSiop: Boolean
         get() = responseType.contains(OpenIdConstants.ID_TOKEN)
 

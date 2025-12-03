@@ -71,7 +71,6 @@ import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.DefaultNonceService
 import at.asitplus.wallet.lib.oidvci.MapStore
 import at.asitplus.wallet.lib.oidvci.NonceService
-import at.asitplus.wallet.lib.oidvci.decode
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.sessionTranscriptThumbprint
 import io.github.aakira.napier.Napier
@@ -340,7 +339,7 @@ class OpenId4VpVerifier(
         requestOptions = requestOptions,
         requestObjectParameters = requestObjectParameters,
     ).also {
-        submitAuthnRequest(it)
+        submitAuthnRequest(it, requestOptions.state)
     }
 
     /**
@@ -367,7 +366,7 @@ class OpenId4VpVerifier(
         clientMetadata = clientMetadata(),
         idTokenType = if (isSiop) IdTokenType.SUBJECT_SIGNED.text else null,
         responseMode = responseMode,
-        state = state,
+        state = if (!isDcApi) state else null,
         dcqlQuery = if (isDcql) toDCQLQuery() else null,
         presentationDefinition = if (isPresentationExchange)
             toPresentationDefinition(containerJwt, containerSdJwt) else null,
@@ -375,14 +374,19 @@ class OpenId4VpVerifier(
     )
 
     /**
-     * Remembers [authenticationRequestParameters] to link responses to requests
+     * Remembers [authenticationRequestParameters] to link responses to requests in [validateAuthnResponse].
+     *
+     * Parameter [externalId] may be used in cases the [authenticationRequestParameters] do not have a `state`
+     * parameter, e.g., when using DCAPI.
      */
     suspend fun submitAuthnRequest(
         authenticationRequestParameters: AuthenticationRequestParameters,
+        externalId: String? = null,
     ) = stateToAuthnRequestStore.put(
-        authenticationRequestParameters.state
-            ?: throw IllegalArgumentException("No state value has been provided"),
-        authenticationRequestParameters,
+        key = externalId
+            ?: authenticationRequestParameters.state
+            ?: throw IllegalArgumentException("Neither externalId nor state has been provided"),
+        value = authenticationRequestParameters,
     )
 
     @Suppress("DEPRECATION")
@@ -397,39 +401,38 @@ class OpenId4VpVerifier(
         else -> null
     }
 
-    @Deprecated("Use validateAuthnResponse(input: String) instead")
-    suspend fun validateAuthnResponse(input: Map<String, String>): AuthnResponseResult =
-        catchingUnwrapped {
-            ResponseParametersFrom.Post(input.decode<AuthenticationResponseParameters>())
-        }.getOrElse {
-            return AuthnResponseResult.Error("Can't parse input: $input", cause = it)
-        }.let {
-            validateAuthnResponse(it)
-        }
-
     /**
      * Validates an Authentication Response from the Wallet, where [input] is either:
      * - a URL, containing parameters in the fragment, e.g. `https://example.com#id_token=...`
      * - a URL, containing parameters in the query, e.g. `https://example.com?id_token=...`
      * - parameters encoded as a POST body, e.g. `id_token=...&vp_token=...`
+     *
+     * The [externalId] will be used to load the corresponding [AuthenticationRequestParameters] from the store,
+     * in case a `state` parameter was not available in the request (e.g., when using DCAPI).
      */
-    suspend fun validateAuthnResponse(input: String): AuthnResponseResult =
-        catchingUnwrapped {
-            responseParser.parseAuthnResponse(input)
-        }.getOrElse {
-            return AuthnResponseResult.Error("Can't parse input: $input", cause = it)
-        }.let {
-            validateAuthnResponse(it)
-        }
+    suspend fun validateAuthnResponse(
+        input: String,
+        externalId: String? = null,
+    ): AuthnResponseResult = catchingUnwrapped {
+        responseParser.parseAuthnResponse(input)
+    }.getOrElse {
+        return AuthnResponseResult.Error("Can't parse input: $input", cause = it)
+    }.let {
+        validateAuthnResponse(it, externalId)
+    }
 
     /**
      * Validates [AuthenticationResponseParameters] from the Wallet
      */
-    suspend fun validateAuthnResponse(input: ResponseParametersFrom): AuthnResponseResult {
+    suspend fun validateAuthnResponse(
+        input: ResponseParametersFrom,
+        externalId: String? = null,
+    ): AuthnResponseResult {
         Napier.d("validateAuthnResponse: $input")
-        val state = input.parameters.state
+        val storedId = externalId
+            ?: input.parameters.state
             ?: return AuthnResponseResult.ValidationError("state")
-        val authnRequest = stateToAuthnRequestStore.get(state)
+        val authnRequest = stateToAuthnRequestStore.get(storedId)
             ?: return AuthnResponseResult.ValidationError("state")
         if (authnRequest.responseMode?.requiresEncryption == true)
             if (!input.hasBeenEncrypted)
