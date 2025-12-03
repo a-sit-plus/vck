@@ -1,6 +1,6 @@
 # Changelog
 
-Release 5.10.0 (Unreleased):
+Release 5.10.0:
  - StatusListToken:
    - Remove `StatusTokenValidator`
    - Remove `StatusTokenIntegrityValidator` class
