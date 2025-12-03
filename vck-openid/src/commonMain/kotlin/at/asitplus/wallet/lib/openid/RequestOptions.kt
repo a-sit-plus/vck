@@ -110,7 +110,9 @@ data class RequestOptions(
             require(isDcql) { "DC API only supports DCQL" }
             requireNotNull(expectedOrigins) { "Expected origins must be set for DC API" }
         }
-        require(if (responseMode == OpenIdConstants.ResponseMode.DcApi) !populateClientId else populateClientId)
+        if (responseMode != OpenIdConstants.ResponseMode.DcApi) {
+            require(populateClientId) { "client_id should be set for anything but (unsigned) DC API requests" }
+        }
     }
 
     val isDcql: Boolean
