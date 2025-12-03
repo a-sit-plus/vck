@@ -429,18 +429,13 @@ class OpenId4VpVerifier(
         externalId: String? = null,
     ): AuthnResponseResult {
         Napier.d("validateAuthnResponse: $input")
-        val storedId = externalId
-            ?: input.parameters.state
-            ?: return AuthnResponseResult.ValidationError("state")
-        val authnRequest = stateToAuthnRequestStore.get(storedId)
-            ?: return AuthnResponseResult.ValidationError("state")
-        if (authnRequest.responseMode?.requiresEncryption == true)
-            if (!input.hasBeenEncrypted)
-                return AuthnResponseResult.ValidationError("response")
-
+        val authnRequest = catching {
+            loadAuthnRequest(input, externalId)
+        }.getOrElse {
+            return AuthnResponseResult.ValidationError("input", cause = it)
+        }
         // TODO: support concurrent presentation of ID token and VP token?
-        val responseType = authnRequest.responseType
-        return if (responseType?.contains(OpenIdConstants.VP_TOKEN) == true) {
+        return if (authnRequest.responseType?.contains(OpenIdConstants.VP_TOKEN) == true) {
             catching {
                 validateVpToken(authnRequest, input)
             }.getOrElse {
@@ -453,8 +448,28 @@ class OpenId4VpVerifier(
                 AuthnResponseResult.ValidationError("idToken", cause = it)
             }
         } else {
-            AuthnResponseResult.Error("Neither id_token nor vp_token")
+            AuthnResponseResult.Error(
+                "Neither id_token nor vp_token",
+                cause = IllegalArgumentException(authnRequest.responseType)
+            )
         }
+    }
+
+    @Throws(IllegalArgumentException::class, CancellationException::class)
+    private suspend fun loadAuthnRequest(
+        input: ResponseParametersFrom,
+        externalId: String?
+    ): AuthenticationRequestParameters {
+        val storedId = externalId
+            ?: input.parameters.state
+            ?: throw IllegalArgumentException("Neither externalId nor state given")
+        val authnRequest = stateToAuthnRequestStore.get(storedId)
+            ?: throw IllegalArgumentException("No authn request found for $storedId")
+        if (authnRequest.responseMode?.requiresEncryption == true)
+            require(input.hasBeenEncrypted) {
+                "response_mode requires encryption, but no encrypted response was given"
+            }
+        return authnRequest
     }
 
     @Throws(IllegalArgumentException::class, CancellationException::class)

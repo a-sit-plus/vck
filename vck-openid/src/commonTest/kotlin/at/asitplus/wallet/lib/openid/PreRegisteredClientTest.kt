@@ -184,7 +184,7 @@ val PreRegisteredClientTest by testSuite {
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
                 .shouldBeInstanceOf<AuthnResponseResult.ValidationError>()
-                .field shouldBe "state"
+                .field shouldBe "input"
         }
 
         "test with QR Code" {

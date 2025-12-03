@@ -17,7 +17,7 @@ sealed class AuthnResponseResult {
         val reason: String,
         @Deprecated("Will be removed in release after 5.10.0")
         val state: String? = null,
-        val cause: Throwable? = null,
+        val cause: Throwable,
     ) : AuthnResponseResult()
 
     /**
@@ -27,7 +27,7 @@ sealed class AuthnResponseResult {
         val field: String,
         @Deprecated("Will be removed in release after 5.10.0")
         val state: String? = null,
-        val cause: Throwable? = null,
+        val cause: Throwable,
     ) : AuthnResponseResult()
 
     /**

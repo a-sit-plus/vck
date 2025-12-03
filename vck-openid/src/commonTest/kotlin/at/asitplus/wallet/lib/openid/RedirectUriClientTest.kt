@@ -134,7 +134,7 @@ val RedirectUriClientTest by testSuite {
 
             verifierOid4vp.validateAuthnResponse(authnResponse.url)
                 .shouldBeInstanceOf<AuthnResponseResult.ValidationError>()
-                .field shouldBe "state"
+                .field shouldBe "input"
         }
 
         "signed requests not allowed for redirect-uri" {
