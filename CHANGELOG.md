@@ -3,6 +3,8 @@
 Release 5.11.0 (unreleased):
  - Proximity presentations:
    - Return multiple ISO mDoc credentials in one device response when generating a presentation in proximity flows
+ - OpenID for Verifiable Presentations:
+   - In `RequestOptions` deprecate property `encryption`, as this depends on the response mode
 
 Release 5.10.0:
  - StatusListToken:

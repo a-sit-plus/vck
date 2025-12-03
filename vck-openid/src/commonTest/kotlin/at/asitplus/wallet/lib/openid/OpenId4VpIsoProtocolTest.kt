@@ -180,7 +180,6 @@ val OpenId4VpIsoProtocolTest by testSuite {
                 ),
                 responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                 responseUrl = "https://example.com/response",
-                encryption = true
             )
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 requestOptions, Query(it.walletUrl)
