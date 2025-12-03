@@ -14,7 +14,7 @@ import com.authlete.cose.*
 import com.authlete.cose.constants.COSEAlgorithms
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.withClue
-import de.infix.testBalloon.framework.testSuite
+import de.infix.testBalloon.framework.core.testSuite
 import at.asitplus.testballoon.*
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe

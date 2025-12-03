@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.data
 
+import at.asitplus.openid.truncateToSeconds
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 
 import kotlin.time.Instant
@@ -39,8 +40,8 @@ data class VerifiableCredential(
         credentialStatus: Status,
         credentialSubject: CredentialSubject,
         credentialType: String,
-        issuanceDate: Instant = Clock.System.now(),
-        expirationDate: Instant? = Clock.System.now() + lifetime,
+        issuanceDate: Instant = Clock.System.now().truncateToSeconds(),
+        expirationDate: Instant? = issuanceDate + lifetime,
     ) : this(
         id = id,
         type = listOf(VERIFIABLE_CREDENTIAL, credentialType),

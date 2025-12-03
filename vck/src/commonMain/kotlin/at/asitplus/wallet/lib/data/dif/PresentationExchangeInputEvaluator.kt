@@ -11,6 +11,7 @@ import at.asitplus.dif.InputDescriptor
 import at.asitplus.dif.RequirementEnum
 import at.asitplus.jsonpath.JsonPath
 import at.asitplus.jsonpath.core.NodeList
+import at.asitplus.jsonpath.core.NodeListEntry
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.CredentialFormatEnum
 import io.github.aakira.napier.Napier
@@ -24,7 +25,17 @@ import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.longOrNull
 
 /**
- * Specification: https://identity.foundation/presentation-exchange/spec/v2.0.0/#input-evaluation
+ * Specification: https://identity.foundation/presentation-exchange/spec/v2.0.0/#input-evaluation.
+ *
+ * Missing features:
+ *  * `statuses` (Credential Status Constraint Feature)
+ *  * `subject_is_issuer`, `is_holder`, `same_subject` (Relational Constraint Feature)
+ *  * Predicate feature <https://identity.foundation/presentation-exchange/spec/v2.0.0/#predicate-feature>
+ *
+ * Missing constraint filters:
+ *  * Recursive type check
+ *  * Element count check (minItems = 1) for root,
+ *  * Check for unique items at root (whatever that means)
  */
 object PresentationExchangeInputEvaluator {
     fun evaluateInputDescriptorAgainstCredential(
@@ -36,27 +47,14 @@ object PresentationExchangeInputEvaluator {
         pathAuthorizationValidator: (NormalizedJsonPath) -> Boolean,
     ): KmmResult<Map<ConstraintField, NodeList>> = catching {
         (inputDescriptor.format ?: fallbackFormatHolder)?.let { formatHolder ->
-            @Suppress("DEPRECATION")
-            val supportedFormats = listOf(
-                formatHolder.jwtVp to CredentialFormatEnum.JWT_VC,
-                formatHolder.jwtSd to CredentialFormatEnum.DC_SD_JWT,
-                formatHolder.sdJwt to CredentialFormatEnum.DC_SD_JWT,
-                formatHolder.msoMdoc to CredentialFormatEnum.MSO_MDOC,
-            ).filter {
-                it.first != null
-            }.map {
-                it.second
-            }
-            if (credentialFormat !in supportedFormats) {
+            if (credentialFormat !in formatHolder.toSupportedFormats()) {
                 Napier.d("Credential format `$credentialFormat` is not supported by the relying party.")
-                throw InvalidCredentialFormatException(credentialFormat, supportedFormats)
+                throw InvalidCredentialFormatException(credentialFormat, formatHolder.toSupportedFormats())
             }
         }
 
-        when (credentialFormat) {
-            CredentialFormatEnum.MSO_MDOC -> inputDescriptor.id
-            else -> null
-        }?.let { requiredCredentialScheme ->
+        if (credentialFormat == CredentialFormatEnum.MSO_MDOC) {
+            val requiredCredentialScheme = inputDescriptor.id
             if (requiredCredentialScheme != credentialScheme) {
                 Napier.d("Credential scheme `$credentialScheme` is not supported by the relying party.")
                 throw InvalidCredentialSchemeException(credentialScheme, setOf(requiredCredentialScheme))
@@ -72,6 +70,16 @@ object PresentationExchangeInputEvaluator {
         } ?: mapOf()
     }
 
+    private fun FormatHolder.toSupportedFormats(): List<CredentialFormatEnum> = listOf(
+        jwtVp to CredentialFormatEnum.JWT_VC,
+        sdJwt to CredentialFormatEnum.DC_SD_JWT,
+        msoMdoc to CredentialFormatEnum.MSO_MDOC,
+    ).filter {
+        it.first != null
+    }.map {
+        it.second
+    }
+
     fun evaluateInputDescriptorConstraint(
         constraint: Constraint,
         credentialClaimStructure: JsonElement,
@@ -85,14 +93,11 @@ object PresentationExchangeInputEvaluator {
             )
         } ?: mapOf()
 
-        // TODO: statuses (Credential Status Constraint Feature)
-        // TODO: subject_is_issuer, is_holder, same_subject (Relational Constraint Feature)
-
         if (constraintFieldEvaluation.values.any { it.isFailure }) {
             val failures = constraintFieldEvaluation
                 .filter { it.value.isFailure }
             throw ConstraintFieldsEvaluationException(
-                message = "Input descriptor constraint fields could not be satisfied: ${failures.keys.joinToString { it.path.joinToString() }}",
+                message = "Input descriptor constraint fields could not be satisfied: ${failures.details()}",
                 constraintFieldExceptions = failures.mapValues {
                     it.value.exceptionOrNull()!!
                 }
@@ -104,36 +109,45 @@ object PresentationExchangeInputEvaluator {
         }
     }
 
+    private fun Map<ConstraintField, KmmResult<NodeList>>.details(): String =
+        keys.joinToString { it.path.joinToString() }
+
     // filter by constraints
     fun evaluateConstraintField(
         field: ConstraintField,
         credential: JsonElement,
         pathAuthorizationValidator: (NormalizedJsonPath) -> Boolean,
     ): KmmResult<NodeList> = catching {
-        val fieldQueryResult = matchConstraintFieldPaths(
+        val result = matchConstraintFieldPaths(
             constraintField = field,
             credential = credential,
             pathAuthorizationValidator = pathAuthorizationValidator,
         )
 
-        if (fieldQueryResult.isEmpty() && field.optional != true) {
-            throw FailedFieldQueryException(field).also {
-                Napier.v("evaluateFieldQueryResult failed", it)
-            }
+        if (result.isEmpty() && field.optional != true) {
+            throw FailedFieldQueryException(field)
+                .also { Napier.v("evaluateFieldQueryResult failed", it) }
         }
 
-        field.predicate?.let {
-            if (field.filter != null) {
-                throw PredicateFeatureException("Predicate feature is used, but filter is not available.")
-            }
+        field.predicate
+            ?.let { result.matchPredicate(field, it) }
+            ?: result
+    }
 
-            when (it) {
-                // TODO: RequirementEnum.NONE is not a valid field value, maybe change member type to new Enum?
-                RequirementEnum.NONE -> fieldQueryResult
-                RequirementEnum.PREFERRED -> fieldQueryResult
-                RequirementEnum.REQUIRED -> throw MissingFeatureSupportException("Predicate feature from https://identity.foundation/presentation-exchange/spec/v2.0.0/#predicate-feature")
-            }
-        } ?: fieldQueryResult
+    private fun NodeList.matchPredicate(
+        field: ConstraintField,
+        enum: RequirementEnum
+    ): List<NodeListEntry> {
+        if (field.filter != null) {
+            throw PredicateFeatureException("Predicate feature is used, but filter is not available.")
+        }
+
+        return when (enum) {
+            // TODO: RequirementEnum.NONE is not a valid field value, maybe change member type to new Enum?
+            RequirementEnum.NONE -> this
+            RequirementEnum.PREFERRED -> this
+            RequirementEnum.REQUIRED -> throw MissingFeatureSupportException("Predicate feature")
+        }
     }
 
     // filter by constraints
@@ -142,91 +156,81 @@ object PresentationExchangeInputEvaluator {
         credential: JsonElement,
         pathAuthorizationValidator: (NormalizedJsonPath) -> Boolean,
     ): NodeList = constraintField.path.flatMap { jsonPath ->
-        val candidates = JsonPath(jsonPath).query(credential)
-        candidates.filter { candidate ->
-            pathAuthorizationValidator(candidate.normalizedJsonPath) && constraintField.filter?.let {
-                candidate.value.satisfiesConstraintFilter(it)
-            } ?: true
+        credential.candidates(jsonPath).filter { candidate ->
+            pathAuthorizationValidator(candidate.normalizedJsonPath) &&
+                    constraintField.filter?.let { candidate.value.matchConstraints(it) } ?: true
         }
     }
+
+    private fun JsonElement.candidates(jsonPath: String): NodeList =
+        JsonPath(jsonPath).query(this)
 }
 
-internal fun JsonElement.satisfiesConstraintFilter(filter: ConstraintFilter): Boolean {
-    // TODO: properly implement constraint filter
-    // source: https://json-schema.org/draft-07/schema#
-    // this currently is only a tentative implementation
-    val typeMatchesElement = when (this) {
-        // TODO: need recursive type check; Need element count check (minItems = 1) for root, need check for unique items at root (whatever that means)
-        is JsonArray -> filter.type == null || filter.type == "array"
-        is JsonObject -> filter.type == null || filter.type == "object"
-        is JsonPrimitive -> when (filter.type) {
-            "string" -> this.isString
-            "null" -> this == JsonNull
-            "boolean" -> !this.isString && this.booleanOrNull != null
-            "integer" -> !this.isString && this.longOrNull != null
-            "number" -> !this.isString && this.doubleOrNull != null
-            else -> true // no further filtering required
-        }
-    }
-
-    if (!typeMatchesElement) {
+internal fun JsonElement.matchConstraints(filter: ConstraintFilter): Boolean {
+    if (!matchType(filter)) {
         return false
     }
-
     filter.const?.let {
-        val isMatch = catchingUnwrapped {
-            it == this
-        }.getOrDefault(false)
-        if (!isMatch) {
+        if (!matchConst(it))
             return false
-        }
     }
     filter.pattern?.let {
-        val isMatch = catchingUnwrapped {
-            Regex(it).matches((this as JsonPrimitive).content)
-        }.getOrDefault(false)
-        if (!isMatch) {
+        if (!matchPattern(it))
             return false
-        }
     }
     filter.enum?.let { enum ->
-        val isMatch = catchingUnwrapped {
-            enum.any { value ->
-                value == (this as JsonPrimitive).content
-            }
-        }.getOrDefault(false)
-        if (!isMatch) {
+        if (!matchEnum(enum))
             return false
-        }
     }
-    // TODO: Implement support for other filters
     return true
 }
+
+private fun JsonElement.matchType(filter: ConstraintFilter): Boolean = when (this) {
+    is JsonArray -> filter.type == null || filter.type == "array"
+    is JsonObject -> filter.type == null || filter.type == "object"
+    is JsonPrimitive -> when (filter.type) {
+        "string" -> this.isString
+        "null" -> this == JsonNull
+        "boolean" -> !this.isString && this.booleanOrNull != null
+        "integer" -> !this.isString && this.longOrNull != null
+        "number" -> !this.isString && this.doubleOrNull != null
+        else -> true // no further filtering required
+    }
+}
+
+private fun JsonElement.matchConst(primitive: JsonPrimitive) =
+    catchingUnwrapped { primitive == this }
+        .getOrDefault(false)
+
+private fun JsonElement.matchPattern(string: String): Boolean =
+    catchingUnwrapped { Regex(string).matches((this as JsonPrimitive).content) }
+        .getOrDefault(false)
+
+private fun JsonElement.matchEnum(enum: Collection<String>): Boolean =
+    catchingUnwrapped { enum.any { it == (this as JsonPrimitive).content } }
+        .getOrDefault(false)
 
 open class InputEvaluationException(message: String) : Exception(message)
 
 class InvalidCredentialFormatException(format: CredentialFormatEnum, expected: Collection<CredentialFormatEnum>) :
-    Exception("Credential format `$format` does not match requirements: ${expected}")
+    Exception("Credential format `$format` does not match requirements: $expected")
 
 class InvalidCredentialSchemeException(scheme: String?, expected: Collection<String?>) :
-    Exception("Credential scheme `$scheme` does not match requirements: ${expected}")
+    Exception("Credential scheme `$scheme` does not match requirements: $expected")
 
 open class ConstraintEvaluationException(message: String) : InputEvaluationException(message)
 
 class ConstraintFieldsEvaluationException(
     message: String,
     val constraintFieldExceptions: Map<ConstraintField, Throwable>,
-) :
-    ConstraintEvaluationException(message)
+) : ConstraintEvaluationException(message)
 
 open class ConstraintFieldEvaluationException(message: String) : InputEvaluationException(message)
 
-class FailedFieldQueryException(val constraintField: ConstraintField) : ConstraintFieldEvaluationException(
-    "No match has been found to satisfy constraint field: $constraintField"
-)
+class FailedFieldQueryException(val constraintField: ConstraintField) :
+    ConstraintFieldEvaluationException("No match has been found to satisfy constraint field: $constraintField")
 
-class MissingFeatureSupportException(val featureName: String) : ConstraintFieldEvaluationException(
-    "Feature is not supported: $featureName"
-)
+class MissingFeatureSupportException(val featureName: String) :
+    ConstraintFieldEvaluationException("Feature is not supported: $featureName")
 
 class PredicateFeatureException(message: String) : InputEvaluationException(message)

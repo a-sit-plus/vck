@@ -12,9 +12,9 @@ import kotlinx.serialization.json.decodeFromJsonElement
 /**
  * SD-JWT representation of a [VerifiableCredential].
  * According to
- * [SD-JWT-based Verifiable Credentials (SD-JWT VC), Draft 10](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-10.html)
+ * [SD-JWT-based Verifiable Credentials (SD-JWT VC), Draft 10](https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/)
  * and
- * [Selective Disclosure for JWTs (SD-JWT), Draft 13](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-13.html)
+ * [Selective Disclosure for JSON Web Tokens](https://www.rfc-editor.org/rfc/rfc9901.html)
  */
 @Serializable
 data class VerifiableCredentialSdJwt(

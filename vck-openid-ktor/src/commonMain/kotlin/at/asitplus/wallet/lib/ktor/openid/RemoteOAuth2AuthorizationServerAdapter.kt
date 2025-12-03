@@ -3,14 +3,13 @@ package at.asitplus.wallet.lib.ktor.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
-import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER
-import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION
+import at.asitplus.openid.OpenIdConstants.WellKnownPaths
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenResponseParameters
-import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
+import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.TokenVerificationService
 import at.asitplus.wallet.lib.oidvci.DefaultNonceService
@@ -34,7 +33,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 
 /**
@@ -82,52 +80,17 @@ class RemoteOAuth2AuthorizationServerAdapter(
     }
 
     private val _metadata: Deferred<OAuth2AuthorizationServerMetadata> by scope.lazyDeferred {
-        catching {
-            client.get("$publicContext$PATH_WELL_KNOWN_OPENID_CONFIGURATION")
-                .body<OAuth2AuthorizationServerMetadata>()
-        }.getOrElse {
-            client.get("$publicContext$PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER")
-                .body<OAuth2AuthorizationServerMetadata>()
-        }
+        catching { loadOauthASMetadata() }
+            .getOrElse { loadOpenidConfiguration() }
     }
 
-    @Deprecated("Use [validateAccessToken] instead")
-    override val tokenVerificationService: TokenVerificationService
-        get() = object : TokenVerificationService {
+    private suspend fun loadOauthASMetadata() =
+        client.get(insertWellKnownPath(publicContext, WellKnownPaths.OauthAuthorizationServer))
+            .body<OAuth2AuthorizationServerMetadata>()
 
-            override suspend fun getTokenInfo(
-                tokenOrAuthHeader: String,
-            ): TokenInfo {
-                TODO("Not yet implemented")
-            }
-
-            override suspend fun validateAccessToken(
-                tokenOrAuthHeader: String,
-                httpRequest: RequestInfo?,
-                dpopNonceService: NonceService?,
-            ): KmmResult<Unit> {
-                TODO("Not yet implemented")
-            }
-
-            override suspend fun validateRefreshToken(
-                refreshToken: String,
-                httpRequest: RequestInfo?,
-                validatedClientKey: JsonWebKey?,
-            ): String {
-                TODO("Not yet implemented")
-            }
-
-            override suspend fun extractValidatedClientKey(httpRequest: RequestInfo?): KmmResult<JsonWebKey?> {
-                TODO("Not yet implemented")
-            }
-        }
-
-    @Deprecated("Use [metadata()] instead")
-    override val metadata: OAuth2AuthorizationServerMetadata by lazy {
-        runBlocking {
-            _metadata.await()
-        }
-    }
+    private suspend fun loadOpenidConfiguration() =
+        client.get(insertWellKnownPath(publicContext, WellKnownPaths.OpenidConfiguration))
+            .body<OAuth2AuthorizationServerMetadata>()
 
     override suspend fun metadata(): OAuth2AuthorizationServerMetadata = _metadata.await()
 
@@ -176,7 +139,7 @@ class RemoteOAuth2AuthorizationServerAdapter(
     }.onFailure { response ->
         dpopNonce(response)?.takeIf { retryCount == 0 }?.let { dpopNonce ->
             callTokenIntrospection(url, request, oauthMetadata, token, dpopNonce, retryCount + 1)
-        } ?: throw Exception("Error requesting Token Introspection: ${errorDescription ?: error}")
+        } ?: throw Exception("Error requesting Token Introspection: ${this?.errorDescription ?: this?.error}")
     }.onSuccessTokenIntrospection { response ->
         if (!active) {
             throw InvalidToken("Introspected token is not active")
@@ -221,7 +184,7 @@ class RemoteOAuth2AuthorizationServerAdapter(
     }.onFailure { response ->
         dpopNonce(response)?.takeIf { retryCount == 0 }?.let { dpopNonce ->
             fetchUserInfo(userInfoEndpoint, params, dpopNonce, retryCount + 1)
-        } ?: throw Exception("Error requesting UserInfo: ${errorDescription ?: error}")
+        } ?: throw Exception("Error requesting UserInfo: ${this?.errorDescription ?: this?.error}")
     }.onSuccessUserInfo {
         this
     }

@@ -56,7 +56,7 @@ import kotlin.time.Duration.Companion.minutes
  *
  * Implemented from
  * [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
- * , Draft 15, 2024-12-19.
+ * 1.0 from 2025-09-16.
  * Also implements necessary parts of
  * [OpenID4VC HAIP](https://openid.net/specs/openid4vc-high-assurance-interoperability-profile-1_0.html)
  * , Draft 03, 2025-02-07, e.g.
@@ -138,10 +138,6 @@ class SimpleAuthorizationService(
     private val requestObjectSigningAlgorithms: Set<JwsAlgorithm.Signature>? = setOf(JwsAlgorithm.Signature.ES256),
 ) : OAuth2AuthorizationServerAdapter, AuthorizationService {
 
-    @Deprecated("Use [validateAccessToken] instead")
-    override val tokenVerificationService: TokenVerificationService
-        get() = tokenService.verification
-
     private val _metadata: OAuth2AuthorizationServerMetadata by lazy {
         OAuth2AuthorizationServerMetadata(
             issuer = publicContext,
@@ -165,14 +161,11 @@ class SimpleAuthorizationService(
         )
     }
 
-    @Deprecated("Use [metadata()] instead")
-    override val metadata: OAuth2AuthorizationServerMetadata by lazy { _metadata }
-
     /**
      * Serve this result JSON-serialized under `/.well-known/openid-configuration`,
-     * see [OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION],
+     * see [OpenIdConstants.WellKnownPaths.OpenidConfiguration],
      * and under `/.well-known/oauth-authorization-server`,
-     * see [OpenIdConstants.PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER]
+     * see [OpenIdConstants.WellKnownPaths.OauthAuthorizationServer].
      */
     override suspend fun metadata(): OAuth2AuthorizationServerMetadata = _metadata
 
@@ -211,50 +204,15 @@ class SimpleAuthorizationService(
     suspend fun credentialOfferWithPreAuthnForUser(
         user: OidcUserInfoExtended,
         credentialIssuer: String,
+        configurationIds: Collection<String> = this.strategy.allCredentialIdentifier(),
     ): CredentialOffer = CredentialOffer(
         credentialIssuer = credentialIssuer,
-        configurationIds = strategy.allCredentialIdentifier(),
+        configurationIds = configurationIds.ifEmpty { strategy.allCredentialIdentifier() },
         grants = CredentialOfferGrants(
             preAuthorizedCode = CredentialOfferGrantsPreAuthCode(
                 preAuthorizedCode = providePreAuthorizedCode(user),
                 authorizationServer = publicContext
             )
-        )
-    )
-
-    @Deprecated(
-        "Use par with RequestInfo instead",
-        ReplaceWith("par(input, RequestInfo(clientAttestation = clientAttestation, clientAttestationPop = clientAttestationPop))")
-    )
-    override suspend fun par(
-        input: String,
-        clientAttestation: String?,
-        clientAttestationPop: String?,
-    ) = par(
-        input,
-        RequestInfo(
-            "url",
-            HttpMethod.Get,
-            clientAttestation = clientAttestation,
-            clientAttestationPop = clientAttestationPop
-        )
-    )
-
-    @Deprecated(
-        "Use par with RequestInfo instead",
-        ReplaceWith("par(request, RequestInfo(clientAttestation = clientAttestation, clientAttestationPop = clientAttestationPop))")
-    )
-    override suspend fun par(
-        request: AuthenticationRequestParameters,
-        clientAttestation: String?,
-        clientAttestationPop: String?,
-    ) = par(
-        request as RequestParameters,
-        RequestInfo(
-            "url",
-            HttpMethod.Get,
-            clientAttestation = clientAttestation,
-            clientAttestationPop = clientAttestationPop
         )
     )
 
@@ -333,15 +291,6 @@ class SimpleAuthorizationService(
                 .also { Napier.i("authorize returns $it") }
         }
     }
-
-    @Deprecated(
-        "Use authorize with RequestParameters instead",
-        replaceWith = ReplaceWith("authorize(input, RequestInfo(loadUserFun))")
-    )
-    override suspend fun authorize(
-        input: AuthenticationRequestParameters,
-        loadUserFun: OAuth2LoadUserFun,
-    ) = authorize(input as RequestParameters, loadUserFun)
 
     internal suspend fun issueCodeForUserInfo(
         userInfo: OidcUserInfoExtended,
@@ -449,7 +398,10 @@ class SimpleAuthorizationService(
             tokenService.generation.buildToken(
                 httpRequest = httpRequest,
                 userInfo = clientAuthRequest.userInfo,
-                authorizationDetails = strategy.matchAuthorizationDetails(clientAuthRequest, request),
+                authorizationDetails = strategy.matchAndFilterAuthorizationDetailsForTokenResponse(
+                    clientAuthRequest.authnDetails,
+                    request.authorizationDetails!!
+                ),
                 scope = null,
                 validatedClientKey = validatedClientKey,
             )
@@ -465,7 +417,7 @@ class SimpleAuthorizationService(
             tokenService.generation.buildToken(
                 httpRequest = httpRequest,
                 userInfo = clientAuthRequest.userInfo,
-                authorizationDetails = strategy.validateAuthorizationDetails(clientAuthRequest.authnDetails),
+                authorizationDetails = strategy.filterAuthorizationDetailsForTokenResponse(clientAuthRequest.authnDetails),
                 scope = null,
                 validatedClientKey = validatedClientKey,
             )
@@ -546,7 +498,7 @@ class SimpleAuthorizationService(
                 issuedCode = it,
                 userInfo = userInfo,
                 scope = strategy.validScopes(),
-                authnDetails = strategy.validAuthorizationDetails()
+                authnDetails = strategy.validAuthorizationDetails(publicContext)
             )
         )
     }

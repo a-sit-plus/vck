@@ -20,7 +20,7 @@ data class SupportedAlgorithmsContainerIso(
      * P-256 key, then it matches an [issuerAuthAlgorithmInts] element of `-7` and `-9`.
      */
     @SerialName("issuerauth_alg_values")
-    val issuerAuthAlgorithmInts: Set<Int>,
+    val issuerAuthAlgorithmInts: Set<Int>? = null,
 
     /**
      * OID4VP: OPTIONAL. A non-empty array containing cryptographic algorithm identifiers. The Credential MUST be
@@ -53,8 +53,8 @@ data class SupportedAlgorithmsContainerIso(
      * P-256 key, then it matches an [issuerAuthAlgorithmInts] element of `-7` and `-9`.
      */
     @Transient
-    val issuerAuthAlgorithms: Set<CoseAlgorithm> = issuerAuthAlgorithmInts
-        .mapNotNull { s -> CoseAlgorithm.entries.firstOrNull { it.coseValue == s } }.toSet()
+    val issuerAuthAlgorithms: Set<CoseAlgorithm>? = issuerAuthAlgorithmInts
+        ?.mapNotNull { s -> CoseAlgorithm.entries.firstOrNull { it.coseValue == s } }?.toSet()
 
     /**
      * OID4VP: OPTIONAL. A non-empty array containing cryptographic algorithm identifiers. The Credential MUST be

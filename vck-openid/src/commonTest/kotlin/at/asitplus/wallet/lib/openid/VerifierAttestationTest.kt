@@ -6,6 +6,7 @@ import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
@@ -22,99 +23,92 @@ import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.TestConfig
-import de.infix.testBalloon.framework.aroundEach
-import de.infix.testBalloon.framework.testSuite
+import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlinx.coroutines.runBlocking
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 
 val VerifierAttestationTest by testSuite {
 
-    lateinit var clientId: String
-    lateinit var redirectUrl: String
-    lateinit var walletUrl: String
-    lateinit var holderKeyMaterial: KeyMaterial
-    lateinit var verifierKeyMaterial: KeyMaterial
-    lateinit var holderAgent: Holder
-    lateinit var holderOid4vp: OpenId4VpHolder
-    lateinit var verifierOid4vp: OpenId4VpVerifier
-
-    testConfig = TestConfig.aroundEach {
-        holderKeyMaterial = EphemeralKeyWithoutCert()
-        verifierKeyMaterial = EphemeralKeyWithoutCert()
-        clientId = "${uuid4()}"
-        redirectUrl = "https://example.com/rp/${uuid4()}"
-        walletUrl = "https://example.com/wallet/${uuid4()}"
-        holderAgent = HolderAgent(holderKeyMaterial)
-
-        holderAgent.storeCredential(
-            IssuerAgent(
-                identifier = "https://issuer.example.com/".toUri(),
-                randomSource = RandomSource.Default
-            ).issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    holderKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-                ).getOrThrow()
-            ).getOrThrow().toStoreCredentialInput()
-        )
-
-        holderOid4vp = OpenId4VpHolder(
-            holder = holderAgent,
-            randomSource = RandomSource.Default,
-        )
-        it()
-    }
-
-    "test with request object and Attestation JWT" {
-        val sprsKeyMaterial = EphemeralKeyWithoutCert()
-        val attestationJwt = buildAttestationJwt(sprsKeyMaterial, clientId, verifierKeyMaterial)
-        verifierOid4vp = OpenId4VpVerifier(
-            keyMaterial = verifierKeyMaterial,
-            clientIdScheme = ClientIdScheme.VerifierAttestation(attestationJwt, redirectUrl),
-        )
-        val authnRequestWithRequestObject = verifierOid4vp.createAuthnRequest(
-            requestOptionsAtomicAttribute(), OpenId4VpVerifier.CreationOptions.SignedRequestByValue(walletUrl)
-        ).getOrThrow().url
-
-        holderOid4vp = OpenId4VpHolder(
-            holder = holderAgent,
-            requestObjectJwsVerifier = attestationJwtVerifier(sprsKeyMaterial.jsonWebKey),
-            randomSource = RandomSource.Default,
-        )
-        val authnResponse = holderOid4vp.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()
-            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
-            .shouldBeInstanceOf<AuthnResponseResult.Success>()
-        result.vp.freshVerifiableCredentials.shouldNotBeEmpty()
-        result.vp.freshVerifiableCredentials.map { it.vcJws }.forEach {
-            it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
+    withFixtureGenerator {
+        object {
+            val holderKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert()
+            val verifierKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert()
+            val clientId: String = "${uuid4()}"
+            val redirectUrl: String = "https://example.com/rp/${uuid4()}"
+            val walletUrl: String = "https://example.com/wallet/${uuid4()}"
+            val holderAgent: Holder = HolderAgent(holderKeyMaterial).also { agent ->
+                runBlocking {
+                    agent.storeCredential(
+                        IssuerAgent(
+                            identifier = "https://issuer.example.com/".toUri(),
+                            randomSource = RandomSource.Default
+                        ).issueCredential(
+                            DummyCredentialDataProvider.getCredential(
+                                holderKeyMaterial.publicKey,
+                                ConstantIndex.AtomicAttribute2023,
+                                ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                            ).getOrThrow()
+                        ).getOrThrow().toStoreCredentialInput()
+                    )
+                }
+            }
+            val holderOid4vp: OpenId4VpHolder = OpenId4VpHolder(
+                holder = holderAgent,
+                randomSource = RandomSource.Default,
+            )
         }
-    }
-    "test with request object and invalid Attestation JWT" {
-        val sprsKeyMaterial = EphemeralKeyWithoutCert()
-        val attestationJwt = buildAttestationJwt(sprsKeyMaterial, clientId, verifierKeyMaterial)
+    } - {
 
-        verifierOid4vp = OpenId4VpVerifier(
-            keyMaterial = verifierKeyMaterial,
-            clientIdScheme = ClientIdScheme.VerifierAttestation(attestationJwt, redirectUrl)
-        )
-        val authnRequestWithRequestObject = verifierOid4vp.createAuthnRequest(
-            requestOptionsAtomicAttribute(), OpenId4VpVerifier.CreationOptions.SignedRequestByValue(walletUrl)
-        ).getOrThrow().url
+        "test with request object and Attestation JWT" {
+            val sprsKeyMaterial = EphemeralKeyWithoutCert()
+            val attestationJwt = buildAttestationJwt(sprsKeyMaterial, it.clientId, it.verifierKeyMaterial)
+            val verifierOid4vp = OpenId4VpVerifier(
+                keyMaterial = it.verifierKeyMaterial,
+                clientIdScheme = ClientIdScheme.VerifierAttestation(attestationJwt, it.redirectUrl),
+            )
+            val authnRequestWithRequestObject = verifierOid4vp.createAuthnRequest(
+                requestOptionsAtomicAttribute(), OpenId4VpVerifier.CreationOptions.SignedRequestByValue(it.walletUrl)
+            ).getOrThrow().url
 
-        holderOid4vp = OpenId4VpHolder(
-            holder = holderAgent,
-            requestObjectJwsVerifier = attestationJwtVerifier(EphemeralKeyWithoutCert().jsonWebKey),
-            randomSource = RandomSource.Default,
-        )
-        shouldThrow<OAuth2Exception> {
-            holderOid4vp.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()
+            val holderOid4vp = OpenId4VpHolder(
+                holder = it.holderAgent,
+                requestObjectJwsVerifier = attestationJwtVerifier(sprsKeyMaterial.jsonWebKey),
+                randomSource = RandomSource.Default,
+            )
+            val authnResponse = holderOid4vp.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+
+            verifierOid4vp.validateAuthnResponse(authnResponse.url)
+                .shouldBeInstanceOf<AuthnResponseResult.Success>().apply {
+                    vp.freshVerifiableCredentials.shouldNotBeEmpty().map { it.vcJws }.forEach {
+                        it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
+                    }
+                }
+        }
+        "test with request object and invalid Attestation JWT" {
+            val sprsKeyMaterial = EphemeralKeyWithoutCert()
+            val attestationJwt = buildAttestationJwt(sprsKeyMaterial, it.clientId, it.verifierKeyMaterial)
+
+            val verifierOid4vp = OpenId4VpVerifier(
+                keyMaterial = it.verifierKeyMaterial,
+                clientIdScheme = ClientIdScheme.VerifierAttestation(attestationJwt, it.redirectUrl)
+            )
+            val authnRequestWithRequestObject = verifierOid4vp.createAuthnRequest(
+                requestOptionsAtomicAttribute(), OpenId4VpVerifier.CreationOptions.SignedRequestByValue(it.walletUrl)
+            ).getOrThrow().url
+
+            val holderOid4vp = OpenId4VpHolder(
+                holder = it.holderAgent,
+                requestObjectJwsVerifier = attestationJwtVerifier(EphemeralKeyWithoutCert().jsonWebKey),
+                randomSource = RandomSource.Default,
+            )
+            shouldThrow<OAuth2Exception> {
+                holderOid4vp.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()
+            }
         }
     }
 }

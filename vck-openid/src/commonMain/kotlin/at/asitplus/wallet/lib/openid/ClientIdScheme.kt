@@ -16,31 +16,11 @@ sealed class ClientIdScheme(
     val issuerUri: String? = clientIdWithoutPrefix,
 ) {
 
-    @Deprecated("Parameter `useDeprecatedClientIdScheme` is no longer supported", level = DeprecationLevel.ERROR)
-    constructor(
-        scheme: OpenIdConstants.ClientIdScheme,
-        clientIdWithoutPrefix: String,
-        redirectUri: String,
-        /** Optional parameter, to be used as `iss` for signed authorization requests */
-        issuerUri: String? = clientIdWithoutPrefix,
-        /** Whether to use the deprecated `client_id_scheme` field from OpenID4VP. */
-        useDeprecatedClientIdScheme: Boolean = false,
-    ) : this(
-        scheme = scheme,
-        clientIdWithoutPrefix = clientIdWithoutPrefix,
-        redirectUri = redirectUri,
-        issuerUri = issuerUri
-    )
-
     val clientId: String
         get() = when (scheme) {
             OpenIdConstants.ClientIdScheme.PreRegistered -> clientIdWithoutPrefix
             else -> scheme.prefix + clientIdWithoutPrefix
         }
-
-    @Deprecated("Deprecated clientIdScheme  is no longer supported", level = DeprecationLevel.ERROR)
-    val clientIdScheme: OpenIdConstants.ClientIdScheme?
-        get() = null
 
     /**
      * This Client Identifier Scheme allows the Verifier to authenticate using a JWT that is bound to a certain
@@ -63,16 +43,6 @@ sealed class ClientIdScheme(
         clientIdWithoutPrefix = attestationJwt.payload.subject!!,
         redirectUri = redirectUri,
     ) {
-        @Deprecated("Parameter `useDeprecatedClientIdScheme` is no longer supported", level = DeprecationLevel.ERROR)
-        constructor(
-            attestationJwt: JwsSigned<JsonWebToken>,
-            redirectUri: String,
-            /** Whether to use the deprecated `client_id_scheme` field from OpenID4VP. */
-            useDeprecatedClientIdScheme: Boolean,
-        ) : this(
-            attestationJwt = attestationJwt,
-            redirectUri = redirectUri
-        )
 
         init {
             require(redirectUri.contains(":/"))
@@ -102,18 +72,6 @@ sealed class ClientIdScheme(
         clientIdWithoutPrefix = clientIdDnsName,
         redirectUri = redirectUri,
     ) {
-        @Deprecated("Parameter `useDeprecatedClientIdScheme` is no longer supported", level = DeprecationLevel.ERROR)
-        constructor(
-            chain: CertificateChain,
-            clientIdDnsName: String,
-            redirectUri: String,
-            /** Whether to use the deprecated `client_id_scheme` field from OpenID4VP. */
-            useDeprecatedClientIdScheme: Boolean,
-        ) : this(
-            chain = chain,
-            clientIdDnsName = clientIdDnsName,
-            redirectUri = redirectUri
-        )
 
         init {
             require(chain.first().tbsCertificate.subjectAlternativeNames?.dnsNames?.contains(clientIdDnsName) == true)
@@ -154,12 +112,6 @@ sealed class ClientIdScheme(
         clientIdWithoutPrefix = redirectUri,
         redirectUri = redirectUri,
     ) {
-        @Deprecated("Parameter `useDeprecatedClientIdScheme` is no longer supported", level = DeprecationLevel.ERROR)
-        constructor(
-            redirectUri: String,
-            /** Whether to use the deprecated `client_id_scheme` field from OpenID4VP. */
-            useDeprecatedClientIdScheme: Boolean,
-        ) : this(redirectUri = redirectUri)
 
         init {
             require(redirectUri.contains(":/"))
@@ -182,20 +134,6 @@ sealed class ClientIdScheme(
         redirectUri = redirectUri,
         issuerUri = issuerUri,
     ) {
-
-        @Deprecated("Parameter `useDeprecatedClientIdScheme` is no longer supported", level = DeprecationLevel.ERROR)
-        constructor(
-            clientId: String,
-            redirectUri: String,
-            /** Optional parameter, to be used as `iss` for signed authorization requests */
-            issuerUri: String? = null,
-            /** Whether to use the deprecated `client_id_scheme` field from OpenID4VP. */
-            useDeprecatedClientIdScheme: Boolean,
-        ) : this(
-            clientId = clientId,
-            redirectUri = redirectUri,
-            issuerUri = issuerUri
-        )
 
         init {
             require(!clientId.contains(":"))

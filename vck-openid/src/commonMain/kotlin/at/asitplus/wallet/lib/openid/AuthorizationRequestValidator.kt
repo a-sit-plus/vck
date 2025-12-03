@@ -84,17 +84,13 @@ internal class AuthorizationRequestValidator(
         }
     }
 
-    @Suppress("DEPRECATION")
     private fun ClientIdScheme?.isAnyX509() =
-        (this == ClientIdScheme.X509SanDns)
-                || (this == ClientIdScheme.X509SanUri)
-                || (this == ClientIdScheme.X509Hash)
+        (this == ClientIdScheme.X509SanDns) || (this == ClientIdScheme.X509Hash)
 
-    @Suppress("DEPRECATION")
     @Throws(OAuth2Exception::class)
     private fun AuthenticationRequestParameters.verifyClientMetadata() {
-        if (clientMetadata == null && clientMetadataUri == null) {
-            throw InvalidRequest("client_metadata is null, but client_id_scheme is redirect_uri")
+        if (clientMetadata == null) {
+            throw InvalidRequest("client_metadata is null, but client_id_prefix is redirect_uri")
         }
     }
 
@@ -128,7 +124,6 @@ internal class AuthorizationRequestValidator(
         val leaf = jwsSigned.header.certificateChain!!.leaf
         when (clientIdScheme) {
             ClientIdScheme.X509SanDns -> verifyX509SanDns(leaf, responseModeIsDirectPost, responseModeIsDcApi)
-            ClientIdScheme.X509SanUri -> verifyX509SanUri(leaf)
             ClientIdScheme.X509Hash -> verifyX509SanHash(leaf)
             // checked before calling this method
             else -> throw InvalidRequest("Unexpected clientIdScheme $clientIdScheme")

@@ -1,17 +1,15 @@
 package at.asitplus.openid
 
-import at.asitplus.catchingUnwrapped
 import at.asitplus.csc.collection_entries.DocumentLocation
 import at.asitplus.csc.collection_entries.OAuthDocumentDigest
 import at.asitplus.csc.enums.SignatureQualifier
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.signum.indispensable.contentEqualsIfArray
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.decodeFromJsonElement
 
 @Serializable
 sealed class AuthorizationDetails
@@ -30,17 +28,10 @@ data class OpenIdAuthorizationDetails(
      * Credential being described in [IssuerMetadata.supportedCredentialConfigurations].
      * The referenced object in [IssuerMetadata.supportedCredentialConfigurations] conveys the details, such as the
      * format and format-specific parameters like `vct` for SD-JWT VC or `doctype` for ISO mdoc.
+     * Note: Set by the Wallet in the token request.
      */
     @SerialName("credential_configuration_id")
     val credentialConfigurationId: String? = null,
-
-    @Deprecated("Removed in OID4VCI draft 16")
-    @SerialName("format")
-    val format: CredentialFormatEnum? = null,
-
-    @Deprecated("Removed in OID4VCI draft 16")
-    @SerialName("doctype")
-    val docType: String? = null,
 
     /**
      * OID4VCI: ISO mDL: OPTIONAL. An array of claims description objects as defined in Appendix B.2.
@@ -48,14 +39,6 @@ data class OpenIdAuthorizationDetails(
      */
     @SerialName("claims")
     val claimDescription: Set<ClaimDescription>? = null,
-
-    @Deprecated("Removed in OID4VCI draft 16")
-    @SerialName("credential_definition")
-    val credentialDefinition: SupportedCredentialFormatDefinition? = null,
-
-    @Deprecated("Removed in OID4VCI draft 16")
-    @SerialName("vct")
-    val sdJwtVcType: String? = null,
 
     /**
      * OID4VCI: If the Credential Issuer metadata contains an [IssuerMetadata.authorizationServers] parameter, the
@@ -69,18 +52,11 @@ data class OpenIdAuthorizationDetails(
      * the Access Token returned in this response. Each of these Credential Datasets corresponds to the same
      * Credential Configuration in the [IssuerMetadata.supportedCredentialConfigurations]. The Wallet MUST use these
      * identifiers together with an Access Token in subsequent Credential Requests.
-     * Note: Is only required in the token response!
+     * Note: Set by the AS in the token response.
      */
     @SerialName("credential_identifiers")
     val credentialIdentifiers: Set<String>? = null,
-) : AuthorizationDetails() {
-
-    @Transient
-    @Deprecated("Use claimDescription instead")
-    val claims: JsonElement? = null
-
-}
-
+) : AuthorizationDetails()
 
 /**
  * CSC-API v2.0.0.2

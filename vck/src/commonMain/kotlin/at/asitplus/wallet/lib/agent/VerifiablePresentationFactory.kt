@@ -13,6 +13,9 @@ import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
+import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult
+import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.ClaimsQueryResults
+import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.josef.JwsSigned
@@ -45,16 +48,6 @@ class VerifiablePresentationFactory(
         SignJwt(keyMaterial, JwsHeaderNone()),
 ) {
 
-    suspend fun createVerifiablePresentationForIsoCredentials(
-        request: PresentationRequestParameters,
-        credentialAndDisclosedAttributes: Map<SubjectCredentialStore.StoreEntry.Iso, Collection<NormalizedJsonPath>>,
-    ): KmmResult<CreatePresentationResult> = catching {
-        createIsoPresentation(
-            request = request,
-            credentialAndRequestedClaims = credentialAndDisclosedAttributes,
-        )
-    }
-
     suspend fun createVerifiablePresentation(
         request: PresentationRequestParameters,
         credential: SubjectCredentialStore.StoreEntry,
@@ -85,7 +78,7 @@ class VerifiablePresentationFactory(
         disclosedAttributes: DCQLCredentialQueryMatchingResult,
     ): KmmResult<CreatePresentationResult> = catching {
         when (credential) {
-            is SubjectCredentialStore.StoreEntry.Vc -> if (disclosedAttributes !is DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult) {
+            is SubjectCredentialStore.StoreEntry.Vc -> if (disclosedAttributes !is AllClaimsMatchingResult) {
                 throw IllegalArgumentException("Credential type only allows disclosure of all attributes.")
             } else createVcPresentation(
                 request = request,
@@ -96,11 +89,11 @@ class VerifiablePresentationFactory(
                 request = request,
                 validSdJwtCredential = credential,
                 requestedClaims = when (disclosedAttributes) {
-                    DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult -> credential.disclosures.entries.map {
+                    AllClaimsMatchingResult -> credential.disclosures.entries.map {
                         NormalizedJsonPath() + it.value!!.claimName!!
                     }
 
-                    is DCQLCredentialQueryMatchingResult.ClaimsQueryResults -> disclosedAttributes.claimsQueryResults.map {
+                    is ClaimsQueryResults -> disclosedAttributes.claimsQueryResults.map {
                         it as DCQLClaimsQueryResult.JsonResult
                     }.map {
                         it.nodeList.map {
@@ -120,13 +113,13 @@ class VerifiablePresentationFactory(
     private fun DCQLCredentialQueryMatchingResult.toRequestedIsoClaims(
         credential: SubjectCredentialStore.StoreEntry.Iso,
     ) = when (this) {
-        DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult -> credential.issuerSigned.namespaces!!.entries.flatMap { namespace ->
+        AllClaimsMatchingResult -> credential.issuerSigned.namespaces!!.entries.flatMap { namespace ->
             namespace.value.entries.map {
                 NormalizedJsonPath() + namespace.key + it.value.elementIdentifier
             }
         }
 
-        is DCQLCredentialQueryMatchingResult.ClaimsQueryResults -> claimsQueryResults.map {
+        is ClaimsQueryResults -> claimsQueryResults.map {
             it as DCQLClaimsQueryResult.IsoMdocResult
         }.map {
             NormalizedJsonPath() + it.namespace + it.claimName
@@ -177,8 +170,9 @@ class VerifiablePresentationFactory(
                 }
             }
 
-            val docType = credential.scheme?.isoDocType ?: credential.issuerSigned.issuerAuth.payload?.docType
-            ?: throw PresentationException("Scheme not known or not registered")
+            val docType = credential.scheme?.isoDocType
+                ?: credential.issuerSigned.issuerAuth.payload?.docType
+                ?: throw PresentationException("Scheme not known or not registered")
             val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
             val input = IsoDeviceSignatureInput(docType, deviceNameSpaceBytes)
             val deviceSignature = request.calcIsoDeviceSignaturePlain(input)
@@ -203,8 +197,7 @@ class VerifiablePresentationFactory(
                 version = "1.0",
                 documents = documents.toTypedArray(),
                 status = 0U,
-            ),
-            mdocGeneratedNonce = request.mdocGeneratedNonce
+            )
         )
     }
 
@@ -260,7 +253,7 @@ class VerifiablePresentationFactory(
     ): JwsSigned<KeyBindingJws> = signKeyBinding(
         JwsContentTypeConstants.KB_JWT,
         KeyBindingJws(
-            issuedAt = Clock.System.now(),
+            issuedAt = Clock.System.now().truncateToSeconds(),
             audience = request.audience,
             challenge = request.nonce,
             sdHash = issuerJwtPlusDisclosures.encodeToByteArray().sha256(),

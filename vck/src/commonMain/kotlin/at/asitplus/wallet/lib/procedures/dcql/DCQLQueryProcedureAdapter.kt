@@ -15,13 +15,7 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
         credentials: List<SubjectCredentialStore.StoreEntry>
     ): KmmResult<DCQLQueryResult<SubjectCredentialStore.StoreEntry>> = dcqlQuery.execute(
         availableCredentials = credentials,
-        credentialFormatExtractor = {
-            when (it) {
-                is SubjectCredentialStore.StoreEntry.Iso -> CredentialFormatEnum.MSO_MDOC
-                is SubjectCredentialStore.StoreEntry.SdJwt -> CredentialFormatEnum.DC_SD_JWT
-                is SubjectCredentialStore.StoreEntry.Vc -> CredentialFormatEnum.JWT_VC
-            }
-        },
+        credentialFormatExtractor = { it.credentialFormat },
         mdocCredentialDoctypeExtractor = {
             if (it !is SubjectCredentialStore.StoreEntry.Iso) {
                 throw IllegalArgumentException("Value is not an MDOC credential")

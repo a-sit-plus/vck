@@ -11,7 +11,7 @@ import kotlinx.serialization.Transient
 import kotlin.time.Instant
 
 /**
- * Key Binding JWT for SD-JWT, per spec [draft-ietf-oauth-selective-disclosure-jwt-08](https://datatracker.ietf.org/doc/draft-ietf-oauth-selective-disclosure-jwt/)
+ * Key Binding JWT for SD-JWT, per [RFC 9901](https://www.rfc-editor.org/rfc/rfc9901.html#name-key-binding-jwt).
  */
 @Serializable
 data class KeyBindingJws(

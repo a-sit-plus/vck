@@ -5,7 +5,6 @@ import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.wallet.lib.oauth2.RequestInfo
-import at.asitplus.wallet.lib.oauth2.TokenVerificationService
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import kotlinx.serialization.json.JsonObject
@@ -19,12 +18,6 @@ interface OAuth2AuthorizationServerAdapter {
 
     /** Used in several fields in [at.asitplus.openid.IssuerMetadata], to provide endpoint URLs to clients. */
     val publicContext: String
-
-    @Deprecated("Use [validateAccessToken] instead")
-    val tokenVerificationService: TokenVerificationService
-
-    @Deprecated("Use [metadata()] instead")
-    val metadata: OAuth2AuthorizationServerMetadata
 
     /** Provide necessary [OAuth2AuthorizationServerMetadata] JSON for a client to be able to authenticate. */
     suspend fun metadata(): OAuth2AuthorizationServerMetadata

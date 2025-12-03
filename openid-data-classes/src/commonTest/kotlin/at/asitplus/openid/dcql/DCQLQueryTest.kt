@@ -8,7 +8,7 @@ import at.asitplus.testballoon.minus
 import at.asitplus.testballoon.withData
 import at.asitplus.testballoon.withDataSuites
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.testSuite
+import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.collections.shouldBeIn
@@ -538,7 +538,6 @@ val DCQLQueryTest by testSuite {
                   ],
                   "credential_sets": [
                     {
-                      "purpose": "Identification",
                       "options": [
                         [ "pid" ],
                         [ "other_pid" ],
@@ -546,7 +545,6 @@ val DCQLQueryTest by testSuite {
                       ]
                     },
                     {
-                      "purpose": "Show your rewards card",
                       "required": false,
                       "options": [
                         [ "nice_to_have" ]
@@ -752,14 +750,12 @@ val DCQLQueryTest by testSuite {
                   ],
                   "credential_sets": [
                     {
-                      "purpose": "Identification",
                       "options": [
                         [ "mdl-id" ],
                         [ "photo_card-id" ]
                       ]
                     },
                     {
-                      "purpose": "Proof of address",
                       "required": false,
                       "options": [
                         [ "mdl-address" ],

@@ -7,7 +7,6 @@ import at.asitplus.openid.CredentialOffer
 import at.asitplus.openid.CredentialOfferGrants
 import at.asitplus.openid.CredentialOfferGrantsAuthCode
 import at.asitplus.openid.CredentialOfferGrantsPreAuthCode
-import at.asitplus.openid.CredentialRequestProof
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
@@ -37,8 +36,8 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
  */
 class OAuth2Client(
     /**
-     * Used to create [AuthenticationRequestParameters], [TokenRequestParameters] and [CredentialRequestProof],
-     * typically a URI.
+     * Used to create [AuthenticationRequestParameters], [TokenRequestParameters] and
+     * [at.asitplus.openid.CredentialRequestProofContainer], typically a URI.
      */
     val clientId: String = "https://wallet.a-sit.at/app",
     /**

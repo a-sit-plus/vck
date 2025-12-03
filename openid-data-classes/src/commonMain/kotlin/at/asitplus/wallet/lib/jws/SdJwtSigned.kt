@@ -88,9 +88,6 @@ data class SdJwtSigned(
             hashInput = (listOf(jws.serialize()) + disclosures).joinToString("~", postfix = "~")
         )
 
-        @Deprecated("Use parseCatching() instead", ReplaceWith("parseCatching(input)"))
-        fun parse(input: String): SdJwtSigned? = parseCatching(input).getOrNull()
-
         fun parseCatching(input: String): KmmResult<SdJwtSigned> = catching {
             require(input.contains("~")) { "Could not parse SD-JWT: $input" }
             val stringList = input.replace("[^A-Za-z0-9-_.~]".toRegex(), "").split("~")

@@ -41,10 +41,8 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.cbor.CoseHeaderNone
-import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
 import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
-import at.asitplus.wallet.lib.cbor.SignCoseFun
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -79,20 +77,13 @@ class OpenId4VpHolder(
     private val holder: Holder = HolderAgent(keyMaterial),
     /** Signs the ID token for SIOPv2 responses. */
     private val signIdToken: SignJwtFun<IdToken> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
-    @Deprecated("Removed, as OpenID4VP 1.0 does never sign responses")
-    private val signJarm: SignJwtFun<AuthenticationResponseParameters> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     /** Encrypts the authn response to the holder using [keyMaterial], if requested. */
     private val encryptJarm: EncryptJweFun = EncryptJwe(keyMaterial),
-    @Deprecated("Removed, as OpenID4VP 1.0 does never sign responses")
-    private val signError: SignJwtFun<OAuth2Error> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     /** Advertised in [metadata] and compared against holder's requirements. */
     private val supportedAlgorithms: Set<SignatureAlgorithm> = setOf(SignatureAlgorithm.ECDSAwithSHA256),
     /** Signs the session transcript for mDoc responses. */
     private val signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> =
         SignCoseDetached(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
-    @Deprecated("Removed, as not contained in any specification")
-    private val signDeviceAuthFallback: SignCoseFun<ByteArray> =
-        SignCose(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
     /** Clock used for the signed ID token. */
     private val clock: Clock = Clock.System,
     /** Advertised as `issuer` in [metadata]. */
@@ -115,7 +106,13 @@ class OpenId4VpHolder(
     private val walletNonceMapStore: MapStore<String, String> = DefaultMapStore(),
     /** Source for random bytes, i.e., nonces for encrypted responses. */
     private val randomSource: RandomSource = RandomSource.Secure,
+    /** Callback to load encryption keys for pre-registered clients. */
+    private val lookupJsonWebKeysForClient: (JsonWebKeyLookupInput) -> JsonWebKeySet? = { null }
 ) {
+
+    data class JsonWebKeyLookupInput(
+        val clientId: String?
+    )
 
     private val supportedJwsAlgorithms = supportedAlgorithms
         .mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }
@@ -137,20 +134,21 @@ class OpenId4VpHolder(
         OAuth2AuthorizationServerMetadata(
             issuer = clientId,
             authorizationEndpoint = authorizationEndpoint,
-            responseTypesSupported = setOf(OpenIdConstants.ID_TOKEN),
+            responseTypesSupported = setOf(OpenIdConstants.ID_TOKEN, OpenIdConstants.VP_TOKEN),
             scopesSupported = setOf(OpenIdConstants.SCOPE_OPENID),
-            subjectTypesSupported = setOf("pairwise", "public"),
             idTokenSigningAlgorithmsSupportedStrings = supportedJwsAlgorithms.toSet(),
             requestObjectSigningAlgorithmsSupportedStrings = supportedJwsAlgorithms.toSet(),
             subjectSyntaxTypesSupported = setOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY, BINDING_METHOD_JWK),
             idTokenTypesSupported = setOf(IdTokenType.SUBJECT_SIGNED),
             presentationDefinitionUriSupported = false,
-            clientIdSchemesSupported = listOf(
+            clientIdPrefixesSupported = listOf(
                 ClientIdScheme.PreRegistered,
                 ClientIdScheme.RedirectUri,
                 ClientIdScheme.VerifierAttestation,
-                ClientIdScheme.X509SanDns
+                ClientIdScheme.X509SanDns,
+                ClientIdScheme.X509Hash
             ).map { it.stringRepresentation }.toSet(),
+            responseModesSupported = OpenIdConstants.ResponseMode.entries.map { it.stringRepresentation }.toSet(),
             vpFormatsSupported = VpFormatsSupported(
                 vcJwt = SupportedAlgorithmsContainerJwt(
                     algorithmStrings = supportedJwsAlgorithms.toSet()
@@ -187,19 +185,6 @@ class OpenId4VpHolder(
         createAuthnResponse(parse(input)).getOrThrow()
     }
 
-    /**
-     * Pass in the URL sent by the Verifier (containing the [AuthenticationRequestParameters] as query parameters),
-     * to parse into [RequestParametersFrom] and [AuthenticationRequestParameters].
-     *
-     * Exceptions thrown during request parsing are caught by [KmmResult].
-     */
-    @Deprecated("Use startAuthorizationResponsePreparation() instead")
-    suspend fun parseAuthenticationRequestParameters(
-        input: String,
-    ): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> = catching {
-        parse(input)
-    }
-
     @Suppress("UNCHECKED_CAST")
     private suspend fun parse(
         input: String,
@@ -211,13 +196,13 @@ class OpenId4VpHolder(
         error: Throwable,
         request: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<AuthenticationResponseResult> = catching {
-        val clientMetadata = request.parameters.loadClientMetadata()
         authenticationResponseFactory.createAuthenticationResponse(
             request = request,
             response = AuthenticationResponse.Error(
                 error = error.toOAuth2Error(request),
-                clientMetadata = clientMetadata,
-                jsonWebKeys = clientMetadata?.loadJsonWebKeySet()?.keys,
+                clientMetadata = request.parameters.clientMetadata,
+                jsonWebKeys = request.parameters.clientMetadata?.loadJsonWebKeySet()?.keys
+                    ?: lookupJsonWebKeysForClient(JsonWebKeyLookupInput(request.parameters.clientId))?.keys,
             )
         )
     }
@@ -266,29 +251,15 @@ class OpenId4VpHolder(
         params: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<AuthorizationResponsePreparationState> = catching {
         authorizationRequestValidator.validateAuthorizationRequest(params)
-        val clientMetadata = params.parameters.loadClientMetadata()
         AuthorizationResponsePreparationState(
             request = params,
             credentialPresentationRequest = params.parameters.loadCredentialRequest(),
-            clientMetadata = clientMetadata,
-            jsonWebKeys = clientMetadata?.loadJsonWebKeySet()?.keys,
+            clientMetadata = params.parameters.clientMetadata,
+            jsonWebKeys = params.parameters.clientMetadata?.loadJsonWebKeySet()?.keys
+                ?: lookupJsonWebKeysForClient(JsonWebKeyLookupInput(params.parameters.clientId))?.keys,
             requestObjectVerified = (params as? RequestParametersFrom.JwsSigned)?.verified,
             verifierInfo = params.parameters.verifierInfo
         )
-    }
-
-    @Suppress("DEPRECATION")
-    @Deprecated("Use finalizeAuthorizationResponse with AuthorizationResponsePreparationState")
-    suspend fun finalizeAuthorizationResponse(
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
-        clientMetadata: RelyingPartyMetadata?,
-        credentialPresentation: CredentialPresentation?,
-    ): KmmResult<AuthenticationResponseResult> = finalizeAuthorizationResponseParameters(
-        request = request,
-        clientMetadata = clientMetadata,
-        credentialPresentation = credentialPresentation
-    ).map {
-        authenticationResponseFactory.createAuthenticationResponse(request, it)
     }
 
     /**
@@ -309,18 +280,6 @@ class OpenId4VpHolder(
         }
     }
 
-    @Deprecated("Use finalizeAuthorizationResponseParameters with AuthorizationResponsePreparationState")
-    suspend fun finalizeAuthorizationResponseParameters(
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
-        clientMetadata: RelyingPartyMetadata?,
-        credentialPresentation: CredentialPresentation?,
-    ): KmmResult<AuthenticationResponse> = catching {
-        finalizeAuthorizationResponseParameters(
-            state = startAuthorizationResponsePreparation(request).getOrThrow(),
-            credentialPresentation = credentialPresentation
-        ).getOrThrow()
-    }
-
     /**
      * Finalize the authorization response parameters
      *
@@ -334,6 +293,7 @@ class OpenId4VpHolder(
         with(state) {
             val audience = request.extractAudience(jsonWebKeys)
             val jsonWebKeys = jsonWebKeys?.combine(request.extractLeafCertKey())
+                ?: lookupJsonWebKeysForClient(JsonWebKeyLookupInput(request.parameters.clientId))?.keys
             val idToken = presentationFactory.createSignedIdToken(clock, keyMaterial.publicKey, request)
                 .getOrNull()?.serialize()
             val presentation = credentialPresentation ?: credentialPresentationRequest?.toCredentialPresentation()
@@ -359,8 +319,7 @@ class OpenId4VpHolder(
             AuthenticationResponse.Success(
                 params = parameters,
                 clientMetadata = clientMetadata,
-                jsonWebKeys = jsonWebKeys,
-                mdocGeneratedNonce = resultContainer?.mdocGeneratedNonce
+                jsonWebKeys = jsonWebKeys
             )
         }
     }
@@ -456,12 +415,6 @@ class OpenId4VpHolder(
         presentationDefinition ?: presentationDefinitionUrl
             ?.let { remoteResourceRetriever(RemoteResourceRetrieverInput(it)) }
             ?.let { vckJsonSerializer.decodeFromString(it) }
-
-    @Suppress("DEPRECATION")
-    private suspend fun AuthenticationRequestParameters.loadClientMetadata(): RelyingPartyMetadata? =
-        clientMetadata ?: clientMetadataUri
-            ?.let { remoteResourceRetriever(RemoteResourceRetrieverInput(it)) }
-            ?.let { joseCompliantSerializer.decodeFromString(it) }
 
 }
 

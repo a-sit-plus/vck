@@ -1,5 +1,11 @@
-import at.asitplus.gradle.*
-import org.jetbrains.kotlin.konan.target.HostManager
+import at.asitplus.gradle.VcLibVersions
+import at.asitplus.gradle.coroutines
+import at.asitplus.gradle.envExtra
+import at.asitplus.gradle.exportXCFramework
+import at.asitplus.gradle.ktor
+import at.asitplus.gradle.napier
+import at.asitplus.gradle.setupDokka
+import at.asitplus.gradle.vckAndroid
 
 plugins {
     id("at.asitplus.gradle.vclib-conventions")
@@ -25,12 +31,7 @@ kotlin {
         commonMain {
             dependencies {
                 implementation(project.napier())
-                implementation(project.ktor("http")) {
-                    //will be upgraded anyways, just to remove it from XCF dependencies
-                    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core")
-                }
-                //and here, we manually add it with the correct version
-                implementation(coroutines())
+                implementation(project.ktor("http"))
                 api("com.benasher44:uuid:${VcLibVersions.uuid}")
                 api("at.asitplus.signum:indispensable-cosef:${VcLibVersions.signum}")
                 api("at.asitplus.signum:indispensable-josef:${VcLibVersions.signum}")
@@ -44,10 +45,10 @@ if ("true" != disableAppleTargets) exportXCFramework(
     "DifDataClasses",
     transitiveExports = true,
     static = false,
+    "com.benasher44:uuid:${VcLibVersions.uuid}",
     "at.asitplus.signum:indispensable-cosef:${VcLibVersions.signum}",
     "at.asitplus.signum:indispensable-josef:${VcLibVersions.signum}",
     "at.asitplus:jsonpath4k:${VcLibVersions.jsonpath}",
-    "com.benasher44:uuid:${VcLibVersions.uuid}"
 )
 
 val javadocJar = setupDokka(

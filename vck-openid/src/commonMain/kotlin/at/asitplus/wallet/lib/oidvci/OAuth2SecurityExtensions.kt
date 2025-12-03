@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.iso.sha256
+import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JsonWebKey
@@ -33,7 +34,7 @@ object BuildDPoPHeader {
             httpMethod = httpMethod,
             httpTargetUrl = url,
             accessTokenHash = accessToken?.encodeToByteArray()?.sha256()?.encodeToString(Base64UrlStrict),
-            issuedAt = Clock.System.now(),
+            issuedAt = Clock.System.now().truncateToSeconds(),
             nonce = nonce,
         ).also {
             Napier.d("Building DPoP JWT: $it")
@@ -64,14 +65,14 @@ object BuildClientAttestationJwt {
         walletName: String? = null,
         walletLink: String? = null,
         lifetime: Duration = 60.minutes,
-        clockSkew: Duration = 5.minutes,
+        clockSkew: Duration = 3.minutes,
     ) = signJwt(
         JwsContentTypeConstants.CLIENT_ATTESTATION_JWT,
         JsonWebToken(
             issuer = issuer,
             subject = clientId,
-            issuedAt = Clock.System.now() - clockSkew,
-            expiration = Clock.System.now() - clockSkew + lifetime,
+            issuedAt = Clock.System.now().truncateToSeconds() - clockSkew.absoluteValue,
+            expiration = Clock.System.now().truncateToSeconds() - clockSkew.absoluteValue + lifetime,
             walletName = walletName,
             walletLink = walletLink,
             confirmationClaim = ConfirmationClaim(
@@ -102,7 +103,7 @@ object BuildClientAttestationPoPJwt {
         audience: String,
         nonce: String? = null,
         lifetime: Duration = 10.minutes,
-        clockSkew: Duration = 5.minutes,
+        clockSkew: Duration = 3.minutes,
         randomSource: RandomSource = RandomSource.Secure
     ) = signJwt(
         JwsContentTypeConstants.CLIENT_ATTESTATION_POP_JWT,
@@ -111,8 +112,8 @@ object BuildClientAttestationPoPJwt {
             audience = audience,
             jwtId = randomSource.nextBytes(12).encodeToString(Base64UrlStrict),
             nonce = nonce,
-            issuedAt = Clock.System.now() - clockSkew,
-            expiration = Clock.System.now() - clockSkew + lifetime,
+            issuedAt = Clock.System.now().truncateToSeconds() - clockSkew.absoluteValue,
+            expiration = Clock.System.now().truncateToSeconds() - clockSkew.absoluteValue + lifetime,
         ).also {
             Napier.d("Building client attestation PoP JWT: $it")
         },

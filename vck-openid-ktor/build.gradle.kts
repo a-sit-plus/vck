@@ -1,7 +1,12 @@
-import at.asitplus.gradle.*
-import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree.Companion.test
-import org.jetbrains.kotlin.konan.target.HostManager
+import at.asitplus.gradle.VcLibVersions
+import at.asitplus.gradle.commonImplementationDependencies
+import at.asitplus.gradle.envExtra
+import at.asitplus.gradle.exportXCFramework
+import at.asitplus.gradle.hasAndroidSdk
+import at.asitplus.gradle.kotest
+import at.asitplus.gradle.ktor
+import at.asitplus.gradle.setupDokka
+import at.asitplus.gradle.vckAndroid
 
 plugins {
     id("at.asitplus.gradle.vclib-conventions")
@@ -64,7 +69,7 @@ if ("true" != disableAppleTargets) exportXCFramework(
     "VckOpenIdKtorKmm",
     transitiveExports = true,
     static = false,
-    project(":vck")
+    project(":vck-openid")
 )
 
 val javadocJar = setupDokka(

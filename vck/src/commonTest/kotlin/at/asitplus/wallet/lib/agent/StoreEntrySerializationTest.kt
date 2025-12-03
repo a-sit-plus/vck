@@ -4,13 +4,12 @@ import at.asitplus.iso.CborCredentialSerializer
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import de.infix.testBalloon.framework.TestConfig
-import de.infix.testBalloon.framework.aroundEach
-import de.infix.testBalloon.framework.testSuite
+import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -22,90 +21,85 @@ import kotlinx.serialization.decodeFromByteArray
 
 val StoreEntrySerializationTest by testSuite {
 
-    lateinit var issuer: Issuer
-    lateinit var holder: Holder
-    lateinit var holderKeyMaterial: KeyMaterial
-    lateinit var issuerCredentialStore: IssuerCredentialStore
-    lateinit var holderCredentialStore: SubjectCredentialStore
+    withFixtureGenerator {
+        object {
+            val issuerCredentialStore = InMemoryIssuerCredentialStore()
+            val holderCredentialStore = InMemorySubjectCredentialStore()
+            val issuer = IssuerAgent(
+                keyMaterial = EphemeralKeyWithSelfSignedCert(),
+                issuerCredentialStore = issuerCredentialStore,
+                identifier = "https://issuer.example.com/".toUri(),
+                randomSource = RandomSource.Default
+            )
+            val holderKeyMaterial = EphemeralKeyWithoutCert()
+            val holder = HolderAgent(holderKeyMaterial, holderCredentialStore)
+        }
+    }- {
 
-    testConfig = TestConfig.aroundEach {
-        issuerCredentialStore = InMemoryIssuerCredentialStore()
-        holderCredentialStore = InMemorySubjectCredentialStore()
-        issuer = IssuerAgent(
-            keyMaterial = EphemeralKeyWithSelfSignedCert(),
-            issuerCredentialStore = issuerCredentialStore,
-            identifier = "https://issuer.example.com/".toUri(),
-            randomSource = RandomSource.Default
-        )
-        holderKeyMaterial = EphemeralKeyWithoutCert()
-        holder = HolderAgent(holderKeyMaterial, holderCredentialStore)
-        it()
-    }
-
-    "serialize stored VC" {
-        val credentials = issuer.issueCredential(
-            DummyCredentialDataProvider.getCredential(
-                holderKeyMaterial.publicKey,
-                ConstantIndex.AtomicAttribute2023,
-                PLAIN_JWT,
+        "serialize stored VC" {
+            val credentials = it.issuer.issueCredential(
+                DummyCredentialDataProvider.getCredential(
+                    it.holderKeyMaterial.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    PLAIN_JWT,
+                ).getOrThrow()
             ).getOrThrow()
-        ).getOrThrow()
-            .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
+                .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-        val entry = holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
-            .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Vc>()
+            val entry = it.holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
+                .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Vc>()
 
-        val serialized = vckJsonSerializer.encodeToString(entry)
+            val serialized = vckJsonSerializer.encodeToString(entry)
 
-        vckJsonSerializer.decodeFromString<SubjectCredentialStore.StoreEntry.Vc>(serialized) shouldBe entry
+            vckJsonSerializer.decodeFromString<SubjectCredentialStore.StoreEntry.Vc>(serialized) shouldBe entry
 
-    }
+        }
 
-    "serialize stored SD-JWT" {
-        val credentials = issuer.issueCredential(
-            DummyCredentialDataProvider.getCredential(
-                holderKeyMaterial.publicKey,
-                ConstantIndex.AtomicAttribute2023,
-                SD_JWT,
+        "serialize stored SD-JWT" {
+            val credentials = it.issuer.issueCredential(
+                DummyCredentialDataProvider.getCredential(
+                    it.holderKeyMaterial.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    SD_JWT,
+                ).getOrThrow()
             ).getOrThrow()
-        ).getOrThrow()
-            .shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>()
+                .shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>()
 
-        val entry = holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
-            .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.SdJwt>()
+            val entry = it.holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
+                .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.SdJwt>()
 
-        val serialized = vckJsonSerializer.encodeToString(entry)
+            val serialized = vckJsonSerializer.encodeToString(entry)
 
-        vckJsonSerializer.decodeFromString<SubjectCredentialStore.StoreEntry.SdJwt>(serialized) shouldBe entry
-    }
+            vckJsonSerializer.decodeFromString<SubjectCredentialStore.StoreEntry.SdJwt>(serialized) shouldBe entry
+        }
 
-    "serialize stored ISO mDoc" {
-        CborCredentialSerializer.register(
-            mapOf(
-                ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT to ByteArraySerializer(),
-                ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH to LocalDate.serializer(),
-            ),
-            ConstantIndex.AtomicAttribute2023.isoNamespace
-        )
-        val credentials = issuer.issueCredential(
-            DummyCredentialDataProvider.getCredential(
-                holderKeyMaterial.publicKey,
-                ConstantIndex.AtomicAttribute2023,
-                ISO_MDOC,
+        "serialize stored ISO mDoc" {
+            CborCredentialSerializer.register(
+                mapOf(
+                    ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT to ByteArraySerializer(),
+                    ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH to LocalDate.serializer(),
+                ),
+                ConstantIndex.AtomicAttribute2023.isoNamespace
+            )
+            val credentials = it.issuer.issueCredential(
+                DummyCredentialDataProvider.getCredential(
+                    it.holderKeyMaterial.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    ISO_MDOC,
+                ).getOrThrow()
             ).getOrThrow()
-        ).getOrThrow()
-            .shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
+                .shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
 
-        val entry = holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
-            .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Iso>()
+            val entry = it.holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
+                .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Iso>()
 
-        val serialized = vckJsonSerializer.encodeToString(entry)
+            val serialized = vckJsonSerializer.encodeToString(entry)
 
-        vckJsonSerializer.decodeFromString<SubjectCredentialStore.StoreEntry.Iso>(serialized) shouldBe entry
-    }
+            vckJsonSerializer.decodeFromString<SubjectCredentialStore.StoreEntry.Iso>(serialized) shouldBe entry
+        }
 
-    "from OID4VCI credential response" {
-        val input = """
+        "from OID4VCI credential response" {
+            val input = """
             ompuYW1lU3BhY2VzoXVhdC5ndi5pZC1hdXN0cmlhLjIwMjOG2BhYcKRoZGlnZXN0SUQAZnJhbmRvbVANNfVntNqVZrEiz788RhxacWVsZW1lb
             nRJZGVudGlmaWVyY2Jwa2xlbGVtZW50VmFsdWV4KFhGTis0MzY5MjBmOlYvUzQzVjZKeUk0T0JsR3ZUT1NMZGQyYjEvTT3YGFhVpGhkaWdlc3
             RJRAFmcmFuZG9tUMQYtxNfo2zH_NXd9MdhZd5xZWxlbWVudElkZW50aWZpZXJpZmlyc3RuYW1lbGVsZW1lbnRWYWx1ZWhYWFhHZXJkYdgYWGO
@@ -368,18 +362,18 @@ val StoreEntrySerializationTest by testSuite {
             9TJvI8dGCZwTaOlEbouZIZc8Si8Jbyi0wjv8hif0TjI-2mXy_o3AUSpXaQMYYleYDIsy_-FYLpe9kvA
         """.trimIndent()
 
-        val credentialsInput = input.decodeToByteArray(Base64())
-            .let { coseCompliantSerializer.decodeFromByteArray<IssuerSigned>(it) }
-            .let { Holder.StoreCredentialInput.Iso(it, ConstantIndex.AtomicAttribute2023) }
-            .shouldNotBeNull()
+            val credentialsInput = input.decodeToByteArray(Base64())
+                .let { coseCompliantSerializer.decodeFromByteArray<IssuerSigned>(it) }
+                .let { Holder.StoreCredentialInput.Iso(it, ConstantIndex.AtomicAttribute2023) }
+                .shouldNotBeNull()
 
-        val entry = holder.storeCredential(credentialsInput).getOrThrow()
-            .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Iso>()
+            val entry = it.holder.storeCredential(credentialsInput).getOrThrow()
+                .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Iso>()
 
-        val serialized = vckJsonSerializer.encodeToString(entry)
+            val serialized = vckJsonSerializer.encodeToString(entry)
 
-        vckJsonSerializer.decodeFromString<SubjectCredentialStore.StoreEntry.Iso>(serialized) shouldBe entry
+            vckJsonSerializer.decodeFromString<SubjectCredentialStore.StoreEntry.Iso>(serialized) shouldBe entry
+        }
+
     }
-
-
 }

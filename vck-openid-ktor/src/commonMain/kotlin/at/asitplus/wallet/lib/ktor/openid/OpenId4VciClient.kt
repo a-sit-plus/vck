@@ -2,18 +2,13 @@ package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.ClientNonceResponse
 import at.asitplus.openid.CredentialOffer
-import at.asitplus.openid.CredentialResponseParameters
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
-import at.asitplus.openid.OpenIdConstants
-import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER
-import at.asitplus.openid.OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION
+import at.asitplus.openid.OpenIdConstants.WellKnownPaths
 import at.asitplus.openid.SupportedCredentialFormat
-import at.asitplus.signum.indispensable.josef.JsonWebToken
-import at.asitplus.signum.indispensable.josef.JwsAlgorithm
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -21,11 +16,8 @@ import at.asitplus.wallet.lib.data.IsoMdocFallbackCredentialScheme
 import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.data.SdJwtFallbackCredentialScheme
 import at.asitplus.wallet.lib.data.VcFallbackCredentialScheme
-import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
-import at.asitplus.wallet.lib.jws.JwsHeaderNone
-import at.asitplus.wallet.lib.jws.SignJwt
-import at.asitplus.wallet.lib.jws.SignJwtFun
+import at.asitplus.wallet.lib.oauth2.OAuth2Client
+import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
 import at.asitplus.wallet.lib.oidvci.WalletService
 import at.asitplus.wallet.lib.oidvci.toRepresentation
 import com.benasher44.uuid.uuid4
@@ -33,21 +25,17 @@ import io.github.aakira.napier.Napier
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.*
-import io.ktor.client.plugins.*
-import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.cookies.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
 
 
 /**
  * Implements the client side of
  * [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
- *  Draft 15, 2024-12-19.
- *
+ * 1.0 from 2025-09-16.
  * Supported features:
  *  * Pre-authorized grants
  *  * Authentication code flows
@@ -66,56 +54,18 @@ class OpenId4VciClient(
     /** Additional configuration for building the HTTP client, e.g. callers may enable logging. */
     httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
     /**
-     * Callback to load the client attestation JWT, which may be needed as authentication at the AS, where the
-     * `clientId` must match [WalletService.clientId] in [oid4vciService] and the key attested in `cnf` must match
-     * the key behind [signClientAttestationPop], see
-     * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-04.html)
-     */
-    @Deprecated("Configure oAuth2Client instead")
-    private val loadClientAttestationJwt: (suspend () -> String)? = null,
-    /** Used for authenticating the client at the authorization server with client attestation. */
-    @Deprecated("Configure oAuth2Client instead")
-    private val signClientAttestationPop: SignJwtFun<JsonWebToken>? = SignJwt(
-        EphemeralKeyWithoutCert(),
-        JwsHeaderNone()
-    ),
-    /** Used to calculate DPoP, i.e. the key the access token and refresh token gets bound to.
-     * Must match [OAuth2KtorClient.signDpop] in [oauth2Client]. */
-    private val signDpop: SignJwtFun<JsonWebToken> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk()),
-    @Deprecated("Configure oAuth2Client instead")
-    private val dpopAlgorithm: JwsAlgorithm = JwsAlgorithm.Signature.ES256,
-    /**
      * Implements OID4VCI protocol, `redirectUrl` needs to be registered by the OS for this application, so redirection
      * back from browser works, `cryptoService` provides proof of possession for credential key material.
      */
-    val oid4vciService: WalletService = WalletService(),
+    private val oid4vciService: WalletService = WalletService(),
+    private val oauth2InternalClient: OAuth2Client = OAuth2Client(clientId = oid4vciService.clientId),
     private val oauth2Client: OAuth2KtorClient = OAuth2KtorClient(
         engine = engine,
         cookiesStorage = cookiesStorage,
         httpClientConfig = httpClientConfig,
-        loadClientAttestationJwt = loadClientAttestationJwt,
-        signClientAttestationPop = signClientAttestationPop,
-        signDpop = signDpop,
-        dpopAlgorithm = dpopAlgorithm,
-        oAuth2Client = oid4vciService.oauth2Client,
+        oAuth2Client = oauth2InternalClient,
     ),
 ) {
-
-    private val client: HttpClient = HttpClient(engine) {
-        followRedirects = false
-        install(ContentNegotiation) {
-            json(vckJsonSerializer)
-        }
-        install(DefaultRequest) {
-            header(HttpHeaders.ContentType, ContentType.Application.Json)
-        }
-        httpClientConfig?.let { apply(it) }
-        install(HttpCookies) {
-            cookiesStorage?.let {
-                storage = it
-            }
-        }
-    }
 
     /**
      * Loads credential metadata info from [host], parses it, returns list of [CredentialIdentifierInfo].
@@ -124,9 +74,7 @@ class OpenId4VciClient(
         host: String,
     ): KmmResult<Collection<CredentialIdentifierInfo>> = catching {
         Napier.i("loadCredentialMetadata: $host")
-        val issuerMetadata = client
-            .get("$host${OpenIdConstants.PATH_WELL_KNOWN_CREDENTIAL_ISSUER}")
-            .body<IssuerMetadata>()
+        val issuerMetadata = loadIssuerMetadata(host).getOrThrow()
         val supported = issuerMetadata.supportedCredentialConfigurations
             ?: throw Exception("No supported credential configurations")
         supported.map {
@@ -169,17 +117,10 @@ class OpenId4VciClient(
         credentialIdentifierInfo: CredentialIdentifierInfo,
     ): KmmResult<CredentialIssuanceResult.OpenUrlForAuthnRequest> = catching {
         Napier.i("startProvisioningWithAuthRequest: $credentialIssuerUrl with $credentialIdentifierInfo")
-
         val issuerMetadata = credentialIdentifierInfo.issuerMetadata
         val authorizationServer = issuerMetadata.authorizationServers?.firstOrNull()
             ?: credentialIssuerUrl
-        val oauthMetadata = catching {
-            client.get("$authorizationServer$PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER")
-                .body<OAuth2AuthorizationServerMetadata>()
-        }.getOrElse {
-            client.get("$authorizationServer$PATH_WELL_KNOWN_OPENID_CONFIGURATION")
-                .body<OAuth2AuthorizationServerMetadata>()
-        }
+        val oauthMetadata = loadOauthMetadata(authorizationServer).getOrThrow()
 
         oauth2Client.startAuthorization(
             oauthMetadata = oauthMetadata,
@@ -308,8 +249,8 @@ class OpenId4VciClient(
         Napier.d("postCredentialRequestAndStore: $tokenResponse")
 
         val (clientNonce, dpopNonce) = (issuerMetadata.nonceEndpointUrl?.let { nonceUrl ->
-            client.post(nonceUrl).let {
-                it.body<ClientNonceResponse>().clientNonce to it.headers.get(HttpHeaders.DPoPNonce)
+            oauth2Client.client.post(nonceUrl).let {
+                it.body<ClientNonceResponse>().clientNonce to it.headers[HttpHeaders.DPoPNonce]
             }
         } ?: (null to null))
             .also { Napier.i("postCredentialRequestAndStore: uses nonce $it") }
@@ -329,7 +270,7 @@ class OpenId4VciClient(
                 tokenResponse = tokenResponse,
                 credentialFormat = credentialFormat,
                 credentialScheme = credentialScheme,
-                dpopNonce = dpopNonce
+                dpopNonce = dpopNonce ?: tokenResponse.dpopNonce,
             )
         }
         return CredentialIssuanceResult.Success(
@@ -353,7 +294,7 @@ class OpenId4VciClient(
         credentialScheme: ConstantIndex.CredentialScheme,
         dpopNonce: String?,
         retryCount: Int = 0,
-    ): Collection<Holder.StoreCredentialInput> = client.post(url) {
+    ): Collection<Holder.StoreCredentialInput> = oauth2Client.client.post(url) {
         when (request) {
             is WalletService.CredentialRequest.Encrypted -> {
                 contentType(ContentType.parse(MediaTypes.Application.JWT))
@@ -374,10 +315,14 @@ class OpenId4VciClient(
     }.onFailure { response ->
         dpopNonce(response)?.takeIf { retryCount == 0 }?.let { dpopNonce ->
             fetchCredential(url, request, tokenResponse, credentialFormat, credentialScheme, dpopNonce, retryCount + 1)
-        } ?: throw Exception("Error requesting credential: ${errorDescription ?: error}")
+        } ?: throw Exception("Error requesting credential: ${this?.errorDescription ?: this?.error}")
     }.onSuccessCredential { response ->
-        oid4vciService.parseCredentialResponse(this, credentialFormat.format.toRepresentation(), credentialScheme)
-            .getOrThrow()
+        oid4vciService.parseCredentialResponse(
+            response = this,
+            isEncrypted = response.contentType()?.match(ContentType.parse(MediaTypes.Application.JWT)) == true,
+            representation = credentialFormat.format.toRepresentation(),
+            scheme = credentialScheme
+        ).getOrThrow()
     }
 
     /**
@@ -396,15 +341,8 @@ class OpenId4VciClient(
         val issuerMetadata = credentialIdentifierInfo.issuerMetadata
         val authorizationServer = issuerMetadata.authorizationServers?.firstOrNull()
             ?: credentialOffer.credentialIssuer
-        val oauthMetadata = catching {
-            client.get("$authorizationServer$PATH_WELL_KNOWN_OAUTH_AUTHORIZATION_SERVER")
-                .body<OAuth2AuthorizationServerMetadata>()
-        }.getOrElse {
-            client.get("$authorizationServer$PATH_WELL_KNOWN_OPENID_CONFIGURATION")
-                .body<OAuth2AuthorizationServerMetadata>()
-        }
+        val oauthMetadata = loadOauthMetadata(authorizationServer).getOrThrow()
         val state = uuid4().toString()
-
         credentialOffer.grants?.preAuthorizedCode?.let {
             val credentialScheme = credentialIdentifierInfo.supportedCredentialFormat.resolveCredentialScheme()
                 ?: throw Exception("Unknown credential scheme in $credentialIdentifierInfo")
@@ -459,6 +397,36 @@ class OpenId4VciClient(
         } ?: throw Exception("No offer grants received in ${credentialOffer.grants}")
     }
 
+
+    /** Loads [IssuerMetadata] from [credentialIssuer], see [WellKnownPaths.CredentialIssuer]. */
+    private suspend fun loadIssuerMetadata(
+        credentialIssuer: String,
+    ): KmmResult<IssuerMetadata> = catching {
+        Napier.i("loadIssuerMetadata: $credentialIssuer")
+        oauth2Client.client
+            .get(insertWellKnownPath(credentialIssuer, WellKnownPaths.CredentialIssuer))
+            .body<IssuerMetadata>()
+    }
+
+    /**
+     * Loads [OAuth2AuthorizationServerMetadata] from [authorizationServer],
+     * see [WellKnownPaths.OauthAuthorizationServer] or [WellKnownPaths.OpenidConfiguration]. */
+    private suspend fun loadOauthMetadata(
+        authorizationServer: String
+    ): KmmResult<OAuth2AuthorizationServerMetadata> = catching {
+        catchingUnwrapped { loadOauthASMetadata(authorizationServer) }
+            .getOrElse { loadOpenidConfiguration(authorizationServer) }
+    }
+
+    private suspend fun loadOauthASMetadata(publicContext: String) =
+        oauth2Client.client
+            .get(insertWellKnownPath(publicContext, WellKnownPaths.OauthAuthorizationServer))
+            .body<OAuth2AuthorizationServerMetadata>()
+
+    private suspend fun loadOpenidConfiguration(publicContext: String) =
+        oauth2Client.client
+            .get(insertWellKnownPath(publicContext, WellKnownPaths.OpenidConfiguration))
+            .body<OAuth2AuthorizationServerMetadata>()
 }
 
 /**
@@ -521,5 +489,5 @@ data class RefreshTokenInfo(
 
 
 private suspend inline fun <R> IntermediateResult<R>.onSuccessCredential(
-    block: CredentialResponseParameters.(httpResponse: HttpResponse) -> R,
-) = onSuccess<CredentialResponseParameters, R>(block)
+    block: String.(httpResponse: HttpResponse) -> R,
+) = onSuccess<String, R>(block)

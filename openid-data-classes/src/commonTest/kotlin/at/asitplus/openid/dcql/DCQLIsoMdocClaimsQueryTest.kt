@@ -5,7 +5,7 @@ import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.minus
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.testSuite
+import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf

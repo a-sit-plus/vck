@@ -5,11 +5,10 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
-import de.infix.testBalloon.framework.TestConfig
-import de.infix.testBalloon.framework.aroundEach
-import de.infix.testBalloon.framework.testSuite
+import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -19,16 +18,7 @@ import io.ktor.http.*
 import kotlinx.serialization.json.JsonObject
 
 
-/**
- * Tests parsing OpenID4VP requests
- */
 val OpenIdRequestParserTests by testSuite {
-    lateinit var requestParser: RequestParser
-
-    testConfig = TestConfig.aroundEach {
-        requestParser = RequestParser()
-        it()
-    }
 
     // https://verifier.funke.wwwallet.org/verifier/public/definitions/presentation-request/PID
     val jws = """
@@ -101,153 +91,167 @@ val OpenIdRequestParserTests by testSuite {
 
     val authnRequestSerialized = vckJsonSerializer.encodeToString(authnRequest)
 
-    "request in URL parameters" {
-        val input = URLBuilder("https://example.com").apply {
-            authnRequest.encodeToParameters().forEach {
-                parameters.append(it.key, it.value)
+    withFixtureGenerator {
+        RequestParser()
+    } - {
+
+        "request in URL parameters" { requestParser ->
+            val input = URLBuilder("https://example.com").apply {
+                authnRequest.encodeToParameters().forEach {
+                    parameters.append(it.key, it.value)
+                }
+            }.buildString()
+
+            requestParser.parseRequestParameters(input).getOrThrow().apply {
+                shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
+                shouldBeInstanceOf<RequestParametersFrom.Uri<*>>()
+                this.url.toString() shouldBe input
+                parameters.assertParams()
+
+                vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
+                    vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
+                ).shouldBe(this)
             }
-        }.buildString()
+        }
 
-        requestParser.parseRequestParameters(input).getOrThrow().apply {
-            shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
-            shouldBeInstanceOf<RequestParametersFrom.Uri<*>>()
-            this.url.toString() shouldBe input
-            parameters.assertParams()
+        "plain request directly" { requestParser ->
+            requestParser.parseRequestParameters(authnRequestSerialized).getOrThrow().apply {
+                shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
+                shouldBeInstanceOf<RequestParametersFrom.Json<*>>()
+                jsonString shouldBe authnRequestSerialized
+                parameters.assertParams()
 
-            vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
-                vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
-            ).shouldBe(this)
+                vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
+                    vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
+                ).shouldBe(this)
+            }
+        }
+
+        "signed request directly" { requestParser ->
+            requestParser.parseRequestParameters(jws).getOrThrow().apply {
+                shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
+                shouldBeInstanceOf<RequestParametersFrom.JwsSigned<*>>()
+                jwsSigned.serialize() shouldBe jws
+                parameters.assertParams()
+
+                vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
+                    vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
+                ).shouldBe(this)
+            }
+        }
+
+
+        "signed request by value" { requestParser ->
+            val input = "https://example.com?request=" + jws
+
+            requestParser.parseRequestParameters(input).getOrThrow().apply {
+                shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
+                shouldBeInstanceOf<RequestParametersFrom.JwsSigned<*>>()
+                jwsSigned.serialize() shouldBe jws
+                parent.toString() shouldBe input
+                parameters.assertParams()
+
+                vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
+                    vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
+                ).shouldBe(this)
+            }
+        }
+
+        "signed request from DCAPI" { requestParser ->
+            val input = vckJsonSerializer.encodeToString(
+                Oid4vpDCAPIRequest(
+                    protocol = Oid4vpDCAPIRequest.PROTOCOL_V1_SIGNED,
+                    request = jws,
+                    credentialId = "1",
+                    callingPackageName = "com.example.app",
+                    callingOrigin = "https://example.com"
+                )
+            )
+
+            requestParser.parseRequestParameters(input).getOrThrow().apply {
+                shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
+                shouldBeInstanceOf<RequestParametersFrom.DcApiSigned<*>>()
+                jwsSigned.serialize() shouldBe jws
+                parameters.assertParams()
+
+                vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
+                    vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
+                ).shouldBe(this)
+            }
+        }
+
+        "unsigned request from DCAPI" { requestParser ->
+            val input = vckJsonSerializer.encodeToString(
+                Oid4vpDCAPIRequest(
+                    protocol = Oid4vpDCAPIRequest.PROTOCOL_V1_UNSIGNED,
+                    request = authnRequestSerialized,
+                    credentialId = "1",
+                    callingPackageName = "com.example.app",
+                    callingOrigin = "https://example.com"
+                )
+            )
+
+            requestParser.parseRequestParameters(input).getOrThrow().apply {
+                shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
+                shouldBeInstanceOf<RequestParametersFrom.DcApiUnsigned<*>>()
+                jsonString shouldBe input
+                parameters.assertParams()
+
+                vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
+                    vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
+                ).shouldBe(this)
+            }
         }
     }
 
-    "plain request directly" {
-        requestParser.parseRequestParameters(authnRequestSerialized).getOrThrow().apply {
-            shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
-            shouldBeInstanceOf<RequestParametersFrom.Json<*>>()
-            jsonString shouldBe authnRequestSerialized
-            parameters.assertParams()
-
-            vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
-                vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
-            ).shouldBe(this)
-        }
-    }
-
-    "plain request by reference" {
-        val input = "https://example.com?request_uri=https%3A%2F%2Fclient.example.org%2Freq%2F1234567890"
-        requestParser = RequestParser(
+    withFixtureGenerator {
+        RequestParser(
             remoteResourceRetriever = {
                 if (it.url == "https://client.example.org/req/1234567890") authnRequestSerialized else null
             }
         )
+    } - {
 
-        requestParser.parseRequestParameters(input).getOrThrow().apply {
-            shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
-            shouldBeInstanceOf<RequestParametersFrom.Json<*>>()
-            jsonString shouldBe authnRequestSerialized
-            parent.toString() shouldBe input
-            parameters.assertParams()
+        "plain request by reference" { requestParser ->
+            val input = "https://example.com?request_uri=https%3A%2F%2Fclient.example.org%2Freq%2F1234567890"
 
-            vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
-                vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
-            ).shouldBe(this)
+            requestParser.parseRequestParameters(input).getOrThrow().apply {
+                shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
+                shouldBeInstanceOf<RequestParametersFrom.Json<*>>()
+                jsonString shouldBe authnRequestSerialized
+                parent.toString() shouldBe input
+                parameters.assertParams()
+
+                vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
+                    vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
+                ).shouldBe(this)
+            }
         }
+
     }
-
-    "signed request directly" {
-        requestParser.parseRequestParameters(jws).getOrThrow().apply {
-            shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
-            shouldBeInstanceOf<RequestParametersFrom.JwsSigned<*>>()
-            jwsSigned.serialize() shouldBe jws
-            parameters.assertParams()
-
-            vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
-                vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
-            ).shouldBe(this)
-        }
-    }
-
-    "signed request by reference" {
-        val input = "https://example.com?request_uri=https%3A%2F%2Fclient.example.org%2Freq%2F1234567890"
-        requestParser = RequestParser(
+    withFixtureGenerator {
+        RequestParser(
             remoteResourceRetriever = {
                 if (it.url == "https://client.example.org/req/1234567890") jws else null
             }
         )
+    } - {
+        "signed request by reference" { requestParser ->
+            val input = "https://example.com?request_uri=https%3A%2F%2Fclient.example.org%2Freq%2F1234567890"
 
-        requestParser.parseRequestParameters(input).getOrThrow().apply {
-            shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
-            shouldBeInstanceOf<RequestParametersFrom.JwsSigned<*>>()
-            jwsSigned.serialize() shouldBe jws
-            parent.toString() shouldBe input
-            parameters.assertParams()
+            requestParser.parseRequestParameters(input).getOrThrow().apply {
+                shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
+                shouldBeInstanceOf<RequestParametersFrom.JwsSigned<*>>()
+                jwsSigned.serialize() shouldBe jws
+                parent.toString() shouldBe input
+                parameters.assertParams()
 
-            vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
-                vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
-            ).shouldBe(this)
+                vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
+                    vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
+                ).shouldBe(this)
+            }
         }
-    }
 
-    "signed request by value" {
-        val input = "https://example.com?request=" + jws
-
-        requestParser.parseRequestParameters(input).getOrThrow().apply {
-            shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
-            shouldBeInstanceOf<RequestParametersFrom.JwsSigned<*>>()
-            jwsSigned.serialize() shouldBe jws
-            parent.toString() shouldBe input
-            parameters.assertParams()
-
-            vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
-                vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
-            ).shouldBe(this)
-        }
-    }
-
-    "signed request from DCAPI" {
-        val input = vckJsonSerializer.encodeToString(
-            Oid4vpDCAPIRequest(
-                protocol = Oid4vpDCAPIRequest.PROTOCOL_V1_SIGNED,
-                request = jws,
-                credentialId = "1",
-                callingPackageName = "com.example.app",
-                callingOrigin = "https://example.com"
-            )
-        )
-
-        requestParser.parseRequestParameters(input).getOrThrow().apply {
-            shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
-            shouldBeInstanceOf<RequestParametersFrom.DcApiSigned<*>>()
-            jwsSigned.serialize() shouldBe jws
-            parameters.assertParams()
-
-            vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
-                vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
-            ).shouldBe(this)
-        }
-    }
-
-    "unsigned request from DCAPI" {
-        val input = vckJsonSerializer.encodeToString(
-            Oid4vpDCAPIRequest(
-                protocol = Oid4vpDCAPIRequest.PROTOCOL_V1_UNSIGNED,
-                request = authnRequestSerialized,
-                credentialId = "1",
-                callingPackageName = "com.example.app",
-                callingOrigin = "https://example.com"
-            )
-        )
-
-        requestParser.parseRequestParameters(input).getOrThrow().apply {
-            shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
-            shouldBeInstanceOf<RequestParametersFrom.DcApiUnsigned<*>>()
-            jsonString shouldBe input
-            parameters.assertParams()
-
-            vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
-                vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
-            ).shouldBe(this)
-        }
     }
 }
 

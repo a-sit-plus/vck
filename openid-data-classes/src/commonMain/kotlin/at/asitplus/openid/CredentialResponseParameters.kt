@@ -43,23 +43,9 @@ data class CredentialResponseParameters(
      */
     @SerialName("notificationId")
     val notificationId: String? = null,
-
-    @Deprecated("Removed in OID4VCI draft 12")
-    @SerialName("acceptance_token")
-    val acceptanceToken: String? = null,
-
-    @Deprecated("Removed in OID4VCI draft 15")
-    @SerialName("c_nonce")
-    val clientNonce: String? = null,
-
-    @Deprecated("Removed in OID4VCI draft 15")
-    @SerialName("c_nonce_expires_in")
-    @Serializable(with = DurationSecondsIntSerializer::class)
-    val clientNonceExpiresIn: Duration? = null,
 ) {
     fun extractCredentials(): List<String> =
         credentials?.let { it.mapNotNull { it.credentialString } } ?: listOf()
-
 }
 
 @Serializable

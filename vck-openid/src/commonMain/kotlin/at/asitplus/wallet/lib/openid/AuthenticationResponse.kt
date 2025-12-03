@@ -13,22 +13,16 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Error
 sealed class AuthenticationResponse(
     val clientMetadata: RelyingPartyMetadata?,
     val jsonWebKeys: Collection<JsonWebKey>?,
-    /**
-     * If this is set (acc. to ISO/IEC 18013-7:2024), it needs to be set as
-     * [at.asitplus.signum.indispensable.josef.JweHeader.agreementPartyUInfo] when encrypting the response.
-     */
-    val mdocGeneratedNonce: String? = null,
 ) {
     class Success(
         val params: AuthenticationResponseParameters,
         clientMetadata: RelyingPartyMetadata?,
         jsonWebKeys: Collection<JsonWebKey>?,
-        mdocGeneratedNonce: String? = null,
-    ) : AuthenticationResponse(clientMetadata, jsonWebKeys, mdocGeneratedNonce)
+    ) : AuthenticationResponse(clientMetadata, jsonWebKeys)
 
     class Error(
         val error: OAuth2Error,
         clientMetadata: RelyingPartyMetadata?,
         jsonWebKeys: Collection<JsonWebKey>?,
-    ) : AuthenticationResponse(clientMetadata, jsonWebKeys, null)
+    ) : AuthenticationResponse(clientMetadata, jsonWebKeys)
 }

@@ -53,14 +53,6 @@ data class AuthenticationRequestParameters(
     val clientId: String? = null,
 
     /**
-     * OID4VP: OPTIONAL. A string identifying the scheme of the value in the `client_id` Authorization Request parameter
-     * (Client Identifier scheme). Kept here only for compatibility with POTENTIAL.
-     */
-    @Deprecated("Removed from OpenID4VP Draft 22", level = DeprecationLevel.ERROR)
-    @SerialName("client_id_scheme")
-    val clientIdScheme: OpenIdConstants.ClientIdScheme? = null,
-
-    /**
      * OIDC: REQUIRED. Redirection URI to which the response will be sent. This URI MUST exactly match one of the
      * Redirection URI values for the Client pre-registered at the OpenID Provider, with the matching performed as
      * described in Section 6.2.1 of RFC3986 (Simple String Comparison).
@@ -127,10 +119,6 @@ data class AuthenticationRequestParameters(
      */
     @SerialName("client_metadata")
     val clientMetadata: RelyingPartyMetadata? = null,
-
-    @Deprecated("Removed from OpenID4VP Draft 21")
-    @SerialName("client_metadata_uri")
-    val clientMetadataUri: String? = null,
 
     /**
      * OIDC: OPTIONAL. ID Token previously issued by the Authorization Server being passed as a hint about the
@@ -395,15 +383,13 @@ data class AuthenticationRequestParameters(
 ) : RequestParameters() {
 
     /**
-     * Reads the [OpenIdConstants.ClientIdScheme] of this request either directly from [clientIdScheme],
-     * or by extracting the prefix from [clientId] (as specified in OpenID4VP draft 22 onwards).
+     * Reads the [OpenIdConstants.ClientIdScheme] by extracting the prefix from [clientId]
      */
     val clientIdSchemeExtracted: OpenIdConstants.ClientIdScheme?
         get() = clientId?.let { OpenIdConstants.ClientIdScheme.decodeFromClientId(it) }
 
     /**
-     * Reads the [clientId] and removes the prefix of the [clientIdSchemeExtracted],
-     * as specified in OpenID4VP draft 22 onwards.
+     * Reads the [clientId] and removes the prefix of the [clientIdSchemeExtracted].
      * OpenID4VP states that the *full* [clientId] must be used for presentations and anything else.
      */
     val clientIdWithoutPrefix: String?
@@ -413,13 +399,12 @@ data class AuthenticationRequestParameters(
 
     /**
      * Reads the [redirectUrl], or the [clientIdWithoutPrefix] if [clientIdSchemeExtracted] is
-     * [OpenIdConstants.ClientIdScheme.RedirectUri], as specified in OpenID4VP draft 22 onwards.
+     * [OpenIdConstants.ClientIdScheme.RedirectUri].
      */
     val redirectUrlExtracted: String?
         get() = redirectUrl
             ?: (clientIdSchemeExtracted as? OpenIdConstants.ClientIdScheme.RedirectUri)?.let { clientIdWithoutPrefix }
 
-    @Suppress("DEPRECATION")
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
@@ -435,7 +420,6 @@ data class AuthenticationRequestParameters(
         if (walletNonce != other.walletNonce) return false
         if (claims != other.claims) return false
         if (clientMetadata != other.clientMetadata) return false
-        if (clientMetadataUri != other.clientMetadataUri) return false
         if (idTokenHint != other.idTokenHint) return false
         if (idTokenType != other.idTokenType) return false
         if (presentationDefinition != other.presentationDefinition) return false
@@ -474,7 +458,6 @@ data class AuthenticationRequestParameters(
         return true
     }
 
-    @Suppress("DEPRECATION")
     override fun hashCode(): Int {
         var result = responseType?.hashCode() ?: 0
         result = 31 * result + (clientId?.hashCode() ?: 0)
@@ -485,7 +468,6 @@ data class AuthenticationRequestParameters(
         result = 31 * result + (walletNonce?.hashCode() ?: 0)
         result = 31 * result + (claims?.hashCode() ?: 0)
         result = 31 * result + (clientMetadata?.hashCode() ?: 0)
-        result = 31 * result + (clientMetadataUri?.hashCode() ?: 0)
         result = 31 * result + (idTokenHint?.hashCode() ?: 0)
         result = 31 * result + (idTokenType?.hashCode() ?: 0)
         result = 31 * result + (presentationDefinition?.hashCode() ?: 0)

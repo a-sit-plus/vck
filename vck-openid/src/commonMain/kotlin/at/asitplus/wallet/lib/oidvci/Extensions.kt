@@ -21,56 +21,22 @@ fun CredentialRepresentation.toFormat(): CredentialFormatEnum = when (this) {
     CredentialRepresentation.ISO_MDOC -> CredentialFormatEnum.MSO_MDOC
 }
 
-@Suppress("DEPRECATION")
 fun CredentialFormatEnum.toRepresentation() = when (this) {
-    CredentialFormatEnum.VC_SD_JWT -> CredentialRepresentation.SD_JWT
     CredentialFormatEnum.DC_SD_JWT -> CredentialRepresentation.SD_JWT
     CredentialFormatEnum.MSO_MDOC -> CredentialRepresentation.ISO_MDOC
     else -> CredentialRepresentation.PLAIN_JWT
 }
 
-/**
- * @param transformer may be used to encrypt the credentials before serializing
- */
-suspend fun Issuer.IssuedCredential.toCredentialResponseParameters(
-    transformer: (suspend (String) -> String) = { it },
-) = when (this) {
-    is Issuer.IssuedCredential.Iso -> CredentialResponseParameters(
-        credentials = setOf(toCredentialResponseSingleCredential(transformer)),
-    )
-
-    is Issuer.IssuedCredential.VcJwt -> CredentialResponseParameters(
-        credentials = setOf(toCredentialResponseSingleCredential(transformer)),
-    )
-
-    is Issuer.IssuedCredential.VcSdJwt -> CredentialResponseParameters(
-        credentials = setOf(toCredentialResponseSingleCredential(transformer)),
-    )
-}
-
-/**
- * @param transformer may be used to encrypt the credentials before serializing
- */
-suspend fun Collection<Issuer.IssuedCredential>.toCredentialResponseParameters(
-    transformer: (suspend (String) -> String) = { it },
-) = if (size == 1) {
-    first().toCredentialResponseParameters(transformer)
-} else {
+fun Collection<Issuer.IssuedCredential>.toCredentialResponseParameters() =
     CredentialResponseParameters(
-        credentials = this.map { it.toCredentialResponseSingleCredential(transformer) }.toSet()
+        credentials = this.map { it.toCredentialResponseSingleCredential() }.toSet()
     )
-}
 
-/**
- * @param transformer may be used to encrypt the credentials before serializing
- */
-suspend fun Issuer.IssuedCredential.toCredentialResponseSingleCredential(
-    transformer: (suspend (String) -> String) = { it },
-): CredentialResponseSingleCredential = CredentialResponseSingleCredential(
+fun Issuer.IssuedCredential.toCredentialResponseSingleCredential() = CredentialResponseSingleCredential(
     when (this) {
-        is Issuer.IssuedCredential.Iso -> JsonPrimitive(transformer(toBase64UrlStrict()))
-        is Issuer.IssuedCredential.VcJwt -> JsonPrimitive(transformer(signedVcJws.serialize()))
-        is Issuer.IssuedCredential.VcSdJwt -> JsonPrimitive(transformer(signedSdJwtVc.serialize()))
+        is Issuer.IssuedCredential.Iso -> JsonPrimitive(toBase64UrlStrict())
+        is Issuer.IssuedCredential.VcJwt -> JsonPrimitive(signedVcJws.serialize())
+        is Issuer.IssuedCredential.VcSdJwt -> JsonPrimitive(signedSdJwtVc.serialize())
     }
 )
 

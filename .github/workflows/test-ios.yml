@@ -21,7 +21,7 @@ jobs:
             ~/.gradle/caches
             ~/.gradle/wrapper
             ~/.m2/repository
-          key: iOS-${{ hashFiles('./conventions-vclib/src/main/resources/vcLibVersions.properties', './gradle/wrapper/gradle-wrapper.properties') }}
+          key: iOS-${{ hashFiles('./gradle/libs.versions.toml', './gradle/wrapper/gradle-wrapper.properties') }}
       - name: Build klibs
         run: ./gradlew iosArm64MainKlibrary iosSimulatorArm64MainKlibrary
       - name: Run tests

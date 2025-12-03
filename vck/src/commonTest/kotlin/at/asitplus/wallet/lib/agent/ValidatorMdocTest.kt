@@ -5,20 +5,20 @@ import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.testballoon.invoke
-import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
-import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import de.infix.testBalloon.framework.TestExecutionScope
-import de.infix.testBalloon.framework.TestSuite
-import de.infix.testBalloon.framework.testSuite
+import at.asitplus.wallet.lib.randomCwtOrJwtResolver
+import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.matchers.comparables.shouldBeLessThan
+import io.kotest.matchers.comparables.shouldNotBeGreaterThan
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlin.random.Random
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.minutes
 
 private data class Config(
     val issuer: Issuer,
@@ -37,19 +37,7 @@ private data class Config(
             return Config(
                 validator = ValidatorMdoc(
                     validator = Validator(
-                        tokenStatusResolver = TokenStatusResolverImpl(
-                            resolveStatusListToken = {
-                                if (Random.nextBoolean()) StatusListToken.StatusListJwt(
-                                    statusListIssuer.issueStatusListJwt(),
-                                    resolvedAt = Clock.System.now(),
-                                ) else {
-                                    StatusListToken.StatusListCwt(
-                                        statusListIssuer.issueStatusListCwt(),
-                                        resolvedAt = Clock.System.now(),
-                                    )
-                                }
-                            },
-                        )
+                        tokenStatusResolver = randomCwtOrJwtResolver(statusListIssuer)
                     )
                 ),
                 issuerCredentialStore = issuerCredentialStore,
@@ -67,11 +55,6 @@ private data class Config(
     }
 }
 
-context(suite: TestSuite)
-private fun String.withConfig(config: Config, nested: suspend TestExecutionScope.(Config) -> Unit) {
-    this.invoke { nested(config) }
-}
-
 val ValidatorMdocTest by testSuite {
     with(Config.random()) {
         "credentials are valid for" {
@@ -82,7 +65,13 @@ val ValidatorMdocTest by testSuite {
                     ISO_MDOC,
                 ).getOrThrow()
             ).getOrThrow()
-            credential.shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
+                .shouldBeInstanceOf<Issuer.IssuedCredential.Iso>().apply {
+                    // Assert the issuanceOffset in IssuerAgent
+                    issuerSigned.issuerAuth.payload.shouldNotBeNull().apply {
+                        validityInfo.validFrom shouldBeLessThan Clock.System.now().minus(1.minutes)
+                        validityInfo.validFrom shouldNotBeGreaterThan Clock.System.now()
+                    }
+                }
 
             val issuerKey: CoseKey? =
                 credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull()?.let {
@@ -104,7 +93,7 @@ val ValidatorMdocTest by testSuite {
                     ISO_MDOC,
                 ).getOrThrow()
             ).getOrThrow()
-            credential.shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
+                .shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
 
             val issuerKey: CoseKey? =
                 credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull()?.let {

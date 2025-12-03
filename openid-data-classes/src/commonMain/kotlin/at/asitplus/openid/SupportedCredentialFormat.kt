@@ -1,16 +1,12 @@
 package at.asitplus.openid
 
-import at.asitplus.catchingUnwrapped
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.decodeFromJsonElement
-import kotlinx.serialization.json.encodeToJsonElement
 
 /**
  * OID4VCI: Object that describes specifics of the Credential that the Credential Issuer supports issuance of.
@@ -86,18 +82,6 @@ data class SupportedCredentialFormat private constructor(
     @SerialName("doctype")
     val docType: String? = null,
 
-    @SerialName("claims")
-    @Deprecated("Moved in OID4VCI draft 16 to credentialMetadata")
-    private var claims: JsonElement? = null,
-
-    @SerialName("order")
-    @Deprecated("Removed in OID4VCI draft 16")
-    val order: List<String>? = null,
-
-    @SerialName("display")
-    @Deprecated("Moved in OID4VCI draft 16 to credentialMetadata")
-    val display: Set<DisplayProperties>? = null,
-
     /**
      * OID4VCI: OPTIONAL. Object containing information relevant to the usage and display of issued Credentials.
      * Credential Format-specific mechanisms can overwrite the information in this object to convey Credential metadata.
@@ -107,15 +91,6 @@ data class SupportedCredentialFormat private constructor(
     @SerialName("credential_metadata")
     val credentialMetadata: CredentialMetadata? = null,
 ) {
-
-    @Suppress("DEPRECATION")
-    @Deprecated("Moved in OID4VCI draft 16 to credentialMetadata")
-    val claimDescription: Set<ClaimDescription>?
-        get() = claims?.let {
-            catchingUnwrapped {
-                joseCompliantSerializer.decodeFromJsonElement<Set<ClaimDescription>>(it)
-            }.getOrNull()
-        }
 
     /**
      * OID4VCI: OPTIONAL. Array of case sensitive strings that identify the algorithms that the Issuer uses to sign the
@@ -152,7 +127,6 @@ data class SupportedCredentialFormat private constructor(
             credentialDefinition: SupportedCredentialFormatDefinition? = null,
             docType: String,
             isoClaims: Set<ClaimDescription>,
-            order: List<String>? = null,
             display: Set<DisplayProperties>? = null,
         ) = SupportedCredentialFormat(
             format = format,
@@ -161,9 +135,6 @@ data class SupportedCredentialFormat private constructor(
             supportedProofTypes = supportedProofTypes,
             credentialDefinition = credentialDefinition,
             docType = docType,
-            claims = joseCompliantSerializer.encodeToJsonElement(isoClaims),
-            order = order,
-            display = display,
             credentialMetadata = CredentialMetadata(
                 claimDescription = isoClaims,
                 display = display,
@@ -178,7 +149,6 @@ data class SupportedCredentialFormat private constructor(
             credentialDefinition: SupportedCredentialFormatDefinition? = null,
             sdJwtVcType: String,
             sdJwtClaims: Set<ClaimDescription>,
-            order: List<String>? = null,
             display: Set<DisplayProperties>? = null,
         ) = SupportedCredentialFormat(
             format = format,
@@ -187,9 +157,6 @@ data class SupportedCredentialFormat private constructor(
             supportedProofTypes = supportedProofTypes,
             credentialDefinition = credentialDefinition,
             sdJwtVcType = sdJwtVcType,
-            claims = joseCompliantSerializer.encodeToJsonElement(sdJwtClaims),
-            order = order,
-            display = display,
             credentialMetadata = CredentialMetadata(
                 claimDescription = sdJwtClaims,
                 display = display,
@@ -202,7 +169,7 @@ data class SupportedCredentialFormat private constructor(
             supportedBindingMethods: Set<String>? = null,
             supportedProofTypes: Map<String, CredentialRequestProofSupported>? = null,
             credentialDefinition: SupportedCredentialFormatDefinition,
-            order: List<String>? = null,
+            vcJwtClaims: Set<ClaimDescription>,
             display: Set<DisplayProperties>? = null,
         ) = SupportedCredentialFormat(
             format = format,
@@ -210,12 +177,10 @@ data class SupportedCredentialFormat private constructor(
             supportedBindingMethods = supportedBindingMethods,
             supportedProofTypes = supportedProofTypes,
             credentialDefinition = credentialDefinition,
-            claims = null,
-            order = order,
-            display = display,
-            credentialMetadata = display?.let {
-                CredentialMetadata(display = display)
-            }
+            credentialMetadata = CredentialMetadata(
+                claimDescription = vcJwtClaims,
+                display = display,
+            )
         )
 
     }

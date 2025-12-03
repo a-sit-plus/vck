@@ -1,18 +1,14 @@
 import org.jetbrains.dokka.gradle.DokkaMultiModuleTask
-import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
-import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
-import org.jetbrains.kotlin.konan.target.Family
-import java.io.ByteArrayOutputStream
+import java.time.Duration
 
 plugins {
     val kotlinVer = System.getenv("KOTLIN_VERSION_ENV")?.ifBlank { null } ?: libs.versions.kotlin.get()
     val testballoonVer = System.getenv("TESTBALLOON_VERSION_OVERRIDE")?.ifBlank { null } ?: libs.versions.testballoon.get()
-
-    id("at.asitplus.gradle.conventions")
+    id("de.infix.testBalloon") version testballoonVer apply false
     kotlin("multiplatform") version kotlinVer apply false
     kotlin("plugin.serialization") version kotlinVer apply false
     id("com.android.kotlin.multiplatform.library") version libs.versions.agp.get() apply (false)
-    id("de.infix.testBalloon") version testballoonVer apply false
+    id("at.asitplus.gradle.conventions")
 }
 
 //access dokka plugin from conventions plugin's classpath in root project → no need to specify version
@@ -40,3 +36,13 @@ subprojects {
 val artifactVersion: String by extra
 group = "at.asitplus.wallet"
 version = artifactVersion
+
+//massive timeouts for nexus publishing to cope with the sheer number and size of artefacts
+nexusPublishing {
+    transitionCheckOptions {
+        maxRetries.set(200)
+        delayBetween.set(Duration.ofSeconds(20))
+    }
+    connectTimeout.set(Duration.ofMinutes(15))
+    clientTimeout.set(Duration.ofMinutes(15))
+}

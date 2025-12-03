@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.data.rfc8392.cwt.claims
 
 import at.asitplus.testballoon.invoke
-import de.infix.testBalloon.framework.testSuite
+import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe
 
 val CwtIssuedAtClaimTest by testSuite {

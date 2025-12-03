@@ -15,7 +15,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.procedures.dcql.DCQLQueryAdapter
-import de.infix.testBalloon.framework.testSuite
+import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.maps.shouldHaveSize
 import kotlinx.serialization.json.Json
 
@@ -53,7 +53,6 @@ val DCQLQueryProcedureAdapterTest by testSuite {
               {
                 "credential_sets": [
                   {
-                    "purpose": "To obtain e-prescription, we need to verify your identity.",
                     "options": [
                       [
                         "pid_sd_jwt"
@@ -64,7 +63,7 @@ val DCQLQueryProcedureAdapterTest by testSuite {
                 "credentials": [
                   {
                     "id": "pid_sd_jwt",
-                    "format": "vc+sd-jwt",
+                    "format": "dc+sd-jwt",
                     "meta": {
                       "vct_values": [
                         "AtomicAttribute2023"

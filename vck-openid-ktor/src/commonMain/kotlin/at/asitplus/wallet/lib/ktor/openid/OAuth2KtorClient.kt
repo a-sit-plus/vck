@@ -10,9 +10,7 @@ import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.PushedAuthenticationResponseParameters
-import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.SignatureRequestParameters
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
@@ -78,6 +76,7 @@ class OAuth2KtorClient(
         SignJwt(EphemeralKeyWithoutCert(), JwsHeaderNone()),
     /** Used to calculate DPoP, i.e. the key the access token and refresh token gets bound to. */
     private val signDpop: SignJwtFun<JsonWebToken> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk()),
+    /** Used for calculating DPoP with [signDpop]. */
     private val dpopAlgorithm: JwsAlgorithm = JwsAlgorithm.Signature.ES256,
     /**
      * Implements OAuth2 protocol, `redirectUrl` needs to be registered by the OS for this application, so redirection
@@ -88,7 +87,7 @@ class OAuth2KtorClient(
     private val randomSource: RandomSource = RandomSource.Secure,
 ) {
 
-    private val client: HttpClient = HttpClient(engine) {
+    val client: HttpClient = HttpClient(engine) {
         followRedirects = false
         install(ContentNegotiation) {
             json(vckJsonSerializer)
@@ -261,7 +260,7 @@ class OAuth2KtorClient(
         }.onFailure { response ->
             dpopNonce(response)?.takeIf { retryCount == 0 }?.let { dpopNonce ->
                 postToken(oauthMetadata, tokenRequest, popAudience, dpopNonce, retryCount + 1)
-            } ?: throw Exception("Error requesting Token: ${errorDescription ?: error}")
+            } ?: throw Exception("Error requesting Token: ${this?.errorDescription ?: this?.error}")
         }.onSuccessToken { response ->
             TokenResponseWithDpopNonce(this, response.headers[HttpHeaders.DPoPNonce])
         }
@@ -291,44 +290,59 @@ class OAuth2KtorClient(
     ) = catching {
         val authorizationEndpointUrl = oauthMetadata.authorizationEndpoint
             ?: throw Exception("no authorizationEndpoint in $oauthMetadata")
-        val wrapAsJar =
-            oauthMetadata.requestObjectSigningAlgorithmsSupported?.contains(JwsAlgorithm.Signature.ES256) == true
-        val authRequest = if (wrapAsJar) oAuth2Client.createAuthRequestJar(
-            state = state,
-            authorizationDetails = if (scope == null) authorizationDetails else null,
-            issuerState = issuerState,
-            scope = scope,
-        ) else oAuth2Client.createAuthRequest(
-            state = state,
-            authorizationDetails = if (scope == null) authorizationDetails else null,
-            issuerState = issuerState,
-            scope = scope,
-        )
         val requiresPar = oauthMetadata.requirePushedAuthorizationRequests == true
         val parEndpointUrl = oauthMetadata.pushedAuthorizationRequestEndpoint
-        val authorizationUrl = if (parEndpointUrl != null && requiresPar) {
-            val authRequestAfterPar = pushAuthorizationRequest(
-                oauthMetadata = oauthMetadata,
-                authRequest = authRequest,
+        if (requiresPar)
+            require(parEndpointUrl != null) { "PAR required, but pushedAuthorizationRequestEndpoint is null" }
+        // use PAR when available, in accordance with OpenID4VCI HAIP
+        val usePar = parEndpointUrl != null || requiresPar
+
+        val requiresJar = oauthMetadata.requireSignedRequestObject == true
+        val supportsJar = oauthMetadata.requestObjectSigningAlgorithmsSupported.supportsEs256()
+        if (requiresJar)
+            require(supportsJar) { "JAR required, but requestObjectSigningAlgorithmsSupported does not support ES256" }
+        // use JAR when required, or when it's not PAR (because then it doesn't increase security)
+        val useJar = requiresJar || (supportsJar && !usePar)
+
+        val authRequest = if (useJar)
+            oAuth2Client.createAuthRequestJar(
                 state = state,
-                popAudience = authorizationServer,
+                authorizationDetails = if (scope == null) authorizationDetails else null,
+                issuerState = issuerState,
+                scope = scope,
             )
+        else
+            oAuth2Client.createAuthRequest(
+                state = state,
+                authorizationDetails = if (scope == null) authorizationDetails else null,
+                issuerState = issuerState,
+                scope = scope,
+            )
+
+        val authorizationUrl = if (usePar)
             URLBuilder(authorizationEndpointUrl).also { builder ->
-                authRequestAfterPar.encodeToParameters().forEach {
+                pushAuthorizationRequest(
+                    oauthMetadata = oauthMetadata,
+                    authRequest = authRequest,
+                    state = state,
+                    popAudience = authorizationServer,
+                ).encodeToParameters().forEach {
                     builder.parameters.append(it.key, it.value)
                 }
             }.build().toString()
-        } else {
+        else
             URLBuilder(authorizationEndpointUrl).also { builder ->
                 authRequest.encodeToParameters().forEach {
                     builder.parameters.append(it.key, it.value)
                 }
                 builder.parameters.append(OpenIdConstants.PARAMETER_PROMPT, OpenIdConstants.PARAMETER_PROMPT_LOGIN)
             }.build().toString()
-        }
         Napier.i("Provisioning starts by returning URL to open: $authorizationUrl")
         OpenUrlForAuthnRequest(authorizationUrl, state)
     }
+
+    private fun Set<JwsAlgorithm>?.supportsEs256(): Boolean =
+        this?.contains(JwsAlgorithm.Signature.ES256) == true
 
     private suspend fun pushAuthorizationRequest(
         oauthMetadata: OAuth2AuthorizationServerMetadata,
@@ -349,12 +363,11 @@ class OAuth2KtorClient(
         }.onFailure { response ->
             dpopNonce(response)?.takeIf { retryCount == 0 }?.let { dpopNonce ->
                 pushAuthorizationRequest(oauthMetadata, authRequest, state, popAudience, dpopNonce, retryCount + 1)
-            } ?: throw Exception("Error requesting PAR: ${errorDescription ?: error}")
+            } ?: throw Exception("Error requesting PAR: ${this?.errorDescription ?: this?.error}")
         }.onSuccessPar {
             JarRequestParameters(
                 clientId = oAuth2Client.clientId,
                 requestUri = requestUri ?: throw Exception("No request_uri from PAR response at $parEndpointUrl"),
-                state = state,
             )
         }
     } ?: throw Exception("No pushedAuthorizationRequestEndpoint in $oauthMetadata")

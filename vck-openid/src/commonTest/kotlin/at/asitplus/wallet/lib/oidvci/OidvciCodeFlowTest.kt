@@ -14,6 +14,7 @@ import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
@@ -23,7 +24,6 @@ import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.oauth2.AuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oauth2.ClientAuthRequest
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
@@ -34,9 +34,7 @@ import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.openid.DummyUserProvider
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.TestConfig
-import de.infix.testBalloon.framework.aroundEach
-import de.infix.testBalloon.framework.testSuite
+import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldHaveSize
@@ -53,477 +51,541 @@ import kotlinx.serialization.decodeFromByteArray
 
 val OidvciCodeFlowTest by testSuite {
 
-    lateinit var strategy: AuthorizationServiceStrategy
-    lateinit var authorizationService: SimpleAuthorizationService
-    lateinit var issuer: CredentialIssuer
-    lateinit var client: WalletService
-    lateinit var state: String
-
-    testConfig = TestConfig.aroundEach {
-        strategy = CredentialAuthorizationServiceStrategy(setOf(AtomicAttribute2023, MobileDrivingLicenceScheme))
-        authorizationService = SimpleAuthorizationService(
-            strategy = strategy,
-        )
-        issuer = CredentialIssuer(
-            authorizationService = authorizationService,
-            issuer = IssuerAgent(
-                identifier = "https://issuer.example.com".toUri(),
-                randomSource = RandomSource.Default
-            ),
-            credentialSchemes = setOf(AtomicAttribute2023, MobileDrivingLicenceScheme),
-        )
-        client = WalletService()
-        state = uuid4().toString()
-        it()
-    }
-
-    suspend fun getToken(scope: String, setScopeInTokenRequest: Boolean = true): TokenResponseParameters {
-        val authnRequest = client.oauth2Client.createAuthRequestJar(
-            state = state,
-            scope = scope,
-            resource = issuer.metadata.credentialIssuer
-        )
-        val input = authnRequest as RequestParameters
-        val authnResponse = authorizationService.authorize(input) { catching { DummyUserProvider.user } }
-            .getOrThrow()
-            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-        val code = authnResponse.params?.code
-            .shouldNotBeNull()
-        val tokenRequest = client.oauth2Client.createTokenRequestParameters(
-            state = state,
-            authorization = OAuth2Client.AuthorizationForToken.Code(code),
-            scope = if (setScopeInTokenRequest) scope else null,
-            resource = issuer.metadata.credentialIssuer
-        )
-        return authorizationService.token(tokenRequest, null).getOrThrow()
-    }
-
-    suspend fun getToken(
-        service: SimpleAuthorizationService,
-        authorizationDetails: Set<AuthorizationDetails>,
-        setAuthnDetailsInTokenRequest: Boolean = true,
-    ): TokenResponseParameters {
-        val authnRequest = client.oauth2Client.createAuthRequestJar(
-            state = state,
-            authorizationDetails = authorizationDetails
-        )
-        val input = authnRequest as RequestParameters
-        val authnResponse = service.authorize(input) { catching { DummyUserProvider.user } }
-            .getOrThrow()
-            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-        val code = authnResponse.params?.code
-            .shouldNotBeNull()
-        val tokenRequest = client.oauth2Client.createTokenRequestParameters(
-            state = state,
-            authorization = OAuth2Client.AuthorizationForToken.Code(code),
-            authorizationDetails = if (setAuthnDetailsInTokenRequest) authorizationDetails else null,
-        )
-        return service.token(tokenRequest, null).getOrThrow()
-    }
-
-    fun defectMapStore() = object : MapStore<String, ClientAuthRequest> {
-        override suspend fun put(key: String, value: ClientAuthRequest) = Unit
-        override suspend fun get(key: String): ClientAuthRequest? = null
-        override suspend fun remove(key: String): ClientAuthRequest? = null
-    }
-
-    "metadata validation" {
-        val issuerCredentialFormats = issuer.metadata.supportedCredentialConfigurations.shouldNotBeNull()
-        issuerCredentialFormats.shouldNotBeEmpty()
-        issuerCredentialFormats.forEach { it: Map.Entry<String, SupportedCredentialFormat> ->
-            it.key.shouldNotBeEmpty()
-            it.value.shouldNotBeNull().also {
-                it.format.shouldNotBeNull()
-                it.scope.shouldNotBeEmpty()
-                it.supportedSigningAlgorithms.shouldNotBeNull().shouldNotBeEmpty()
-                it.supportedProofTypes.shouldNotBeNull().shouldNotBeEmpty()
-                it.supportedBindingMethods.shouldNotBeNull().shouldNotBeEmpty()
-                if (it.format != CredentialFormatEnum.JWT_VC) {
-                    it.claimDescription.shouldNotBeNull().shouldNotBeEmpty()
-                    it.credentialMetadata.shouldNotBeNull().claimDescription.shouldNotBeNull().shouldNotBeEmpty()
-                }
-            }
-        }
-        strategy.validAuthorizationDetails().shouldNotBeEmpty().forEach {
-            it.shouldBeInstanceOf<OpenIdAuthorizationDetails>()
-                .credentialConfigurationId.shouldNotBeEmpty()
-                .shouldBeIn(issuerCredentialFormats.keys)
-        }
-    }
-
-    "request one credential, using scope" {
-        val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
-        val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata).shouldNotBeNull()
-        val scope = credentialFormat.scope.shouldNotBeNull()
-        val token = getToken(scope)
-        val credential = issuer.credential(
-            authorizationHeader = token.toHttpHeaderValue(),
-            params = client.createCredential(
-                tokenResponse = token,
-                metadata = issuer.metadata,
-                credentialFormat = credentialFormat,
-                clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
-            ).getOrThrow().first(),
-            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
-        ).getOrThrow()
-        val serializedCredential = credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
-
-        JwsSigned.deserialize<VerifiableCredentialJws>(
-            VerifiableCredentialJws.serializer(),
-            serializedCredential,
-            vckJsonSerializer
-        ).getOrThrow()
-            .payload.vc.credentialSubject.shouldBeInstanceOf<at.asitplus.wallet.lib.data.AtomicAttribute2023>()
-    }
-
-    "request multiple credentials, using scope" {
-        val requestOptions = setOf(
-            RequestOptions(AtomicAttribute2023, SD_JWT),
-            RequestOptions(AtomicAttribute2023, ISO_MDOC),
-        ).associateBy {
-            client.selectSupportedCredentialFormat(it, issuer.metadata)!!
-        }
-        val scope = requestOptions.keys.joinToString(" ") { it.scope.shouldNotBeNull() }
-        val token = getToken(scope)
-
-        requestOptions.forEach {
-            issuer.credential(
-                authorizationHeader = token.toHttpHeaderValue(),
-                params = client.createCredential(
-                    tokenResponse = token,
-                    metadata = issuer.metadata,
-                    credentialFormat = it.key,
-                    clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
-                ).getOrThrow().first(),
-                credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
-            ).getOrThrow().credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
-        }
-    }
-
-    "proof over different keys leads to different credentials" {
-        val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
-        val scope = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata)?.scope.shouldNotBeNull()
-        val clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce
-        val token = getToken(scope)
-        val proof = client.createCredentialRequestProofJwt(
-            clientNonce = clientNonce,
-            credentialIssuer = issuer.metadata.credentialIssuer,
-        )
-        val differentProof = WalletService().createCredentialRequestProofJwt(
-            clientNonce = clientNonce,
-            credentialIssuer = issuer.metadata.credentialIssuer,
-        )
-        val credentialRequest = CredentialRequestParameters(
-            credentialConfigurationId = scope,
-            proofs = CredentialRequestProofContainer(
-                jwt = setOf(proof.jwt!!, differentProof.jwt!!)
+    withFixtureGenerator {
+        object {
+            val strategy =
+                CredentialAuthorizationServiceStrategy(setOf(AtomicAttribute2023, MobileDrivingLicenceScheme))
+            var authorizationService = SimpleAuthorizationService(
+                strategy = strategy,
             )
-        )
-
-        val credentials: Collection<CredentialResponseSingleCredential> =
-            issuer.credential(
-                token.toHttpHeaderValue(),
-                credentialRequest,
-                credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
-            ).getOrThrow()
-                .credentials.shouldNotBeEmpty().shouldHaveSize(2)
-        // subject identifies the key of the client, here the keys of different proofs, so they should be unique
-        credentials.map {
-            JwsSigned.deserialize<VerifiableCredentialJws>(
-                VerifiableCredentialJws.serializer(),
-                it.credentialString.shouldNotBeNull(),
-                vckJsonSerializer
-            ).getOrThrow().payload.subject
-        }.toSet().shouldHaveSize(2)
-    }
-
-    "authorizationService with defect mapstore leads to an error" {
-        authorizationService = SimpleAuthorizationService(
-            codeToClientAuthRequest = defectMapStore(),
-            strategy = CredentialAuthorizationServiceStrategy(setOf(AtomicAttribute2023)),
-        )
-        issuer = CredentialIssuer(
-            authorizationService = authorizationService,
-            issuer = IssuerAgent(
-                identifier = "https://issuer.example.com".toUri(),
-                randomSource = RandomSource.Default
-            ),
-            credentialSchemes = setOf(AtomicAttribute2023),
-        )
-        val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
-        val scope = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata)?.scope.shouldNotBeNull()
-
-        shouldThrow<OAuth2Exception> {
-            getToken(scope)
-        }
-    }
-
-    "request credential in SD-JWT, using scope" {
-        val requestOptions = RequestOptions(AtomicAttribute2023, SD_JWT)
-        val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata).shouldNotBeNull()
-        val scope = credentialFormat.scope.shouldNotBeNull()
-        val token = getToken(scope)
-
-        val credential = issuer.credential(
-            authorizationHeader = token.toHttpHeaderValue(),
-            params = client.createCredential(
-                tokenResponse = token,
-                metadata = issuer.metadata,
-                credentialFormat = credentialFormat,
-                clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
-            ).getOrThrow().first(),
-            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
-        ).getOrThrow()
-        val serializedCredential = credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
-
-        serializedCredential.assertSdJwtReceived()
-    }
-
-    "request credential in SD-JWT, using scope only in authn request" {
-        val requestOptions = RequestOptions(AtomicAttribute2023, SD_JWT)
-        val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata).shouldNotBeNull()
-        val scope = credentialFormat.scope.shouldNotBeNull()
-        val token = getToken(scope, false) // do not set scope in token request, only in authn request
-
-        val credential = issuer.credential(
-            authorizationHeader = token.toHttpHeaderValue(),
-            params = client.createCredential(
-                tokenResponse = token,
-                metadata = issuer.metadata,
-                credentialFormat = credentialFormat,
-                clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
-            ).getOrThrow().first(),
-            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
-        ).getOrThrow()
-        val serializedCredential = credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
-
-        serializedCredential.assertSdJwtReceived()
-    }
-
-    "request credential in SD-JWT, using scope in access token different to auth code" {
-        val authCodeScope =
-            client.selectSupportedCredentialFormat(RequestOptions(AtomicAttribute2023, SD_JWT), issuer.metadata)
-                ?.scope.shouldNotBeNull()
-        val tokenScope =
-            client.selectSupportedCredentialFormat(RequestOptions(AtomicAttribute2023, ISO_MDOC), issuer.metadata)
-                ?.scope.shouldNotBeNull()
-        val authnRequest = client.oauth2Client.createAuthRequestJar(
-            state = state,
-            scope = authCodeScope,
-            resource = issuer.metadata.credentialIssuer
-        )
-        val input = authnRequest as RequestParameters
-        val authnResponse = authorizationService.authorize(input) { catching { DummyUserProvider.user } }
-            .getOrThrow()
-            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-        val code = authnResponse.params?.code
-            .shouldNotBeNull()
-        val tokenRequest = client.oauth2Client.createTokenRequestParameters(
-            state = state,
-            authorization = OAuth2Client.AuthorizationForToken.Code(code),
-            scope = tokenScope, // this is wrong, should be the same as in authn request
-            resource = issuer.metadata.credentialIssuer
-        )
-        shouldThrow<OAuth2Exception> {
-            authorizationService.token(tokenRequest, null).getOrThrow()
-        }
-    }
-
-    "request credential in SD-JWT, using authorization details" {
-        val credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(SD_JWT)
-        val authorizationDetails = client.buildAuthorizationDetails(
-            credentialConfigurationId = credentialConfigurationId,
-            authorizationServers = issuer.metadata.authorizationServers
-        )
-        val credentialFormat = issuer.metadata.supportedCredentialConfigurations
-            .shouldNotBeNull()[credentialConfigurationId]
-            .shouldNotBeNull()
-        val token = getToken(authorizationService, authorizationDetails)
-
-        val credential = issuer.credential(
-            authorizationHeader = token.toHttpHeaderValue(),
-            params = client.createCredential(
-                tokenResponse = token,
-                metadata = issuer.metadata,
-                credentialFormat = credentialFormat,
-                clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
-            ).getOrThrow().first(),
-            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
-        ).getOrThrow()
-        val serializedCredential = credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
-
-        serializedCredential.assertSdJwtReceived()
-    }
-
-    "request credential in SD-JWT, using authorization details only in authnrequest" {
-        val credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(SD_JWT)
-        val authorizationDetails = client.buildAuthorizationDetails(
-            credentialConfigurationId = credentialConfigurationId,
-            authorizationServers = issuer.metadata.authorizationServers
-        )
-        val credentialFormat = issuer.metadata.supportedCredentialConfigurations
-            .shouldNotBeNull()[credentialConfigurationId]
-            .shouldNotBeNull()
-        val token =
-            getToken(authorizationService, authorizationDetails, false) // do not set authn details in token request
-
-        val credential = issuer.credential(
-            authorizationHeader = token.toHttpHeaderValue(),
-            params = client.createCredential(
-                tokenResponse = token,
-                metadata = issuer.metadata,
-                credentialFormat = credentialFormat,
-                clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
-            ).getOrThrow().first(),
-            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
-        ).getOrThrow()
-        val serializedCredential = credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
-
-        serializedCredential.assertSdJwtReceived()
-    }
-
-    "request credential in SD-JWT, using authorization details is access token different to auth code" {
-        val authCodeAuthnDetails = client.buildAuthorizationDetails(
-            credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(SD_JWT),
-            authorizationServers = issuer.metadata.authorizationServers
-        )
-        val tokenAuthnDetails = client.buildAuthorizationDetails(
-            credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(ISO_MDOC),
-            authorizationServers = issuer.metadata.authorizationServers
-        )
-        val authnRequest = client.oauth2Client.createAuthRequestJar(
-            state = state,
-            authorizationDetails = authCodeAuthnDetails
-        )
-        val input = authnRequest as RequestParameters
-        val authnResponse = authorizationService.authorize(input) { catching { DummyUserProvider.user } }
-            .getOrThrow()
-            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-        val code = authnResponse.params?.code
-            .shouldNotBeNull()
-        val tokenRequest = client.oauth2Client.createTokenRequestParameters(
-            state = state,
-            authorization = OAuth2Client.AuthorizationForToken.Code(code),
-            authorizationDetails = tokenAuthnDetails // this is wrong, should be same as in authn request
-        )
-        shouldThrow<OAuth2Exception> {
-            authorizationService.token(tokenRequest, null).getOrThrow()
-        }
-    }
-
-    "request credential with unknown configuration_id" {
-        // that credential format (from which credential_configuration_id will be derived) is not known to our issuer
-        val credentialFormat = with(
-            CredentialIssuer(
-                authorizationService = SimpleAuthorizationService(
-                    strategy = CredentialAuthorizationServiceStrategy(setOf(EuPidScheme)),
-                ),
+            var issuer = CredentialIssuer(
+                authorizationService = authorizationService,
                 issuer = IssuerAgent(
-                    identifier = "https://secondissuer.example.com".toUri(),
+                    identifier = "https://issuer.example.com".toUri(),
                     randomSource = RandomSource.Default
                 ),
-                credentialSchemes = setOf(EuPidScheme),
+                credentialSchemes = setOf(AtomicAttribute2023, MobileDrivingLicenceScheme),
             )
-        ) {
-            client.selectSupportedCredentialFormat(RequestOptions(EuPidScheme, SD_JWT), metadata)
+            val client = WalletService()
+            val oauth2Client = OAuth2Client()
+            val state = uuid4().toString()
+
+            suspend fun getToken(scope: String, setScopeInTokenRequest: Boolean = true): TokenResponseParameters {
+                val authnRequest = oauth2Client.createAuthRequestJar(
+                    state = state,
+                    scope = scope,
+                    resource = issuer.metadata.credentialIssuer
+                )
+                val input = authnRequest as RequestParameters
+                val authnResponse = authorizationService.authorize(input) { catching { DummyUserProvider.user } }
+                    .getOrThrow()
+                    .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+                val code = authnResponse.params?.code
+                    .shouldNotBeNull()
+                val tokenRequest = oauth2Client.createTokenRequestParameters(
+                    state = state,
+                    authorization = OAuth2Client.AuthorizationForToken.Code(code),
+                    scope = if (setScopeInTokenRequest) scope else null,
+                    resource = issuer.metadata.credentialIssuer
+                )
+                return authorizationService.token(tokenRequest, null).getOrThrow()
+            }
+
+            suspend fun getToken(
+                authorizationDetails: Set<AuthorizationDetails>,
+                setAuthnDetailsInTokenRequest: Boolean = true,
+            ): TokenResponseParameters {
+                val authnRequest = oauth2Client.createAuthRequestJar(
+                    state = state,
+                    authorizationDetails = authorizationDetails
+                )
+                val input = authnRequest as RequestParameters
+                val authnResponse = authorizationService.authorize(input) { catching { DummyUserProvider.user } }
+                    .getOrThrow()
+                    .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+                val code = authnResponse.params?.code
+                    .shouldNotBeNull()
+                val tokenRequest = oauth2Client.createTokenRequestParameters(
+                    state = state,
+                    authorization = OAuth2Client.AuthorizationForToken.Code(code),
+                    authorizationDetails = if (setAuthnDetailsInTokenRequest) authorizationDetails else null,
+                )
+                return authorizationService.token(tokenRequest, null).getOrThrow()
+            }
+
+            fun defectMapStore() = object : MapStore<String, ClientAuthRequest> {
+                override suspend fun put(key: String, value: ClientAuthRequest) = Unit
+                override suspend fun get(key: String): ClientAuthRequest? = null
+                override suspend fun remove(key: String): ClientAuthRequest? = null
+            }
+        }
+    } - {
+        "metadata validation" {
+            val issuerCredentialFormats = it.issuer.metadata.supportedCredentialConfigurations.shouldNotBeNull()
+                .shouldNotBeEmpty()
+            issuerCredentialFormats.forEach { entry: Map.Entry<String, SupportedCredentialFormat> ->
+                entry.key.shouldNotBeEmpty()
+                entry.value.shouldNotBeNull().apply {
+                    format.shouldNotBeNull()
+                    scope.shouldNotBeEmpty()
+                    supportedSigningAlgorithms.shouldNotBeNull().shouldNotBeEmpty()
+                    supportedProofTypes.shouldNotBeNull().shouldNotBeEmpty()
+                    supportedBindingMethods.shouldNotBeNull().shouldNotBeEmpty()
+                    if (format != CredentialFormatEnum.JWT_VC) {
+                        credentialMetadata.shouldNotBeNull().claimDescription.shouldNotBeNull()
+                            .shouldNotBeEmpty()
+                    }
+                }
+            }
+            it.strategy.validAuthorizationDetails("empty").shouldNotBeEmpty().forEach {
+                it.shouldBeInstanceOf<OpenIdAuthorizationDetails>()
+                    .credentialConfigurationId.shouldNotBeEmpty()
+                    .shouldBeIn(issuerCredentialFormats.keys)
+            }
         }
 
-        val scope = credentialFormat
-            ?.scope.shouldNotBeNull()
-        val token = getToken(scope)
-
-        shouldThrow<OAuth2Exception.UnknownCredentialConfiguration> {
-            issuer.credential(
+        "request one credential, using scope" {
+            val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
+            val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
+                .shouldNotBeNull()
+            val scope = credentialFormat.scope.shouldNotBeNull()
+            val token = it.getToken(scope)
+            val credential = it.issuer.credential(
                 authorizationHeader = token.toHttpHeaderValue(),
-                params = client.createCredential(
+                params = it.client.createCredential(
                     tokenResponse = token,
-                    metadata = issuer.metadata,
+                    metadata = it.issuer.metadata,
                     credentialFormat = credentialFormat,
-                    clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
+                    clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
                 ).getOrThrow().first(),
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
+                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .response
+            val serializedCredential = credential.credentials.shouldNotBeEmpty()
+                .first().credentialString.shouldNotBeNull()
+
+            JwsSigned.deserialize<VerifiableCredentialJws>(
+                VerifiableCredentialJws.serializer(),
+                serializedCredential,
+                vckJsonSerializer
+            ).getOrThrow()
+                .payload.vc.credentialSubject.shouldBeInstanceOf<at.asitplus.wallet.lib.data.AtomicAttribute2023>()
         }
-    }
 
-    "request credential in SD-JWT, using scope in token, but authorization details in credential request" {
-        val credentialFormat =
-            client.selectSupportedCredentialFormat(RequestOptions(AtomicAttribute2023, SD_JWT), issuer.metadata)
-        val scope = credentialFormat
-            ?.scope.shouldNotBeNull()
-        val token = getToken(scope)
+        "request multiple credentials, using scope" {
+            val requestOptions = setOf(
+                RequestOptions(AtomicAttribute2023, SD_JWT),
+                RequestOptions(AtomicAttribute2023, ISO_MDOC),
+            ).associateBy { requestOption ->
+                it.client.selectSupportedCredentialFormat(requestOption, it.issuer.metadata)!!
+            }
+            val scope = requestOptions.keys.joinToString(" ") { it.scope.shouldNotBeNull() }
+            val token = it.getToken(scope)
 
-        val first = client.createCredential(
-            tokenResponse = token,
-            metadata = issuer.metadata,
-            credentialFormat = credentialFormat,
-            clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
-        ).getOrThrow().first()
-        shouldThrow<OAuth2Exception> {
-            issuer.credential(
+            requestOptions.forEach { requestOption ->
+                it.issuer.credential(
+                    authorizationHeader = token.toHttpHeaderValue(),
+                    params = it.client.createCredential(
+                        tokenResponse = token,
+                        metadata = it.issuer.metadata,
+                        credentialFormat = requestOption.key,
+                        clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
+                    ).getOrThrow().first(),
+                    credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+                ).getOrThrow()
+                    .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                    .response
+                    .credentials.shouldNotBeEmpty().first()
+                    .credentialString.shouldNotBeNull()
+            }
+        }
+
+        "proof over different keys leads to different credentials" {
+            val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
+            val scope = it.client.selectSupportedCredentialFormat(
+                requestOptions,
+                it.issuer.metadata
+            )?.scope.shouldNotBeNull()
+            val clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce
+            val token = it.getToken(scope)
+            val proof = it.client.createCredentialRequestProofJwt(
+                clientNonce = clientNonce,
+                credentialIssuer = it.issuer.metadata.credentialIssuer,
+            )
+            val differentProof = WalletService().createCredentialRequestProofJwt(
+                clientNonce = clientNonce,
+                credentialIssuer = it.issuer.metadata.credentialIssuer,
+            )
+            val credentialRequest = CredentialRequestParameters(
+                credentialConfigurationId = scope,
+                proofs = CredentialRequestProofContainer(
+                    jwt = proof.jwt!! + differentProof.jwt!!
+                )
+            )
+
+            val credentials: Collection<CredentialResponseSingleCredential> = it.issuer.credential(
                 authorizationHeader = token.toHttpHeaderValue(),
-                params = first.wrongCredentialIdentifier(),
+                params = WalletService.CredentialRequest.Plain(credentialRequest),
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
+                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .response
+                .credentials.shouldNotBeEmpty().shouldHaveSize(2)
+            // subject identifies the key of the client, here the keys of different proofs, so they should be unique
+            credentials.map {
+                JwsSigned.deserialize<VerifiableCredentialJws>(
+                    VerifiableCredentialJws.serializer(),
+                    it.credentialString.shouldNotBeNull(),
+                    vckJsonSerializer
+                ).getOrThrow().payload.subject
+            }.toSet().shouldHaveSize(2)
         }
-    }
 
-    "request credential in SD-JWT, using authorization details in token, but scope in credential request" {
-        val credentialFormat =
-            client.selectSupportedCredentialFormat(RequestOptions(AtomicAttribute2023, SD_JWT), issuer.metadata)
+        "authorizationService with defect mapstore leads to an error" {
+            it.authorizationService = SimpleAuthorizationService(
+                codeToClientAuthRequest = it.defectMapStore(),
+                strategy = CredentialAuthorizationServiceStrategy(setOf(AtomicAttribute2023)),
+            )
+            it.issuer = CredentialIssuer(
+                authorizationService = it.authorizationService,
+                issuer = IssuerAgent(
+                    identifier = "https://issuer.example.com".toUri(),
+                    randomSource = RandomSource.Default
+                ),
+                credentialSchemes = setOf(AtomicAttribute2023),
+            )
+            val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
+            val scope = it.client.selectSupportedCredentialFormat(
+                requestOptions,
+                it.issuer.metadata
+            )?.scope.shouldNotBeNull()
+
+            shouldThrow<OAuth2Exception> {
+                it.getToken(scope)
+            }
+        }
+
+        "request credential in SD-JWT, using scope" {
+            val requestOptions = RequestOptions(AtomicAttribute2023, SD_JWT)
+            val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
                 .shouldNotBeNull()
-        val scope = credentialFormat.scope.shouldNotBeNull()
-        val authorizationDetails = client.buildAuthorizationDetails(
-            credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(SD_JWT),
-            authorizationServers = issuer.metadata.authorizationServers
-        )
-        val token = getToken(authorizationService, authorizationDetails)
+            val scope = credentialFormat.scope.shouldNotBeNull()
+            val token = it.getToken(scope)
 
-        shouldThrow<OAuth2Exception> {
-            issuer.credential(
+            val credential = it.issuer.credential(
                 authorizationHeader = token.toHttpHeaderValue(),
-                params = client.createCredential(
+                params = it.client.createCredential(
                     tokenResponse = token,
-                    metadata = issuer.metadata,
+                    metadata = it.issuer.metadata,
                     credentialFormat = credentialFormat,
-                    clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
-                ).getOrThrow().first().wrongCredentialConfigurationId(scope),
+                    clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
+                ).getOrThrow().first(),
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
+                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .response
+            val serializedCredential = credential.credentials.shouldNotBeEmpty()
+                .first().credentialString.shouldNotBeNull()
+
+            serializedCredential.assertSdJwtReceived()
+        }
+
+        "request credential in SD-JWT, using scope only in authn request" {
+            val requestOptions = RequestOptions(AtomicAttribute2023, SD_JWT)
+            val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
+                .shouldNotBeNull()
+            val scope = credentialFormat.scope.shouldNotBeNull()
+            val token = it.getToken(scope, false) // do not set scope in token request, only in authn request
+
+            val credential = it.issuer.credential(
+                authorizationHeader = token.toHttpHeaderValue(),
+                params = it.client.createCredential(
+                    tokenResponse = token,
+                    metadata = it.issuer.metadata,
+                    credentialFormat = credentialFormat,
+                    clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
+                ).getOrThrow().first(),
+                credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+            ).getOrThrow()
+                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .response
+            val serializedCredential = credential.credentials.shouldNotBeEmpty().first()
+                .credentialString.shouldNotBeNull()
+
+            serializedCredential.assertSdJwtReceived()
+        }
+
+        "request credential in SD-JWT, using scope in access token different to auth code" {
+            val authCodeScope = it.client.selectSupportedCredentialFormat(
+                RequestOptions(AtomicAttribute2023, SD_JWT),
+                it.issuer.metadata
+            )?.scope.shouldNotBeNull()
+            val tokenScope = it.client.selectSupportedCredentialFormat(
+                RequestOptions(AtomicAttribute2023, ISO_MDOC),
+                it.issuer.metadata
+            )?.scope.shouldNotBeNull()
+            val authnRequest = it.oauth2Client.createAuthRequestJar(
+                state = it.state,
+                scope = authCodeScope,
+                resource = it.issuer.metadata.credentialIssuer
+            )
+            val input = authnRequest as RequestParameters
+            val authnResponse = it.authorizationService.authorize(input) { catching { DummyUserProvider.user } }
+                .getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+            val code = authnResponse.params?.code
+                .shouldNotBeNull()
+            val tokenRequest = it.oauth2Client.createTokenRequestParameters(
+                state = it.state,
+                authorization = OAuth2Client.AuthorizationForToken.Code(code),
+                scope = tokenScope, // this is wrong, should be the same as in authn request
+                resource = it.issuer.metadata.credentialIssuer
+            )
+            shouldThrow<OAuth2Exception> {
+                it.authorizationService.token(tokenRequest, null).getOrThrow()
+            }
+        }
+
+        "request credential in SD-JWT, using authorization details" {
+            val credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(SD_JWT)
+            val authorizationDetails = it.client.buildAuthorizationDetails(
+                credentialConfigurationId = credentialConfigurationId,
+                authorizationServers = it.issuer.metadata.authorizationServers
+            )
+            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations
+                .shouldNotBeNull()[credentialConfigurationId]
+                .shouldNotBeNull()
+            val token = it.getToken(authorizationDetails)
+
+            val credential = it.issuer.credential(
+                authorizationHeader = token.toHttpHeaderValue(),
+                params = it.client.createCredential(
+                    tokenResponse = token,
+                    metadata = it.issuer.metadata,
+                    credentialFormat = credentialFormat,
+                    clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
+                ).getOrThrow().first(),
+                credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+            ).getOrThrow()
+                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .response
+            val serializedCredential = credential.credentials.shouldNotBeEmpty()
+                .first().credentialString.shouldNotBeNull()
+
+            serializedCredential.assertSdJwtReceived()
+        }
+
+        "request credential in SD-JWT, using authorization details only in authnrequest" {
+            val credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(SD_JWT)
+            val authorizationDetails = it.client.buildAuthorizationDetails(
+                credentialConfigurationId = credentialConfigurationId,
+                authorizationServers = it.issuer.metadata.authorizationServers
+            )
+            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations
+                .shouldNotBeNull()[credentialConfigurationId]
+                .shouldNotBeNull()
+            val token = it.getToken(authorizationDetails, false) // do not set authn details in token request
+
+            val credential = it.issuer.credential(
+                authorizationHeader = token.toHttpHeaderValue(),
+                params = it.client.createCredential(
+                    tokenResponse = token,
+                    metadata = it.issuer.metadata,
+                    credentialFormat = credentialFormat,
+                    clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
+                ).getOrThrow().first(),
+                credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+            ).getOrThrow()
+                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .response
+            val serializedCredential = credential.credentials.shouldNotBeEmpty()
+                .first().credentialString.shouldNotBeNull()
+
+            serializedCredential.assertSdJwtReceived()
+        }
+
+        "request credential in SD-JWT, using authorization details in access token different to auth code" {
+            val authCodeAuthnDetails = it.client.buildAuthorizationDetails(
+                credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(SD_JWT),
+                authorizationServers = it.issuer.metadata.authorizationServers
+            )
+            val tokenAuthnDetails = it.client.buildAuthorizationDetails(
+                credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(ISO_MDOC),
+                authorizationServers = it.issuer.metadata.authorizationServers
+            )
+            val authnRequest = it.oauth2Client.createAuthRequestJar(
+                state = it.state,
+                authorizationDetails = authCodeAuthnDetails
+            )
+            val input = authnRequest as RequestParameters
+            val authnResponse = it.authorizationService.authorize(input) { catching { DummyUserProvider.user } }
+                .getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+            val code = authnResponse.params?.code
+                .shouldNotBeNull()
+            val tokenRequest = it.oauth2Client.createTokenRequestParameters(
+                state = it.state,
+                authorization = OAuth2Client.AuthorizationForToken.Code(code),
+                authorizationDetails = tokenAuthnDetails // this is wrong, should be same as in authn request
+            )
+            shouldThrow<OAuth2Exception> {
+                it.authorizationService.token(tokenRequest, null).getOrThrow()
+            }
+        }
+
+        "request credential in SD-JWT, using more authorization details in access token than in auth code" {
+            val authCodeAuthnDetails = it.client.buildAuthorizationDetails(
+                credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(SD_JWT),
+                authorizationServers = it.issuer.metadata.authorizationServers
+            )
+            val tokenAuthnDetails = it.client.buildAuthorizationDetails(
+                credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(ISO_MDOC),
+                authorizationServers = it.issuer.metadata.authorizationServers
+            )
+            val authnRequest = it.oauth2Client.createAuthRequestJar(
+                state = it.state,
+                authorizationDetails = authCodeAuthnDetails
+            )
+            val input = authnRequest as RequestParameters
+            val authnResponse = it.authorizationService.authorize(input) { catching { DummyUserProvider.user } }
+                .getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+            val code = authnResponse.params?.code
+                .shouldNotBeNull()
+            val tokenRequest = it.oauth2Client.createTokenRequestParameters(
+                state = it.state,
+                authorization = OAuth2Client.AuthorizationForToken.Code(code),
+                authorizationDetails = tokenAuthnDetails + authCodeAuthnDetails // this is wrong, should be same as in authn request
+            )
+            shouldThrow<OAuth2Exception> {
+                it.authorizationService.token(tokenRequest, null).getOrThrow()
+            }
+        }
+
+        "request credential with unknown configuration_id" {
+            // that credential format (from which credential_configuration_id will be derived) is not known to our issuer
+            val credentialFormat = with(
+                CredentialIssuer(
+                    authorizationService = SimpleAuthorizationService(
+                        strategy = CredentialAuthorizationServiceStrategy(setOf(EuPidScheme)),
+                    ),
+                    issuer = IssuerAgent(
+                        identifier = "https://secondissuer.example.com".toUri(),
+                        randomSource = RandomSource.Default
+                    ),
+                    credentialSchemes = setOf(EuPidScheme),
+                )
+            ) {
+                it.client.selectSupportedCredentialFormat(RequestOptions(EuPidScheme, SD_JWT), metadata)
+            }
+
+            val scope = credentialFormat?.scope.shouldNotBeNull()
+            val token = it.getToken(scope)
+
+            shouldThrow<OAuth2Exception.UnknownCredentialConfiguration> {
+                it.issuer.credential(
+                    authorizationHeader = token.toHttpHeaderValue(),
+                    params = it.client.createCredential(
+                        tokenResponse = token,
+                        metadata = it.issuer.metadata,
+                        credentialFormat = credentialFormat,
+                        clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
+                    ).getOrThrow().first(),
+                    credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+                ).getOrThrow()
+            }
+        }
+
+        "request credential in SD-JWT, using scope in token, but authorization details in credential request" {
+            val credentialFormat = it.client.selectSupportedCredentialFormat(
+                RequestOptions(AtomicAttribute2023, SD_JWT),
+                it.issuer.metadata
+            )
+            val scope = credentialFormat
+                ?.scope.shouldNotBeNull()
+            val token = it.getToken(scope)
+
+            val first = it.client.createCredential(
+                tokenResponse = token,
+                metadata = it.issuer.metadata,
+                credentialFormat = credentialFormat,
+                clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
+            ).getOrThrow().first()
+            shouldThrow<OAuth2Exception> {
+                it.issuer.credential(
+                    authorizationHeader = token.toHttpHeaderValue(),
+                    params = first.wrongCredentialIdentifier(),
+                    credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+                ).getOrThrow()
+            }
+        }
+
+        "request credential in SD-JWT, using authorization details in token, but scope in credential request" {
+            val credentialFormat = it.client.selectSupportedCredentialFormat(
+                RequestOptions(AtomicAttribute2023, SD_JWT),
+                it.issuer.metadata
+            ).shouldNotBeNull()
+            val scope = credentialFormat.scope.shouldNotBeNull()
+            val authorizationDetails = it.client.buildAuthorizationDetails(
+                credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(SD_JWT),
+                authorizationServers = it.issuer.metadata.authorizationServers
+            )
+
+            shouldThrow<OAuth2Exception> {
+                val token = it.getToken(authorizationDetails)
+                it.issuer.credential(
+                    authorizationHeader = token.toHttpHeaderValue(),
+                    params = it.client.createCredential(
+                        tokenResponse = token,
+                        metadata = it.issuer.metadata,
+                        credentialFormat = credentialFormat,
+                        clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
+                    ).getOrThrow().first().wrongCredentialConfigurationId(scope),
+                    credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+                ).getOrThrow()
+            }
+        }
+
+
+        "request credential in ISO MDOC, using scope" {
+            val requestOptions = RequestOptions(MobileDrivingLicenceScheme, ISO_MDOC)
+            val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
+                .shouldNotBeNull()
+            val scope = credentialFormat.scope.shouldNotBeNull()
+            val token = it.getToken(scope)
+
+            val credential = it.issuer.credential(
+                authorizationHeader = token.toHttpHeaderValue(),
+                params = it.client.createCredential(
+                    tokenResponse = token,
+                    metadata = it.issuer.metadata,
+                    credentialFormat = credentialFormat,
+                    clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
+                ).getOrThrow().first(),
+                credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+            ).getOrThrow()
+                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .response
+            val serializedCredential = credential.credentials.shouldNotBeEmpty()
+                .first().credentialString.shouldNotBeNull()
+
+            val issuerSigned = coseCompliantSerializer.decodeFromByteArray<IssuerSigned>(
+                serializedCredential.decodeToByteArray(
+                    Base64()
+                )
+            )
+
+            val namespaces = issuerSigned.namespaces
+                .shouldNotBeNull()
+
+            namespaces.keys.first() shouldBe MobileDrivingLicenceScheme.isoNamespace
+            val numberOfClaims = namespaces.values.firstOrNull()?.entries?.size.shouldNotBeNull()
+            numberOfClaims shouldBeGreaterThan 1
         }
     }
-
-
-    "request credential in ISO MDOC, using scope" {
-        val requestOptions = RequestOptions(MobileDrivingLicenceScheme, ISO_MDOC)
-        val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata).shouldNotBeNull()
-        val scope = credentialFormat?.scope.shouldNotBeNull()
-        val token = getToken(scope)
-
-        val credential = issuer.credential(
-            authorizationHeader = token.toHttpHeaderValue(),
-            params = client.createCredential(
-                tokenResponse = token,
-                metadata = issuer.metadata,
-                credentialFormat = credentialFormat,
-                clientNonce = issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
-            ).getOrThrow().first(),
-            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
-        ).getOrThrow()
-        val serializedCredential = credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
-
-        val issuerSigned =
-            coseCompliantSerializer.decodeFromByteArray<IssuerSigned>(serializedCredential.decodeToByteArray(Base64()))
-
-        val namespaces = issuerSigned.namespaces
-            .shouldNotBeNull()
-
-        namespaces.keys.first() shouldBe MobileDrivingLicenceScheme.isoNamespace
-        val numberOfClaims = namespaces.values.firstOrNull()?.entries?.size.shouldNotBeNull()
-        numberOfClaims shouldBeGreaterThan 1
-    }
-
 }
+
 private fun String.assertSdJwtReceived() {
     JwsSigned.deserialize(
         VerifiableCredentialSdJwt.serializer(),

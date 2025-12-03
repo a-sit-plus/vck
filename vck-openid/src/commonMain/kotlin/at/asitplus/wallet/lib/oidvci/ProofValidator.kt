@@ -1,15 +1,12 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.catching
 import at.asitplus.openid.ClientNonceResponse
 import at.asitplus.openid.CredentialRequestParameters
-import at.asitplus.openid.CredentialRequestProof
 import at.asitplus.openid.CredentialRequestProofContainer
 import at.asitplus.openid.CredentialRequestProofSupported
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.KeyAttestationRequired
 import at.asitplus.openid.OpenIdConstants
-import at.asitplus.openid.OpenIdConstants.ProofType.*
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
@@ -20,8 +17,6 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidNonce
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidProof
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
-import io.github.aakira.napier.Napier
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
@@ -31,7 +26,7 @@ import kotlin.time.Duration.Companion.minutes
  *
  * Implemented from
  * [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
- * , Draft 17, 2025-08-17.
+ * 1.0 from 2025-09-16.
  */
 class ProofValidator(
     /** Used in several fields in [IssuerMetadata], to provide endpoint URLs to clients. */
@@ -54,16 +49,16 @@ class ProofValidator(
 
     /** Valid proof types for [SupportedCredentialFormat.supportedProofTypes]. */
     fun validProofTypes(): Map<String, CredentialRequestProofSupported> = if (requireKeyAttestation) mapOf(
-        JWT.stringRepresentation to CredentialRequestProofSupported(
+        OpenIdConstants.ProofTypes.JWT to CredentialRequestProofSupported(
             supportedSigningAlgorithms = supportedAlgorithms.map { it.identifier },
             keyAttestationRequired = KeyAttestationRequired()
         ),
-        ATTESTATION.stringRepresentation to CredentialRequestProofSupported(
+        OpenIdConstants.ProofTypes.ATTESTATION to CredentialRequestProofSupported(
             supportedSigningAlgorithms = supportedAlgorithms.map { it.identifier },
             keyAttestationRequired = KeyAttestationRequired()
         )
     ) else mapOf(
-        JWT.stringRepresentation to CredentialRequestProofSupported(
+        OpenIdConstants.ProofTypes.JWT to CredentialRequestProofSupported(
             supportedSigningAlgorithms = supportedAlgorithms.map { it.identifier },
         )
     )
@@ -83,21 +78,13 @@ class ProofValidator(
     @Suppress("DEPRECATION")
     suspend fun validateProofExtractSubjectPublicKeys(
         params: CredentialRequestParameters,
-    ): Collection<CryptoPublicKey> = params.proof?.validateProof()
-        ?: params.proofs?.validateProof()
+    ): Collection<CryptoPublicKey> = params.proofs?.validateProof()
         ?: throw InvalidProof("proof not contained in request")
 
-    private suspend fun CredentialRequestProof.validateProof() = when (proofType) {
-        JWT -> jwtParsed?.validateJwtProof()
-        ATTESTATION -> attestationParsed?.validateAttestationProof()
+    private suspend fun CredentialRequestProofContainer.validateProof() = when {
+        jwt != null -> jwtParsed?.flatMap { it.validateJwtProof() }
+        attestation != null -> attestationParsed?.flatMap { it.validateAttestationProof() }
         else -> null
-    }
-
-    private suspend fun CredentialRequestProofContainer.validateProof() = when (proofType) {
-        JWT -> jwtParsed?.flatMap { it.validateJwtProof() }
-        ATTESTATION -> attestationParsed?.flatMap { it.validateAttestationProof() }
-        else -> jwtParsed?.flatMap { it.validateJwtProof() }
-            ?: attestationParsed?.flatMap { it.validateAttestationProof() }
     }
 
     private suspend fun JwsSigned<JsonWebToken>.validateJwtProof(): Collection<CryptoPublicKey> {
