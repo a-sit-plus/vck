@@ -538,7 +538,7 @@ class OpenId4VpVerifier(
         if (idToken.subject != idToken.subjectJwk!!.jwkThumbprint)
             throw IllegalArgumentException("idToken.sub")
                 .also { Napier.d("subject does not equal thumbprint of sub_jwk: ${idToken.subject}") }
-        return AuthnResponseResult.IdToken(idToken, input.parameters.state)
+        return AuthnResponseResult.IdToken(idToken)
     }
 
     /**
@@ -749,7 +749,6 @@ class OpenId4VpVerifier(
             verifiableCredentialSdJwt = verifiableCredentialSdJwt,
             reconstructed = reconstructedJsonObject,
             disclosures = disclosures,
-            state = state,
             freshnessSummary = freshnessSummary,
         )
     }
