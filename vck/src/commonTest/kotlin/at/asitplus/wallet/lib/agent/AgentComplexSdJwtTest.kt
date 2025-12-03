@@ -40,7 +40,7 @@ val AgentComplexSdJwtTest by testSuite {
         }
     } - {
 
-        "with flat address" { it ->
+        test("with flat address") {
             listOf(
                 ClaimToBeIssued(
                     CLAIM_ADDRESS, listOf(
@@ -73,7 +73,7 @@ val AgentComplexSdJwtTest by testSuite {
                 }
         }
 
-        "with claims in address selectively disclosable, but address not" { it ->
+        test("with claims in address selectively disclosable, but address not") {
             listOf(
                 ClaimToBeIssued(
                     CLAIM_ADDRESS, listOf(
@@ -106,7 +106,7 @@ val AgentComplexSdJwtTest by testSuite {
                 }
         }
 
-        "with claims in address recursively selectively disclosable" { it ->
+        test("with claims in address recursively selectively disclosable") {
             listOf(
                 ClaimToBeIssued(
                     CLAIM_ADDRESS,
@@ -140,7 +140,7 @@ val AgentComplexSdJwtTest by testSuite {
                 }
         }
 
-        "with claims in address selectively disclosable, getting all inner disclosures" { it ->
+        test("with claims in address selectively disclosable, getting all inner disclosures") {
             listOf(
                 ClaimToBeIssued(
                     CLAIM_ADDRESS,
@@ -171,7 +171,7 @@ val AgentComplexSdJwtTest by testSuite {
                 }
         }
 
-        "with claims in address in dot-notation" { it ->
+        test("with claims in address in dot-notation") {
             listOf(
                 ClaimToBeIssued("$CLAIM_ADDRESS.$CLAIM_ADDRESS_REGION", "Vienna"),
                 ClaimToBeIssued("$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY", "AT"),
@@ -200,7 +200,7 @@ val AgentComplexSdJwtTest by testSuite {
                 }
         }
 
-        "simple walk-through success" { it ->
+        test("simple walk-through success") {
             listOf(
                 ClaimToBeIssued(CLAIM_GIVEN_NAME, "Susanne"),
                 ClaimToBeIssued(CLAIM_FAMILY_NAME, "Meier"),

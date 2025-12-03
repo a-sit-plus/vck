@@ -36,7 +36,7 @@ val CredentialJsonInteropTest by testSuite {
             )
         }
     } - {
-        "Plain jwt credential path resolving" { it ->
+        test("Plain jwt credential path resolving") {
             it.holderAgent.storeCredential(
                 it.issuerAgent.issueCredential(
                     DummyCredentialDataProvider.getCredential(
@@ -58,7 +58,7 @@ val CredentialJsonInteropTest by testSuite {
             credential.getByJsonPath("\$['value']").content shouldNotBe null
         }
 
-        "SD jwt credential path resolving" { it ->
+        test("SD jwt credential path resolving") {
             it.holderAgent.storeCredential(
                 it.issuerAgent.issueCredential(
                     DummyCredentialDataProvider.getCredential(
@@ -76,7 +76,7 @@ val CredentialJsonInteropTest by testSuite {
             credential.getByJsonPath("\$['${AtomicAttribute2023.CLAIM_DATE_OF_BIRTH}']").content shouldNotBe null
         }
 
-        "ISO credential path resolving" { it ->
+        test("ISO credential path resolving") {
             it.holderAgent.storeCredential(
                 it.issuerAgent.issueCredential(
                     DummyCredentialDataProvider.getCredential(

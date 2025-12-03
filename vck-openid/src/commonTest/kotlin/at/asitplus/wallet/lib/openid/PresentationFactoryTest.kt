@@ -175,7 +175,7 @@ val PresentationFactoryTest by testSuite {
         }
 
         // https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#appendix-B.2.6.1-7
-        "Sample from OpenID4VP 1.0" { it ->
+        test("Sample from OpenID4VP 1.0") {
             val jsonWebKey = """
                 {
                   "kty": "EC",

@@ -41,7 +41,7 @@ val RqesOpenId4VpHolderTest by testSuite {
         }
     } - {
 
-        "Invalid signing certificate throws" { it ->
+        test("Invalid signing certificate throws") {
             it.dummyValueProvider.getCredentialInfo(
                 CertificateParameters.CertStatus.VALID,
                 KeyParameters.KeyStatusOptions.DISABLED
@@ -71,7 +71,7 @@ val RqesOpenId4VpHolderTest by testSuite {
             }
         }
 
-        "certificate without certParameters is invalid" { it ->
+        test("certificate without certParameters is invalid") {
             val validCert = it.dummyValueProvider.getCredentialInfo()
             validCert.copy(
                 certParameters = null
@@ -80,7 +80,7 @@ val RqesOpenId4VpHolderTest by testSuite {
             }
         }
 
-        "certificate without status is valid" { it ->
+        test("certificate without status is valid") {
             val validCert = it.dummyValueProvider.getCredentialInfo()
             validCert.copy(
                 certParameters = CertificateParameters(
@@ -95,7 +95,7 @@ val RqesOpenId4VpHolderTest by testSuite {
             }
         }
 
-        "certificate without certparameters is invalid" { it ->
+        test("certificate without certparameters is invalid") {
             val validCert = it.dummyValueProvider.getCredentialInfo()
             validCert.copy(
                 certParameters = it.dummyValueProvider.getCredentialInfo().certParameters!!.copy(certificates = null)
@@ -104,7 +104,7 @@ val RqesOpenId4VpHolderTest by testSuite {
             }
         }
 
-        "CscAuthDetails respects SigningCredential" { it ->
+        test("CscAuthDetails respects SigningCredential") {
             val digests = it.dummyValueProvider.buildDocumentDigests()
             val validCert = it.dummyValueProvider.getCredentialInfo()
             val validSigningAlgo = validCert.keyParameters.algo.shuffled().firstNotNullOf { oid ->
@@ -130,7 +130,7 @@ val RqesOpenId4VpHolderTest by testSuite {
                 .shouldBe(authDetails)
         }
 
-        "CscDocumentDigest respects SigningCredential" { it ->
+        test("CscDocumentDigest respects SigningCredential") {
             val digests = it.dummyValueProvider.buildDocumentDigests()
             val signatureProperties = it.baseSignatureProperties.copy(
                 signatureFormat = SignatureFormat.entries.random(),
@@ -156,7 +156,7 @@ val RqesOpenId4VpHolderTest by testSuite {
             deserialized shouldBe testDocumentDigests
         }
 
-        "AuthenticationRequest SERVICE" { it ->
+        test("AuthenticationRequest SERVICE") {
             val request = it.rqesWalletService.createServiceAuthenticationRequest()
             request.credentialID shouldBe null
             request.signatureQualifier shouldBe null
@@ -167,7 +167,7 @@ val RqesOpenId4VpHolderTest by testSuite {
                 .shouldBe(request)
         }
 
-        "AuthenticationRequest CREDENTIAL" { it ->
+        test("AuthenticationRequest CREDENTIAL") {
             val documentDigests = it.dummyValueProvider.buildDocumentDigests()
             val validCert = it.dummyValueProvider.getCredentialInfo()
             val signatureProperties = it.baseSignatureProperties.copy(
@@ -193,7 +193,7 @@ val RqesOpenId4VpHolderTest by testSuite {
                 .shouldBe(request)
         }
 
-        "TokenRequest" { it ->
+        test("TokenRequest") {
             val validCert = it.dummyValueProvider.getCredentialInfo()
             val signatureProperties = it.baseSignatureProperties.copy(
                 signatureFormat = SignatureFormat.entries.random(),
@@ -218,7 +218,7 @@ val RqesOpenId4VpHolderTest by testSuite {
                 .shouldBe(request)
         }
 
-        "SignHash" { it ->
+        test("SignHash") {
             val validCert = it.dummyValueProvider.getCredentialInfo()
             val validSigningAlgo = validCert.keyParameters.algo.shuffled().firstNotNullOf { oid ->
                 catchingUnwrapped { X509SignatureAlgorithm.entries.first { it.oid == oid } }.getOrNull()

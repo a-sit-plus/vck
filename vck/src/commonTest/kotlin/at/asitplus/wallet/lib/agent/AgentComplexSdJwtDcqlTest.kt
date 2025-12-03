@@ -46,7 +46,7 @@ val AgentComplexSdJwtDcqlTest by testSuite {
         }
     } - {
 
-        "with flat address" { it ->
+        test("with flat address") {
             listOf(
                 ClaimToBeIssued(
                     CLAIM_ADDRESS, listOf(
@@ -79,7 +79,7 @@ val AgentComplexSdJwtDcqlTest by testSuite {
                 }
         }
 
-        "with claims in address selectively disclosable, but address not" { it ->
+        test("with claims in address selectively disclosable, but address not") {
             listOf(
                 ClaimToBeIssued(
                     CLAIM_ADDRESS, listOf(
@@ -113,7 +113,7 @@ val AgentComplexSdJwtDcqlTest by testSuite {
                 }
         }
 
-        "with claims in address recursively selectively disclosable" { it ->
+        test("with claims in address recursively selectively disclosable") {
             listOf(
                 ClaimToBeIssued(
                     CLAIM_ADDRESS,
@@ -147,7 +147,7 @@ val AgentComplexSdJwtDcqlTest by testSuite {
                 }
         }
 
-        "with claims in address recursively selectively disclosable, getting inner disclosures" { it ->
+        test("with claims in address recursively selectively disclosable, getting inner disclosures") {
             listOf(
                 ClaimToBeIssued(
                     CLAIM_ADDRESS,
@@ -174,7 +174,7 @@ val AgentComplexSdJwtDcqlTest by testSuite {
                 }
         }
 
-        "with claims in address in dot-notation" { it ->
+        test("with claims in address in dot-notation") {
             listOf(
                 ClaimToBeIssued("$CLAIM_ADDRESS.$CLAIM_ADDRESS_REGION", "Vienna"),
                 ClaimToBeIssued("$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY", "AT"),
@@ -203,7 +203,7 @@ val AgentComplexSdJwtDcqlTest by testSuite {
                 }
         }
 
-        "simple walk-through success" { it ->
+        test("simple walk-through success") {
             listOf(
                 ClaimToBeIssued(AtomicAttribute2023.CLAIM_GIVEN_NAME, "Susanne"),
                 ClaimToBeIssued(AtomicAttribute2023.CLAIM_FAMILY_NAME, "Meier"),

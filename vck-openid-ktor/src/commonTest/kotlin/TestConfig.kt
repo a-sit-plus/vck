@@ -6,9 +6,6 @@ import de.infix.testBalloon.framework.core.invocation
 import de.infix.testBalloon.framework.core.testScope
 import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
-import kotlin.time.Duration.Companion.minutes
-
-internal expect val testInvocation: TestInvocation
 
 class TestConfig : TestSession(
     testConfig = DefaultConfiguration.invocation(TestInvocation.CONCURRENT)
