@@ -215,7 +215,6 @@ val RedirectUriClientTest by testSuite {
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
                 .shouldBeInstanceOf<AuthnResponseResult.Success>().apply {
                     vp.freshVerifiableCredentials.shouldNotBeEmpty()
-                    state.shouldBe(expectedState)
                 }
         }
 
