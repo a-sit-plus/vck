@@ -33,7 +33,7 @@ class ResponseParser(
     @Throws(IllegalArgumentException::class, CancellationException::class)
     suspend fun parseAuthnResponse(input: String) = input.parseResponseParameters().extractFromJar()
 
-    private fun String.parseResponseParameters() = parseUrlSafe(this)
+    private fun String.parseResponseParameters() : ResponseParametersFrom = parseUrlSafe(this)
         ?: parseDcApiBodySafe(this)
         ?: parsePostBodySafe(this)
         ?: throw IllegalArgumentException("Can't parse input: $this")
@@ -61,15 +61,13 @@ class ResponseParser(
         }
     }
 
-    private fun parseDcApiBodySafe(input: String) =
+    private fun parseDcApiBodySafe(input: String): ResponseParametersFrom? =
         catchingUnwrapped { input.parseAsDcApiBody() }.getOrNull()
 
     /** Treat input as DC API body, try to parse content */
-    private fun String.parseAsDcApiBody()  {
-        vckJsonSerializer.decodeFromString(
-            ResponseParametersFrom.DcApi.serializer(), input
+    private fun String.parseAsDcApiBody(): ResponseParametersFrom = vckJsonSerializer.decodeFromString(
+            ResponseParametersFrom.DcApi.serializer(), this
         )
-    }
 
     /**
      * Extracts [AuthenticationResponseParameters] from [this@extractFromJar] if it is encoded there as
