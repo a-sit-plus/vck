@@ -439,17 +439,18 @@ class OpenId4VpVerifier(
             catching {
                 validateVpToken(authnRequest, input)
             }.getOrElse {
-                AuthnResponseResult.ValidationError("vpToken", cause = it)
+                AuthnResponseResult.ValidationError("vpToken", input.parameters.state, it)
             }
         } else if (authnRequest.responseType?.contains(OpenIdConstants.ID_TOKEN) == true) {
             catching {
                 extractValidatedIdToken(input)
             }.getOrElse {
-                AuthnResponseResult.ValidationError("idToken", cause = it)
+                AuthnResponseResult.ValidationError("idToken", input.parameters.state, it)
             }
         } else {
             AuthnResponseResult.Error(
-                "Neither id_token nor vp_token",
+                reason = "Neither id_token nor vp_token",
+                state = authnRequest.state,
                 cause = IllegalArgumentException(authnRequest.responseType)
             )
         }
@@ -506,7 +507,7 @@ class OpenId4VpVerifier(
         if (idToken.subject != idToken.subjectJwk!!.jwkThumbprint)
             throw IllegalArgumentException("idToken.sub")
                 .also { Napier.d("subject does not equal thumbprint of sub_jwk: ${idToken.subject}") }
-        return AuthnResponseResult.IdToken(idToken)
+        return AuthnResponseResult.IdToken(idToken, input.parameters.state)
     }
 
     /**
@@ -537,7 +538,7 @@ class OpenId4VpVerifier(
                     clientId = authnRequest.clientId,
                     responseUrl = authnRequest.responseUrl ?: authnRequest.redirectUrlExtracted,
                     transactionData = authnRequest.transactionData,
-                ).mapToAuthnResponseResult()
+                ).mapToAuthnResponseResult(responseParameters.parameters.state)
             }.firstOrList()
         } ?: authnRequest.dcqlQuery?.let { query ->
             val presentation = vpToken.jsonObject.mapKeys {
@@ -555,9 +556,13 @@ class OpenId4VpVerifier(
                         clientId = authnRequest.clientId,
                         responseUrl = authnRequest.responseUrl ?: authnRequest.redirectUrlExtracted,
                         transactionData = authnRequest.transactionData,
-                    ).mapToAuthnResponseResult()
+                    ).mapToAuthnResponseResult(responseParameters.parameters.state)
                 }.getOrElse {
-                    return AuthnResponseResult.ValidationError("Invalid presentation", cause = it)
+                    return AuthnResponseResult.ValidationError(
+                        "Invalid presentation",
+                        responseParameters.parameters.state,
+                        it
+                    )
                 }
             }
             AuthnResponseResult.VerifiableDCQLPresentationValidationResults(presentation)
@@ -704,15 +709,16 @@ class OpenId4VpVerifier(
         namespaces = deviceSigned.namespaces
     )
 
-    private fun VerifyPresentationResult.mapToAuthnResponseResult() = when (this) {
-        is VerifyPresentationResult.ValidationError -> AuthnResponseResult.ValidationError("vpToken", cause = cause)
-        is VerifyPresentationResult.Success -> AuthnResponseResult.Success(vp)
-        is VerifyPresentationResult.SuccessIso -> AuthnResponseResult.SuccessIso(documents)
+    private fun VerifyPresentationResult.mapToAuthnResponseResult(state: String?) = when (this) {
+        is VerifyPresentationResult.ValidationError -> AuthnResponseResult.ValidationError("vpToken", state, cause)
+        is VerifyPresentationResult.Success -> AuthnResponseResult.Success(vp, state)
+        is VerifyPresentationResult.SuccessIso -> AuthnResponseResult.SuccessIso(documents, state)
         is VerifyPresentationResult.SuccessSdJwt -> AuthnResponseResult.SuccessSdJwt(
             sdJwtSigned = sdJwtSigned,
             verifiableCredentialSdJwt = verifiableCredentialSdJwt,
             reconstructed = reconstructedJsonObject,
             disclosures = disclosures,
+            state = state,
             freshnessSummary = freshnessSummary,
         )
     }
