@@ -402,7 +402,7 @@ class OpenId4VpVerifier(
         catchingUnwrapped {
             ResponseParametersFrom.Post(input.decode<AuthenticationResponseParameters>())
         }.getOrElse {
-            return AuthnResponseResult.Error("Can't parse input: $input", null, it)
+            return AuthnResponseResult.Error("Can't parse input: $input", cause = it)
         }.let {
             validateAuthnResponse(it)
         }
@@ -417,7 +417,7 @@ class OpenId4VpVerifier(
         catchingUnwrapped {
             responseParser.parseAuthnResponse(input)
         }.getOrElse {
-            return AuthnResponseResult.Error("Can't parse input: $input", null, it)
+            return AuthnResponseResult.Error("Can't parse input: $input", cause = it)
         }.let {
             validateAuthnResponse(it)
         }
@@ -428,12 +428,12 @@ class OpenId4VpVerifier(
     suspend fun validateAuthnResponse(input: ResponseParametersFrom): AuthnResponseResult {
         Napier.d("validateAuthnResponse: $input")
         val state = input.parameters.state
-            ?: return AuthnResponseResult.ValidationError("state", input.parameters.state)
+            ?: return AuthnResponseResult.ValidationError("state")
         val authnRequest = stateToAuthnRequestStore.get(state)
-            ?: return AuthnResponseResult.ValidationError("state", state)
+            ?: return AuthnResponseResult.ValidationError("state")
         if (authnRequest.responseMode?.requiresEncryption == true)
             if (!input.hasBeenEncrypted)
-                return AuthnResponseResult.ValidationError("response", state)
+                return AuthnResponseResult.ValidationError("response")
 
         // TODO: support concurrent presentation of ID token and VP token?
         val responseType = authnRequest.responseType
@@ -441,16 +441,16 @@ class OpenId4VpVerifier(
             catching {
                 validateVpToken(authnRequest, input)
             }.getOrElse {
-                AuthnResponseResult.ValidationError("vpToken", state, it)
+                AuthnResponseResult.ValidationError("vpToken", cause = it)
             }
         } else if (authnRequest.responseType?.contains(OpenIdConstants.ID_TOKEN) == true) {
             catching {
                 extractValidatedIdToken(input)
             }.getOrElse {
-                AuthnResponseResult.ValidationError("idToken", state, it)
+                AuthnResponseResult.ValidationError("idToken", cause = it)
             }
         } else {
-            AuthnResponseResult.Error("Neither id_token nor vp_token", state)
+            AuthnResponseResult.Error("Neither id_token nor vp_token")
         }
     }
 
@@ -488,7 +488,7 @@ class OpenId4VpVerifier(
         if (idToken.subject != idToken.subjectJwk!!.jwkThumbprint)
             throw IllegalArgumentException("idToken.sub")
                 .also { Napier.d("subject does not equal thumbprint of sub_jwk: ${idToken.subject}") }
-        return AuthnResponseResult.IdToken(idToken, input.parameters.state)
+        return AuthnResponseResult.IdToken(idToken)
     }
 
     /**
@@ -505,8 +505,6 @@ class OpenId4VpVerifier(
             ?: throw IllegalArgumentException("nonce")
         val vpToken = responseParameters.parameters.vpToken
             ?: throw IllegalArgumentException("vp_token")
-        val state = responseParameters.parameters.state
-            ?: throw IllegalArgumentException("state")
 
         return authnRequest.presentationDefinition?.let { presentationDefinition ->
             val presentationSubmission = responseParameters.parameters.presentationSubmission?.descriptorMap
@@ -521,7 +519,7 @@ class OpenId4VpVerifier(
                     clientId = authnRequest.clientId,
                     responseUrl = authnRequest.responseUrl ?: authnRequest.redirectUrlExtracted,
                     transactionData = authnRequest.transactionData,
-                ).mapToAuthnResponseResult(state)
+                ).mapToAuthnResponseResult()
             }.firstOrList()
         } ?: authnRequest.dcqlQuery?.let { query ->
             val presentation = vpToken.jsonObject.mapKeys {
@@ -539,9 +537,9 @@ class OpenId4VpVerifier(
                         clientId = authnRequest.clientId,
                         responseUrl = authnRequest.responseUrl ?: authnRequest.redirectUrlExtracted,
                         transactionData = authnRequest.transactionData,
-                    ).mapToAuthnResponseResult(state)
+                    ).mapToAuthnResponseResult()
                 }.getOrElse {
-                    return AuthnResponseResult.ValidationError("Invalid presentation", state, it)
+                    return AuthnResponseResult.ValidationError("Invalid presentation", cause = it)
                 }
             }
             AuthnResponseResult.VerifiableDCQLPresentationValidationResults(presentation)
@@ -688,16 +686,15 @@ class OpenId4VpVerifier(
         namespaces = deviceSigned.namespaces
     )
 
-    private fun VerifyPresentationResult.mapToAuthnResponseResult(state: String) = when (this) {
-        is VerifyPresentationResult.ValidationError -> AuthnResponseResult.ValidationError("vpToken", state, cause)
-        is VerifyPresentationResult.Success -> AuthnResponseResult.Success(vp, state)
-        is VerifyPresentationResult.SuccessIso -> AuthnResponseResult.SuccessIso(documents, state)
+    private fun VerifyPresentationResult.mapToAuthnResponseResult() = when (this) {
+        is VerifyPresentationResult.ValidationError -> AuthnResponseResult.ValidationError("vpToken", cause = cause)
+        is VerifyPresentationResult.Success -> AuthnResponseResult.Success(vp)
+        is VerifyPresentationResult.SuccessIso -> AuthnResponseResult.SuccessIso(documents)
         is VerifyPresentationResult.SuccessSdJwt -> AuthnResponseResult.SuccessSdJwt(
             sdJwtSigned = sdJwtSigned,
             verifiableCredentialSdJwt = verifiableCredentialSdJwt,
             reconstructed = reconstructedJsonObject,
             disclosures = disclosures,
-            state = state,
             freshnessSummary = freshnessSummary,
         )
     }

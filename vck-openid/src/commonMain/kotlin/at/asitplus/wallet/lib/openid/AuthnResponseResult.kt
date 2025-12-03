@@ -13,37 +13,53 @@ sealed class AuthnResponseResult {
     /**
      * Error in parsing the URL or content itself, before verifying the contents of the OpenId response
      */
-    data class Error(val reason: String, val state: String?, val cause: Throwable? = null) : AuthnResponseResult()
+    data class Error(
+        val reason: String,
+        @Deprecated("Will be removed in release after 5.10.0")
+        val state: String? = null,
+        val cause: Throwable? = null,
+    ) : AuthnResponseResult()
 
     /**
      * Error when validating the `vpToken` or `idToken`
      */
-    data class ValidationError(val field: String, val state: String?, val cause: Throwable? = null) :
-        AuthnResponseResult()
+    data class ValidationError(
+        val field: String,
+        @Deprecated("Will be removed in release after 5.10.0")
+        val state: String? = null,
+        val cause: Throwable? = null,
+    ) : AuthnResponseResult()
 
     /**
      * Wallet provided an `id_token`, no `vp_token` (as requested by us!)
      */
-    data class IdToken(val idToken: at.asitplus.openid.IdToken, val state: String?) : AuthnResponseResult()
+    data class IdToken(
+        val idToken: at.asitplus.openid.IdToken,
+        @Deprecated("Will be removed in release after 5.10.0")
+        val state: String? = null,
+    ) : AuthnResponseResult()
 
     /**
      * Validation results of all returned verifiable presentations
      */
-    data class VerifiablePresentationValidationResults(val validationResults: List<AuthnResponseResult>) :
-        AuthnResponseResult()
+    data class VerifiablePresentationValidationResults(
+        val validationResults: List<AuthnResponseResult>,
+    ) : AuthnResponseResult()
 
     /**
      * Validation results of all returned verifiable presentations
      */
-    data class VerifiableDCQLPresentationValidationResults(val validationResults: Map<DCQLCredentialQueryIdentifier, AuthnResponseResult>) :
-        AuthnResponseResult()
+    data class VerifiableDCQLPresentationValidationResults(
+        val validationResults: Map<DCQLCredentialQueryIdentifier, AuthnResponseResult>,
+    ) : AuthnResponseResult()
 
     /**
      * Successfully decoded and validated the response from the Wallet (VC in JWT)
      */
     data class Success(
         val vp: VerifiablePresentationParsed,
-        val state: String?,
+        @Deprecated("Will be removed in release after 5.10.0")
+        val state: String? = null,
     ) : AuthnResponseResult()
 
     /**
@@ -54,7 +70,8 @@ sealed class AuthnResponseResult {
         val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
         val reconstructed: JsonObject,
         val disclosures: Collection<SelectiveDisclosureItem>,
-        val state: String?,
+        @Deprecated("Will be removed in release after 5.10.0")
+        val state: String? = null,
         val freshnessSummary: CredentialFreshnessSummary.SdJwt,
     ) : AuthnResponseResult()
 
@@ -63,6 +80,7 @@ sealed class AuthnResponseResult {
      */
     data class SuccessIso(
         val documents: Collection<IsoDocumentParsed>,
-        val state: String?,
+        @Deprecated("Will be removed in release after 5.10.0")
+        val state: String? = null,
     ) : AuthnResponseResult()
 }

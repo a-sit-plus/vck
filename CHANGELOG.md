@@ -3,6 +3,7 @@
 Release 5.11.0 (unreleased):
  - OpenID for Verifiable Presentations:
    - In `RequestOptions` deprecate property `encryption`, as this depends on the response mode
+   - In `AuthnResponseResult` returned from `OpenId4VpVerifier.validateAuthnResponse()` remove parameter `state`
 
 Release 5.10.0:
  - StatusListToken:
