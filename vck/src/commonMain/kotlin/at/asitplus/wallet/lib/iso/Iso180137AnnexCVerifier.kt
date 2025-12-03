@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.dcapi.DCAPIHandover.Companion.TYPE_DCAPI
+import at.asitplus.dcapi.DCAPIResponse
 import at.asitplus.dcapi.request.IsoMdocRequest
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.iso.DocRequest
@@ -65,5 +66,10 @@ class Iso180137AnnexCVerifier(
             submitRequest(it, requestOptions.state)
         }
 
+    }
+
+    fun validateResponse(response: DCAPIResponse, externalId: String): ResponseResult {
+        println("Parsed response successfully = ${response.response.type}")
+        TODO("Not yet implemented")
     }
 }

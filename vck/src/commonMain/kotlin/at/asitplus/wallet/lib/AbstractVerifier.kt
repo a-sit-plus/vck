@@ -7,6 +7,8 @@ interface AbstractVerifier {
     /** Creates challenges in authentication requests. */
     abstract val nonceService: NonceService
     /** Used for encrypted responses. */
-    val decryptionKeyMaterial: KeyMaterial
+    abstract val decryptionKeyMaterial: KeyMaterial
+
+
 
 }
