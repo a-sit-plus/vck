@@ -13,6 +13,8 @@ import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
+import at.asitplus.wallet.lib.DefaultNonceService
+import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidNonce

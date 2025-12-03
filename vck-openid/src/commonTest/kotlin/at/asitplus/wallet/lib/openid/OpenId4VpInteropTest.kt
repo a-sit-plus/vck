@@ -110,7 +110,7 @@ val OpenId4VpInteropTest by testSuite {
             val requestNonce = uuid4().toString()
             val requestUrl = "https://verifier.example.com/request/$requestNonce"
             val (requestUrlForWallet, requestObject) = it.verifierOid4vp.createAuthnRequest(
-                RequestOptions(
+                OpenId4VpRequestOptions(
                     responseMode = OpenIdConstants.ResponseMode.DirectPost,
                     responseUrl = "https://verifier.example.com/response/$responseNonce",
                     credentials = setOf(

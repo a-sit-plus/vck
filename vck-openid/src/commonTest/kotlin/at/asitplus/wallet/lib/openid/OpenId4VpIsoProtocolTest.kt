@@ -87,7 +87,7 @@ val OpenId4VpIsoProtocolTest by testSuite {
         }
     } - {
         "test with Fragment for mDL" {
-            val requestOptions = RequestOptions(
+            val requestOptions = OpenId4VpRequestOptions(
                 credentials = setOf(
                     RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(GIVEN_NAME))
                 )
@@ -106,7 +106,7 @@ val OpenId4VpIsoProtocolTest by testSuite {
         }
 
         "test with Fragment for custom attributes" {
-            val requestOptions = RequestOptions(
+            val requestOptions = OpenId4VpRequestOptions(
                 credentials = setOf(
                     RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC, setOf(CLAIM_GIVEN_NAME))
                 )
@@ -126,7 +126,7 @@ val OpenId4VpIsoProtocolTest by testSuite {
 
         "Selective Disclosure with mDL" {
             val requestedClaim = FAMILY_NAME
-            val requestOptions = RequestOptions(
+            val requestOptions = OpenId4VpRequestOptions(
                 credentials = setOf(
                     RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(requestedClaim))
                 )
@@ -146,7 +146,7 @@ val OpenId4VpIsoProtocolTest by testSuite {
 
         "Selective Disclosure with mDL (ISO/IEC 18013-7:2024 Annex B)" {
             val requestedClaim = FAMILY_NAME
-            val requestOptions = RequestOptions(
+            val requestOptions = OpenId4VpRequestOptions(
                 credentials = setOf(
                     RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(requestedClaim))
                 ),
@@ -174,7 +174,7 @@ val OpenId4VpIsoProtocolTest by testSuite {
 
         "Selective Disclosure with mDL and encryption (ISO/IEC 18013-7:2024 Annex B)" {
             val requestedClaim = FAMILY_NAME
-            val requestOptions = RequestOptions(
+            val requestOptions = OpenId4VpRequestOptions(
                 credentials = setOf(
                     RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(requestedClaim))
                 ),
@@ -204,7 +204,7 @@ val OpenId4VpIsoProtocolTest by testSuite {
         "Selective Disclosure with two documents in presentation exchange" {
             val mdlFamilyName = FAMILY_NAME
             val atomicGivenName = CLAIM_GIVEN_NAME
-            val requestOptions = RequestOptions(
+            val requestOptions = OpenId4VpRequestOptions(
                 credentials = setOf(
                     RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(mdlFamilyName)),
                     RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC, setOf(atomicGivenName))
@@ -239,7 +239,7 @@ val OpenId4VpIsoProtocolTest by testSuite {
         "Selective Disclosure with two documents in DCQL" {
             val mdlFamilyName = FAMILY_NAME
             val atomicGivenName = CLAIM_GIVEN_NAME
-            val requestOptions = RequestOptions(
+            val requestOptions = OpenId4VpRequestOptions(
                 credentials = setOf(
                     RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(mdlFamilyName)),
                     RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC, setOf(atomicGivenName))
@@ -274,7 +274,7 @@ val OpenId4VpIsoProtocolTest by testSuite {
         }
 
         "Selective Disclosure with mDL JSON Path syntax" {
-            val requestOptions = RequestOptions(
+            val requestOptions = OpenId4VpRequestOptions(
                 credentials = setOf(
                     RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(FAMILY_NAME))
                 )

@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.oidvci
+package at.asitplus.wallet.lib.utils
 
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -6,7 +6,7 @@ import kotlinx.coroutines.sync.withLock
 /**
  * Provides a simple map of keys of type [T] to values of type [U].
  * Mainly used in OID4VCI to hold state in [at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService]
- * and [WalletService].
+ * and [at.asitplus.wallet.lib.oidvci.WalletService].
  * Can be implemented to provide replication across different instances of the enclosing application.
  */
 interface MapStore<T, U> {

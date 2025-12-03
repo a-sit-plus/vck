@@ -114,7 +114,7 @@ val VerifierAttestationTest by testSuite {
 }
 
 
-private fun requestOptionsAtomicAttribute() = RequestOptions(
+private fun requestOptionsAtomicAttribute() = OpenId4VpRequestOptions(
     credentials = setOf(
         RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
     ),

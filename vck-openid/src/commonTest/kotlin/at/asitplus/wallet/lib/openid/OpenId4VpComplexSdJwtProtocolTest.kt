@@ -82,7 +82,7 @@ val OpenId4VpComplexSdJwtProtocolTest by testSuite {
                 "$CLAIM_ADDRESS.$CLAIM_ADDRESS_REGION",
                 "$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
             )
-            val requestOptions = RequestOptions(
+            val requestOptions = OpenId4VpRequestOptions(
                 credentials = setOf(
                     RequestOptionsCredential(AtomicAttribute2023, SD_JWT, requestedClaims)
                 ),
@@ -125,7 +125,7 @@ val OpenId4VpComplexSdJwtProtocolTest by testSuite {
                 "$CLAIM_ADDRESS.$CLAIM_ADDRESS_REGION",
                 "$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
             )
-            val requestOptions = RequestOptions(
+            val requestOptions = OpenId4VpRequestOptions(
                 credentials = setOf(
                     RequestOptionsCredential(AtomicAttribute2023, SD_JWT, requestedClaims)
                 ),

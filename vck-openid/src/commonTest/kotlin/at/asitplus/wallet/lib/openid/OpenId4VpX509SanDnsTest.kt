@@ -82,7 +82,7 @@ val OpenId4VpX509SanDnsTest by testSuite {
         "test with request object" {
             val requestUrl = "https://example.com/request"
             val (walletUrl, jar) = it.verifierOid4vp.createAuthnRequest(
-                RequestOptions(
+                OpenId4VpRequestOptions(
                     credentials = setOf(
                         RequestOptionsCredential(AtomicAttribute2023, SD_JWT, setOf(CLAIM_GIVEN_NAME))
                     ),
@@ -114,7 +114,7 @@ val OpenId4VpX509SanDnsTest by testSuite {
         "test with encryption" {
             val requestUrl = "https://example.com/request"
             val (walletUrl, jar) = it.verifierOid4vp.createAuthnRequest(
-                RequestOptions(
+                OpenId4VpRequestOptions(
                     credentials = setOf(
                         RequestOptionsCredential(AtomicAttribute2023, SD_JWT, setOf(CLAIM_GIVEN_NAME))
                     ),
