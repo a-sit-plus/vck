@@ -48,7 +48,7 @@ import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessSdJwt
 import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.CreationOptions
-import at.asitplus.wallet.lib.openid.RequestOptions
+import at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions
 import at.asitplus.wallet.lib.openid.RequestOptionsCredential
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
@@ -95,7 +95,7 @@ val OpenId4VpWalletTest by testSuite {
                 clientId: String,
                 storeCredentials: Boolean = true,
             ) {
-                val requestOptions = RequestOptions(
+                val requestOptions = OpenId4VpRequestOptions(
                     credentials = setOf(
                         RequestOptionsCredential(
                             credentialScheme = scheme,
@@ -172,7 +172,7 @@ val OpenId4VpWalletTest by testSuite {
              */
             suspend fun setupRelyingPartyService(
                 clientId: String,
-                requestOptions: RequestOptions,
+                requestOptions: OpenId4VpRequestOptions,
                 validate: (AuthnResponseResult) -> Unit,
             ) {
                 val requestEndpointPath = "/request/${uuid4()}"

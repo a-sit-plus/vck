@@ -47,6 +47,7 @@ import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
+import at.asitplus.wallet.lib.AbstractVerifier
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.Verifier
@@ -66,10 +67,10 @@ import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
-import at.asitplus.wallet.lib.oidvci.DefaultMapStore
-import at.asitplus.wallet.lib.oidvci.DefaultNonceService
-import at.asitplus.wallet.lib.oidvci.MapStore
-import at.asitplus.wallet.lib.oidvci.NonceService
+import at.asitplus.wallet.lib.utils.DefaultMapStore
+import at.asitplus.wallet.lib.DefaultNonceService
+import at.asitplus.wallet.lib.utils.MapStore
+import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.sessionTranscriptThumbprint
 import io.github.aakira.napier.Napier
@@ -107,7 +108,7 @@ class OpenId4VpVerifier(
     /** Verifies the holder's response against our identifier from [clientIdScheme]. */
     val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
     /** Advertised in [metadata] so that holders can encrypt responses. */
-    private val decryptionKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+    override val decryptionKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     /** Decrypts encrypted responses from holders. */
     private val decryptJwe: DecryptJweFun = DecryptJwe(decryptionKeyMaterial),
     /** Signs authentication requests in [createAuthnRequestAsSignedRequestObject]. */
@@ -124,7 +125,7 @@ class OpenId4VpVerifier(
     /** Clock for time validity checks. */
     private val clock: Clock = Clock.System,
     /** Creates challenges in authentication requests. */
-    private val nonceService: NonceService = DefaultNonceService(),
+    override val nonceService: NonceService = DefaultNonceService(),
     /** Used to store issued authn requests to verify the authn response to it */
     private val stateToAuthnRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
     @Deprecated("Use supportedJweEncryptionAlgorithms instead")
@@ -133,7 +134,7 @@ class OpenId4VpVerifier(
     private val supportedJweEncryptionAlgorithm: JweEncryption = JweEncryption.A256GCM,
     /** Algorithms supported to decrypt responses from wallets, for [metadataWithEncryption]. */
     private val supportedJweEncryptionAlgorithms: Set<JweEncryption> = JweEncryption.entries.toSet(),
-) {
+) : AbstractVerifier {
 
     private val supportedJwsAlgorithms = supportedAlgorithms
         .mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }
@@ -234,7 +235,7 @@ class OpenId4VpVerifier(
     )
 
     suspend fun createAuthnRequest(
-        requestOptions: RequestOptions,
+        requestOptions: OpenId4VpRequestOptions,
         creationOptions: CreationOptions,
         id: String,
     ): KmmResult<CreatedRequest> = catching {
@@ -313,7 +314,7 @@ class OpenId4VpVerifier(
      * ```
      */
     suspend fun createAuthnRequestAsSignedRequestObject(
-        requestOptions: RequestOptions,
+        requestOptions: OpenId4VpRequestOptions,
         requestObjectParameters: RequestObjectParameters? = null,
     ): KmmResult<JwsSigned<AuthenticationRequestParameters>> = catching {
         val requestObject = createAuthnRequest(requestOptions, requestObjectParameters)
@@ -337,7 +338,7 @@ class OpenId4VpVerifier(
      * see [createAuthnRequest]
      */
     suspend fun createAuthnRequest(
-        requestOptions: RequestOptions,
+        requestOptions: OpenId4VpRequestOptions,
         requestObjectParameters: RequestObjectParameters? = null,
     ) = prepareAuthnRequest(
         requestOptions = requestOptions,
@@ -351,11 +352,11 @@ class OpenId4VpVerifier(
      * see [createAuthnRequest]
      */
     suspend fun prepareAuthnRequest(
-        requestOptions: RequestOptions,
+        requestOptions: OpenId4VpRequestOptions,
         requestObjectParameters: RequestObjectParameters? = null,
     ) = requestOptions.toAuthnRequest(requestObjectParameters)
 
-    private suspend fun RequestOptions.toAuthnRequest(
+    private suspend fun OpenId4VpRequestOptions.toAuthnRequest(
         requestObjectParameters: RequestObjectParameters?,
     ): AuthenticationRequestParameters = AuthenticationRequestParameters(
         responseType = responseType,
@@ -394,7 +395,7 @@ class OpenId4VpVerifier(
     )
 
     @Suppress("DEPRECATION")
-    private fun RequestOptions.clientMetadata(): RelyingPartyMetadata? = when (clientIdScheme) {
+    private fun OpenId4VpRequestOptions.clientMetadata(): RelyingPartyMetadata? = when (clientIdScheme) {
         is ClientIdScheme.RedirectUri,
         is ClientIdScheme.VerifierAttestation,
         is ClientIdScheme.CertificateSanDns,

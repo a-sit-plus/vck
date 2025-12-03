@@ -57,7 +57,7 @@ val JarmTest by testSuite {
          */
         "DirectPostJwt must either be signed or encrypted" {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
-                RequestOptions(
+                OpenId4VpRequestOptions(
                     credentials = setOf(
                         RequestOptionsCredential(
                             AtomicAttribute2023,

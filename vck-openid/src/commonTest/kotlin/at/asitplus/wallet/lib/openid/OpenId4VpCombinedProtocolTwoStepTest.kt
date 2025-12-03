@@ -55,7 +55,7 @@ val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
             it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, AtomicAttribute2023)
 
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
-                requestOptions = RequestOptions(
+                requestOptions = OpenId4VpRequestOptions(
                     credentials = setOf(
                         RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC)
                     )
@@ -84,7 +84,7 @@ val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
             it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, AtomicAttribute2023)
 
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
-                requestOptions = RequestOptions(
+                requestOptions = OpenId4VpRequestOptions(
                     credentials = setOf(
                         RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC)
                     )
@@ -133,7 +133,7 @@ val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
             it.holderAgent.storeIsoCredential(it.holderKeyMaterial, AtomicAttribute2023)
 
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
-                requestOptions = RequestOptions(
+                requestOptions = OpenId4VpRequestOptions(
                     credentials = setOf(
                         RequestOptionsCredential(
                             credentialScheme = AtomicAttribute2023,
@@ -191,7 +191,7 @@ val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
 
             val sdJwtMatches = run {
                 val authnRequestSdJwt = it.verifierOid4vp.createAuthnRequest(
-                    requestOptions = RequestOptions(
+                    requestOptions = OpenId4VpRequestOptions(
                         credentials = setOf(
                             RequestOptionsCredential(AtomicAttribute2023, SD_JWT)
                         )
@@ -220,7 +220,7 @@ val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
 
 
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
-                requestOptions = RequestOptions(
+                requestOptions = OpenId4VpRequestOptions(
                     credentials = setOf(
                         RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC)
                     )

@@ -15,8 +15,8 @@ import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import at.asitplus.wallet.lib.oidvci.MapStore
-import at.asitplus.wallet.lib.oidvci.NonceService
+import at.asitplus.wallet.lib.utils.MapStore
+import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
@@ -97,7 +97,7 @@ val RedirectUriClientTest by testSuite {
                     override suspend fun verifyAndRemoveNonce(it: String) = false
                 }
             )
-            val requestOptions = RequestOptions(
+            val requestOptions = OpenId4VpRequestOptions(
                 credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
                 responseType = OpenIdConstants.ID_TOKEN
             )
@@ -154,7 +154,7 @@ val RedirectUriClientTest by testSuite {
 
         "test with direct_post" {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
-                RequestOptions(
+                OpenId4VpRequestOptions(
                     credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
                     responseMode = OpenIdConstants.ResponseMode.DirectPost,
                     responseUrl = it.clientId,
@@ -173,7 +173,7 @@ val RedirectUriClientTest by testSuite {
 
         "test with direct_post.jwt" {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
-                RequestOptions(
+                OpenId4VpRequestOptions(
                     credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
                     responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                     responseUrl = it.clientId,
@@ -195,7 +195,7 @@ val RedirectUriClientTest by testSuite {
         "test with Query" {
             val expectedState = uuid4().toString()
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
-                RequestOptions(
+                OpenId4VpRequestOptions(
                     credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
                     responseMode = OpenIdConstants.ResponseMode.Query,
                     state = expectedState
@@ -256,7 +256,7 @@ val RedirectUriClientTest by testSuite {
     }
 }
 
-private fun requestOptionsAtomicAttribute() = RequestOptions(
+private fun requestOptionsAtomicAttribute() = OpenId4VpRequestOptions(
     credentials = setOf(
         RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
     ),
@@ -275,7 +275,7 @@ private suspend fun verifySecondProtocolRun(
         .shouldBeInstanceOf<AuthnResponseResult.Success>()
 }
 
-private val defaultRequestOptions = RequestOptions(
+private val defaultRequestOptions = OpenId4VpRequestOptions(
     credentials = setOf(
         RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
     )
