@@ -120,7 +120,6 @@ val OpenId4VpX509SanDnsTest by testSuite {
                     ),
                     responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                     responseUrl = "https://example.com/response",
-                    encryption = true
                 ),
                 OpenId4VpVerifier.CreationOptions.SignedRequestByReference("haip://", requestUrl)
             ).getOrThrow()

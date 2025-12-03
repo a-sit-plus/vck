@@ -1,6 +1,8 @@
 # Changelog
 
 Release 5.11.0 (unreleased):
+ - OpenID for Verifiable Presentations:
+   - In `RequestOptions` deprecate property `encryption`, as this depends on the response mode
 
 Release 5.10.0:
  - StatusListToken:

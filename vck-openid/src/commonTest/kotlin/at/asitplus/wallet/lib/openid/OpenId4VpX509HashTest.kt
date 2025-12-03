@@ -100,7 +100,6 @@ val OpenId4VpX509HashTest by testSuite {
                     ),
                     responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                     responseUrl = "https://example.com/response",
-                    encryption = true
                 ),
                 CreationOptions.SignedRequestByReference("haip://", requestUrl)
             ).getOrThrow()

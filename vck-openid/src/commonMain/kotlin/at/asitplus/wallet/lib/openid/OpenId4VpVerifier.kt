@@ -385,6 +385,7 @@ class OpenId4VpVerifier(
         authenticationRequestParameters,
     )
 
+    @Suppress("DEPRECATION")
     private fun RequestOptions.clientMetadata(): RelyingPartyMetadata? = when (clientIdScheme) {
         is ClientIdScheme.RedirectUri,
         is ClientIdScheme.VerifierAttestation,
