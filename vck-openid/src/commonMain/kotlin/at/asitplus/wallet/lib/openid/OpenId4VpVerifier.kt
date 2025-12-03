@@ -242,7 +242,7 @@ class OpenId4VpVerifier(
             is CreationOptions.Query -> {
                 require(clientIdScheme !is ClientIdScheme.CertificateSanDns) // per OpenID4VP d23 5.10.4
                 URLBuilder(creationOptions.walletUrl).apply {
-                    createAuthnRequest(requestOptions, id).encodeToParameters()
+                    createAuthnRequest(requestOptions).encodeToParameters()
                         .forEach { parameters.append(it.key, it.value) }
                 }.buildString().toCreatedRequest()
             }
@@ -258,7 +258,7 @@ class OpenId4VpVerifier(
                         .forEach { parameters.append(it.key, it.value) }
                 }.buildString().toCreatedRequest {
                     catching {
-                        vckJsonSerializer.encodeToString(createAuthnRequest(requestOptions, id, it))
+                        vckJsonSerializer.encodeToString(createAuthnRequest(requestOptions, it))
                     }
                 }
             }
@@ -268,7 +268,7 @@ class OpenId4VpVerifier(
                 URLBuilder(creationOptions.walletUrl).apply {
                     JarRequestParameters(
                         clientId = clientIdScheme.clientId,
-                        request = createAuthnRequestAsSignedRequestObject(requestOptions, id).getOrThrow().serialize(),
+                        request = createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow().serialize(),
                     ).encodeToParameters()
                         .forEach { parameters.append(it.key, it.value) }
                 }.buildString().toCreatedRequest()
@@ -286,7 +286,7 @@ class OpenId4VpVerifier(
                 }.buildString()
                     .toCreatedRequest {
                         catching {
-                            createAuthnRequestAsSignedRequestObject(requestOptions, id, it).getOrThrow().serialize()
+                            createAuthnRequestAsSignedRequestObject(requestOptions, it).getOrThrow().serialize()
                         }
                     }
             }
@@ -314,10 +314,9 @@ class OpenId4VpVerifier(
      */
     suspend fun createAuthnRequestAsSignedRequestObject(
         requestOptions: RequestOptions,
-        id: String,
         requestObjectParameters: RequestObjectParameters? = null,
     ): KmmResult<JwsSigned<AuthenticationRequestParameters>> = catching {
-        val requestObject = createAuthnRequest(requestOptions, id, requestObjectParameters)
+        val requestObject = createAuthnRequest(requestOptions, requestObjectParameters)
         val siopClientId = "https://self-issued.me/v2"
         val issuer = when (clientIdScheme) {
             is ClientIdScheme.PreRegistered -> clientIdScheme.issuerUri ?: clientIdScheme.clientId
@@ -339,7 +338,6 @@ class OpenId4VpVerifier(
      */
     suspend fun createAuthnRequest(
         requestOptions: RequestOptions,
-        id: String,
         requestObjectParameters: RequestObjectParameters? = null,
     ) = prepareAuthnRequest(
         requestOptions = requestOptions,
@@ -371,7 +369,7 @@ class OpenId4VpVerifier(
         clientMetadata = clientMetadata(),
         idTokenType = if (isSiop) IdTokenType.SUBJECT_SIGNED.text else null,
         responseMode = responseMode,
-        state = if (!isDcApi) state else null,
+        state = if (!isAnyDcApi) state else null,
         dcqlQuery = if (isDcql) toDCQLQuery() else null,
         presentationDefinition = if (isPresentationExchange)
             toPresentationDefinition(containerJwt, containerSdJwt) else null,

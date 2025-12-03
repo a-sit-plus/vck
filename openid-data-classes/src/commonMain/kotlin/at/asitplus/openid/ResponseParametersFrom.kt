@@ -54,6 +54,7 @@ sealed class ResponseParametersFrom {
         val origin: String,
     ): ResponseParametersFrom() {
         override val clientIdRequired get() = run { !protocol.isUnsignedOpenId4VpRequest }
+        override val hasBeenEncrypted: Boolean = false
     }
 
 }
