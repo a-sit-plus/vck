@@ -97,7 +97,7 @@ data class DCQLIsoMdocClaimsQuery(
      * least information disclosure to influence how they order these options. For example, a proof
      * of age request should prioritize requesting an attribute like age_over_18 over an attribute
      * like birth_date. The claim_sets syntax is not intended to define options the user can choose
-     * from, see Section 6.3.1.3 for more information.If the Wallet cannot deliver all claims
+     * from, see Section 6.3.1.3 for more information. If the Wallet cannot deliver all claims
      * requested by the Verifier according to these rules, it MUST NOT return the respective
      * Credential.
      */

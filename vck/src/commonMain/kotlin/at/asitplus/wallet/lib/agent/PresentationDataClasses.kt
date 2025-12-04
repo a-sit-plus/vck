@@ -44,6 +44,7 @@ data class PresentationRequestParameters(
     /**
      * Whether to return one [at.asitplus.iso.DeviceResponse] containing multiple [at.asitplus.iso.Document] objects,
      * or multiple [at.asitplus.iso.DeviceResponse] objects with one [at.asitplus.iso.Document] each.
+     * This applies to presentation exchange only, as we need to control the behavior for proximity presentations.
      */
     val returnOneDeviceResponse: Boolean = false
 ) {

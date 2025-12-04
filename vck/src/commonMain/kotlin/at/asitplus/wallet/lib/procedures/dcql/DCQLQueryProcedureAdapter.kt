@@ -30,19 +30,15 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
         },
         credentialClaimStructureExtractor = {
             when (it) {
-                is SubjectCredentialStore.StoreEntry.Iso -> {
-                    DCQLCredentialClaimStructure.IsoMdocStructure(
-                        it.issuerSigned.namespaces?.mapValues {
-                            it.value.entries.associate {
-                                it.value.elementIdentifier to it.value.elementValue
-                            }
-                        } ?: mapOf()
-                    )
-                }
-
-                else -> DCQLCredentialClaimStructure.JsonBasedStructure(
-                    CredentialToJsonConverter.toJsonElement(it)
+                is SubjectCredentialStore.StoreEntry.Iso -> DCQLCredentialClaimStructure.IsoMdocStructure(
+                    it.issuerSigned.namespaces?.mapValues {
+                        it.value.entries.associate {
+                            it.value.elementIdentifier to it.value.elementValue
+                        }
+                    } ?: mapOf()
                 )
+
+                else -> DCQLCredentialClaimStructure.JsonBasedStructure(CredentialToJsonConverter.toJsonElement(it))
             }
         }
     )

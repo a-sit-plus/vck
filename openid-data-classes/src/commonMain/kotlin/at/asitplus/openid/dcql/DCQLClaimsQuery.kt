@@ -36,29 +36,25 @@ interface DCQLClaimsQuery {
         credentialStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
     ): KmmResult<DCQLClaimsQueryResult> = catching {
         when (this) {
-            is DCQLJsonClaimsQuery -> {
-                executeJsonClaimsQueryAgainstCredential(
-                    credentialQuery = credentialQuery,
-                    credential = credential,
-                    credentialStructureExtractor = {
-                        credentialStructureExtractor(it) as DCQLCredentialClaimStructure.JsonBasedStructure
-                    }
-                ).getOrThrow().also {
-                    if (it.nodeList.isEmpty()) {
-                        throw IllegalStateException("Credential does not satisfy claims query: $this")
-                    }
+            is DCQLJsonClaimsQuery -> executeJsonClaimsQueryAgainstCredential(
+                credentialQuery = credentialQuery,
+                credential = credential,
+                credentialStructureExtractor = {
+                    credentialStructureExtractor(it) as DCQLCredentialClaimStructure.JsonBasedStructure
+                }
+            ).getOrThrow().also {
+                if (it.nodeList.isEmpty()) {
+                    throw IllegalStateException("Credential does not satisfy claims query: $this")
                 }
             }
 
-            is DCQLIsoMdocClaimsQuery -> {
-                executeIsoMdocClaimsQueryAgainstCredential(
-                    credentialQuery = credentialQuery,
-                    credential = credential,
-                    credentialStructureExtractor = {
-                        credentialStructureExtractor(it) as DCQLCredentialClaimStructure.IsoMdocStructure
-                    }
-                ).getOrThrow()
-            }
+            is DCQLIsoMdocClaimsQuery -> executeIsoMdocClaimsQueryAgainstCredential(
+                credentialQuery = credentialQuery,
+                credential = credential,
+                credentialStructureExtractor = {
+                    credentialStructureExtractor(it) as DCQLCredentialClaimStructure.IsoMdocStructure
+                }
+            ).getOrThrow()
 
             else -> throw IllegalStateException("Unsupported claim query type: $this")
         }
