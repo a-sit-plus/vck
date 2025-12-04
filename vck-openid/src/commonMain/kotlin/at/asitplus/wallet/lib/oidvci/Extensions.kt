@@ -42,21 +42,3 @@ fun Issuer.IssuedCredential.toCredentialResponseSingleCredential() = CredentialR
 
 private fun Issuer.IssuedCredential.Iso.toBase64UrlStrict(): String =
     coseCompliantSerializer.encodeToByteArray(issuerSigned).encodeToString(Base64UrlStrict)
-
-/**
- * Selects the first key that the authn response can be encrypted for,
- * i.e. one with `enc` key use, or `ECDH-ES` algorithm.
- */
-internal fun Collection<JsonWebKey>.getEncryptionTargetKey(): JsonWebKey? =
-    filter { it.type == JwkType.EC }.let { ecKeys ->
-        ecKeys.firstOrNull { it.publicKeyUse == "enc" }
-            ?: ecKeys.firstOrNull { it.algorithm == JweAlgorithm.ECDH_ES }
-            ?: ecKeys.firstOrNull()
-    }
-
-internal fun Collection<JsonWebKey>.firstSessionTranscriptThumbprint(): ByteArray? =
-    getEncryptionTargetKey()?.sessionTranscriptThumbprint()
-
-internal fun JsonWebKey.sessionTranscriptThumbprint(): ByteArray =
-    jwkThumbprint.removePrefix("urn:ietf:params:oauth:jwk-thumbprint:sha256:")
-        .decodeToByteArray(Base64UrlStrict)

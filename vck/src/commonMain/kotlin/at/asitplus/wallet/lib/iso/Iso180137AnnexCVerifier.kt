@@ -4,6 +4,7 @@ import at.asitplus.dcapi.DCAPIHandover
 import at.asitplus.dcapi.DCAPIHandover.Companion.TYPE_DCAPI
 import at.asitplus.dcapi.DCAPIInfo
 import at.asitplus.dcapi.DCAPIResponse
+import at.asitplus.dcapi.OpenID4VPDCAPIHandoverInfo
 import at.asitplus.dcapi.request.IsoMdocRequest
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.iso.DeviceResponse
@@ -14,18 +15,22 @@ import at.asitplus.iso.ItemsRequest
 import at.asitplus.iso.ItemsRequestList
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.SingleItemsRequest
+import at.asitplus.iso.serializeOrigin
 import at.asitplus.iso.sha256
 import at.asitplus.signum.indispensable.CryptoPrivateKey
-import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.SecretExposure
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseKey
-import at.asitplus.wallet.lib.AbstractVerifier
+import at.asitplus.wallet.lib.AbstractMdocVerifier
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.ValidatorMdoc
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
+import at.asitplus.wallet.lib.extensions.sessionTranscriptThumbprint
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
 import io.github.aakira.napier.Napier
@@ -40,7 +45,12 @@ class Iso180137AnnexCVerifier(
     private val stateToIsoMdocRequestStore: MapStore<String, IsoMdocRequest> = DefaultMapStore(), //stateToRequestStore
 
     override val decryptionKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-) : AbstractVerifier {
+    /** Used to verify session transcripts from mDoc responses. */
+    override val verifyCoseSignature: VerifyCoseSignatureWithKeyFun<ByteArray> = VerifyCoseSignatureWithKey(),
+
+    //val verifier: Verifier = VerifierAgent(identifier = "I don't care, I only need IsoMdoc"),
+    private val validatorMdoc: ValidatorMdoc = ValidatorMdoc(),
+) : AbstractMdocVerifier() {
 
     /**
      * Remembers [authenticationRequestParameters] to link responses to requests in [validateAuthnResponse].
@@ -80,6 +90,28 @@ class Iso180137AnnexCVerifier(
 
     }
 
+    /**
+     * Performs calculation of the [at.asitplus.iso.SessionTranscript] for DC API according to ISO/IEC 18013-7
+     */
+    override fun createDcApiSessionTranscript(
+        nonce: String,
+        hasBeenEncrypted: Boolean,
+        origin: String,
+    ): SessionTranscript = SessionTranscript.forDcApi(
+        DCAPIHandover(
+            type = DCAPIHandover.TYPE_DCAPI,
+            hash = coseCompliantSerializer.encodeToByteArray<OpenID4VPDCAPIHandoverInfo>(
+                OpenID4VPDCAPIHandoverInfo(
+                    origin = origin,
+                    nonce = nonce,
+                    jwkThumbprint = if (hasBeenEncrypted) {
+                        decryptionKeyMaterial.jsonWebKey.sessionTranscriptThumbprint()
+                    } else null,
+                )
+            ).sha256(),
+        )
+    )
+
     @OptIn(SecretExposure::class)
     suspend fun validateResponse(
         receivedData: DCAPIResponse,
@@ -94,14 +126,26 @@ class Iso180137AnnexCVerifier(
 
         println("privateKey = ${privateKey}")
         val encryptedResponseData = receivedData.response.encryptedResponseData
+        val serializedOrigin = expectedOrigin.serializeOrigin()
+            ?: throw IllegalStateException("Expected origin invalid")
 
-        val dcapiInfo = DCAPIInfo(isoMdocRequest.encryptionInfo, expectedOrigin)
+        //TODO use createDcApiSessionTranscript() function
+
+        val dcapiInfo = DCAPIInfo(isoMdocRequest.encryptionInfo, serializedOrigin)
         val hash = coseCompliantSerializer.encodeToByteArray(dcapiInfo).sha256() // TODO can we do this with serialization? Would probably need CborClassDiscriminator though
         val sessionTranscript = SessionTranscript.forDcApi(DCAPIHandover("dcapi", hash))
         val encodedSessionTranscript = coseCompliantSerializer.encodeToByteArray(sessionTranscript)
         val encodedDeviceResponse = decryptHpke(encryptedResponseData.enc, encryptedResponseData.cipherText, privateKey, encodedSessionTranscript)
         val deviceResponse = coseCompliantSerializer.decodeFromByteArray<DeviceResponse>(encodedDeviceResponse)
         println("deviceResponse = ${deviceResponse}")
-        TODO("Not yet implemented")
+
+        val result = validatorMdoc.verifyDeviceResponse(
+            deviceResponse,
+            verifyDocumentCallback = verifyDocument(
+                sessionTranscript = sessionTranscript
+            )
+        )
+        println("result = ${result}")
+        TODO("return result")
     }
 }

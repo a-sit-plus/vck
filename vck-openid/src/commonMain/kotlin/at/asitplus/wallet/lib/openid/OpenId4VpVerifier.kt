@@ -9,15 +9,11 @@ import at.asitplus.dif.ClaimFormat
 import at.asitplus.dif.FormatContainerJwt
 import at.asitplus.dif.FormatContainerSdJwt
 import at.asitplus.dif.PresentationSubmissionDescriptor
-import at.asitplus.iso.DeviceAuthentication
 import at.asitplus.iso.DeviceResponse
-import at.asitplus.iso.Document
-import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.OpenId4VpHandover
 import at.asitplus.iso.OpenId4VpHandoverInfo
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.sha256
-import at.asitplus.iso.wrapInCborTag
 import at.asitplus.jsonpath.JsonPath
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.CredentialFormatEnum
@@ -49,7 +45,7 @@ import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
-import at.asitplus.wallet.lib.AbstractVerifier
+import at.asitplus.wallet.lib.AbstractMdocVerifier
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.Verifier
@@ -73,13 +69,11 @@ import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.utils.MapStore
 import at.asitplus.wallet.lib.NonceService
+import at.asitplus.wallet.lib.extensions.sessionTranscriptThumbprint
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
-import at.asitplus.wallet.lib.oidvci.sessionTranscriptThumbprint
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
-import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
-import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.json.JsonArray
@@ -121,7 +115,7 @@ class OpenId4VpVerifier(
     /** Advertised in [metadata]. */
     private val supportedAlgorithms: Set<SignatureAlgorithm> = setOf(SignatureAlgorithm.ECDSAwithSHA256),
     /** Used to verify session transcripts from mDoc responses. */
-    private val verifyCoseSignature: VerifyCoseSignatureWithKeyFun<ByteArray> = VerifyCoseSignatureWithKey(),
+    override val verifyCoseSignature: VerifyCoseSignatureWithKeyFun<ByteArray> = VerifyCoseSignatureWithKey(),
     /** Leeway for time validity checks. */
     timeLeewaySeconds: Long = 300L,
     /** Clock for time validity checks. */
@@ -136,7 +130,7 @@ class OpenId4VpVerifier(
     private val supportedJweEncryptionAlgorithm: JweEncryption = JweEncryption.A256GCM,
     /** Algorithms supported to decrypt responses from wallets, for [metadataWithEncryption]. */
     private val supportedJweEncryptionAlgorithms: Set<JweEncryption> = JweEncryption.entries.toSet(),
-) : AbstractVerifier {
+) : AbstractMdocVerifier() {
 
     private val supportedJwsAlgorithms = supportedAlgorithms
         .mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }
@@ -715,7 +709,27 @@ class OpenId4VpVerifier(
         }
     }
 
-
+    /**
+     * Performs calculation of the [at.asitplus.iso.SessionTranscript] for DC API according to OID4VP
+     */
+    override fun createDcApiSessionTranscript(
+        nonce: String,
+        hasBeenEncrypted: Boolean,
+        origin: String,
+    ): SessionTranscript = SessionTranscript.forDcApi(
+        DCAPIHandover(
+            type = DCAPIHandover.TYPE_OPENID4VP,
+            hash = coseCompliantSerializer.encodeToByteArray<OpenID4VPDCAPIHandoverInfo>(
+                OpenID4VPDCAPIHandoverInfo(
+                    origin = origin,
+                    nonce = nonce,
+                    jwkThumbprint = if (hasBeenEncrypted) {
+                        decryptionKeyMaterial.jsonWebKey.sessionTranscriptThumbprint()
+                    } else null,
+                )
+            ).sha256(),
+        )
+    )
 
     // To be reconsidered when supporting [DCQLCredentialQueryInstance.multiple]
     private fun JsonElement.extractContent(): String = when (this) {
@@ -724,49 +738,6 @@ class OpenId4VpVerifier(
         is JsonPrimitive -> content
         JsonNull -> throw IllegalArgumentException("Can't extract string from JsonNull")
     }
-
-    /**
-     * Performs verification of the [at.asitplus.iso.SessionTranscript] and [at.asitplus.iso.DeviceAuthentication],
-     * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024, if required (i.e. response is encrypted)
-     */
-    @Throws(IllegalArgumentException::class, IllegalStateException::class)
-    private fun verifyDocument(
-        sessionTranscript: SessionTranscript
-    ): suspend (MobileSecurityObject, Document) -> Boolean = { mso, document ->
-        val deviceSignature = document.deviceSigned.deviceAuth.deviceSignature
-            ?: throw IllegalArgumentException("deviceSignature is null")
-
-        val expected = document.calcDeviceAuthenticationOpenId4VpFinal(
-            sessionTranscript = sessionTranscript,
-        ).wrapAsExpectedPayload()
-
-        verifyCoseSignature(
-            coseSigned = deviceSignature,
-            signer = mso.deviceKeyInfo.deviceKey,
-            externalAad = byteArrayOf(),
-            detachedPayload = expected
-        ).onFailure {
-            throw IllegalArgumentException("deviceSignature not matching ${expected.encodeToString(Base16())}", it)
-        }
-        true
-    }
-
-    private fun DeviceAuthentication.wrapAsExpectedPayload(): ByteArray = coseCompliantSerializer
-        .encodeToByteArray(coseCompliantSerializer.encodeToByteArray(this))
-        .wrapInCborTag(24)
-
-    /**
-     * Performs calculation of the [at.asitplus.iso.SessionTranscript] and [at.asitplus.iso.DeviceAuthentication],
-     * acc. to OpenID4VP 1.0
-     */
-    private fun Document.calcDeviceAuthenticationOpenId4VpFinal(
-        sessionTranscript: SessionTranscript,
-    ) = DeviceAuthentication(
-        type = DeviceAuthentication.TYPE,
-        sessionTranscript = sessionTranscript,
-        docType = docType,
-        namespaces = deviceSigned.namespaces
-    )
 
     private fun createOpenId4VpSessionTranscript(
         clientId: String?,
@@ -789,24 +760,7 @@ class OpenId4VpVerifier(
         )
     )
 
-    private fun createDcApiSessionTranscript(
-        nonce: String,
-        hasBeenEncrypted: Boolean,
-        origin: String,
-    ): SessionTranscript = SessionTranscript.forDcApi(
-        DCAPIHandover(
-            type = DCAPIHandover.TYPE_OPENID4VP,
-            hash = coseCompliantSerializer.encodeToByteArray<OpenID4VPDCAPIHandoverInfo>(
-                OpenID4VPDCAPIHandoverInfo(
-                    origin = origin,
-                    nonce = nonce,
-                    jwkThumbprint = if (hasBeenEncrypted) {
-                        decryptionKeyMaterial.jsonWebKey.sessionTranscriptThumbprint()
-                    } else null,
-                )
-            ).sha256(),
-        )
-    )
+
 
     private fun VerifyPresentationResult.mapToAuthnResponseResult(state: String?) = when (this) {
         is VerifyPresentationResult.ValidationError -> AuthnResponseResult.ValidationError("vpToken", state, cause)

@@ -12,13 +12,13 @@ import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.extensions.getEncryptionTargetKey
 import at.asitplus.wallet.lib.jws.EncryptJweFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
-import at.asitplus.wallet.lib.oidvci.getEncryptionTargetKey
 import io.ktor.http.*
 import kotlin.coroutines.cancellation.CancellationException
 

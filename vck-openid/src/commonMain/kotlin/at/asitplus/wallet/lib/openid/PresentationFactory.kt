@@ -42,10 +42,10 @@ import at.asitplus.wallet.lib.agent.PresentationResponseParameters.PresentationE
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
 import at.asitplus.wallet.lib.data.CredentialPresentation
+import at.asitplus.wallet.lib.extensions.firstSessionTranscriptThumbprint
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
-import at.asitplus.wallet.lib.oidvci.firstSessionTranscriptThumbprint
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
