@@ -13,26 +13,15 @@ import kotlinx.serialization.encodeToByteArray
 
 @ConsistentCopyVisibility
 @Serializable
-data class DCAPIResponse private constructor(
-    /**
-     * ISO 18013-7 Annex-C:
-     * response: Base64EncryptedResponse contains the cbor encoded EncryptedResponse as a
-     * base64-url-without-padding string
-     */
+data class Oid4vpDCAPIResponse private constructor(
+
     @SerialName("response")
-    @Serializable(with = EncryptedResponseBase64UrlSerializer::class)
-    val response: EncryptedResponse,
+    val response: String,
 ) {
     companion object {
-        fun createIsoMdocResponse(encryptedResponse: EncryptedResponse): DCAPIResponse = DCAPIResponse(encryptedResponse)
 
         fun createOid4vpResponse(response: String): DCAPIResponse  {
             TODO() }
             //DCAPIResponse(response)
     }
 }
-object EncryptedResponseBase64UrlSerializer : TransformingSerializerTemplate<EncryptedResponse, String>(
-    parent = String.serializer(),
-    encodeAs = { coseCompliantSerializer.encodeToByteArray(it).encodeToString(Base64UrlStrict) },
-    decodeAs = { coseCompliantSerializer.decodeFromByteArray<EncryptedResponse>(it.decodeToByteArray(Base64UrlStrict)) }
-)

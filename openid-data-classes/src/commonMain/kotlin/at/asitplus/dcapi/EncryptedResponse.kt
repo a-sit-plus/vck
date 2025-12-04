@@ -13,7 +13,7 @@ data class EncryptedResponse(
     /** Should be set to `dcapi` */
     val type: String,
     val encryptedResponseData: EncryptedResponseData,
-) {
+) : DCAPIResponseContent {
     init {
         require(type == TYPE_DCAPI)
     }
