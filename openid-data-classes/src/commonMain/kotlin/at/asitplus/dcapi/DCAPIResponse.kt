@@ -24,11 +24,8 @@ data class DCAPIResponse private constructor(
     val response: EncryptedResponse,
 ) {
     companion object {
-        fun createIsoMdocResponse(encryptedResponse: EncryptedResponse): DCAPIResponse = DCAPIResponse(encryptedResponse)
 
-        fun createOid4vpResponse(response: String): DCAPIResponse  {
-            TODO() }
-            //DCAPIResponse(response)
+        fun createIsoMdocResponse(encryptedResponse: EncryptedResponse): DCAPIResponse = DCAPIResponse(encryptedResponse)
     }
 }
 object EncryptedResponseBase64UrlSerializer : TransformingSerializerTemplate<EncryptedResponse, String>(

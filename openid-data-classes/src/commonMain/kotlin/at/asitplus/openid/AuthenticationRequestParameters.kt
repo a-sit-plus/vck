@@ -7,6 +7,7 @@ import at.asitplus.csc.serializers.HashesSerializer
 import at.asitplus.csc.enums.SignatureQualifier
 import at.asitplus.csc.contentEquals
 import at.asitplus.csc.contentHashCode
+import at.asitplus.iso.serializeOrigin
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
@@ -405,43 +406,11 @@ data class AuthenticationRequestParameters(
         get() = redirectUrl
             ?: (clientIdSchemeExtracted as? OpenIdConstants.ClientIdScheme.RedirectUri)?.let { clientIdWithoutPrefix }
 
-    /**
-     * Compare an [actualOrigin] with the entries in [expectedOrigins] according to
-     * https://html.spec.whatwg.org/multipage/browsers.html#ascii-serialisation-of-an-origin.
-     * Both the actual value and each expected value are serialized to an origin string using the rules:
-     * 1) If origin is opaque -> "null"
-     * 2) Otherwise: scheme + "://" + host [+ ":" + port if non-default]
-     * Returns true if any expected origin matches, false otherwise.
-     */
+
     fun verifyExpectedOrigin(actualOrigin: String): Boolean {
         val expected = expectedOrigins ?: return false
-
-        fun serializeOrigin(origin: String): String {
-            return try {
-                // Use Ktor URL for parsing; treat missing/empty host as opaque
-                val url = io.ktor.http.Url(origin)
-                if (url.host.isBlank()) return "null"
-                val scheme = url.protocol.name
-                val host = url.host
-                val defaultPort = url.protocol.defaultPort
-                val port = url.port
-                buildString {
-                    append(scheme)
-                    append("://")
-                    append(host)
-                    if (port != defaultPort) {
-                        append(":")
-                        append(port)
-                    }
-                }
-            } catch (_: Throwable) {
-                // If parsing fails, fall back to the given string (already-origin?)
-                origin
-            }
-        }
-
-        val actualSerialized = serializeOrigin(actualOrigin)
-        return expected.any { serializeOrigin(it) == actualSerialized }
+        val actualSerialized = actualOrigin.serializeOrigin()
+        return expected.any { it.serializeOrigin() == actualSerialized }
     }
 
     override fun equals(other: Any?): Boolean {
