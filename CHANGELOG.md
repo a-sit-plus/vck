@@ -6,7 +6,7 @@ Release 5.11.0 (unreleased):
  - OpenID for Verifiable Presentations:
    - In `RequestOptions` deprecate property `encryption`, as this depends on the response mode
    - In `OpenId4VpVerifier` remove `validateAuthnResponse(input: Map)`
-   - In `OpenId4VpVerifier` add option to provide `externalId` when validating authn responses, useful for DCAPI flows
+   - In `OpenId4VpVerifier` add option to provide `externalId` to methods `validateAuthnRequest()` and `submitAuthnRequest()`, useful for DCAPI flows
 
 Release 5.10.0:
  - StatusListToken:

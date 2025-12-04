@@ -351,7 +351,6 @@ class OpenId4VpVerifier(
         requestObjectParameters: RequestObjectParameters? = null,
     ) = requestOptions.toAuthnRequest(requestObjectParameters)
 
-
     private suspend fun RequestOptions.toAuthnRequest(
         requestObjectParameters: RequestObjectParameters?,
     ): AuthenticationRequestParameters = AuthenticationRequestParameters(
@@ -377,7 +376,7 @@ class OpenId4VpVerifier(
      * Remembers [authenticationRequestParameters] to link responses to requests in [validateAuthnResponse].
      *
      * Parameter [externalId] may be used in cases the [authenticationRequestParameters] do not have a `state`
-     * parameter, e.g., when using DCAPI.
+     * parameter, e.g., when using DCAPI. Otherwise the value of [AuthenticationRequestParameters.state] will be used.
      */
     suspend fun submitAuthnRequest(
         authenticationRequestParameters: AuthenticationRequestParameters,
@@ -406,6 +405,19 @@ class OpenId4VpVerifier(
      * - a URL, containing parameters in the fragment, e.g. `https://example.com#id_token=...`
      * - a URL, containing parameters in the query, e.g. `https://example.com?id_token=...`
      * - parameters encoded as a POST body, e.g. `id_token=...&vp_token=...`
+     */
+    suspend fun validateAuthnResponse(
+        input: String,
+    ): AuthnResponseResult = validateAuthnResponse(
+        input = input,
+        externalId = null
+    )
+
+    /**
+     * Validates an Authentication Response from the Wallet, where [input] is either:
+     * - a URL, containing parameters in the fragment, e.g. `https://example.com#id_token=...`
+     * - a URL, containing parameters in the query, e.g. `https://example.com?id_token=...`
+     * - parameters encoded as a POST body, e.g. `id_token=...&vp_token=...`
      *
      * The [externalId] will be used to load the corresponding [AuthenticationRequestParameters] from the store,
      * in case a `state` parameter was not available in the request (e.g., when using DCAPI).
@@ -422,7 +434,22 @@ class OpenId4VpVerifier(
     }
 
     /**
-     * Validates [AuthenticationResponseParameters] from the Wallet
+     * Validates an Authentication Response from the Wallet,
+     * in case it has been parsed into [ResponseParametersFrom] with [ResponseParser].
+     */
+    suspend fun validateAuthnResponse(
+        input: ResponseParametersFrom,
+    ) = validateAuthnResponse(
+        input = input,
+        externalId = null,
+    )
+
+    /**
+     * Validates an Authentication Response from the Wallet,
+     * in case it has been parsed into [ResponseParametersFrom] with [ResponseParser].
+     *
+     * The [externalId] will be used to load the corresponding [AuthenticationRequestParameters] from the store,
+     * in case a `state` parameter was not available in the request (e.g., when using DCAPI).
      */
     suspend fun validateAuthnResponse(
         input: ResponseParametersFrom,
@@ -745,21 +772,13 @@ class JwsHeaderClientIdScheme(val clientIdScheme: ClientIdScheme) : JwsHeaderIde
         it: JwsHeader,
         keyMaterial: KeyMaterial,
     ) = when (clientIdScheme) {
-        is ClientIdScheme.CertificateHash -> it.copy(
-            certificateChain = clientIdScheme.chain,
-        )
-
-        is ClientIdScheme.CertificateSanDns -> it.copy(
-            certificateChain = clientIdScheme.chain,
-        )
-
+        is ClientIdScheme.CertificateHash -> it.copy(certificateChain = clientIdScheme.chain)
+        is ClientIdScheme.CertificateSanDns -> it.copy(certificateChain = clientIdScheme.chain)
         is ClientIdScheme.VerifierAttestation -> it.copy(
             jsonWebKey = keyMaterial.jsonWebKey,
             attestationJwt = clientIdScheme.attestationJwt.serialize()
         )
 
-        else -> it.copy(
-            jsonWebKey = keyMaterial.jsonWebKey
-        )
+        else -> it.copy(jsonWebKey = keyMaterial.jsonWebKey)
     }
 }
