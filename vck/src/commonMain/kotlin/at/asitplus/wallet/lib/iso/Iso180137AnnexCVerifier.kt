@@ -1,16 +1,25 @@
 package at.asitplus.wallet.lib.iso
 
+import at.asitplus.dcapi.DCAPIHandover
 import at.asitplus.dcapi.DCAPIHandover.Companion.TYPE_DCAPI
+import at.asitplus.dcapi.DCAPIInfo
 import at.asitplus.dcapi.DCAPIResponse
 import at.asitplus.dcapi.request.IsoMdocRequest
 import at.asitplus.iso.DeviceRequest
+import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.DocRequest
 import at.asitplus.iso.EncryptionInfo
 import at.asitplus.iso.EncryptionParameters
 import at.asitplus.iso.ItemsRequest
 import at.asitplus.iso.ItemsRequestList
+import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.SingleItemsRequest
+import at.asitplus.iso.sha256
+import at.asitplus.signum.indispensable.CryptoPrivateKey
+import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.SecretExposure
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.wallet.lib.AbstractVerifier
 import at.asitplus.wallet.lib.DefaultNonceService
@@ -19,7 +28,10 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
+import io.github.aakira.napier.Napier
 import io.ktor.utils.io.core.toByteArray
+import kotlinx.serialization.decodeFromByteArray
+import kotlinx.serialization.encodeToByteArray
 
 class Iso180137AnnexCVerifier(
     /** Creates challenges in authentication requests. */
@@ -42,7 +54,7 @@ class Iso180137AnnexCVerifier(
     ) = stateToIsoMdocRequestStore.put(
         key = externalId,
         value = authenticationRequestParameters,
-    )
+    ).also { Napier.w("Request with external ID $externalId stored") }
 
     suspend fun createRequest(
         requestOptions: Iso180137AnnexCRequestOptions,
@@ -68,8 +80,28 @@ class Iso180137AnnexCVerifier(
 
     }
 
-    fun validateResponse(response: DCAPIResponse, externalId: String): ResponseResult {
-        println("Parsed response successfully = ${response.response.type}")
+    @OptIn(SecretExposure::class)
+    suspend fun validateResponse(
+        receivedData: DCAPIResponse,
+        externalId: String,
+        decryptHpke: suspend (ByteArray, ByteArray, CryptoPrivateKey.EC.WithPublicKey, ByteArray) -> ByteArray,
+        expectedOrigin: String
+    ): ResponseResult {
+        println("Parsed response successfully = ${receivedData.response.type}")
+        val isoMdocRequest = stateToIsoMdocRequestStore.get(externalId)!!
+        val privateKey = decryptionKeyMaterial.exportPrivateKey().getOrThrow()
+                as? CryptoPrivateKey.EC.WithPublicKey ?: throw IllegalStateException("Expected EC private key")
+
+        println("privateKey = ${privateKey}")
+        val encryptedResponseData = receivedData.response.encryptedResponseData
+
+        val dcapiInfo = DCAPIInfo(isoMdocRequest.encryptionInfo, expectedOrigin)
+        val hash = coseCompliantSerializer.encodeToByteArray(dcapiInfo).sha256() // TODO can we do this with serialization? Would probably need CborClassDiscriminator though
+        val sessionTranscript = SessionTranscript.forDcApi(DCAPIHandover("dcapi", hash))
+        val encodedSessionTranscript = coseCompliantSerializer.encodeToByteArray(sessionTranscript)
+        val encodedDeviceResponse = decryptHpke(encryptedResponseData.enc, encryptedResponseData.cipherText, privateKey, encodedSessionTranscript)
+        val deviceResponse = coseCompliantSerializer.decodeFromByteArray<DeviceResponse>(encodedDeviceResponse)
+        println("deviceResponse = ${deviceResponse}")
         TODO("Not yet implemented")
     }
 }
