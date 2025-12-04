@@ -201,16 +201,29 @@ class HolderAgent(
             matches = submissionList
         )
 
-        PresentationResponseParameters.PresentationExchangeParameters(
-            presentationSubmission = presentationSubmission,
-            presentationResults = submissionList.map { match ->
+        if (request.returnOneDeviceResponse) {
+            PresentationResponseParameters.PresentationExchangeParameters(
+                presentationSubmission = presentationSubmission,
+                presentationResults = listOf(
+                    verifiablePresentationFactory.createVerifiablePresentation(
+                        request = request,
+                        credentialAndDisclosedAttributes = submissionList
+                            .associate { it.second.credential as StoreEntry.Iso to it.second.disclosedAttributes },
+                    ).getOrThrow()
+                )
+            )
+        } else {
+            PresentationResponseParameters.PresentationExchangeParameters(
+                presentationSubmission = presentationSubmission,
+                presentationResults = submissionList.map { match ->
                     verifiablePresentationFactory.createVerifiablePresentation(
                         request = request,
                         credential = match.second.credential,
                         disclosedAttributes = match.second.disclosedAttributes,
                     ).getOrThrow()
                 },
-        )
+            )
+        }
     }
 
     private suspend fun createDCQLPresentation(
