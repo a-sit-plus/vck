@@ -3,6 +3,8 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
+import at.asitplus.dcapi.DCAPIHandover
+import at.asitplus.dcapi.OpenID4VPDCAPIHandoverInfo
 import at.asitplus.dif.ClaimFormat
 import at.asitplus.dif.FormatContainerJwt
 import at.asitplus.dif.FormatContainerSdJwt
@@ -531,6 +533,7 @@ class OpenId4VpVerifier(
                     responseUrl = authnRequest.responseUrl ?: authnRequest.redirectUrlExtracted,
                     transactionData = authnRequest.transactionData,
                     clientIdRequired = clientIdRequired,
+                    origin = (responseParameters as? ResponseParametersFrom.DcApi)?.origin,
                 ).mapToAuthnResponseResult()
             }.firstOrList()
         } ?: authnRequest.dcqlQuery?.let { query ->
@@ -550,6 +553,7 @@ class OpenId4VpVerifier(
                         responseUrl = authnRequest.responseUrl ?: authnRequest.redirectUrlExtracted,
                         transactionData = authnRequest.transactionData,
                         clientIdRequired = clientIdRequired,
+                        origin = (responseParameters as? ResponseParametersFrom.DcApi)?.origin,
                     ).mapToAuthnResponseResult()
                 }.getOrElse {
                     return AuthnResponseResult.ValidationError("Invalid presentation", cause = it)
@@ -595,6 +599,7 @@ class OpenId4VpVerifier(
         responseUrl: String?,
         transactionData: List<TransactionDataBase64Url>?,
         clientIdRequired: Boolean,
+        origin: String?,
     ) = when (claimFormat) {
         ClaimFormat.SD_JWT -> verifier.verifyPresentationSdJwt(
             input = SdJwtSigned.parseCatching(relatedPresentation.extractContent()).getOrElse {
@@ -617,16 +622,49 @@ class OpenId4VpVerifier(
             input = relatedPresentation.extractContent().decodeToByteArray(Base64UrlStrict)
                 .let { coseCompliantSerializer.decodeFromByteArray<DeviceResponse>(it) },
             verifyDocument = verifyDocument(
-                clientId = clientId,
-                responseUrl = responseUrl,
-                nonce = expectedNonce,
-                hasBeenEncrypted = input.hasBeenEncrypted,
-                clientIdRequired = clientIdRequired,
+                sessionTranscript = createSessionTranscript(
+                    input = input,
+                    clientId = clientId,
+                    expectedNonce = expectedNonce,
+                    hasBeenEncrypted = input.hasBeenEncrypted,
+                    responseUrl = responseUrl,
+                    clientIdRequired = clientIdRequired,
+                    origin = origin
+                )
             )
         )
 
         else -> throw IllegalArgumentException("descriptor.format: $claimFormat")
     }
+
+    private fun createSessionTranscript(
+        input: ResponseParametersFrom,
+        clientId: String?,
+        expectedNonce: String,
+        hasBeenEncrypted: Boolean,
+        responseUrl: String?,
+        clientIdRequired: Boolean,
+        origin: String?,
+    ): SessionTranscript {
+        if ((clientIdRequired && clientId == null))
+            throw IllegalStateException("Missing required parameter: clientId")
+        if (responseUrl == null) {
+            throw IllegalStateException("Missing required parameter: responseUrl")
+        }
+
+        return when (input) {
+            is ResponseParametersFrom.DcApi -> {
+                if (origin == null) {
+                    throw IllegalStateException("Missing required parameter: origin")
+                }
+                createDcApiSessionTranscript(expectedNonce, hasBeenEncrypted, origin)
+            }
+
+            else -> createOpenId4VpSessionTranscript(clientId, expectedNonce, hasBeenEncrypted, responseUrl)
+        }
+    }
+
+
 
     // To be reconsidered when supporting [DCQLCredentialQueryInstance.multiple]
     private fun JsonElement.extractContent(): String = when (this) {
@@ -642,26 +680,15 @@ class OpenId4VpVerifier(
      */
     @Throws(IllegalArgumentException::class, IllegalStateException::class)
     private fun verifyDocument(
-        clientId: String?,
-        responseUrl: String?,
-        nonce: String,
-        clientIdRequired: Boolean,
-        hasBeenEncrypted: Boolean,
+        sessionTranscript: SessionTranscript
     ): suspend (MobileSecurityObject, Document) -> Boolean = { mso, document ->
         val deviceSignature = document.deviceSigned.deviceAuth.deviceSignature
             ?: throw IllegalArgumentException("deviceSignature is null")
-        if ((clientIdRequired && clientId == null) || responseUrl == null)
-            throw IllegalStateException("Missing required parameters: clientId and/or responseUrl")
+
         val expected = document.calcDeviceAuthenticationOpenId4VpFinal(
-            clientId = clientId,
-            responseUrl = responseUrl,
-            nonce = nonce,
-            hasBeenEncrypted = hasBeenEncrypted
+            sessionTranscript = sessionTranscript,
         ).wrapAsExpectedPayload()
 
-        // TODO verify expectedOrigins
-
-        //TODO probably an issue with missing client ID or audience
         verifyCoseSignature(
             coseSigned = deviceSignature,
             signer = mso.deviceKeyInfo.deviceKey,
@@ -682,29 +709,52 @@ class OpenId4VpVerifier(
      * acc. to OpenID4VP 1.0
      */
     private fun Document.calcDeviceAuthenticationOpenId4VpFinal(
-        clientId: String?,
-        responseUrl: String,
-        nonce: String,
-        hasBeenEncrypted: Boolean,
+        sessionTranscript: SessionTranscript,
     ) = DeviceAuthentication(
         type = DeviceAuthentication.TYPE,
-        sessionTranscript = SessionTranscript.forOpenId(
-            OpenId4VpHandover(
-                type = OpenId4VpHandover.TYPE_OPENID4VP,
-                hash = coseCompliantSerializer.encodeToByteArray<OpenId4VpHandoverInfo>(
-                    OpenId4VpHandoverInfo(
-                        clientId = clientId,
-                        nonce = nonce,
-                        jwkThumbprint = if (hasBeenEncrypted) {
-                            decryptionKeyMaterial.jsonWebKey.sessionTranscriptThumbprint()
-                        } else null,
-                        responseUrl = responseUrl,
-                    )
-                ).sha256(),
-            )
-        ),
+        sessionTranscript = sessionTranscript,
         docType = docType,
         namespaces = deviceSigned.namespaces
+    )
+
+    private fun createOpenId4VpSessionTranscript(
+        clientId: String?,
+        nonce: String,
+        hasBeenEncrypted: Boolean,
+        responseUrl: String
+    ): SessionTranscript = SessionTranscript.forOpenId(
+        OpenId4VpHandover(
+            type = OpenId4VpHandover.TYPE_OPENID4VP,
+            hash = coseCompliantSerializer.encodeToByteArray<OpenId4VpHandoverInfo>(
+                OpenId4VpHandoverInfo(
+                    clientId = clientId,
+                    nonce = nonce,
+                    jwkThumbprint = if (hasBeenEncrypted) {
+                        decryptionKeyMaterial.jsonWebKey.sessionTranscriptThumbprint()
+                    } else null,
+                    responseUrl = responseUrl,
+                )
+            ).sha256(),
+        )
+    )
+
+    private fun createDcApiSessionTranscript(
+        nonce: String,
+        hasBeenEncrypted: Boolean,
+        origin: String,
+    ): SessionTranscript = SessionTranscript.forDcApi(
+        DCAPIHandover(
+            type = DCAPIHandover.TYPE_OPENID4VP,
+            hash = coseCompliantSerializer.encodeToByteArray<OpenID4VPDCAPIHandoverInfo>(
+                OpenID4VPDCAPIHandoverInfo(
+                    origin = origin,
+                    nonce = nonce,
+                    jwkThumbprint = if (hasBeenEncrypted) {
+                        decryptionKeyMaterial.jsonWebKey.sessionTranscriptThumbprint()
+                    } else null,
+                )
+            ).sha256(),
+        )
     )
 
     private fun VerifyPresentationResult.mapToAuthnResponseResult() = when (this) {

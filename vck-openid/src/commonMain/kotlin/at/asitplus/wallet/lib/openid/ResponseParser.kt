@@ -34,7 +34,7 @@ class ResponseParser(
     suspend fun parseAuthnResponse(input: String) = input.parseResponseParameters().extractFromJar()
 
     private fun String.parseResponseParameters() : ResponseParametersFrom = parseUrlSafe(this)
-        ?: parseDcApiBodySafe(this)
+        ?: parseDcApiBodySafe(this) //TODO could this be a security issue if we fall back to parsing as post body?
         ?: parsePostBodySafe(this)
         ?: throw IllegalArgumentException("Can't parse input: $this")
 
