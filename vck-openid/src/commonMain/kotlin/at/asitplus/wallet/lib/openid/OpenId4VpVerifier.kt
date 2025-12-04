@@ -513,6 +513,10 @@ class OpenId4VpVerifier(
             ?: throw IllegalArgumentException("vp_token")
         val clientIdRequired = responseParameters.clientIdRequired
 
+        (responseParameters as? ResponseParametersFrom.DcApi)?.let {
+            authnRequest.verifyExpectedOrigin(it.origin)
+        }
+
         return authnRequest.presentationDefinition?.let { _ ->
             val presentationSubmission = responseParameters.parameters.presentationSubmission?.descriptorMap
                 ?: throw IllegalArgumentException("Presentation Exchange need to present a presentation submission.")
