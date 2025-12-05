@@ -24,7 +24,7 @@ import at.asitplus.openid.IdToken
 import at.asitplus.openid.IdTokenType
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.JarRequestParameters.RequestUriMethod
-import at.asitplus.openid.JarRequestParameters.RequestUriMethod.POST
+import at.asitplus.openid.JarRequestParameters.RequestUriMethod.GET
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestObjectParameters
@@ -35,6 +35,7 @@ import at.asitplus.openid.SupportedAlgorithmsContainerSdJwt
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.VpFormatsSupported
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
+import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
@@ -70,7 +71,6 @@ import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.DefaultNonceService
 import at.asitplus.wallet.lib.oidvci.MapStore
 import at.asitplus.wallet.lib.oidvci.NonceService
-import at.asitplus.wallet.lib.oidvci.decode
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.sessionTranscriptThumbprint
 import io.github.aakira.napier.Napier
@@ -202,7 +202,7 @@ class OpenId4VpVerifier(
         data class RequestByReference(
             val walletUrl: String,
             val requestUrl: String,
-            val requestUrlMethod: RequestUriMethod = POST,
+            val requestUrlMethod: RequestUriMethod = GET,
         ) : CreationOptions()
 
         /** Appends authentication request as signed object to [walletUrl] */
@@ -215,7 +215,7 @@ class OpenId4VpVerifier(
         data class SignedRequestByReference(
             val walletUrl: String,
             val requestUrl: String,
-            val requestUrlMethod: RequestUriMethod = POST,
+            val requestUrlMethod: RequestUriMethod = GET,
         ) : CreationOptions()
     }
 
@@ -339,7 +339,7 @@ class OpenId4VpVerifier(
         requestOptions = requestOptions,
         requestObjectParameters = requestObjectParameters,
     ).also {
-        submitAuthnRequest(it)
+        submitAuthnRequest(it, requestOptions.state)
     }
 
     /**
@@ -350,7 +350,6 @@ class OpenId4VpVerifier(
         requestOptions: RequestOptions,
         requestObjectParameters: RequestObjectParameters? = null,
     ) = requestOptions.toAuthnRequest(requestObjectParameters)
-
 
     private suspend fun RequestOptions.toAuthnRequest(
         requestObjectParameters: RequestObjectParameters?,
@@ -366,7 +365,7 @@ class OpenId4VpVerifier(
         clientMetadata = clientMetadata(),
         idTokenType = if (isSiop) IdTokenType.SUBJECT_SIGNED.text else null,
         responseMode = responseMode,
-        state = state,
+        state = if (!isDcApi) state else null,
         dcqlQuery = if (isDcql) toDCQLQuery() else null,
         presentationDefinition = if (isPresentationExchange)
             toPresentationDefinition(containerJwt, containerSdJwt) else null,
@@ -374,33 +373,32 @@ class OpenId4VpVerifier(
     )
 
     /**
-     * Remembers [authenticationRequestParameters] to link responses to requests
+     * Remembers [authenticationRequestParameters] to link responses to requests in [validateAuthnResponse].
+     *
+     * Parameter [externalId] may be used in cases the [authenticationRequestParameters] do not have a `state`
+     * parameter, e.g., when using DCAPI. Otherwise the value of [AuthenticationRequestParameters.state] will be used.
      */
     suspend fun submitAuthnRequest(
         authenticationRequestParameters: AuthenticationRequestParameters,
+        externalId: String? = null,
     ) = stateToAuthnRequestStore.put(
-        authenticationRequestParameters.state
-            ?: throw IllegalArgumentException("No state value has been provided"),
-        authenticationRequestParameters,
+        key = externalId
+            ?: authenticationRequestParameters.state
+            ?: throw IllegalArgumentException("Neither externalId nor state has been provided"),
+        value = authenticationRequestParameters,
     )
 
+    @Suppress("DEPRECATION")
     private fun RequestOptions.clientMetadata(): RelyingPartyMetadata? = when (clientIdScheme) {
         is ClientIdScheme.RedirectUri,
         is ClientIdScheme.VerifierAttestation,
         is ClientIdScheme.CertificateSanDns,
-        is ClientIdScheme.CertificateHash ->
+        is ClientIdScheme.CertificateHash,
+            ->
             if (encryption || responseMode.requiresEncryption) metadataWithEncryption else metadata
 
         else -> null
     }
-
-    @Deprecated("Use validateAuthnResponse(input: String) instead")
-    suspend fun validateAuthnResponse(input: Map<String, String>): AuthnResponseResult =
-        catchingUnwrapped {
-            ResponseParametersFrom.Post(input.decode<AuthenticationResponseParameters>())
-        }.getOrElse {
-            return AuthnResponseResult.Error("Can't parse input: $input", null, it)
-        }.let { validateAuthnResponse(it) }
 
     /**
      * Validates an Authentication Response from the Wallet, where [input] is either:
@@ -408,55 +406,106 @@ class OpenId4VpVerifier(
      * - a URL, containing parameters in the query, e.g. `https://example.com?id_token=...`
      * - parameters encoded as a POST body, e.g. `id_token=...&vp_token=...`
      */
-    suspend fun validateAuthnResponse(input: String): AuthnResponseResult =
-        catchingUnwrapped {
-            responseParser.parseAuthnResponse(input)
-        }.getOrElse {
-            return AuthnResponseResult.Error("Can't parse input: $input", null, it)
-        }.let {
-            validateAuthnResponse(it)
-        }
+    suspend fun validateAuthnResponse(
+        input: String,
+    ): AuthnResponseResult = validateAuthnResponse(
+        input = input,
+        externalId = null
+    )
 
     /**
-     * Validates [AuthenticationResponseParameters] from the Wallet
+     * Validates an Authentication Response from the Wallet, where [input] is either:
+     * - a URL, containing parameters in the fragment, e.g. `https://example.com#id_token=...`
+     * - a URL, containing parameters in the query, e.g. `https://example.com?id_token=...`
+     * - parameters encoded as a POST body, e.g. `id_token=...&vp_token=...`
+     *
+     * The [externalId] will be used to load the corresponding [AuthenticationRequestParameters] from the store,
+     * in case a `state` parameter was not available in the request (e.g., when using DCAPI).
      */
-    suspend fun validateAuthnResponse(input: ResponseParametersFrom): AuthnResponseResult {
-        Napier.d("validateAuthnResponse: $input")
-        val params = input.parameters
-        val state = params.state
-            ?: return AuthnResponseResult.ValidationError("state", params.state)
-        val authnRequest = stateToAuthnRequestStore.get(state)
-            ?: return AuthnResponseResult.ValidationError("state", state)
-        if (authnRequest.responseMode?.requiresEncryption == true)
-            if (!input.hasBeenEncrypted)
-                return AuthnResponseResult.ValidationError("response", state)
+    suspend fun validateAuthnResponse(
+        input: String,
+        externalId: String? = null,
+    ): AuthnResponseResult = catchingUnwrapped {
+        responseParser.parseAuthnResponse(input)
+    }.getOrElse {
+        return AuthnResponseResult.Error("Can't parse input: $input", cause = it)
+    }.let {
+        validateAuthnResponse(it, externalId)
+    }
 
+    /**
+     * Validates an Authentication Response from the Wallet,
+     * in case it has been parsed into [ResponseParametersFrom] with [ResponseParser].
+     */
+    suspend fun validateAuthnResponse(
+        input: ResponseParametersFrom,
+    ) = validateAuthnResponse(
+        input = input,
+        externalId = null,
+    )
+
+    /**
+     * Validates an Authentication Response from the Wallet,
+     * in case it has been parsed into [ResponseParametersFrom] with [ResponseParser].
+     *
+     * The [externalId] will be used to load the corresponding [AuthenticationRequestParameters] from the store,
+     * in case a `state` parameter was not available in the request (e.g., when using DCAPI).
+     */
+    suspend fun validateAuthnResponse(
+        input: ResponseParametersFrom,
+        externalId: String? = null,
+    ): AuthnResponseResult {
+        Napier.d("validateAuthnResponse: $input")
+        val authnRequest = catching {
+            loadAuthnRequest(input, externalId)
+        }.getOrElse {
+            return AuthnResponseResult.ValidationError("input", cause = it)
+        }
         // TODO: support concurrent presentation of ID token and VP token?
-        val responseType = authnRequest.responseType
-        if (responseType?.contains(OpenIdConstants.VP_TOKEN) == true) {
-            return validateVpToken(
-                authnRequest = authnRequest,
-                responseParameters = input,
-                state = state
+        return if (authnRequest.responseType?.contains(OpenIdConstants.VP_TOKEN) == true) {
+            catching {
+                validateVpToken(authnRequest, input)
+            }.getOrElse {
+                AuthnResponseResult.ValidationError("vpToken", input.parameters.state, it)
+            }
+        } else if (authnRequest.responseType?.contains(OpenIdConstants.ID_TOKEN) == true) {
+            catching {
+                extractValidatedIdToken(input)
+            }.getOrElse {
+                AuthnResponseResult.ValidationError("idToken", input.parameters.state, it)
+            }
+        } else {
+            AuthnResponseResult.Error(
+                reason = "Neither id_token nor vp_token",
+                state = authnRequest.state,
+                cause = IllegalArgumentException(authnRequest.responseType)
             )
         }
-
-        if (responseType?.contains(OpenIdConstants.ID_TOKEN) == true) {
-            val idToken = params.idToken?.let { idToken ->
-                catching {
-                    extractValidatedIdToken(idToken)
-                }.getOrElse {
-                    return AuthnResponseResult.ValidationError("idToken", state, it)
-                }
-            } ?: return AuthnResponseResult.ValidationError("idToken", state)
-            return AuthnResponseResult.IdToken(idToken, state)
-        }
-
-        return AuthnResponseResult.Error("Neither id_token nor vp_token", state)
     }
 
     @Throws(IllegalArgumentException::class, CancellationException::class)
-    private suspend fun extractValidatedIdToken(idTokenJws: String): IdToken {
+    private suspend fun loadAuthnRequest(
+        input: ResponseParametersFrom,
+        externalId: String?
+    ): AuthenticationRequestParameters {
+        val storedId = externalId
+            ?: input.parameters.state
+            ?: throw IllegalArgumentException("Neither externalId nor state given")
+        val authnRequest = stateToAuthnRequestStore.get(storedId)
+            ?: throw IllegalArgumentException("No authn request found for $storedId")
+        if (authnRequest.responseMode?.requiresEncryption == true)
+            require(input.hasBeenEncrypted) {
+                "response_mode requires encryption, but no encrypted response was given"
+            }
+        return authnRequest
+    }
+
+    @Throws(IllegalArgumentException::class, CancellationException::class)
+    private suspend fun extractValidatedIdToken(
+        input: ResponseParametersFrom,
+    ): AuthnResponseResult {
+        val idTokenJws = input.parameters.idToken
+            ?: throw IllegalArgumentException("idToken")
         val jwsSigned = JwsSigned.deserialize(IdToken.serializer(), idTokenJws, vckJsonSerializer)
             .getOrElse { throw IllegalArgumentException("idToken", it) }
         if (!verifyJwsObject(jwsSigned))
@@ -485,7 +534,7 @@ class OpenId4VpVerifier(
         if (idToken.subject != idToken.subjectJwk!!.jwkThumbprint)
             throw IllegalArgumentException("idToken.sub")
                 .also { Napier.d("subject does not equal thumbprint of sub_jwk: ${idToken.subject}") }
-        return idToken
+        return AuthnResponseResult.IdToken(idToken, input.parameters.state)
     }
 
     /**
@@ -493,48 +542,36 @@ class OpenId4VpVerifier(
      * [OpenID for VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html),
      * as referenced by [OpenID for VP](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html).
      */
+    @Throws(IllegalArgumentException::class, CancellationException::class)
     private suspend fun validateVpToken(
         authnRequest: AuthenticationRequestParameters,
         responseParameters: ResponseParametersFrom,
-        state: String,
     ): AuthnResponseResult {
-        val params = responseParameters.parameters
         val expectedNonce = authnRequest.nonce
-            ?: return AuthnResponseResult.ValidationError("state", state)
-        val verifiablePresentation = params.vpToken
-            ?: return AuthnResponseResult.ValidationError("vp_token", state)
+            ?: throw IllegalArgumentException("nonce")
+        val vpToken = responseParameters.parameters.vpToken
+            ?: throw IllegalArgumentException("vp_token")
 
-        authnRequest.presentationDefinition?.let { presentationDefinition ->
-            val presentationSubmission = params.presentationSubmission
-                ?: throw IllegalArgumentException("Credential presentations using Presentation Exchange need to present a presentation submission.")
+        return authnRequest.presentationDefinition?.let { presentationDefinition ->
+            val presentationSubmission = responseParameters.parameters.presentationSubmission?.descriptorMap
+                ?: throw IllegalArgumentException("Presentation Exchange need to present a presentation submission.")
 
-            val validationResults = presentationSubmission.descriptorMap?.map { descriptor ->
-                val relatedPresentation = JsonPath(descriptor.cumulativeJsonPath)
-                    .query(verifiablePresentation).first().value
-                catchingUnwrapped {
-                    verifyPresentationResult(
-                        claimFormat = descriptor.format,
-                        relatedPresentation = relatedPresentation,
-                        expectedNonce = expectedNonce,
-                        input = responseParameters,
-                        clientId = authnRequest.clientId,
-                        responseUrl = authnRequest.responseUrl ?: authnRequest.redirectUrlExtracted,
-                        transactionData = authnRequest.transactionData,
-                    )
-                }.getOrElse {
-                    return AuthnResponseResult.ValidationError("Invalid presentation", state, it)
-                }.mapToAuthnResponseResult(state)
-            } ?: listOf()
-            return validationResults.firstOrList()
-        }
-
-        authnRequest.dcqlQuery?.let { query ->
-            val credentialQueryMap = query.credentials.associateBy { it.id }
-
-            val presentation = verifiablePresentation.jsonObject.mapKeys {
+            presentationSubmission.map { descriptor ->
+                verifyPresentationResult(
+                    claimFormat = descriptor.format,
+                    relatedPresentation = descriptor.relatedPresentation(vpToken),
+                    expectedNonce = expectedNonce,
+                    input = responseParameters,
+                    clientId = authnRequest.clientId,
+                    responseUrl = authnRequest.responseUrl ?: authnRequest.redirectUrlExtracted,
+                    transactionData = authnRequest.transactionData,
+                ).mapToAuthnResponseResult(responseParameters.parameters.state)
+            }.firstOrList()
+        } ?: authnRequest.dcqlQuery?.let { query ->
+            val presentation = vpToken.jsonObject.mapKeys {
                 DCQLCredentialQueryIdentifier(it.key)
             }.mapValues { (credentialQueryId, relatedPresentation) ->
-                val credentialQuery = credentialQueryMap[credentialQueryId]
+                val credentialQuery = query.credentialQuery(credentialQueryId)
                     ?: throw IllegalArgumentException("Unknown credential query identifier.")
 
                 catchingUnwrapped {
@@ -546,16 +583,24 @@ class OpenId4VpVerifier(
                         clientId = authnRequest.clientId,
                         responseUrl = authnRequest.responseUrl ?: authnRequest.redirectUrlExtracted,
                         transactionData = authnRequest.transactionData,
-                    ).mapToAuthnResponseResult(state)
+                    ).mapToAuthnResponseResult(responseParameters.parameters.state)
                 }.getOrElse {
-                    return AuthnResponseResult.ValidationError("Invalid presentation", state, it)
+                    return AuthnResponseResult.ValidationError(
+                        "Invalid presentation",
+                        responseParameters.parameters.state,
+                        it
+                    )
                 }
             }
-            return AuthnResponseResult.VerifiableDCQLPresentationValidationResults(presentation)
-        }
-
-        throw IllegalArgumentException("Unsupported presentation mechanism")
+            AuthnResponseResult.VerifiableDCQLPresentationValidationResults(presentation)
+        } ?: throw IllegalArgumentException("Unsupported presentation mechanism")
     }
+
+    private fun DCQLQuery.credentialQuery(id: DCQLCredentialQueryIdentifier) =
+        credentials.associateBy { it.id }[id]
+
+    private fun PresentationSubmissionDescriptor.relatedPresentation(vpToken: JsonElement) =
+        JsonPath(cumulativeJsonPath).query(vpToken).first().value
 
     private fun CredentialFormatEnum.toClaimFormat(): ClaimFormat = when (this) {
         CredentialFormatEnum.JWT_VC -> ClaimFormat.JWT_VP
@@ -691,7 +736,7 @@ class OpenId4VpVerifier(
         namespaces = deviceSigned.namespaces
     )
 
-    private fun VerifyPresentationResult.mapToAuthnResponseResult(state: String) = when (this) {
+    private fun VerifyPresentationResult.mapToAuthnResponseResult(state: String?) = when (this) {
         is VerifyPresentationResult.ValidationError -> AuthnResponseResult.ValidationError("vpToken", state, cause)
         is VerifyPresentationResult.Success -> AuthnResponseResult.Success(vp, state)
         is VerifyPresentationResult.SuccessIso -> AuthnResponseResult.SuccessIso(documents, state)
@@ -727,21 +772,13 @@ class JwsHeaderClientIdScheme(val clientIdScheme: ClientIdScheme) : JwsHeaderIde
         it: JwsHeader,
         keyMaterial: KeyMaterial,
     ) = when (clientIdScheme) {
-        is ClientIdScheme.CertificateHash -> it.copy(
-            certificateChain = clientIdScheme.chain,
-        )
-
-        is ClientIdScheme.CertificateSanDns -> it.copy(
-            certificateChain = clientIdScheme.chain,
-        )
-
+        is ClientIdScheme.CertificateHash -> it.copy(certificateChain = clientIdScheme.chain)
+        is ClientIdScheme.CertificateSanDns -> it.copy(certificateChain = clientIdScheme.chain)
         is ClientIdScheme.VerifierAttestation -> it.copy(
             jsonWebKey = keyMaterial.jsonWebKey,
             attestationJwt = clientIdScheme.attestationJwt.serialize()
         )
 
-        else -> it.copy(
-            jsonWebKey = keyMaterial.jsonWebKey
-        )
+        else -> it.copy(jsonWebKey = keyMaterial.jsonWebKey)
     }
 }

@@ -7,6 +7,7 @@ import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants.ResponseMode
+import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.NameSegment
 import at.asitplus.openid.dcql.DCQLClaimsQueryList
@@ -39,6 +40,7 @@ import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessIso
@@ -61,6 +63,7 @@ import io.ktor.client.engine.*
 import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
 import io.ktor.http.*
+import io.ktor.util.toMap
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.Dispatchers
@@ -189,7 +192,18 @@ val OpenId4VpWalletTest by testSuite {
 
                 this.mockEngine = MockEngine { request ->
                     when {
-                        request.url.fullPath == requestEndpointPath -> respond(jar.invoke(null).getOrThrow())
+                        request.url.fullPath.startsWith(requestEndpointPath) -> {
+                            val requestBody = request.body.toByteArray().decodeToString()
+                            val queryParameters: Map<String, String> =
+                                request.url.parameters.toMap().entries.associate { it.key to it.value.first() }
+                            val requestObjectParameters = if (requestBody.isNotEmpty())
+                                requestBody.decodeFromPostBody<RequestObjectParameters>()
+                            else RequestObjectParameters(
+                                walletMetadataString = queryParameters["wallet_metadata"],
+                                walletNonce = queryParameters["wallet_nonce"]
+                            )
+                            respond(jar.invoke(requestObjectParameters).getOrThrow())
+                        }
 
                         request.url.fullPath.startsWith(responseEndpointPath) or request.url.toString()
                             .startsWith(redirectUri) -> {

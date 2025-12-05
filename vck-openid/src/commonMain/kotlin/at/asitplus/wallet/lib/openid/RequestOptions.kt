@@ -72,9 +72,7 @@ data class RequestOptions(
     /** Opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]. */
     val state: String = uuid4().toString(),
 
-    /**
-     * Set this value to include metadata with encryption parameters set.
-     */
+    @Deprecated("Encryption depends on [responseMode]")
     val encryption: Boolean = false,
 
     /**
@@ -100,6 +98,10 @@ data class RequestOptions(
     val isAnyDirectPost: Boolean
         get() = (responseMode == OpenIdConstants.ResponseMode.DirectPost) ||
                 (responseMode == OpenIdConstants.ResponseMode.DirectPostJwt)
+
+    val isDcApi: Boolean
+        get() = (responseMode == OpenIdConstants.ResponseMode.DcApi) ||
+                (responseMode == OpenIdConstants.ResponseMode.DcApiJwt)
 
     val isSiop: Boolean
         get() = responseType.contains(OpenIdConstants.ID_TOKEN)

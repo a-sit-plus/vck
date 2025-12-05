@@ -3,6 +3,10 @@
 Release 5.11.0 (unreleased):
  - Proximity presentations:
    - Return multiple ISO mDoc credentials in one device response when generating a presentation in proximity flows
+ - OpenID for Verifiable Presentations:
+   - In `RequestOptions` deprecate property `encryption`, as this depends on the response mode
+   - In `OpenId4VpVerifier` remove `validateAuthnResponse(input: Map)`
+   - In `OpenId4VpVerifier` add option to provide `externalId` to methods `validateAuthnRequest()` and `submitAuthnRequest()`, useful for DCAPI flows
 
 Release 5.10.0:
  - StatusListToken:
