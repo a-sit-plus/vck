@@ -65,6 +65,13 @@ sealed class ResponseParametersFrom {
         }
     }
 
+    val originalResponseParameters: ResponseParametersFrom
+        get() = when (this) {
+            is JwsSigned -> this.parent
+            is JweDecrypted -> this.parent
+            else -> this
+        }
+
 }
 
 
