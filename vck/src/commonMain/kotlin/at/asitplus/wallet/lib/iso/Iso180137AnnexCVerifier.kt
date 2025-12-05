@@ -28,6 +28,7 @@ import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.ValidatorMdoc
+import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 import at.asitplus.wallet.lib.utils.DefaultMapStore
@@ -103,6 +104,13 @@ class Iso180137AnnexCVerifier(
         )
     )
 
+    private fun VerifyPresentationResult.mapToAuthnResponseResult() = when (this) {
+        is VerifyPresentationResult.ValidationError -> ResponseResult.ValidationError(cause = cause)
+        is VerifyPresentationResult.Success -> ResponseResult.Success(vp)
+        is VerifyPresentationResult.SuccessIso -> ResponseResult.SuccessIso(documents)
+        is VerifyPresentationResult.SuccessSdJwt -> throw IllegalStateException("Unexpected SuccessSdJwt")
+    }
+
     @OptIn(SecretExposure::class)
     suspend fun validateResponse(
         receivedData: DCAPIResponse,
@@ -110,7 +118,6 @@ class Iso180137AnnexCVerifier(
         decryptHpke: suspend (ByteArray, ByteArray, CryptoPrivateKey.EC.WithPublicKey, ByteArray) -> ByteArray,
         expectedOrigin: String
     ): ResponseResult {
-        println("Parsed response successfully = ${receivedData.response.type}")
         val isoMdocRequest = stateToIsoMdocRequestStore.get(externalId)!!
         val privateKey = decryptionKeyMaterial.exportPrivateKey().getOrThrow()
                 as? CryptoPrivateKey.EC.WithPublicKey ?: throw IllegalStateException("Expected EC private key")
@@ -129,13 +136,11 @@ class Iso180137AnnexCVerifier(
         val encodedDeviceResponse = decryptHpke(encryptedResponseData.enc, encryptedResponseData.cipherText, privateKey, encodedSessionTranscript)
         val deviceResponse = coseCompliantSerializer.decodeFromByteArray<DeviceResponse>(encodedDeviceResponse)
 
-        val result = validatorMdoc.verifyDeviceResponse(
+        return validatorMdoc.verifyDeviceResponse(
             deviceResponse,
             verifyDocumentCallback = verifyDocument(
                 sessionTranscript = sessionTranscript
             )
-        )
-        println("result = ${result}")
-        TODO("return result")
+        ).mapToAuthnResponseResult()
     }
 }

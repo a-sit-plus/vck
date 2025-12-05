@@ -445,7 +445,7 @@ class OpenId4VpVerifier(
     suspend fun validateAuthnResponse(
         input: OpenId4VpResponse,
         externalId: String,
-    ): AuthnResponseResult  = catchingUnwrapped {
+    ): AuthnResponseResult = catchingUnwrapped {
         responseParser.parseAuthnResponse(input)
     }.getOrElse {
         return AuthnResponseResult.Error("Can't parse input: $input", cause = it)
