@@ -238,7 +238,7 @@ private fun simpleSigner(
 }
 
 private fun SubjectCredentialStore.StoreEntry.Iso.mdocStatusListIndex(): ULong =
-    issuerSigned.issuerAuth.payload.shouldNotBeNull().status.shouldNotBeNull().statusList.index
+    issuerSigned.issuerAuth.payload.shouldNotBeNull().status.shouldNotBeNull().statusList.shouldNotBeNull().index
 
 // No OpenID4VP, no need to verify the device signature
 private fun documentVerifier(): suspend (MobileSecurityObject, Document) -> Boolean = { _, _ -> true }

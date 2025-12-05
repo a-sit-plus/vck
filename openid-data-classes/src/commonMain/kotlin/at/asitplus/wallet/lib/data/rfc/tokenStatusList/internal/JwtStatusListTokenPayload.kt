@@ -28,14 +28,14 @@ internal data class JwtStatusListTokenPayload(
     @SerialName(JwtIssuedAtClaim.Specification.CLAIM_NAME)
     val issuedAt: JwtIssuedAtClaim,
     /**
-     * exp: OPTIONAL. As generally defined in RFC7519. The exp (expiration time) claim, if
+     * exp: RECOMMENDED. As generally defined in RFC7519. The exp (expiration time) claim, if
      * present, MUST specify the time at which the Status List Token is considered expired by the
      * Status Issuer.
      */
     @SerialName(JwtExpirationTimeClaim.Specification.CLAIM_NAME)
     val expirationTime: JwtExpirationTimeClaim? = null,
     /**
-     * ttl: OPTIONAL. The ttl (time to live) claim, if present, MUST specify the maximum amount of
+     * ttl: RECOMMENDED. The ttl (time to live) claim, if present, MUST specify the maximum amount of
      * time, in seconds, that the Status List Token can be cached by a consumer before a fresh copy
      * SHOULD be retrieved. The value of the claim MUST be a positive number encoded in JSON as a
      * number.

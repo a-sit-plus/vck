@@ -7,14 +7,36 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBit
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+/**
+ * Implements [ietf-oauth-status-list](https://datatracker.ietf.org/doc/draft-ietf-oauth-status-list/) Sec. 4.2
+ */
 @Serializable
 internal data class JsonSerializableStatusList(
+    /**
+     * lst: REQUIRED.  JSON String that contains the status values for
+     * all the Referenced Tokens it conveys statuses for.  The value
+     * MUST be the base64url-encoded compressed byte array as
+     * specified in Section 4.1.
+     */
     @SerialName("lst")
     @Serializable(with = ByteArrayBase64UrlSerializer::class)
     val compressed: ByteArray,
-    @Serializable(with = TokenStatusBitSizeValueSerializer::class)
+
+    /**
+     * bits: REQUIRED.  JSON Integer specifying the number of bits per
+     * Referenced Token in the compressed byte array (lst).  The
+     * allowed values for bits are 1,2,4 and 8.
+     */
     @SerialName("bits")
+    @Serializable(with = TokenStatusBitSizeValueSerializer::class)
     val statusBitSize: TokenStatusBitSize,
+
+    /**
+     * aggregation_uri: OPTIONAL.  JSON String that contains a URI to
+     * retrieve the Status List Aggregation for this type of
+     * Referenced Token or Issuer.  See section Section 9 for further
+     * details.
+     */
     @SerialName("aggregation_uri")
     val aggregationUri: String? = null
 ) {

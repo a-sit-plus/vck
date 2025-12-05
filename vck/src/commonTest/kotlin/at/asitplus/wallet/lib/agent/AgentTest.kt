@@ -163,7 +163,7 @@ val AgentTest by testSuite {
 
             it.statusListIssuer.revokeCredential(
                 FixedTimePeriodProvider.timePeriod,
-                credential.vc.credentialStatus!!.statusList.index
+                credential.vc.credentialStatus.shouldNotBeNull().statusList.shouldNotBeNull().index
             ) shouldBe true
 
             it.holder.getCredentials()
@@ -241,7 +241,7 @@ val AgentTest by testSuite {
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
             it.statusListIssuer.revokeCredential(
                 FixedTimePeriodProvider.timePeriod,
-                credentialToRevoke.vc.credentialStatus!!.statusList.index
+                credentialToRevoke.vc.credentialStatus.shouldNotBeNull().statusList.shouldNotBeNull().index
             ) shouldBe true
 
             it.verifier.verifyPresentationVcJwt(vp.jwsSigned, it.challenge)
@@ -369,7 +369,7 @@ val AgentTest by testSuite {
 
             it.statusListIssuer.revokeCredential(
                 FixedTimePeriodProvider.timePeriod,
-                credentialToRevoke.vc.credentialStatus!!.statusList.index
+                credentialToRevoke.vc.credentialStatus.shouldNotBeNull().statusList.shouldNotBeNull().index
             ) shouldBe true
 
             it.verifier.verifyPresentationVcJwt(vp.jwsSigned, it.challenge)

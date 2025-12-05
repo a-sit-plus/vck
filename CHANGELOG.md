@@ -2,6 +2,7 @@
 
 Release 5.11.0 (unreleased):
  - Add `VerifyStatusListTokenHAIP` and related resolver/tests to enforce HAIP d04
+ - Add `IdentifierList` and `IdentifierListInfo` and related classes
 
 Release 5.10.1:
  - Proximity presentations:

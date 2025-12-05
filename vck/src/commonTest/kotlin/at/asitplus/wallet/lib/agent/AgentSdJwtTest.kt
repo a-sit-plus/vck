@@ -42,6 +42,7 @@ import at.asitplus.wallet.lib.jws.VerifyStatusListTokenHAIP
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldNotBeInstanceOf
@@ -177,7 +178,7 @@ val AgentSdJwtTest by testSuite {
                 .forEach { storeEntry ->
                     it.statusListIssuer.revokeCredential(
                         FixedTimePeriodProvider.timePeriod,
-                        storeEntry.sdJwt.credentialStatus!!.statusList.index
+                        storeEntry.sdJwt.credentialStatus.shouldNotBeNull().statusList.shouldNotBeNull().index
                     ) shouldBe true
                 }
             it.verifier.verifyPresentationSdJwt(vp.sdJwt, it.challenge)
@@ -278,7 +279,7 @@ val AgentSdJwtTest by testSuite {
                 .forEach { storeEntry ->
                     it.statusListIssuer.revokeCredential(
                         FixedTimePeriodProvider.timePeriod,
-                        storeEntry.sdJwt.credentialStatus!!.statusList.index,
+                        storeEntry.sdJwt.credentialStatus.shouldNotBeNull().statusList.shouldNotBeNull().index,
                     ) shouldBe true
                 }
             it.verifier.verifyPresentationSdJwt(vp.sdJwt, it.challenge)
