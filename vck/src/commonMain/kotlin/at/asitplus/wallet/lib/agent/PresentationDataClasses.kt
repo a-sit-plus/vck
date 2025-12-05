@@ -41,6 +41,12 @@ data class PresentationRequestParameters(
      * (OpenID4VP with ISO/IEC 18013-7)
      */
     val calcIsoDeviceSignaturePlain: (suspend (input: IsoDeviceSignatureInput) -> CoseSigned<ByteArray>?) = { null },
+    /**
+     * Whether to return one [at.asitplus.iso.DeviceResponse] containing multiple [at.asitplus.iso.Document] objects,
+     * or multiple [at.asitplus.iso.DeviceResponse] objects with one [at.asitplus.iso.Document] each.
+     * This applies to presentation exchange only, as we need to control the behavior for proximity presentations.
+     */
+    val returnOneDeviceResponse: Boolean = false
 ) {
     /**
      * According to OID4VP 1.0 B3.3.1 every TransactionData entry may define different Digest algorithms

@@ -50,6 +50,16 @@ class VerifiablePresentationFactory(
 
     suspend fun createVerifiablePresentation(
         request: PresentationRequestParameters,
+        credentialAndDisclosedAttributes: Map<SubjectCredentialStore.StoreEntry.Iso, Collection<NormalizedJsonPath>>,
+    ): KmmResult<CreatePresentationResult> = catching {
+        createIsoPresentation(
+            request = request,
+            credentialAndRequestedClaims = credentialAndDisclosedAttributes,
+        )
+    }
+
+    suspend fun createVerifiablePresentation(
+        request: PresentationRequestParameters,
         credential: SubjectCredentialStore.StoreEntry,
         disclosedAttributes: Collection<NormalizedJsonPath>,
     ): KmmResult<CreatePresentationResult> = catching {

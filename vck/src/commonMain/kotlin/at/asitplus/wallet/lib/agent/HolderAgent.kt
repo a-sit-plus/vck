@@ -153,15 +153,8 @@ class HolderAgent(
     override suspend fun createDefaultPresentation(
         request: PresentationRequestParameters,
         credentialPresentationRequest: CredentialPresentationRequest,
-    ): KmmResult<PresentationResponseParameters> = when (credentialPresentationRequest) {
-        is CredentialPresentationRequest.PresentationExchangeRequest -> createPresentation(
-            request, credentialPresentationRequest.toCredentialPresentation()
-        )
-
-        is CredentialPresentationRequest.DCQLRequest -> createPresentation(
-            request, credentialPresentationRequest.toCredentialPresentation()
-        )
-    }
+    ): KmmResult<PresentationResponseParameters> =
+        createPresentation(request, credentialPresentationRequest.toCredentialPresentation())
 
     override suspend fun createPresentation(
         request: PresentationRequestParameters,
@@ -196,21 +189,36 @@ class HolderAgent(
             )
         }.toList()
 
-        val presentationSubmission = PresentationSubmission.fromMatches(
-            presentationId = presentationDefinition.id,
-            matches = submissionList
-        )
-
-        PresentationResponseParameters.PresentationExchangeParameters(
-            presentationSubmission = presentationSubmission,
-            presentationResults = submissionList.map { match ->
+        if (request.returnOneDeviceResponse) {
+            PresentationResponseParameters.PresentationExchangeParameters(
+                presentationSubmission = PresentationSubmission.fromMatches(
+                    presentationId = presentationDefinition.id,
+                    matches = submissionList,
+                    isSingleIsoMdocPresentation = true
+                ),
+                presentationResults = listOf(
+                    verifiablePresentationFactory.createVerifiablePresentation(
+                        request = request,
+                        credentialAndDisclosedAttributes = submissionList
+                            .associate { it.second.credential as StoreEntry.Iso to it.second.disclosedAttributes },
+                    ).getOrThrow()
+                )
+            )
+        } else {
+            PresentationResponseParameters.PresentationExchangeParameters(
+                presentationSubmission = PresentationSubmission.fromMatches(
+                    presentationId = presentationDefinition.id,
+                    matches = submissionList
+                ),
+                presentationResults = submissionList.map { match ->
                     verifiablePresentationFactory.createVerifiablePresentation(
                         request = request,
                         credential = match.second.credential,
                         disclosedAttributes = match.second.disclosedAttributes,
                     ).getOrThrow()
                 },
-        )
+            )
+        }
     }
 
     private suspend fun createDCQLPresentation(
@@ -315,6 +323,7 @@ class HolderAgent(
     private fun PresentationSubmission.Companion.fromMatches(
         presentationId: String?,
         matches: List<Pair<String, PresentationExchangeCredentialDisclosure>>,
+        isSingleIsoMdocPresentation: Boolean = false,
     ) = PresentationSubmission(
         id = uuid4().toString(),
         definitionId = presentationId,
@@ -322,7 +331,7 @@ class HolderAgent(
             PresentationSubmissionDescriptor.fromMatch(
                 inputDescriptorId = match.first,
                 credential = match.second.credential,
-                index = if (matches.size == 1) null else index,
+                index = if (matches.size == 1 || isSingleIsoMdocPresentation) null else index,
             )
         },
     )

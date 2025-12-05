@@ -1,5 +1,9 @@
 # Changelog
 
+Release 5.11.0 (unreleased):
+ - Proximity presentations:
+   - Return multiple ISO mDoc credentials in one device response when generating a presentation in proximity flows
+
 Release 5.10.0:
  - StatusListToken:
    - Remove `StatusTokenValidator`
