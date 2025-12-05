@@ -22,4 +22,4 @@ data class IdentifierList(
     val identifiers: Map<Identifier, IdentifierInfo>,
     @SerialName("aggregation_uri")
     val aggregationUri: String? = null,
-)
+) : RevocationList()

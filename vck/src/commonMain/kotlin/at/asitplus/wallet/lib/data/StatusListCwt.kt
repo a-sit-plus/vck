@@ -5,7 +5,7 @@ import at.asitplus.catching
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import kotlin.time.Instant
 
@@ -26,14 +26,14 @@ data class StatusListCwt(
      */
     suspend fun validate(
         verifyCoseSignature: VerifyCoseSignatureFun<StatusListTokenPayload> = VerifyCoseSignature(),
-        statusListInfo: StatusListInfo,
+        revocationListInfo: RevocationListInfo,
         isInstantInThePast: (Instant) -> Boolean,
     ): KmmResult<StatusListTokenPayload> =
         validateIntegrity(verifyCoseSignature, this).transform { payload ->
             validateStatusListTokenPayloadClaims(
                 statusListTokenPayload = payload,
                 statusListTokenResolvedAt = resolvedAt,
-                statusListInfo = statusListInfo,
+                revocationListInfo = revocationListInfo,
                 isInstantInThePast = isInstantInThePast,
             )
         }
