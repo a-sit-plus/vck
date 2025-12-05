@@ -28,7 +28,7 @@ data class OpenIdAuthorizationDetails(
      * Credential being described in [IssuerMetadata.supportedCredentialConfigurations].
      * The referenced object in [IssuerMetadata.supportedCredentialConfigurations] conveys the details, such as the
      * format and format-specific parameters like `vct` for SD-JWT VC or `doctype` for ISO mdoc.
-     * Note: Set by the Wallet in the token request.
+     * Note: Set by the Wallet in the token request and by the issuer in the token response.
      */
     @SerialName("credential_configuration_id")
     val credentialConfigurationId: String? = null,
