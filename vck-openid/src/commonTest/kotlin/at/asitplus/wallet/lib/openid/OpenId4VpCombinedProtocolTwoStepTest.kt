@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.minus
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -50,7 +49,7 @@ val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
         }
     } - {
 
-        "matching: only credentials of the correct format are matched" {
+        test("matching: only credentials of the correct format are matched") {
             it.holderAgent.storeIsoCredential(it.holderKeyMaterial, AtomicAttribute2023)
             it.holderAgent.storeIsoCredential(it.holderKeyMaterial, AtomicAttribute2023)
             it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, AtomicAttribute2023)
@@ -79,7 +78,7 @@ val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
                 }
         }
 
-        "submission requirements need to match: all credentials matching an input descriptor should be presentable" {
+        test("submission requirements need to match: all credentials matching an input descriptor should be presentable") {
             it.holderAgent.storeIsoCredential(it.holderKeyMaterial, AtomicAttribute2023)
             it.holderAgent.storeIsoCredential(it.holderKeyMaterial, AtomicAttribute2023)
             it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, AtomicAttribute2023)
@@ -130,7 +129,7 @@ val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
             }
         }
 
-        "submission requirements need to match: not all optional claims need to be presented" {
+        test("submission requirements need to match: not all optional claims need to be presented") {
             it.holderAgent.storeIsoCredential(it.holderKeyMaterial, AtomicAttribute2023)
 
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
@@ -185,7 +184,7 @@ val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
         }
 
 
-        "submission requirements need to match: credentials not matching an input descriptor should not yield a valid submission" {
+        test("submission requirements need to match: credentials not matching an input descriptor should not yield a valid submission") {
             it.holderAgent.storeIsoCredential(it.holderKeyMaterial, AtomicAttribute2023)
             it.holderAgent.storeIsoCredential(it.holderKeyMaterial, AtomicAttribute2023)
             it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, AtomicAttribute2023)

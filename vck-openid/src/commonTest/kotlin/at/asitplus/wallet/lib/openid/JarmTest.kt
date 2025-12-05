@@ -18,30 +18,29 @@ import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.nulls.shouldNotBeNull
-import kotlinx.coroutines.runBlocking
 
 val JarmTest by testSuite {
-    withFixtureGenerator {
+    withFixtureGenerator(suspend {
+        val holderKeyMaterial = EphemeralKeyWithoutCert()
+        val holderAgent = HolderAgent(holderKeyMaterial).also {
+            it.storeCredential(
+                IssuerAgent(
+                    identifier = "https://issuer.example.com/".toUri(),
+                    randomSource = RandomSource.Default
+                ).issueCredential(
+                    DummyCredentialDataProvider.getCredential(
+                        holderKeyMaterial.publicKey,
+                        AtomicAttribute2023,
+                        SD_JWT
+                    ).getOrThrow()
+                ).getOrThrow().toStoreCredentialInput()
+            )
+        }
         object {
-            val holderKeyMaterial = EphemeralKeyWithoutCert()
+
             val verifierKeyMaterial = EphemeralKeyWithoutCert()
             val clientId = "https://example.com/rp/${uuid4()}"
-            val holderAgent = HolderAgent(holderKeyMaterial).also {
-                runBlocking {
-                    it.storeCredential(
-                        IssuerAgent(
-                            identifier = "https://issuer.example.com/".toUri(),
-                            randomSource = RandomSource.Default
-                        ).issueCredential(
-                            DummyCredentialDataProvider.getCredential(
-                                holderKeyMaterial.publicKey,
-                                AtomicAttribute2023,
-                                SD_JWT
-                            ).getOrThrow()
-                        ).getOrThrow().toStoreCredentialInput()
-                    )
-                }
-            }
+
             val holderOid4vp = OpenId4VpHolder(
                 holder = holderAgent,
                 randomSource = RandomSource.Default,
@@ -51,7 +50,7 @@ val JarmTest by testSuite {
                 clientIdScheme = ClientIdScheme.RedirectUri(clientId)
             )
         }
-    } - {
+    }) - {
 
         /**
          * Incorrect behaviour arises when the [RelyingPartyMetadata.jsonWebKeySet] cannot be retrieved.

@@ -20,7 +20,6 @@ import at.asitplus.wallet.lib.extensions.toView
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.assertions.AssertionErrorBuilder.Companion.fail
-import io.kotest.engine.runBlocking
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
@@ -32,9 +31,12 @@ import kotlin.time.Duration.Companion.seconds
 
 val AgentRevocationTest by testSuite {
 
-    withFixtureGenerator {
+    withFixtureGenerator(suspend {
+        val issuerCredentialStore = InMemoryIssuerCredentialStore()
+        val expectedRevokedIndexes = issuerCredentialStore.revokeRandomCredentials()
         object {
-            val issuerCredentialStore = InMemoryIssuerCredentialStore()
+            val issuerCredentialStore = issuerCredentialStore
+            val expectedRevokedIndexes = expectedRevokedIndexes
             val issuer = IssuerAgent(
                 issuerCredentialStore = issuerCredentialStore,
                 identifier = "https://issuer.example.com/".toUri(),
@@ -42,9 +44,9 @@ val AgentRevocationTest by testSuite {
             )
             val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
             val verifierKeyMaterial = EphemeralKeyWithoutCert()
-            val expectedRevokedIndexes = runBlocking { issuerCredentialStore.revokeRandomCredentials() }
+
         }
-    } - {
+    }) - {
 
         "revocation list should contain indices of revoked credential" {
             val statusListJwt = it.statusListIssuer.issueStatusListJwt()

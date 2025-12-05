@@ -120,7 +120,7 @@ val OidvciCodeFlowTest by testSuite {
             }
         }
     } - {
-        "metadata validation" {
+        test("metadata validation") {
             val issuerCredentialFormats = it.issuer.metadata.supportedCredentialConfigurations.shouldNotBeNull()
                 .shouldNotBeEmpty()
             issuerCredentialFormats.forEach { entry: Map.Entry<String, SupportedCredentialFormat> ->
@@ -144,7 +144,7 @@ val OidvciCodeFlowTest by testSuite {
             }
         }
 
-        "request one credential, using scope" {
+        test("request one credential, using scope") {
             val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
             val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
                 .shouldNotBeNull()
@@ -173,7 +173,7 @@ val OidvciCodeFlowTest by testSuite {
                 .payload.vc.credentialSubject.shouldBeInstanceOf<at.asitplus.wallet.lib.data.AtomicAttribute2023>()
         }
 
-        "request multiple credentials, using scope" {
+        test("request multiple credentials, using scope") {
             val requestOptions = setOf(
                 RequestOptions(AtomicAttribute2023, SD_JWT),
                 RequestOptions(AtomicAttribute2023, ISO_MDOC),
@@ -201,7 +201,7 @@ val OidvciCodeFlowTest by testSuite {
             }
         }
 
-        "proof over different keys leads to different credentials" {
+        test("proof over different keys leads to different credentials") {
             val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
             val scope = it.client.selectSupportedCredentialFormat(
                 requestOptions,
@@ -242,7 +242,7 @@ val OidvciCodeFlowTest by testSuite {
             }.toSet().shouldHaveSize(2)
         }
 
-        "authorizationService with defect mapstore leads to an error" {
+        test("authorizationService with defect mapstore leads to an error") {
             it.authorizationService = SimpleAuthorizationService(
                 codeToClientAuthRequest = it.defectMapStore(),
                 strategy = CredentialAuthorizationServiceStrategy(setOf(AtomicAttribute2023)),
@@ -266,7 +266,7 @@ val OidvciCodeFlowTest by testSuite {
             }
         }
 
-        "request credential in SD-JWT, using scope" {
+        test("request credential in SD-JWT, using scope") {
             val requestOptions = RequestOptions(AtomicAttribute2023, SD_JWT)
             val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
                 .shouldNotBeNull()
@@ -291,7 +291,7 @@ val OidvciCodeFlowTest by testSuite {
             serializedCredential.assertSdJwtReceived()
         }
 
-        "request credential in SD-JWT, using scope only in authn request" {
+        test("request credential in SD-JWT, using scope only in authn request") {
             val requestOptions = RequestOptions(AtomicAttribute2023, SD_JWT)
             val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
                 .shouldNotBeNull()
@@ -316,7 +316,7 @@ val OidvciCodeFlowTest by testSuite {
             serializedCredential.assertSdJwtReceived()
         }
 
-        "request credential in SD-JWT, using scope in access token different to auth code" {
+        test("request credential in SD-JWT, using scope in access token different to auth code") {
             val authCodeScope = it.client.selectSupportedCredentialFormat(
                 RequestOptions(AtomicAttribute2023, SD_JWT),
                 it.issuer.metadata
@@ -347,7 +347,7 @@ val OidvciCodeFlowTest by testSuite {
             }
         }
 
-        "request credential in SD-JWT, using authorization details" {
+        test("request credential in SD-JWT, using authorization details") {
             val credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(SD_JWT)
             val authorizationDetails = it.client.buildAuthorizationDetails(
                 credentialConfigurationId = credentialConfigurationId,
@@ -376,7 +376,7 @@ val OidvciCodeFlowTest by testSuite {
             serializedCredential.assertSdJwtReceived()
         }
 
-        "request credential in SD-JWT, using authorization details only in authnrequest" {
+        test("request credential in SD-JWT, using authorization details only in authnrequest") {
             val credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(SD_JWT)
             val authorizationDetails = it.client.buildAuthorizationDetails(
                 credentialConfigurationId = credentialConfigurationId,
@@ -405,7 +405,7 @@ val OidvciCodeFlowTest by testSuite {
             serializedCredential.assertSdJwtReceived()
         }
 
-        "request credential in SD-JWT, using authorization details in access token different to auth code" {
+        test("request credential in SD-JWT, using authorization details in access token different to auth code") {
             val authCodeAuthnDetails = it.client.buildAuthorizationDetails(
                 credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(SD_JWT),
                 authorizationServers = it.issuer.metadata.authorizationServers
@@ -434,7 +434,7 @@ val OidvciCodeFlowTest by testSuite {
             }
         }
 
-        "request credential in SD-JWT, using more authorization details in access token than in auth code" {
+        test("request credential in SD-JWT, using more authorization details in access token than in auth code") {
             val authCodeAuthnDetails = it.client.buildAuthorizationDetails(
                 credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(SD_JWT),
                 authorizationServers = it.issuer.metadata.authorizationServers
@@ -463,7 +463,7 @@ val OidvciCodeFlowTest by testSuite {
             }
         }
 
-        "request credential with unknown configuration_id" {
+        "request credential with unknown configuration_id" { it ->
             // that credential format (from which credential_configuration_id will be derived) is not known to our issuer
             val credentialFormat = with(
                 CredentialIssuer(
@@ -497,7 +497,7 @@ val OidvciCodeFlowTest by testSuite {
             }
         }
 
-        "request credential in SD-JWT, using scope in token, but authorization details in credential request" {
+        "request credential in SD-JWT, using scope in token, but authorization details in credential request" { it ->
             val credentialFormat = it.client.selectSupportedCredentialFormat(
                 RequestOptions(AtomicAttribute2023, SD_JWT),
                 it.issuer.metadata
@@ -521,7 +521,7 @@ val OidvciCodeFlowTest by testSuite {
             }
         }
 
-        "request credential in SD-JWT, using authorization details in token, but scope in credential request" {
+        "request credential in SD-JWT, using authorization details in token, but scope in credential request" { it ->
             val credentialFormat = it.client.selectSupportedCredentialFormat(
                 RequestOptions(AtomicAttribute2023, SD_JWT),
                 it.issuer.metadata
@@ -548,7 +548,7 @@ val OidvciCodeFlowTest by testSuite {
         }
 
 
-        "request credential in ISO MDOC, using scope" {
+        "request credential in ISO MDOC, using scope" { it ->
             val requestOptions = RequestOptions(MobileDrivingLicenceScheme, ISO_MDOC)
             val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
                 .shouldNotBeNull()

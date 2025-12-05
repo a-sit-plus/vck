@@ -6,6 +6,7 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
+import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -199,7 +200,7 @@ val OpenId4VciClientTest by testSuite {
         )
     }
 
-    test("loadEuPidCredentialSdJwt") {
+    "loadEuPidCredentialSdJwt" {
         val expectedFamilyName = uuid4().toString()
         val expectedAttributeName = EuPidScheme.Attributes.FAMILY_NAME
         with(setup(EuPidScheme, SD_JWT, mapOf(expectedAttributeName to expectedFamilyName))) {
@@ -239,7 +240,7 @@ val OpenId4VciClientTest by testSuite {
         }
     }
 
-    test("loadEuPidCredentialIsoWithOffer") {
+    "loadEuPidCredentialIsoWithOffer" {
         val expectedAttributeValue = uuid4().toString()
         val expectedAttributeName = EuPidScheme.Attributes.GIVEN_NAME
         with(setup(EuPidScheme, ISO_MDOC, mapOf(expectedAttributeName to expectedAttributeValue))) {

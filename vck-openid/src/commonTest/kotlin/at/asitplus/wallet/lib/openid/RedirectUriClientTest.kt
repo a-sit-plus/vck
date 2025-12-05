@@ -4,6 +4,7 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
@@ -21,8 +22,6 @@ import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.CreationOptions
 import com.benasher44.uuid.uuid4
-import at.asitplus.testballoon.withFixtureGenerator
-import at.asitplus.testballoon.minus
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldNotBeEmpty
@@ -33,32 +32,31 @@ import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
-import io.kotest.engine.runBlocking
 
 val RedirectUriClientTest by testSuite {
 
-    withFixtureGenerator {
+    withFixtureGenerator(suspend {
+        val holderKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert()
+        val holderAgent: Holder = HolderAgent(holderKeyMaterial).also { agent ->
+            agent.storeCredential(
+                IssuerAgent(
+                    identifier = "https://issuer.example.com/".toUri(),
+                    randomSource = RandomSource.Default
+                ).issueCredential(
+                    DummyCredentialDataProvider.getCredential(
+                        holderKeyMaterial.publicKey,
+                        ConstantIndex.AtomicAttribute2023,
+                        ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                    ).getOrThrow()
+                ).getOrThrow().toStoreCredentialInput()
+            )
+        }
         object {
-            val holderKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert()
+
             val verifierKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert()
             val clientId: String = "https://example.com/rp/${uuid4()}"
             val walletUrl: String = "https://example.com/wallet/${uuid4()}"
-            val holderAgent: Holder = HolderAgent(holderKeyMaterial).also { agent ->
-                runBlocking {
-                    agent.storeCredential(
-                        IssuerAgent(
-                            identifier = "https://issuer.example.com/".toUri(),
-                            randomSource = RandomSource.Default
-                        ).issueCredential(
-                            DummyCredentialDataProvider.getCredential(
-                                holderKeyMaterial.publicKey,
-                                ConstantIndex.AtomicAttribute2023,
-                                ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-                            ).getOrThrow()
-                        ).getOrThrow().toStoreCredentialInput()
-                    )
-                }
-            }
+
             val holderOid4vp: OpenId4VpHolder = OpenId4VpHolder(
                 holder = holderAgent,
                 randomSource = RandomSource.Default,
@@ -68,7 +66,7 @@ val RedirectUriClientTest by testSuite {
                 clientIdScheme = ClientIdScheme.RedirectUri(clientId),
             )
         }
-    } - {
+    }) - {
 
         "test with Fragment" {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(

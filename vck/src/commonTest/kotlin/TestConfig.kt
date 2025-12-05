@@ -10,13 +10,13 @@ import kotlin.time.Duration.Companion.minutes
 expect val testNameLengths: Pair<Int, Int>
 
 class TestConfig : TestSession(
-    testConfig = DefaultConfiguration.invocation(TestInvocation.SEQUENTIAL)
-        .testScope(isEnabled = true, timeout = 20.minutes)
+    testConfig = DefaultConfiguration.invocation(TestInvocation.CONCURRENT)
+        .testScope(isEnabled = false)
 ) {
     init {
         Napier.takeLogarithm()
         Napier.base(DebugAntilog())
-        FreeSpec.defaultMaxLength = testNameLengths.first //work around Android test name length limit
+        FreeSpec.defaultTestNameMaxLength = testNameLengths.first //work around Android test name length limit
         FreeSpec.defaultDisplayNameMaxLength = testNameLengths.second //work around Android test name length limit
     }
 }

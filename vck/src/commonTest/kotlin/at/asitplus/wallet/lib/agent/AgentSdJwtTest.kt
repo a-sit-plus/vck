@@ -33,7 +33,6 @@ import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.randomCwtOrJwtResolver
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
-import io.kotest.engine.runBlocking
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -45,37 +44,40 @@ import kotlin.time.Clock
 
 val AgentSdJwtTest by testSuite {
 
-    withFixtureGenerator {
-        object {
-            val issuerCredentialStore = InMemoryIssuerCredentialStore()
-            val holderCredentialStore = InMemorySubjectCredentialStore()
-            val issuer = IssuerAgent(
-                issuerCredentialStore = issuerCredentialStore,
-                identifier = "https://issuer.example.com/".toUri(),
-                randomSource = RandomSource.Default
-            )
-            val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
-            val validator = ValidatorSdJwt(
-                validator = Validator(tokenStatusResolver = randomCwtOrJwtResolver(statusListIssuer))
-            )
-            val holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
-            val holder = HolderAgent(
-                holderKeyMaterial,
-                holderCredentialStore,
-                validatorSdJwt = validator,
-            ).also {
-                runBlocking {
-                    it.storeCredential(
-                        issuer.issueCredential(
-                            DummyCredentialDataProvider.getCredential(
-                                holderKeyMaterial.publicKey,
-                                ConstantIndex.AtomicAttribute2023,
-                                SD_JWT,
-                            ).getOrThrow()
-                        ).getOrThrow().toStoreCredentialInput()
+    withFixtureGenerator(suspend {
+        val issuerCredentialStore = InMemoryIssuerCredentialStore()
+        val holderCredentialStore = InMemorySubjectCredentialStore()
+        val issuer = IssuerAgent(
+            issuerCredentialStore = issuerCredentialStore,
+            identifier = "https://issuer.example.com/".toUri(),
+            randomSource = RandomSource.Default
+        )
+        val holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
+        val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
+
+        val validator = ValidatorSdJwt(
+            validator = Validator(tokenStatusResolver = randomCwtOrJwtResolver(statusListIssuer))
+        )
+        val holder = HolderAgent(
+            holderKeyMaterial,
+            holderCredentialStore,
+            validatorSdJwt = validator,
+        ).also {
+            it.storeCredential(
+                issuer.issueCredential(
+                    DummyCredentialDataProvider.getCredential(
+                        holderKeyMaterial.publicKey,
+                        ConstantIndex.AtomicAttribute2023,
+                        SD_JWT,
                     ).getOrThrow()
-                }
-            }
+                ).getOrThrow().toStoreCredentialInput()
+            ).getOrThrow()
+        }
+        object {
+            val holder = holder
+            val holderCredentialStore = holderCredentialStore
+            val holderKeyMaterial = holderKeyMaterial
+            val statusListIssuer = statusListIssuer
             val verifierId = "urn:${uuid4()}"
             val verifier = VerifierAgent(
                 identifier = verifierId,
@@ -83,7 +85,7 @@ val AgentSdJwtTest by testSuite {
             )
             val challenge = uuid4().toString()
         }
-    } - {
+    }) - {
 
         "keyBindingJws contains more JWK attributes, still verifies" {
             val credential = it.holderCredentialStore.getCredentials().getOrThrow()

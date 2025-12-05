@@ -23,7 +23,6 @@ import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.GIVEN_NAME
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
-import io.kotest.engine.runBlocking
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSingleElement
@@ -38,41 +37,42 @@ import kotlinx.serialization.json.JsonObject
 
 val OpenId4VpIsoProtocolTest by testSuite {
 
-    withFixtureGenerator {
+    withFixtureGenerator(suspend {
+        val material = EphemeralKeyWithoutCert()
+        val agent = HolderAgent(material).also {
+            val issuerAgent = IssuerAgent(
+                keyMaterial = EphemeralKeyWithSelfSignedCert(),
+                identifier = "https://issuer.example.com/".toUri(),
+                randomSource = RandomSource.Default
+            )
+            it.storeCredential(
+                issuerAgent.issueCredential(
+                    DummyCredentialDataProvider.getCredential(
+                        material.publicKey,
+                        MobileDrivingLicenceScheme,
+                        ISO_MDOC,
+                    ).getOrThrow()
+                ).getOrThrow().toStoreCredentialInput()
+            )
+            it.storeCredential(
+                issuerAgent.issueCredential(
+                    DummyCredentialDataProvider.getCredential(
+                        material.publicKey,
+                        AtomicAttribute2023,
+                        ISO_MDOC,
+                    ).getOrThrow()
+                ).getOrThrow().toStoreCredentialInput()
+            )
+        }
+
         object {
-            val holderKeyMaterial = EphemeralKeyWithoutCert()
+            val holderKeyMaterial = material
             val verifierKeyMaterial = EphemeralKeyWithoutCert()
             //println("this is the key:\n" + (verifierKeyMaterial as EphemeralKeyWithoutCert).key.exportPrivateKey().getOrThrow().encodeToDer().encodeToString(Base64Strict))
 
             val clientId = "https://example.com/rp/${uuid4()}"
             val walletUrl = "https://example.com/wallet/${uuid4()}"
-            val holderAgent = HolderAgent(holderKeyMaterial).also {
-                runBlocking {
-                    val issuerAgent = IssuerAgent(
-                        keyMaterial = EphemeralKeyWithSelfSignedCert(),
-                        identifier = "https://issuer.example.com/".toUri(),
-                        randomSource = RandomSource.Default
-                    )
-                    it.storeCredential(
-                        issuerAgent.issueCredential(
-                            DummyCredentialDataProvider.getCredential(
-                                holderKeyMaterial.publicKey,
-                                MobileDrivingLicenceScheme,
-                                ISO_MDOC,
-                            ).getOrThrow()
-                        ).getOrThrow().toStoreCredentialInput()
-                    )
-                    it.storeCredential(
-                        issuerAgent.issueCredential(
-                            DummyCredentialDataProvider.getCredential(
-                                holderKeyMaterial.publicKey,
-                                AtomicAttribute2023,
-                                ISO_MDOC,
-                            ).getOrThrow()
-                        ).getOrThrow().toStoreCredentialInput()
-                    )
-                }
-            }
+            val holderAgent = agent
             val verifierOid4vp = OpenId4VpVerifier(
                 keyMaterial = verifierKeyMaterial,
                 decryptionKeyMaterial = verifierKeyMaterial,
@@ -85,7 +85,7 @@ val OpenId4VpIsoProtocolTest by testSuite {
                 randomSource = RandomSource.Default,
             )
         }
-    } - {
+    }) - {
         "test with Fragment for mDL" {
             val requestOptions = RequestOptions(
                 credentials = setOf(

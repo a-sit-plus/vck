@@ -50,6 +50,7 @@ val OidcUserInfoSerializationTest by testSuite {
     }
 
 }
+
 private fun OidcUserInfoExtended.shouldHaveKey(key: String): JsonPrimitive {
     jsonObject[key].apply {
         shouldBeInstanceOf<JsonPrimitive>()

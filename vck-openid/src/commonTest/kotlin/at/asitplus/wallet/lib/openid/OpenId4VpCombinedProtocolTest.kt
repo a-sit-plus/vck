@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.minus
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
@@ -49,7 +48,7 @@ val OpenId4VpCombinedProtocolTest by testSuite {
         }
     } - {
 
-        "plain jwt: if not available despite others with correct format or correct attribute, but not both" {
+        test("plain jwt: if not available despite others with correct format or correct attribute, but not both") {
             it.holderAgent.storeJwtCredential(it.holderKeyMaterial, MobileDrivingLicenceScheme)
             it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
             it.holderAgent.storeIsoCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
@@ -66,7 +65,7 @@ val OpenId4VpCombinedProtocolTest by testSuite {
                 .error.shouldNotBeNull()
         }
 
-        "plain jwt: if available despite others" {
+        test("plain jwt: if available despite others") {
             it.holderAgent.storeJwtCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
             it.holderAgent.storeJwtCredential(it.holderKeyMaterial, MobileDrivingLicenceScheme)
             it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
@@ -92,7 +91,7 @@ val OpenId4VpCombinedProtocolTest by testSuite {
                 }
         }
 
-        "sd-jwt presex: if not available despite others with correct format or correct attribute, but not both" {
+        test("sd-jwt presex: if not available despite others with correct format or correct attribute, but not both") {
             it.holderAgent.storeJwtCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
             it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, MobileDrivingLicenceScheme)
             it.holderAgent.storeIsoCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
@@ -109,7 +108,7 @@ val OpenId4VpCombinedProtocolTest by testSuite {
                 .error.shouldNotBeNull()
         }
 
-        "sd-jwt presex: if available despite others with correct format or correct attribute, but not both" {
+        test("sd-jwt presex: if available despite others with correct format or correct attribute, but not both") {
             it.holderAgent.storeJwtCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
             it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
             it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, MobileDrivingLicenceScheme)
@@ -130,7 +129,7 @@ val OpenId4VpCombinedProtocolTest by testSuite {
                 .verifiableCredentialSdJwt.verifiableCredentialType shouldBe ConstantIndex.AtomicAttribute2023.sdJwtType
         }
 
-        "sd-jwt dcql: if not available despite others with correct format or correct attribute, but not both" {
+        test("sd-jwt dcql: if not available despite others with correct format or correct attribute, but not both") {
             it.holderAgent.storeJwtCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
             it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, MobileDrivingLicenceScheme)
             it.holderAgent.storeIsoCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
@@ -149,7 +148,7 @@ val OpenId4VpCombinedProtocolTest by testSuite {
                 .error.shouldNotBeNull()
         }
 
-        "sd-jwt dcql: if available despite others with correct format or correct attribute, but not both" {
+        test("sd-jwt dcql: if available despite others with correct format or correct attribute, but not both") {
             it.holderAgent.storeJwtCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
             it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
             it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, MobileDrivingLicenceScheme)
@@ -175,7 +174,7 @@ val OpenId4VpCombinedProtocolTest by testSuite {
                 .verifiableCredentialSdJwt.verifiableCredentialType shouldBe ConstantIndex.AtomicAttribute2023.sdJwtType
         }
 
-        "mdoc presex: if not available despite others with correct format or correct attribute, but not both" {
+        "mdoc presex: if not available despite others with correct format or correct attribute, but not both" { it ->
             it.holderAgent.storeJwtCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
             it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
             it.holderAgent.storeIsoCredential(it.holderKeyMaterial, MobileDrivingLicenceScheme)
@@ -192,7 +191,7 @@ val OpenId4VpCombinedProtocolTest by testSuite {
                 .error.shouldNotBeNull()
         }
 
-        "mdoc presex: if available despite others with correct format or correct attribute, but not both" {
+        "mdoc presex: if available despite others with correct format or correct attribute, but not both" { it ->
             it.holderAgent.storeJwtCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
             it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
             it.holderAgent.storeIsoCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
@@ -212,7 +211,7 @@ val OpenId4VpCombinedProtocolTest by testSuite {
                 .shouldBeInstanceOf<AuthnResponseResult.SuccessIso>()
         }
 
-        "mdoc dcql: if not available despite others with correct format or correct attribute, but not both" {
+        "mdoc dcql: if not available despite others with correct format or correct attribute, but not both" { it ->
             it.holderAgent.storeJwtCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
             it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
             it.holderAgent.storeIsoCredential(it.holderKeyMaterial, MobileDrivingLicenceScheme)
@@ -231,7 +230,7 @@ val OpenId4VpCombinedProtocolTest by testSuite {
                 .error.shouldNotBeNull()
         }
 
-        "mdoc dcql: if available despite others with correct format or correct attribute, but not both" {
+        "mdoc dcql: if available despite others with correct format or correct attribute, but not both" { it ->
             it.holderAgent.storeJwtCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
             it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
             it.holderAgent.storeIsoCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
@@ -254,7 +253,7 @@ val OpenId4VpCombinedProtocolTest by testSuite {
                 .shouldBeInstanceOf<AuthnResponseResult.VerifiableDCQLPresentationValidationResults>()
         }
 
-        "presentation of multiple credentials with different formats in one request/response" {
+        "presentation of multiple credentials with different formats in one request/response" { it ->
             it.holderAgent.storeJwtCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
             it.holderAgent.storeIsoCredential(it.holderKeyMaterial, MobileDrivingLicenceScheme)
 
@@ -274,7 +273,7 @@ val OpenId4VpCombinedProtocolTest by testSuite {
             validationResults.validationResults.size shouldBe 2
         }
 
-        "presentation of multiple SD-JWT credentials in one request/response" {
+        "presentation of multiple SD-JWT credentials in one request/response" { it ->
             it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, EuPidScheme)
             it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
