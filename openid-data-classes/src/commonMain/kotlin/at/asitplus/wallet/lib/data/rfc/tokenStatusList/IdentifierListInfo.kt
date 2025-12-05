@@ -5,12 +5,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.ByteString
 
-/**
- * DER encoded X509 Certificate
- */
-private typealias Certificate = ByteArray
-
-
 @Serializable
 @SerialName("identifier_list")
 data class IdentifierListInfo(
@@ -30,7 +24,7 @@ data class IdentifierListInfo(
      */
     @SerialName("certificate")
     @ByteString
-    val certificate: Certificate? = null,
+    val certificate: ByteArray? = null,
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
