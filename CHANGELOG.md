@@ -1,12 +1,7 @@
 # Changelog
 
 Release 5.11.0 (unreleased):
-- StatusListToken:
-    - Remove `StatusTokenValidator`
-    - Remove `StatusTokenIntegrityValidator` class
-    - Refactor `StatusListToken.StatusListJwt` to `StatusListJwt`
-    - Refactor `StatusListToken.StatusListCwt` to `StatusListCwt`
-    - Add `VerifyStatusListTokenHAIP` and related resolver/tests to enforce HAIP d04 certificate chain rules for status list JWTs
+ - Add `VerifyStatusListTokenHAIP` and related resolver/tests to enforce HAIP d04
 
 Release 5.10.1:
  - Proximity presentations:
@@ -17,7 +12,12 @@ Release 5.10.1:
    - In `OpenId4VpVerifier` add option to provide `externalId` to methods `validateAuthnRequest()` and `submitAuthnRequest()`, useful for DCAPI flows
 
 Release 5.10.0:
-- OAuth 2.0:
+ - StatusListToken:
+   - Remove `StatusTokenValidator`
+   - Remove `StatusTokenIntegrityValidator` class
+   - Refactor `StatusListToken.StatusListJwt` to `StatusListJwt`
+   - Refactor `StatusListToken.StatusListCwt` to `StatusListCwt`
+ - OAuth 2.0:
    - Use correct path for metadata retrieval (inserting strings between host component and path component)
    - Support reading resource-server provided nonce for [OAuth 2.0 Demonstrating Proof of Possession (DPoP)](https://datatracker.ietf.org/doc/html/rfc9449)
    - Use pushed authorization requests when AS supports it
@@ -45,8 +45,16 @@ Release 5.10.0:
    - When returning multiple ISO mDoc credentials, make sure to create one device response object per document, wrapping in separate VP tokens
  - SD-JWT:
    - Fix creation of SD JWTs containing structures that are selectively disclosable
+   - Fix creation of arrays in SD JWTs ... issuers are advised to use `ClaimToBeIssuedArrayElement` for such elements
+ - Issuance:
+   - Introduce duration to subtract for the issuance date of credentials, see `IssuerAgent.issuanceOffset`
+   - Do not issue SD-JWT credentials with a unique identifier in `jti`
+   - Truncate issuing timestamps to seconds
  - Remote Qualified Electronic Signatures:
    - Remove modules deprecated in 5.9.0: `vck-rqes`, `rqes-data-classes`
+
+Release 5.9.1
+- Remove bogus testballoon-shim dependency
 
 Release 5.9.0
  - Remove code elements deprecated in 5.8.0
@@ -728,70 +736,3 @@ Release 5.0.0:
    - In `OidcSiopVerifier` move `responseUrl` from constructor parameter to `RequestOptions`
    - Add `IdToken` as result case to `OidcSiopVerifier.AuthnResponseResult`, when only an `id_token` is requested and received
  - Disclosures for SD-JWT (in class `SelectiveDisclosureItem`) now contain a `JsonPrimitive` for the value, so that implementers can deserialize the value accordingly
-
-Release 4.1.2:
- * In `OidcSiopVerifier` add parameter `nonceService` to externalize creation and validation of nonces, e.g. for deployments in load-balanced environments
- * In `SimpleAuthorizationService` change type of `tokenService` to `NonceService`
- * Add constructor parameters to `SimpleAuthorizationService` to externalize storage of maps, e.g. for deployments in load-balanced environments
- * Add constructor parameter to `WalletService` to externalize storage of state-to-code map, e.g. for deployments in load-balanced environments
-* Update to latest Signum for KMP signer and verifier.
-* Update dependencies:
-  * Kotlin 2.0.20
-  * Serialization 1.7.2 stable
-  * JsonPath4K 2.3.0
-* Add Android targets
-
-Release 4.1.1 (Bugfix Release):
-* correctly configure and name JSON serializer:
-  * `jsonSerializer` -> `vckJsonSerializer`
-  * revert to explicit serializer configuration
-  * Introduce `jsonSerializer` and `cborSerilaizer` with deprecation annotation for easier migration in projects consuming VC-K
-* rename kmp-crypto submodule to signum an update all references
-  * this changes the identifier in the version catalog!
-
-Release 4.1.0:
- * Rebrand
-   * Project name: _KMM VC Library_ -> VC-K
-   * Artifact names:
-     * `vclib` -> `vck`
-     * `vclib-aries` -> `vck-aries`
-     * `vclib-openid` -> `vck-openid`
- * Rename serializers to avoid ambiguities and kotlin bugs
-   * `jsonSerializer` -> `vckJsonSerializer`
-   * `cborSerializer` -> `vckCborSerializer`
- * Update Dependencies
-   * Signum (formerly KMP Crypto): 3.6.0
-   * Jsonpath4K (formerly Jsonpath): 2.2.0
-   * Kotlinx-Serialization 1.8.0-SNAPSHOT from upstream
-
-Release 4.0.0:
- - Add `SubmissionRequirement.evaluate`: Evaluates, whether a given submission requirement is satisfied.
- - Add `PresentationSubmissionValidator`: 
-   - Add `isValidSubmission`: Evaluates, whether all submission requirements is satisfied, and fails on redundantly submitted credentials.
-   - Add `findUnnecessaryInputDescriptorSubmissions`: Returns a list of redundantly submitted credentials.
- - Rename `BaseInputEvaluator` -> `InputEvaluator`
-   - Change `evaluateFieldQueryResults` -> `evaluateConstraintFieldMatches`: Returns all matching fields now, not just the first match
- - Change `Holder.matchInputDescriptorsAgainstCredentialStore`: Returns all matching credentials now, not just the first match
- - Do not use or assume DID as key identifiers and subjects in credentials
- - Replace list of attribute types in `Issuer.issueCredentials` with one concrete `CredentialScheme` to be passed
- - Remove functionality related to "attachments" to verifable credentials in JWT format
- - Replace list of credentials to be issued with a single credential that will be issued per call to implementations of `IssuerCredentialDataProvider`
- - Get rid of class `Issuer.IssuedCredentialResult`, replacing it with `KmmResult<Issuer.IssuedCredential>`
- - Add return types to function calls to `SubjectCredentialStore`
- - Change from list to single credential in parameter for `Holder.storeCredentials()`, changing name to `storeCredential()`
- - Refactor `AuthenticationRequestParametersFrom` used in `OidcSiopWallet` to be serializable
- - Add `AuthenticationResponseFactory`: Builds an authentication response from request and response parameters
- - Change `OidcSiopWallet`: 
-   - Add `startAuthorizationResponsePreparation()`: Gathers data necessary for presentation building and yields a `AuthorizationResponsePreparationState`
-   - Add `finalizeAuthorizationResponseParameters()`: Returns what `createAuthenticationParams` returned before, but also takes in `AuthorizationResponsePreparationState` and an optional non-default submission
-   - Add `finalizeAuthorizationResponse()`: Returns what `createAuthenticationResponse()` did before
- - Change `OidcSiopVerifier`:
-   - Add `createAuthnRequestUrlWithRequestObjectByReference()` to offer authentication requests by reference to the Wallet
- - Add `AuthorizationResponsePreparationState`: Holds data necessary for presentation building
- - Add `AuthenticationRequestParser`: Extracted presentation request parsing logic from `OidcSiopWallet` and put it here
- - Add `AuthorizationRequestValidator`: Extracted presentation request validation logic from `OidcSiopWallet` and put it here
- - Add `PresentationFactory`: Extracted presentation response building logic from `OidcSiopWallet` and put it here
-   - Also added some code for presentation submission validation
- - Update implementation of OpenID 4 Verifiable Credential Issuance, draft 13
- - Replace `createCredentialRequestJwt()` and `createCredentialRequestCwt()` with `createCredentialRequest()` in `WalletService` for OID4VCI
- - Refactor `createTokenRequestParameters()` in `WalletService` for OID4VCI to account for authorization code or pre-auth code
