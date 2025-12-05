@@ -55,14 +55,14 @@ data class OpenId4VpRequestOptions(
     val responseMode: OpenIdConstants.ResponseMode = OpenIdConstants.ResponseMode.Fragment,
 
     /**
-     * Response URL to set in the [AuthenticationRequestParameters.responseUrl],
+     * Response URL to set in the [at.asitplus.openid.AuthenticationRequestParameters.responseUrl],
      * required if [responseMode] is set to [OpenIdConstants.ResponseMode.DirectPost] or
      * [OpenIdConstants.ResponseMode.DirectPostJwt].
      */
     val responseUrl: String? = null,
 
     /**
-     * Response type to set in [AuthenticationRequestParameters.responseType],
+     * Response type to set in [at.asitplus.openid.AuthenticationRequestParameters.responseType],
      * by default only `vp_token` (as per OpenID4VP spec, see [OpenIdConstants.VP_TOKEN]).
      * Be sure to separate values by a space, e.g. `vp_token id_token` (see [OpenIdConstants.ID_TOKEN]).
      */
@@ -108,8 +108,7 @@ data class OpenId4VpRequestOptions(
         if (isAnyDcApi) {
             require(isDcql) { "DC API only supports DCQL" }
             requireNotNull(expectedOrigins) { "Expected origins must be set for DC API" }
-        }
-        if (responseMode != OpenIdConstants.ResponseMode.DcApi) {
+        } else {
             require(populateClientId) { "client_id should be set for anything but (unsigned) DC API requests" }
         }
     }
