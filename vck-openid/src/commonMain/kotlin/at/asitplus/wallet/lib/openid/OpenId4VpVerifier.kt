@@ -574,7 +574,9 @@ class OpenId4VpVerifier(
             ?: throw IllegalArgumentException("vp_token")
         val clientIdRequired = responseParameters.clientIdRequired
 
-        (responseParameters as? ResponseParametersFrom.DcApi)?.let {
+        val originalResponseParameters = responseParameters.originalResponseParameters
+
+        (originalResponseParameters as? ResponseParametersFrom.DcApi)?.let {
             authnRequest.verifyExpectedOrigin(it.origin)
         }
 
@@ -592,7 +594,7 @@ class OpenId4VpVerifier(
                     responseUrl = authnRequest.responseUrl ?: authnRequest.redirectUrlExtracted,
                     transactionData = authnRequest.transactionData,
                     clientIdRequired = clientIdRequired,
-                    origin = (responseParameters as? ResponseParametersFrom.DcApi)?.origin,
+                    origin = (originalResponseParameters as? ResponseParametersFrom.DcApi)?.origin,
                 ).mapToAuthnResponseResult(responseParameters.parameters.state)
             }.firstOrList()
         } ?: authnRequest.dcqlQuery?.let { query ->
@@ -612,7 +614,7 @@ class OpenId4VpVerifier(
                         responseUrl = authnRequest.responseUrl ?: authnRequest.redirectUrlExtracted,
                         transactionData = authnRequest.transactionData,
                         clientIdRequired = clientIdRequired,
-                        origin = (responseParameters as? ResponseParametersFrom.DcApi)?.origin,
+                        origin = (originalResponseParameters as? ResponseParametersFrom.DcApi)?.origin,
                     ).mapToAuthnResponseResult(responseParameters.parameters.state)
                 }.getOrElse {
                     return AuthnResponseResult.ValidationError(
@@ -715,7 +717,7 @@ class OpenId4VpVerifier(
             throw IllegalStateException("Missing required parameter: responseUrl")
         }
 
-        return when (input) {
+        return when (input.originalResponseParameters) {
             is ResponseParametersFrom.DcApi -> {
                 if (origin == null) {
                     throw IllegalStateException("Missing required parameter: origin")
