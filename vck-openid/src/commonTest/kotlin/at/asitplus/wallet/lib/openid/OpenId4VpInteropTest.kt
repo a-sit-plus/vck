@@ -40,44 +40,47 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * Tests our OpenID4VP/SIOP implementation against POTENTIAL Piloting Definition Scope
  */
 val OpenId4VpInteropTest by testSuite {
-    withFixtureGenerator {
-        object {
-            var sdAlgorithm: Digest? = null
-            val issuerKeyId = uuid4().toString()
-            val issuerIdentifier = "https://issuer.example.com"
-            val issuerKeyMaterial = EphemeralKeyWithoutCert(customKeyId = issuerKeyId)
-            val issuerAgent = IssuerAgent(
-                issuerKeyMaterial, identifier = issuerIdentifier.toUri(),
-                randomSource = RandomSource.Default
+    withFixtureGenerator(suspend {
+        var sdAlgorithm: Digest? = null
+        val issuerKeyId = uuid4().toString()
+        val issuerIdentifier = "https://issuer.example.com"
+        val issuerKeyMaterial = EphemeralKeyWithoutCert(customKeyId = issuerKeyId)
+        val issuerAgent = IssuerAgent(
+            issuerKeyMaterial, identifier = issuerIdentifier.toUri(),
+            randomSource = RandomSource.Default
+        )
+        val holderKeyMaterial = EphemeralKeyWithoutCert()
+        val holderAgent = HolderAgent(
+            holderKeyMaterial,
+            validatorSdJwt = ValidatorSdJwt(
+                verifyJwsObject = VerifyJwsObject(publicKeyLookup = { setOf(issuerKeyMaterial.publicKey.toJsonWebKey()) })
             )
-            val holderKeyMaterial = EphemeralKeyWithoutCert()
-            val holderAgent = HolderAgent(
-                holderKeyMaterial,
-                validatorSdJwt = ValidatorSdJwt(
-                    verifyJwsObject = VerifyJwsObject(publicKeyLookup = { setOf(issuerKeyMaterial.publicKey.toJsonWebKey()) })
-                )
-            ).also {
-                runBlocking {
-                    it.storeCredential(
-                        issuerAgent.issueCredential(
-                            DummyCredentialDataProvider.getCredential(
-                                holderKeyMaterial.publicKey,
-                                ConstantIndex.AtomicAttribute2023,
-                                ConstantIndex.CredentialRepresentation.SD_JWT,
-                            ).getOrThrow().also {
-                                sdAlgorithm = (it as CredentialToBeIssued.VcSd).sdAlgorithm
-                            }
-                        ).getOrThrow().toStoreCredentialInput()
-                    )
-                }
-            }
+        ).also {
+            it.storeCredential(
+                issuerAgent.issueCredential(
+                    DummyCredentialDataProvider.getCredential(
+                        holderKeyMaterial.publicKey,
+                        ConstantIndex.AtomicAttribute2023,
+                        ConstantIndex.CredentialRepresentation.SD_JWT,
+                    ).getOrThrow().also {
+                        sdAlgorithm = (it as CredentialToBeIssued.VcSd).sdAlgorithm
+                    }
+                ).getOrThrow().toStoreCredentialInput()
+            )
+        }
+        object {
+
+            val sdAlgorithm = sdAlgorithm!!
+            val holderKeyMaterial = holderKeyMaterial
+            val holderAgent = holderAgent
+            val issuerKeyId = issuerKeyId
+            val issuerIdentifier = issuerIdentifier
             var holderOid4vp = OpenId4VpHolder(holderKeyMaterial, holderAgent, randomSource = RandomSource.Default)
 
             val verifierKeyId = uuid4().toString()
@@ -103,7 +106,7 @@ val OpenId4VpInteropTest by testSuite {
                 clientIdScheme = clientIdScheme,
             )
         }
-    } - {
+    }) - {
 
         "process with cross-device flow with request_uri and pre-trusted" {
             val responseNonce = uuid4().toString()
@@ -161,7 +164,7 @@ val OpenId4VpInteropTest by testSuite {
                 val verifierRequestSigningKey = it.verifierKeyMaterial.jsonWebKey.shouldNotBeNull()
                 VerifyJwsSignatureWithKey()(jar, verifierRequestSigningKey).isSuccess shouldBe true
             } else {
-                VerifyJwsObject()(jar) shouldBe true
+                VerifyJwsObject()(jar).getOrThrow()
             }
 
             val response = it.holderOid4vp.finalizeAuthorizationResponse(state, null).getOrThrow()

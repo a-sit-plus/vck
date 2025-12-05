@@ -17,6 +17,7 @@ import at.asitplus.openid.dcql.DCQLIsoMdocClaimsQuery
 import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLIsoMdocCredentialQuery
 import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.cbor.SignCose
@@ -31,7 +32,6 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.randomCwtOrJwtResolver
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
-import io.kotest.engine.runBlocking
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -42,38 +42,40 @@ import kotlinx.serialization.builtins.ByteArraySerializer
 
 val AgentIsoMdocTest by testSuite {
 
-    withFixtureGenerator {
-        object {
-            val issuerCredentialStore = InMemoryIssuerCredentialStore()
-            val holderCredentialStore = InMemorySubjectCredentialStore()
-            val issuer = IssuerAgent(
-                keyMaterial = EphemeralKeyWithSelfSignedCert(),
-                issuerCredentialStore = issuerCredentialStore,
-                identifier = "https://issuer.example.com/".toUri(),
-                randomSource = RandomSource.Default
-            )
-            val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
-            val validator = ValidatorMdoc(
-                validator = Validator(tokenStatusResolver = randomCwtOrJwtResolver(statusListIssuer))
-            )
-            val holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
-            val holder = HolderAgent(
-                holderKeyMaterial,
-                holderCredentialStore,
-                validatorMdoc = validator,
-            ).also {
-                runBlocking {
-                    it.storeCredential(
-                        issuer.issueCredential(
-                            DummyCredentialDataProvider.getCredential(
-                                holderKeyMaterial.publicKey,
-                                ConstantIndex.AtomicAttribute2023,
-                                ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                            ).getOrThrow()
-                        ).getOrThrow().toStoreCredentialInput()
+    withFixtureGenerator(suspend {
+        val holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
+        val issuerCredentialStore = InMemoryIssuerCredentialStore()
+        val holderCredentialStore = InMemorySubjectCredentialStore()
+        val issuer = IssuerAgent(
+            keyMaterial = EphemeralKeyWithSelfSignedCert(),
+            issuerCredentialStore = issuerCredentialStore,
+            identifier = "https://issuer.example.com/".toUri(),
+            randomSource = RandomSource.Default
+        )
+        val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
+        val validator = ValidatorMdoc(
+            validator = Validator(tokenStatusResolver = randomCwtOrJwtResolver(statusListIssuer))
+        )
+        val holder = HolderAgent(
+            holderKeyMaterial,
+            holderCredentialStore,
+            validatorMdoc = validator,
+        ).also {
+            it.storeCredential(
+                issuer.issueCredential(
+                    DummyCredentialDataProvider.getCredential(
+                        holderKeyMaterial.publicKey,
+                        ConstantIndex.AtomicAttribute2023,
+                        ConstantIndex.CredentialRepresentation.ISO_MDOC,
                     ).getOrThrow()
-                }
-            }
+                ).getOrThrow().toStoreCredentialInput()
+            ).getOrThrow()
+        }
+        object {
+            val holderCredentialStore = holderCredentialStore
+            val statusListIssuer = statusListIssuer
+
+            val holder = holder
             val verifierId = "urn:${uuid4()}"
             val verifier = VerifierAgent(
                 identifier = verifierId,
@@ -82,15 +84,19 @@ val AgentIsoMdocTest by testSuite {
             val challenge = uuid4().toString()
             val signer = SignCose<ByteArray>(keyMaterial = holderKeyMaterial)
         }
-    } - {
+    }) - {
 
         "presex: simple walk-through success" {
             val presentationParameters = it.holder.createPresentation(
-                request = buildPresentationRequestParameters(it.challenge, it.verifierId, it.signer),
+                request = PresentationRequestParameters(
+                    nonce = it.challenge,
+                    audience = it.verifierId,
+                    calcIsoDeviceSignaturePlain = simpleSigner(it.signer)
+                ),
                 credentialPresentation = buildPresentationDefinition(CLAIM_GIVEN_NAME, CLAIM_DATE_OF_BIRTH)
             ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
 
-            val vp = presentationParameters.presentationResults.firstOrNull()
+            val vp = presentationParameters.presentationResults.shouldBeSingleton().firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.DeviceResponse>()
 
             it.verifier.verifyPresentationIsoMdoc(vp.deviceResponse, documentVerifier())
@@ -108,11 +114,15 @@ val AgentIsoMdocTest by testSuite {
 
         "presex: revoked credential" {
             val presentationParameters = it.holder.createPresentation(
-                request = buildPresentationRequestParameters(it.challenge, it.verifierId, it.signer),
+                request = PresentationRequestParameters(
+                    nonce = it.challenge,
+                    audience = it.verifierId,
+                    calcIsoDeviceSignaturePlain = simpleSigner(it.signer)
+                ),
                 credentialPresentation = buildPresentationDefinition(CLAIM_GIVEN_NAME)
             ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
 
-            val vp = presentationParameters.presentationResults.firstOrNull()
+            val vp = presentationParameters.presentationResults.shouldBeSingleton().firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.DeviceResponse>()
 
             it.holderCredentialStore.getCredentials().getOrThrow()
@@ -138,7 +148,11 @@ val AgentIsoMdocTest by testSuite {
 
         "dcql: simple walk-through success" {
             val presentationParameters = it.holder.createDefaultPresentation(
-                request = buildPresentationRequestParameters(it.challenge, it.verifierId, it.signer),
+                request = PresentationRequestParameters(
+                    nonce = it.challenge,
+                    audience = it.verifierId,
+                    calcIsoDeviceSignaturePlain = simpleSigner(it.signer)
+                ),
                 credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
                     buildDCQLQuery(
                         DCQLIsoMdocClaimsQuery(
@@ -153,7 +167,7 @@ val AgentIsoMdocTest by testSuite {
                 )
             ).getOrThrow() as PresentationResponseParameters.DCQLParameters
 
-            val vp = presentationParameters.verifiablePresentations.values.firstOrNull()
+            val vp = presentationParameters.verifiablePresentations.values.shouldBeSingleton().firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.DeviceResponse>()
 
             it.verifier.verifyPresentationIsoMdoc(vp.deviceResponse, documentVerifier())
@@ -171,7 +185,11 @@ val AgentIsoMdocTest by testSuite {
 
         "dcql: revoked credential" {
             val presentationParameters = it.holder.createDefaultPresentation(
-                request = buildPresentationRequestParameters(it.challenge, it.verifierId, it.signer),
+                request = PresentationRequestParameters(
+                    nonce = it.challenge,
+                    audience = it.verifierId,
+                    calcIsoDeviceSignaturePlain = simpleSigner(it.signer)
+                ),
                 credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
                     buildDCQLQuery(
                         DCQLIsoMdocClaimsQuery(
@@ -182,7 +200,7 @@ val AgentIsoMdocTest by testSuite {
                 )
             ).getOrThrow() as PresentationResponseParameters.DCQLParameters
 
-            val vp = presentationParameters.verifiablePresentations.values.firstOrNull()
+            val vp = presentationParameters.verifiablePresentations.values.shouldBeSingleton().firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.DeviceResponse>()
 
             it.holderCredentialStore.getCredentials().getOrThrow()
@@ -208,21 +226,16 @@ val AgentIsoMdocTest by testSuite {
     }
 }
 
-private fun buildPresentationRequestParameters(
-    challenge: String,
-    audience: String,
+private fun simpleSigner(
     signer: SignCose<ByteArray>
-) = PresentationRequestParameters(
-    nonce = challenge,
-    audience = audience,
-    calcIsoDeviceSignaturePlain = {
-        signer(
-            protectedHeader = null,
-            unprotectedHeader = null,
-            payload = it.docType.encodeToByteArray(),
-            serializer = ByteArraySerializer()
-        ).getOrThrow()
-    })
+): suspend (IsoDeviceSignatureInput) -> CoseSigned<ByteArray>? = { input ->
+    signer(
+        protectedHeader = null,
+        unprotectedHeader = null,
+        payload = input.docType.encodeToByteArray(),
+        serializer = ByteArraySerializer()
+    ).getOrThrow()
+}
 
 private fun SubjectCredentialStore.StoreEntry.Iso.mdocStatusListIndex(): ULong =
     issuerSigned.issuerAuth.payload.shouldNotBeNull().status.shouldNotBeNull().statusList.index

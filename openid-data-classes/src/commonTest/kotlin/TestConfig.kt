@@ -7,8 +7,8 @@ import io.github.aakira.napier.Napier
 import kotlin.time.Duration.Companion.minutes
 
 class TestConfig : TestSession(
-    testConfig = DefaultConfiguration.invocation(TestInvocation.SEQUENTIAL)
-        .testScope(isEnabled = true, timeout = 20.minutes)
+    testConfig = DefaultConfiguration.invocation(TestInvocation.CONCURRENT)
+        .testScope(isEnabled = false)
 ) {
     init {
         Napier.takeLogarithm()

@@ -6,7 +6,6 @@ import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
-import at.asitplus.wallet.lib.iso.ResponseResult
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import kotlinx.serialization.json.JsonObject
 
@@ -16,9 +15,8 @@ sealed class AuthnResponseResult {
      */
     data class Error(
         val reason: String,
-        @Deprecated("Will be removed in release after 5.10.0")
         val state: String? = null,
-        val cause: Throwable? = null,
+        val cause: Throwable,
     ) : AuthnResponseResult()
 
     /**
@@ -26,9 +24,8 @@ sealed class AuthnResponseResult {
      */
     data class ValidationError(
         val field: String,
-        @Deprecated("Will be removed in release after 5.10.0")
         val state: String? = null,
-        val cause: Throwable? = null,
+        val cause: Throwable,
     ) : AuthnResponseResult()
 
     /**
@@ -36,7 +33,6 @@ sealed class AuthnResponseResult {
      */
     data class IdToken(
         val idToken: at.asitplus.openid.IdToken,
-        @Deprecated("Will be removed in release after 5.10.0")
         val state: String? = null,
     ) : AuthnResponseResult()
 
@@ -59,7 +55,6 @@ sealed class AuthnResponseResult {
      */
     data class Success(
         val vp: VerifiablePresentationParsed,
-        @Deprecated("Will be removed in release after 5.10.0")
         val state: String? = null,
     ) : AuthnResponseResult()
 
@@ -71,7 +66,6 @@ sealed class AuthnResponseResult {
         val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
         val reconstructed: JsonObject,
         val disclosures: Collection<SelectiveDisclosureItem>,
-        @Deprecated("Will be removed in release after 5.10.0")
         val state: String? = null,
         val freshnessSummary: CredentialFreshnessSummary.SdJwt,
     ) : AuthnResponseResult()
@@ -81,7 +75,6 @@ sealed class AuthnResponseResult {
      */
     data class SuccessIso(
         val documents: Collection<IsoDocumentParsed>,
-        @Deprecated("Will be removed in release after 5.10.0")
         val state: String? = null,
     ) : AuthnResponseResult()
 }

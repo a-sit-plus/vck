@@ -13,7 +13,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
-import io.kotest.engine.runBlocking
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.string.shouldContain
@@ -21,38 +20,38 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 
 val OpenId4VpSdJwtProtocolTest by testSuite {
 
-    withFixtureGenerator {
+    withFixtureGenerator(suspend {
+        val holderKeyMaterial = EphemeralKeyWithoutCert()
+        val holderAgent = HolderAgent(holderKeyMaterial).also {
+            it.storeCredential(
+                IssuerAgent(
+                    identifier = "https://issuer.example.com/".toUri(),
+                    randomSource = RandomSource.Default
+                ).issueCredential(
+                    DummyCredentialDataProvider.getCredential(
+                        holderKeyMaterial.publicKey,
+                        AtomicAttribute2023,
+                        SD_JWT
+                    )
+                        .getOrThrow()
+                ).getOrThrow().toStoreCredentialInput()
+            )
+            it.storeCredential(
+                IssuerAgent(
+                    identifier = "https://issuer.example.com/".toUri(),
+                    randomSource = RandomSource.Default
+                ).issueCredential(
+                    DummyCredentialDataProvider.getCredential(holderKeyMaterial.publicKey, EuPidScheme, SD_JWT)
+                        .getOrThrow()
+                ).getOrThrow().toStoreCredentialInput()
+            )
+        }
         object {
-            val holderKeyMaterial = EphemeralKeyWithoutCert()
+
             val verifierKeyMaterial = EphemeralKeyWithoutCert()
             val clientId = "https://example.com/rp/${uuid4()}"
             val walletUrl = "https://example.com/wallet/${uuid4()}"
-            val holderAgent = HolderAgent(holderKeyMaterial).also {
-                runBlocking {
-                    it.storeCredential(
-                        IssuerAgent(
-                            identifier = "https://issuer.example.com/".toUri(),
-                            randomSource = RandomSource.Default
-                        ).issueCredential(
-                            DummyCredentialDataProvider.getCredential(
-                                holderKeyMaterial.publicKey,
-                                AtomicAttribute2023,
-                                SD_JWT
-                            )
-                                .getOrThrow()
-                        ).getOrThrow().toStoreCredentialInput()
-                    )
-                    it.storeCredential(
-                        IssuerAgent(
-                            identifier = "https://issuer.example.com/".toUri(),
-                            randomSource = RandomSource.Default
-                        ).issueCredential(
-                            DummyCredentialDataProvider.getCredential(holderKeyMaterial.publicKey, EuPidScheme, SD_JWT)
-                                .getOrThrow()
-                        ).getOrThrow().toStoreCredentialInput()
-                    )
-                }
-            }
+
             val holderOid4vp = OpenId4VpHolder(
                 holder = holderAgent,
                 randomSource = RandomSource.Default,
@@ -62,7 +61,7 @@ val OpenId4VpSdJwtProtocolTest by testSuite {
                 clientIdScheme = ClientIdScheme.RedirectUri(clientId)
             )
         }
-    } - {
+    }) - {
 
         "Selective Disclosure with custom credential" {
             val requestedClaim = AtomicAttribute2023.CLAIM_GIVEN_NAME

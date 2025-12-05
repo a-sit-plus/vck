@@ -1,10 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.dcapi.DCAPIHandover
-import at.asitplus.dcapi.OpenID4VPDCAPIHandoverInfo
 import at.asitplus.dif.ClaimFormat
-import at.asitplus.iso.SessionTranscript
-import at.asitplus.iso.sha256
 import at.asitplus.openid.VpFormatsSupported
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
@@ -20,10 +16,8 @@ import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
-import at.asitplus.wallet.lib.oidvci.firstSessionTranscriptThumbprint
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe
-import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.encodeToHexString
 
 val PresentationFactoryTest by testSuite {
@@ -181,7 +175,7 @@ val PresentationFactoryTest by testSuite {
         }
 
         // https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#appendix-B.2.6.1-7
-        "Sample from OpenID4VP 1.0" {
+        test("Sample from OpenID4VP 1.0") {
             val jsonWebKey = """
                 {
                   "kty": "EC",
@@ -211,7 +205,7 @@ val PresentationFactoryTest by testSuite {
         }
 
         // https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#appendix-B.2.6.2-7
-        "Sample from OpenID4VP 1.0 for DCAPI" {
+        "Sample from OpenID4VP 1.0 for DCAPI" { it ->
             val jsonWebKey = """
                 {
                   "kty": "EC",

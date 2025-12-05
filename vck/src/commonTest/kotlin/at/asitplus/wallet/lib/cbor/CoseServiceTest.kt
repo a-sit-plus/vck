@@ -61,7 +61,7 @@ val CoseServiceTest by testSuite {
         // "T" translates to 54 hex = "bytes(20)" in CBOR meaning,
         // so we'll test if our implementation really uses the plain bytes,
         // and does not truncate it after reading 20 bytes during deserialization
-        "signed object with pseudo-random bytes can be verified" {
+        test("signed object with pseudo-random bytes can be verified") {
             val parameterSerializer = ByteArraySerializer()
             val payloadToUse = "This is the content: ".encodeToByteArray() + it.randomPayload
             val signed = it.signCose(
@@ -83,7 +83,7 @@ val CoseServiceTest by testSuite {
             VerifyCoseSignatureWithKey<ByteArray>()(parsed, it.signCoseKey, byteArrayOf(), null).isSuccess shouldBe true
         }
 
-        "mac object with pseudo-random bytes can be verified" {
+        test("mac object with pseudo-random bytes can be verified") {
             val parameterSerializer = ByteArraySerializer()
             val payloadToUse = "This is the content: ".encodeToByteArray() + it.randomPayload
             val maced = it.macCose(
@@ -105,7 +105,7 @@ val CoseServiceTest by testSuite {
             VerifyCoseMacWithKey<ByteArray>()(parsed, it.macCoseKey, byteArrayOf(), null).isSuccess shouldBe true
         }
 
-        "signed object with random bytes can be verified" {
+        test("signed object with random bytes can be verified") {
             val parameterSerializer = ByteArraySerializer()
             val signed = it.signCose(
                 protectedHeader = null,
@@ -125,7 +125,7 @@ val CoseServiceTest by testSuite {
             VerifyCoseSignatureWithKey<ByteArray>()(parsed, it.signCoseKey, byteArrayOf(), null).isSuccess shouldBe true
         }
 
-        "maced object with random bytes can be verified" {
+        test("maced object with random bytes can be verified") {
             val parameterSerializer = ByteArraySerializer()
             val maced = it.macCose(
                 protectedHeader = null,
@@ -145,7 +145,7 @@ val CoseServiceTest by testSuite {
             VerifyCoseMacWithKey<ByteArray>()(parsed, it.macCoseKey, byteArrayOf(), null).isSuccess shouldBe true
         }
 
-        "signed object with MSO payload can be verified" {
+        test("signed object with MSO payload can be verified") {
             val parameterSerializer = MobileSecurityObject.serializer()
             val mso = MobileSecurityObject(
                 version = "1.0",
@@ -183,7 +183,7 @@ val CoseServiceTest by testSuite {
             ).isSuccess shouldBe true
         }
 
-        "maced object with MSO payload can be verified" {
+        test("maced object with MSO payload can be verified") {
             val parameterSerializer = MobileSecurityObject.serializer()
             val mso = MobileSecurityObject(
                 version = "1.0",
@@ -218,7 +218,7 @@ val CoseServiceTest by testSuite {
             ).isSuccess shouldBe true
         }
 
-        "signed object with null payload can be verified" {
+        test("signed object with null payload can be verified") {
             val parameterSerializer = NothingSerializer()
             val signed = it.signCoseNothing(null, null, null, parameterSerializer).getOrThrow()
 
@@ -237,7 +237,7 @@ val CoseServiceTest by testSuite {
             VerifyCoseSignatureWithKey<Nothing>()(parsed, it.signCoseKey, byteArrayOf(), null).isSuccess shouldBe true
         }
 
-        "maced object with null payload can be verified" {
+        test("maced object with null payload can be verified") {
             val parameterSerializer = NothingSerializer()
             val maced = it.macCoseNothing(null, null, null, parameterSerializer).getOrThrow()
 
@@ -256,7 +256,7 @@ val CoseServiceTest by testSuite {
             VerifyCoseMacWithKey<Nothing>()(parsed, it.macCoseKey, byteArrayOf(), null).isSuccess shouldBe true
         }
 
-        "signed object with random bytes, transported detached, can be verified" {
+        test("signed object with random bytes, transported detached, can be verified") {
             val parameterSerializer = ByteArraySerializer()
             val signed = it.signCoseDetached(
                 protectedHeader = null,
@@ -285,7 +285,7 @@ val CoseServiceTest by testSuite {
             }
         }
 
-        "maced object with random bytes, transported detached, can be verified" {
+        test("maced object with random bytes, transported detached, can be verified") {
             val parameterSerializer = ByteArraySerializer()
             val maced = it.macCoseDetached(
                 protectedHeader = null,

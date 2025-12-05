@@ -29,14 +29,34 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
-import kotlinx.coroutines.runBlocking
 
 val OAuth2ClientAuthenticationTest by testSuite {
 
-    withFixtureGenerator {
+    withFixtureGenerator(suspend {
+        val attesterBackend = SignJwt<JsonWebToken>(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk())
+        val clientKey = EphemeralKeyWithSelfSignedCert()
+        val client = OAuth2Client()
+        val cattest =
+            BuildClientAttestationJwt(
+                attesterBackend,
+                clientId = client.clientId,
+                issuer = "someissuer",
+                clientKey = clientKey.jsonWebKey
+            )
+
+        val signClientAttestationPop: SignJwtFun<JsonWebToken> = SignJwt(clientKey, JwsHeaderNone())
+        val clientAttestationPop =
+            BuildClientAttestationPoPJwt(
+                signJwt = signClientAttestationPop,
+                clientId = client.clientId,
+                audience = "some server",
+                randomSource = RandomSource.Default
+            )
+
+
         object {
             val scope = randomString()
-            val client = OAuth2Client()
+            val client = client
             val user = OidcUserInfoExtended(OidcUserInfo(randomString()))
             var server = SimpleAuthorizationService(
                 strategy = DummyAuthorizationServiceStrategy(scope),
@@ -44,26 +64,11 @@ val OAuth2ClientAuthenticationTest by testSuite {
                     enforceClientAuthentication = true,
                 )
             )
-            val attesterBackend = SignJwt<JsonWebToken>(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk())
-            val clientKey = EphemeralKeyWithSelfSignedCert()
-            var clientAttestation = runBlocking {
-                BuildClientAttestationJwt(
-                    attesterBackend,
-                    clientId = client.clientId,
-                    issuer = "someissuer",
-                    clientKey = clientKey.jsonWebKey
-                )
-            }
+            val clientKey = clientKey
 
-            val signClientAttestationPop: SignJwtFun<JsonWebToken> = SignJwt(clientKey, JwsHeaderNone())
-            val clientAttestationPop = runBlocking {
-                BuildClientAttestationPoPJwt(
-                    signJwt = signClientAttestationPop,
-                    clientId = client.clientId,
-                    audience = "some server",
-                    randomSource = RandomSource.Default
-                )
-            }
+            var clientAttestation = cattest
+
+            val clientAttestationPop = clientAttestationPop
 
             suspend fun getToken(state: String, code: String): TokenResponseParameters = server.token(
                 request = client.createTokenRequestParameters(
@@ -80,7 +85,7 @@ val OAuth2ClientAuthenticationTest by testSuite {
                 )
             ).getOrThrow()
         }
-    } - {
+    }) - {
 
         test("pushed authorization request") {
             val state = uuid4().toString()

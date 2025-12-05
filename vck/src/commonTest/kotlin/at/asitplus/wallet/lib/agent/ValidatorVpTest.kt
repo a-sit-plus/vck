@@ -20,7 +20,6 @@ import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.randomCwtOrJwtResolver
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
-import io.kotest.engine.runBlocking
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSize
@@ -39,39 +38,46 @@ val ValidatorVpTest by testSuite {
         ),
     )
 
-    withFixtureGenerator {
-        object {
-            val issuerCredentialStore = InMemoryIssuerCredentialStore()
-            val issuer = IssuerAgent(
-                issuerCredentialStore = issuerCredentialStore,
-                identifier = "https://issuer.example.com/".toUri(),
-                randomSource = RandomSource.Default
+    withFixtureGenerator(suspend {
+        val holderCredentialStore = InMemorySubjectCredentialStore()
+        val holderKeyMaterial = EphemeralKeyWithoutCert()
+        val issuerCredentialStore = InMemoryIssuerCredentialStore()
+
+        val issuer = IssuerAgent(
+            issuerCredentialStore = issuerCredentialStore,
+            identifier = "https://issuer.example.com/".toUri(),
+            randomSource = RandomSource.Default
+        )
+
+        val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
+
+        val validator = ValidatorVcJws(
+            validator = Validator(
+                tokenStatusResolver = randomCwtOrJwtResolver(statusListIssuer)
             )
-            val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
-            val validator = ValidatorVcJws(
-                validator = Validator(
-                    tokenStatusResolver = randomCwtOrJwtResolver(statusListIssuer)
-                )
-            )
-            val holderCredentialStore = InMemorySubjectCredentialStore()
-            val holderKeyMaterial = EphemeralKeyWithoutCert()
-            val holder = HolderAgent(
-                holderKeyMaterial,
-                holderCredentialStore,
-                validatorVcJws = validator,
-            ).also {
-                runBlocking {
-                    it.storeCredential(
-                        issuer.issueCredential(
-                            DummyCredentialDataProvider.getCredential(
-                                holderKeyMaterial.publicKey,
-                                ConstantIndex.AtomicAttribute2023,
-                                PLAIN_JWT,
-                            ).getOrThrow()
-                        ).getOrThrow().toStoreCredentialInput()
+        )
+        val holder = HolderAgent(
+            holderKeyMaterial,
+            holderCredentialStore,
+            validatorVcJws = validator,
+        ).also {
+            it.storeCredential(
+                issuer.issueCredential(
+                    DummyCredentialDataProvider.getCredential(
+                        holderKeyMaterial.publicKey,
+                        ConstantIndex.AtomicAttribute2023,
+                        PLAIN_JWT,
                     ).getOrThrow()
-                }
-            }
+                ).getOrThrow().toStoreCredentialInput()
+            ).getOrThrow()
+        }
+        object {
+            val issuer = issuer
+            val holderCredentialStore = holderCredentialStore
+            val issuerCredentialStore = issuerCredentialStore
+            val validator = validator
+
+            val holder = holder
             val verifiablePresentationFactory = VerifiablePresentationFactory(holderKeyMaterial)
             val holderSignVp = SignJwt<VerifiablePresentationJws>(holderKeyMaterial, JwsHeaderCertOrJwk())
             val verifierId = "urn:${uuid4()}"
@@ -81,7 +87,7 @@ val ValidatorVpTest by testSuite {
             )
             val challenge = uuid4().toString()
         }
-    } - {
+    }) - {
 
         "correct challenge in VP leads to Success" {
             val presentationParameters = it.holder.createPresentation(

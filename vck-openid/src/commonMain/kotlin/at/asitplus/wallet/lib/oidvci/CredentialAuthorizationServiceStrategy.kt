@@ -117,7 +117,6 @@ private fun Collection<OpenIdAuthorizationDetails>.matchesAuthnRequest(
 
 private fun Collection<OpenIdAuthorizationDetails>.forTokenResponse() = map {
     it.copy(
-        credentialConfigurationId = null,
         credentialIdentifiers = setOf(it.credentialConfigurationId!!),
     )
 }

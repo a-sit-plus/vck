@@ -99,7 +99,7 @@ val OidvciOfferCodeTest by testSuite {
         }
     } - {
 
-        "process with code after credential offer, and scope for one credential" {
+        test("process with code after credential offer, and scope for one credential") {
             val credentialOffer = it.authorizationService.credentialOfferWithAuthorizationCode(it.issuer.publicContext)
             val credentialIdToRequest = credentialOffer.configurationIds.first()
             val credentialFormat =
@@ -125,7 +125,7 @@ val OidvciOfferCodeTest by testSuite {
                 .first().credentialString.shouldNotBeNull()
         }
 
-        "process with code after credential offer, wrong issuer_state" {
+        test("process with code after credential offer, wrong issuer_state") {
             val credentialOffer = it.authorizationService.credentialOfferWithAuthorizationCode(it.issuer.publicContext)
             val credentialIdToRequest = credentialOffer.configurationIds.first()
             val credentialFormat =
@@ -143,7 +143,7 @@ val OidvciOfferCodeTest by testSuite {
             }
         }
 
-        "process with code after credential offer, and authorization details for one credential" {
+        test("process with code after credential offer, and authorization details for one credential") {
             val credentialOffer = it.authorizationService.credentialOfferWithAuthorizationCode(it.issuer.publicContext)
             val credentialIdToRequest = credentialOffer.configurationIds.first()
             val authorizationDetails = it.client.buildAuthorizationDetails(

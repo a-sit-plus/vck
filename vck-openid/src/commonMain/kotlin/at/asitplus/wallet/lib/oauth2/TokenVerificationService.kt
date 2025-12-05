@@ -207,8 +207,8 @@ class JwtTokenVerificationService(
         JwsSigned.deserialize(JsonWebToken.serializer(), this, vckJsonSerializer).getOrElse {
             throw InvalidDpopProof("could not parse DPoP JWT", it)
         }.also {
-            if (!verifyJwsObject(it)) {
-                throw InvalidDpopProof("DPoP JWT not verified")
+            verifyJwsObject(it).getOrElse {
+                throw InvalidDpopProof("DPoP JWT not verified.", it)
             }
         }
 

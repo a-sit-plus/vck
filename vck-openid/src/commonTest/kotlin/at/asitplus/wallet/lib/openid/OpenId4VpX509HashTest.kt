@@ -16,48 +16,49 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.CreationOptions
 import de.infix.testBalloon.framework.core.testSuite
-import io.kotest.engine.runBlocking
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 val OpenId4VpX509HashTest by testSuite {
 
-    withFixtureGenerator {
+    withFixtureGenerator(suspend {
+        val holderKeyMaterial = EphemeralKeyWithoutCert()
+        val verifierKeyMaterial = EphemeralKeyWithSelfSignedCert()
+        val holderAgent = HolderAgent(holderKeyMaterial).also {
+            it.storeCredential(
+                IssuerAgent(
+                    identifier = "https://issuer.example.com/".toUri(),
+                    randomSource = RandomSource.Default
+                ).issueCredential(
+                    DummyCredentialDataProvider.getCredential(
+                        holderKeyMaterial.publicKey,
+                        AtomicAttribute2023,
+                        SD_JWT,
+                    ).getOrThrow()
+                ).getOrThrow().toStoreCredentialInput()
+            )
+        }
+
+        val verifierOid4vp = OpenId4VpVerifier(
+            keyMaterial = verifierKeyMaterial,
+            clientIdScheme = ClientIdScheme.CertificateHash(
+                listOf(verifierKeyMaterial.getCertificate()!!),
+                "https://example.com/redirect"
+            )
+
+        )
+
         object {
-            val holderKeyMaterial = EphemeralKeyWithoutCert()
-            val verifierKeyMaterial = EphemeralKeyWithSelfSignedCert()
-            val holderAgent = HolderAgent(holderKeyMaterial).also {
-                runBlocking {
-                    it.storeCredential(
-                        IssuerAgent(
-                            identifier = "https://issuer.example.com/".toUri(),
-                            randomSource = RandomSource.Default
-                        ).issueCredential(
-                            DummyCredentialDataProvider.getCredential(
-                                holderKeyMaterial.publicKey,
-                                AtomicAttribute2023,
-                                SD_JWT,
-                            ).getOrThrow()
-                        ).getOrThrow().toStoreCredentialInput()
-                    )
-                }
-            }
+            val holderKeyMaterial = holderKeyMaterial
+            val holderAgent = holderAgent
             var holderOid4vp = OpenId4VpHolder(
                 keyMaterial = holderKeyMaterial,
                 holder = holderAgent,
                 randomSource = RandomSource.Default,
             )
-            val verifierOid4vp = OpenId4VpVerifier(
-                keyMaterial = verifierKeyMaterial,
-                clientIdScheme = runBlocking {
-                    ClientIdScheme.CertificateHash(
-                        listOf(verifierKeyMaterial.getCertificate()!!),
-                        "https://example.com/redirect"
-                    )
-                }
-            )
+            val verifierOid4vp = verifierOid4vp
         }
-    } - {
+    }) - {
 
         "test with request object" {
             val requestUrl = "https://example.com/request"

@@ -8,7 +8,9 @@ import at.asitplus.openid.dcql.DCQLQueryResult
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import io.github.aakira.napier.Napier
 
-fun DCQLQueryResult<SubjectCredentialStore.StoreEntry>.toDefaultSubmission(): KmmResult<Map<DCQLCredentialQueryIdentifier, DCQLCredentialSubmissionOption<SubjectCredentialStore.StoreEntry>>> =
+fun DCQLQueryResult<SubjectCredentialStore.StoreEntry>.toDefaultSubmission(
+
+): KmmResult<Map<DCQLCredentialQueryIdentifier, DCQLCredentialSubmissionOption<SubjectCredentialStore.StoreEntry>>> =
     catching {
         // submit the first options of the required queries by default
         val queriesToBePresented = satisfiableCredentialSetQueries.filter {
@@ -17,12 +19,11 @@ fun DCQLQueryResult<SubjectCredentialStore.StoreEntry>.toDefaultSubmission(): Km
             it.options.first()
         }.flatten()
 
-        queriesToBePresented.associate { queryId ->
+        queriesToBePresented.associateWith { queryId ->
             val matches = credentialQueryMatches[queryId] ?: run {
                 Napier.d("Credential query with identifier is missing: $queryId")
                 throw IllegalStateException("Missing credential query result")
             }
-
-            queryId to matches.first()
+            matches.first()
         }
     }

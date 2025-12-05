@@ -27,41 +27,40 @@ import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.coroutines.runBlocking
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 
 val VerifierAttestationTest by testSuite {
 
-    withFixtureGenerator {
+    withFixtureGenerator(suspend {
+        val holderKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert()
+        val holderAgent: Holder = HolderAgent(holderKeyMaterial).also { agent ->
+            agent.storeCredential(
+                IssuerAgent(
+                    identifier = "https://issuer.example.com/".toUri(),
+                    randomSource = RandomSource.Default
+                ).issueCredential(
+                    DummyCredentialDataProvider.getCredential(
+                        holderKeyMaterial.publicKey,
+                        ConstantIndex.AtomicAttribute2023,
+                        ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                    ).getOrThrow()
+                ).getOrThrow().toStoreCredentialInput()
+            )
+        }
         object {
-            val holderKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert()
+            val holderAgent = holderAgent
             val verifierKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert()
             val clientId: String = "${uuid4()}"
             val redirectUrl: String = "https://example.com/rp/${uuid4()}"
             val walletUrl: String = "https://example.com/wallet/${uuid4()}"
-            val holderAgent: Holder = HolderAgent(holderKeyMaterial).also { agent ->
-                runBlocking {
-                    agent.storeCredential(
-                        IssuerAgent(
-                            identifier = "https://issuer.example.com/".toUri(),
-                            randomSource = RandomSource.Default
-                        ).issueCredential(
-                            DummyCredentialDataProvider.getCredential(
-                                holderKeyMaterial.publicKey,
-                                ConstantIndex.AtomicAttribute2023,
-                                ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-                            ).getOrThrow()
-                        ).getOrThrow().toStoreCredentialInput()
-                    )
-                }
-            }
+
             val holderOid4vp: OpenId4VpHolder = OpenId4VpHolder(
                 holder = holderAgent,
                 randomSource = RandomSource.Default,
             )
         }
-    } - {
+    }) - {
 
         "test with request object and Attestation JWT" {
             val sprsKeyMaterial = EphemeralKeyWithoutCert()

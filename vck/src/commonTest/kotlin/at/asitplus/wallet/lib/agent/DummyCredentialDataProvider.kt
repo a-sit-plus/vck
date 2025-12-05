@@ -65,6 +65,36 @@ object DummyCredentialDataProvider {
         }
     }
 
+    fun getCredentialForClaim(
+        subjectPublicKey: CryptoPublicKey,
+        credentialScheme: ConstantIndex.CredentialScheme,
+        representation: ConstantIndex.CredentialRepresentation,
+        claim: ClaimToBeIssued
+    ): KmmResult<CredentialToBeIssued> = catching {
+        val expiration = Clock.System.now() + defaultLifetime
+        val subjectId = subjectPublicKey.didEncoded
+        when (representation) {
+            ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialToBeIssued.VcSd(
+                claims = listOf(claim),
+                expiration = expiration,
+                scheme = credentialScheme,
+                subjectPublicKey = subjectPublicKey,
+                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+                sdAlgorithm = supportedSdAlgorithms.random()
+            )
+
+            ConstantIndex.CredentialRepresentation.PLAIN_JWT -> throw IllegalArgumentException("PLAIN_JWT")
+
+            ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
+                issuerSignedItems = listOf(issuerSignedItem(claim.name, claim.value, 0U)),
+                expiration = expiration,
+                scheme = credentialScheme,
+                subjectPublicKey = subjectPublicKey,
+                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+            )
+        }
+    }
+
     private fun issuerSignedItem(name: String, value: Any, digestId: UInt) =
         IssuerSignedItem(
             digestId = digestId,

@@ -70,7 +70,7 @@ val AgentTest by testSuite {
             ),
         )
 
-        "presex: simple walk-through success" {
+        test("presex: simple walk-through success") {
             it.holder.storeCredential(
                 it.issuer.issueCredential(
                     DummyCredentialDataProvider.getCredential(
@@ -95,7 +95,7 @@ val AgentTest by testSuite {
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
         }
 
-        "presex: wrong keyId in presentation leads to error" {
+        test("presex: wrong keyId in presentation leads to error") {
             it.holder.storeCredential(
                 it.issuer.issueCredential(
                     DummyCredentialDataProvider.getCredential(
@@ -118,13 +118,13 @@ val AgentTest by testSuite {
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
         }
 
-        "presex: getting credentials when there are no credentials stored" {
+        test("presex: getting credentials when there are no credentials stored") {
             val holderCredentials = it.holder.getCredentials()
             holderCredentials.shouldNotBeNull()
             holderCredentials.shouldBeEmpty()
         }
 
-        "presex: getting credentials when they are valid" { it ->
+        test("presex: getting credentials when they are valid") {
             val credentials = it.issuer.issueCredential(
                 DummyCredentialDataProvider.getCredential(
                     it.holderKeyMaterial.publicKey,
@@ -147,7 +147,7 @@ val AgentTest by testSuite {
                 }
         }
 
-        "presex: getting credentials when the issuer has revoked them" {
+        test("presex: getting credentials when the issuer has revoked them") {
             val credential = it.issuer.issueCredential(
                 DummyCredentialDataProvider.getCredential(
                     it.holderKeyMaterial.publicKey,
@@ -174,7 +174,7 @@ val AgentTest by testSuite {
                 }
         }
 
-        "presex: building presentation without necessary credentials" {
+        test("presex: building presentation without necessary credentials") {
             it.holder.createPresentation(
                 request = PresentationRequestParameters(
                     nonce = it.challenge,
@@ -184,7 +184,7 @@ val AgentTest by testSuite {
             ).getOrNull() shouldBe null
         }
 
-        "presex: valid presentation is valid" {
+        test("presex: valid presentation is valid") {
             val credentials = it.issuer.issueCredential(
                 DummyCredentialDataProvider.getCredential(
                     it.holderKeyMaterial.publicKey,
@@ -212,7 +212,7 @@ val AgentTest by testSuite {
                 }
         }
 
-        "presex: valid presentation is valid -- some other attributes revoked" {
+        test("presex: valid presentation is valid -- some other attributes revoked") {
             val credentials = it.issuer.issueCredential(
                 DummyCredentialDataProvider.getCredential(
                     it.holderKeyMaterial.publicKey,
@@ -257,7 +257,7 @@ val AgentTest by testSuite {
             ),
         )
 
-        "dcql: simple walk-through success" {
+        test("dcql: simple walk-through success") {
             it.holder.storeCredential(
                 it.issuer.issueCredential(
                     DummyCredentialDataProvider.getCredential(
@@ -280,7 +280,7 @@ val AgentTest by testSuite {
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
         }
 
-        "dcql: wrong keyId in presentation leads to error" {
+        test("dcql: wrong keyId in presentation leads to error") {
             it.holder.storeCredential(
                 it.issuer.issueCredential(
                     DummyCredentialDataProvider.getCredential(
@@ -304,7 +304,7 @@ val AgentTest by testSuite {
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
         }
 
-        "dcql: building presentation without necessary credentials" {
+        test("dcql: building presentation without necessary credentials") {
             it.holder.createDefaultPresentation(
                 request = PresentationRequestParameters(
                     nonce = it.challenge,
@@ -314,7 +314,7 @@ val AgentTest by testSuite {
             ).getOrNull() as PresentationResponseParameters.DCQLParameters? shouldBe null
         }
 
-        "dcql: valid presentation is valid" {
+        test("dcql: valid presentation is valid") {
             val credentials = it.issuer.issueCredential(
                 DummyCredentialDataProvider.getCredential(
                     it.holderKeyMaterial.publicKey,
@@ -340,7 +340,7 @@ val AgentTest by testSuite {
                 }
         }
 
-        "dcql: valid presentation is valid -- some other attributes revoked" {
+        test("dcql: valid presentation is valid -- some other attributes revoked") {
             val credentials = it.issuer.issueCredential(
                 DummyCredentialDataProvider.getCredential(
                     it.holderKeyMaterial.publicKey,

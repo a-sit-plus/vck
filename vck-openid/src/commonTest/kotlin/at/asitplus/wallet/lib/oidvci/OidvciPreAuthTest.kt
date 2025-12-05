@@ -69,7 +69,7 @@ val OidvciPreAuthTest by testSuite {
             }
         }
     } - {
-        "process with pre-authorized code, credential offer, and authorization details for one credential" {
+        test("process with pre-authorized code, credential offer, and authorization details for one credential") {
             val credentialOffer =
                 it.authorizationService.credentialOfferWithPreAuthnForUser(
                     DummyUserProvider.user,
@@ -102,7 +102,7 @@ val OidvciPreAuthTest by testSuite {
                 .first().credentialString.shouldNotBeNull()
         }
 
-        "process with pre-authorized code, credential offer, and authorization details for all credentials" {
+        test("process with pre-authorized code, credential offer, and authorization details for all credentials") {
             val credentialOffer = it.authorizationService.credentialOfferWithPreAuthnForUser(
                 DummyUserProvider.user,
                 it.issuer.publicContext
@@ -141,7 +141,7 @@ val OidvciPreAuthTest by testSuite {
             }
         }
 
-        "process with pre-authorized code, credential offer, and scope" {
+        test("process with pre-authorized code, credential offer, and scope") {
             val credentialOffer = it.authorizationService.credentialOfferWithPreAuthnForUser(
                 DummyUserProvider.user,
                 it.issuer.publicContext
@@ -183,7 +183,7 @@ val OidvciPreAuthTest by testSuite {
                 .credentialString.shouldNotBeNull()
         }
 
-        "two proofs over different keys lead to two credentials" {
+        test("two proofs over different keys lead to two credentials") {
             val credentialOffer =
                 it.authorizationService.credentialOfferWithPreAuthnForUser(
                     DummyUserProvider.user,

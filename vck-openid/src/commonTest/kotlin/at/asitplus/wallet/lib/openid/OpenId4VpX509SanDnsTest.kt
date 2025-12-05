@@ -23,61 +23,62 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import de.infix.testBalloon.framework.core.testSuite
-import io.kotest.engine.runBlocking
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 val OpenId4VpX509SanDnsTest by testSuite {
 
-    withFixtureGenerator {
+    withFixtureGenerator(suspend {
+        val holderKeyMaterial = EphemeralKeyWithoutCert()
+        val holderAgent = HolderAgent(holderKeyMaterial).also {
+            it.storeCredential(
+                IssuerAgent(
+                    identifier = "https://issuer.example.com/".toUri(),
+                    randomSource = RandomSource.Default
+                ).issueCredential(
+                    DummyCredentialDataProvider.getCredential(
+                        holderKeyMaterial.publicKey,
+                        AtomicAttribute2023,
+                        SD_JWT,
+                    ).getOrThrow()
+                ).getOrThrow().toStoreCredentialInput()
+            )
+        }
+        val clientId = "example.com"
+        val extensions = listOf(
+            X509CertificateExtension(
+                KnownOIDs.subjectAltName_2_5_29_17,
+                critical = false,
+                Asn1EncapsulatingOctetString(
+                    listOf(
+                        Asn1.Sequence {
+                            +Asn1Primitive(
+                                SubjectAltNameImplicitTags.dNSName,
+                                Asn1String.UTF8(clientId).encodeToTlv().content
+                            )
+                        }
+                    ))))
+        val verifierKeyMaterial = EphemeralKeyWithSelfSignedCert(extensions = extensions)
+        val verifierOid4vp = OpenId4VpVerifier(
+            keyMaterial = verifierKeyMaterial,
+            clientIdScheme = ClientIdScheme.CertificateSanDns(
+                listOf(verifierKeyMaterial.getCertificate()!!),
+                clientId,
+                clientId
+            ),
+        )
         object {
-            val clientId = "example.com"
-            val extensions = listOf(
-                X509CertificateExtension(
-                    KnownOIDs.subjectAltName_2_5_29_17,
-                    critical = false,
-                    Asn1EncapsulatingOctetString(
-                        listOf(
-                            Asn1.Sequence {
-                                +Asn1Primitive(
-                                    SubjectAltNameImplicitTags.dNSName,
-                                    Asn1String.UTF8(clientId).encodeToTlv().content
-                                )
-                            }
-                        ))))
-            val holderKeyMaterial = EphemeralKeyWithoutCert()
-            val verifierKeyMaterial = EphemeralKeyWithSelfSignedCert(extensions = extensions)
-            val holderAgent = HolderAgent(holderKeyMaterial).also {
-                runBlocking {
-                    it.storeCredential(
-                        IssuerAgent(
-                            identifier = "https://issuer.example.com/".toUri(),
-                            randomSource = RandomSource.Default
-                        ).issueCredential(
-                            DummyCredentialDataProvider.getCredential(
-                                holderKeyMaterial.publicKey,
-                                AtomicAttribute2023,
-                                SD_JWT,
-                            ).getOrThrow()
-                        ).getOrThrow().toStoreCredentialInput()
-                    )
-                }
-            }
+            val verifierOid4vp = verifierOid4vp
+            val holderKeyMaterial = holderKeyMaterial
+            val holderAgent = holderAgent
             var holderOid4vp = OpenId4VpHolder(
                 keyMaterial = holderKeyMaterial,
                 holder = holderAgent,
                 randomSource = RandomSource.Default,
             )
-            val verifierOid4vp = OpenId4VpVerifier(
-                keyMaterial = verifierKeyMaterial,
-                clientIdScheme = ClientIdScheme.CertificateSanDns(
-                    runBlocking { listOf(verifierKeyMaterial.getCertificate()!!) },
-                    clientId,
-                    clientId
-                ),
-            )
+
         }
-    } - {
+    }) - {
 
         "test with request object" {
             val requestUrl = "https://example.com/request"

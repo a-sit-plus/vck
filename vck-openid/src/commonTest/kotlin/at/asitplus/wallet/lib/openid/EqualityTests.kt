@@ -17,7 +17,7 @@ val EqualityTests by testSuite {
         }
     } - {
 
-        "JsonWebKeySet new" {
+        "JsonWebKeySet new" { it ->
             val first = JsonWebKeySet(keys = listOf(it.jwk1, it.jwk2))
             val second = JsonWebKeySet(keys = listOf(it.jwk1, it.jwk2))
 
@@ -26,7 +26,7 @@ val EqualityTests by testSuite {
             equals.shouldBeTrue()
         }
 
-        "JsonWebKeySet new unordered" {
+        "JsonWebKeySet new unordered" { it ->
             val first = JsonWebKeySet(keys = setOf(it.jwk1, it.jwk2))
             val second = JsonWebKeySet(keys = setOf(it.jwk2, it.jwk1))
 
@@ -35,7 +35,7 @@ val EqualityTests by testSuite {
             equals.shouldBeTrue()
         }
 
-        "JsonWebKeySet old" {
+        "JsonWebKeySet old" { it ->
             val first = OldJsonWebKeySet(keys = arrayOf(it.jwk1, it.jwk2))
             val second = OldJsonWebKeySet(keys = arrayOf(it.jwk1, it.jwk2))
 
@@ -44,7 +44,7 @@ val EqualityTests by testSuite {
             equals.shouldBeTrue()
         }
 
-        "JsonWebKeySet old unordered" {
+        "JsonWebKeySet old unordered" { it ->
             val first = OldJsonWebKeySet(keys = arrayOf(it.jwk1, it.jwk2))
             val second = OldJsonWebKeySet(keys = arrayOf(it.jwk1, it.jwk2).reversedArray())
 
