@@ -19,6 +19,7 @@ sealed class ResponseParametersFrom {
         val jwsSigned: at.asitplus.signum.indispensable.josef.JwsSigned<AuthenticationResponseParameters>,
         val parent: ResponseParametersFrom,
         override val parameters: AuthenticationResponseParameters,
+        override val clientIdRequired: Boolean,
     ) : ResponseParametersFrom() {
         override val hasBeenEncrypted: Boolean = false
     }
@@ -27,7 +28,8 @@ sealed class ResponseParametersFrom {
         val jweDecrypted: at.asitplus.signum.indispensable.josef.JweDecrypted<AuthenticationResponseParameters>,
         val parent: ResponseParametersFrom,
         override val parameters: AuthenticationResponseParameters,
-    ) : ResponseParametersFrom() {
+        override val clientIdRequired: Boolean,
+        ) : ResponseParametersFrom() {
         override val hasBeenEncrypted: Boolean = true
     }
 
@@ -48,16 +50,16 @@ sealed class ResponseParametersFrom {
     data class DcApi private constructor(
         override val parameters: AuthenticationResponseParameters,
         val origin: String,
-        override val clientIdRequired: Boolean,
         override val hasBeenEncrypted: Boolean,
+        override val clientIdRequired: Boolean,
     ) : ResponseParametersFrom() {
         companion object {
             fun createFromOpenId4VpResponse(input: OpenId4VpResponse): DcApi {
                 return DcApi(
                     parameters = input.data,
                     origin = input.origin,
-                    clientIdRequired = !input.protocol.isUnsignedOpenId4VpRequest,
-                    hasBeenEncrypted = input.data.response?.startsWith("eyJhb") == true // TODO is there a better way to detect this?
+                    hasBeenEncrypted = input.data.response?.startsWith("eyJhb") == true, // TODO is there a better way to detect this?
+                    clientIdRequired = !input.protocol.isUnsignedOpenId4VpRequest
                 )
             }
         }
