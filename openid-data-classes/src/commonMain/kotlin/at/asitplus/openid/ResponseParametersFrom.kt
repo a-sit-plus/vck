@@ -57,7 +57,7 @@ sealed class ResponseParametersFrom {
                     parameters = input.data,
                     origin = input.origin,
                     clientIdRequired = !input.protocol.isUnsignedOpenId4VpRequest,
-                    hasBeenEncrypted = input.data.issuer != null // TODO is there a better way to detect this?
+                    hasBeenEncrypted = input.data.response?.startsWith("eyJhb") == true // TODO is there a better way to detect this?
                 )
             }
         }
