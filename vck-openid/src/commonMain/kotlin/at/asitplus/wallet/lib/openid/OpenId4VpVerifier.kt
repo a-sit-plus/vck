@@ -430,9 +430,13 @@ class OpenId4VpVerifier(
     suspend fun validateAuthnResponse(
         input: OpenId4VpResponse,
         externalId: String,
-    ): AuthnResponseResult =
-        validateAuthnResponse(ResponseParametersFrom.DcApi.createFromOpenId4VpResponse(input), externalId)
-
+    ): AuthnResponseResult  = catchingUnwrapped {
+        responseParser.parseAuthnResponse(input)
+    }.getOrElse {
+        return AuthnResponseResult.Error("Can't parse input: $input", cause = it)
+    }.let {
+        validateAuthnResponse(it, externalId)
+    }
 
     /**
      * Validates [AuthenticationResponseParameters] from the Wallet

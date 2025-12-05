@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.catchingUnwrapped
+import at.asitplus.dcapi.OpenId4VpResponse
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.ResponseParametersFrom
 import at.asitplus.signum.indispensable.josef.JweDecrypted
@@ -32,6 +33,14 @@ class ResponseParser(
      */
     @Throws(IllegalArgumentException::class, CancellationException::class)
     suspend fun parseAuthnResponse(input: String) = input.parseResponseParameters().extractFromJar()
+
+    /**
+     * Parses [at.asitplus.openid.AuthenticationResponseParameters], where [input] is a signed or unsigned DC API
+     * response.
+     */
+    @Throws(IllegalArgumentException::class, CancellationException::class)
+    suspend fun parseAuthnResponse(input: OpenId4VpResponse) =
+        ResponseParametersFrom.DcApi.createFromOpenId4VpResponse(input).extractFromJar()
 
     private fun String.parseResponseParameters() : ResponseParametersFrom = parseUrlSafe(this)
         ?: parsePostBodySafe(this)
