@@ -87,7 +87,7 @@ val AgentIsoMdocMultipleDocumentsTest by testSuite {
         }
     } - {
 
-        "presex: multiple credentials should be multiple device responses for remote presentation" {
+        test("presex: multiple credentials should be multiple device responses for remote presentation") {
             val presentationParameters = it.holder.createPresentation(
                 request = PresentationRequestParameters(
                     nonce = it.challenge,
@@ -128,7 +128,7 @@ val AgentIsoMdocMultipleDocumentsTest by testSuite {
                 .shouldNotBeNull().elementValue shouldBe "Meier"
         }
 
-        "presex: multiple credentials should be one device response for local presentation" {
+        test("presex: multiple credentials should be one device response for local presentation") {
             val presentationParameters = it.holder.createPresentation(
                 request = PresentationRequestParameters(
                     nonce = it.challenge,
