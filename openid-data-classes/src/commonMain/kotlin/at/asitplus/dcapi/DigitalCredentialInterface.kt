@@ -1,25 +1,23 @@
 package at.asitplus.dcapi
 
+import at.asitplus.dcapi.request.ExchangeProtocolIdentifier
 import at.asitplus.openid.AuthenticationResponseParameters
-import at.asitplus.openid.ResponseParametersFrom
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
 
 @Serializable
 @JsonClassDiscriminator("protocol")
-sealed class DigitalCredentialInterface(
-//    /** `org-iso-mdoc`. */
-//    @SerialName("protocol")
-//    val protocol: ExchangeProtocolIdentifier,
-
-) {
+sealed class DigitalCredentialInterface() {
+    abstract val protocol: ExchangeProtocolIdentifier
     abstract val origin: String
 }
 
 @Serializable
 @SerialName("org-iso-mdoc")
 data class IsoMdocResponse(
+    @SerialName("protocol")
+    override val protocol: ExchangeProtocolIdentifier,
     @SerialName("data")
     val data: DCAPIResponse,
     @SerialName("origin")
@@ -28,20 +26,30 @@ data class IsoMdocResponse(
 
 
 // TODO this is essentially a copy of ResponseParametersFrom.DcApi
+sealed interface OpenId4VpResponse {
+    val protocol: ExchangeProtocolIdentifier
+    val data: AuthenticationResponseParameters
+    val origin: String
+}
+
 @Serializable
 @SerialName("openid4vp-v1-signed")
-data class Oid4VpResponseSigned(
+data class OpenId4VpResponseSigned(
+    @SerialName("protocol")
+    override val protocol: ExchangeProtocolIdentifier,
     @SerialName("data")
-    val data: AuthenticationResponseParameters,
+    override val data: AuthenticationResponseParameters,
     @SerialName("origin")
     override val origin: String,
-) : DigitalCredentialInterface()
+) : DigitalCredentialInterface(), OpenId4VpResponse
 
 @Serializable
 @SerialName("openid4vp-v1-unsigned")
-data class Oid4VpResponseUnsigned(
+data class OpenId4VpResponseUnsigned(
+    @SerialName("protocol")
+    override val protocol: ExchangeProtocolIdentifier,
     @SerialName("data")
-    val data: AuthenticationResponseParameters,
+    override val data: AuthenticationResponseParameters,
     @SerialName("origin")
     override val origin: String,
-) : DigitalCredentialInterface()
+) : DigitalCredentialInterface(), OpenId4VpResponse

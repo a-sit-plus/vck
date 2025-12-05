@@ -1,5 +1,6 @@
 package at.asitplus.openid
 
+import at.asitplus.dcapi.OpenId4VpResponse
 import at.asitplus.dcapi.request.ExchangeProtocolIdentifier
 import io.ktor.http.*
 import kotlinx.serialization.SerialName
@@ -43,18 +44,23 @@ sealed class ResponseParametersFrom {
         override val hasBeenEncrypted: Boolean = false
     }
 
-    @Serializable
-    data class DcApi(
-        /** Format `openid4vp-v<version>-<request-type>`, see [ExchangeProtocolIdentifier]. */
-        @SerialName("protocol")
-        val protocol: ExchangeProtocolIdentifier,
-        @SerialName("data")
+    @ConsistentCopyVisibility
+    data class DcApi private constructor(
         override val parameters: AuthenticationResponseParameters,
-        @SerialName("origin")
         val origin: String,
-    ): ResponseParametersFrom() {
-        override val clientIdRequired get() = run { !protocol.isUnsignedOpenId4VpRequest }
-        override val hasBeenEncrypted: Boolean = false
+        override val clientIdRequired: Boolean,
+        override val hasBeenEncrypted: Boolean,
+    ) : ResponseParametersFrom() {
+        companion object {
+            fun createFromOpenId4VpResponse(input: OpenId4VpResponse): DcApi {
+                return DcApi(
+                    parameters = input.data,
+                    origin = input.origin,
+                    clientIdRequired = !input.protocol.isUnsignedOpenId4VpRequest,
+                    hasBeenEncrypted = input.data.issuer != null // TODO is there a better way to detect this?
+                )
+            }
+        }
     }
 
 }
