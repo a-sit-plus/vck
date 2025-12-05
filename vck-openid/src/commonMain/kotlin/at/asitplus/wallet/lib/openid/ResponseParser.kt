@@ -68,9 +68,9 @@ class ResponseParser(
     internal suspend fun ResponseParametersFrom.extractFromJar() = parameters.response?.let { encodedResponse ->
         encodedResponse.fromJws()?.let { jws ->
             require(verifyJwsObject(jws)) { "JWS not verified: $encodedResponse" }
-            ResponseParametersFrom.JwsSigned(jws, this, jws.payload)
+            ResponseParametersFrom.JwsSigned(jws, this, jws.payload, this.clientIdRequired)
         } ?: encodedResponse.fromJwe()?.let { jwe ->
-            ResponseParametersFrom.JweDecrypted(jwe, this, jwe.payload)
+            ResponseParametersFrom.JweDecrypted(jwe, this, jwe.payload, this.clientIdRequired)
         } ?: throw IllegalArgumentException("Got encoded response, but could not deserialize it from $this")
     } ?: this
 
