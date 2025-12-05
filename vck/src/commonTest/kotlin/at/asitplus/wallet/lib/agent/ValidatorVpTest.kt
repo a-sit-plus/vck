@@ -168,7 +168,7 @@ val ValidatorVpTest by testSuite {
                 .forEach { vcjws ->
                     it.issuerCredentialStore.setStatus(
                         timePeriod = FixedTimePeriodProvider.timePeriod,
-                        index = vcjws.vc.credentialStatus!!.statusList.index,
+                        index = vcjws.vc.credentialStatus.shouldNotBeNull().statusList.shouldNotBeNull().index,
                         status = TokenStatus.Invalid,
                     ) shouldBe true
                 }

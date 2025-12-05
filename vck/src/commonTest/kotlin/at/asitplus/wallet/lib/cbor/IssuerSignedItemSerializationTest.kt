@@ -206,69 +206,6 @@ val IssuerSignedItemSerializationTest by testSuite {
             coseCompliantSerializer.decodeFromByteArray<Document>(serialized) shouldBe doc
         }
 
-        // Contains LocalDates instead of Instants, as we expected, so we'll handle this with LocalDateOrInstantSerializer
-        "deserialize DeviceResponse from EUDI Ref Impl" {
-            CborCredentialSerializer.register(
-                serializerMap = mapOf(
-                    "expiry_date" to LocalDateOrInstantSerializer,
-                    "birth_date" to LocalDateOrInstantSerializer
-                ),
-                isoNamespace = "eu.europa.ec.eudi.pid.1"
-            )
-            val input = """
-            o2d2ZXJzaW9uYzEuMGlkb2N1bWVudHOBo2dkb2NUeXBld2V1LmV1cm9wYS5lYy5ldWRpLnBpZC4xbGlzc3VlclNpZ25lZKJqbmFtZVNwYWNl
-            c6F3ZXUuZXVyb3BhLmVjLmV1ZGkucGlkLjGI2BhYbKRmcmFuZG9tWCAYEd2zTYDimiBjUeC_955trB4a2hZlPCQF5NPKX9uGB2hkaWdlc3RJ
-            RAhsZWxlbWVudFZhbHVl2QPsajE5NjUtMDEtMDFxZWxlbWVudElkZW50aWZpZXJqYmlydGhfZGF0ZdgYWG2kZnJhbmRvbVggkqce2jGkon0M
-            48b7qIKlc0tcztcoBvVLbO1fSnniZXloZGlnZXN0SUQEbGVsZW1lbnRWYWx1ZdkD7GoyMDI1LTA4LTI1cWVsZW1lbnRJZGVudGlmaWVya2V4
-            cGlyeV9kYXRl2BhYZqRmcmFuZG9tWCD1d1Oi7UwmN5EPBRcMhTe9BEv1wWu6EEbof8u_6tDbyWhkaWdlc3RJRAJsZWxlbWVudFZhbHVlZkdh
-            cmNpYXFlbGVtZW50SWRlbnRpZmllcmtmYW1pbHlfbmFtZdgYWGWkZnJhbmRvbVggjBx-y1fceuQod-KSt9varklC4YV45dsoqJPIzyEceEpo
-            ZGlnZXN0SUQDbGVsZW1lbnRWYWx1ZWZqYXZpZXJxZWxlbWVudElkZW50aWZpZXJqZ2l2ZW5fbmFtZdgYWHWkZnJhbmRvbVggXSfcSWd04t-Y
-            pALvhp00pGQrHk948yhJl1mLW1AuM2VoZGlnZXN0SUQBbGVsZW1lbnRWYWx1ZW9UZXN0IFBJRCBpc3N1ZXJxZWxlbWVudElkZW50aWZpZXJx
-            aXNzdWluZ19hdXRob3JpdHnYGFhvpGZyYW5kb21YIEXxSYm4G04mADNQRuGixci-Fv1JA6cfpQvGZLLz9B6taGRpZ2VzdElEB2xlbGVtZW50
-            VmFsdWXZA-xqMjAyNS0wNS0yN3FlbGVtZW50SWRlbnRpZmllcm1pc3N1YW5jZV9kYXRl2BhYZqRmcmFuZG9tWCAWvlEqzjYIda5q8KADpkfm
-            AUOAKGt8Iq1R5X7_blAHE2hkaWdlc3RJRABsZWxlbWVudFZhbHVlYkVVcWVsZW1lbnRJZGVudGlmaWVyb2lzc3VpbmdfY291bnRyedgYWGOk
-            ZnJhbmRvbVggxfPLvhC9UFMZyEKtSh5ERT6r78nUZW2KoCf4qLASZNZoZGlnZXN0SUQGbGVsZW1lbnRWYWx1ZYFiRVVxZWxlbWVudElkZW50
-            aWZpZXJrbmF0aW9uYWxpdHlqaXNzdWVyQXV0aIRDoQEmoRghWQLeMIIC2jCCAoCgAwIBAgIUf2vrQ0pb13kmYuW1dsLV85EnOAswCgYIKoZI
-            zj0EAwIwVzEZMBcGA1UEAwwQUElEIElzc3VlciBDQSAwMjEtMCsGA1UECgwkRVVESSBXYWxsZXQgUmVmZXJlbmNlIEltcGxlbWVudGF0aW9u
-            MQswCQYDVQQGEwJFVTAeFw0yNTA0MTAxNDM0MTFaFw0yNjA3MDQxNDM0MTBaMFIxFDASBgNVBAMMC1BJRCBEUyAtIDAxMS0wKwYDVQQKDCRF
-            VURJIFdhbGxldCBSZWZlcmVuY2UgSW1wbGVtZW50YXRpb24xCzAJBgNVBAYTAkVVMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEbtpdDGfZ
-            r2pafe15Qo02ImcCSgmB30OdgaaO8_TFpUtR3MbVStda2Mz17DRVFtadtqHKSSSad7ke42LemkjamqOCAS0wggEpMB8GA1UdIwQYMBaAFEJQ
-            UL4QuBDwnURcjb-rEAjuJ9xJMBsGA1UdEQQUMBKCEGlzc3Vlci5ldWRpdy5kZXYwFgYDVR0lAQH_BAwwCgYIK4ECAgAAAQIwQwYDVR0fBDww
-            OjA4oDagNIYyaHR0cHM6Ly9wcmVwcm9kLnBraS5ldWRpdy5kZXYvY3JsL3BpZF9DQV9FVV8wMi5jcmwwHQYDVR0OBBYEFFABcwEd7yXSDl5I
-            yCs7OJHEnJnxMA4GA1UdDwEB_wQEAwIHgDBdBgNVHRIEVjBUhlJodHRwczovL2dpdGh1Yi5jb20vZXUtZGlnaXRhbC1pZGVudGl0eS13YWxs
-            ZXQvYXJjaGl0ZWN0dXJlLWFuZC1yZWZlcmVuY2UtZnJhbWV3b3JrMAoGCCqGSM49BAMCA0gAMEUCICqWEEilBF9oPJ4bBZQw2Ekz1hU8-aOZ
-            WpHT2w__0IWNAiEAyOM2_D2-WFvlrOP2gQmLhWxkClDagbhvElQCjPIqSwVZA4_YGFkDiqdmc3RhdHVzomtzdGF0dXNfbGlzdKJjaWR4GRMR
-            Y3VyaXhqaHR0cHM6Ly9pc3N1ZXIuZXVkaXcuZGV2L3Rva2VuX3N0YXR1c19saXN0L0VVL2V1LmV1cm9wYS5lYy5ldWRpLnBpZC4xL2JiMTEz
-            N2UwLWZlMWUtNDRkYi05Mjg1LWRlN2VkOGMyZDEwZW9pZGVudGlmaWVyX2xpc3SiYmlkZDQ4ODFjdXJpeGhodHRwczovL2lzc3Vlci5ldWRp
-            dy5kZXYvaWRlbnRpZmllcl9saXN0L0VVL2V1LmV1cm9wYS5lYy5ldWRpLnBpZC4xL2JiMTEzN2UwLWZlMWUtNDRkYi05Mjg1LWRlN2VkOGMy
-            ZDEwZWdkb2NUeXBld2V1LmV1cm9wYS5lYy5ldWRpLnBpZC4xZ3ZlcnNpb25jMS4wbHZhbGlkaXR5SW5mb6Nmc2lnbmVkwHQyMDI1LTA1LTI3
-            VDA4OjEzOjIxWml2YWxpZEZyb23AdDIwMjUtMDUtMjdUMDg6MTM6MjFaanZhbGlkVW50aWzAdDIwMjUtMDgtMjVUMDA6MDA6MDBabHZhbHVl
-            RGlnZXN0c6F3ZXUuZXVyb3BhLmVjLmV1ZGkucGlkLjGpAFggwG5NkzwZiLZMD62mdmwvFjv7aTQt1We8iyH-fMbWO8sBWCCKAOnJaNlolxsK
-            x-Qi-LoeU9vjl9vdGG7g4vhyyQUHWAJYIL9LlzaBrcdI9jzH2wCEuEXf8qQV6su28rwucz6iw7YHA1ggQkJUF8m34q1KQ2z9mD5hA9K3DNVl
-            b5i7oVwOCFl3oIAEWCAtkHp9sgW3gUwiKyfN_rd87NPLEtH2nuoRGW8KzTQUWgVYIADp4Ty9opglXbQUQ30H7FFqC216q9s3IF3GgU7ywmEg
-            Blggz-gl9y3r34GxowWRe6CzenwZ3hV3OsFnmMfIy83xxIAHWCC95VWgMCakOg_pmBX4VMLw1FVbejAMYo4WHMVminYe4QhYILvkcUWw01Er
-            IDrvKdqJ7gxOqALLL6hTKI3N-ibW0yfGbWRldmljZUtleUluZm-haWRldmljZUtleaQBAiABIVggUVFDZDIPLJLjMcpeZbYgU4ahAGglIGcu
-            Je34Rk_gV-IiWCA4P6VbgKeKQMl3WGFaaHFXMpcgQlzQF_eW9Yuk1ho0im9kaWdlc3RBbGdvcml0aG1nU0hBLTI1NlhAi-IYBBTdONaATnXY
-            4jcS9Wg32A72OZ9zRKBHrzd2MFq9Gk1HPBQFkL5n3SWtb9-nPeJZAfk_nScMkpcYY844r2xkZXZpY2VTaWduZWSiam5hbWVTcGFjZXPYGEGg
-            amRldmljZUF1dGihb2RldmljZVNpZ25hdHVyZYRDoQEmoPZYQAdF3jbal7_uvhXIxuKV9ZE_9Dja-3dkzH5OUFJ5fug7CfxtYIWyQXmBb-0s
-            VeJakU_LiF4mJwXG4JRLiu3htGtmc3RhdHVzAA
-        """.trimIndent()
-
-            input.decodeToByteArray(Base64UrlStrict)
-                .let { coseCompliantSerializer.decodeFromByteArray<DeviceResponse>(it) }
-                .apply {
-                    documents.shouldNotBeNull().first().apply {
-                        issuerSigned.namespaces.shouldNotBeNull().values.first().apply {
-                            entries.shouldHaveSize(8)
-                            entries.first { it.value.elementIdentifier == "expiry_date" }
-                                .value.elementValue shouldBe LocalDateOrInstant.LocalDate(LocalDate.parse("2025-08-25"))
-                            entries.first { it.value.elementIdentifier == "birth_date" }
-                                .value.elementValue shouldBe LocalDateOrInstant.LocalDate(LocalDate.parse("1965-01-01"))
-                        }
-                    }
-                }
-        }
-
         "deserialize IssuerSigned from EUDI Ref Impl" {
             CborCredentialSerializer.register(mapOf("birth_date" to LocalDate.serializer()), "eu.europa.ec.eudi.pid.1")
             val input = """

@@ -145,7 +145,7 @@ val AgentRevocationTest by testSuite {
             vcJws.shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
             val credentialStatus = vcJws.jws.vc.credentialStatus
             credentialStatus.shouldNotBeNull()
-            credentialStatus.statusList.index.shouldNotBeNull()
+            credentialStatus.statusList.shouldNotBeNull().index.shouldNotBeNull()
         }
 
         "encoding to a known value works" {

@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.wallet.lib.data.iso18013.IdentifierListInfo
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

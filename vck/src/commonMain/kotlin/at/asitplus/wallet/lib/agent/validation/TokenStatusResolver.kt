@@ -35,18 +35,18 @@ class TokenStatusResolverImpl(
     private val verifyCoseSignature: VerifyCoseSignatureFun<StatusListTokenPayload> = VerifyCoseSignature(),
 ) : TokenStatusResolver {
     override suspend fun invoke(status: Status): KmmResult<TokenStatus> = catching {
-        val token = resolveStatusListToken(status.statusList.uri)
+        val token = resolveStatusListToken(status.statusList!!.uri)
 
         val payload = token.validate(
             verifyJwsObject = verifyJwsObjectIntegrity,
             verifyCoseSignature = verifyCoseSignature,
-            statusListInfo = status.statusList,
+            statusListInfo = status.statusList!!,
             isInstantInThePast = { it < clock.now() },
         ).getOrThrow()
 
         extractTokenStatus(
             statusList = payload.statusList,
-            statusListInfo = status.statusList,
+            statusListInfo = status.statusList!!,
             zlibService = zlibService,
         ).getOrThrow()
     }
@@ -65,18 +65,18 @@ fun StatusListTokenResolver.toTokenStatusResolver(
     verifyCoseSignature: VerifyCoseSignatureFun<StatusListTokenPayload> = VerifyCoseSignature(),
 ) = TokenStatusResolver { status ->
     catching {
-        val token = this(status.statusList.uri)
+        val token = this(status.statusList!!.uri)
 
         val payload = token.validate(
             verifyJwsObject = verifyJwsObjectIntegrity,
             verifyCoseSignature = verifyCoseSignature,
-            statusListInfo = status.statusList,
+            statusListInfo = status.statusList!!,
             isInstantInThePast = { it < clock.now() },
         ).getOrThrow()
 
         extractTokenStatus(
             statusList = payload.statusList,
-            statusListInfo = status.statusList,
+            statusListInfo = status.statusList!!,
             zlibService = zlibService,
         ).getOrThrow()
     }

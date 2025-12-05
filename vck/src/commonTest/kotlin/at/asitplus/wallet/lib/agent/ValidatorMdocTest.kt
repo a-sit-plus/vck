@@ -106,7 +106,7 @@ val ValidatorMdocTest by testSuite {
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessIso>()
             issuerCredentialStore.setStatus(
                 timePeriod = FixedTimePeriodProvider.timePeriod,
-                index = credential.issuerSigned.issuerAuth.payload!!.status!!.statusList.index,
+                index = credential.issuerSigned.issuerAuth.payload.shouldNotBeNull().status.shouldNotBeNull().statusList.shouldNotBeNull().index,
                 status = TokenStatus.Invalid,
             ) shouldBe true
             validator.checkRevocationStatus(value.issuerSigned)
