@@ -20,4 +20,4 @@ data class DCAPIInfo(
      * https://html.spec.whatwg.org/multipage/browsers.html#ascii-serialisation-of-an-origin
      */
     val serializedOrigin: String,
-)
+) : SessionTranscriptContentHashable

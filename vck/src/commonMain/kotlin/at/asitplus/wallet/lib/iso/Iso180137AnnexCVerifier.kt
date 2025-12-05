@@ -4,7 +4,7 @@ import at.asitplus.dcapi.DCAPIHandover
 import at.asitplus.dcapi.DCAPIHandover.Companion.TYPE_DCAPI
 import at.asitplus.dcapi.DCAPIInfo
 import at.asitplus.dcapi.DCAPIResponse
-import at.asitplus.dcapi.OpenID4VPDCAPIHandoverInfo
+import at.asitplus.dcapi.SessionTranscriptContentHashable
 import at.asitplus.dcapi.request.IsoMdocRequest
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.iso.DeviceResponse
@@ -30,7 +30,6 @@ import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.ValidatorMdoc
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
-import at.asitplus.wallet.lib.extensions.sessionTranscriptThumbprint
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
 import io.github.aakira.napier.Napier
@@ -94,20 +93,12 @@ class Iso180137AnnexCVerifier(
      * Performs calculation of the [at.asitplus.iso.SessionTranscript] for DC API according to ISO/IEC 18013-7
      */
     override fun createDcApiSessionTranscript(
-        nonce: String,
-        hasBeenEncrypted: Boolean,
-        origin: String,
+        toBeHashed: SessionTranscriptContentHashable,
     ): SessionTranscript = SessionTranscript.forDcApi(
         DCAPIHandover(
-            type = DCAPIHandover.TYPE_DCAPI,
-            hash = coseCompliantSerializer.encodeToByteArray<OpenID4VPDCAPIHandoverInfo>(
-                OpenID4VPDCAPIHandoverInfo(
-                    origin = origin,
-                    nonce = nonce,
-                    jwkThumbprint = if (hasBeenEncrypted) {
-                        decryptionKeyMaterial.jsonWebKey.sessionTranscriptThumbprint()
-                    } else null,
-                )
+            type = TYPE_DCAPI,
+            hash = coseCompliantSerializer.encodeToByteArray(
+                toBeHashed as? DCAPIInfo ?: throw IllegalStateException("Expected DCAPIInfo")
             ).sha256(),
         )
     )
@@ -124,20 +115,19 @@ class Iso180137AnnexCVerifier(
         val privateKey = decryptionKeyMaterial.exportPrivateKey().getOrThrow()
                 as? CryptoPrivateKey.EC.WithPublicKey ?: throw IllegalStateException("Expected EC private key")
 
-        println("privateKey = ${privateKey}")
         val encryptedResponseData = receivedData.response.encryptedResponseData
         val serializedOrigin = expectedOrigin.serializeOrigin()
             ?: throw IllegalStateException("Expected origin invalid")
 
-        //TODO use createDcApiSessionTranscript() function
-
-        val dcapiInfo = DCAPIInfo(isoMdocRequest.encryptionInfo, serializedOrigin)
-        val hash = coseCompliantSerializer.encodeToByteArray(dcapiInfo).sha256() // TODO can we do this with serialization? Would probably need CborClassDiscriminator though
-        val sessionTranscript = SessionTranscript.forDcApi(DCAPIHandover("dcapi", hash))
+        val sessionTranscript = createDcApiSessionTranscript(
+            DCAPIInfo(
+                encryptionInfo = isoMdocRequest.encryptionInfo,
+                serializedOrigin = serializedOrigin,
+            )
+        )
         val encodedSessionTranscript = coseCompliantSerializer.encodeToByteArray(sessionTranscript)
         val encodedDeviceResponse = decryptHpke(encryptedResponseData.enc, encryptedResponseData.cipherText, privateKey, encodedSessionTranscript)
         val deviceResponse = coseCompliantSerializer.decodeFromByteArray<DeviceResponse>(encodedDeviceResponse)
-        println("deviceResponse = ${deviceResponse}")
 
         val result = validatorMdoc.verifyDeviceResponse(
             deviceResponse,

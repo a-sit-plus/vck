@@ -5,6 +5,7 @@ import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.dcapi.DCAPIHandover
 import at.asitplus.dcapi.OpenID4VPDCAPIHandoverInfo
+import at.asitplus.dcapi.SessionTranscriptContentHashable
 import at.asitplus.dif.ClaimFormat
 import at.asitplus.dif.FormatContainerJwt
 import at.asitplus.dif.FormatContainerSdJwt
@@ -651,7 +652,15 @@ class OpenId4VpVerifier(
                 if (origin == null) {
                     throw IllegalStateException("Missing required parameter: origin")
                 }
-                createDcApiSessionTranscript(expectedNonce, hasBeenEncrypted, origin)
+                createDcApiSessionTranscript(
+                    OpenID4VPDCAPIHandoverInfo(
+                        origin = origin,
+                        nonce = expectedNonce,
+                        jwkThumbprint = if (hasBeenEncrypted) {
+                            decryptionKeyMaterial.jsonWebKey.sessionTranscriptThumbprint()
+                        } else null,
+                    )
+                )
             }
 
             else -> createOpenId4VpSessionTranscript(clientId, expectedNonce, hasBeenEncrypted, responseUrl)
@@ -662,20 +671,12 @@ class OpenId4VpVerifier(
      * Performs calculation of the [at.asitplus.iso.SessionTranscript] for DC API according to OID4VP
      */
     override fun createDcApiSessionTranscript(
-        nonce: String,
-        hasBeenEncrypted: Boolean,
-        origin: String,
+        toBeHashed: SessionTranscriptContentHashable,
     ): SessionTranscript = SessionTranscript.forDcApi(
         DCAPIHandover(
             type = DCAPIHandover.TYPE_OPENID4VP,
             hash = coseCompliantSerializer.encodeToByteArray<OpenID4VPDCAPIHandoverInfo>(
-                OpenID4VPDCAPIHandoverInfo(
-                    origin = origin,
-                    nonce = nonce,
-                    jwkThumbprint = if (hasBeenEncrypted) {
-                        decryptionKeyMaterial.jsonWebKey.sessionTranscriptThumbprint()
-                    } else null,
-                )
+                toBeHashed as? OpenID4VPDCAPIHandoverInfo ?: throw IllegalArgumentException("Unsupported DCAPIHandoverInfo")
             ).sha256(),
         )
     )

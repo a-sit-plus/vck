@@ -1,17 +1,14 @@
 package at.asitplus.wallet.lib
 
-import at.asitplus.dcapi.DCAPIHandover
-import at.asitplus.dcapi.OpenID4VPDCAPIHandoverInfo
+import at.asitplus.dcapi.SessionTranscriptContentHashable
 import at.asitplus.iso.DeviceAuthentication
 import at.asitplus.iso.Document
 import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.SessionTranscript
-import at.asitplus.iso.sha256
 import at.asitplus.iso.wrapInCborTag
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
-import at.asitplus.wallet.lib.extensions.sessionTranscriptThumbprint
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.encodeToByteArray
@@ -29,11 +26,8 @@ abstract class AbstractMdocVerifier {
      * Performs calculation of the [at.asitplus.iso.SessionTranscript] for DC API
      */
     protected abstract fun createDcApiSessionTranscript(
-        nonce: String,
-        hasBeenEncrypted: Boolean,
-        origin: String,
-    ):SessionTranscript
-    // TODO move SessionTranscript and other ISO classes from openid-data-classes to main vck or some other module, so that we can access SessionTranscript from the ISO180137Verifier and implement this method where it belongs
+        toBeHashed: SessionTranscriptContentHashable,
+    ): SessionTranscript
 
     /**
      * Performs verification of the [at.asitplus.iso.SessionTranscript] and [at.asitplus.iso.DeviceAuthentication],
