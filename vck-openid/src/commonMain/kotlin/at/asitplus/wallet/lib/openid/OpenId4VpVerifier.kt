@@ -5,6 +5,7 @@ import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.dcapi.DCAPIHandover
 import at.asitplus.dcapi.OpenID4VPDCAPIHandoverInfo
+import at.asitplus.dcapi.OpenId4VpResponse
 import at.asitplus.dcapi.SessionTranscriptContentHashable
 import at.asitplus.dif.ClaimFormat
 import at.asitplus.dif.FormatContainerJwt
@@ -420,6 +421,18 @@ class OpenId4VpVerifier(
     }.let {
         validateAuthnResponse(it, externalId)
     }
+
+    /**
+     * Validates an Authentication Response from the Wallet, where [input] is a signed or unsigned DC API response.
+     *
+     * The [externalId] will be used to load the corresponding [AuthenticationRequestParameters] from the store.
+     */
+    suspend fun validateAuthnResponse(
+        input: OpenId4VpResponse,
+        externalId: String,
+    ): AuthnResponseResult =
+        validateAuthnResponse(ResponseParametersFrom.DcApi.createFromOpenId4VpResponse(input), externalId)
+
 
     /**
      * Validates [AuthenticationResponseParameters] from the Wallet
