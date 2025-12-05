@@ -1,6 +1,6 @@
 # Changelog
 
-Release 5.11.0 (unreleased):
+Release 5.10.1:
  - Proximity presentations:
    - Return multiple ISO mDoc credentials in one device response when generating a presentation in proximity flows
  - OpenID for Verifiable Presentations:
