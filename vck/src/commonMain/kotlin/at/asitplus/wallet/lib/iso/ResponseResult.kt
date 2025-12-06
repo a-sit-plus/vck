@@ -5,7 +5,6 @@ import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 
 sealed class ResponseResult {
-
     /**
      * Error in parsing the content itself, before verifying the contents of the response
      */
@@ -19,20 +18,6 @@ sealed class ResponseResult {
      */
     data class ValidationError(
         val cause: Throwable? = null,
-    ) : ResponseResult()
-
-    /**
-     * Validation results of all returned verifiable presentations
-     */
-    data class VerifiablePresentationValidationResults(
-        val validationResults: List<ResponseResult>,
-    ) : ResponseResult()
-
-    /**
-     * Validation results of all returned verifiable presentations
-     */
-    data class VerifiableDCQLPresentationValidationResults(
-        val validationResults: Map<DCQLCredentialQueryIdentifier, ResponseResult>,
     ) : ResponseResult()
 
     /**
