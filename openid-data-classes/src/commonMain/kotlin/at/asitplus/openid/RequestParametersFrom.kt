@@ -41,7 +41,7 @@ sealed class RequestParametersFrom<S : RequestParameters> {
     @SerialName(SerialNames.TYPE_DCAPI_SIGNED)
     data class DcApiSigned<T : RequestParameters>(
         @SerialName(SerialNames.DC_API_REQUEST)
-        val dcApiRequest: DCAPIWalletRequest.Oid4Vp,
+        val dcApiRequest: DCAPIWalletRequest.OpenId4VpSigned,
         @SerialName(SerialNames.PARAMETERS)
         override val parameters: T,
         @Serializable(JwsSignedSerializer::class)
@@ -57,7 +57,7 @@ sealed class RequestParametersFrom<S : RequestParameters> {
     @SerialName(SerialNames.TYPE_DCAPI_UNSIGNED)
     data class DcApiUnsigned<T : RequestParameters>(
         @SerialName(SerialNames.DC_API_REQUEST)
-        val dcApiRequest: DCAPIWalletRequest.Oid4Vp,
+        val dcApiRequest: DCAPIWalletRequest.OpenId4VpUnsigned,
         @SerialName(SerialNames.PARAMETERS)
         override val parameters: T,
         @SerialName(SerialNames.JSON_STRING)

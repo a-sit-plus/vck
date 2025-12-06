@@ -235,7 +235,6 @@ class OpenId4VpVerifier(
     suspend fun createAuthnRequest(
         requestOptions: OpenId4VpRequestOptions,
         creationOptions: CreationOptions,
-        id: String,
     ): KmmResult<CreatedRequest> = catching {
         when (creationOptions) {
             is CreationOptions.Query -> {
