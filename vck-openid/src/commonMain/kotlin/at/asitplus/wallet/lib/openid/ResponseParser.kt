@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.catchingUnwrapped
+import at.asitplus.dcapi.OpenId4VpResponse
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.ResponseParametersFrom
 import at.asitplus.signum.indispensable.josef.JweDecrypted
@@ -33,7 +34,15 @@ class ResponseParser(
     @Throws(IllegalArgumentException::class, CancellationException::class)
     suspend fun parseAuthnResponse(input: String) = input.parseResponseParameters().extractFromJar()
 
-    private fun String.parseResponseParameters() = parseUrlSafe(this)
+    /**
+     * Parses [at.asitplus.openid.AuthenticationResponseParameters], where [input] is a signed or unsigned DC API
+     * response.
+     */
+    @Throws(IllegalArgumentException::class, CancellationException::class)
+    suspend fun parseAuthnResponse(input: OpenId4VpResponse) =
+        ResponseParametersFrom.DcApi.createFromOpenId4VpResponse(input).extractFromJar()
+
+    private fun String.parseResponseParameters() : ResponseParametersFrom = parseUrlSafe(this)
         ?: parsePostBodySafe(this)
         ?: throw IllegalArgumentException("Can't parse input: $this")
 
@@ -70,9 +79,9 @@ class ResponseParser(
             verifyJwsObject(jws).getOrElse {
                 throw IllegalArgumentException("JWS not verified: $encodedResponse", it)
             }
-            ResponseParametersFrom.JwsSigned(jws, this, jws.payload)
+            ResponseParametersFrom.JwsSigned(jws, this, jws.payload, this.clientIdRequired)
         } ?: encodedResponse.fromJwe()?.let { jwe ->
-            ResponseParametersFrom.JweDecrypted(jwe, this, jwe.payload)
+            ResponseParametersFrom.JweDecrypted(jwe, this, jwe.payload, this.clientIdRequired)
         } ?: throw IllegalArgumentException("Got encoded response, but could not deserialize it from $this")
     } ?: this
 

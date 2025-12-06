@@ -2,9 +2,17 @@
 
 package at.asitplus.iso
 
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.io.TransformingSerializerTemplate
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.decodeFromByteArray
+import kotlinx.serialization.encodeToByteArray
 
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for mdoc request (8.3.2.1.2.1)
@@ -34,3 +42,8 @@ data class DeviceRequest(
     }
 }
 
+object DeviceRequestBase64UrlSerializer : TransformingSerializerTemplate<DeviceRequest, String>(
+    parent = String.serializer(),
+    encodeAs = { coseCompliantSerializer.encodeToByteArray(it).encodeToString(Base64UrlStrict) },
+    decodeAs = { coseCompliantSerializer.decodeFromByteArray<DeviceRequest>(it.decodeToByteArray(Base64UrlStrict)) }
+)

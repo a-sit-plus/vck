@@ -11,6 +11,7 @@ import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
@@ -113,7 +114,7 @@ val OpenId4VpInteropTest by testSuite {
             val requestNonce = uuid4().toString()
             val requestUrl = "https://verifier.example.com/request/$requestNonce"
             val (requestUrlForWallet, requestObject) = it.verifierOid4vp.createAuthnRequest(
-                RequestOptions(
+                OpenId4VpRequestOptions(
                     responseMode = OpenIdConstants.ResponseMode.DirectPost,
                     responseUrl = "https://verifier.example.com/response/$responseNonce",
                     credentials = setOf(

@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.eupid.EuPidScheme
+import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
@@ -66,7 +67,7 @@ val OpenId4VpSdJwtProtocolTest by testSuite {
         "Selective Disclosure with custom credential" {
             val requestedClaim = AtomicAttribute2023.CLAIM_GIVEN_NAME
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
-                RequestOptions(
+                OpenId4VpRequestOptions(
                     setOf(
                         RequestOptionsCredential(AtomicAttribute2023, SD_JWT, setOf(requestedClaim))
                     )
@@ -93,7 +94,7 @@ val OpenId4VpSdJwtProtocolTest by testSuite {
                 EuPidScheme.SdJwtAttributes.GIVEN_NAME_BIRTH, // "birth_given_name" instead of "given_name_birth"
             )
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
-                RequestOptions(
+                OpenId4VpRequestOptions(
                     credentials = setOf(
                         RequestOptionsCredential(EuPidScheme, SD_JWT, requestedClaims)
                     )

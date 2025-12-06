@@ -16,6 +16,7 @@ import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.eupid.EuPidScheme
+import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
@@ -349,7 +350,7 @@ val OpenId4VpEuRefInteropTest by testSuite {
             val nonce = uuid4().toString()
             val requestUrl = "https://example.com/request/$nonce"
             val (walletUrl, jar) = verifierOid4vp.createAuthnRequest(
-                RequestOptions(
+                OpenId4VpRequestOptions(
                     responseMode = OpenIdConstants.ResponseMode.DirectPost,
                     responseUrl = "https://example.com/response",
                     credentials = setOf(

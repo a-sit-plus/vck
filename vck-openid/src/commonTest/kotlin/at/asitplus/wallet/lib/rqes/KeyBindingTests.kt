@@ -25,7 +25,7 @@ import at.asitplus.wallet.lib.data.digest
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.toBase64UrlJsonString
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.oidvci.DefaultMapStore
+import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult

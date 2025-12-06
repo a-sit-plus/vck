@@ -1,6 +1,8 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.catchingUnwrapped
+import at.asitplus.dcapi.OpenId4VpResponseSigned
+import at.asitplus.dcapi.OpenId4VpResponseUnsigned
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OpenIdConstants.ResponseMode.*
@@ -12,13 +14,13 @@ import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.extensions.getEncryptionTargetKey
 import at.asitplus.wallet.lib.jws.EncryptJweFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
-import at.asitplus.wallet.lib.oidvci.getEncryptionTargetKey
 import io.ktor.http.*
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -45,9 +47,17 @@ internal class AuthenticationResponseFactory(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
     ) = AuthenticationResponseResult.DcApi(
-        AuthenticationResponseParameters(
-            response = buildResponse(request, response),
-        )
+        when (request) {
+            is RequestParametersFrom.DcApiUnsigned<*> -> OpenId4VpResponseUnsigned(
+                buildResponseParametersDcApi(request, response),
+            )
+
+            is RequestParametersFrom.DcApiSigned<*> -> OpenId4VpResponseSigned(
+                buildResponseParametersDcApi(request, response)
+            )
+
+            else -> throw IllegalStateException("Should only be called with DC API requests")
+        }
     )
 
     @Throws(OAuth2Exception::class, CancellationException::class)
@@ -136,12 +146,26 @@ internal class AuthenticationResponseFactory(
     private suspend fun buildResponse(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
+    ) =  if (request.parameters.responseMode?.requiresEncryption == true || response.requestsEncryption()) {
+            encrypt(request, response)
+        } else {
+            when (response) {
+                is AuthenticationResponse.Error -> joseCompliantSerializer.encodeToString(response.error)
+                is AuthenticationResponse.Success -> joseCompliantSerializer.encodeToString(response.params)
+            }
+        }
+
+    @Throws(OAuth2Exception::class, CancellationException::class)
+    private suspend fun buildResponseParametersDcApi(
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        response: AuthenticationResponse,
     ) = if (request.parameters.responseMode?.requiresEncryption == true || response.requestsEncryption()) {
-        encrypt(request, response)
+        AuthenticationResponseParameters(response = encrypt(request, response))
     } else {
         when (response) {
-            is AuthenticationResponse.Error -> joseCompliantSerializer.encodeToString(response.error)
-            is AuthenticationResponse.Success -> joseCompliantSerializer.encodeToString(response.params)
+            is AuthenticationResponse.Error ->
+                AuthenticationResponseParameters(response = joseCompliantSerializer.encodeToString(response.error))
+            is AuthenticationResponse.Success -> response.params
         }
     }
 

@@ -12,8 +12,8 @@ import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.TokenVerificationService
-import at.asitplus.wallet.lib.oidvci.DefaultNonceService
-import at.asitplus.wallet.lib.oidvci.NonceService
+import at.asitplus.wallet.lib.DefaultNonceService
+import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.oidvci.OAuth2AuthorizationServerAdapter
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 import at.asitplus.wallet.lib.oidvci.TokenInfo

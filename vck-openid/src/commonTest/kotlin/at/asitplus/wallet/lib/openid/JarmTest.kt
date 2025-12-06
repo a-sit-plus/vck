@@ -4,6 +4,7 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
@@ -57,7 +58,7 @@ val JarmTest by testSuite {
          */
         "DirectPostJwt must either be signed or encrypted" {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
-                RequestOptions(
+                OpenId4VpRequestOptions(
                     credentials = setOf(
                         RequestOptionsCredential(
                             AtomicAttribute2023,

@@ -31,6 +31,8 @@ import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstrain
 import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
+import at.asitplus.wallet.lib.RequestOptions
+import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
@@ -38,12 +40,9 @@ import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import com.benasher44.uuid.uuid4
 import kotlinx.serialization.json.JsonPrimitive
 
-// TODO Should be NormalizedJsonPath
-typealias RequestedAttributes = Set<String>
-
-data class RequestOptions(
+data class OpenId4VpRequestOptions(
     /** Requested credentials, should be at least one. */
-    val credentials: Set<RequestOptionsCredential>,
+    override val credentials: Set<RequestOptionsCredential>,
 
     /** Presentation mechanism to be used for requesting credentials. */
     val presentationMechanism: PresentationMechanismEnum = PresentationMechanismEnum.PresentationExchange,
@@ -56,21 +55,21 @@ data class RequestOptions(
     val responseMode: OpenIdConstants.ResponseMode = OpenIdConstants.ResponseMode.Fragment,
 
     /**
-     * Response URL to set in the [AuthenticationRequestParameters.responseUrl],
+     * Response URL to set in the [at.asitplus.openid.AuthenticationRequestParameters.responseUrl],
      * required if [responseMode] is set to [OpenIdConstants.ResponseMode.DirectPost] or
      * [OpenIdConstants.ResponseMode.DirectPostJwt].
      */
     val responseUrl: String? = null,
 
     /**
-     * Response type to set in [AuthenticationRequestParameters.responseType],
+     * Response type to set in [at.asitplus.openid.AuthenticationRequestParameters.responseType],
      * by default only `vp_token` (as per OpenID4VP spec, see [OpenIdConstants.VP_TOKEN]).
      * Be sure to separate values by a space, e.g. `vp_token id_token` (see [OpenIdConstants.ID_TOKEN]).
      */
     val responseType: String = VP_TOKEN,
 
     /** Opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]. */
-    val state: String = uuid4().toString(),
+    override val state: String = uuid4().toString(),
 
     @Deprecated("Encryption depends on [responseMode]")
     val encryption: Boolean = false,
@@ -80,12 +79,37 @@ data class RequestOptions(
      * set with details about the transaction that the Verifier is requesting the End-User to authorize.
      */
     val transactionData: List<TransactionData>? = null,
-) {
+
+    /**
+     * REQUIRED when signed requests defined in Appendix A.3.2 are used with the
+     * Digital Credentials API(DC API). A non-empty array of strings, each string representing an Origin of the Verifier
+     * that is making the request. The Wallet MUST compare values in this parameter to the Origin to detect replay of
+     * the request from a malicious Verifier. If the Origin does not match any of the entries in expected_origins,
+     * the Wallet MUST return an error. This error SHOULD be an invalid_request error. This parameter is not for use in
+     * unsigned requests and therefore a Wallet MUST ignore this parameter if it is present in an unsigned request.
+     */
+    val expectedOrigins: List<String>? = null,
+
+    /**
+     * Whether the client_id should be added to the request. Required for DC API:
+     * The client_id parameter MUST be omitted in unsigned requests defined in Appendix A.3.1.
+     * The client_id parameter MUST be present in signed requests defined in Appendix A.3.2, as it communicates to the
+     * Wallet which Client Identifier Prefix and Client Identifier to use when authenticating the client through
+     * verification of the request signature or retrieving client metadata.
+     */
+    val populateClientId: Boolean = true,
+) : RequestOptions {
     init {
         if (!transactionData.isNullOrEmpty()) {
             val transactionIds = transactionData.map { it.credentialIds.toList() }.flatten().sorted().distinct()
             val credentialIds = credentials.map { it.id }.sorted().distinct()
             require(transactionIds == credentialIds) { "OpenId4VP defines that the credential_ids that must be part of a transaction_data element have to be an ID from InputDescriptor" }
+        }
+        if (isAnyDcApi) {
+            require(isDcql) { "DC API only supports DCQL" }
+            requireNotNull(expectedOrigins) { "Expected origins must be set for DC API" }
+        } else {
+            require(populateClientId) { "client_id should be set for anything but (unsigned) DC API requests" }
         }
     }
 
@@ -99,9 +123,8 @@ data class RequestOptions(
         get() = (responseMode == OpenIdConstants.ResponseMode.DirectPost) ||
                 (responseMode == OpenIdConstants.ResponseMode.DirectPostJwt)
 
-    val isDcApi: Boolean
-        get() = (responseMode == OpenIdConstants.ResponseMode.DcApi) ||
-                (responseMode == OpenIdConstants.ResponseMode.DcApiJwt)
+    val isAnyDcApi: Boolean
+        get() = responseMode == OpenIdConstants.ResponseMode.DcApi || responseMode == OpenIdConstants.ResponseMode.DcApiJwt
 
     val isSiop: Boolean
         get() = responseType.contains(OpenIdConstants.ID_TOKEN)
@@ -187,116 +210,3 @@ data class RequestOptions(
     }
 }
 
-data class RequestOptionsCredential(
-    /** Credential type to request, or `null` to make no restrictions. */
-    val credentialScheme: ConstantIndex.CredentialScheme,
-    /** Required representation, see [ConstantIndex.CredentialRepresentation]. */
-    val representation: CredentialRepresentation = CredentialRepresentation.PLAIN_JWT,
-    /**
-     * List of attributes that shall be requested explicitly (selective disclosure),
-     * or `null` to make no restrictions.
-     *
-     * **By convention, strings containing a `.` are assumed to request nested claims**
-     *
-     * Use the claim names `name` and `address.formatted` to request all claims within this credential:
-     * ````
-     *   "name": "Mustermann",
-     *   "address": {
-     *      "formatted": "Herrengasse 1"
-     *   }
-     * ```
-     */
-    val requestedAttributes: RequestedAttributes? = null,
-    /**
-     * List of attributes that shall be requested explicitly (selective disclosure),
-     * but are not required (i.e. marked as optional), or `null` to make no restrictions.
-     *
-     * **By convention, strings containing a `.` are assumed to request nested claims**
-     *
-     * Use the claim names `name` and `address.formatted` to request all claims within this credential:
-     * ````
-     *   "name": "Mustermann",
-     *   "address": {
-     *      "formatted": "Herrengasse 1"
-     *   }
-     * ```
-     */
-    val requestedOptionalAttributes: RequestedAttributes? = null,
-    /** ID to be used in [DifInputDescriptor] or [QesInputDescriptor], or [DCQLCredentialQueryInstance] */
-    val id: String = uuid4().toString(),
-) {
-    fun buildId() = if (isMdoc) credentialScheme.isoDocType!! else id
-
-    private val isMdoc: Boolean
-        get() = credentialScheme.isoDocType != null && representation == CredentialRepresentation.ISO_MDOC
-
-    fun toConstraint() =
-        Constraint(
-            limitDisclosure = if (isMdoc) RequirementEnum.REQUIRED else null,
-            fields = (requiredAttributes() + optionalAttributes() + toTypeConstraint()).filterNotNull().toSet()
-        )
-
-    private fun requiredAttributes() = requestedAttributes?.createConstraints(credentialScheme, false)
-        ?: listOf()
-
-    private fun optionalAttributes() = requestedOptionalAttributes?.createConstraints(credentialScheme, true)
-        ?: listOf()
-
-    private fun toTypeConstraint() = when (representation) {
-        CredentialRepresentation.PLAIN_JWT -> credentialScheme.toVcConstraint()
-        CredentialRepresentation.SD_JWT -> credentialScheme.toSdJwtConstraint()
-        CredentialRepresentation.ISO_MDOC -> null
-    }
-
-    fun toFormatHolder(containerJwt: FormatContainerJwt, containerSdJwt: FormatContainerSdJwt) =
-        when (representation) {
-            CredentialRepresentation.PLAIN_JWT -> FormatHolder(jwtVp = containerJwt)
-            CredentialRepresentation.SD_JWT -> FormatHolder(sdJwt = containerSdJwt)
-            CredentialRepresentation.ISO_MDOC -> FormatHolder(msoMdoc = containerJwt)
-        }
-
-    private fun RequestedAttributes.createConstraints(
-        scheme: ConstantIndex.CredentialScheme?,
-        optional: Boolean,
-    ): Collection<ConstraintField> = map {
-        if (isMdoc) it.toIsoMdocConstraintField(scheme, optional) else it.toJwtConstraintField(optional)
-    }
-
-    private fun String.toIsoMdocConstraintField(scheme: ConstantIndex.CredentialScheme?, optional: Boolean) =
-        ConstraintField(
-            path = listOf(scheme.prefixWithIsoNamespace(this)),
-            intentToRetain = false,
-            optional = optional
-        )
-
-    private fun String.toJwtConstraintField(optional: Boolean): ConstraintField =
-        ConstraintField(path = listOf(splitByDotToJsonPath()), optional = optional)
-
-    // EUDIW Reference Implementation only supports dot notation for JSONPath
-    private fun String.splitByDotToJsonPath(): String =
-        NormalizedJsonPath(split(".").map { NameSegment(it) }).toShorthandNameSegmentNotation()
-
-    private fun ConstantIndex.CredentialScheme?.prefixWithIsoNamespace(attribute: String): String =
-        NormalizedJsonPath(
-            NameSegment(this?.isoNamespace ?: "mdoc"),
-            NameSegment(attribute),
-        ).toString()
-
-    private fun ConstantIndex.CredentialScheme.toVcConstraint() = if (supportsVcJwt)
-        ConstraintField(
-            path = listOf("$.type"),
-            filter = ConstraintFilter(
-                type = "string",
-                const = JsonPrimitive(vcType),
-            )
-        ) else null
-
-    private fun ConstantIndex.CredentialScheme.toSdJwtConstraint() = if (supportsSdJwt)
-        ConstraintField(
-            path = listOf("$.vct"),
-            filter = ConstraintFilter(
-                type = "string",
-                const = JsonPrimitive(sdJwtType!!)
-            )
-        ) else null
-}

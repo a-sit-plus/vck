@@ -61,6 +61,8 @@ data class AuthenticationResponseParameters(
     /**
      * OAuth2.0: REQUIRED if the `state` parameter was present in the client authorization request. The exact value
      * received from the client.
+     * OID4VP: Not required for Digital Credentials API: The Digital Credentials API uses internal mechanisms to
+     * maintain the binding.
      */
     @SerialName("state")
     val state: String? = null,
