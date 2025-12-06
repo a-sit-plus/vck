@@ -57,7 +57,7 @@ sealed class ResponseParametersFrom {
             fun createFromOpenId4VpResponse(input: OpenId4VpResponse): DcApi {
                 return DcApi(
                     parameters = input.data,
-                    origin = input.origin,
+                    origin = input.origin ?: throw IllegalStateException("Origin not set by browser"),
                     hasBeenEncrypted = input.data.response?.startsWith("eyJhb") == true, // TODO is there a better way to detect this?
                     clientIdRequired = !input.protocol.isUnsignedOpenId4VpRequest
                 )
