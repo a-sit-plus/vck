@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
