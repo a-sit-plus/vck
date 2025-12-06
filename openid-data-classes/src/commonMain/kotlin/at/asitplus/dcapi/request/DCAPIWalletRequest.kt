@@ -1,48 +1,71 @@
 package at.asitplus.dcapi.request
 
-import at.asitplus.iso.DeviceRequest
-import at.asitplus.iso.EncryptionInfo
+import at.asitplus.openid.RequestParameters
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonClassDiscriminator
 
 /**
  * Abstract base class for requests received by the wallet via the Digital Credentials API.
  */
 @Serializable
+@JsonClassDiscriminator("protocol")
 sealed interface DCAPIWalletRequest {
-    @SerialName("credentialId")
+    val protocol: ExchangeProtocolIdentifier
     val credentialId: String
-    @SerialName("callingPackageName")
     val callingPackageName: String
-    @SerialName("callingOrigin")
     val callingOrigin: String
 
     @Serializable
     data class IsoMdoc(
-        @SerialName("deviceRequest")
-        override val deviceRequest: DeviceRequest,
-        @SerialName("encryptionInfo")
-        override val encryptionInfo: EncryptionInfo,
+        @SerialName("isoMdocRequest")
+        val isoMdocRequest: IsoMdocRequest,
         @SerialName("credentialId")
         override val credentialId: String,
         @SerialName("callingPackageName")
         override val callingPackageName: String,
         @SerialName("callingOrigin")
         override val callingOrigin: String
-    ) : DCAPIWalletRequest, IsoMdocRequestInterface
+    ) : DCAPIWalletRequest {
+        override val protocol: ExchangeProtocolIdentifier
+            get() = ExchangeProtocolIdentifier.ISO_MDOC_ANNEX_C
+    }
+
+
+    sealed class OpenId4Vp {
+        abstract val protocol: ExchangeProtocolIdentifier
+        abstract val request: RequestParameters
+    }
 
     @Serializable
-    data class Oid4Vp(
-        /** Format `openid4vp-v<version>-<request-type>`, see [ExchangeProtocolIdentifier]. */
-        @SerialName("protocol")
-        val protocol: ExchangeProtocolIdentifier,
+    data class OpenId4VpSigned(
         @SerialName("request")
-        val request: String,
+        override val request: RequestParameters,
         @SerialName("credentialId")
         override val credentialId: String,
         @SerialName("callingPackageName")
         override val callingPackageName: String,
         @SerialName("callingOrigin")
         override val callingOrigin: String,
-    ) : DCAPIWalletRequest
+    ) : DCAPIWalletRequest, OpenId4Vp() {
+        override val protocol: ExchangeProtocolIdentifier
+            get() = ExchangeProtocolIdentifier.OPENID4VP_V1_SIGNED
+    }
+
+
+    @Serializable
+    data class OpenId4VpUnsigned(
+        @SerialName("request")
+        override val request: RequestParameters,
+        @SerialName("credentialId")
+        override val credentialId: String,
+        @SerialName("callingPackageName")
+        override val callingPackageName: String,
+        @SerialName("callingOrigin")
+        override val callingOrigin: String,
+    ) : DCAPIWalletRequest, OpenId4Vp() {
+        override val protocol: ExchangeProtocolIdentifier
+            get() = ExchangeProtocolIdentifier.OPENID4VP_V1_UNSIGNED
+    }
+
 }
