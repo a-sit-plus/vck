@@ -69,3 +69,16 @@ sealed interface DCAPIWalletRequest {
     }
 
 }
+
+@Deprecated(
+    "Replaced with DCAPIWalletRequest.OpenId4VpUnsigned / DCAPIWalletRequest.OpenId4VpSigned depending on your protocol variable",
+    level = DeprecationLevel.ERROR
+)
+class Oid4vpDCAPIRequest
+
+@Deprecated(
+    "Replaced with DCAPIWalletRequest",
+    replaceWith = ReplaceWith("at.asitplus.dcapi.request.DCAPIWalletRequest"),
+    level = DeprecationLevel.ERROR
+)
+class DCAPIRequest
