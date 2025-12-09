@@ -12,6 +12,14 @@ Release 5.11.0 (unreleased):
    - Build session transcripts for DC API responses, verify `expected_origins`, and parse DC API `OpenId4VpResponse` inputs without requiring `state`
  - Utilities:
    - Move shared nonce/map store utilities and add helpers to choose encryption keys and compute session transcript thumbprints to main vck
+ - Deprecations:
+   - `at.asitplus.wallet.lib.oidvci.NonceService` is now `at.asitplus.wallet.lib.NonceService`
+   - `at.asitplus.wallet.lib.oidvci.DefaultNonceService` is now `at.asitplus.wallet.lib.DefaultNonceService`
+   - `at.asitplus.wallet.lib.oidvci.MapStore` is now `at.asitplus.wallet.lib.utils.MapStore`
+   - `at.asitplus.wallet.lib.oidvci.DefaultMapStore` is now `at.asitplus.wallet.lib.utils.DefaultMapStore`
+   - `at.asitplus.wallet.lib.openid.RequestOptions` is now `at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions`
+   - `at.asitplus.dcapi.request.DCAPIRequest` is now `at.asitplus.dcapi.request.DCAPIWalletRequest`
+   - `at.asitplus.dcapi.request.Oid4vpDCAPIRequest` is now `at.asitplus.dcapi.request.DCAPIWalletRequest.OpenId4VpUnsigned` or `at.asitplus.dcapi.request.DCAPIWalletRequest.OpenId4VpSigned`
 
 Release 5.10.1:
  - Proximity presentations:
