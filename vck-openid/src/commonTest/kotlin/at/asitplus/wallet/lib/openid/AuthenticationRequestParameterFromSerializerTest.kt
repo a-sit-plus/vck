@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.dcapi.request.Oid4VpDCAPIWalletRequest
+import at.asitplus.dcapi.request.DCAPIWalletRequest
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
@@ -75,9 +75,8 @@ val AuthenticationRequestParameterFromSerializerTest by testSuite {
 
         "DcApiUnsigned test $representation" {
             val authnRequest = vckJsonSerializer.encodeToString(
-                Oid4VpDCAPIWalletRequest(
-                    protocol = Oid4VpDCAPIWalletRequest.PROTOCOL_V1_UNSIGNED,
-                    request = vckJsonSerializer.encodeToString(verifierOid4vp.createAuthnRequest(requestOptions = reqOptions)),
+                DCAPIWalletRequest.OpenId4VpUnsigned(
+                    request = verifierOid4vp.createAuthnRequest(requestOptions = reqOptions),
                     credentialId = "1",
                     callingPackageName = "com.example.app",
                     callingOrigin = "https://example.com"
@@ -116,9 +115,8 @@ val AuthenticationRequestParameterFromSerializerTest by testSuite {
             jarRequest.clientId shouldBe clientId
             val serializedRequest = jarRequest.request.shouldNotBeNull()
             val authnRequest = vckJsonSerializer.encodeToString(
-                Oid4VpDCAPIWalletRequest(
-                    protocol = Oid4VpDCAPIWalletRequest.PROTOCOL_V1_SIGNED,
-                    request = serializedRequest,
+                DCAPIWalletRequest.OpenId4VpSigned(
+                    request = vckJsonSerializer.decodeFromString(serializedRequest),
                     credentialId = "1",
                     callingPackageName = "com.example.app",
                     callingOrigin = "https://example.com"
