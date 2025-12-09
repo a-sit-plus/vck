@@ -409,7 +409,7 @@ data class AuthenticationRequestParameters(
 
     fun verifyExpectedOrigin(actualOrigin: String): Boolean {
         val expected = expectedOrigins ?: return false
-        val actualSerialized = actualOrigin.serializeOrigin()
+        val actualSerialized = actualOrigin.serializeOrigin() ?: return false
         return expected.any { it.serializeOrigin() == actualSerialized }
     }
 
