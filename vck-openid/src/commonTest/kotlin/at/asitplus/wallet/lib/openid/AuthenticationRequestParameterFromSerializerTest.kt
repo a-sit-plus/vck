@@ -74,14 +74,13 @@ val AuthenticationRequestParameterFromSerializerTest by testSuite {
         }
 
         "DcApiUnsigned test $representation" {
-            val authnRequest = vckJsonSerializer.encodeToString(
-                DCAPIWalletRequest.OpenId4VpUnsigned(
-                    request = verifierOid4vp.createAuthnRequest(requestOptions = reqOptions),
-                    credentialId = "1",
-                    callingPackageName = "com.example.app",
-                    callingOrigin = "https://example.com"
-                )
+            val authnRequest = DCAPIWalletRequest.OpenId4VpUnsigned(
+                request = verifierOid4vp.createAuthnRequest(requestOptions = reqOptions),
+                credentialId = "1",
+                callingPackageName = "com.example.app",
+                callingOrigin = "https://example.com"
             )
+
             val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow().request
                 .shouldBeInstanceOf<RequestParametersFrom.DcApiUnsigned<AuthenticationRequestParameters>>()
 
@@ -114,14 +113,13 @@ val AuthenticationRequestParameterFromSerializerTest by testSuite {
             val jarRequest: JarRequestParameters = Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
             jarRequest.clientId shouldBe clientId
             val serializedRequest = jarRequest.request.shouldNotBeNull()
-            val authnRequest = vckJsonSerializer.encodeToString(
-                DCAPIWalletRequest.OpenId4VpSigned(
-                    request = vckJsonSerializer.decodeFromString(serializedRequest),
-                    credentialId = "1",
-                    callingPackageName = "com.example.app",
-                    callingOrigin = "https://example.com"
-                )
+            val authnRequest = DCAPIWalletRequest.OpenId4VpSigned(
+                request = jarRequest,
+                credentialId = "1",
+                callingPackageName = "com.example.app",
+                callingOrigin = "https://example.com"
             )
+
             val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow().request
                 .shouldBeInstanceOf<RequestParametersFrom.DcApiSigned<AuthenticationRequestParameters>>()
 

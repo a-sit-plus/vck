@@ -2,6 +2,8 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.dcapi.request.DCAPIWalletRequest
 import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.JarRequestParameters
+import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.testballoon.invoke
@@ -158,13 +160,11 @@ val OpenIdRequestParserTests by testSuite {
         }
 
         "signed request from DCAPI" { requestParser ->
-            val input = vckJsonSerializer.encodeToString(
-                DCAPIWalletRequest.OpenId4VpSigned(
-                    request = vckJsonSerializer.decodeFromString(jws),
+              val input = DCAPIWalletRequest.OpenId4VpSigned(
+                    request = JarRequestParameters(jws),
                     credentialId = "1",
                     callingPackageName = "com.example.app",
                     callingOrigin = "https://example.com"
-                )
             )
 
             requestParser.parseRequestParameters(input).getOrThrow().apply {
@@ -180,14 +180,12 @@ val OpenIdRequestParserTests by testSuite {
         }
 
         "unsigned request from DCAPI" { requestParser ->
-            val input = vckJsonSerializer.encodeToString(
-                DCAPIWalletRequest.OpenId4VpUnsigned(
+            val input = DCAPIWalletRequest.OpenId4VpUnsigned(
                     request = vckJsonSerializer.decodeFromString(authnRequestSerialized),
                     credentialId = "1",
                     callingPackageName = "com.example.app",
                     callingOrigin = "https://example.com"
                 )
-            )
 
             requestParser.parseRequestParameters(input).getOrThrow().apply {
                 shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
