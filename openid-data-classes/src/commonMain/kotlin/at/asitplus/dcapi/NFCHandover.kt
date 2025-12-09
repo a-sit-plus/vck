@@ -8,7 +8,7 @@ import kotlinx.serialization.cbor.CborArray
 @CborArray
 data class NFCHandover(
     @ByteString
-    val handoverSelect: ByteArray?,
+    val handoverSelect: ByteArray,
     @ByteString
     val handoverRequest: ByteArray?,
 ) {
@@ -19,10 +19,7 @@ data class NFCHandover(
 
         other as NFCHandover
 
-        if (handoverSelect != null) {
-            if (other.handoverSelect == null) return false
-            if (!handoverSelect.contentEquals(other.handoverSelect)) return false
-        } else if (other.handoverSelect != null) return false
+        if (!handoverSelect.contentEquals(other.handoverSelect)) return false
         if (handoverRequest != null) {
             if (other.handoverRequest == null) return false
             if (!handoverRequest.contentEquals(other.handoverRequest)) return false
