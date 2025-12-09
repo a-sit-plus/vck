@@ -18,7 +18,6 @@ abstract class AbstractMdocVerifier {
     protected abstract val nonceService: NonceService
     /** Used for encrypted responses. */
     protected abstract val decryptionKeyMaterial: KeyMaterial
-
     /** Used to verify session transcripts from mDoc responses. */
     protected abstract val verifyCoseSignature: VerifyCoseSignatureWithKeyFun<ByteArray>
 
@@ -72,6 +71,5 @@ abstract class AbstractMdocVerifier {
         docType = docType,
         namespaces = deviceSigned.namespaces
     )
-
 
 }
