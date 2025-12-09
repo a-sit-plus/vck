@@ -15,7 +15,6 @@ sealed class DigitalCredentialGetRequest() {
     @Serializable
     @SerialName("org-iso-mdoc")
     data class IsoMdoc(
-        /** `org-iso-mdoc`. */
         @SerialName("data")
         val request: IsoMdocRequest,
     ) : DigitalCredentialGetRequest() {
@@ -28,7 +27,6 @@ sealed class DigitalCredentialGetRequest() {
     @Serializable
     @SerialName("openid4vp-v1-signed")
     data class OpenId4VpSigned(
-        /** `openid4vp-v<version>-<request-type>`, see [ExchangeProtocolIdentifier]. */
         @SerialName("data")
         val request: RequestParameters,
     ) : DigitalCredentialGetRequest(), OpenId4Vp {
@@ -39,7 +37,6 @@ sealed class DigitalCredentialGetRequest() {
     @Serializable
     @SerialName("openid4vp-v1-unsigned")
     data class OpenId4VpUnsigned(
-        /** `openid4vp-v<version>-<request-type>`, see [ExchangeProtocolIdentifier]. */
         @SerialName("data")
         val request: RequestParameters,
     ) : DigitalCredentialGetRequest(), OpenId4Vp {

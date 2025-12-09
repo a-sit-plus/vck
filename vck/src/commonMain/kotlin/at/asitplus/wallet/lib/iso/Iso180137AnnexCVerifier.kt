@@ -48,12 +48,11 @@ class Iso180137AnnexCVerifier(
     /** Used to verify session transcripts from mDoc responses. */
     override val verifyCoseSignature: VerifyCoseSignatureWithKeyFun<ByteArray> = VerifyCoseSignatureWithKey(),
 
-    //val verifier: Verifier = VerifierAgent(identifier = "I don't care, I only need IsoMdoc"),
     private val validatorMdoc: ValidatorMdoc = ValidatorMdoc(),
 ) : AbstractMdocVerifier() {
 
     /**
-     * Remembers [authenticationRequestParameters] to link responses to requests in [validateAuthnResponse].
+     * Remembers [authenticationRequestParameters] to link responses to requests in [validateResponse].
      *
      * Parameter [externalId] may be used in cases the [authenticationRequestParameters] do not have a `state`
      * parameter, e.g., when using DCAPI.
@@ -104,7 +103,7 @@ class Iso180137AnnexCVerifier(
         )
     )
 
-    private fun VerifyPresentationResult.mapToAuthnResponseResult() = when (this) {
+    private fun VerifyPresentationResult.mapToResponseResult() = when (this) {
         is VerifyPresentationResult.ValidationError -> ResponseResult.ValidationError(cause = cause)
         is VerifyPresentationResult.Success -> ResponseResult.Success(vp)
         is VerifyPresentationResult.SuccessIso -> ResponseResult.SuccessIso(documents)
@@ -141,6 +140,6 @@ class Iso180137AnnexCVerifier(
             verifyDocumentCallback = verifyDocument(
                 sessionTranscript = sessionTranscript
             )
-        ).mapToAuthnResponseResult()
+        ).mapToResponseResult()
     }
 }
