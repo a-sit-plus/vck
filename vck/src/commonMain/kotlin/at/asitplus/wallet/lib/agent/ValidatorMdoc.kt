@@ -65,7 +65,10 @@ class ValidatorMdoc(
         document: Document,
         verifyDocumentCallback: suspend (MobileSecurityObject, Document) -> Boolean,
     ): IsoDocumentParsed {
-        require(document.errors == null) { "Errors: ${document.errors}" }
+        /*  An error can be also included if single claims not available on holder side, see Section 10.3.7 ISO 18013-5
+            TODO: Hard validation error will be wrong, but should we forward it to RP / Verifier UI?
+         */
+        //require(document.errors == null) { "Errors: ${document.errors}" }
         val issuerSigned = document.issuerSigned
         val issuerAuth = issuerSigned.issuerAuth
 
