@@ -9,13 +9,11 @@ import at.asitplus.openid.dcql.DCQLCredentialQueryList
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
-import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
-import at.asitplus.wallet.lib.data.StatusListCwt
-import at.asitplus.wallet.lib.data.StatusListJwt
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.randomCwtOrJwtResolver
@@ -26,8 +24,6 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlin.random.Random
-import kotlin.time.Clock
 
 
 val AgentTest by testSuite {
@@ -163,7 +159,7 @@ val AgentTest by testSuite {
 
             it.statusListIssuer.revokeCredential(
                 FixedTimePeriodProvider.timePeriod,
-                credential.vc.credentialStatus.shouldNotBeNull().statusList.shouldNotBeNull().index
+                credential.vc.credentialStatus.shouldBeInstanceOf<StatusListInfo>().index
             ) shouldBe true
 
             it.holder.getCredentials()
@@ -241,7 +237,7 @@ val AgentTest by testSuite {
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
             it.statusListIssuer.revokeCredential(
                 FixedTimePeriodProvider.timePeriod,
-                credentialToRevoke.vc.credentialStatus.shouldNotBeNull().statusList.shouldNotBeNull().index
+                credentialToRevoke.vc.credentialStatus.shouldBeInstanceOf<StatusListInfo>().index
             ) shouldBe true
 
             it.verifier.verifyPresentationVcJwt(vp.jwsSigned, it.challenge)
@@ -369,7 +365,7 @@ val AgentTest by testSuite {
 
             it.statusListIssuer.revokeCredential(
                 FixedTimePeriodProvider.timePeriod,
-                credentialToRevoke.vc.credentialStatus.shouldNotBeNull().statusList.shouldNotBeNull().index
+                credentialToRevoke.vc.credentialStatus.shouldBeInstanceOf<StatusListInfo>().index
             ) shouldBe true
 
             it.verifier.verifyPresentationVcJwt(vp.jwsSigned, it.challenge)

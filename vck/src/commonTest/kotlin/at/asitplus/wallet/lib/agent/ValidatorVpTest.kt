@@ -11,6 +11,7 @@ import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePr
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.VerifiablePresentation
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.rfc3986.toUri
@@ -168,7 +169,7 @@ val ValidatorVpTest by testSuite {
                 .forEach { vcjws ->
                     it.issuerCredentialStore.setStatus(
                         timePeriod = FixedTimePeriodProvider.timePeriod,
-                        index = vcjws.vc.credentialStatus.shouldNotBeNull().statusList.shouldNotBeNull().index,
+                        index = vcjws.vc.credentialStatus.shouldBeInstanceOf<StatusListInfo>().index,
                         status = TokenStatus.Invalid,
                     ) shouldBe true
                 }

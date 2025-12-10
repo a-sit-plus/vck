@@ -1,6 +1,9 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList.internal
 
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierList
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.cwt.claims.CwtIdentifierListClaim
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.cwt.claims.CwtStatusListClaim
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.cwt.claims.CwtTimeToLiveClaim
 import at.asitplus.wallet.lib.data.rfc8392.cwt.claims.CwtExpirationTimeClaim
@@ -54,7 +57,15 @@ internal data class CwtStatusListTokenPayload(
      */
     @CborLabel(CwtStatusListClaim.Specification.CLAIM_KEY)
     @SerialName(CwtStatusListClaim.Specification.CLAIM_NAME)
-    val statusList: CwtStatusListClaim,
+    val statusList: CwtStatusListClaim? = null,
+
+    /**
+     * 65530 (identifier list): REQUIRED. The status list claim MUST specify the Status List conforming
+     * to the rules outlined in Section 4.2.
+     */
+    @CborLabel(CwtIdentifierListClaim.Specification.CLAIM_KEY)
+    @SerialName(CwtIdentifierListClaim.Specification.CLAIM_NAME)
+    val identifierList: CwtIdentifierListClaim? = null,
 ) {
     constructor(statusListTokenPayload: StatusListTokenPayload) : this(
         subject = CwtSubjectClaim(statusListTokenPayload.subject),
@@ -65,17 +76,33 @@ internal data class CwtStatusListTokenPayload(
         timeToLive = statusListTokenPayload.timeToLive?.let {
             CwtTimeToLiveClaim(it)
         },
-        statusList = CwtStatusListClaim(
-            statusListTokenPayload.statusList
-        ),
+        statusList = if (statusListTokenPayload.revocationList is StatusList) CwtStatusListClaim(
+            statusListTokenPayload.revocationList
+        ) else null,
+        identifierList = if (statusListTokenPayload.revocationList is IdentifierList) CwtIdentifierListClaim(
+            statusListTokenPayload.revocationList
+        ) else null,
     )
 
-    fun toStatusListTokenPayload() = StatusListTokenPayload(
-        subject = subject.uri!!,
-        issuedAt = issuedAt.instant,
-        expirationTime = expirationTime?.instant,
-        timeToLive = timeToLive?.positiveDuration,
-        statusList = statusList.statusList,
-    )
+    fun toStatusListTokenPayload() =
+        when {
+            statusList != null -> StatusListTokenPayload(
+                subject = subject.uri!!,
+                issuedAt = issuedAt.instant,
+                expirationTime = expirationTime?.instant,
+                timeToLive = timeToLive?.positiveDuration,
+                revocationList = statusList.statusList,
+            )
+
+            identifierList != null -> StatusListTokenPayload(
+                subject = subject.uri!!,
+                issuedAt = issuedAt.instant,
+                expirationTime = expirationTime?.instant,
+                timeToLive = timeToLive?.positiveDuration,
+                revocationList = identifierList.identifierList,
+            )
+
+            else -> throw IllegalArgumentException("Unsupported status list token payload")
+        }
 }
 

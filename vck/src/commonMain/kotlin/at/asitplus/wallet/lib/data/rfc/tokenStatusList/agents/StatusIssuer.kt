@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents
 
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList.Kind.STATUS_LIST
 import kotlin.time.Instant
 
 /**
@@ -10,10 +12,10 @@ interface StatusIssuer<JsonSerialized: Any, CborSerialized: Any> {
     /**
      * @return a status list jwt.
      */
-    suspend fun issueStatusListJwt(time: Instant? = null): JsonSerialized
+    suspend fun issueStatusListJwt(time: Instant? = null, kind: RevocationList.Kind = STATUS_LIST): JsonSerialized
 
     /**
      * @return a status list cwt.
      */
-    suspend fun issueStatusListCwt(time: Instant? = null): CborSerialized
+    suspend fun issueStatusListCwt(time: Instant? = null, kind: RevocationList.Kind = STATUS_LIST): CborSerialized
 }

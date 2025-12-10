@@ -14,7 +14,7 @@ data class StatusList(
     val compressed: ByteArray,
     val statusBitSize: TokenStatusBitSize,
     val aggregationUri: String?,
-) {
+) : RevocationList() {
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
