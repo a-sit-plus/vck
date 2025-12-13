@@ -6,5 +6,5 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class DigitalCredentialRequestOptions(
     @SerialName("requests")
-    val requests: List<DigitalCredentialGetRequest>
+    val requests: List<DigitalCredentialGetRequest>,
 )
