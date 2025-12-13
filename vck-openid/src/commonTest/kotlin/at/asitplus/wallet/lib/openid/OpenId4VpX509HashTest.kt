@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
@@ -63,7 +64,7 @@ val OpenId4VpX509HashTest by testSuite {
         "test with request object" {
             val requestUrl = "https://example.com/request"
             val (walletUrl, jar) = it.verifierOid4vp.createAuthnRequest(
-                RequestOptions(
+                OpenId4VpRequestOptions(
                     credentials = setOf(
                         RequestOptionsCredential(AtomicAttribute2023, SD_JWT, setOf(CLAIM_GIVEN_NAME))
                     ),
@@ -95,7 +96,7 @@ val OpenId4VpX509HashTest by testSuite {
         "test with encryption" {
             val requestUrl = "https://example.com/request"
             val (walletUrl, jar) = it.verifierOid4vp.createAuthnRequest(
-                RequestOptions(
+                OpenId4VpRequestOptions(
                     credentials = setOf(
                         RequestOptionsCredential(AtomicAttribute2023, SD_JWT, setOf(CLAIM_GIVEN_NAME))
                     ),

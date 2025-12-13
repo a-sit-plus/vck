@@ -2,6 +2,24 @@
 
 Release 5.11.0 (unreleased):
  - Add `VerifyStatusListTokenHAIP` and related resolver/tests to enforce HAIP d04
+ - Digital Credentials API:
+   - Add request/response models for OpenID4VP and ISO 18013-7 Annex C flows, including protocol identifiers, wallet/verifier request options, and typed responses
+   - Add serializers for `DeviceRequest`, `EncryptionInfo`, and encrypted responses for Annex C/DC API interop
+ - ISO/IEC 18013-7:
+   - Introduce Annex C verifier/request options to create mdoc requests, derive session transcripts, and validate encrypted device responses
+ - OpenID for Verifiable Presentations:
+   - Rename `RequestOptions` to `OpenId4VpRequestOptions` and add DC API/DCQL options like `expected_origins`, optional `client_id`, and stricter `transaction_data` checks
+   - Build session transcripts for DC API responses, verify `expected_origins`, and parse DC API `OpenId4VpResponse` inputs without requiring `state`
+ - Utilities:
+   - Move shared nonce/map store utilities and add helpers to choose encryption keys and compute session transcript thumbprints to main vck
+ - Deprecations:
+   - `at.asitplus.wallet.lib.oidvci.NonceService` is now `at.asitplus.wallet.lib.NonceService`
+   - `at.asitplus.wallet.lib.oidvci.DefaultNonceService` is now `at.asitplus.wallet.lib.DefaultNonceService`
+   - `at.asitplus.wallet.lib.oidvci.MapStore` is now `at.asitplus.wallet.lib.utils.MapStore`
+   - `at.asitplus.wallet.lib.oidvci.DefaultMapStore` is now `at.asitplus.wallet.lib.utils.DefaultMapStore`
+   - `at.asitplus.wallet.lib.openid.RequestOptions` is now `at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions`
+   - `at.asitplus.dcapi.request.DCAPIRequest` is now `at.asitplus.dcapi.request.DCAPIWalletRequest`
+   - `at.asitplus.dcapi.request.Oid4vpDCAPIRequest` is now `at.asitplus.dcapi.request.DCAPIWalletRequest.OpenId4VpUnsigned` or `at.asitplus.dcapi.request.DCAPIWalletRequest.OpenId4VpSigned`
 
 Release 5.10.1:
  - Proximity presentations:

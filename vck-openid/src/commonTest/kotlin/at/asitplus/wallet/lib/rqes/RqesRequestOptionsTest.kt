@@ -7,19 +7,18 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.QesAuthorization
 import at.asitplus.openid.TransactionData
 import at.asitplus.signum.indispensable.Digest
-import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.eupid.EuPidScheme.SdJwtAttributes.FAMILY_NAME
 import at.asitplus.wallet.eupid.EuPidScheme.SdJwtAttributes.GIVEN_NAME
+import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.toTransactionData
 import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
-import at.asitplus.wallet.lib.openid.RequestOptions
-import at.asitplus.wallet.lib.openid.RequestOptionsCredential
+import at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
@@ -54,8 +53,8 @@ val RqesRequestOptionsTest by testSuite {
 internal fun buildRequestOptions(
     responseMode: OpenIdConstants.ResponseMode = OpenIdConstants.ResponseMode.Fragment,
     transactionDataHashAlgorithms: Set<String>?,
-): RequestOptions = uuid4().toString().let { credentialId ->
-    return RequestOptions(
+): OpenId4VpRequestOptions = uuid4().toString().let { credentialId ->
+    return OpenId4VpRequestOptions(
         responseMode = responseMode,
         responseUrl = if (responseMode == OpenIdConstants.ResponseMode.DirectPost)
             "https://example.com/rp/${uuid4()}"

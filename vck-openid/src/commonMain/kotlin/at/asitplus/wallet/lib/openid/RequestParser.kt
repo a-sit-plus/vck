@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
-import at.asitplus.dcapi.request.Oid4vpDCAPIRequest
+import at.asitplus.dcapi.request.DCAPIWalletRequest
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.OpenIdConstants
@@ -54,9 +54,17 @@ class RequestParser(
         input.parseParameters().extractRequest()
     }
 
+    /**
+     * Pass in the data received by the DC API in signed or unsigned form. Will return [RequestParametersFrom].
+     */
+    suspend fun parseRequestParameters(
+        input: DCAPIWalletRequest.OpenId4Vp,
+    ): KmmResult<RequestParametersFrom<*>> = catching {
+        input.parseAsDcApiRequest()?.extractRequest() ?: throw InvalidRequest("parse error: $input")
+    }
+
     private suspend fun String.parseParameters(): RequestParametersFrom<out RequestParameters> =
-        parseAsDcApiRequest()
-            ?: parseAsJwsRequest(null)
+            parseAsJwsRequest(null)
             ?: parseFromParameters()
             ?: parseFromJson(null)
             ?: throw InvalidRequest("parse error: $this")
@@ -83,18 +91,20 @@ class RequestParser(
         RequestParametersFrom.Json(this, params, (parent as? RequestParametersFrom.Uri)?.url)
     }.getOrNull()
 
-    private fun String.parseAsDcApiRequest(): RequestParametersFrom<*>? = catchingUnwrapped {
-        vckJsonSerializer.decodeFromString(Oid4vpDCAPIRequest.serializer(), this)
-    }.getOrNull()?.let { dcApiRequest ->
-        catchingUnwrapped {
-            vckJsonSerializer.decodeFromString(RequestParameters.serializer(), dcApiRequest.request)
-        }.getOrNull()?.let {
-            RequestParametersFrom.DcApiUnsigned(dcApiRequest, it, this)
-        } ?: JwsSigned.deserialize(RequestParameters.serializer(), dcApiRequest.request, vckJsonSerializer).getOrNull()
-            ?.let {
-                RequestParametersFrom.DcApiSigned(dcApiRequest, it.payload, it)
+    private fun DCAPIWalletRequest.OpenId4Vp.parseAsDcApiRequest(): RequestParametersFrom<*>? = catchingUnwrapped {
+        when (this) {
+            is DCAPIWalletRequest.OpenId4VpSigned -> {
+                val requestStr = (this.request as? JarRequestParameters)?.request
+                    ?: throw InvalidRequest("Did not find jar request parameters: $this")
+                val jwsSigned = JwsSigned.deserialize(RequestParameters.serializer(), requestStr, vckJsonSerializer).getOrThrow()
+                RequestParametersFrom.DcApiSigned(this, jwsSigned.payload, jwsSigned)
             }
-    }
+            is DCAPIWalletRequest.OpenId4VpUnsigned -> {
+                val jsonString = vckJsonSerializer.encodeToString(this.request)
+                RequestParametersFrom.DcApiUnsigned(this, this.request, jsonString)
+            }
+        }
+    }.getOrNull()
 
     suspend fun extractRequest(
         parameters: JarRequestParameters,

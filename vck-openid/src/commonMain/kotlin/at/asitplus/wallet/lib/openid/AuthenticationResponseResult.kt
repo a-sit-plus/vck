@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.dcapi.OpenId4VpResponse
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
 
@@ -31,6 +32,6 @@ sealed class AuthenticationResponseResult {
      * Use the Digital Credential API to return the [AuthenticationResponseParameters] in [params].
      */
     data class DcApi(
-        val params: AuthenticationResponseParameters,
+        val params: OpenId4VpResponse,
     ) : AuthenticationResponseResult()
 }

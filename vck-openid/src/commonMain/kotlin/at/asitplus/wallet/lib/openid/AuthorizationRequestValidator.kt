@@ -8,8 +8,8 @@ import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.leaf
-import at.asitplus.wallet.lib.oidvci.DefaultMapStore
-import at.asitplus.wallet.lib.oidvci.MapStore
+import at.asitplus.wallet.lib.utils.DefaultMapStore
+import at.asitplus.wallet.lib.utils.MapStore
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import io.ktor.http.*
@@ -102,21 +102,12 @@ internal class AuthorizationRequestValidator(
     }
 
     @Throws(OAuth2Exception::class)
-    private fun AuthenticationRequestParameters.verifyExpectedOrigin(actualOrigin: String?) {
-        expectedOrigins.run {
-            if (this == null || !this.contains(actualOrigin)) {
-                throw InvalidRequest("origin $actualOrigin not in expected_origins")
-            }
-        }
-    }
-
-    @Throws(OAuth2Exception::class)
     private fun RequestParametersFrom<AuthenticationRequestParameters>.verifyClientIdSchemeX509() {
         val clientIdScheme = parameters.clientIdSchemeExtracted
         val responseModeIsDirectPost = parameters.responseMode.isAnyDirectPost()
         val responseModeIsDcApi = parameters.responseMode.isAnyDcApi()
-        if (this !is RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>
-            || jwsSigned.header.certificateChain == null || jwsSigned.header.certificateChain?.isEmpty() == true
+        if (this !is RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>
+            || jwsSigned.header.certificateChain.isNullOrEmpty()
         ) {
             throw InvalidRequest("x5c is null, and metadata is not set")
         }
@@ -131,7 +122,7 @@ internal class AuthorizationRequestValidator(
         // TODO Trust Model: Verify root of trust for certificate chain
     }
 
-    private fun RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>.verifyX509SanDns(
+    private fun RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>.verifyX509SanDns(
         leaf: X509Certificate,
         responseModeIsDirectPost: Boolean,
         responseModeIsDcApi: Boolean,
@@ -155,7 +146,7 @@ internal class AuthorizationRequestValidator(
         }
     }
 
-    private fun RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>.verifyX509SanUri(
+    private fun RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>.verifyX509SanUri(
         leaf: X509Certificate,
     ) {
         if (leaf.tbsCertificate.extensions == null || leaf.tbsCertificate.extensions!!.isEmpty()) {
@@ -171,7 +162,7 @@ internal class AuthorizationRequestValidator(
         }
     }
 
-    private fun RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>.verifyX509SanHash(
+    private fun RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>.verifyX509SanHash(
         leaf: X509Certificate,
     ) {
         val calculatedHash = leaf.encodeToDerSafe()

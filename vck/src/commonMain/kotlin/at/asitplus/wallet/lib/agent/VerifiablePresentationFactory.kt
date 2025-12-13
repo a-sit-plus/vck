@@ -159,6 +159,7 @@ class VerifiablePresentationFactory(
                     // TODO: Not a namespaced attribute, how to deal with these?
                     //  treating them as fields that are inherent to the credential for now
                     //  -> no need for selective disclosure
+                    Napier.w("Not a namespaced attribute, ignoring: $normalizedJsonPath. This may be a bug.")
                     null
                 }
             }.groupBy {

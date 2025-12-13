@@ -18,8 +18,8 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKeyFun
-import at.asitplus.wallet.lib.oidvci.DefaultNonceService
-import at.asitplus.wallet.lib.oidvci.NonceService
+import at.asitplus.wallet.lib.DefaultNonceService
+import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import at.asitplus.wallet.lib.oidvci.TokenInfo
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString

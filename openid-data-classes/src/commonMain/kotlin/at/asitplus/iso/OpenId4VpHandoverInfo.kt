@@ -11,8 +11,9 @@ import kotlinx.serialization.cbor.CborArray
 @Serializable
 @CborArray
 data class OpenId4VpHandoverInfo(
-    /** MUST be the `client_id` request parameter. If applicable, this includes the Client Identifier Prefix. */
-    val clientId: String,
+    /** MUST be the `client_id` request parameter. If applicable, this includes the Client Identifier Prefix.
+     * Must be null if DC API unsigned requests are used. */
+    val clientId: String?,
     /** MUST be the value of the `nonce` request parameter. */
     val nonce: String,
     /**

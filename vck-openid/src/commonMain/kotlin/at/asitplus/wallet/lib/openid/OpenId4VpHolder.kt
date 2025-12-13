@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
+import at.asitplus.dcapi.request.DCAPIWalletRequest
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
@@ -52,8 +53,8 @@ import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
-import at.asitplus.wallet.lib.oidvci.DefaultMapStore
-import at.asitplus.wallet.lib.oidvci.MapStore
+import at.asitplus.wallet.lib.utils.DefaultMapStore
+import at.asitplus.wallet.lib.utils.MapStore
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
@@ -191,6 +192,12 @@ class OpenId4VpHolder(
     ) = requestParser.parseRequestParameters(input)
         .getOrThrow() as RequestParametersFrom<AuthenticationRequestParameters>
 
+    @Suppress("UNCHECKED_CAST")
+    private suspend fun parse(
+        input: DCAPIWalletRequest.OpenId4Vp,
+    ) = requestParser.parseRequestParameters(input)
+        .getOrThrow() as RequestParametersFrom<AuthenticationRequestParameters>
+
     /** Creates an error response for the [error], which can be sent to the verifier / relying party. */
     suspend fun createAuthnErrorResponse(
         error: Throwable,
@@ -237,6 +244,18 @@ class OpenId4VpHolder(
      */
     suspend fun startAuthorizationResponsePreparation(
         input: String,
+    ): KmmResult<AuthorizationResponsePreparationState> = catching {
+        startAuthorizationResponsePreparation(parse(input)).getOrThrow()
+    }
+
+    /**
+     * Loads the [AuthenticationRequestParameters] from DC API [input].
+     * Clients need to inform the user, get consent, and resume in [finalizeAuthorizationResponse].
+     *
+     * Exceptions thrown during request parsing are caught by [KmmResult],
+     */
+    suspend fun startAuthorizationResponsePreparation(
+        input: DCAPIWalletRequest.OpenId4Vp,
     ): KmmResult<AuthorizationResponsePreparationState> = catching {
         startAuthorizationResponsePreparation(parse(input)).getOrThrow()
     }

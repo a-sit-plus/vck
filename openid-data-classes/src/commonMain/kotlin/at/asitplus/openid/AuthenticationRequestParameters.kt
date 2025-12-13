@@ -7,6 +7,7 @@ import at.asitplus.csc.serializers.HashesSerializer
 import at.asitplus.csc.enums.SignatureQualifier
 import at.asitplus.csc.contentEquals
 import at.asitplus.csc.contentHashCode
+import at.asitplus.iso.serializeOrigin
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
@@ -404,6 +405,13 @@ data class AuthenticationRequestParameters(
     val redirectUrlExtracted: String?
         get() = redirectUrl
             ?: (clientIdSchemeExtracted as? OpenIdConstants.ClientIdScheme.RedirectUri)?.let { clientIdWithoutPrefix }
+
+
+    fun verifyExpectedOrigin(actualOrigin: String): Boolean {
+        val expected = expectedOrigins ?: return false
+        val actualSerialized = actualOrigin.serializeOrigin() ?: return false
+        return expected.any { it.serializeOrigin() == actualSerialized }
+    }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

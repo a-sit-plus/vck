@@ -1,5 +1,5 @@
 package at.asitplus.wallet.lib.openid
 
 enum class PresentationMechanismEnum {
-    PresentationExchange, DCQL,
+    PresentationExchange, DCQL, DeviceRequest
 }

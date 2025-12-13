@@ -22,7 +22,7 @@ data class OpenID4VPDCAPIHandoverInfo(
      * If the Response Mode is `dc_api`, this element MUST be `null`. */
     @ByteString
     val jwkThumbprint: ByteArray?,
-) {
+)  : SessionTranscriptContentHashable {
     init {
         require(!origin.startsWith("origin:"))
     }
