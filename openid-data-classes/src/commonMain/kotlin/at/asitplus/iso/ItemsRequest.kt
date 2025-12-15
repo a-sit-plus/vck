@@ -13,5 +13,5 @@ data class ItemsRequest(
     @SerialName("nameSpaces")
     val namespaces: Map<String, ItemsRequestList>,
     @SerialName("requestInfo")
-    val requestInfo: Map<String, String>? = null,
+    val requestInfo: DocRequestInfo? = null,
 )
