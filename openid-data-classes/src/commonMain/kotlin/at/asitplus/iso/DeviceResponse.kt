@@ -12,6 +12,8 @@ data class DeviceResponse(
     val version: String,
     @SerialName("documents")
     val documents: Array<Document>? = null,
+    @SerialName("zkDocuments")
+    val zkDocuments: Array<ZkDocument>? = null,
     @SerialName("documentErrors")
     val documentErrors: Array<Pair<String, UInt>>? = null,
     @SerialName("status")
@@ -29,6 +31,10 @@ data class DeviceResponse(
             if (other.documents == null) return false
             if (!documents.contentEquals(other.documents)) return false
         } else if (other.documents != null) return false
+        if (zkDocuments != null) {
+            if (other.zkDocuments == null) return false
+            if (!zkDocuments.contentEquals(other.zkDocuments)) return false
+        } else if (other.zkDocuments != null) return false
         if (documentErrors != null) {
             if (other.documentErrors == null) return false
             if (!documentErrors.contentEquals(other.documentErrors)) return false
@@ -39,6 +45,7 @@ data class DeviceResponse(
     override fun hashCode(): Int {
         var result = version.hashCode()
         result = 31 * result + (documents?.contentHashCode() ?: 0)
+        result = 31 * result + (zkDocuments?.contentHashCode() ?: 0)
         result = 31 * result + (documentErrors?.contentHashCode() ?: 0)
         result = 31 * result + status.hashCode()
         return result
