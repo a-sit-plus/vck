@@ -29,11 +29,16 @@ data class DCQLIsoMdocCredentialQuery(
     }
 
     companion object {
+
         fun validate(query: DCQLIsoMdocCredentialQuery) = query.run {
             DCQLCredentialQuery.validate(this)
             if (format != CredentialFormatEnum.MSO_MDOC) {
                 throw IllegalArgumentException("Value has an invalid format identifier in this context.")
             }
+            if (meta.zkSystemType?.isEmpty() ?: false) {
+                throw IllegalArgumentException("No acceptable zero knowledge system types provided.")
+            }
+
         }
     }
 }
