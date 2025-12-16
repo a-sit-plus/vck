@@ -48,7 +48,7 @@ class VerifierAgent(
     override suspend fun verifyPresentationIsoMdoc(
         input: DeviceResponse,
         verifyPlainDocument: suspend (MobileSecurityObject, Document) -> Boolean,
-        verifyZkDocument: ((ZkDocument) -> Boolean)?,
+        verifyZkDocument: (ZkDocument) -> Boolean,
     ): VerifyPresentationResult = catchingUnwrapped {
         validatorMdoc.verifyDeviceResponse(input, verifyPlainDocument, verifyZkDocument)
     }.getOrElse {

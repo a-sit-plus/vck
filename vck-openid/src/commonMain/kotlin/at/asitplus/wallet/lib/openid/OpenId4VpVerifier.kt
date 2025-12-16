@@ -578,31 +578,23 @@ class OpenId4VpVerifier(
             }.mapValues { (credentialQueryId, relatedPresentation) ->
                 val credentialQuery = query.credentialQuery(credentialQueryId)
                     ?: throw IllegalArgumentException("Unknown credential query identifier.")
-                val allowedZkSystemTypes = (credentialQuery.meta as? DCQLIsoMdocCredentialMetadataAndValidityConstraints)?.zkSystemType
+                val allowedZkSystemTypes = (credentialQuery.meta
+                        as? DCQLIsoMdocCredentialMetadataAndValidityConstraints)?.zkSystemType
 
-                // This is very specific to the dcql flow, presentation exchange flow might look very different!
-                // Other flows could for example use a map of documenttypes to allowed zksystem type and this
-                // callback would have to evaluate them
-                val validateZkSystemType: ((ZkDocument) -> ZkSystemSpec?)? =
-                    if (allowedZkSystemTypes != null) {
-                        // Define the function
-                        { zkDoc: ZkDocument ->
-                            // Extract the circuit ID from the document
-                            val usedCircuitId = zkDoc.zkDocumentDataBytes.value.zkSystemId
+                // Validation function is specific to DCQL flow. Other flows require different validation functions
+                val validateZkSystemType: (ZkDocument) -> ZkSystemSpec? = { zkDocument ->
+                    val usedCircuitId = zkDocument.zkDocumentDataBytes.value.zkSystemId
 
-                            allowedZkSystemTypes.firstOrNull {
-                                it.id == usedCircuitId
-                            }?.let {
-                                ZkSystemSpec(
-                                    zkSystemId = it.id,
-                                    system = it.system,
-                                    params = mapOf(
-                                        DCQLZkSystemType.PROP_CIRCUIT_HASH to it.circuitHash,
-                                    )
-                                )
-                            }
+                    allowedZkSystemTypes
+                        ?.firstOrNull { it.id == usedCircuitId }
+                        ?.let { zkType ->
+                            ZkSystemSpec(
+                                zkSystemId = zkType.id,
+                                system = zkType.system,
+                                params = mapOf(DCQLZkSystemType.PROP_CIRCUIT_HASH to zkType.circuitHash)
+                            )
                         }
-                    } else null
+                }
 
                 catchingUnwrapped {
                     verifyPresentationResult(
@@ -660,7 +652,7 @@ class OpenId4VpVerifier(
         clientId: String?,
         responseUrl: String?,
         transactionData: List<TransactionDataBase64Url>?,
-        validateZkSystemType: ((ZkDocument) -> ZkSystemSpec?)? = null,
+        validateZkSystemType: (ZkDocument) -> ZkSystemSpec? = { null },
     ) = when (claimFormat) {
         ClaimFormat.SD_JWT -> verifier.verifyPresentationSdJwt(
             input = SdJwtSigned.parseCatching(relatedPresentation.extractContent()).getOrElse {
@@ -688,7 +680,7 @@ class OpenId4VpVerifier(
                 nonce = expectedNonce,
                 hasBeenEncrypted = input.hasBeenEncrypted
             ),
-            verifyZkDocument = if (validateZkSystemType == null) null else verifyZkDocument(
+            verifyZkDocument = verifyZkDocument(
                 clientId = clientId,
                 responseUrl = responseUrl,
                 nonce = expectedNonce,

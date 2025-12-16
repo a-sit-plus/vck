@@ -56,7 +56,7 @@ interface Verifier {
     suspend fun verifyPresentationIsoMdoc(
         input: DeviceResponse,
         verifyPlainDocument: suspend (MobileSecurityObject, Document) -> Boolean,
-        verifyZkDocument: ((ZkDocument) -> Boolean)? = null,
+        verifyZkDocument: (ZkDocument) -> Boolean = { false },
     ): VerifyPresentationResult
 
     sealed class VerifyPresentationResult {
