@@ -1,7 +1,10 @@
 package at.asitplus.wallet.lib.isoMdocZk
 
+import at.asitplus.iso.ZkDocument
+import at.asitplus.iso.ZkDocumentData
 import at.asitplus.iso.ZkSignedList
 import at.asitplus.iso.ZkSystemSpec
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import kotlin.time.Instant
 
 abstract class IsoMdocZkProof {
@@ -14,5 +17,19 @@ abstract class IsoMdocZkProof {
     abstract val timestamp: Instant
 
     abstract fun verify(): Boolean
+
+    fun toZkDocument(): ZkDocument = ZkDocument(
+        zkDocumentDataBytes = ByteStringWrapper(
+            ZkDocumentData(
+                docType = docType,
+                zkSystemId = zkSystemSpec.zkSystemId,
+                timestamp = timestamp,
+                issuerSigned = issuerSignedNamespaces,
+                deviceSigned = deviceSignedNamespaces,
+                certificateChain = msoX5Chain
+            )
+        ),
+        proof = rawProof,
+    )
 
 }

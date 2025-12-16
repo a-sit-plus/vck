@@ -61,7 +61,7 @@ import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.toBase64UrlJsonString
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.isoMdocZk.IsoMdocProofRegistry
+import at.asitplus.wallet.lib.isoMdocZk.IsoMdocZkProofRegistry
 import at.asitplus.wallet.lib.jws.DecryptJwe
 import at.asitplus.wallet.lib.jws.DecryptJweFun
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -718,7 +718,7 @@ class OpenId4VpVerifier(
             Napier.d("zkDocument not of any allowed zkSystemType")
             false
         } else {
-            val proof = IsoMdocProofRegistry.load(
+            val proof = IsoMdocZkProofRegistry.load(
                 zkDocument = zkDocument,
                 sessionTranscript = calcSessionTranscriptOpenId4VpFinal(
                     clientId = clientId,

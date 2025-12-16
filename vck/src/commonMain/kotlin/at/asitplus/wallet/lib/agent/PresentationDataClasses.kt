@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.PresentationSubmission
 import at.asitplus.iso.DeviceNameSpaces
+import at.asitplus.iso.SessionTranscript
 import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.TransactionDataBase64Url
@@ -36,6 +37,7 @@ data class PresentationRequestParameters(
     val nonce: String,
     val audience: String,
     val transactionData: List<TransactionDataBase64Url>? = null,
+    val sessionTranscript: SessionTranscript? = null,
     /**
      * Handle calculating device signature for ISO mDocs, as this depends on the transport protocol
      * (OpenID4VP with ISO/IEC 18013-7)
@@ -125,7 +127,9 @@ sealed class CreatePresentationResult {
 
     data class DeviceResponse(
         val deviceResponse: at.asitplus.iso.DeviceResponse,
-    ) : CreatePresentationResult()
+    ) : CreatePresentationResult() {
+        companion object
+    }
 }
 
 @Serializable

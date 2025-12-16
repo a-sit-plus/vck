@@ -2,12 +2,6 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.iso.DeviceAuth
-import at.asitplus.iso.DeviceNameSpaces
-import at.asitplus.iso.DeviceResponse
-import at.asitplus.iso.DeviceSigned
-import at.asitplus.iso.Document
-import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.sha256
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
@@ -17,7 +11,6 @@ import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.AllClaimsMatchi
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.ClaimsQueryResults
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.SdJwtConstants.NAME_SD
@@ -33,7 +26,6 @@ import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
-import io.github.aakira.napier.Napier
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -52,9 +44,9 @@ class VerifiablePresentationFactory(
         request: PresentationRequestParameters,
         credentialAndDisclosedAttributes: Map<SubjectCredentialStore.StoreEntry.Iso, Collection<NormalizedJsonPath>>,
     ): KmmResult<CreatePresentationResult> = catching {
-        createIsoPresentation(
+        CreatePresentationResult.DeviceResponse.build(
             request = request,
-            credentialAndRequestedClaims = credentialAndDisclosedAttributes,
+            credentialsAndMeta = credentialAndDisclosedAttributes.mapValues { IsoPresentationMeta(it.value) },
         )
     }
 
@@ -75,9 +67,9 @@ class VerifiablePresentationFactory(
                 requestedClaims = disclosedAttributes,
             )
 
-            is SubjectCredentialStore.StoreEntry.Iso -> createIsoPresentation(
+            is SubjectCredentialStore.StoreEntry.Iso -> CreatePresentationResult.DeviceResponse.build(
                 request = request,
-                credentialAndRequestedClaims = mapOf(credential to disclosedAttributes),
+                credentialsAndMeta = mapOf(credential to IsoPresentationMeta(disclosedAttributes)),
             )
         }
     }
@@ -86,6 +78,7 @@ class VerifiablePresentationFactory(
         request: PresentationRequestParameters,
         credential: SubjectCredentialStore.StoreEntry,
         disclosedAttributes: DCQLCredentialQueryMatchingResult,
+        systemSpec: SystemSpec? = null,
     ): KmmResult<CreatePresentationResult> = catching {
         when (credential) {
             is SubjectCredentialStore.StoreEntry.Vc -> if (disclosedAttributes !is AllClaimsMatchingResult) {
@@ -113,10 +106,18 @@ class VerifiablePresentationFactory(
                 },
             )
 
-            is SubjectCredentialStore.StoreEntry.Iso -> createIsoPresentation(
-                request = request,
-                credentialAndRequestedClaims = mapOf(credential to disclosedAttributes.toRequestedIsoClaims(credential)),
-            )
+            is SubjectCredentialStore.StoreEntry.Iso -> {
+                val requestedClaims = disclosedAttributes.toRequestedIsoClaims(credential)
+                val spec = systemSpec ?: SystemSpec.Default
+                // Since we are in the DCQL flow there is only 1 single credential, so we can just directly map here
+                val credentialAndMeta = mapOf(
+                    credential to IsoPresentationMeta(requestedClaims, spec),
+                )
+                CreatePresentationResult.DeviceResponse.build(
+                    request = request,
+                    credentialsAndMeta = credentialAndMeta,
+                )
+            }
         }
     }
 
@@ -134,81 +135,6 @@ class VerifiablePresentationFactory(
         }.map {
             NormalizedJsonPath() + it.namespace + it.claimName
         }
-    }
-
-    private suspend fun createIsoPresentation(
-        request: PresentationRequestParameters,
-        credentialAndRequestedClaims: Map<SubjectCredentialStore.StoreEntry.Iso, Collection<NormalizedJsonPath>>,
-    ): CreatePresentationResult.DeviceResponse {
-        Napier.d("createIsoPresentation with $request and $credentialAndRequestedClaims")
-
-        val documents = credentialAndRequestedClaims.map { (credential, requestedClaims) ->
-            // allows disclosure of attributes from different namespaces
-            val namespaceToAttributesMap = requestedClaims.mapNotNull { normalizedJsonPath ->
-                // namespace + attribute
-                val firstTwoNameSegments = normalizedJsonPath.segments.filterIndexed { index, _ ->
-                    // TODO: unsure how to deal with attributes with a depth of more than 2
-                    //  revealing the whole attribute for now, which is as fine grained as MDOC can do anyway
-                    index < 2
-                }.filterIsInstance<NormalizedJsonPathSegment.NameSegment>()
-                if (firstTwoNameSegments.size == 2) {
-                    val namespace = firstTwoNameSegments[0].memberName
-                    val attributeName = firstTwoNameSegments[1].memberName
-                    namespace to attributeName
-                } else {
-                    // TODO: Not a namespaced attribute, how to deal with these?
-                    //  treating them as fields that are inherent to the credential for now
-                    //  -> no need for selective disclosure
-                    null
-                }
-            }.groupBy {
-                it.first  // grouping by namespace
-            }.mapValues {
-                // unrolling values to just the list of attribute names for that namespace
-                it.value.map { it.second }
-            }
-            val disclosedItems = namespaceToAttributesMap.mapValues { namespaceToAttributeNamesEntry ->
-                val namespace = namespaceToAttributeNamesEntry.key
-                val attributeNames = namespaceToAttributeNamesEntry.value
-                attributeNames.map { attributeName ->
-                    credential.issuerSigned.namespaces?.get(
-                        namespace
-                    )?.entries?.find {
-                        it.value.elementIdentifier == attributeName
-                    }?.value
-                        ?: throw PresentationException("Attribute not available in credential: $['$namespace']['$attributeName']")
-                }
-            }
-
-            val docType = credential.scheme?.isoDocType
-                ?: credential.issuerSigned.issuerAuth.payload?.docType
-                ?: throw PresentationException("Scheme not known or not registered")
-            val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
-            val input = IsoDeviceSignatureInput(docType, deviceNameSpaceBytes)
-            val deviceSignature = request.calcIsoDeviceSignaturePlain(input)
-                ?: throw PresentationException("calcIsoDeviceSignature not implemented")
-
-            Document(
-                docType = docType,
-                issuerSigned = IssuerSigned.fromIssuerSignedItems(
-                    namespacedItems = disclosedItems,
-                    issuerAuth = credential.issuerSigned.issuerAuth
-                ),
-                deviceSigned = DeviceSigned(
-                    namespaces = deviceNameSpaceBytes,
-                    deviceAuth = DeviceAuth(
-                        deviceSignature = deviceSignature
-                    )
-                )
-            )
-        }
-        return CreatePresentationResult.DeviceResponse(
-            deviceResponse = DeviceResponse(
-                version = "1.0",
-                documents = documents.toTypedArray(),
-                status = 0U,
-            )
-        )
     }
 
     private suspend fun createSdJwtPresentation(
