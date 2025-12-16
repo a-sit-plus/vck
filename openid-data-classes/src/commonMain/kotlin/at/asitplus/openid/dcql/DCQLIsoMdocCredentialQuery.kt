@@ -35,10 +35,6 @@ data class DCQLIsoMdocCredentialQuery(
             if (format != CredentialFormatEnum.MSO_MDOC) {
                 throw IllegalArgumentException("Value has an invalid format identifier in this context.")
             }
-            if (meta.zkSystemType?.isEmpty() ?: false) {
-                throw IllegalArgumentException("No acceptable zero knowledge system types provided.")
-            }
-
         }
     }
 }
