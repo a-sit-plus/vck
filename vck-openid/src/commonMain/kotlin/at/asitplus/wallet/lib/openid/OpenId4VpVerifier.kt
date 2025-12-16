@@ -712,7 +712,7 @@ class OpenId4VpVerifier(
 
 
     /**
-     * Performs verification of the [IsoMdocZkProof]
+     * Performs verification of the [at.asitplus.wallet.lib.isoMdocZk.IsoMdocZkProof]
      */
     private fun verifyZkDocument(
         clientId: String?,
