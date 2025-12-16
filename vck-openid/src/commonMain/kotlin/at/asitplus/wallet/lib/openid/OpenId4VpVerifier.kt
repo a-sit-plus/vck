@@ -14,6 +14,8 @@ import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.OpenId4VpHandover
 import at.asitplus.iso.OpenId4VpHandoverInfo
 import at.asitplus.iso.SessionTranscript
+import at.asitplus.iso.ZkDocument
+import at.asitplus.iso.ZkSystemSpec
 import at.asitplus.iso.sha256
 import at.asitplus.iso.wrapInCborTag
 import at.asitplus.jsonpath.JsonPath
@@ -34,7 +36,9 @@ import at.asitplus.openid.SupportedAlgorithmsContainerSdJwt
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.VpFormatsSupported
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
+import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.openid.dcql.DCQLZkSystemType
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
@@ -57,6 +61,7 @@ import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.toBase64UrlJsonString
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.isoMdocZk.IsoMdocProofRegistry
 import at.asitplus.wallet.lib.jws.DecryptJwe
 import at.asitplus.wallet.lib.jws.DecryptJweFun
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -573,6 +578,31 @@ class OpenId4VpVerifier(
             }.mapValues { (credentialQueryId, relatedPresentation) ->
                 val credentialQuery = query.credentialQuery(credentialQueryId)
                     ?: throw IllegalArgumentException("Unknown credential query identifier.")
+                val allowedZkSystemTypes = (credentialQuery.meta as? DCQLIsoMdocCredentialMetadataAndValidityConstraints)?.zkSystemType
+
+                // This is very specific to the dcql flow, presentation exchange flow might look very different!
+                // Other flows could for example use a map of documenttypes to allowed zksystem type and this
+                // callback would have to evaluate them
+                val validateZkSystemType: ((ZkDocument) -> ZkSystemSpec?)? =
+                    if (allowedZkSystemTypes != null) {
+                        // Define the function
+                        { zkDoc: ZkDocument ->
+                            // Extract the circuit ID from the document
+                            val usedCircuitId = zkDoc.zkDocumentDataBytes.value.zkSystemId
+
+                            allowedZkSystemTypes.firstOrNull {
+                                it.id == usedCircuitId
+                            }?.let {
+                                ZkSystemSpec(
+                                    zkSystemId = it.id,
+                                    system = it.system,
+                                    params = mapOf(
+                                        DCQLZkSystemType.PROP_CIRCUIT_HASH to it.circuitHash,
+                                    )
+                                )
+                            }
+                        }
+                    } else null
 
                 catchingUnwrapped {
                     verifyPresentationResult(
@@ -583,6 +613,7 @@ class OpenId4VpVerifier(
                         clientId = authnRequest.clientId,
                         responseUrl = authnRequest.responseUrl ?: authnRequest.redirectUrlExtracted,
                         transactionData = authnRequest.transactionData,
+                        validateZkSystemType = validateZkSystemType,
                     ).mapToAuthnResponseResult(responseParameters.parameters.state)
                 }.getOrElse {
                     return AuthnResponseResult.ValidationError(
@@ -629,6 +660,7 @@ class OpenId4VpVerifier(
         clientId: String?,
         responseUrl: String?,
         transactionData: List<TransactionDataBase64Url>?,
+        validateZkSystemType: ((ZkDocument) -> ZkSystemSpec?)? = null,
     ) = when (claimFormat) {
         ClaimFormat.SD_JWT -> verifier.verifyPresentationSdJwt(
             input = SdJwtSigned.parseCatching(relatedPresentation.extractContent()).getOrElse {
@@ -650,16 +682,25 @@ class OpenId4VpVerifier(
         ClaimFormat.MSO_MDOC -> verifier.verifyPresentationIsoMdoc(
             input = relatedPresentation.extractContent().decodeToByteArray(Base64UrlStrict)
                 .let { coseCompliantSerializer.decodeFromByteArray<DeviceResponse>(it) },
-            verifyDocument = verifyDocument(
+            verifyPlainDocument = verifyPlainDocument(
                 clientId = clientId,
                 responseUrl = responseUrl,
                 nonce = expectedNonce,
                 hasBeenEncrypted = input.hasBeenEncrypted
+            ),
+            verifyZkDocument = if (validateZkSystemType == null) null else verifyZkDocument(
+                clientId = clientId,
+                responseUrl = responseUrl,
+                nonce = expectedNonce,
+                hasBeenEncrypted = input.hasBeenEncrypted,
+                validateZkSystemType = validateZkSystemType,
             )
         )
 
         else -> throw IllegalArgumentException("descriptor.format: $claimFormat")
     }
+
+
 
     // To be reconsidered when supporting [DCQLCredentialQueryInstance.multiple]
     private fun JsonElement.extractContent(): String = when (this) {
@@ -669,12 +710,42 @@ class OpenId4VpVerifier(
         JsonNull -> throw IllegalArgumentException("Can't extract string from JsonNull")
     }
 
+
+    /**
+     * Performs verification of the [IsoMdocZkProof]
+     */
+    private fun verifyZkDocument(
+        clientId: String?,
+        responseUrl: String?,
+        nonce: String,
+        hasBeenEncrypted: Boolean,
+        validateZkSystemType: (ZkDocument) -> ZkSystemSpec?
+    ): ((ZkDocument) -> Boolean) = { zkDocument ->
+        val zkSystemSpec = validateZkSystemType.invoke(zkDocument)
+        if (zkSystemSpec == null) {
+            Napier.d("zkDocument not of any allowed zkSystemType")
+            false
+        } else {
+            val proof = IsoMdocProofRegistry.load(
+                zkDocument = zkDocument,
+                sessionTranscript = calcSessionTranscriptOpenId4VpFinal(
+                    clientId = clientId,
+                    responseUrl = responseUrl,
+                    nonce = nonce,
+                    hasBeenEncrypted = hasBeenEncrypted
+                ),
+                zkSystemSpecs = listOf(zkSystemSpec) // TODO: rethink this approach. because there should only be one
+            )
+            proof.verify()
+        }
+    }
+
     /**
      * Performs verification of the [at.asitplus.iso.SessionTranscript] and [at.asitplus.iso.DeviceAuthentication],
      * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024, if required (i.e. response is encrypted)
      */
     @Throws(IllegalArgumentException::class, IllegalStateException::class)
-    private fun verifyDocument(
+    private fun verifyPlainDocument(
         clientId: String?,
         responseUrl: String?,
         nonce: String,
@@ -707,17 +778,18 @@ class OpenId4VpVerifier(
         .wrapInCborTag(24)
 
     /**
-     * Performs calculation of the [at.asitplus.iso.SessionTranscript] and [at.asitplus.iso.DeviceAuthentication],
-     * acc. to OpenID4VP 1.0
+     * Performs calculation of the [SessionTranscript] acc. to OpenID4VP 1.0
      */
-    private fun Document.calcDeviceAuthenticationOpenId4VpFinal(
-        clientId: String,
-        responseUrl: String,
+    private fun calcSessionTranscriptOpenId4VpFinal(
+        clientId: String?,
+        responseUrl: String?,
         nonce: String,
         hasBeenEncrypted: Boolean,
-    ) = DeviceAuthentication(
-        type = DeviceAuthentication.TYPE,
-        sessionTranscript = SessionTranscript.forOpenId(
+    ): SessionTranscript {
+        if (clientId == null || responseUrl == null)
+            throw IllegalStateException("Missing required parameters: clientId, responseUrl")
+
+        return SessionTranscript.forOpenId(
             OpenId4VpHandover(
                 type = OpenId4VpHandover.TYPE_OPENID4VP,
                 hash = coseCompliantSerializer.encodeToByteArray<OpenId4VpHandoverInfo>(
@@ -731,6 +803,24 @@ class OpenId4VpVerifier(
                     )
                 ).sha256(),
             )
+        )
+    }
+
+    /**
+     * Performs calculation of the [DeviceAuthentication] acc. to OpenID4VP 1.0
+     */
+    private fun Document.calcDeviceAuthenticationOpenId4VpFinal(
+        clientId: String,
+        responseUrl: String,
+        nonce: String,
+        hasBeenEncrypted: Boolean,
+    ) = DeviceAuthentication(
+        type = DeviceAuthentication.TYPE,
+        sessionTranscript = calcSessionTranscriptOpenId4VpFinal(
+            clientId = clientId,
+            responseUrl = responseUrl,
+            nonce = nonce,
+            hasBeenEncrypted = hasBeenEncrypted
         ),
         docType = docType,
         namespaces = deviceSigned.namespaces

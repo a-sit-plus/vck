@@ -4,6 +4,7 @@ import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.Document
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.MobileSecurityObject
+import at.asitplus.iso.ZkDocument
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
@@ -48,11 +49,14 @@ interface Verifier {
 
     /**
      * Verifies a presentation of some credentials in [ConstantIndex.CredentialRepresentation.ISO_MDOC] from a holder,
-     * with a challenge validated by the callback in [verifyDocument] (i.e. device authentication for OpenID4VP).
+     * with a challenge for plain [Document]s validated by the callback in [verifyPlainDocument]
+     * (i.e. device authentication for OpenID4VP), and with a challenge for [ZkDocument]s validated by the callback
+     * [verifyZkDocument] (i.e. session transcript for OpenID4VP)
      */
     suspend fun verifyPresentationIsoMdoc(
         input: DeviceResponse,
-        verifyDocument: suspend (MobileSecurityObject, Document) -> Boolean,
+        verifyPlainDocument: suspend (MobileSecurityObject, Document) -> Boolean,
+        verifyZkDocument: ((ZkDocument) -> Boolean)? = null,
     ): VerifyPresentationResult
 
     sealed class VerifyPresentationResult {
@@ -69,7 +73,7 @@ interface Verifier {
         ) : VerifyPresentationResult()
 
         data class SuccessIso(
-            val documents: List<IsoDocumentParsed>,
+            val documents: List<IsoDocumentParsed> = emptyList(),
         ) : VerifyPresentationResult()
 
         data class ValidationError(
