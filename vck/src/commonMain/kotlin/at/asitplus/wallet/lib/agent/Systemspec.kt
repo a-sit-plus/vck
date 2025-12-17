@@ -4,10 +4,10 @@ import at.asitplus.iso.ZkSystemSpec
 
 data class SystemSpec(
     val allowedZkSpec: List<ZkSystemSpec>,
-    val forceZk: Boolean = false
+    val zkRequired: Boolean = false
 ) {
     init {
-        require(!forceZk || allowedZkSpec.isNotEmpty()) { "ZkSpec cannot be empty if Zero-Knowledge is enforced" }
+        require(!zkRequired || allowedZkSpec.isNotEmpty()) { "ZkSpec cannot be empty if Zero-Knowledge is enforced" }
     }
 
     companion object {

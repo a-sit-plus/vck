@@ -61,7 +61,7 @@ private suspend fun createZkDocuments(
     credentialsAndMeta: Map<SubjectCredentialStore.StoreEntry.Iso, IsoPresentationMeta>,
 ): Map<SubjectCredentialStore.StoreEntry.Iso, ZkDocument> {
     val zkCompatibleCredentialsAndMeta = credentialsAndMeta
-        .filter { (_, meta) -> !(meta.spec.allowedZkSpec.isEmpty() && !meta.spec.forceZk) }
+        .filter { (_, meta) -> !(meta.spec.allowedZkSpec.isEmpty() && !meta.spec.zkRequired) }
 
     require(zkCompatibleCredentialsAndMeta.isEmpty() || request.sessionTranscript != null) {
         "No SessionTranscript found!"
@@ -76,7 +76,7 @@ private suspend fun createPlainDocuments(
     request: PresentationRequestParameters,
     credentialsAndMeta: Map<SubjectCredentialStore.StoreEntry.Iso, IsoPresentationMeta>,
 ): Map<SubjectCredentialStore.StoreEntry.Iso, Document> = credentialsAndMeta
-    .filter { (_, meta) -> !meta.spec.forceZk }
+    .filter { (_, meta) -> !meta.spec.zkRequired }
     .mapValues { it.value.claims }
     .mapValues { (credential, requestedClaims) ->
         Document.build(request, credential, requestedClaims)
