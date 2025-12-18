@@ -273,7 +273,7 @@ private fun buildPresentationDefinition(vararg attributeName: String) = Presenta
                                 ).toString()
                             )
                         )
-                    }
+                    }.toSet()
                 )
             )
         ),

@@ -1,6 +1,10 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.dif.*
+import at.asitplus.dif.Constraint
+import at.asitplus.dif.ConstraintField
+import at.asitplus.dif.DifInputDescriptor
+import at.asitplus.dif.FormatHolder
+import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialSubmissionOption
 import at.asitplus.openid.dcql.DCQLQuery
@@ -33,7 +37,7 @@ sealed interface CredentialPresentationRequest {
                 PresentationDefinition(
                     DifInputDescriptor(
                         Constraint(
-                            fields = attributeName.map { ConstraintField(path = listOf(it)) }
+                            fields = attributeName.map { ConstraintField(path = listOf(it)) }.toSet()
                         )
                     )
                 ),

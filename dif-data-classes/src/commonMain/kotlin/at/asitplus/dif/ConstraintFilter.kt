@@ -31,7 +31,7 @@ data class ConstraintFilter(
     @SerialName("maxLength")
     val maxLength: Int? = null,
     @SerialName("enum")
-    val enum: Collection<String>? = null,
+    val enum: Set<String>? = null,
     @SerialName("not")
     val not: ConstraintNotFilter? = null,
 )

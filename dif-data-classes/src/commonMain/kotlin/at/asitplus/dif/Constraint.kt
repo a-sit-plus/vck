@@ -10,7 +10,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class Constraint(
     @SerialName("fields")
-    val fields: Collection<ConstraintField>? = null,
+    val fields: Set<ConstraintField>? = null,
     /** Per ISO 18013-7, this shall be set to [RequirementEnum.REQUIRED] */
     @SerialName("limit_disclosure")
     val limitDisclosure: RequirementEnum? = null,
@@ -19,7 +19,7 @@ data class Constraint(
     @SerialName("subject_is_issuer")
     val subjectIsIssuer: RequirementEnum? = null,
     @SerialName("is_holder")
-    val isHolder: Collection<ConstraintHolder>? = null,
+    val isHolder: Set<ConstraintHolder>? = null,
     @SerialName("same_subject")
-    val sameSubject: Collection<ConstraintHolder>? = null,
+    val sameSubject: Set<ConstraintHolder>? = null,
 )

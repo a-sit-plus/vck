@@ -9,7 +9,6 @@ import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment.NameSegment
 import at.asitplus.signum.indispensable.cosef.CoseSigned
-import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -179,7 +178,7 @@ private fun inputDescriptor(
 ) = DifInputDescriptor(
     id = scheme.isoDocType!!,
     constraints = Constraint(
-        fields = listOf(
+        fields = setOf(
             ConstraintField(
                 path = path(scheme, claim)
             )
