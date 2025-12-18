@@ -1,4 +1,8 @@
-import org.jetbrains.dokka.gradle.DokkaMultiModuleTask
+import org.gradle.kotlin.dsl.support.listFilesOrdered
+import org.jetbrains.dokka.DokkaDefaults.moduleName
+import at.asitplus.gradle.dokka
+import at.asitplus.gradle.html
+import org.jetbrains.dokka.gradle.tasks.DokkaBaseTask
 import java.time.Duration
 
 plugins {
@@ -11,27 +15,35 @@ plugins {
     id("at.asitplus.gradle.conventions")
 }
 
-//access dokka plugin from conventions plugin's classpath in root project → no need to specify version
-apply(plugin = "org.jetbrains.dokka")
-tasks.getByName("dokkaHtmlMultiModule") {
-    (this as DokkaMultiModuleTask)
-    outputDirectory.set(layout.buildDirectory.dir("dokka").get().asFile)
-    includes.from("README.md")
+val dokkaDir = rootProject.layout.buildDirectory.dir("docs")
+dokka {
+    dokkaPublications.html{
+        outputDirectory.set(dokkaDir)
+        includes.from("README.md")
+    }
+}
+
+
+tasks.getByName("dokkaGenerate") {
+    this as DokkaBaseTask
     doLast {
         files(
             "vck-dark.png",
             "vck-light.png",
             "eu.svg",
-        ).files.forEach { it.copyTo(File("build/dokka/${it.name}"), overwrite = true) }
+        ).files.forEach { it.copyTo(File("${dokkaDir.get()}/${it.name}"), overwrite = true) }
     }
 }
 
+
 subprojects {
+    rootProject.dependencies.add("dokka", this)
+    }
     afterEvaluate {
         //doesn't build with latest signum, but doesn't matter either
         tasks.findByName("iosX64Test")?.let { it.enabled = false }
         tasks.findByName("linkDebugTestIosX64")?.let { it.enabled = false }
-}}
+}
 
 val artifactVersion: String by extra
 group = "at.asitplus.wallet"

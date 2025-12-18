@@ -1,5 +1,4 @@
 import at.asitplus.gradle.VcLibVersions
-import at.asitplus.gradle.coroutines
 import at.asitplus.gradle.envExtra
 import at.asitplus.gradle.exportXCFramework
 import at.asitplus.gradle.ktor
@@ -51,10 +50,7 @@ if ("true" != disableAppleTargets) exportXCFramework(
     "at.asitplus:jsonpath4k:${VcLibVersions.jsonpath}",
 )
 
-val javadocJar = setupDokka(
-    baseUrl = "https://github.com/a-sit-plus/vck/tree/main/",
-    multiModuleDoc = true
-)
+val javadocJar = setupDokka(    baseUrl = "https://github.com/a-sit-plus/vck/tree/main/")
 
 publishing {
     publications {

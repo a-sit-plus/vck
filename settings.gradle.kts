@@ -23,6 +23,7 @@ if (System.getProperty("publishing.excludeIncludedBuilds") != "true") {
     includeBuild("signum")
 } else logger.lifecycle("Excluding Signum from this build")
 
+
 rootProject.name = "vc-k"
 include(":dif-data-classes")
 include(":openid-data-classes")

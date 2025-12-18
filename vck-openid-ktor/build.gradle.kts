@@ -72,10 +72,7 @@ if ("true" != disableAppleTargets) exportXCFramework(
     project(":vck-openid")
 )
 
-val javadocJar = setupDokka(
-    baseUrl = "https://github.com/a-sit-plus/vck/tree/main/",
-    multiModuleDoc = true
-)
+val javadocJar = setupDokka(baseUrl = "https://github.com/a-sit-plus/vck/tree/main/")
 
 publishing {
     publications {

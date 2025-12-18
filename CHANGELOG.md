@@ -2,6 +2,16 @@
 
 Release 5.11.0 (unreleased):
  - Add `VerifyStatusListTokenHAIP` and related resolver/tests to enforce HAIP d04
+ - Dependency Updates:
+   * Gradle 9.2.0
+   * Kotlin 2.3.0
+   * Dokka 2.10.0
+   * Return value checker defaults to `check`
+   * Dependency Updates:
+      * AGP 8.12.3
+      * Ktor 3.3.3
+      * Bouncy Castle 1.83 (no more forcing exact version)
+      * TestBalloon 0.7.1-K2.3.0
 
 Release 5.10.1:
  - Proximity presentations:
