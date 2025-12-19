@@ -587,20 +587,7 @@ class OpenId4VpVerifier(
 
                     allowedZkSystemTypes
                         ?.firstOrNull { it.id == usedCircuitId }
-                        ?.let { zkType ->
-                            ZkSystemSpec(
-                                zkSystemId = zkType.id,
-                                system = zkType.system,
-                                params = buildMap<String, Any> {
-                                    put(DCQLZkSystemType.PROP_CIRCUIT_HASH, zkType.circuitHash)
-                                    put(DCQLZkSystemType.PROP_NUM_ATTRIBUTES, zkType.numAttributes)
-                                    put(DCQLZkSystemType.PROP_VERSION, zkType.version)
-
-                                    zkType.blockEncHash?.let{ put(DCQLZkSystemType.PROP_BLOCK_ENC_HASH, it)}
-                                    zkType.blockEncSig?.let{ put(DCQLZkSystemType.PROP_BLOCK_ENC_SIG, it)}
-                                }
-                            )
-                        }
+                        ?.toIsoZkSystemSpec()
                 }
 
                 catchingUnwrapped {

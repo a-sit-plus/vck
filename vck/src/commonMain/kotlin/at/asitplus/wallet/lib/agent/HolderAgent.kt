@@ -8,10 +8,13 @@ import at.asitplus.dif.FormatHolder
 import at.asitplus.dif.InputDescriptor
 import at.asitplus.dif.PresentationSubmission
 import at.asitplus.dif.PresentationSubmissionDescriptor
+import at.asitplus.iso.ZkRequest
 import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
+import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLQueryResult
+import at.asitplus.openid.dcql.DCQLZkSystemType
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
@@ -242,15 +245,30 @@ class HolderAgent(
             }
         }
 
-        val verifiablePresentations = credentialSubmissions.mapValues {
+        val verifiablePresentations = credentialSubmissions.mapValues { (queryId, submission) ->
+            val credentialQuery = dcqlQuery.credentials.find { it.id == queryId }
+            val meta = credentialQuery?.meta as? DCQLIsoMdocCredentialMetadataAndValidityConstraints
+
+            val systemSpec = meta?.zkSystemType?.toZkRequest()
+
             verifiablePresentationFactory.createVerifiablePresentation(
                 request = request,
-                credential = it.value.credential,
-                disclosedAttributes = it.value.matchingResult,
+                credential = submission.credential,
+                disclosedAttributes = submission.matchingResult,
+                zkRequest = systemSpec,
             ).getOrThrow()
         }
 
         PresentationResponseParameters.DCQLParameters(verifiablePresentations)
+    }
+
+    private fun List<DCQLZkSystemType>?.toZkRequest(): ZkRequest {
+        val zkSystemSpecs = this?.map { it.toIsoZkSystemSpec() }
+
+        return ZkRequest(
+            systemSpecs = zkSystemSpecs ?: emptyList(),
+            zkRequired = zkSystemSpecs != null,
+        ).also { request -> request.validate() }
     }
 
     override suspend fun matchInputDescriptorsAgainstCredentialStore(
