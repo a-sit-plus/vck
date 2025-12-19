@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.iso.ZkRequest
 import at.asitplus.iso.sha256
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
@@ -78,7 +79,7 @@ class VerifiablePresentationFactory(
         request: PresentationRequestParameters,
         credential: SubjectCredentialStore.StoreEntry,
         disclosedAttributes: DCQLCredentialQueryMatchingResult,
-        systemSpec: SystemSpec? = null,
+        zkRequest: ZkRequest? = null,
     ): KmmResult<CreatePresentationResult> = catching {
         when (credential) {
             is SubjectCredentialStore.StoreEntry.Vc -> if (disclosedAttributes !is AllClaimsMatchingResult) {
@@ -108,7 +109,7 @@ class VerifiablePresentationFactory(
 
             is SubjectCredentialStore.StoreEntry.Iso -> {
                 val requestedClaims = disclosedAttributes.toRequestedIsoClaims(credential)
-                val spec = systemSpec ?: SystemSpec.Default
+                val spec = zkRequest ?: ZkRequest.Default
                 // Since we are in the DCQL flow there is only 1 single credential, so we can just directly map here
                 val credentialAndMeta = mapOf(
                     credential to IsoPresentationMeta(requestedClaims, spec),

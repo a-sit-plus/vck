@@ -61,7 +61,7 @@ private suspend fun createZkDocuments(
     credentialsAndMeta: Map<SubjectCredentialStore.StoreEntry.Iso, IsoPresentationMeta>,
 ): Map<SubjectCredentialStore.StoreEntry.Iso, ZkDocument> {
     val zkCompatibleCredentialsAndMeta = credentialsAndMeta
-        .filter { (_, meta) -> !(meta.spec.allowedZkSpec.isEmpty() && !meta.spec.zkRequired) }
+        .filter { (_, meta) -> !(meta.spec.systemSpecs.isEmpty() && !meta.spec.zkRequired) }
 
     require(zkCompatibleCredentialsAndMeta.isEmpty() || request.sessionTranscript != null) {
         "No SessionTranscript found!"

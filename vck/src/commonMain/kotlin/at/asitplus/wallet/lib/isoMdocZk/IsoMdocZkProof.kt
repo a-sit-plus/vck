@@ -7,7 +7,7 @@ import at.asitplus.iso.ZkSystemSpec
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import kotlin.time.Instant
 
-abstract class IsoMdocZkProof {
+abstract class IsoMdocZkProof protected constructor() {
     abstract val zkSystemSpec: ZkSystemSpec
     abstract val issuerSignedNamespaces: Map<String, ZkSignedList>
     abstract val deviceSignedNamespaces: Map<String, ZkSignedList>
