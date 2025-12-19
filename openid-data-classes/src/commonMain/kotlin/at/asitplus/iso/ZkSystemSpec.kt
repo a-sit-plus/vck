@@ -3,15 +3,20 @@ package at.asitplus.iso
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-@Serializable
+@Serializable(with = ZkSystemSpecSerializer::class)
 data class ZkSystemSpec (
-    @SerialName("zkSystemId")
+    @SerialName(PROP_ZK_SYSTEM_ID)
     val zkSystemId: String,
-    @SerialName("system")
+    @SerialName(PROP_SYSTEM)
     val system: String,
+    @SerialName(PROP_PARAMS)
+    val params: Map<String, Any>
+) {
 
-    // TODO: Fix type! According to ISO/IEC 18013-5:2021 2nd edition, 10.2.7 "params" should be a Map<String, Any>
-    //  Implement a custom serializer.
-    @SerialName("params")
-    val params: Map<String, String>
-)
+
+    companion object {
+        const val PROP_ZK_SYSTEM_ID = "zkSystemId"
+        const val PROP_SYSTEM = "system"
+        const val PROP_PARAMS = "params"
+    }
+}
