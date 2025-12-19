@@ -12,8 +12,11 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 @JsonClassDiscriminator("protocol")
 sealed interface DCAPIWalletRequest {
     val protocol: ExchangeProtocolIdentifier
-    val credentialId: String
-    val callingPackageName: String
+    /** The credential ID of the credential the user has chosen in the UI provided by the system.
+    Not available on iOS. */
+    val credentialId: String?
+    /** The package name of the calling (browser) application providing the calling origin. Not available on iOS. */
+    val callingPackageName: String?
     val callingOrigin: String
 
     @Serializable
@@ -21,11 +24,11 @@ sealed interface DCAPIWalletRequest {
         @SerialName("isoMdocRequest")
         val isoMdocRequest: IsoMdocRequest,
         @SerialName("credentialId")
-        override val credentialId: String,
+        override val credentialId: String? = null,
         @SerialName("callingPackageName")
-        override val callingPackageName: String,
+        override val callingPackageName: String? = null,
         @SerialName("callingOrigin")
-        override val callingOrigin: String
+        override val callingOrigin: String,
     ) : DCAPIWalletRequest {
         override val protocol: ExchangeProtocolIdentifier
             get() = ExchangeProtocolIdentifier.ISO_MDOC_ANNEX_C

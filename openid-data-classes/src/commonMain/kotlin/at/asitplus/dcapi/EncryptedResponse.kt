@@ -10,7 +10,7 @@ import kotlinx.serialization.cbor.CborArray
 @Serializable
 @CborArray
 data class EncryptedResponse(
-    /** Should be set to `dcapi` */
+    /** Must be set to `dcapi` */
     val type: String,
     val encryptedResponseData: EncryptedResponseData,
 ) {
