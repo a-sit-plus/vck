@@ -11,7 +11,7 @@ import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 
 
 object IsoMdocZkProofRegistry {
-    private val factories = mutableListOf<IsoMdocZkProofFactory>()
+    private val factories = LinkedHashSet<IsoMdocZkProofFactory>()
 
     init {
         // TODO: rethink autoregistering
@@ -22,8 +22,8 @@ object IsoMdocZkProofRegistry {
             val initResult = factory.initialize()
             return initResult.fold(
                 onSuccess = {
-                    factories.add(factory)
                     ZkSystemParamRegistry.register(factory.systemName, factory.paramSerializers)
+                    factories.add(factory)
                     KmmResult.success(factory)
                 },
                 onFailure = { KmmResult.failure(it) }
