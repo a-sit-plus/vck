@@ -8,7 +8,7 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 
 @Serializable
 @JsonClassDiscriminator("protocol")
-sealed class DigitalCredentialInterface() {
+sealed class DigitalCredentialInterface {
     abstract val protocol: ExchangeProtocolIdentifier
     abstract val origin: String?
 }

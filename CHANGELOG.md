@@ -7,6 +7,7 @@ Release 5.11.0 (unreleased):
    - Add serializers for `DeviceRequest`, `EncryptionInfo`, and encrypted responses for Annex C/DC API interop
  - ISO/IEC 18013-7:
    - Introduce Annex C verifier/request options to create mdoc requests, derive session transcripts, and validate encrypted device responses
+   - Adapt Wallet data classes to allow supporting iOS
  - OpenID for Verifiable Presentations:
    - Rename `RequestOptions` to `OpenId4VpRequestOptions` and add DC API/DCQL options like `expected_origins`, optional `client_id`, and stricter `transaction_data` checks
    - Build session transcripts for DC API responses, verify `expected_origins`, and parse DC API `OpenId4VpResponse` inputs without requiring `state`
