@@ -9,8 +9,8 @@ import kotlin.time.Instant
 
 abstract class IsoMdocZkProof protected constructor() {
     abstract val zkSystemSpec: ZkSystemSpec
-    abstract val issuerSignedNamespaces: Map<String, ZkSignedList>
-    abstract val deviceSignedNamespaces: Map<String, ZkSignedList>
+    abstract val issuerZkSignedNamespaces: Map<String, ZkSignedList>
+    abstract val deviceZkSignedNamespaces: Map<String, ZkSignedList>
     abstract val rawProof: ByteArray
     abstract val docType: String
     abstract val msoX5Chain: List<ByteArray>?
@@ -24,8 +24,8 @@ abstract class IsoMdocZkProof protected constructor() {
                 docType = docType,
                 zkSystemId = zkSystemSpec.zkSystemId,
                 timestamp = timestamp,
-                issuerSigned = issuerSignedNamespaces,
-                deviceSigned = deviceSignedNamespaces,
+                issuerSigned = issuerZkSignedNamespaces,
+                deviceSigned = deviceZkSignedNamespaces,
                 certificateChain = msoX5Chain
             )
         ),
