@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.isoMdocZk
+package at.asitplus.iso.zk
 
 import at.asitplus.iso.ZkDocument
 import at.asitplus.iso.ZkDocumentData

@@ -10,7 +10,7 @@ import at.asitplus.iso.ZkDocument
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
-import at.asitplus.wallet.lib.isoMdocZk.IsoMdocZkProofRegistry
+import at.asitplus.iso.zk.IsoMdocZkProofRegistry
 import io.github.aakira.napier.Napier
 import kotlin.collections.component1
 import kotlin.collections.component2
