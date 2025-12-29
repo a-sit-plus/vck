@@ -20,9 +20,7 @@ data class ZkDocument (
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as ZkDocument
+        if (other !is ZkDocument) return false
 
         if (zkDocumentDataBytes != other.zkDocumentDataBytes) return false
         if (!proof.contentEquals(other.proof)) return false
