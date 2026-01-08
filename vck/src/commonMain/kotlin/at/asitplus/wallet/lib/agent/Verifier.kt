@@ -73,7 +73,7 @@ interface Verifier {
         ) : VerifyPresentationResult()
 
         data class SuccessIso(
-            val documents: List<IsoDocumentParsed> = emptyList(),
+            val documents: List<IsoDocumentParsed>,
         ) : VerifyPresentationResult()
 
         data class ValidationError(
