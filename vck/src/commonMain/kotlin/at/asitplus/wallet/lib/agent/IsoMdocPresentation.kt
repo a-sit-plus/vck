@@ -21,29 +21,20 @@ internal suspend fun CreatePresentationResult.DeviceResponse.Companion.build(
 ): CreatePresentationResult.DeviceResponse {
     Napier.d("createIsoPresentation with $request and $credentialsAndMeta")
 
-    var remainingCredentials = credentialsAndMeta
-
     val credentialAndZkDocuments = createZkDocuments(
         request = request,
-        credentialsAndMeta = remainingCredentials,
+        credentialsAndMeta = credentialsAndMeta,
     )
-    remainingCredentials = remainingCredentials.filterKeys {
-        it !in credentialAndZkDocuments.keys
-    }
-
-    // only take the remaining documents to create plain documents
     val credentialAndDocuments = createPlainDocuments(
         request = request,
-        credentialsAndMeta = remainingCredentials,
+        credentialsAndMeta = credentialsAndMeta.filterKeys { it !in credentialAndZkDocuments.keys },
     )
-    remainingCredentials = remainingCredentials.filterKeys {
-        it !in credentialAndDocuments.keys
+    val builtKeys = credentialAndDocuments.keys union credentialAndZkDocuments.keys
+    require(builtKeys == credentialsAndMeta.keys) {
+        "Not all credentials have been successfully created!"
     }
-
-    val zkDocuments =  credentialAndZkDocuments.values.toTypedArray().takeIf { it.isNotEmpty() }
-    val documents = credentialAndDocuments.values.toTypedArray().takeIf { it.isNotEmpty() }
-
-    require(remainingCredentials.isEmpty()) { "Not all credentials have been successfully created!" }
+    val zkDocuments = credentialAndZkDocuments.values.takeIf { it.isNotEmpty() }?.toTypedArray()
+    val documents = credentialAndDocuments.values.takeIf { it.isNotEmpty() }?.toTypedArray()
 
     return CreatePresentationResult.DeviceResponse(
         deviceResponse = DeviceResponse(
