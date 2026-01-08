@@ -53,25 +53,26 @@ class ValidatorMdoc(
     @Throws(IllegalArgumentException::class, CancellationException::class)
     suspend fun verifyDeviceResponse(
         deviceResponse: DeviceResponse,
-        verifyPlainDocumentCallback: suspend (MobileSecurityObject, Document) -> Boolean,
+        verifyDocumentCallback: suspend (MobileSecurityObject, Document) -> Boolean,
         verifyZkDocumentCallback: ((ZkDocument) -> Boolean)? = null,
     ): VerifyPresentationResult {
         require(deviceResponse.status == 0U) { "status: ${deviceResponse.status}" }
         require(deviceResponse.documents != null || deviceResponse.zkDocuments != null) {
             "documents and zkDocuments are null"
         }
-        val hasZkDocuments = !deviceResponse.zkDocuments.isNullOrEmpty()
-
-        if (hasZkDocuments && verifyZkDocumentCallback == null) {
-            throw IllegalArgumentException("ZkDocuments in response, but no validation possible")
+        val zkDocs = deviceResponse.zkDocuments
+        val zkDocuments = when {
+            zkDocs.isNullOrEmpty() -> emptyList()
+            verifyZkDocumentCallback == null -> throw IllegalArgumentException(
+                "ZkDocuments in response, but no ZkDocument verification callback provided"
+            )
+            else -> zkDocs.map { doc ->
+                verifyZkDocument(doc, verifyZkDocumentCallback)
+            }
         }
 
         val plainDocuments = deviceResponse.documents?.map {
-            verifyPlainDocument(it, verifyPlainDocumentCallback)
-        } ?: emptyList()
-
-        val zkDocuments = deviceResponse.zkDocuments?.map {
-            verifyZkDocument(it, verifyZkDocumentCallback!!)
+            verifyPlainDocument(it, verifyDocumentCallback)
         } ?: emptyList()
 
         val allDocuments = zkDocuments + plainDocuments
