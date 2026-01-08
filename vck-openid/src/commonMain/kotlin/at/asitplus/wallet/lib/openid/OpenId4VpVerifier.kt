@@ -711,7 +711,7 @@ class OpenId4VpVerifier(
             Napier.d("zkDocument not of any allowed zkSystemType")
             false
         } else {
-            val proof = IsoMdocZkProofRegistry.load(
+            IsoMdocZkProofRegistry.load(
                 zkDocument = zkDocument,
                 sessionTranscript = calcSessionTranscriptOpenId4VpFinal(
                     clientId = clientId,
@@ -720,8 +720,7 @@ class OpenId4VpVerifier(
                     hasBeenEncrypted = hasBeenEncrypted
                 ),
                 zkSystemSpecs = listOf(zkSystemSpec) // TODO: rethink this approach. because there should only be one
-            )
-            proof.verify()
+            ).verify()
         }
     }
 
