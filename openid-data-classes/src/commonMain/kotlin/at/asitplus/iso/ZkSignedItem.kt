@@ -12,7 +12,7 @@ data class ZkSignedItem(
     @SerialName(PROP_ELEMENT_VALUE)
     override val elementValue: Any,
 ) : Item {
-    override fun toString(): String = "IssuerSignedItem(elementIdentifier='$elementIdentifier'," +
+    override fun toString(): String = "ZkSignedItem(elementIdentifier='$elementIdentifier'," +
             " elementValue=${elementValue.toCustomString()})"
 
     companion object {
