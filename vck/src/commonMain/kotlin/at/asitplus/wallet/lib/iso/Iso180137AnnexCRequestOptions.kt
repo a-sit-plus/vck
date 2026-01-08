@@ -8,5 +8,4 @@ data class Iso180137AnnexCRequestOptions(
     override val credentials: Set<RequestOptionsCredential>,
     /** Transaction ID. */
     override val state: String,
-) : RequestOptions {
-}
+) : RequestOptions

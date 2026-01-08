@@ -61,7 +61,7 @@ abstract class AbstractMdocVerifier {
 
     /**
      * Performs calculation of the [at.asitplus.iso.DeviceAuthentication],
-     * acc. to OpenID4VP 1.0 TODO @Christian not accd to ISO?
+     * acc. to ISO 18013. Can take session transcripts acc. to ISO 18013 or OpenID4VP 1.0
      */
     private fun Document.calcDeviceAuthenticationOpenId4VpFinal(
         sessionTranscript: SessionTranscript,

@@ -710,17 +710,12 @@ class OpenId4VpVerifier(
         clientIdRequired: Boolean,
         origin: String?,
     ): SessionTranscript {
-        if ((clientIdRequired && clientId == null))
-            throw IllegalStateException("Missing required parameter: clientId")
-        if (responseUrl == null) {
-            throw IllegalStateException("Missing required parameter: responseUrl")
-        }
+        require((!clientIdRequired || clientId != null)) { "Missing required parameter: clientId" }
+        require(responseUrl != null) { "Missing required parameter: responseUrl" }
 
         return when (input.originalResponseParameters) {
             is ResponseParametersFrom.DcApi -> {
-                if (origin == null) {
-                    throw IllegalStateException("Missing required parameter: origin")
-                }
+                require(origin != null) { "Missing required parameter: origin" }
                 createDcApiSessionTranscript(
                     OpenID4VPDCAPIHandoverInfo(
                         origin = origin,

@@ -77,7 +77,7 @@ class Iso180137AnnexCVerifier(
             val itemsRequestList = mapOf(namespace to ItemsRequestList(itemsRequestsListEntries))
             DocRequest(ByteStringWrapper(ItemsRequest(docType, itemsRequestList)))
         }.toTypedArray()
-        val deviceRequest = DeviceRequest("1.0", docRequests) //TODO find out correct version
+        val deviceRequest = DeviceRequest("1.0", docRequests)
 
         val encryptionParameters = EncryptionParameters(
             nonceService.provideNonce().toByteArray(),
@@ -104,9 +104,9 @@ class Iso180137AnnexCVerifier(
     )
 
     private fun VerifyPresentationResult.mapToResponseResult() = when (this) {
-        is VerifyPresentationResult.ValidationError -> ResponseResult.ValidationError(cause = cause)
-        is VerifyPresentationResult.Success -> ResponseResult.Success(vp)
-        is VerifyPresentationResult.SuccessIso -> ResponseResult.SuccessIso(documents)
+        is VerifyPresentationResult.ValidationError -> Iso180137AnnexCResponseResult.ValidationError(cause = cause)
+        is VerifyPresentationResult.Success -> Iso180137AnnexCResponseResult.Success(vp)
+        is VerifyPresentationResult.SuccessIso -> Iso180137AnnexCResponseResult.SuccessIso(documents)
         is VerifyPresentationResult.SuccessSdJwt -> throw IllegalStateException("Unexpected SuccessSdJwt")
     }
 
@@ -116,7 +116,7 @@ class Iso180137AnnexCVerifier(
         externalId: String,
         decryptHpke: suspend (ByteArray, ByteArray, CryptoPrivateKey.EC.WithPublicKey, ByteArray) -> ByteArray,
         expectedOrigin: String
-    ): ResponseResult {
+    ): Iso180137AnnexCResponseResult {
         val isoMdocRequest = stateToIsoMdocRequestStore.get(externalId)!!
         val privateKey = decryptionKeyMaterial.exportPrivateKey().getOrThrow()
                 as? CryptoPrivateKey.EC.WithPublicKey ?: throw IllegalStateException("Expected EC private key")

@@ -15,4 +15,4 @@ data class IsoMdocRequest(
     @SerialName("encryptionInfo")
     @Serializable(with = EncryptionInfoBase64UrlSerializer::class)
     val encryptionInfo: EncryptionInfo,
-)// : IsoMdocRequestInterface
+)

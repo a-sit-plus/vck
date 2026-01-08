@@ -26,7 +26,6 @@ data class IsoMdocResponse(
 }
 
 
-// TODO this is essentially a copy of ResponseParametersFrom.DcApi
 @Serializable
 @JsonClassDiscriminator("protocol")
 sealed interface OpenId4VpResponse {
