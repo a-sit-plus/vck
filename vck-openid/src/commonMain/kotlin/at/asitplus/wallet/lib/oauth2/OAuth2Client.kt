@@ -152,6 +152,10 @@ class OAuth2Client(
             .also { stateToCodeStore.put(state, it) }
             .encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
 
+    /**
+     * Authorization input used to request or refresh an OAuth2 access token.
+     * Use to indicate which grant or token exchange flow should be performed.
+     */
     sealed class AuthorizationForToken {
         /** Authorization code from an actual OAuth2 Authorization Server, or [SimpleAuthorizationService.authorize]. */
         data class Code(val code: String) : AuthorizationForToken()

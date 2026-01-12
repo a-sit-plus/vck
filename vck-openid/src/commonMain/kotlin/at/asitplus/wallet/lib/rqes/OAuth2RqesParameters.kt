@@ -11,6 +11,10 @@ import at.asitplus.signum.indispensable.josef.JsonWebToken
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+/**
+ * Parameters used for remote qualified electronic signature (RQES) OAuth2 authorization.
+ * Use to group required and optional CSC fields when building authorization requests.
+ */
 sealed class OAuth2RqesParameters {
     data class CredentialRequired(
         /**

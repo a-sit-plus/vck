@@ -188,6 +188,10 @@ class OpenId4VpVerifier(
         )
     }
 
+    /**
+     * Options for creating authorization requests (query, by value, or by reference).
+     * Use to control how the verifier delivers the request to the wallet.
+     */
     sealed class CreationOptions {
         /**
          * Creates authentication request with parameters encoded as URL query parameters to [walletUrl].

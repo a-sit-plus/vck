@@ -9,6 +9,10 @@ import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import kotlinx.serialization.json.JsonObject
 
+/**
+ * Result of validating an OpenID authentication response, covering success and error cases.
+ * Use to inspect how a wallet response was parsed and whether presentation validation succeeded.
+ */
 sealed class AuthnResponseResult {
     /**
      * Error in parsing the URL or content itself, before verifying the contents of the OpenId response

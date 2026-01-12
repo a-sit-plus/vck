@@ -26,6 +26,10 @@ import kotlinx.serialization.Transient
 import kotlinx.serialization.json.JsonContentPolymorphicSerializer
 import kotlinx.serialization.json.JsonElement
 
+/**
+ * OAuth2/OIDC error representation for issuer and wallet flows.
+ * Use to model protocol errors and serialize them for responses.
+ */
 @Serializable
 sealed class OAuth2Exception(
     val error: String,

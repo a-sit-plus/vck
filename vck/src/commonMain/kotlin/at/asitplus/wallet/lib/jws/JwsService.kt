@@ -407,6 +407,10 @@ fun interface DecryptJweFun {
     ): KmmResult<JweDecrypted<String>>
 }
 
+/**
+ * Decrypts JWE payloads using the recipient's key material.
+ * Use when handling encrypted messages targeted at the holder's key.
+ */
 class DecryptJwe(
     val keyMaterial: KeyMaterial,
 ) : DecryptJweFun {
@@ -429,6 +433,10 @@ class DecryptJwe(
 
 }
 
+/**
+ * Decrypts JWE payloads using a shared symmetric key.
+ * Use when the content is encrypted for a pre-shared secret between parties.
+ */
 class DecryptJweSymmetric(
     val keyMaterial: SymmetricKey<AuthCapability<out KeyType>, NonceTrait, out KeyType>,
 ) : DecryptJweFun {
@@ -481,6 +489,10 @@ fun interface VerifyJwsSignatureFun {
     ): KmmResult<Verifier.Success>
 }
 
+/**
+ * Verifies a JWS signature against a provided public key.
+ * Use when the verification key is already resolved out of band.
+ */
 class VerifyJwsSignature(
     val verifySignature: VerifySignatureFun = VerifySignature(),
 ) : VerifyJwsSignatureFun {
@@ -506,6 +518,10 @@ fun interface VerifyJwsSignatureWithKeyFun {
     ): KmmResult<Verifier.Success>
 }
 
+/**
+ * Verifies a JWS signature using a JSON Web Key.
+ * Use when the signer key is available in JWK form.
+ */
 class VerifyJwsSignatureWithKey(
     val verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(),
 ) : VerifyJwsSignatureWithKeyFun {
@@ -522,6 +538,10 @@ fun interface VerifyJwsSignatureWithCnfFun {
     ): Boolean
 }
 
+/**
+ * Verifies a JWS signature using the confirmation claim (cnf) key material.
+ * Use when tokens bind signatures to a subject key in the payload.
+ */
 class VerifyJwsSignatureWithCnf(
     val verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(),
     /**
@@ -612,6 +632,10 @@ fun interface VerifyJwsObjectFun {
     ): KmmResult<Verifier.Success>
 }
 
+/**
+ * Verifies a JWS by loading possible signing keys from headers or lookup callbacks.
+ * Use for validating incoming JWS objects in verification flows.
+ */
 class VerifyJwsObject(
     val verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(),
     /**

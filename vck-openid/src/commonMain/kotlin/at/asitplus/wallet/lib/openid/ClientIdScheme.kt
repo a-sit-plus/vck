@@ -8,6 +8,10 @@ import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.pki.CertificateChain
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 
+/**
+ * Represents the OpenID client identifier scheme used to validate verifier identity.
+ * Use to select the client-id flavor (redirect URI, X.509, attestation) and derive IDs/URIs accordingly.
+ */
 sealed class ClientIdScheme(
     val scheme: OpenIdConstants.ClientIdScheme,
     val clientIdWithoutPrefix: String,

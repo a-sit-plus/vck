@@ -79,6 +79,7 @@ class CoseHeaderKeyIdForKeyMaterial : CoseHeaderIdentifierFun<KeyMaterial> {
     ): CoseHeader? = it?.copy(kid = keyMaterial.identifier.encodeToByteArray())
 }
 
+/** Identify [CoseKey] with its key identifier in (protected) [CoseHeader.keyId]. */
 class CoseHeaderKeyIdForCoseKey : CoseHeaderIdentifierFun<CoseKey> {
     override suspend operator fun invoke(
         it: CoseHeader?,
@@ -104,6 +105,10 @@ fun interface SignCoseFun<P> {
 }
 
 /** Create a [CoseSigned], setting protected and unprotected headers, and applying [CoseHeaderIdentifierFun]. */
+/**
+ * Signs a COSE payload with [KeyMaterial] while applying header modifiers.
+ * Use when creating COSE signatures for credentials or device responses.
+ */
 class SignCose<P : Any>(
     val keyMaterial: KeyMaterial,
     val protectedHeaderModifier: CoseHeaderIdentifierFun<KeyMaterial>? = null,
@@ -141,6 +146,10 @@ fun interface MacCoseFun<P> {
     ): KmmResult<CoseMac<P>>
 }
 
+/**
+ * Creates a COSE MAC for a payload using a symmetric [CoseKey].
+ * Use when integrity protection (without signatures) is required.
+ */
 class MacCose<P : Any>(
     val keyMaterial: CoseKey,
     val protectedHeaderModifier: CoseHeaderIdentifierFun<CoseKey>? = null,
@@ -218,6 +227,10 @@ fun interface MacCoseDetachedFun<P> {
     ): KmmResult<CoseMac<P>>
 }
 
+/**
+ * Creates a COSE MAC with a detached payload using a symmetric [CoseKey].
+ * Use when the payload is transmitted separately from the MAC object.
+ */
 class MacCoseDetached<P : Any>(
     val keyMaterial: CoseKey,
     val protectedHeaderModifier: CoseHeaderIdentifierFun<CoseKey>? = null,
@@ -303,6 +316,10 @@ fun interface VerifyCoseSignatureFun<P> {
     ): KmmResult<Verifier.Success>
 }
 
+/**
+ * Verifies COSE signatures using keys from headers or a lookup callback.
+ * Use when validating signed COSE objects in verifier flows.
+ */
 class VerifyCoseSignature<P : Any>(
     val verifyCoseSignature: VerifyCoseSignatureWithKeyFun<P> = VerifyCoseSignatureWithKey<P>(),
     /** Need to implement if valid keys for CoseSigned are transported somehow out-of-band, e.g. provided by a trust store */
@@ -334,6 +351,10 @@ fun interface VerifyCoseSignatureWithKeyFun<P> {
     ): KmmResult<Verifier.Success>
 }
 
+/**
+ * Verifies a COSE signature using a provided [CoseKey].
+ * Use when the signer key is known or resolved out of band.
+ */
 class VerifyCoseSignatureWithKey<P : Any>(
     val verifySignature: VerifySignatureFun = VerifySignature(),
 ) : VerifyCoseSignatureWithKeyFun<P> {
@@ -368,6 +389,10 @@ fun interface VerifyCoseMacWithKeyFun<P> {
     ): KmmResult<VerifyMacFun.Success>
 }
 
+/**
+ * Verifies a COSE MAC using a provided symmetric [CoseKey].
+ * Use when validating integrity-protected COSE MAC objects.
+ */
 class VerifyCoseMacWithKey<P : Any>(
     val verifyMac: VerifyMacFun = VerifyMac(),
 ) : VerifyCoseMacWithKeyFun<P> {
@@ -392,6 +417,10 @@ class VerifyCoseMacWithKey<P : Any>(
 
 }
 
+/**
+ * Supplies public COSE keys for signature verification when they are not embedded in headers.
+ * Use to integrate trust stores or out-of-band key distribution.
+ */
 fun interface PublicCoseKeyLookup {
     suspend operator fun invoke(
         coseSigned: CoseSigned<*>,
@@ -409,5 +438,3 @@ val CoseHeader.publicKey: CoseKey?
                 X509Certificate.decodeFromDer(it)
             }.getOrNull()?.decodedPublicKey?.getOrNull()?.toCoseKey()?.getOrThrow()
         }
-
-
