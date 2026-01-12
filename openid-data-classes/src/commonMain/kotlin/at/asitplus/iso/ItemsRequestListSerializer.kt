@@ -15,7 +15,7 @@ import kotlin.collections.plusAssign
 
 /**
  * Serializes [ItemsRequestList.entries] as an "inline map",
- * having [SingleItemsRequest.key] as the map key and [SingleItemsRequest.value] as the map value,
+ * having [SingleItemsRequest.dataElementIdentifier] as the map key and [SingleItemsRequest.intentToRetain] as the map value,
  * for the map represented by [ItemsRequestList].
  */
 object ItemsRequestListSerializer : KSerializer<ItemsRequestList> {
@@ -29,8 +29,8 @@ object ItemsRequestListSerializer : KSerializer<ItemsRequestList> {
         encoder.encodeStructure(descriptor) {
             var index = 0
             value.entries.forEach {
-                this.encodeStringElement(descriptor, index++, it.key)
-                this.encodeBooleanElement(descriptor, index++, it.value)
+                this.encodeStringElement(descriptor, index++, it.dataElementIdentifier)
+                this.encodeBooleanElement(descriptor, index++, it.intentToRetain)
             }
         }
     }

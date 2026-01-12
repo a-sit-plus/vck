@@ -72,7 +72,7 @@ class Iso180137AnnexCVerifier(
             val namespace = it.credentialScheme.isoNamespace ?: throw IllegalStateException("Missing namespace")
             val docType = it.credentialScheme.isoDocType ?: throw IllegalStateException("Missing doc type")
             val itemsRequestsListEntries = it.requestedAttributes?.map { reqAttr ->
-                SingleItemsRequest(reqAttr, false) // TODO find out what value is. intentToRetain maybe? or required?
+                SingleItemsRequest(reqAttr, false)
             } ?: listOf()
             val itemsRequestList = mapOf(namespace to ItemsRequestList(itemsRequestsListEntries))
             DocRequest(ByteStringWrapper(ItemsRequest(docType, itemsRequestList)))

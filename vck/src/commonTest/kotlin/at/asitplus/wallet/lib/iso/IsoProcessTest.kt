@@ -91,7 +91,7 @@ class Wallet {
         val itemsRequest = verifierRequest.docRequests[0].itemsRequest
         val isoNamespace = itemsRequest.value.namespaces[ConstantIndex.AtomicAttribute2023.isoNamespace]
             .shouldNotBeNull()
-        val requestedKeys = isoNamespace.entries.filter { it.value }.map { it.key }
+        val requestedKeys = isoNamespace.entries.filter { it.intentToRetain }.map { it.dataElementIdentifier }
         return DeviceResponse(
             version = "1.0",
             documents = arrayOf(

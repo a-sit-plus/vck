@@ -5,6 +5,6 @@ package at.asitplus.iso
  * usage of the type `Map<String, Map<String, Boolean>>` in [ItemsRequest.namespaces].
  */
 data class SingleItemsRequest(
-    val key: String,
-    val value: Boolean,
+    val dataElementIdentifier: String,
+    val intentToRetain: Boolean,
 )
