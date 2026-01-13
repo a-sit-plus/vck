@@ -38,7 +38,29 @@ data class StatusListInfo(
      */
     @SerialName("uri")
     override val uri: UniformResourceIdentifier,
-) : RevocationListInfo()
+
+    override val certificate: ByteArray? = null,
+) : RevocationListInfo() {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || this::class != other::class) return false
+
+        other as StatusListInfo
+
+        if (index != other.index) return false
+        if (uri != other.uri) return false
+        if (!certificate.contentEquals(other.certificate)) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = index.hashCode()
+        result = 31 * result + uri.hashCode()
+        result = 31 * result + (certificate?.contentHashCode() ?: 0)
+        return result
+    }
+}
 
 
 

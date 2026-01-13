@@ -3,6 +3,11 @@
 Release 5.11.0 (unreleased):
  - Add `VerifyStatusListTokenHAIP` and related resolver/tests to enforce HAIP d04
  - Add `IdentifierList` and `IdentifierListInfo` and related classes
+ - StatusListToken:
+  - Add `RevocationList` and `RevocationListInfo` sealed classes
+  - Replace `Status` claim with `RevocationListInfo` in VC / SD-JWT / MSO payloads
+ - Token status list:
+  - CBOR encoded token status list shall not be tagged with 24 like other COSE payloads (`d818` in hex)
  - OpenID for Verifiable Credential Issuance:
    - In `SimpleAuthorizationService` add parameter `configurationIds` to method `credentialOfferWithAuthorizationCode`
    - Support different supported credential formats having the same scope value (as this is covered by the spec)
@@ -13,9 +18,7 @@ Release 5.11.0 (unreleased):
  - OAuth 2.0:
    - In `SimpleAuthorizationService` offer `client_attestation_pop_signing_alg_values_supported` and `client_attestation_signing_alg_values_supported` in line with [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-07.html#name-authorization-server-metada)
    - Use DPoP proofs on client calls
- - Token status list:
-   - CBOR encoded token status list shall not be tagged with 24 like other COSE payloads (`d818` in hex)
- - Dependency Updates:
+- Dependency Updates:
    * Gradle 9.2.0
    * Kotlin 2.3.0
    * Dokka 2.10.0

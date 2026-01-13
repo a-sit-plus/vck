@@ -9,7 +9,6 @@ import kotlinx.serialization.Serializable
 
 /**
  * Implements [ietf-oauth-status-list](https://datatracker.ietf.org/doc/draft-ietf-oauth-status-list/) Sec. 4.2
- * TODO ISO18013-5 adds Certificate requirement
  */
 @Serializable
 internal data class JsonSerializableStatusList(
