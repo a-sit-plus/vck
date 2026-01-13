@@ -229,13 +229,10 @@ class HolderAgent(
 
         val requestedCredentialSetQueries =
             credentialPresentation.presentationRequest.dcqlQuery.requestedCredentialSetQueries
+        val allowsMultiple = dcqlQuery.credentials.filter { it.multiple ?: false }.map { it.id }.toSet()
         val credentialSubmissions = credentialPresentation.credentialQuerySubmissions
             ?: matchDCQLQueryAgainstCredentialStore(dcqlQuery).getOrThrow()
-                .toDefaultSubmission(dcqlQuery.credentials.filter {
-                    it.multiple ?: false
-                }.map {
-                    it.id
-                }.toSet()).getOrThrow()
+                .toDefaultSubmission(allowsMultiple).getOrThrow()
 
         DCQLQuery.Procedures.isSatisfactoryCredentialSubmission(
             credentialSubmissions = credentialSubmissions.keys,
@@ -247,13 +244,17 @@ class HolderAgent(
         }
 
         val verifiablePresentations = credentialSubmissions.mapValues { match ->
+            val query = credentialPresentation.presentationRequest.dcqlQuery.credentials.first { 
+                it.id == match.key
+            }
+            if(query.multiple != true && match.value.size != 1) {
+                throw IllegalArgumentException("Credential query ${query.id} does not allow multiple submission, but ${match.value.size} were provided.")
+            }
             match.value.map {
-                val credential = it.credential
-                val disclosedAttributes = it.matchingResult
                 verifiablePresentationFactory.createVerifiablePresentation(
                     request = request,
-                    credential = credential,
-                    disclosedAttributes = disclosedAttributes,
+                    credential = it.credential,
+                    disclosedAttributes = it.matchingResult,
                 ).getOrThrow()
             }
         }

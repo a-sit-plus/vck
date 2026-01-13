@@ -8,14 +8,16 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 
 @Serializable
-@SerialName(DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier.SERIAL_NAME)
 data class DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier(
     @SerialName(SerialNames.VALUES)
     override val values: NonEmptyList<String>,
-) : DCQLTrustedAuthorityQueryEntry {
     @SerialName(SerialNames.TYPE)
     @EncodeDefault
-    override val type = DCQL_TRUSTED_AUTHORITY_TYPE
+    override val type: DCQLTrustedAuthorityType = DCQL_TRUSTED_AUTHORITY_TYPE,
+) : DCQLTrustedAuthorityQueryEntry {
+    init {
+        require(type == DCQL_TRUSTED_AUTHORITY_TYPE)
+    }
 
     @Transient
     val authorityKeyIdentifiers = values.map {

@@ -156,8 +156,7 @@ class OpenId4VpVerifier(
             redirectUris = listOfNotNull((clientIdScheme as? ClientIdScheme.RedirectUri)?.redirectUri),
             jsonWebKeySet = JsonWebKeySet(
                 listOf(
-                    decryptionKeyMaterial.publicKey.toJsonWebKey(decryptionKeyMaterial.identifier)
-                        .withAlgorithm()
+                    decryptionKeyMaterial.publicKey.toJsonWebKey(decryptionKeyMaterial.identifier).withAlgorithm()
                 )
             ),
             vpFormatsSupported = VpFormatsSupported(
@@ -183,8 +182,7 @@ class OpenId4VpVerifier(
     @Suppress("DEPRECATION")
     val metadataWithEncryption by lazy {
         metadata.copy(
-            encryptedResponseEncValuesSupportedString = supportedJweEncryptionAlgorithms.map { it.identifier }
-                .toSet(),
+            encryptedResponseEncValuesSupportedString = supportedJweEncryptionAlgorithms.map { it.identifier }.toSet(),
             jsonWebKeySet = metadata.jsonWebKeySet?.let {
                 JsonWebKeySet(it.keys.map { it.copy(publicKeyUse = "enc") })
             }

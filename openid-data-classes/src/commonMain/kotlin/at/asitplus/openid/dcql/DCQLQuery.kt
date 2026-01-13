@@ -75,7 +75,7 @@ data class DCQLQuery(
         jwtVcCredentialTypeExtractor: (Credential) -> List<String>,
         credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
         satisfiesCryptographicHolderBinding: (Credential) -> Boolean,
-        authorityKeyIdentifiers: (Credential) -> List<DCQLAuthorityKeyIdentifier>,
+        authorityKeyIdentifiers: (Credential) -> Collection<DCQLAuthorityKeyIdentifier>,
     ): KmmResult<DCQLQueryResult<Credential>> = Procedures.executeQuery(
         credentialQueries = credentials,
         requestedCredentialSetQueries = requestedCredentialSetQueries,
@@ -117,7 +117,7 @@ data class DCQLQuery(
             jwtVcCredentialTypeExtractor: (Credential) -> List<String>,
             credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
             satisfiesCryptographicHolderBinding: (Credential) -> Boolean,
-            authorityKeyIdentifiers: (Credential) -> List<DCQLAuthorityKeyIdentifier>,
+            authorityKeyIdentifiers: (Credential) -> Collection<DCQLAuthorityKeyIdentifier>,
         ): KmmResult<DCQLQueryResult<Credential>> = catching {
             val credentialQueryMatches = findCredentialQueryMatches(
                 credentialQueries = credentialQueries,
@@ -153,7 +153,7 @@ data class DCQLQuery(
             jwtVcCredentialTypeExtractor: (Credential) -> List<String>,
             credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
             satisfiesCryptographicHolderBinding: (Credential) -> Boolean,
-            authorityKeyIdentifiers: (Credential) -> List<DCQLAuthorityKeyIdentifier>,
+            authorityKeyIdentifiers: (Credential) -> Collection<DCQLAuthorityKeyIdentifier>,
         ): Map<DCQLCredentialQueryIdentifier, List<DCQLCredentialSubmissionOption<Credential>>> {
             return credentialQueries.associate { credentialQuery ->
                 credentialQuery.id to availableCredentials.mapNotNull { credential ->

@@ -34,7 +34,7 @@ data class DCQLW3CVerifiableCredentialMetadataAndValidityConstraints(
         require(typeValues.any { typeCombination ->
             actualTypes.containsAll(typeCombination)
         }) {
-            "Incompatible W3CVerificiable credential type"
+            "Incompatible W3CVerificiable credential type: received $actualTypes but expected $typeValues"
         }
     }
 }

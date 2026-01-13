@@ -74,11 +74,11 @@ sealed interface PresentationResponseParameters {
         override val vpToken
             get() = buildJsonObject {
                 verifiablePresentations.entries.forEach {
-                    put(it.key.string, buildJsonArray {
+                    putJsonArray(it.key.string) {
                         it.value.forEach {
                             add(it.toJsonPrimitive())
                         }
-                    })
+                    }
                 }
             }
 

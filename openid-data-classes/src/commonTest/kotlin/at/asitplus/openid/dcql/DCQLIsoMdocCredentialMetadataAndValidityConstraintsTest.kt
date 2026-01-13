@@ -46,7 +46,6 @@ val DCQLIsoMdocCredentialMetadataAndValidityConstraintsTest by testSuite {
 
             DCQLCredentialQuery.Procedures.validateCredentialMetadataAndValidityConstraints(
                 credential = "",
-                credentialFormatIdentifier = CredentialFormatEnum.MSO_MDOC,
                 credentialMetadataAndValidityConstraints = DCQLIsoMdocCredentialMetadataAndValidityConstraints(
                     doctypeValue = "dummy document type"
                 ),
@@ -67,7 +66,6 @@ val DCQLIsoMdocCredentialMetadataAndValidityConstraintsTest by testSuite {
         shouldThrowAny {
             DCQLCredentialQuery.Procedures.validateCredentialMetadataAndValidityConstraints(
                 credential = "",
-                credentialFormatIdentifier = CredentialFormatEnum.MSO_MDOC,
                 credentialMetadataAndValidityConstraints = DCQLIsoMdocCredentialMetadataAndValidityConstraints(
                     doctypeValue = "dummy document type"
                 ),

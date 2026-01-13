@@ -4,16 +4,19 @@ import at.asitplus.data.NonEmptyList
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 @Serializable
-@SerialName(DCQLTrustedAuthorityQueryEntryETSITrustedList.SERIAL_NAME)
 data class DCQLTrustedAuthorityQueryEntryETSITrustedList(
     @SerialName(SerialNames.VALUES)
     override val values: NonEmptyList<String>,
-) : DCQLTrustedAuthorityQueryEntry {
     @SerialName(SerialNames.TYPE)
     @EncodeDefault
-    override val type = DCQL_TRUSTED_AUTHORITY_TYPE
+    override val type: DCQLTrustedAuthorityType = DCQL_TRUSTED_AUTHORITY_TYPE,
+) : DCQLTrustedAuthorityQueryEntry {
+    init {
+        require(type == DCQL_TRUSTED_AUTHORITY_TYPE)
+    }
 
     companion object {
         const val SERIAL_NAME = "etsi_tl"

@@ -50,6 +50,12 @@ Release 5.11.0 (unreleased):
    * Ktor 3.3.3
    * Bouncy Castle 1.83 (no more forcing exact version)
    * TestBalloon 0.7.1-K2.3.0
+ - DCQL for OpenID for Verifiable Presentations:
+    - Support attribute `multiple` in query
+    - Support attribute `require_cryptographic_holder_binding` in query
+    - Support Trusted Authorities Query, i.e. attribute `trusted_authorities` in query, for Authority Key Identifier `aki` only
+    - Support queries for W3C Verifiable Credentials
+ - BREAKING CHANGE: DCQL validation result now carries a list of AuthnResponseResult instead of a single one
    * Signum 3.19.1
  - DCQL updates
    - Add: Support OpenID4VP attribute DCQLCredentialQuery::multiple

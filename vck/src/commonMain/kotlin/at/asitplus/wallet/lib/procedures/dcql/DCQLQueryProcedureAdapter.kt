@@ -13,12 +13,12 @@ package at.asitplus.wallet.lib.procedures.dcql
  */
 
 import at.asitplus.KmmResult
-import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.dcql.DCQLAuthorityKeyIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialClaimStructure
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLQueryResult
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
+import at.asitplus.signum.indispensable.asn1.KnownOIDs
+import at.asitplus.signum.indispensable.asn1.authorityKeyIdentifier_2_5_29_35
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
@@ -69,14 +69,15 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
             }
         },
         satisfiesCryptographicHolderBinding = {
-            true // we currently assume all of our credentials to satisfy cryptographic holder binding
+            when (it) {
+                is SubjectCredentialStore.StoreEntry.Iso -> it.issuerSigned.issuerAuth.payload?.deviceKeyInfo != null
+                is SubjectCredentialStore.StoreEntry.SdJwt -> it.sdJwt.confirmationClaim != null
+                is SubjectCredentialStore.StoreEntry.Vc -> it.vc.subject.isNotEmpty()
+            }
         },
         authorityKeyIdentifiers = {
-            // TODO: how to extract authority key identifiers of corresponding valid certificate chain
-            //  - are these even correct?
             when (it) {
-                // TODO: correct key id?
-                is SubjectCredentialStore.StoreEntry.Iso -> it.issuerSigned.issuerAuth.protectedHeader.certificateChain?.flatMap {
+                is SubjectCredentialStore.StoreEntry.Iso -> it.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.flatMap {
                     X509Certificate.decodeFromByteArray(it)?.toAuthorityKeyIdentifiers() ?: listOf()
                 } ?: listOf()
 
@@ -99,12 +100,8 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
 
     private fun X509Certificate.toAuthorityKeyIdentifiers() = tbsCertificate.extensions?.filter {
         // take all authority key identifiers from chain, assuming chain is validated elsewhere
-        it.oid == authorityKeyIdentiferObjectIdentifier
+        it.oid == KnownOIDs.authorityKeyIdentifier_2_5_29_35
     }?.map {
         DCQLAuthorityKeyIdentifier(it.value.asOctetString().content)
     } ?: listOf()
 }
-
-// source: https://www.alvestrand.no/objectid/2.5.29.35.html
-@OptIn(ExperimentalUnsignedTypes::class)
-private val authorityKeyIdentiferObjectIdentifier = ObjectIdentifier(2u, 5u, 29u, 35u)
