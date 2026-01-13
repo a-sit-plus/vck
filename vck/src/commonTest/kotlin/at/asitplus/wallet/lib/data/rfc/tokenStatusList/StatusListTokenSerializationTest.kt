@@ -46,10 +46,10 @@ val StatusListTokenSerializationTest by testSuite {
                             it.expirationTime!! shouldBe Instant.fromEpochSeconds(2291720170)
                         },
                         "statuslist bitsize" to {
-                            (it.revocationList as StatusList).statusBitSize shouldBe TokenStatusBitSize.ONE
+                            it.revocationList.shouldBeInstanceOf<StatusList>().statusBitSize shouldBe TokenStatusBitSize.ONE
                         },
                         "statuslist status" to {
-                            (it.revocationList as StatusList).toView()[0u] shouldBe TokenStatus(1u)
+                            it.revocationList.shouldBeInstanceOf<StatusList>().toView()[0u] shouldBe TokenStatus(1u)
                         },
                     ),
                 ),

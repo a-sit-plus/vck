@@ -140,7 +140,6 @@ class IssuerAgent(
         val expirationDate = credential.expiration
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
         val reference = issuerCredentialStore.createStatusListIndex(credential, timePeriod).getOrThrow()
-        //TODO extend for IdentifierListInfo
         val credentialStatus = StatusListInfo(
             index = reference.statusListIndex,
             uri = UniformResourceIdentifier(getRevocationListUrlFor(timePeriod)),
@@ -182,7 +181,6 @@ class IssuerAgent(
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
         val subjectId = credential.subjectPublicKey.didEncoded // TODO not necessarily!
         val reference = issuerCredentialStore.createStatusListIndex(credential, timePeriod).getOrThrow()
-        //TODO extend for IdentifierListInfo
         val credentialStatus = StatusListInfo(
             index = reference.statusListIndex,
             uri = UniformResourceIdentifier(getRevocationListUrlFor(timePeriod)),
@@ -198,7 +196,7 @@ class IssuerAgent(
             verifiableCredentialType = credential.scheme.sdJwtType ?: credential.scheme.schemaUri,
             selectiveDisclosureAlgorithm = credential.sdAlgorithm.toIanaName(),
             confirmationClaim = cnf,
-            statusElement = credentialStatus//vckJsonSerializer.encodeToJsonElement(credentialStatus),
+            statusElement = credentialStatus
         )
         val vcSdJwtObject = vckJsonSerializer.encodeToJsonElement(vcSdJwt).jsonObject
         val entireObject = buildJsonObject {

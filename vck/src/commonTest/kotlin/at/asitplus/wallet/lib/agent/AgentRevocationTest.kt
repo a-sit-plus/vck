@@ -59,9 +59,7 @@ val AgentRevocationTest by testSuite {
             val statusListJwt = it.statusListIssuer.issueStatusListJwt()
             statusListJwt.shouldNotBeNull()
 
-            val statusList = statusListJwt.payload.revocationList.shouldBeInstanceOf<StatusList>()
-
-            verifyStatusList(statusList, it.expectedRevokedIndexes)
+            verifyStatusList(statusListJwt.payload.revocationList.shouldBeInstanceOf<StatusList>(), it.expectedRevokedIndexes)
         }
 
         "aggregation should contain links if statuses have been set" {
@@ -170,7 +168,7 @@ val AgentRevocationTest by testSuite {
 
             val revocationList = statusListIssuer.buildRevocationList(timePeriod).shouldNotBeNull()
 
-            verifyStatusList(revocationList as StatusList, expectedRevokedIndexes)
+            verifyStatusList(revocationList.shouldBeInstanceOf<StatusList>(), expectedRevokedIndexes)
         }
 
         "decoding a known value works" {
