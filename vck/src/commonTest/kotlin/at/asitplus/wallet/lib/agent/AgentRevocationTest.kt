@@ -99,8 +99,9 @@ val AgentRevocationTest by testSuite {
                 time = timestamp,
             )
             providedToken.shouldBeInstanceOf<StatusListJwt>()
-            providedToken.value.payload.revocationList.shouldBeInstanceOf<StatusList>()
-            providedToken.value.payload.revocationList shouldBe issuedToken.payload.revocationList
+            providedToken.shouldBeInstanceOf<StatusListJwt>().apply {
+                value.payload.revocationList.shouldBeInstanceOf<StatusList>() shouldBe issuedToken.payload.revocationList
+            }
         }
 
         "issued cwt should have same status list as provided token when asking for cwt" {

@@ -110,9 +110,7 @@ class StatusListAgent(
     override fun buildRevocationList(timePeriod: Int?, kind: RevocationList.Kind): RevocationList =
         when (kind) {
             RevocationList.Kind.STATUS_LIST -> issuerCredentialStore.getStatusListView(
-                timePeriod ?: timePeriodProvider.getCurrentTimePeriod(
-                    clock
-                )
+                timePeriod ?: timePeriodProvider.getCurrentTimePeriod(clock)
             ).toStatusList(zlibService, statusListAggregationUrl)
 
             RevocationList.Kind.IDENTIFIER_LIST -> IdentifierList(mapOf(), null)
