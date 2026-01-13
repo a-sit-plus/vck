@@ -1,6 +1,7 @@
 package at.asitplus.openid.dcql
 
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
+import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.testballoon.invoke
@@ -25,6 +26,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import kotlin.random.Random
 
+@Suppress("unused")
 val DCQLQueryTest by testSuite {
     "specification" - {
         "serial names" {
@@ -83,12 +85,13 @@ val DCQLQueryTest by testSuite {
 
             "failing" - {
                 withData(
-                     mapOf(
+                    mapOf(
                         "empty database" to listOf<TestCredential>(),
                         "iso mdoc database" to listOf<TestCredential>(
                             TestCredential.MdocCredential(
                                 documentType = uuid4().toString(),
                                 namespaces = mapOf(),
+                                satisfiesCryptographicHolderBinding = true,
                             ),
                             TestCredential.MdocCredential(
                                 documentType = uuid4().toString(),
@@ -103,6 +106,7 @@ val DCQLQueryTest by testSuite {
                                         "street_address" to "dummyStringValue"
                                     ),
                                 ),
+                                satisfiesCryptographicHolderBinding = true,
                             ),
                         ),
                         "sd jwt database with only partial matches" to listOf<TestCredential>(
@@ -115,6 +119,7 @@ val DCQLQueryTest by testSuite {
                                         put("street_address", "dummyStringValue")
                                     })
                                 },
+                                satisfiesCryptographicHolderBinding = true,
                             ),
                             TestCredential.SdJwtCredential(
                                 type = "https://credentials.example.com/identity_credential",
@@ -122,6 +127,7 @@ val DCQLQueryTest by testSuite {
                                     put("last_name", "dummyStringValue")
                                     put("first_name", "dummyStringValue")
                                 },
+                                satisfiesCryptographicHolderBinding = true,
                             ),
                         ),
                     ),
@@ -134,8 +140,8 @@ val DCQLQueryTest by testSuite {
 
             "success" - {
                 withData(
-                     mapOf(
-                        "empty database" to listOf<TestCredential>(
+                    mapOf(
+                        "single credential" to listOf<TestCredential>(
                             TestCredential.SdJwtCredential(
                                 type = "https://credentials.example.com/identity_credential",
                                 claimStructure = buildJsonObject {
@@ -145,6 +151,7 @@ val DCQLQueryTest by testSuite {
                                         put("street_address", "dummyStringValue")
                                     })
                                 },
+                                satisfiesCryptographicHolderBinding = true,
                             ),
                         ),
                         "with other mdoc credentials" to listOf<TestCredential>(
@@ -152,7 +159,8 @@ val DCQLQueryTest by testSuite {
                                 documentType = uuid4().toString(), namespaces = mapOf()
                             ),
                             TestCredential.MdocCredential(
-                                documentType = uuid4().toString(), namespaces = mapOf(
+                                documentType = uuid4().toString(),
+                                namespaces = mapOf(
                                     "last_name" to mapOf(
                                         "any" to "dummyStringValue"
                                     ),
@@ -162,39 +170,52 @@ val DCQLQueryTest by testSuite {
                                     "address" to mapOf(
                                         "street_address" to "dummyStringValue"
                                     ),
-                                )
+                                ),
+                                satisfiesCryptographicHolderBinding = true,
                             ),
-                            TestCredential.SdJwtCredential(type = "https://credentials.example.com/identity_credential",
+                            TestCredential.SdJwtCredential(
+                                type = "https://credentials.example.com/identity_credential",
                                 claimStructure = buildJsonObject {
                                     put("last_name", "dummyStringValue")
                                     put("first_name", "dummyStringValue")
                                     put("address", buildJsonObject {
                                         put("street_address", "dummyStringValue")
                                     })
-                                }),
+                                },
+                                satisfiesCryptographicHolderBinding = true,
+                            ),
                         ),
                         "with other credentials with only partial match" to listOf<TestCredential>(
-                            TestCredential.SdJwtCredential(type = "not the type in question",
+                            TestCredential.SdJwtCredential(
+                                type = "not the type in question",
                                 claimStructure = buildJsonObject {
                                     put("last_name", "dummyStringValue")
                                     put("first_name", "dummyStringValue")
                                     put("address", buildJsonObject {
                                         put("street_address", "dummyStringValue")
                                     })
-                                }),
-                            TestCredential.SdJwtCredential(type = "https://credentials.example.com/identity_credential",
+                                },
+                                satisfiesCryptographicHolderBinding = true,
+                            ),
+                            TestCredential.SdJwtCredential(
+                                type = "https://credentials.example.com/identity_credential",
                                 claimStructure = buildJsonObject {
                                     put("last_name", "dummyStringValue")
                                     put("first_name", "dummyStringValue")
-                                }),
-                            TestCredential.SdJwtCredential(type = "https://credentials.example.com/identity_credential",
+                                },
+                                satisfiesCryptographicHolderBinding = true,
+                            ),
+                            TestCredential.SdJwtCredential(
+                                type = "https://credentials.example.com/identity_credential",
                                 claimStructure = buildJsonObject {
                                     put("last_name", "dummyStringValue")
                                     put("first_name", "dummyStringValue")
                                     put("address", buildJsonObject {
                                         put("street_address", "dummyStringValue")
                                     })
-                                }),
+                                },
+                                satisfiesCryptographicHolderBinding = true,
+                            ),
                         ),
                     )
                 ) {
@@ -234,7 +255,7 @@ val DCQLQueryTest by testSuite {
 
             "failing" - {
                 withData(
-                     mapOf(
+                    mapOf(
                         "empty database" to listOf<TestCredential>(),
                         "iso mdoc database with only partial matches" to listOf<TestCredential>(
                             TestCredential.MdocCredential(
@@ -244,6 +265,7 @@ val DCQLQueryTest by testSuite {
                                         "vehicle_holder" to "dummyStringValue"
                                     ),
                                 ),
+                                satisfiesCryptographicHolderBinding = true,
                             ),
                             TestCredential.MdocCredential(
                                 documentType = "org.iso.7367.1.mVRC",
@@ -252,6 +274,7 @@ val DCQLQueryTest by testSuite {
                                         "first_name" to "dummyStringValue"
                                     )
                                 ),
+                                satisfiesCryptographicHolderBinding = true,
                             ),
                             TestCredential.MdocCredential(
                                 documentType = "org.iso.7367.2.mVRC",
@@ -263,6 +286,7 @@ val DCQLQueryTest by testSuite {
                                         "first_name" to "dummyStringValue"
                                     )
                                 ),
+                                satisfiesCryptographicHolderBinding = true,
                             ),
                         ),
                         "sd jwt database" to listOf<TestCredential>(
@@ -276,6 +300,7 @@ val DCQLQueryTest by testSuite {
                                         put("first_name", "dummyStringValue")
                                     })
                                 },
+                                satisfiesCryptographicHolderBinding = true,
                             ),
                         ),
                     ),
@@ -288,7 +313,7 @@ val DCQLQueryTest by testSuite {
 
             "success" - {
                 withData(
-                   mapOf(
+                    mapOf(
                         "empty database" to listOf<TestCredential>(
                             TestCredential.MdocCredential(
                                 documentType = "org.iso.7367.1.mVRC",
@@ -300,6 +325,7 @@ val DCQLQueryTest by testSuite {
                                         "vehicle_holder" to "dummyStringValue"
                                     )
                                 ),
+                                satisfiesCryptographicHolderBinding = true,
                             ),
                         ),
                         "iso mdoc database with only partial matches" to listOf<TestCredential>(
@@ -310,6 +336,7 @@ val DCQLQueryTest by testSuite {
                                         "vehicle_holder" to "dummyStringValue"
                                     ),
                                 ),
+                                satisfiesCryptographicHolderBinding = true,
                             ),
                             TestCredential.MdocCredential(
                                 documentType = "org.iso.7367.1.mVRC",
@@ -318,6 +345,7 @@ val DCQLQueryTest by testSuite {
                                         "first_name" to "dummyStringValue"
                                     )
                                 ),
+                                satisfiesCryptographicHolderBinding = true,
                             ),
                             TestCredential.MdocCredential(
                                 documentType = "org.iso.7367.1.mVRC",
@@ -329,6 +357,7 @@ val DCQLQueryTest by testSuite {
                                         "vehicle_holder" to "dummyStringValue"
                                     )
                                 ),
+                                satisfiesCryptographicHolderBinding = true,
                             ),
                         ),
                         "sd jwt database" to listOf<TestCredential>(
@@ -342,6 +371,7 @@ val DCQLQueryTest by testSuite {
                                         put("first_name", "dummyStringValue")
                                     })
                                 },
+                                satisfiesCryptographicHolderBinding = true,
                             ),
                             TestCredential.MdocCredential(
                                 documentType = "org.iso.7367.1.mVRC",
@@ -353,6 +383,7 @@ val DCQLQueryTest by testSuite {
                                         "vehicle_holder" to "dummyStringValue"
                                     )
                                 ),
+                                satisfiesCryptographicHolderBinding = true,
                             ),
                         ),
                     )
@@ -406,7 +437,7 @@ val DCQLQueryTest by testSuite {
 
             "failing" - {
                 withData(
-                   mapOf(
+                    mapOf(
                         "empty database" to listOf<TestCredential>(),
                         "database with only one matching credential 1" to listOf<TestCredential>(
                             TestCredential.MdocCredential(
@@ -419,6 +450,7 @@ val DCQLQueryTest by testSuite {
                                         "vehicle_holder" to "dummyStringValue"
                                     )
                                 ),
+                                satisfiesCryptographicHolderBinding = true,
                             ),
                         ),
                         "database with only one matching credential 2" to listOf<TestCredential>(
@@ -431,6 +463,7 @@ val DCQLQueryTest by testSuite {
                                         put("street_address", "dummyStringValue")
                                     })
                                 },
+                                satisfiesCryptographicHolderBinding = true,
                             ),
                         ),
                     ),
@@ -443,7 +476,7 @@ val DCQLQueryTest by testSuite {
 
             "success" - {
                 withData(
-                   mapOf(
+                    mapOf(
                         "database with both matching credentials" to listOf<TestCredential>(
                             TestCredential.MdocCredential(
                                 documentType = "org.iso.7367.1.mVRC",
@@ -455,6 +488,7 @@ val DCQLQueryTest by testSuite {
                                         "vehicle_holder" to "dummyStringValue"
                                     )
                                 ),
+                                satisfiesCryptographicHolderBinding = true,
                             ),
                             TestCredential.SdJwtCredential(
                                 type = "https://credentials.example.com/identity_credential",
@@ -465,6 +499,7 @@ val DCQLQueryTest by testSuite {
                                         put("street_address", "dummyStringValue")
                                     })
                                 },
+                                satisfiesCryptographicHolderBinding = true,
                             ),
                         ),
                     )
@@ -567,7 +602,8 @@ val DCQLQueryTest by testSuite {
                     put("address", buildJsonObject {
                         put("street_address", "dummyStringValue")
                     })
-                }
+                },
+                satisfiesCryptographicHolderBinding = true,
             )
             val otherPidCredential = TestCredential.SdJwtCredential(
                 type = "https://othercredentials.example/pid",
@@ -577,14 +613,16 @@ val DCQLQueryTest by testSuite {
                     put("address", buildJsonObject {
                         put("street_address", "dummyStringValue")
                     })
-                }
+                },
+                satisfiesCryptographicHolderBinding = true,
             )
             val reducedCred1 = TestCredential.SdJwtCredential(
                 type = "https://credentials.example.com/reduced_identity_credential",
                 claimStructure = buildJsonObject {
                     put("given_name", "dummyStringValue")
                     put("family_name", "dummyStringValue")
-                }
+                },
+                satisfiesCryptographicHolderBinding = true,
             )
             val reducedCred2 = TestCredential.SdJwtCredential(
                 type = "https://cred.example/residence_credential",
@@ -592,18 +630,20 @@ val DCQLQueryTest by testSuite {
                     put("postal_code", "dummyStringValue")
                     put("locality", "dummyStringValue")
                     put("region", "dummyStringValue")
-                }
+                },
+                satisfiesCryptographicHolderBinding = true,
             )
             val niceToHaveCredential = TestCredential.SdJwtCredential(
                 type = "https://company.example/company_rewards",
                 claimStructure = buildJsonObject {
                     put("rewards_number", "dummyStringValue")
-                }
+                },
+                satisfiesCryptographicHolderBinding = true,
             )
 
             "failing" - {
                 withData(
-                   mapOf(
+                    mapOf(
                         "empty database" to listOf<TestCredential>(),
                         "database without reduced 2" to listOf(
                             reducedCred1,
@@ -629,7 +669,7 @@ val DCQLQueryTest by testSuite {
 
             "success" - {
                 withData(
-                   mapOf(
+                    mapOf(
                         "database with pid" to listOf(
                             pidCredential,
                         ),
@@ -779,7 +819,8 @@ val DCQLQueryTest by testSuite {
                         "family_name" to "dummyStringValue",
                         "portrait" to "dummyStringValue",
                     ),
-                )
+                ),
+                satisfiesCryptographicHolderBinding = true,
             )
             val mdlAddressCred = TestCredential.MdocCredential(
                 documentType = "org.iso.18013.5.1.mDL",
@@ -788,7 +829,8 @@ val DCQLQueryTest by testSuite {
                         "resident_address" to "dummyStringValue",
                         "resident_country" to "dummyStringValue",
                     ),
-                )
+                ),
+                satisfiesCryptographicHolderBinding = true,
             )
             val mdlFullCred = TestCredential.MdocCredential(
                 documentType = "org.iso.18013.5.1.mDL",
@@ -800,7 +842,8 @@ val DCQLQueryTest by testSuite {
                         "family_name" to "dummyStringValue",
                         "portrait" to "dummyStringValue",
                     ),
-                )
+                ),
+                satisfiesCryptographicHolderBinding = true,
             )
             val photoCardId = TestCredential.MdocCredential(
                 documentType = "org.iso.23220.photoid.1",
@@ -810,7 +853,8 @@ val DCQLQueryTest by testSuite {
                         "family_name" to "dummyStringValue",
                         "portrait" to "dummyStringValue",
                     ),
-                )
+                ),
+                satisfiesCryptographicHolderBinding = true,
             )
             val photoCardAddress = TestCredential.MdocCredential(
                 documentType = "org.iso.23220.photoid.1",
@@ -819,7 +863,8 @@ val DCQLQueryTest by testSuite {
                         "resident_address" to "dummyStringValue",
                         "resident_country" to "dummyStringValue",
                     ),
-                )
+                ),
+                satisfiesCryptographicHolderBinding = true,
             )
             val photoCardFull = TestCredential.MdocCredential(
                 documentType = "org.iso.23220.photoid.1",
@@ -831,12 +876,13 @@ val DCQLQueryTest by testSuite {
                         "resident_address" to "dummyStringValue",
                         "resident_country" to "dummyStringValue",
                     ),
-                )
+                ),
+                satisfiesCryptographicHolderBinding = true,
             )
 
             "failing" - {
                 withData(
-                   mapOf(
+                    mapOf(
                         "empty database" to listOf<TestCredential>(),
                         "only addresses" to listOf(
                             mdlAddressCred,
@@ -852,7 +898,7 @@ val DCQLQueryTest by testSuite {
 
             "success" - {
                 withData(
-                   mapOf(
+                    mapOf(
                         "database with mdl id" to listOf(
                             mdlIdCred
                         ),
@@ -963,6 +1009,7 @@ val DCQLQueryTest by testSuite {
                     put("region", "dummyStringValue")
                     put("date_of_birth", "dummyStringValue")
                 },
+                satisfiesCryptographicHolderBinding = true,
             )
             val acdeCred = TestCredential.SdJwtCredential(
                 type = "https://credentials.example.com/identity_credential",
@@ -972,6 +1019,7 @@ val DCQLQueryTest by testSuite {
                     put("region", "dummyStringValue")
                     put("date_of_birth", "dummyStringValue")
                 },
+                satisfiesCryptographicHolderBinding = true,
             )
             val abeCred = TestCredential.SdJwtCredential(
                 type = "https://credentials.example.com/identity_credential",
@@ -980,6 +1028,7 @@ val DCQLQueryTest by testSuite {
                     put("postal_code", "dummyStringValue")
                     put("date_of_birth", "dummyStringValue")
                 },
+                satisfiesCryptographicHolderBinding = true,
             )
             val abCred = TestCredential.SdJwtCredential(
                 type = "https://credentials.example.com/identity_credential",
@@ -987,6 +1036,7 @@ val DCQLQueryTest by testSuite {
                     put("last_name", "dummyStringValue")
                     put("postal_code", "dummyStringValue")
                 },
+                satisfiesCryptographicHolderBinding = true,
             )
             val aeCred = TestCredential.SdJwtCredential(
                 type = "https://credentials.example.com/identity_credential",
@@ -994,6 +1044,7 @@ val DCQLQueryTest by testSuite {
                     put("last_name", "dummyStringValue")
                     put("date_of_birth", "dummyStringValue")
                 },
+                satisfiesCryptographicHolderBinding = true,
             )
             val beCred = TestCredential.SdJwtCredential(
                 type = "https://credentials.example.com/identity_credential",
@@ -1001,6 +1052,7 @@ val DCQLQueryTest by testSuite {
                     put("postal_code", "dummyStringValue")
                     put("date_of_birth", "dummyStringValue")
                 },
+                satisfiesCryptographicHolderBinding = true,
             )
             val cdeCred = TestCredential.SdJwtCredential(
                 type = "https://credentials.example.com/identity_credential",
@@ -1009,6 +1061,7 @@ val DCQLQueryTest by testSuite {
                     put("region", "dummyStringValue")
                     put("date_of_birth", "dummyStringValue")
                 },
+                satisfiesCryptographicHolderBinding = true,
             )
             val adeCred = TestCredential.SdJwtCredential(
                 type = "https://credentials.example.com/identity_credential",
@@ -1017,6 +1070,7 @@ val DCQLQueryTest by testSuite {
                     put("region", "dummyStringValue")
                     put("date_of_birth", "dummyStringValue")
                 },
+                satisfiesCryptographicHolderBinding = true,
             )
             val aceCred = TestCredential.SdJwtCredential(
                 type = "https://credentials.example.com/identity_credential",
@@ -1025,6 +1079,7 @@ val DCQLQueryTest by testSuite {
                     put("locality", "dummyStringValue")
                     put("date_of_birth", "dummyStringValue")
                 },
+                satisfiesCryptographicHolderBinding = true,
             )
             val acdCred = TestCredential.SdJwtCredential(
                 type = "https://credentials.example.com/identity_credential",
@@ -1033,11 +1088,12 @@ val DCQLQueryTest by testSuite {
                     put("locality", "dummyStringValue")
                     put("region", "dummyStringValue")
                 },
+                satisfiesCryptographicHolderBinding = true,
             )
 
             "failing" - {
                 withData(
-                   mapOf(
+                    mapOf(
                         "empty database" to listOf<TestCredential>(),
                         "missing claims" to listOf(
                             acdCred,
@@ -1058,7 +1114,7 @@ val DCQLQueryTest by testSuite {
 
             "success" - {
                 withData(
-                   mapOf(
+                    mapOf(
                         "abeCred" to listOf(
                             abeCred
                         ),
@@ -1122,6 +1178,7 @@ val DCQLQueryTest by testSuite {
                     })
                     put("postal_code", "90210")
                 },
+                satisfiesCryptographicHolderBinding = true,
             )
             val valid2 = TestCredential.SdJwtCredential(
                 type = "https://credentials.example.com/identity_credential",
@@ -1133,6 +1190,7 @@ val DCQLQueryTest by testSuite {
                     })
                     put("postal_code", "90211")
                 },
+                satisfiesCryptographicHolderBinding = true,
             )
             val wrongPostalCode = TestCredential.SdJwtCredential(
                 type = "https://credentials.example.com/identity_credential",
@@ -1144,6 +1202,7 @@ val DCQLQueryTest by testSuite {
                     })
                     put("postal_code", "90212")
                 },
+                satisfiesCryptographicHolderBinding = true,
             )
             val wrongPostalCodeType = TestCredential.SdJwtCredential(
                 type = "https://credentials.example.com/identity_credential",
@@ -1155,6 +1214,7 @@ val DCQLQueryTest by testSuite {
                     })
                     put("postal_code", 90211)
                 },
+                satisfiesCryptographicHolderBinding = true,
             )
             val wrongPostalCodeTypeAndValue = TestCredential.SdJwtCredential(
                 type = "https://credentials.example.com/identity_credential",
@@ -1166,6 +1226,7 @@ val DCQLQueryTest by testSuite {
                     })
                     put("postal_code", true)
                 },
+                satisfiesCryptographicHolderBinding = true,
             )
             val wrongName = TestCredential.SdJwtCredential(
                 type = "https://credentials.example.com/identity_credential",
@@ -1177,6 +1238,7 @@ val DCQLQueryTest by testSuite {
                     })
                     put("postal_code", "90211")
                 },
+                satisfiesCryptographicHolderBinding = true,
             )
             val missingFirstName = TestCredential.SdJwtCredential(
                 type = "https://credentials.example.com/identity_credential",
@@ -1187,6 +1249,7 @@ val DCQLQueryTest by testSuite {
                     })
                     put("postal_code", "90211")
                 },
+                satisfiesCryptographicHolderBinding = true,
             )
             val missingStreetAddress = TestCredential.SdJwtCredential(
                 type = "https://credentials.example.com/identity_credential",
@@ -1198,6 +1261,7 @@ val DCQLQueryTest by testSuite {
                     })
                     put("postal_code", "90211")
                 },
+                satisfiesCryptographicHolderBinding = true,
             )
             val missingAddress = TestCredential.SdJwtCredential(
                 type = "https://credentials.example.com/identity_credential",
@@ -1206,11 +1270,12 @@ val DCQLQueryTest by testSuite {
                     put("first_name", "dummyStringValue")
                     put("postal_code", "90211")
                 },
+                satisfiesCryptographicHolderBinding = true,
             )
 
             "failing" - {
                 withData(
-                   mapOf(
+                    mapOf(
                         "empty database" to listOf<TestCredential>(),
                         "missing claims" to listOf(
                             missingAddress,
@@ -1231,7 +1296,7 @@ val DCQLQueryTest by testSuite {
 
             "success" - {
                 withData(
-                   mapOf(
+                    mapOf(
                         "valid1" to listOf(valid1),
                         "valid2" to listOf(valid2),
                     )
@@ -1244,7 +1309,7 @@ val DCQLQueryTest by testSuite {
     "Manual written examples" - {
         "values" - {
             withDataSuites(
-               mapOf(
+                mapOf(
                     // expected values json array, list of valid values, list of invalid values
                     "strings1" to Triple<String, List<Any?>, List<Any?>>(
                         """["expectedStringValue1", "2"]""",
@@ -1335,7 +1400,8 @@ val DCQLQueryTest by testSuite {
                                     }
                                 )
                             }
-                        }
+                        },
+                        satisfiesCryptographicHolderBinding = true,
                     )
                 }
 
@@ -1372,7 +1438,8 @@ val DCQLQueryTest by testSuite {
                                     mapOf()
                                 }
                             }
-                        )
+                        ),
+                        satisfiesCryptographicHolderBinding = true,
                     )
                 }
 
@@ -1405,6 +1472,142 @@ val DCQLQueryTest by testSuite {
                         ).getOrThrow()
                     }
                 }
+            }
+        }
+    }
+    "cryptographic holder binding" - {
+        "sdJwt credential" - {
+            val sdJwtDcqlQuery = DCQLQuery(
+                credentials = DCQLCredentialQueryList(
+                    listOf(
+                        DCQLSdJwtCredentialQuery(
+                            id = DCQLCredentialQueryIdentifier("my_credential"),
+                            meta = DCQLSdJwtCredentialMetadataAndValidityConstraints(
+                                vctValues = listOf("my_credential")
+                            ),
+                        )
+                    ).toNonEmptyList()
+                )
+            )
+            withData(true, false) {
+                val credentials = listOf(
+                    TestCredential.SdJwtCredential(
+                        type = "my_credential",
+                        claimStructure = buildJsonObject { },
+                        satisfiesCryptographicHolderBinding = it,
+                    ),
+                )
+                val executionResult = TestCredentialQueryAdapter(sdJwtDcqlQuery).execute(
+                    credentials
+                )
+                executionResult.isSuccess shouldBe it
+            }
+        }
+        "mdoc credential" - {
+            val mdocDcqlQuery = DCQLQuery(
+                credentials = DCQLCredentialQueryList(
+                    listOf(
+                        DCQLIsoMdocCredentialQuery(
+                            id = DCQLCredentialQueryIdentifier("my_credential"),
+                            meta = DCQLIsoMdocCredentialMetadataAndValidityConstraints(
+                                doctypeValue = "testDocType"
+                            ),
+                        )
+                    ).toNonEmptyList()
+                )
+            )
+            withData(true, false) {
+                val credentials = listOf(
+                    TestCredential.MdocCredential(
+                        documentType = "testDocType",
+                        namespaces = mapOf(),
+                        satisfiesCryptographicHolderBinding = it
+                    ),
+                )
+                val executionResult = TestCredentialQueryAdapter(mdocDcqlQuery).execute(
+                    credentials
+                )
+                executionResult.isSuccess shouldBe it
+            }
+        }
+    }
+    "authority key identifiers" - {
+        val dummyBase64String = "s9tIpPmhxdiuNkHMEWNpYim8S8Y"
+        "authority key identifiers in sdJwt credential" - {
+            val sdJwtDcqlQuery = DCQLQuery(
+                credentials = DCQLCredentialQueryList(
+                    nonEmptyListOf(
+                        DCQLSdJwtCredentialQuery(
+                            id = DCQLCredentialQueryIdentifier("my_credential"),
+                            meta = DCQLSdJwtCredentialMetadataAndValidityConstraints(
+                                vctValues = listOf("my_credential"),
+                            ),
+                            trustedAuthorities = nonEmptyListOf(
+                                DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier(
+                                    values = nonEmptyListOf(dummyBase64String)
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+            withData(
+                mapOf(
+                    "no identifiers" to listOf(),
+                    "with matching identifier" to listOf(dummyBase64String),
+                )
+            ) {
+                val credentials = listOf(
+                    TestCredential.SdJwtCredential(
+                        type = "my_credential",
+                        claimStructure = buildJsonObject { },
+                        authorityKeyIdentifiers = it.map {
+                            DCQLAuthorityKeyIdentifier(it)
+                        },
+                        satisfiesCryptographicHolderBinding = true,
+                    ),
+                )
+                val executionResult = TestCredentialQueryAdapter(sdJwtDcqlQuery).execute(credentials)
+                executionResult.isSuccess shouldBe it.isNotEmpty()
+            }
+        }
+        "authority key identifiers in mdoc credential" - {
+            val dummyBase64String = "s9tIpPmhxdiuNkHMEWNpYim8S8Y"
+            val mdocDcqlQuery = DCQLQuery(
+                credentials = DCQLCredentialQueryList(
+                    nonEmptyListOf(
+                        DCQLIsoMdocCredentialQuery(
+                            id = DCQLCredentialQueryIdentifier("my_credential"),
+                            meta = DCQLIsoMdocCredentialMetadataAndValidityConstraints(
+                                doctypeValue = "testDocType",
+                            ),
+                            trustedAuthorities = nonEmptyListOf(
+                                DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier(
+                                    values = nonEmptyListOf(dummyBase64String)
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+            withData(
+                mapOf(
+                    "no identifiers" to listOf(),
+                    "with matching identifier" to listOf(dummyBase64String),
+                )
+            ) {
+                val credentials = listOf(
+                    TestCredential.MdocCredential(
+                        documentType = "testDocType",
+                        namespaces = mapOf(),
+                        authorityKeyIdentifiers = it.map {
+                            DCQLAuthorityKeyIdentifier(it)
+                        },
+                        satisfiesCryptographicHolderBinding = true,
+                    ),
+                )
+                val executionResult = TestCredentialQueryAdapter(mdocDcqlQuery).execute(credentials)
+                executionResult.isSuccess shouldBe it.isNotEmpty()
             }
         }
     }

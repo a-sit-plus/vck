@@ -6,14 +6,16 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-@SerialName(DCQLTrustedAuthorityQueryEntryOpenIDFederation.SERIAL_NAME)
 data class DCQLTrustedAuthorityQueryEntryOpenIDFederation(
     @SerialName(SerialNames.VALUES)
     override val values: NonEmptyList<String>,
-) : DCQLTrustedAuthorityQueryEntry {
     @SerialName(SerialNames.TYPE)
     @EncodeDefault
-    override val type = DCQL_TRUSTED_AUTHORITY_TYPE
+    override val type: DCQLTrustedAuthorityType = DCQL_TRUSTED_AUTHORITY_TYPE
+) : DCQLTrustedAuthorityQueryEntry {
+    init {
+        require(type == DCQL_TRUSTED_AUTHORITY_TYPE)
+    }
 
     companion object {
         const val SERIAL_NAME = "openid_federation"

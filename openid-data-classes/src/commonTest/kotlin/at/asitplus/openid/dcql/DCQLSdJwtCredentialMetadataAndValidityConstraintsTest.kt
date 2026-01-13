@@ -34,7 +34,6 @@ val DCQLSdJwtCredentialMetadataAndValidityConstraintsTest by testSuite {
 
             DCQLCredentialQuery.Procedures.validateCredentialMetadataAndValidityConstraints(
                 credential = "",
-                credentialFormatIdentifier = CredentialFormatEnum.DC_SD_JWT,
                 credentialMetadataAndValidityConstraints = DCQLSdJwtCredentialMetadataAndValidityConstraints(
                     vctValues = listOf("dummy document type"),
                 ),
@@ -52,7 +51,6 @@ val DCQLSdJwtCredentialMetadataAndValidityConstraintsTest by testSuite {
         shouldThrowAny {
             DCQLCredentialQuery.Procedures.validateCredentialMetadataAndValidityConstraints(
                 credential = "",
-                credentialFormatIdentifier = CredentialFormatEnum.DC_SD_JWT,
                 credentialMetadataAndValidityConstraints = DCQLSdJwtCredentialMetadataAndValidityConstraints(
                     vctValues = listOf("dummy document type"),
                 ),

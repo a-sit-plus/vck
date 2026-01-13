@@ -2,6 +2,7 @@ package at.asitplus.openid.dcql
 
 import at.asitplus.data.NonEmptyList
 import at.asitplus.openid.CredentialFormatEnum
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -15,8 +16,6 @@ import kotlinx.serialization.Serializable
 data class DCQLSdJwtCredentialQuery(
     @SerialName(DCQLCredentialQuery.SerialNames.ID)
     override val id: DCQLCredentialQueryIdentifier,
-    @SerialName(DCQLCredentialQuery.SerialNames.FORMAT)
-    override val format: CredentialFormatEnum,
     @SerialName(DCQLCredentialQuery.SerialNames.META)
     override val meta: DCQLSdJwtCredentialMetadataAndValidityConstraints,
     @SerialName(DCQLCredentialQuery.SerialNames.CLAIMS)
@@ -29,7 +28,11 @@ data class DCQLSdJwtCredentialQuery(
     override val trustedAuthorities: NonEmptyList<DCQLTrustedAuthorityQueryEntry>? = null,
     @SerialName(DCQLCredentialQuery.SerialNames.REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING)
     override val requireCryptographicHolderBinding: Boolean? = true,
+    @SerialName(DCQLCredentialQuery.SerialNames.FORMAT)
+    @EncodeDefault
+    override val format: CredentialFormatEnum = CredentialFormatEnum.DC_SD_JWT,
 ) : DCQLCredentialQuery {
+
     init {
         validate()
     }

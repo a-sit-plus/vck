@@ -189,14 +189,14 @@ sealed interface DCQLCredentialQuery {
         sdJwtCredentialTypeExtractor: (Credential) -> String,
         credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
         satisfiesCryptographicHolderBinding: (Credential) -> Boolean,
-        authorityKeyIdentifiers: (Credential) -> List<DCQLAuthorityKeyIdentifier>,
+        authorityKeyIdentifiers: (Credential) -> Collection<DCQLAuthorityKeyIdentifier>,
     ): KmmResult<DCQLCredentialQueryMatchingResult> = catching {
         if (credentialFormatExtractor(credential) != format) {
             throw IllegalArgumentException("Incompatible credential format")
         }
 
         val isTrustedAuthorityMatching = trustedAuthorities?.any { trustedAuthority ->
-            when(trustedAuthority) {
+            when (trustedAuthority) {
                 is DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier -> {
                     val supportedAuthorityKeyIdentifiers = trustedAuthority.values.map {
                         DCQLAuthorityKeyIdentifier(it)
@@ -207,29 +207,21 @@ sealed interface DCQLCredentialQuery {
                 }
 
                 is DCQLTrustedAuthorityQueryEntryETSITrustedList,
-                is DCQLTrustedAuthorityQueryEntryOpenIDFederation-> throw UnsupportedOperationException("Trusted authority type is not supported: `${trustedAuthority.type}`")
+                is DCQLTrustedAuthorityQueryEntryOpenIDFederation -> throw UnsupportedOperationException("Trusted authority type is not supported: `${trustedAuthority.type}`")
             }
         } ?: true
 
         if (!isTrustedAuthorityMatching) {
-            throw IllegalArgumentException(
-                "Credential matches to none of the trusted authorities."
-            )
+            throw IllegalArgumentException("Credential matches to none of the trusted authorities.")
         }
 
-        if (requireCryptographicHolderBinding == true && !satisfiesCryptographicHolderBinding(
-                credential
-            )
-        ) {
-            throw IllegalArgumentException(
-                "Credential does not satisfy constraint `require_cryptographic_holder_binding`."
-            )
+        if (requireCryptographicHolderBinding == true && !satisfiesCryptographicHolderBinding(credential)) {
+            throw IllegalArgumentException("Credential does not satisfy constraint `require_cryptographic_holder_binding`.")
         }
 
 
         Procedures.validateCredentialMetadataAndValidityConstraints(
             credential = credential,
-            credentialFormatIdentifier = credentialFormatExtractor(credential),
             credentialMetadataAndValidityConstraints = meta,
             mdocCredentialDoctypeExtractor = mdocCredentialDoctypeExtractor,
             sdJwtCredentialTypeExtractor = sdJwtCredentialTypeExtractor,
@@ -240,15 +232,13 @@ sealed interface DCQLCredentialQuery {
 
         val requestedClaimsQueryCombinations = claimSets?.let {
             val claimQueryLookup = claimQueries.associateBy {
-                it.id ?: throw IllegalArgumentException(
-                    "Claim query identifier is missing despite the presence of `claim_sets`."
-                )
+                it.id
+                    ?: throw IllegalArgumentException("Claim query identifier is missing despite the presence of `claim_sets`.")
             }
             it.map {
                 it.map {
-                    claimQueryLookup[it] ?: throw IllegalArgumentException(
-                        "Claim specified in `claim_sets` was not found in `claims`."
-                    )
+                    claimQueryLookup[it]
+                        ?: throw IllegalArgumentException("Claim specified in `claim_sets` was not found in `claims`.")
                 }
             }.toNonEmptyList()
         } ?: nonEmptyListOf(claimQueries)
@@ -272,27 +262,30 @@ sealed interface DCQLCredentialQuery {
     object Procedures {
         fun <Credential : Any> validateCredentialMetadataAndValidityConstraints(
             credential: Credential,
-            credentialFormatIdentifier: CredentialFormatEnum,
-            credentialMetadataAndValidityConstraints: DCQLCredentialMetadataAndValidityConstraints?,
+            credentialMetadataAndValidityConstraints: DCQLCredentialMetadataAndValidityConstraints,
             mdocCredentialDoctypeExtractor: (Credential) -> String,
             sdJwtCredentialTypeExtractor: (Credential) -> String,
         ): KmmResult<Unit> = catching {
-            when (credentialFormatIdentifier) {
-                CredentialFormatEnum.MSO_MDOC -> {
-                    credentialMetadataAndValidityConstraints as DCQLIsoMdocCredentialMetadataAndValidityConstraints
+            when (credentialMetadataAndValidityConstraints) {
+                DCQLEmptyCredentialMetadataAndValidityConstraints -> {
+                    // noop
+                }
+
+                is DCQLIsoMdocCredentialMetadataAndValidityConstraints -> {
                     credentialMetadataAndValidityConstraints.validate(
                         mdocCredentialDoctypeExtractor(credential)
                     ).getOrThrow()
                 }
 
-                CredentialFormatEnum.DC_SD_JWT -> {
-                    credentialMetadataAndValidityConstraints as DCQLSdJwtCredentialMetadataAndValidityConstraints
+                is DCQLSdJwtCredentialMetadataAndValidityConstraints -> {
                     credentialMetadataAndValidityConstraints.validate(
                         sdJwtCredentialTypeExtractor(credential)
                     ).getOrThrow()
                 }
 
-                else -> {}
+                is DCQLW3CVerifiableCredentialMetadataAndValidityConstraints -> {
+                    // TODO: implement
+                }
             }
         }
     }

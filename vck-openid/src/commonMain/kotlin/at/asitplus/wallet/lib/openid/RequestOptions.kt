@@ -119,9 +119,7 @@ data class RequestOptions(
                 val meta = when (credential.representation) {
                     CredentialRepresentation.PLAIN_JWT -> DCQLW3CVerifiableCredentialMetadataAndValidityConstraints(
                         typeValues = listOf(
-                            listOf(
-                                credential.credentialScheme.vcType!!
-                            ).toNonEmptyList()
+                            listOf(credential.credentialScheme.vcType!!).toNonEmptyList()
                         ).toNonEmptyList()
                     )
 

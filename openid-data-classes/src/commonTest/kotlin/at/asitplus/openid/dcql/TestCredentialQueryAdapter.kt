@@ -33,10 +33,10 @@ value class TestCredentialQueryAdapter(val dcqlQuery: DCQLQuery) {
             }
         },
         satisfiesCryptographicHolderBinding = {
-            true
+            it.satisfiesCryptographicHolderBinding
         },
         authorityKeyIdentifiers = {
-            listOf()
+            it.authorityKeyIdentifiers
         }
     )
 }
