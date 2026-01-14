@@ -17,6 +17,10 @@ import at.asitplus.openid.dcql.DCQLAuthorityKeyIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialClaimStructure
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLQueryResult
+import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
+import at.asitplus.signum.indispensable.asn1.Asn1OctetString
+import at.asitplus.signum.indispensable.asn1.Asn1PrimitiveOctetString
+import at.asitplus.signum.indispensable.asn1.Asn1Sequence
 import at.asitplus.signum.indispensable.asn1.KnownOIDs
 import at.asitplus.signum.indispensable.asn1.authorityKeyIdentifier_2_5_29_35
 import at.asitplus.signum.indispensable.josef.JwsSigned
@@ -78,13 +82,13 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
         authorityKeyIdentifiers = {
             when (it) {
                 is SubjectCredentialStore.StoreEntry.Iso -> it.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.flatMap {
-                    X509Certificate.decodeFromByteArray(it)?.toAuthorityKeyIdentifiers() ?: listOf()
+                    X509Certificate.decodeFromByteArray(it)?.getAuthorityKeyIdentifier() ?: listOf()
                 } ?: listOf()
 
                 is SubjectCredentialStore.StoreEntry.SdJwt -> SdJwtSigned.parseCatching(
                     it.vcSerialized
                 ).getOrThrow().jws.header.certificateChain?.flatMap {
-                    it.toAuthorityKeyIdentifiers()
+                    it.getAuthorityKeyIdentifier()
                 } ?: listOf()
 
                 is SubjectCredentialStore.StoreEntry.Vc -> JwsSigned.deserialize(
@@ -92,16 +96,36 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
                     it.vcSerialized,
                     vckJsonSerializer
                 ).getOrThrow().header.certificateChain?.flatMap {
-                    it.toAuthorityKeyIdentifiers()
+                    it.getAuthorityKeyIdentifier()
                 } ?: listOf()
             }
         }
     )
 
-    private fun X509Certificate.toAuthorityKeyIdentifiers() = tbsCertificate.extensions?.filter {
         // take all authority key identifiers from chain, assuming chain is validated elsewhere
+    /**
+     * [RFC 5280 4.2.1.1. Authority Key Identifier](https://www.rfc-editor.org/rfc/rfc5280.html#section-4.2.1.1)
+     * ```
+     *    id-ce-authorityKeyIdentifier OBJECT IDENTIFIER ::=  { id-ce 35 }
+     *
+     *    AuthorityKeyIdentifier ::= SEQUENCE {
+     *       keyIdentifier             [0] KeyIdentifier           OPTIONAL,
+     *       authorityCertIssuer       [1] GeneralNames            OPTIONAL,
+     *       authorityCertSerialNumber [2] CertificateSerialNumber OPTIONAL  }
+     *
+     *    KeyIdentifier ::= OCTET STRING
+     * ```
+     */
+    private fun X509Certificate.getAuthorityKeyIdentifier() = tbsCertificate.extensions?.filter {
         it.oid == KnownOIDs.authorityKeyIdentifier_2_5_29_35
-    }?.map {
-        DCQLAuthorityKeyIdentifier(it.value.asOctetString().content)
+    }?.mapNotNull {
+        when (val aki = it.value.asOctetString()) {
+            is Asn1PrimitiveOctetString -> null
+            is Asn1EncapsulatingOctetString -> when (val innerValue = aki.first()) {
+                is Asn1Sequence -> DCQLAuthorityKeyIdentifier(innerValue.asSequence().first().asPrimitive().content)
+                is Asn1OctetString -> DCQLAuthorityKeyIdentifier(innerValue.asOctetString().content)
+                else -> null
+            }
+        }
     } ?: listOf()
 }
