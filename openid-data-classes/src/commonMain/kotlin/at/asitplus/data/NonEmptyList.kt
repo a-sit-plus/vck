@@ -16,4 +16,6 @@ value class NonEmptyList<out T>
         fun <T> List<T>.toNonEmptyList() = NonEmptyList(this)
         fun <T> nonEmptyListOf(vararg elements: T) = NonEmptyList(elements.toList())
     }
+
+    override fun toString(): String = "$list"
 }

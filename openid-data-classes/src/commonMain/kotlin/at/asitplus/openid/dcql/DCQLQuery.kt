@@ -133,7 +133,8 @@ data class DCQLQuery(
 
             val satisfiableCredentialSetQueryOptions = findSatisfactoryCredentialSetQueryOptions(
                 credentialQueryMatches = credentialQueryMatches,
-                requestedCredentialSetQueries = requestedCredentialSetQueries
+                requestedCredentialSetQueries = requestedCredentialSetQueries,
+                credentialQueries
             ).getOrElse {
                 throw IllegalArgumentException("Submission requirements cannot be satisfied.", it)
             }
@@ -179,6 +180,7 @@ data class DCQLQuery(
         fun <Credential : Any> findSatisfactoryCredentialSetQueryOptions(
             credentialQueryMatches: Map<DCQLCredentialQueryIdentifier, List<DCQLCredentialSubmissionOption<Credential>>>,
             requestedCredentialSetQueries: List<DCQLCredentialSetQuery>,
+            credentialQueries: List<DCQLCredentialQuery>,
         ): KmmResult<List<DCQLCredentialSetQuery>> = catching {
             requestedCredentialSetQueries.mapNotNull { credentialSetQuery ->
                 catching<DCQLCredentialSetQuery?> {
@@ -191,7 +193,13 @@ data class DCQLQuery(
                     )
                 }.getOrElse {
                     if (credentialSetQuery.required) {
-                        throw IllegalArgumentException("Required credential set query is not satisfiable: $credentialSetQuery", it)
+                        val failedQuery = credentialQueries.find {
+                            it.id.string in credentialSetQuery.options.list.flatten().map { it.string }
+                        }
+                        throw IllegalArgumentException(
+                            "Required credential set query is not satisfiable: $credentialSetQuery and $failedQuery}",
+                            it
+                        )
                     }
                     null
                 }
