@@ -78,7 +78,7 @@ class DCQLClaimsPathPointer(
     }
 
     override fun toString(): String {
-        return super.toString() + "($segments)"
+        return "DCQLClaimsPathPointer($segments)"
     }
 
     /**
