@@ -6,7 +6,6 @@ import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
-import at.asitplus.wallet.lib.iso.ResponseResult
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import kotlinx.serialization.json.JsonObject
 
