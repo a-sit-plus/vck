@@ -9,7 +9,6 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.shouldNotBe
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.EncodingException
 import kotlinx.serialization.json.Json
@@ -30,14 +29,12 @@ val DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifierTest by testSuite {
                     ),
                 ) {
                     val pseudoSerialized = Json.encodeToJsonElement(serializer, it)
-                    val pseudoSerializedBase = Json.encodeToJsonElement(
-                        DCQLTrustedAuthorityQueryEntry.serializer(),
-                        it
-                    )
+                    val pseudoSerializedBase = Json.encodeToJsonElement(DCQLTrustedAuthorityQueryEntry.serializer(), it)
                     pseudoSerialized shouldBe pseudoSerializedBase
 
                     val jsonElement = Json.encodeToJsonElement<DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier>(it)
-                    it.values.first() shouldBe jsonElement.jsonObject["values"].shouldNotBeNull().jsonArray.first().jsonPrimitive.content
+                    it.values.shouldBeSingleton().first() shouldBe jsonElement.jsonObject["values"].shouldNotBeNull()
+                        .jsonArray.shouldBeSingleton().first().jsonPrimitive.content
                 }
             }
         }
@@ -49,7 +46,8 @@ val DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifierTest by testSuite {
                     "s9tIpPmhxdiuNkHMEWNpYim8S8Y"
                 ) { string ->
                     val entry = DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier(nonEmptyListOf(string))
-                    entry.authorityKeyIdentifiers.first().byteArray shouldBe string.decodeToByteArray(Base64UrlStrict)
+                    entry.authorityKeyIdentifiers.shouldBeSingleton().first().byteArray shouldBe
+                            string.decodeToByteArray(Base64UrlStrict)
                 }
             }
         }
@@ -62,7 +60,8 @@ val DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifierTest by testSuite {
                     "s9tIpPmhxdiuNkHMEWNpYim8S8Y="
                 ) { string ->
                     val entry = DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier(nonEmptyListOf(string))
-                    entry.authorityKeyIdentifiers.first().byteArray shouldBe string.decodeToByteArray(Base64UrlStrict)
+                    entry.authorityKeyIdentifiers.shouldBeSingleton().first().byteArray shouldBe
+                            string.decodeToByteArray(Base64UrlStrict)
                 }
             }
         }
@@ -92,11 +91,10 @@ val DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifierTest by testSuite {
                     deserialized shouldBe Json.decodeFromString(DCQLTrustedAuthorityQueryEntry.serializer(), string)
 
                     val jsonElement = Json.decodeFromString(JsonElement.serializer(), string)
-                    deserialized.authorityKeyIdentifiers.shouldBeSingleton().first().byteArray.shouldBe(
-                        jsonElement.jsonObject["values"].shouldNotBeNull().jsonArray.first().jsonPrimitive.content.decodeToByteArray(
-                            Base64UrlStrict
-                        )
-                    )
+                    deserialized.authorityKeyIdentifiers.shouldBeSingleton().first().byteArray shouldBe
+                            jsonElement.jsonObject["values"].shouldNotBeNull()
+                                .jsonArray.shouldBeSingleton().first()
+                                .jsonPrimitive.content.decodeToByteArray(Base64UrlStrict)
                 }
             }
         }

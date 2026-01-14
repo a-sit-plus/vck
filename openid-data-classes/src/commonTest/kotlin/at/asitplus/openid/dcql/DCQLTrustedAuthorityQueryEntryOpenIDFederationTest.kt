@@ -5,8 +5,9 @@ import at.asitplus.testballoon.minus
 import at.asitplus.testballoon.withData
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.collections.shouldBeSingleton
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.shouldNotBe
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.encodeToJsonElement
@@ -25,14 +26,13 @@ val DCQLTrustedAuthorityQueryEntryOpenIDFederationTest by testSuite {
                     ),
                 ) {
                     val pseudoSerialized = Json.encodeToJsonElement(serializer, it)
-                    val pseudoSerializedBase = Json.encodeToJsonElement(
-                        DCQLTrustedAuthorityQueryEntry.serializer(),
-                        it
-                    )
+                    val pseudoSerializedBase = Json.encodeToJsonElement(DCQLTrustedAuthorityQueryEntry.serializer(), it)
                     pseudoSerialized shouldBe pseudoSerializedBase
 
                     val jsonElement = Json.encodeToJsonElement<DCQLTrustedAuthorityQueryEntryOpenIDFederation>(it)
-                    it.values.first() shouldBe jsonElement.jsonObject["values"]!!.jsonArray.first().jsonPrimitive.content
+                    it.values.shouldBeSingleton().first() shouldBe
+                            jsonElement.jsonObject["values"].shouldNotBeNull()
+                                .jsonArray.shouldBeSingleton().first().jsonPrimitive.content
                 }
             }
         }
@@ -47,7 +47,9 @@ val DCQLTrustedAuthorityQueryEntryOpenIDFederationTest by testSuite {
                     Json.decodeFromString(DCQLTrustedAuthorityQueryEntry.serializer(), string) shouldBe deserialized
 
                     val jsonElement = Json.decodeFromString(JsonElement.serializer(), string)
-                    deserialized.values.first() shouldBe jsonElement.jsonObject["values"]!!.jsonArray.first().jsonPrimitive.content
+                    deserialized.values.shouldBeSingleton().first() shouldBe
+                            jsonElement.jsonObject["values"].shouldNotBeNull()
+                                .jsonArray.shouldBeSingleton().first().jsonPrimitive.content
                 }
             }
         }
