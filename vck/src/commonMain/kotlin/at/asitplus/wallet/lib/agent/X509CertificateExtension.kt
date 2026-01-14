@@ -35,9 +35,7 @@ suspend fun X509Certificate.Companion.generateSelfSignedCertificate(
         issuerName = listOf(
             RelativeDistinguishedName(
                 AttributeTypeAndValue.CommonName(
-                    Asn1String.UTF8(
-                        "Default"
-                    )
+                    Asn1String.UTF8("Default")
                 )
             )
         ),
@@ -47,9 +45,7 @@ suspend fun X509Certificate.Companion.generateSelfSignedCertificate(
         subjectName = listOf(
             RelativeDistinguishedName(
                 AttributeTypeAndValue.CommonName(
-                    Asn1String.UTF8(
-                        "Default"
-                    )
+                    Asn1String.UTF8("Default")
                 )
             )
         ),
@@ -58,11 +54,7 @@ suspend fun X509Certificate.Companion.generateSelfSignedCertificate(
     )
 
     signer(tbsCertificate.encodeToDer()).map { signature ->
-        X509Certificate(
-            tbsCertificate,
-            algorithm,
-            signature
-        )
+        X509Certificate(tbsCertificate, algorithm, signature)
     }.getOrThrow()
 
 }
