@@ -44,10 +44,7 @@ val DCQLTrustedAuthorityQueryEntryOpenIDFederationTest by testSuite {
                     """{ "type": "openid_federation", "values": ["https://trustanchor.example.com"] }""",
                 ) { string ->
                     val deserialized = Json.decodeFromString(serializer, string)
-                    Json.decodeFromString(
-                        DCQLTrustedAuthorityQueryEntry.serializer(),
-                        string
-                    ) shouldBe deserialized
+                    Json.decodeFromString(DCQLTrustedAuthorityQueryEntry.serializer(), string) shouldBe deserialized
 
                     val jsonElement = Json.decodeFromString(JsonElement.serializer(), string)
                     deserialized.values.first() shouldBe jsonElement.jsonObject["values"]!!.jsonArray.first().jsonPrimitive.content
