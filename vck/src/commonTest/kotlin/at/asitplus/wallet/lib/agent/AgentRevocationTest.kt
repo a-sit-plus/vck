@@ -14,7 +14,6 @@ import at.asitplus.wallet.lib.data.StatusListCwt
 import at.asitplus.wallet.lib.data.StatusListJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc3986.toUri
@@ -22,14 +21,12 @@ import at.asitplus.wallet.lib.extensions.toView
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.assertions.AssertionErrorBuilder.Companion.fail
-import io.kotest.engine.runBlocking
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.kotest.matchers.types.shouldNotBeInstanceOf
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.json.Json
 import kotlin.random.Random
@@ -56,10 +53,10 @@ val AgentRevocationTest by testSuite {
     }) - {
 
         "revocation list should contain indices of revoked credential" {
-            val statusListJwt = it.statusListIssuer.issueStatusListJwt()
-            statusListJwt.shouldNotBeNull()
+            val statusList = it.statusListIssuer.issueStatusListJwt()
+                .shouldNotBeNull().payload.revocationList.shouldBeInstanceOf<StatusList>()
 
-            verifyStatusList(statusListJwt.payload.revocationList.shouldBeInstanceOf<StatusList>(), it.expectedRevokedIndexes)
+            verifyStatusList(statusList, it.expectedRevokedIndexes)
         }
 
         "aggregation should contain links if statuses have been set" {
@@ -120,9 +117,8 @@ val AgentRevocationTest by testSuite {
                 acceptedContentTypes = listOf(StatusListTokenMediaType.Cwt),
                 time = timestamp,
             )
-            providedToken.shouldBeInstanceOf<StatusListCwt>().apply {
-                value.payload.shouldNotBeNull().revocationList.shouldBeInstanceOf<StatusList>() shouldBe issuedToken.payload.revocationList
-            }
+            providedToken.shouldBeInstanceOf<StatusListCwt>()
+                .payload.getOrThrow().revocationList shouldBe issuedToken.payload.revocationList
         }
 
 

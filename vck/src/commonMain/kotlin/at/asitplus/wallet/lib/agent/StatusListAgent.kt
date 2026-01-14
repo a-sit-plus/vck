@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.openid.truncateToSeconds
 import at.asitplus.catching
+import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JwsSigned
@@ -14,7 +14,6 @@ import at.asitplus.wallet.lib.cbor.SignCoseFun
 import at.asitplus.wallet.lib.data.StatusListCwt
 import at.asitplus.wallet.lib.data.StatusListJwt
 import at.asitplus.wallet.lib.data.StatusListToken
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.MediaTypes
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListAggregation
@@ -77,10 +76,10 @@ class StatusListAgent(
      * Wraps the revocation information from [issuerCredentialStore] into a Status List Token,
      * returns a CWS representation of that.
      */
-    override suspend fun issueStatusListCwt(time: Instant?) =
-        with(buildStatusListTokenPayload(time.toTimePeriod())) {
+    override suspend fun issueStatusListCwt(time: Instant?, kind: RevocationList.Kind) =
+        with(buildStatusListTokenPayload(time.toTimePeriod(), kind)) {
             signStatusListCwt(
-                protectedHeader = CoseHeader(type = MediaTypes.Application.STATUSLIST_CWT),
+                protectedHeader = CoseHeader(type = if (kind == RevocationList.Kind.STATUS_LIST) MediaTypes.Application.STATUSLIST_CWT else MediaTypes.Application.IDENTIFIERLIST_CWT),
                 unprotectedHeader = null,
                 payload = coseCompliantSerializer.encodeToByteArray(this),
                 serializer = ByteArraySerializer(),
@@ -113,8 +112,7 @@ class StatusListAgent(
                 timePeriod ?: timePeriodProvider.getCurrentTimePeriod(clock)
             ).toStatusList(zlibService, statusListAggregationUrl)
 
-            RevocationList.Kind.IDENTIFIER_LIST -> IdentifierList(mapOf(), null)
-
+            RevocationList.Kind.IDENTIFIER_LIST -> TODO("IdentifierList has not been implemented yet")//IdentifierList(mapOf(), null)
         }
 
     /**

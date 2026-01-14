@@ -15,5 +15,7 @@ data object MediaTypes {
 
         /** `application/statuslist+cwt` */
         const val STATUSLIST_CWT = "application/statuslist+cwt"
+
+        const val IDENTIFIERLIST_CWT = "application/identifierlist+cwt"
     }
 }

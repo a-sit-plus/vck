@@ -91,6 +91,8 @@ class IssuerAgent(
         val coseKey = credential.subjectPublicKey.toCoseKey()
             .getOrElse { throw IllegalStateException("Could not create subject COSE key", it) }
         val deviceKeyInfo = DeviceKeyInfo(coseKey)
+
+        //TODO add IdentifierListInfo option
         val credentialStatus = StatusListInfo(
             index = reference.statusListIndex,
             uri = UniformResourceIdentifier(getRevocationListUrlFor(timePeriod)),
