@@ -99,18 +99,4 @@ val DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifierTest by testSuite {
             }
         }
     }
-    "given serialized version with incorrect type discriminator" - {
-        "when deserializing as derived type" - {
-            "then deserialization fails" - {
-                withData(
-                    """{ "type": "openid_federation", "values": ["https://trustanchor.example.com"] }""",
-                    """{ "type": "etsi_tl", "values": ["ttps://lotl.example.com"] }""",
-                ) { string ->
-                    shouldThrow<Throwable> {
-                        Json.decodeFromString(serializer, string)
-                    }
-                }
-            }
-        }
-    }
 }

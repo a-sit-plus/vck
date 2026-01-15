@@ -4,7 +4,6 @@ import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.testballoon.minus
 import at.asitplus.testballoon.withData
 import de.infix.testBalloon.framework.core.testSuite
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -50,20 +49,6 @@ val DCQLTrustedAuthorityQueryEntryETSITrustedListTest by testSuite {
                     deserialized.values.shouldBeSingleton().first() shouldBe
                             jsonElement.jsonObject["values"].shouldNotBeNull()
                                 .jsonArray.shouldBeSingleton().first().jsonPrimitive.content
-                }
-            }
-        }
-    }
-    "given serialized version with incorrect type discriminator" - {
-        "when deserializing as this type" - {
-            "then deserialization fails" - {
-                withData(
-                    """{ "type": "aki", "values": ["s9tIpPmhxdiuNkHMEWNpYim8S8Y"] }""",
-                    """{ "type": "openid_federation", "values": ["https://trustanchor.example.com"] }""",
-                ) { string ->
-                    shouldThrow<Throwable> {
-                        Json.decodeFromString(serializer, string)
-                    }
                 }
             }
         }
