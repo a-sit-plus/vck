@@ -33,7 +33,7 @@ data class DCQLAuthorityKeyIdentifier(
     }
 }
 
-private class DCQLAuthorityKeyIdentifierInlineStringSerializer : KSerializer<DCQLAuthorityKeyIdentifier> {
+class DCQLAuthorityKeyIdentifierInlineStringSerializer : KSerializer<DCQLAuthorityKeyIdentifier> {
     override val descriptor: SerialDescriptor
         get() = SerialDescriptor(
             serialName = DCQLAuthorityKeyIdentifierInlineStringSerializer::class.qualifiedName!!,
