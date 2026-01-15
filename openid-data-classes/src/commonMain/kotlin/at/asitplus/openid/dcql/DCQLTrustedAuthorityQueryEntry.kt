@@ -19,10 +19,8 @@ sealed interface DCQLTrustedAuthorityQueryEntry {
     }
 }
 
-private class DCQLTrustedAuthorityQueryEntrySerializer :
-    JsonContentPolymorphicSerializer<DCQLTrustedAuthorityQueryEntry>(
-        DCQLTrustedAuthorityQueryEntry::class,
-    ) {
+class DCQLTrustedAuthorityQueryEntrySerializer :
+    JsonContentPolymorphicSerializer<DCQLTrustedAuthorityQueryEntry>(DCQLTrustedAuthorityQueryEntry::class) {
 
     override fun selectDeserializer(
         element: JsonElement

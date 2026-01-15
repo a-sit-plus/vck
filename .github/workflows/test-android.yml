@@ -40,7 +40,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - name: Connected Check
-        run: ./gradlew pixelAVDAndroidDeviceTest --info --stacktrace
+        run: ./gradlew pixelAVDAndroidDeviceTest --info
       - name: Test Report
         uses: dorny/test-reporter@v2
         env:

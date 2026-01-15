@@ -2,15 +2,11 @@ package at.asitplus.openid.dcql
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.NameSegment
 import com.ionspin.kotlin.bignum.integer.BigInteger
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.longOrNull
 
 
 @Serializable
