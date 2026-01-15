@@ -17,12 +17,21 @@ import at.asitplus.openid.dcql.DCQLAuthorityKeyIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialClaimStructure
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLQueryResult
+import at.asitplus.signum.indispensable.asn1.Asn1Decodable
+import at.asitplus.signum.indispensable.asn1.Asn1Element
 import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
+import at.asitplus.signum.indispensable.asn1.Asn1Encodable
 import at.asitplus.signum.indispensable.asn1.Asn1OctetString
 import at.asitplus.signum.indispensable.asn1.Asn1PrimitiveOctetString
 import at.asitplus.signum.indispensable.asn1.Asn1Sequence
+import at.asitplus.signum.indispensable.asn1.Identifiable
 import at.asitplus.signum.indispensable.asn1.KnownOIDs
+import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
+import at.asitplus.signum.indispensable.asn1.TagClass
 import at.asitplus.signum.indispensable.asn1.authorityKeyIdentifier_2_5_29_35
+import at.asitplus.signum.indispensable.asn1.decodeRethrowing
+import at.asitplus.signum.indispensable.asn1.encoding.Asn1
+import at.asitplus.signum.indispensable.asn1.encoding.decode
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
@@ -102,30 +111,55 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
         }
     )
 
-        // take all authority key identifiers from chain, assuming chain is validated elsewhere
-    /**
-     * [RFC 5280 4.2.1.1. Authority Key Identifier](https://www.rfc-editor.org/rfc/rfc5280.html#section-4.2.1.1)
-     * ```
-     *    id-ce-authorityKeyIdentifier OBJECT IDENTIFIER ::=  { id-ce 35 }
-     *
-     *    AuthorityKeyIdentifier ::= SEQUENCE {
-     *       keyIdentifier             [0] KeyIdentifier           OPTIONAL,
-     *       authorityCertIssuer       [1] GeneralNames            OPTIONAL,
-     *       authorityCertSerialNumber [2] CertificateSerialNumber OPTIONAL  }
-     *
-     *    KeyIdentifier ::= OCTET STRING
-     * ```
-     */
+    // take all authority key identifiers from chain, assuming chain is validated elsewhere
     private fun X509Certificate.getAuthorityKeyIdentifier() = tbsCertificate.extensions?.filter {
         it.oid == KnownOIDs.authorityKeyIdentifier_2_5_29_35
     }?.mapNotNull {
-        when (val aki = it.value.asOctetString()) {
-            is Asn1PrimitiveOctetString -> null
-            is Asn1EncapsulatingOctetString -> when (val innerValue = aki.first()) {
-                is Asn1Sequence -> DCQLAuthorityKeyIdentifier(innerValue.asSequence().first().asPrimitive().content)
-                is Asn1OctetString -> DCQLAuthorityKeyIdentifier(innerValue.asOctetString().content)
-                else -> null
-            }
-        }
+        AuthorityKeyIdentifier.decodeFromDerSafe(it.value.asEncapsulatingOctetString().content)
+            .getOrNull()?.keyIdentifier?.let { DCQLAuthorityKeyIdentifier(it) }
     } ?: listOf()
+}
+
+/**
+ * To be moved into Signum.
+ *
+ * [RFC 5280 4.2.1.1. Authority Key Identifier](https://www.rfc-editor.org/rfc/rfc5280.html#section-4.2.1.1)
+ * ```
+ *    id-ce-authorityKeyIdentifier OBJECT IDENTIFIER ::=  { id-ce 35 }
+ *
+ *    AuthorityKeyIdentifier ::= SEQUENCE {
+ *       keyIdentifier             [0] KeyIdentifier           OPTIONAL,
+ *       authorityCertIssuer       [1] GeneralNames            OPTIONAL,
+ *       authorityCertSerialNumber [2] CertificateSerialNumber OPTIONAL  }
+ *
+ *    KeyIdentifier ::= OCTET STRING
+ * ```
+ */
+class AuthorityKeyIdentifier(
+    val keyIdentifier: ByteArray? = null,
+    val authorityCertIssuer: Asn1Element? = null,
+    val certificateSerial: ByteArray? = null,
+) : Asn1Encodable<Asn1Sequence>, Identifiable {
+
+    override val oid: ObjectIdentifier get() = Companion.oid
+
+    override fun encodeToTlv() = Asn1.Sequence {
+        keyIdentifier?.let { +(Asn1.OctetString(it) withImplicitTag 0UL) }
+        authorityCertIssuer?.let { +(it withImplicitTag 1UL) }
+        certificateSerial?.let { +(Asn1.OctetString(it) withImplicitTag 2UL) }
+    }
+
+    companion object : Asn1Decodable<Asn1Sequence, AuthorityKeyIdentifier>, Identifiable {
+        override val oid: ObjectIdentifier = KnownOIDs.authorityKeyIdentifier_2_5_29_35
+
+        override fun doDecode(src: Asn1Sequence): AuthorityKeyIdentifier = src.decodeRethrowing {
+            val contents = listOfNotNull(nextOrNull(), nextOrNull(), nextOrNull())
+            val keyIdentifier = contents.firstOrNull { it.tag.tagValue == 0uL }?.asPrimitive()
+                ?.decode(Asn1Element.Tag(0UL, constructed = false, tagClass = TagClass.CONTEXT_SPECIFIC)) { it }
+            val authorityCertIssuer = contents.firstOrNull { it.tag.tagValue == 1uL }
+            val authorityCertSerialNumber = contents.firstOrNull { it.tag.tagValue == 2uL }?.asPrimitive()?.content
+            AuthorityKeyIdentifier(keyIdentifier, authorityCertIssuer, authorityCertSerialNumber)
+        }
+
+    }
 }
