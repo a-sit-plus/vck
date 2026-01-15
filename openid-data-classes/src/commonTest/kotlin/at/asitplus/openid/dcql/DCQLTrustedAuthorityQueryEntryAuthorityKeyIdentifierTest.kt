@@ -20,83 +20,63 @@ import kotlinx.serialization.json.jsonPrimitive
 
 val DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifierTest by testSuite {
     val serializer = DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier.serializer()
-    "given unserialized version" - {
-        "when serializing as base or derived type" - {
-            "then gives same with expected content" - {
-                withData(
-                    DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier(
-                        values = nonEmptyListOf("s9tIpPmhxdiuNkHMEWNpYim8S8Y")
-                    ),
-                ) {
-                    val pseudoSerialized = Json.encodeToJsonElement(serializer, it)
-                    val pseudoSerializedBase = Json.encodeToJsonElement(DCQLTrustedAuthorityQueryEntry.serializer(), it)
-                    pseudoSerialized shouldBe pseudoSerializedBase
+    "given unserialized version when serializing as base type works" - {
+        withData(
+            DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier(
+                values = nonEmptyListOf("s9tIpPmhxdiuNkHMEWNpYim8S8Y")
+            ),
+        ) {
+            val pseudoSerialized = Json.encodeToJsonElement(serializer, it)
+            val pseudoSerializedBase = Json.encodeToJsonElement(DCQLTrustedAuthorityQueryEntry.serializer(), it)
+            pseudoSerialized shouldBe pseudoSerializedBase
 
-                    val jsonElement = Json.encodeToJsonElement<DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier>(it)
-                    it.values.shouldBeSingleton().first() shouldBe jsonElement.jsonObject["values"].shouldNotBeNull()
-                        .jsonArray.shouldBeSingleton().first().jsonPrimitive.content
-                }
-            }
+            val jsonElement = Json.encodeToJsonElement<DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier>(it)
+            it.values.shouldBeSingleton().first() shouldBe jsonElement.jsonObject["values"].shouldNotBeNull()
+                .jsonArray.shouldBeSingleton().first().jsonPrimitive.content
         }
     }
-    "given base64url string without padding" - {
-        "when creating instance" - {
-            "then does so successfully" - {
-                withData(
-                    "s9tIpPmhxdiuNkHMEWNpYim8S8Y"
-                ) { string ->
-                    val entry = DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier(nonEmptyListOf(string))
-                    entry.authorityKeyIdentifiers.shouldBeSingleton().first().byteArray shouldBe
-                            string.decodeToByteArray(Base64UrlStrict)
-                }
-            }
+    "given base64url string without padding when creating instance works" - {
+        withData(
+            "s9tIpPmhxdiuNkHMEWNpYim8S8Y"
+        ) { string ->
+            val entry = DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier(nonEmptyListOf(string))
+            entry.authorityKeyIdentifiers.shouldBeSingleton().first().byteArray shouldBe
+                    string.decodeToByteArray(Base64UrlStrict)
         }
     }
 
-    "given base64url string with padding" - {
-        "when creating instance" - {
-            "then does so successfully" - {
-                withData(
-                    "s9tIpPmhxdiuNkHMEWNpYim8S8Y="
-                ) { string ->
-                    val entry = DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier(nonEmptyListOf(string))
-                    entry.authorityKeyIdentifiers.shouldBeSingleton().first().byteArray shouldBe
-                            string.decodeToByteArray(Base64UrlStrict)
-                }
-            }
+    "given base64url string with padding when creating instance works" - {
+        withData(
+            "s9tIpPmhxdiuNkHMEWNpYim8S8Y="
+        ) { string ->
+            val entry = DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier(nonEmptyListOf(string))
+            entry.authorityKeyIdentifiers.shouldBeSingleton().first().byteArray shouldBe
+                    string.decodeToByteArray(Base64UrlStrict)
         }
     }
 
-    "given non-base64url string" - {
-        "when creating instance" - {
-            "then throws exception" - {
-                withData(
-                    "s9tIpPmhxdiuNkHMEWNpYim8S8!=",
-                ) { string ->
-                    shouldThrow<EncodingException> {
-                        DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier(nonEmptyListOf(string))
-                    }
-                }
+    "given non-base64url string when creating instance throws exception" - {
+        withData(
+            "s9tIpPmhxdiuNkHMEWNpYim8S8!=",
+        ) { string ->
+            shouldThrow<EncodingException> {
+                DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier(nonEmptyListOf(string))
             }
         }
     }
 
-    "given serialized version" - {
-        "when deserializing as base or derived type" - {
-            "then gives same with expected content" - {
-                withData(
-                    """{ "type": "aki", "values": ["s9tIpPmhxdiuNkHMEWNpYim8S8Y"] }""",
-                ) { string ->
-                    val deserialized = Json.decodeFromString(serializer, string)
-                    deserialized shouldBe Json.decodeFromString(DCQLTrustedAuthorityQueryEntry.serializer(), string)
+    "given serialized version when deserializing as base works" - {
+        withData(
+            """{ "type": "aki", "values": ["s9tIpPmhxdiuNkHMEWNpYim8S8Y"] }""",
+        ) { string ->
+            val deserialized = Json.decodeFromString(serializer, string)
+            deserialized shouldBe Json.decodeFromString(DCQLTrustedAuthorityQueryEntry.serializer(), string)
 
-                    val jsonElement = Json.decodeFromString(JsonElement.serializer(), string)
-                    deserialized.authorityKeyIdentifiers.shouldBeSingleton().first().byteArray shouldBe
-                            jsonElement.jsonObject["values"].shouldNotBeNull()
-                                .jsonArray.shouldBeSingleton().first()
-                                .jsonPrimitive.content.decodeToByteArray(Base64UrlStrict)
-                }
-            }
+            val jsonElement = Json.decodeFromString(JsonElement.serializer(), string)
+            deserialized.authorityKeyIdentifiers.shouldBeSingleton().first().byteArray shouldBe
+                    jsonElement.jsonObject["values"].shouldNotBeNull()
+                        .jsonArray.shouldBeSingleton().first()
+                        .jsonPrimitive.content.decodeToByteArray(Base64UrlStrict)
         }
     }
 }

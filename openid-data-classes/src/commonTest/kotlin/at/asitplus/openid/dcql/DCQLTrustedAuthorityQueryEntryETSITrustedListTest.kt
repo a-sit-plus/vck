@@ -16,41 +16,33 @@ import kotlinx.serialization.json.jsonPrimitive
 
 val DCQLTrustedAuthorityQueryEntryETSITrustedListTest by testSuite {
     val serializer = DCQLTrustedAuthorityQueryEntryETSITrustedList.serializer()
-    "given unserialized version" - {
-        "when serializing as base or derived type" - {
-            "then gives same with expected content" - {
-                withData(
-                    DCQLTrustedAuthorityQueryEntryETSITrustedList(
-                        values = nonEmptyListOf("https://lotl.example.com")
-                    ),
-                ) {
-                    val pseudoSerialized = Json.encodeToJsonElement(serializer, it)
-                    val pseudoSerializedBase = Json.encodeToJsonElement(DCQLTrustedAuthorityQueryEntry.serializer(), it)
-                    pseudoSerialized shouldBe pseudoSerializedBase
+    "given unserialized version when serializing base type works" - {
+        withData(
+            DCQLTrustedAuthorityQueryEntryETSITrustedList(
+                values = nonEmptyListOf("https://lotl.example.com")
+            ),
+        ) {
+            val pseudoSerialized = Json.encodeToJsonElement(serializer, it)
+            val pseudoSerializedBase = Json.encodeToJsonElement(DCQLTrustedAuthorityQueryEntry.serializer(), it)
+            pseudoSerialized shouldBe pseudoSerializedBase
 
-                    val jsonElement = Json.encodeToJsonElement<DCQLTrustedAuthorityQueryEntryETSITrustedList>(it)
-                    it.values.shouldBeSingleton().first() shouldBe
-                            jsonElement.jsonObject["values"].shouldNotBeNull()
-                                .jsonArray.shouldBeSingleton().first().jsonPrimitive.content
-                }
-            }
+            val jsonElement = Json.encodeToJsonElement<DCQLTrustedAuthorityQueryEntryETSITrustedList>(it)
+            it.values.shouldBeSingleton().first() shouldBe
+                    jsonElement.jsonObject["values"].shouldNotBeNull()
+                        .jsonArray.shouldBeSingleton().first().jsonPrimitive.content
         }
     }
-    "given serialized version" - {
-        "when deserializing as base or derived type" - {
-            "then gives same with expected content" - {
-                withData(
-                    """{ "type": "etsi_tl", "values": ["https://lotl.example.com"] }""",
-                ) { string ->
-                    val deserialized = Json.decodeFromString(serializer, string)
-                    Json.decodeFromString(DCQLTrustedAuthorityQueryEntry.serializer(), string) shouldBe deserialized
+    "given serialized version when deserializing base type works" - {
+        withData(
+            """{ "type": "etsi_tl", "values": ["https://lotl.example.com"] }""",
+        ) { string ->
+            val deserialized = Json.decodeFromString(serializer, string)
+            Json.decodeFromString(DCQLTrustedAuthorityQueryEntry.serializer(), string) shouldBe deserialized
 
-                    val jsonElement = Json.decodeFromString(JsonElement.serializer(), string)
-                    deserialized.values.shouldBeSingleton().first() shouldBe
-                            jsonElement.jsonObject["values"].shouldNotBeNull()
-                                .jsonArray.shouldBeSingleton().first().jsonPrimitive.content
-                }
-            }
+            val jsonElement = Json.decodeFromString(JsonElement.serializer(), string)
+            deserialized.values.shouldBeSingleton().first() shouldBe
+                    jsonElement.jsonObject["values"].shouldNotBeNull()
+                        .jsonArray.shouldBeSingleton().first().jsonPrimitive.content
         }
     }
 }
