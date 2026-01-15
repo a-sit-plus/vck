@@ -2,6 +2,7 @@ package at.asitplus.wallet.openid.dcql
 
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.signum.indispensable.asn1.Asn1Element.Tag.Template.Companion.without
+import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
 import at.asitplus.signum.indispensable.asn1.Asn1OctetString
 import at.asitplus.signum.indispensable.asn1.CONSTRUCTED
 import at.asitplus.signum.indispensable.asn1.KnownOIDs
@@ -22,6 +23,7 @@ import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.rfc3986.toUri
+import at.asitplus.wallet.lib.procedures.dcql.AuthorityKeyIdentifier
 import at.asitplus.wallet.lib.procedures.dcql.DCQLQueryAdapter
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe
@@ -130,12 +132,8 @@ val DCQLQueryProcedureAdapterTest by testSuite {
         val issuerKeyMaterial = EphemeralKeyWithSelfSignedCert(
             extensions = listOf(
                 X509CertificateExtension(
-                    oid = KnownOIDs.authorityKeyIdentifier_2_5_29_35,
-                    value = Asn1OctetString(
-                        (Sequence {
-                            +(OctetString(aki) withImplicitTag (0x0UL without CONSTRUCTED))
-                        }).derEncoded
-                    )
+                    oid = AuthorityKeyIdentifier.oid,
+                    value = Asn1EncapsulatingOctetString(listOf(AuthorityKeyIdentifier(aki).encodeToTlv()))
                 )
             )
         )
