@@ -113,7 +113,7 @@ sealed interface PresentationResponseParameters {
         private fun List<JsonPrimitive>.singleOrArray() = if (size == 1) {
             this[0]
         } else buildJsonArray {
-            forEach { add(it) }
+            this@singleOrArray.forEach(::add)
         }
     }
 
