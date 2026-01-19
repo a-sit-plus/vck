@@ -9,7 +9,7 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 
 @Serializable
 @JsonClassDiscriminator("protocol")
-sealed class DigitalCredentialGetRequest() {
+sealed class DigitalCredentialGetRequest {
     abstract val protocol : ExchangeProtocolIdentifier
 
     @Serializable

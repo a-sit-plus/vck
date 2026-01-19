@@ -11,12 +11,12 @@ value class ExchangeProtocolIdentifier(
 ) {
     val openIdVersion
         get() = catchingUnwrapped {
-            protocol.removePrefix(PART_OPENID4VP).split(DELIMITER)[1]
+            if (!isIsoMdocRequest) protocol.removePrefix(PART_OPENID4VP).split(DELIMITER)[1] else null
         }.getOrNull()
 
     val openId4VpRequestType
         get() = catchingUnwrapped {
-            protocol.removePrefix(PART_OPENID4VP).split(DELIMITER)[2]
+            if (!isIsoMdocRequest) protocol.removePrefix(PART_OPENID4VP).split(DELIMITER)[2] else null
         }.getOrNull()
 
     val isSignedOpenId4VpRequest: Boolean

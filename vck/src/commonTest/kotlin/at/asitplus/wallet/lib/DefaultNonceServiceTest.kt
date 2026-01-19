@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.oidvci
+package at.asitplus.wallet.lib
 
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite

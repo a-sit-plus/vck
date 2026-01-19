@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.ktor.openid
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.dcapi.request.DCAPIWalletRequest
 import at.asitplus.iso.IssuerSignedItem
+import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
@@ -407,15 +408,18 @@ val OpenId4VpWalletTest by testSuite {
                 callingOrigin = "https://apps.egiz.gv.at/customverifier"
             )
 
-            val input = joseCompliantSerializer.encodeToString(dcApiRequest)
-            val preparationState = it.wallet.startAuthorizationResponsePreparation(input).getOrThrow()
+            val preparationState = it.wallet.startAuthorizationResponsePreparation(dcApiRequest).getOrThrow()
             val presentation = DCQLPresentation(DCQLRequest(dcqlQuery), credentialQuerySubmissions)
             it.wallet.finalizeAuthorizationResponse(preparationState, presentation)
                 .getOrThrow()
                 .shouldBeInstanceOf<OpenId4VpWallet.AuthenticationForward>()
                 .authenticationResponseResult.shouldBeInstanceOf<AuthenticationResponseResult.DcApi>().apply {
-                    //TODO params.response shouldContain "vp_token"
-                    //TODO params.response shouldContain "cred1"
+                    val responseJson = vckJsonSerializer.encodeToString(
+                        AuthenticationResponseParameters.serializer(),
+                        params.data
+                    )
+                    responseJson shouldContain "\"vp_token\""
+                    responseJson shouldContain "\"cred1\""
                 }
         }
 
