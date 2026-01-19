@@ -56,7 +56,7 @@ jobs:
 
   test:
     needs: select-entry
-    uses: a-sit-plus/internal-workflows/.github/workflows/test-matrix-entry.yml@feature/modularTests
+    uses: a-sit-plus/internal-workflows/.github/workflows/config/test-matrix-entry.yml@feature/modularTests
     with:
       override-cache: ${{ github.ref_name == 'development' || github.ref_name == 'main' }}
       os: ${{ needs.select-entry.outputs.os }}
