@@ -1,0 +1,20 @@
+{
+  "include": [
+    {
+      "os": "ubuntu-latest",
+      "name": "jvmRunner",
+      "testArgs": "jvmTest --scan && (cd mobile-driving-licence-credential && ./gradlew -DregressionTest=true jvmTest --scan)"
+    },
+    {
+      "os": "ubuntu-latest",
+      "name": "androidRunner",
+      "enableKvm": true,
+      "testArgs": "pixelAVDAndroidDeviceTest --scan"
+    },
+    {
+      "os": "macos-latest",
+      "name": "iosRunner",
+      "testArgs": "iosArm64MainKlibrary iosSimulatorArm64MainKlibrary iosSimulatorArm64Test --scan && (cd mobile-driving-licence-credential && ./gradlew -DregressionTest=true iosSimulatorArm64Test --scan)"
+    }
+  ]
+}
