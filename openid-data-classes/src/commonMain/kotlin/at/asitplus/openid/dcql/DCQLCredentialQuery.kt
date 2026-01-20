@@ -219,8 +219,13 @@ sealed interface DCQLCredentialQuery {
                     }
                 }
 
+                /**
+                 * https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#section-6.1-3.10:
+                 * OPTIONAL: Every Credential returned by the Wallet SHOULD match at least one
+                 * -> It's optional anyway, so let's not throw here
+                 */
                 is DCQLTrustedAuthorityQueryEntryETSITrustedList,
-                is DCQLTrustedAuthorityQueryEntryOpenIDFederation -> throw UnsupportedOperationException("Trusted authority type is not supported: `${trustedAuthority.type}`")
+                is DCQLTrustedAuthorityQueryEntryOpenIDFederation -> true
             }
         } ?: true
 
