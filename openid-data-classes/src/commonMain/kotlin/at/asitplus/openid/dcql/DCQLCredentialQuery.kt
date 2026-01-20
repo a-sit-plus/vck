@@ -225,7 +225,7 @@ sealed interface DCQLCredentialQuery {
                  * -> It's optional anyway, so let's not throw here
                  */
                 is DCQLTrustedAuthorityQueryEntryETSITrustedList,
-                is DCQLTrustedAuthorityQueryEntryOpenIDFederation -> true
+                is DCQLTrustedAuthorityQueryEntryOpenIDFederation -> false
             }
         } ?: true
 
