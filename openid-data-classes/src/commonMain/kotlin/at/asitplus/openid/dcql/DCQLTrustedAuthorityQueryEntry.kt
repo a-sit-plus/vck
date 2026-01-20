@@ -19,7 +19,7 @@ sealed interface DCQLTrustedAuthorityQueryEntry {
     }
 }
 
-private class DCQLTrustedAuthorityQueryEntrySerializer :
+internal class DCQLTrustedAuthorityQueryEntrySerializer :
     JsonContentPolymorphicSerializer<DCQLTrustedAuthorityQueryEntry>(
         DCQLTrustedAuthorityQueryEntry::class,
     ) {
