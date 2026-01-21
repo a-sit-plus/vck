@@ -161,12 +161,14 @@ class VerifiablePresentationFactory(
         request: PresentationRequestParameters,
     ): Document {
         // grouping by namespace and all requested claims for that namespace
-        val namespaceToAttributesMap = requestedClaims
+        val namespaceToAttributesMap: Map<String, List<String>> = requestedClaims
             .mapNotNull { it.toIsoNamespaceAttribute() }
             .groupBy { it.first }
             .mapValues { it.value.map { it.second } }
-        val disclosedItems = namespaceToAttributesMap.mapValues {
-            discloseItem(it)
+        val disclosedItems = namespaceToAttributesMap.mapValues { entry ->
+            entry.value.map {
+                discloseItem(entry.key, it)
+            }
         }
 
         val docType = scheme?.isoDocType
@@ -204,17 +206,8 @@ class VerifiablePresentationFactory(
         }
     }
 
-    // unsure how to deal with attributes with a depth of more than 2
-    //  revealing the whole attribute for now, which is as fine grained as MDOC can do anyway
-    private fun NormalizedJsonPath.firstTwoSegments() = segments
-        .filterIndexed { index, _ -> index < 2 }
+    private fun NormalizedJsonPath.firstTwoSegments() = segments.take(2)
         .filterIsInstance<NormalizedJsonPathSegment.NameSegment>()
-
-    private fun StoreEntry.Iso.discloseItem(
-        entry: Map.Entry<String, List<String>>
-    ): List<IssuerSignedItem> = entry.value.map {
-        discloseItem(entry.key, it)
-    }
 
     private fun StoreEntry.Iso.discloseItem(
         namespace: String,
@@ -229,31 +222,35 @@ class VerifiablePresentationFactory(
         validSdJwtCredential: StoreEntry.SdJwt,
         requestedClaims: Collection<NormalizedJsonPath>,
     ): CreatePresentationResult.SdJwt {
-        val nameSegments = requestedClaims
-            .flatMap { it.segments }
-            .filterIsInstance<NormalizedJsonPathSegment.NameSegment>()
-        // All disclosures as requested by claim name
-        val disclosuresByName = nameSegments
-            .mapNotNull { claim ->
-                validSdJwtCredential.disclosures.entries.firstOrNull { it.value?.claimName == claim.memberName }
-            }.toSet()
-        // Inner disclosures when an object has been requested by name (above), but contains more _sd entries
-        val innerDisclosures = validSdJwtCredential.disclosures.entries.filter { claim ->
-            val digest = validSdJwtCredential.sdJwt.selectiveDisclosureAlgorithm?.toDigest() ?: Digest.SHA256
-            claim.asHashedDisclosure(digest)?.let { hashedDisclosure ->
-                disclosuresByName.any { it.containsHashedDisclosure(hashedDisclosure) }
-            } == true
-        }
-        val allDisclosures = (disclosuresByName.map { it.key } + innerDisclosures.map { it.key }).toSet()
-
-        val issuerJwtPlusDisclosures = SdJwtSigned.sdHashInput(validSdJwtCredential, allDisclosures)
-        val keyBinding = createKeyBindingJws(request, issuerJwtPlusDisclosures)
+        val disclosures = validSdJwtCredential.loadDisclosures(requestedClaims)
+        val keyBinding = createKeyBindingJws(request, SdJwtSigned.sdHashInput(validSdJwtCredential, disclosures))
         val issuerSignedJwsSerialized = validSdJwtCredential.vcSerialized.substringBefore("~")
         val issuerSignedJws =
             JwsSigned.deserialize(JsonElement.serializer(), issuerSignedJwsSerialized, vckJsonSerializer)
                 .getOrElse { throw PresentationException(it) }
-        val sdJwt = SdJwtSigned.presented(issuerSignedJws, allDisclosures, keyBinding)
+        val sdJwt = SdJwtSigned.presented(issuerSignedJws, disclosures, keyBinding)
         return CreatePresentationResult.SdJwt(sdJwt.serialize(), sdJwt)
+    }
+
+    private fun StoreEntry.SdJwt.loadDisclosures(
+        requestedClaims: Collection<NormalizedJsonPath>
+    ): Set<String> {
+        val nameSegments = requestedClaims.flatMap { it.segments }
+            .filterIsInstance<NormalizedJsonPathSegment.NameSegment>()
+
+        val disclosuresByName = nameSegments.mapNotNull { claim ->
+            disclosures.entries.firstOrNull { it.value?.claimName == claim.memberName }
+        }.toSet()
+
+        // Inner disclosures when an object has been requested by name (above), but contains more _sd entries
+        val innerDisclosures = disclosures.entries.filter { claim ->
+            val digest = sdJwt.selectiveDisclosureAlgorithm?.toDigest() ?: Digest.SHA256
+            claim.asHashedDisclosure(digest)?.let { hashedDisclosure ->
+                disclosuresByName.any { it.containsHashedDisclosure(hashedDisclosure) }
+            } == true
+        }.toSet()
+
+        return (disclosuresByName.map { it.key } + innerDisclosures.map { it.key }).toSet()
     }
 
     private fun Map.Entry<String, SelectiveDisclosureItem?>.asHashedDisclosure(digest: Digest): String? =
@@ -271,14 +268,14 @@ class VerifiablePresentationFactory(
 
     private suspend fun createKeyBindingJws(
         request: PresentationRequestParameters,
-        issuerJwtPlusDisclosures: String,
+        hashInput: String,
     ): JwsSigned<KeyBindingJws> = signKeyBinding(
         JwsContentTypeConstants.KB_JWT,
         KeyBindingJws(
             issuedAt = Clock.System.now().truncateToSeconds(),
             audience = request.audience,
             challenge = request.nonce,
-            sdHash = issuerJwtPlusDisclosures.encodeToByteArray().sha256(),
+            sdHash = hashInput.encodeToByteArray().sha256(),
             transactionDataHashes = request.transactionData?.hash(request.transactionDataHashesAlgorithm),
             transactionDataHashesAlgorithmString = request.transactionDataHashesAlgorithm?.toIanaName(),
         ),
