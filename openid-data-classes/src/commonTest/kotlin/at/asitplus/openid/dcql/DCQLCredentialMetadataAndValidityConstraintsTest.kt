@@ -25,7 +25,7 @@ val DCQLCredentialMetadataAndValidityConstraintsTest by testSuite {
              DCQLIsoMdocCredentialMetadataAndValidityConstraints.SerialNames.DOCTYPE_VALUE shouldBeIn serialized.jsonObject.keys
          }
          "sd-jwt" {
-             val value = at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints(
+             val value = DCQLSdJwtCredentialMetadataAndValidityConstraints(
                  vctValues = listOf("test")
              )
 
@@ -35,6 +35,18 @@ val DCQLCredentialMetadataAndValidityConstraintsTest by testSuite {
              serialized.jsonObject.entries shouldHaveSize 1
 
              DCQLSdJwtCredentialMetadataAndValidityConstraints.SerialNames.VCT_VALUES shouldBeIn serialized.jsonObject.keys
+         }
+         "jwt-vc" {
+             val value = DCQLJwtVcCredentialMetadataAndValidityConstraints(
+                 typeValues = listOf(listOf("test"))
+             )
+
+             val base: DCQLCredentialMetadataAndValidityConstraints = value
+             val serialized = Json.encodeToJsonElement(base)
+             serialized shouldBe Json.encodeToJsonElement(value)
+             serialized.jsonObject.entries shouldHaveSize 1
+
+             DCQLJwtVcCredentialMetadataAndValidityConstraints.SerialNames.TYPE_VALUES shouldBeIn serialized.jsonObject.keys
          }
      }
 }

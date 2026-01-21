@@ -60,6 +60,7 @@ data class DCQLQuery(
         credentialFormatExtractor: (Credential) -> CredentialFormatEnum,
         mdocCredentialDoctypeExtractor: (Credential) -> String,
         sdJwtCredentialTypeExtractor: (Credential) -> String,
+        jwtVcCredentialTypeExtractor: (Credential) -> List<String>,
         credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
     ): KmmResult<DCQLQueryResult<Credential>> = Procedures.executeQuery(
         credentials = credentials,
@@ -68,7 +69,8 @@ data class DCQLQuery(
         credentialFormatExtractor = credentialFormatExtractor,
         mdocCredentialDoctypeExtractor = mdocCredentialDoctypeExtractor,
         sdJwtCredentialTypeExtractor = sdJwtCredentialTypeExtractor,
-        credentialClaimStructureExtractor = credentialClaimStructureExtractor,
+        jwtVcCredentialTypeExtractor = jwtVcCredentialTypeExtractor,
+        credentialClaimStructureExtractor = credentialClaimStructureExtractor
     )
 
     object Procedures {
@@ -96,6 +98,7 @@ data class DCQLQuery(
             credentialFormatExtractor: (Credential) -> CredentialFormatEnum,
             mdocCredentialDoctypeExtractor: (Credential) -> String,
             sdJwtCredentialTypeExtractor: (Credential) -> String,
+            jwtVcCredentialTypeExtractor: (Credential) -> List<String>,
             credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
         ): KmmResult<DCQLQueryResult<Credential>> = catching {
             val credentialQueryMatches = findCredentialQueryMatches(
@@ -104,7 +107,8 @@ data class DCQLQuery(
                 credentialFormatExtractor = credentialFormatExtractor,
                 mdocCredentialDoctypeExtractor = mdocCredentialDoctypeExtractor,
                 sdJwtCredentialTypeExtractor = sdJwtCredentialTypeExtractor,
-                credentialClaimStructureExtractor = credentialClaimStructureExtractor,
+                jwtVcCredentialTypeExtractor = jwtVcCredentialTypeExtractor,
+                credentialClaimStructureExtractor = credentialClaimStructureExtractor
             )
 
             val satisfiableCredentialSetQueryOptions = findSatisfactoryCredentialSetQueryOptions(
@@ -126,6 +130,7 @@ data class DCQLQuery(
             credentialFormatExtractor: (Credential) -> CredentialFormatEnum,
             mdocCredentialDoctypeExtractor: (Credential) -> String,
             sdJwtCredentialTypeExtractor: (Credential) -> String,
+            jwtVcCredentialTypeExtractor: (Credential) -> List<String>,
             credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
         ): Map<DCQLCredentialQueryIdentifier, List<DCQLCredentialSubmissionOption<Credential>>> {
             return credentialQueries.associate { credentialQuery ->
@@ -135,7 +140,8 @@ data class DCQLQuery(
                         credentialFormatExtractor = credentialFormatExtractor,
                         mdocCredentialDoctypeExtractor = mdocCredentialDoctypeExtractor,
                         sdJwtCredentialTypeExtractor = sdJwtCredentialTypeExtractor,
-                        credentialClaimStructureExtractor = credentialClaimStructureExtractor,
+                        jwtVcCredentialTypeExtractor = jwtVcCredentialTypeExtractor,
+                        credentialClaimStructureExtractor = credentialClaimStructureExtractor
                     ).getOrNull()?.let {
                         DCQLCredentialSubmissionOption(
                             credential = credential,

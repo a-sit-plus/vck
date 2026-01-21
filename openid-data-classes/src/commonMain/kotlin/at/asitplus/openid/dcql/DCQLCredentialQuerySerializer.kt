@@ -15,9 +15,10 @@ object DCQLCredentialQuerySerializer :
             parameters[DCQLCredentialQuery.SerialNames.FORMAT]?.jsonPrimitive?.content?.let {
                 CredentialFormatEnum.parse(it)
             }
-        return when {
-            credentialFormatIdentifier == CredentialFormatEnum.MSO_MDOC -> DCQLIsoMdocCredentialQuery.serializer()
-            credentialFormatIdentifier == CredentialFormatEnum.DC_SD_JWT -> DCQLSdJwtCredentialQuery.serializer()
+        return when (credentialFormatIdentifier) {
+            CredentialFormatEnum.MSO_MDOC -> DCQLIsoMdocCredentialQuery.serializer()
+            CredentialFormatEnum.DC_SD_JWT -> DCQLSdJwtCredentialQuery.serializer()
+            CredentialFormatEnum.JWT_VC -> DCQLJwtVcCredentialQuery.serializer()
             else -> DCQLCredentialQueryInstance.serializer()
         }
     }

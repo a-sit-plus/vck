@@ -6,14 +6,15 @@ import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialQueryInstance
 import at.asitplus.openid.dcql.DCQLCredentialQueryList
+import at.asitplus.openid.dcql.DCQLJwtVcCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLQuery
-import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
+import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.randomCwtOrJwtResolver
@@ -80,7 +81,10 @@ val AgentTest by testSuite {
             it.holder.getCredentials()?.size shouldBe 1
 
             val presentationParameters = it.holder.createPresentation(
-                request = PresentationRequestParameters(nonce = it.challenge, audience = it.verifierId),
+                request = PresentationRequestParameters(
+                    nonce = it.challenge,
+                    audience = it.verifierId
+                ),
                 credentialPresentation = singularPresentationDefinition,
             ).getOrThrow()
                 .shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
@@ -103,7 +107,10 @@ val AgentTest by testSuite {
             ).getOrThrow()
 
             val presentationParameters = it.holder.createPresentation(
-                request = PresentationRequestParameters(nonce = it.challenge, audience = it.issuerIdentifier),
+                request = PresentationRequestParameters(
+                    nonce = it.challenge,
+                    audience = it.issuerIdentifier
+                ),
                 credentialPresentation = singularPresentationDefinition,
             ).getOrThrow()
                 .shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
@@ -130,7 +137,7 @@ val AgentTest by testSuite {
             ).getOrThrow()
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-            val storedCredential = it.holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
+            it.holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
                 .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Vc>()
 
             it.holderCredentialStore.getCredentials().getOrThrow().shouldHaveSize(1)
@@ -153,7 +160,7 @@ val AgentTest by testSuite {
             ).getOrThrow()
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-            val storedCredential = it.holder.storeCredential(credential.toStoreCredentialInput())
+            it.holder.storeCredential(credential.toStoreCredentialInput())
                 .getOrThrow()
                 .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Vc>()
 
@@ -190,7 +197,10 @@ val AgentTest by testSuite {
             ).getOrThrow()
             it.holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
             val presentationParameters = it.holder.createPresentation(
-                request = PresentationRequestParameters(nonce = it.challenge, audience = it.verifierId),
+                request = PresentationRequestParameters(
+                    nonce = it.challenge,
+                    audience = it.verifierId
+                ),
                 credentialPresentation = singularPresentationDefinition,
             ).getOrNull()
                 .shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
@@ -218,7 +228,10 @@ val AgentTest by testSuite {
             ).getOrThrow()
             it.holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
             val presentationParameters = it.holder.createPresentation(
-                request = PresentationRequestParameters(nonce = it.challenge, audience = it.verifierId),
+                request = PresentationRequestParameters(
+                    nonce = it.challenge,
+                    audience = it.verifierId
+                ),
                 credentialPresentation = singularPresentationDefinition,
             ).getOrNull()
                 .shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
@@ -248,7 +261,15 @@ val AgentTest by testSuite {
             credentials = DCQLCredentialQueryList(
                 DCQLCredentialQueryInstance(
                     id = DCQLCredentialQueryIdentifier(uuid4().toString()),
-                    format = CredentialFormatEnum.JWT_VC
+                    format = CredentialFormatEnum.JWT_VC,
+                    meta = DCQLJwtVcCredentialMetadataAndValidityConstraints(
+                        typeValues = listOf(
+                            listOf(
+                                VERIFIABLE_CREDENTIAL,
+                                ConstantIndex.AtomicAttribute2023.vcType
+                            )
+                        )
+                    )
                 )
             ),
         )
@@ -265,10 +286,14 @@ val AgentTest by testSuite {
             ).getOrThrow()
 
             it.holder.getCredentials()?.size shouldBe 1
-
             val presentationParameters = it.holder.createDefaultPresentation(
-                request = PresentationRequestParameters(nonce = it.challenge, audience = it.verifierId),
-                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(singularDCQLRequest)
+                request = PresentationRequestParameters(
+                    nonce = it.challenge,
+                    audience = it.verifierId
+                ),
+                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
+                    singularDCQLRequest
+                )
             ).getOrThrow() as PresentationResponseParameters.DCQLParameters
             val vp = presentationParameters.verifiablePresentations.values.first()
                 .shouldBeInstanceOf<CreatePresentationResult.Signed>()
@@ -292,7 +317,9 @@ val AgentTest by testSuite {
                     nonce = it.challenge,
                     audience = it.issuerIdentifier,
                 ),
-                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(singularDCQLRequest)
+                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
+                    singularDCQLRequest
+                )
             ).getOrThrow() as PresentationResponseParameters.DCQLParameters
             val vp = presentationParameters.verifiablePresentations.values.first()
                 .shouldBeInstanceOf<CreatePresentationResult.Signed>()
@@ -306,7 +333,9 @@ val AgentTest by testSuite {
                     nonce = it.challenge,
                     audience = "urn:${uuid4()}"
                 ),
-                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(singularDCQLRequest),
+                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
+                    singularDCQLRequest
+                ),
             ).getOrNull() as PresentationResponseParameters.DCQLParameters? shouldBe null
         }
 
@@ -320,8 +349,13 @@ val AgentTest by testSuite {
             ).getOrThrow()
             it.holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
             val presentationParameters = it.holder.createDefaultPresentation(
-                request = PresentationRequestParameters(nonce = it.challenge, audience = it.verifierId),
-                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(singularDCQLRequest)
+                request = PresentationRequestParameters(
+                    nonce = it.challenge,
+                    audience = it.verifierId
+                ),
+                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
+                    singularDCQLRequest
+                )
             ).getOrNull() as PresentationResponseParameters.DCQLParameters?
             presentationParameters.shouldNotBeNull()
             val vp = presentationParameters.verifiablePresentations.values.firstOrNull()
@@ -346,8 +380,13 @@ val AgentTest by testSuite {
             ).getOrThrow()
             it.holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
             val presentationParameters = it.holder.createDefaultPresentation(
-                request = PresentationRequestParameters(nonce = it.challenge, audience = it.verifierId),
-                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(singularDCQLRequest)
+                request = PresentationRequestParameters(
+                    nonce = it.challenge,
+                    audience = it.verifierId
+                ),
+                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
+                    singularDCQLRequest
+                )
             ).getOrNull() as PresentationResponseParameters.DCQLParameters?
             presentationParameters.shouldNotBeNull()
             val vp = presentationParameters.verifiablePresentations.values.firstOrNull()

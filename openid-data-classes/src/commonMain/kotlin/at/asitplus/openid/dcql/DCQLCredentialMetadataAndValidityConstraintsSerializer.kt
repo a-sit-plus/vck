@@ -15,6 +15,7 @@ object DCQLCredentialMetadataAndValidityConstraintsSerializer :
             parameters.isEmpty() -> DCQLEmptyCredentialMetadataAndValidityConstraints.serializer()
             DCQLSdJwtCredentialMetadataAndValidityConstraints.SerialNames.VCT_VALUES in parameters -> DCQLSdJwtCredentialMetadataAndValidityConstraints.serializer()
             DCQLIsoMdocCredentialMetadataAndValidityConstraints.SerialNames.DOCTYPE_VALUE in parameters -> DCQLIsoMdocCredentialMetadataAndValidityConstraints.serializer()
+            DCQLJwtVcCredentialMetadataAndValidityConstraints.SerialNames.TYPE_VALUES in parameters -> DCQLJwtVcCredentialMetadataAndValidityConstraints.serializer()
             else -> throw IllegalArgumentException("Deserializer not found")
         }
     }

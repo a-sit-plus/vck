@@ -7,7 +7,6 @@ import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.openid.CredentialFormatEnum
 import io.github.aakira.napier.Napier
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable(with = DCQLCredentialQuerySerializer::class)
@@ -139,6 +138,7 @@ sealed interface DCQLCredentialQuery {
         credentialFormatExtractor: (Credential) -> CredentialFormatEnum,
         mdocCredentialDoctypeExtractor: (Credential) -> String,
         sdJwtCredentialTypeExtractor: (Credential) -> String,
+        jwtVcCredentialTypeExtractor: (Credential) -> List<String>,
         credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
     ): KmmResult<DCQLCredentialQueryMatchingResult> = catching {
         if (credentialFormatExtractor(credential) != format) {
@@ -151,6 +151,7 @@ sealed interface DCQLCredentialQuery {
             credentialMetadataAndValidityConstraints = meta,
             mdocCredentialDoctypeExtractor = mdocCredentialDoctypeExtractor,
             sdJwtCredentialTypeExtractor = sdJwtCredentialTypeExtractor,
+            jwtVcCredentialTypeExtractor = jwtVcCredentialTypeExtractor
         ).getOrThrow()
 
         val claimQueries = claims
@@ -192,6 +193,7 @@ sealed interface DCQLCredentialQuery {
             credentialMetadataAndValidityConstraints: DCQLCredentialMetadataAndValidityConstraints?,
             mdocCredentialDoctypeExtractor: (Credential) -> String,
             sdJwtCredentialTypeExtractor: (Credential) -> String,
+            jwtVcCredentialTypeExtractor: (Credential) -> List<String>,
         ): KmmResult<Unit> = catching {
             when (credentialFormatIdentifier) {
                 CredentialFormatEnum.MSO_MDOC -> {
@@ -205,6 +207,13 @@ sealed interface DCQLCredentialQuery {
                     credentialMetadataAndValidityConstraints as DCQLSdJwtCredentialMetadataAndValidityConstraints
                     credentialMetadataAndValidityConstraints.validate(
                         sdJwtCredentialTypeExtractor(credential)
+                    ).getOrThrow()
+                }
+
+                CredentialFormatEnum.JWT_VC -> {
+                    credentialMetadataAndValidityConstraints as DCQLJwtVcCredentialMetadataAndValidityConstraints
+                    credentialMetadataAndValidityConstraints.validate(
+                        jwtVcCredentialTypeExtractor(credential)
                     ).getOrThrow()
                 }
 

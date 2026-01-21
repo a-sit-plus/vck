@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.procedures.dcql
 
 import at.asitplus.KmmResult
-import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.dcql.DCQLCredentialClaimStructure
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLQueryResult
@@ -28,17 +27,25 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
             }
             it.scheme!!.sdJwtType!!
         },
-        credentialClaimStructureExtractor = {
-            when (it) {
+        jwtVcCredentialTypeExtractor = {
+            if (it !is SubjectCredentialStore.StoreEntry.Vc) {
+                throw IllegalArgumentException("Value is not an JWT-VC credential")
+            }
+            it.vc.vc.type.toList()
+        },
+        credentialClaimStructureExtractor = { storeEntry ->
+            when (storeEntry) {
                 is SubjectCredentialStore.StoreEntry.Iso -> DCQLCredentialClaimStructure.IsoMdocStructure(
-                    it.issuerSigned.namespaces?.mapValues {
-                        it.value.entries.associate {
+                    storeEntry.issuerSigned.namespaces?.mapValues { entry ->
+                        entry.value.entries.associate {
                             it.value.elementIdentifier to it.value.elementValue
                         }
                     } ?: mapOf()
                 )
 
-                else -> DCQLCredentialClaimStructure.JsonBasedStructure(CredentialToJsonConverter.toJsonElement(it))
+                else -> DCQLCredentialClaimStructure.JsonBasedStructure(
+                    CredentialToJsonConverter.toJsonElement(storeEntry)
+                )
             }
         }
     )

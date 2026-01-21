@@ -25,4 +25,12 @@ sealed interface TestCredential {
         override val format: CredentialFormatEnum
             get() = CredentialFormatEnum.MSO_MDOC
     }
+
+    data class JwtVcCredential(
+        override val claimStructure: JsonElement,
+        val types: List<String>,
+    ) : JsonCredential {
+        override val format: CredentialFormatEnum
+            get() = CredentialFormatEnum.JWT_VC
+    }
 }

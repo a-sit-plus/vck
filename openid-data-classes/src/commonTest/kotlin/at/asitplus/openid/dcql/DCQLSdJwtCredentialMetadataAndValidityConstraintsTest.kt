@@ -41,7 +41,10 @@ val DCQLSdJwtCredentialMetadataAndValidityConstraintsTest by testSuite {
                 mdocCredentialDoctypeExtractor = {
                     throw IllegalArgumentException("MDOC credential type cannot be extracted")
                 },
-                sdJwtCredentialTypeExtractor = { "dummy document type" }
+                sdJwtCredentialTypeExtractor = { "dummy document type" },
+                jwtVcCredentialTypeExtractor = {
+                    throw IllegalArgumentException("JWT-VC credential type cannot be extracted")
+                }
             ).getOrThrow()
         }
         shouldThrowAny {
@@ -59,7 +62,10 @@ val DCQLSdJwtCredentialMetadataAndValidityConstraintsTest by testSuite {
                 mdocCredentialDoctypeExtractor = {
                     throw IllegalArgumentException("MDOC credential type cannot be extracted")
                 },
-                sdJwtCredentialTypeExtractor = { "DIFFERENT dummy document type" }
+                sdJwtCredentialTypeExtractor = { "DIFFERENT dummy document type" },
+                jwtVcCredentialTypeExtractor = {
+                    throw IllegalArgumentException("JWT-VC credential type cannot be extracted")
+                }
             ).getOrThrow()
         }
     }
