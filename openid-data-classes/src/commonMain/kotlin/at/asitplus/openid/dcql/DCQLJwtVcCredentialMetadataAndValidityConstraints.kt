@@ -1,5 +1,14 @@
 package at.asitplus.openid.dcql
 
+/*
+ * Software Name : vc-k
+ * SPDX-FileCopyrightText: Copyright (c) Orange Business
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * This software is distributed under the Apache License 2.0,
+ * see the "LICENSE" file for more details
+ */
+
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import kotlinx.serialization.SerialName
