@@ -13,6 +13,7 @@ import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
+import at.asitplus.wallet.lib.data.IsoPlainDocumentParsed
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessIso
@@ -229,9 +230,9 @@ val OpenId4VpIsoProtocolTest by testSuite {
             it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
                 .shouldBeInstanceOf<AuthnResponseResult.VerifiablePresentationValidationResults>()
                 .validationResults.flatMap { it.shouldBeInstanceOf<SuccessIso>().documents }.apply {
-                    first { it.mso.docType == AtomicAttribute2023.isoDocType }
+                    first { it is IsoPlainDocumentParsed && it.mso.docType == AtomicAttribute2023.isoDocType }
                         .validItems.shouldHaveSingleElement { it.elementIdentifier == atomicGivenName }
-                    first { it.mso.docType == MobileDrivingLicenceScheme.isoDocType }
+                    first { it is IsoPlainDocumentParsed && it.mso.docType == MobileDrivingLicenceScheme.isoDocType }
                         .validItems.shouldHaveSingleElement { it.elementIdentifier == mdlFamilyName }
                 }
         }
@@ -296,5 +297,6 @@ val OpenId4VpIsoProtocolTest by testSuite {
 
 private fun AuthnResponseResult.hasDocType(docType: String): Boolean =
     this.shouldBeInstanceOf<SuccessIso>().documents
-        .shouldBeSingleton().first().mso.docType == docType
-
+        .shouldBeSingleton()
+        .first().shouldBeInstanceOf<IsoPlainDocumentParsed>()
+        .mso.docType == docType

@@ -17,10 +17,10 @@ data class IssuerSignedItem(
     @ByteString
     val random: ByteArray,
     @SerialName(PROP_ELEMENT_ID)
-    val elementIdentifier: String,
+    override val elementIdentifier: String,
     @SerialName(PROP_ELEMENT_VALUE)
-    val elementValue: Any,
-) {
+    override val elementValue: Any,
+) : Item {
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

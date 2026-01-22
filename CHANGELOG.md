@@ -3,6 +3,8 @@
 Release 5.11.0 (unreleased):
  - Add `VerifyStatusListTokenHAIP` and related resolver/tests to enforce HAIP d04
  - Add `IdentifierList` and `IdentifierListInfo` and related classes
+ - Add data classes and serializers for ISO-18013-5 2nd edition
+ - Add `ZkSystemParamRegistry` to enable Zero-Knowledge backends to register serializers for their custom parameters
  - OpenID for Verifiable Credential Issuance:
    - In `SimpleAuthorizationService` add parameter `configurationIds` to method `credentialOfferWithAuthorizationCode`
    - Support different supported credential formats having the same scope value (as this is covered by the spec)

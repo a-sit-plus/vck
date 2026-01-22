@@ -29,6 +29,7 @@ data class DCQLIsoMdocCredentialQuery(
     }
 
     companion object {
+
         fun validate(query: DCQLIsoMdocCredentialQuery) = query.run {
             DCQLCredentialQuery.validate(this)
             if (format != CredentialFormatEnum.MSO_MDOC) {

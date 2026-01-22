@@ -6,6 +6,8 @@ import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.ValueDigestList
+import at.asitplus.iso.ZkDocument
+import at.asitplus.iso.ZkSignedItem
 import at.asitplus.iso.sha256
 import at.asitplus.iso.wrapInCborTag
 import at.asitplus.signum.indispensable.cosef.CoseKey
@@ -17,12 +19,17 @@ import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.SuccessIso
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
+import at.asitplus.wallet.lib.agent.validation.CredentialFreshnessSummary
+import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary
 import at.asitplus.wallet.lib.agent.validation.mdoc.MdocInputValidator
+import at.asitplus.wallet.lib.agent.validation.mdoc.MdocTimelinessValidationDetails
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
+import at.asitplus.wallet.lib.data.IsoPlainDocumentParsed
+import at.asitplus.wallet.lib.data.IsoZkDocumentParsed
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import io.github.aakira.napier.Napier
-import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlin.coroutines.cancellation.CancellationException
@@ -47,13 +54,31 @@ class ValidatorMdoc(
     suspend fun verifyDeviceResponse(
         deviceResponse: DeviceResponse,
         verifyDocumentCallback: suspend (MobileSecurityObject, Document) -> Boolean,
+        verifyZkDocumentCallback: ((ZkDocument) -> Boolean)? = null,
     ): VerifyPresentationResult {
         require(deviceResponse.status == 0U) { "status: ${deviceResponse.status}" }
-        require(deviceResponse.documents != null) { "documents are null" }
-        return VerifyPresentationResult.SuccessIso(
-            documents = deviceResponse.documents!!.map {
-                verifyDocument(it, verifyDocumentCallback)
+        require(deviceResponse.documents != null || deviceResponse.zkDocuments != null) {
+            "documents and zkDocuments are null"
+        }
+        val zkDocs = deviceResponse.zkDocuments
+        val zkDocuments = when {
+            zkDocs.isNullOrEmpty() -> emptyList()
+            verifyZkDocumentCallback == null -> throw IllegalArgumentException(
+                "ZkDocuments in response, but no ZkDocument verification callback provided"
+            )
+            else -> zkDocs.map { doc ->
+                verifyZkDocument(doc, verifyZkDocumentCallback)
             }
+        }
+
+        val plainDocuments = deviceResponse.documents?.map {
+            verifyPlainDocument(it, verifyDocumentCallback)
+        } ?: emptyList()
+
+        val allDocuments = zkDocuments + plainDocuments
+
+        return VerifyPresentationResult.SuccessIso(
+            documents = allDocuments,
         )
     }
 
@@ -61,9 +86,9 @@ class ValidatorMdoc(
      * Validates an ISO document, equivalent of a Verifiable Presentation
      */
     @Throws(IllegalArgumentException::class, CancellationException::class)
-    suspend fun verifyDocument(
+    suspend fun verifyPlainDocument(
         document: Document,
-        verifyDocumentCallback: suspend (MobileSecurityObject, Document) -> Boolean,
+        verifyPlainDocumentCallback: suspend (MobileSecurityObject, Document) -> Boolean,
     ): IsoDocumentParsed {
         require(document.errors == null) { "Errors: ${document.errors}" }
         val issuerSigned = document.issuerSigned
@@ -87,7 +112,7 @@ class ValidatorMdoc(
         require(mso.docType == document.docType) {
             "mso.docType '${mso.docType}' does not match Doc docType '${document.docType}'"
         }
-        require(verifyDocumentCallback.invoke(mso, document)) {
+        require(verifyPlainDocumentCallback.invoke(mso, document)) {
             "document callback failed: $document"
         }
 
@@ -102,12 +127,49 @@ class ValidatorMdoc(
                 }
             }
         }
-        return IsoDocumentParsed(
+        return IsoPlainDocumentParsed(
             document = document,
             mso = mso,
             validItems = validItems,
             invalidItems = invalidItems,
             freshnessSummary = validator.checkCredentialFreshness(issuerSigned),
+        )
+    }
+
+    /**
+     * Validates an ISO ZkDocument, equivalent of a Verifiable Presentation
+     */
+    @Throws(IllegalArgumentException::class, CancellationException::class)
+    suspend fun verifyZkDocument(
+        zkDocument: ZkDocument,
+        verifyZkDocumentCallback: suspend ((ZkDocument) -> Boolean)
+    ): IsoZkDocumentParsed {
+        val allItems = zkDocument.zkDocumentDataBytes.value.issuerSigned
+            ?.values
+            ?.flatMap { it.entries }
+            ?: emptyList()
+
+        // All-or-nothing approach due to the zk proof approach
+        val (validItems, invalidItems) = if (verifyZkDocumentCallback.invoke(zkDocument)) {
+            allItems to emptyList()
+        } else {
+            emptyList<ZkSignedItem>() to allItems
+        }
+
+        return IsoZkDocumentParsed(
+            zkDocument = zkDocument,
+            validItems = validItems,
+            invalidItems = invalidItems,
+            // TODO: Review freshness Summary for zk documents, especially considering revocation.
+            freshnessSummary = CredentialFreshnessSummary.Mdoc(
+                timelinessValidationSummary = CredentialTimelinessValidationSummary.Mdoc(
+                    details = MdocTimelinessValidationDetails(
+                        evaluationTime = zkDocument.zkDocumentDataBytes.value.timestamp,
+                        msoTimelinessValidationSummary = null,
+                    )
+                ),
+                tokenStatusValidationResult = TokenStatusValidationResult.Valid(null)
+            ),
         )
     }
 
