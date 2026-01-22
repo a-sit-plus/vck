@@ -23,6 +23,7 @@ import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import at.asitplus.wallet.lib.oauth2.RequestInfo
+import at.asitplus.wallet.lib.oauth2.ResponseWithDpopNonce
 import at.asitplus.wallet.lib.oidvci.CredentialDataProviderFun
 import at.asitplus.wallet.lib.oidvci.CredentialIssuer
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
@@ -137,6 +138,16 @@ object TestUtils {
             headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
         )
 
+    fun MockRequestHandleScope.respondWithDpopNoncePar(
+        result: ResponseWithDpopNonce<PushedAuthenticationResponseParameters>
+    ): HttpResponseData = respond(
+        vckJsonSerializer.encodeToString<PushedAuthenticationResponseParameters>(result.response),
+        headers = headers {
+            append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+            result.dpopNonce?.let { set(HttpHeaders.DPoPNonce, it) }
+        }
+    )
+
     fun MockRequestHandleScope.respond(result: CredentialIssuer.CredentialResponse): HttpResponseData =
         when (result) {
             is CredentialIssuer.CredentialResponse.Encrypted -> respond(
@@ -163,6 +174,16 @@ object TestUtils {
         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
     )
 
+    fun MockRequestHandleScope.respondWithDpopNonceToken(
+        result: ResponseWithDpopNonce<TokenResponseParameters>
+    ): HttpResponseData = respond(
+        vckJsonSerializer.encodeToString<TokenResponseParameters>(result.response),
+        headers = headers {
+            append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+            result.dpopNonce?.let { set(HttpHeaders.DPoPNonce, it) }
+        }
+    )
+
 
     fun MockRequestHandleScope.respond(result: TokenIntrospectionResponse): HttpResponseData = respond(
         vckJsonSerializer.encodeToString<TokenIntrospectionResponse>(result),
@@ -172,6 +193,16 @@ object TestUtils {
     fun MockRequestHandleScope.respond(result: JsonObject): HttpResponseData = respond(
         vckJsonSerializer.encodeToString<JsonObject>(result),
         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+    )
+
+    fun MockRequestHandleScope.respondWithDpopNonceJson(
+        result: ResponseWithDpopNonce<JsonObject>
+    ): HttpResponseData = respond(
+        vckJsonSerializer.encodeToString<JsonObject>(result.response),
+        headers = headers {
+            append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+            result.dpopNonce?.let { set(HttpHeaders.DPoPNonce, it) }
+        }
     )
 
     fun MockRequestHandleScope.respond(result: IssuerMetadata): HttpResponseData = respond(

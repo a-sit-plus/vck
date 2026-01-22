@@ -5,7 +5,6 @@ import at.asitplus.catching
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants.WellKnownPaths
 import at.asitplus.openid.TokenIntrospectionRequest
-import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
@@ -17,7 +16,6 @@ import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.oidvci.OAuth2AuthorizationServerAdapter
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 import at.asitplus.wallet.lib.oidvci.TokenInfo
-import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.*
@@ -25,7 +23,6 @@ import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.cookies.*
 import io.ktor.client.request.*
-import io.ktor.client.request.forms.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
@@ -99,55 +96,16 @@ class RemoteOAuth2AuthorizationServerAdapter(
         httpRequest: RequestInfo?,
     ): KmmResult<TokenInfo> = catching {
         val oauthMetadata = _metadata.await()
-        val introspectionUrl = oauthMetadata.introspectionEndpoint
-            ?: throw InvalidToken("No introspection endpoint found in Authorization Server metadata")
         val token = authorizationHeader.let { if (it.contains(" ")) it.split(" ").last() else it }
         val request = TokenIntrospectionRequest(
             token = token,
             tokenTypeHint = authorizationHeader.split(" ").firstOrNull()
         )
-        callTokenIntrospection(
-            url = introspectionUrl,
+        oauth2Client.callTokenIntrospection(
+            oauthMetadata = oauthMetadata,
             request = request,
-            oauthMetadata = oauthMetadata,
             token = token,
-            dpopNonce = null
-        )
-    }
-
-    private suspend fun callTokenIntrospection(
-        url: String,
-        request: TokenIntrospectionRequest,
-        oauthMetadata: OAuth2AuthorizationServerMetadata,
-        token: String,
-        dpopNonce: String? = null,
-        retryCount: Int = 0,
-    ): TokenInfo = client.request {
-        url(url)
-        method = HttpMethod.Post
-        setBody(FormDataContent(parameters {
-            request.encodeToParameters().forEach { append(it.key, it.value) }
-        }))
-        oauth2Client.applyAuthnForToken(
-            oauthMetadata = oauthMetadata,
-            popAudience = publicContext,
-            resourceUrl = url,
-            httpMethod = HttpMethod.Post,
-            useDpop = true,
-            dpopNonce = dpopNonce
-        )()
-    }.onFailure { response ->
-        dpopNonce(response)?.takeIf { retryCount == 0 }?.let { dpopNonce ->
-            callTokenIntrospection(url, request, oauthMetadata, token, dpopNonce, retryCount + 1)
-        } ?: throw Exception("Error requesting Token Introspection: ${this?.errorDescription ?: this?.error}")
-    }.onSuccessTokenIntrospection { response ->
-        if (!active) {
-            throw InvalidToken("Introspected token is not active")
-        }
-        TokenInfo(
-            token = token,
-            scope = scope,
-            authorizationDetails = authorizationDetails
+            popAudience = publicContext
         )
     }
 
@@ -182,9 +140,10 @@ class RemoteOAuth2AuthorizationServerAdapter(
         method = HttpMethod.Get
         oauth2Client.applyToken(params, userInfoEndpoint, HttpMethod.Get, dpopNonce)()
     }.onFailure { response ->
-        dpopNonce(response)?.takeIf { retryCount == 0 }?.let { dpopNonce ->
-            fetchUserInfo(userInfoEndpoint, params, dpopNonce, retryCount + 1)
-        } ?: throw Exception("Error requesting UserInfo: ${this?.errorDescription ?: this?.error}")
+        dpopNonce(response)
+            ?.takeIf { retryCount == 0 }
+            ?.let { dpopNonce -> fetchUserInfo(userInfoEndpoint, params, dpopNonce, retryCount + 1) }
+            ?: throw Exception("Error requesting UserInfo: ${this?.errorDescription ?: this?.error}")
     }.onSuccessUserInfo {
         this
     }
@@ -206,7 +165,3 @@ class RemoteOAuth2AuthorizationServerAdapter(
 private suspend inline fun <R> IntermediateResult<R>.onSuccessUserInfo(
     block: JsonObject.(httpResponse: HttpResponse) -> R,
 ) = onSuccess<JsonObject, R>(block)
-
-private suspend inline fun <R> IntermediateResult<R>.onSuccessTokenIntrospection(
-    block: TokenIntrospectionResponse.(httpResponse: HttpResponse) -> R,
-) = onSuccess<TokenIntrospectionResponse, R>(block)

@@ -40,7 +40,8 @@ Release 5.11.0 (unreleased):
    - In `OpenId4VpVerifier` add option to provide `externalId` when validating authn responses, useful for DCAPI flows
 - OAuth 2.0:
    - In `SimpleAuthorizationService` offer `client_attestation_pop_signing_alg_values_supported` and `client_attestation_signing_alg_values_supported` in line with [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-07.html#name-authorization-server-metada)
-   - Use DPoP proofs on client calls
+   - `OAuth2KtorClient`: Read and cache `DPoP-Nonce` from success responses and include it in subsequent DPoP proofs
+   - In `SimpleAuthorizationService` provide methods `parWithDpopNonce`, `tokenWithDpopNonce` and `userInfoWithDpopNonce` to provide nonces to clients for their next request
  - DCQL for OpenID for Verifiable Presentations:
     - Support attribute `multiple` in query
     - Support attribute `require_cryptographic_holder_binding` in query

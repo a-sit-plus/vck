@@ -268,8 +268,8 @@ class OpenId4VciClient(
                 url = credentialEndpointUrl,
                 request = it,
                 tokenResponse = tokenResponse,
-                credentialFormat = credentialFormat,
-                credentialScheme = credentialScheme,
+                format = credentialFormat,
+                scheme = credentialScheme,
                 dpopNonce = dpopNonce ?: tokenResponse.dpopNonce,
             )
         }
@@ -290,8 +290,8 @@ class OpenId4VciClient(
         url: String,
         request: WalletService.CredentialRequest,
         tokenResponse: TokenResponseWithDpopNonce,
-        credentialFormat: SupportedCredentialFormat,
-        credentialScheme: ConstantIndex.CredentialScheme,
+        format: SupportedCredentialFormat,
+        scheme: ConstantIndex.CredentialScheme,
         dpopNonce: String?,
         retryCount: Int = 0,
     ): Collection<Holder.StoreCredentialInput> = oauth2Client.client.post(url) {
@@ -313,15 +313,16 @@ class OpenId4VciClient(
             dpopNonce = dpopNonce ?: tokenResponse.dpopNonce
         )()
     }.onFailure { response ->
-        dpopNonce(response)?.takeIf { retryCount == 0 }?.let { dpopNonce ->
-            fetchCredential(url, request, tokenResponse, credentialFormat, credentialScheme, dpopNonce, retryCount + 1)
-        } ?: throw Exception("Error requesting credential: ${this?.errorDescription ?: this?.error}")
+        dpopNonce(response)
+            ?.takeIf { retryCount == 0 }
+            ?.let { fetchCredential(url, request, tokenResponse, format, scheme, it, retryCount + 1) }
+            ?: throw Exception("Error requesting credential: ${this?.errorDescription ?: this?.error}")
     }.onSuccessCredential { response ->
         oid4vciService.parseCredentialResponse(
             response = this,
             isEncrypted = response.contentType()?.match(ContentType.parse(MediaTypes.Application.JWT)) == true,
-            representation = credentialFormat.format.toRepresentation(),
-            scheme = credentialScheme
+            representation = format.format.toRepresentation(),
+            scheme = scheme
         ).getOrThrow()
     }
 

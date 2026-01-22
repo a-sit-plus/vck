@@ -211,7 +211,7 @@ val OpenId4VciClientTest by testSuite {
             // just pick the first credential in SD-JWT that is available
             val selectedCredential = credentialIdentifierInfos
                 .first { it.supportedCredentialFormat.format == CredentialFormatEnum.DC_SD_JWT }
-            // client will call clientBrowser.openUrlExternally
+
             client.startProvisioningWithAuthRequestReturningResult(
                 credentialIssuerUrl = "http://localhost",
                 credentialIdentifierInfo = selectedCredential,

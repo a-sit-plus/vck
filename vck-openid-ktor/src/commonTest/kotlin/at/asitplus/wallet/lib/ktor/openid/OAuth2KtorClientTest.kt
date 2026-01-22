@@ -16,6 +16,8 @@ import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.dummyUser
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respond
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondOAuth2Error
+import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondWithDpopNoncePar
+import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondWithDpopNonceToken
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.toRequestInfo
 import at.asitplus.wallet.lib.oauth2.ClientAuthenticationService
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
@@ -75,8 +77,8 @@ val OAuth2KtorClientTest by testSuite {
                 request.url.fullPath.startsWith(parEndpointPath) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val authnRequest: RequestParameters = requestBody.decodeFromPostBody()
-                    authorizationService.par(authnRequest, request.toRequestInfo()).fold(
-                        onSuccess = { respond(it) },
+                    authorizationService.parWithDpopNonce(authnRequest, request.toRequestInfo()).fold(
+                        onSuccess = { respondWithDpopNoncePar(it) },
                         onFailure = { respondOAuth2Error(it) }
                     )
                 }
@@ -97,8 +99,8 @@ val OAuth2KtorClientTest by testSuite {
                 request.url.fullPath.startsWith(tokenEndpointPath) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val params: TokenRequestParameters = requestBody.decodeFromPostBody<TokenRequestParameters>()
-                    authorizationService.token(params, request.toRequestInfo()).fold(
-                        onSuccess = { respond(it) },
+                    authorizationService.tokenWithDpopNonce(params, request.toRequestInfo()).fold(
+                        onSuccess = { respondWithDpopNonceToken(it) },
                         onFailure = { respondOAuth2Error(it) },
                     )
                 }

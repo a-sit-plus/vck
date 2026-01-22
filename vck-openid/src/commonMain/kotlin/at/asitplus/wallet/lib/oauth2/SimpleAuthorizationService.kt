@@ -279,6 +279,18 @@ class SimpleAuthorizationService(
         )
     }
 
+    /**
+     * Like [par], but also provides a fresh DPoP nonce for the success response header.
+     * See [RFC 9449 8. Authorization Server-Provided Nonce](https://datatracker.ietf.org/doc/html/rfc9449#section-8)
+     */
+    suspend fun parWithDpopNonce(
+        request: RequestParameters,
+        httpRequest: RequestInfo? = null,
+    ): KmmResult<ResponseWithDpopNonce<PushedAuthenticationResponseParameters>> = catching {
+        val response = par(request, httpRequest).getOrThrow()
+        ResponseWithDpopNonce(response, tokenService.dpopNonce())
+    }
+
     private suspend fun RequestParameters.extractPushedRequestParams() = when (this) {
         is JarRequestParameters -> {
             require(requestUri == null) { "request_uri must not be set for PAR" }
@@ -468,6 +480,18 @@ class SimpleAuthorizationService(
         token
     }
 
+    /**
+     * Like [token], but also provides a fresh DPoP nonce for the success response header.
+     * See [RFC 9449 8. Authorization Server-Provided Nonce](https://datatracker.ietf.org/doc/html/rfc9449#section-8)
+     */
+    suspend fun tokenWithDpopNonce(
+        request: TokenRequestParameters,
+        httpRequest: RequestInfo? = null,
+    ): KmmResult<ResponseWithDpopNonce<TokenResponseParameters>> = catching {
+        val response = token(request, httpRequest).getOrThrow()
+        ResponseWithDpopNonce(response, tokenService.dpopNonce())
+    }
+
     private fun validateCodeChallenge(code: String, codeVerifier: String?, codeChallenge: String) {
         if (codeVerifier == null) {
             throw InvalidGrant("code verifier invalid: $codeVerifier for $code")
@@ -548,6 +572,18 @@ class SimpleAuthorizationService(
     }
 
     /**
+     * Like [userInfo], but also provides a fresh DPoP nonce for the success response header.
+     * See [RFC 9449 9. Resource Server-Provided Nonce](https://datatracker.ietf.org/doc/html/rfc9449#section-9)
+     */
+    suspend fun userInfoWithDpopNonce(
+        authorizationHeader: String,
+        httpRequest: RequestInfo? = null,
+    ): KmmResult<ResponseWithDpopNonce<JsonObject>> = catching {
+        val response = userInfo(authorizationHeader, httpRequest).getOrThrow()
+        ResponseWithDpopNonce(response, tokenService.dpopNonce())
+    }
+
+    /**
      * Obtains a JSON object representing [at.asitplus.openid.OidcUserInfo] from the Authorization Server, and
      * since we're implementing [OAuth2AuthorizationServerAdapter] here, this is the same as [userInfo].
      */
@@ -599,3 +635,8 @@ class SimpleAuthorizationService(
 
     override suspend fun getDpopNonce() = tokenService.dpopNonce()
 }
+
+data class ResponseWithDpopNonce<T>(
+    val response: T,
+    val dpopNonce: String?,
+)
