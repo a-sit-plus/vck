@@ -14,6 +14,7 @@ import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.minus
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.assertions.throwables.shouldNotThrowAny
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.shouldBe
@@ -34,6 +35,18 @@ val DCQLJwtVcCredentialMetadataAndValidityConstraintsTest by testSuite {
             )
         ).jsonObject
         DCQLJwtVcCredentialMetadataAndValidityConstraints.SerialNames.TYPE_VALUES shouldBeIn serialized.keys
+    }
+    "handle null or empty " {
+        shouldThrow<IllegalArgumentException> {
+            DCQLJwtVcCredentialMetadataAndValidityConstraints(
+                typeValues = listOf(emptyList()),
+            ).validate(emptyList()).getOrThrow()
+        }
+        shouldThrow<IllegalArgumentException> {
+            DCQLJwtVcCredentialMetadataAndValidityConstraints(
+                typeValues = listOf(listOf("dummy document type")),
+            ).validate(null).getOrThrow()
+        }
     }
     "constraints query" {
         shouldNotThrowAny {
