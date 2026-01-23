@@ -35,8 +35,8 @@ enum class SignedEnvelopeProperty(val viableSignatureFormats: List<SignatureForm
         fun defaultProperty(signatureFormat: SignatureFormat) =
             when (signatureFormat) {
                 SignatureFormat.CADES, SignatureFormat.JADES -> ATTACHED
-                SignatureFormat.XADES -> CERTIFICATION
-                SignatureFormat.PADES -> ENVELOPED
+                SignatureFormat.XADES -> ENVELOPED
+                SignatureFormat.PADES -> CERTIFICATION
             }
     }
 }
