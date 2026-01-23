@@ -1,7 +1,7 @@
 package at.asitplus.openid.dcql
 
 /*
- * Software Name : vc-k
+ * Software Name : VC-K
  * SPDX-FileCopyrightText: Copyright (c) A-SIT Plus GmbH
  * SPDX-License-Identifier: Apache-2.0
  *
