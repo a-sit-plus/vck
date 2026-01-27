@@ -1,9 +1,11 @@
 import at.asitplus.gradle.*
+import org.gradle.api.tasks.testing.Test
 
 plugins {
     kotlin("multiplatform")
     kotlin("plugin.serialization")
-
+    id("com.google.devtools.ksp")
+    id("io.kotest")
     id("at.asitplus.gradle.vclib-conventions")
     id("org.jetbrains.dokka")
     id("signing")
@@ -26,6 +28,12 @@ kotlin {
                 commonImplementationAndApiDependencies()
             }
         }
+
+        commonTest {
+            dependencies{
+                implementation(kotest("property"))
+            }
+        }
         jvmMain {
             dependencies {
                 implementation(bouncycastle("bcpkix"))
@@ -33,11 +41,16 @@ kotlin {
         }
         jvmTest {
             dependencies {
+                implementation(kotest("runner-junit5", "jvm"))
                 implementation("com.nimbusds:nimbus-jose-jwt:${VcLibVersions.Jvm.`jose-jwt`}")
                 implementation("org.json:json:${VcLibVersions.Jvm.json}")
             }
         }
     }
+}
+
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
 }
 
 exportXCFramework("VcLibKmm", transitiveExports = false, additionalExports = commonIosExports())

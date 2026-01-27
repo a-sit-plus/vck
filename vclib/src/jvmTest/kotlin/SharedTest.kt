@@ -1,4 +1,6 @@
-import io.kotest.core.platform
+package test
+
+import io.kotest.common.platform
 import io.kotest.core.spec.style.FreeSpec
 
-class `Shared Andoid JVM Test` : FreeSpec({ "should work on $platform" { } })
+class `SharedAndoidJVMTest` : FreeSpec({ "should work on $platform" { } })

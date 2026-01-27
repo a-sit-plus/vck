@@ -8,15 +8,12 @@ import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.jws.decodeBase64
 import at.asitplus.wallet.lib.toBitSet
 import at.asitplus.wallet.lib.uuid4
-import io.kotest.assertions.fail
+import io.kotest.assertions.AssertionErrorBuilder.Companion.fail
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.matthewnelson.component.base64.decodeBase64ToArray
-import io.matthewnelson.encoding.base64.Base64
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 import kotlin.time.Clock
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
