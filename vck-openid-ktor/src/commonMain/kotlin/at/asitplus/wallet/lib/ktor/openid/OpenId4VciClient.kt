@@ -10,6 +10,7 @@ import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants.WellKnownPaths
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.RefreshTokenInfo
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.IsoMdocFallbackCredentialScheme
@@ -212,12 +213,14 @@ class OpenId4VciClient(
         refreshTokenInfo: RefreshTokenInfo,
     ): KmmResult<CredentialIssuanceResult.Success> = catching {
         with(refreshTokenInfo) {
+            val currentRefreshToken = refreshToken
+                ?: throw IllegalArgumentException("Refresh token is missing in RefreshTokenInfo")
             Napier.i("refreshCredential")
             Napier.d("refreshCredential: $refreshToken, $credentialFormat, $credentialIdentifier")
             val tokenResponse = oauth2Client.requestTokenWithRefreshToken(
                 oauthMetadata = oauthMetadata,
                 credentialIssuer = issuerMetadata.credentialIssuer,
-                refreshToken = refreshToken,
+                refreshToken = currentRefreshToken,
                 scope = credentialFormat.scope,
                 authorizationDetails = oid4vciService.buildAuthorizationDetails(
                     credentialIdentifier,
@@ -487,19 +490,6 @@ data class CredentialIdentifierInfo(
     val credentialIdentifier: String,
     val supportedCredentialFormat: SupportedCredentialFormat,
 )
-
-/**
- * Holds all information needed to refresh a credential, pass it to [OpenId4VciClient.refreshCredential].
- */
-@Serializable
-data class RefreshTokenInfo(
-    val refreshToken: String,
-    val issuerMetadata: IssuerMetadata,
-    val oauthMetadata: OAuth2AuthorizationServerMetadata,
-    val credentialFormat: SupportedCredentialFormat,
-    val credentialIdentifier: String,
-)
-
 
 private suspend inline fun <R> IntermediateResult<R>.onSuccessCredential(
     block: String.(httpResponse: HttpResponse) -> R,

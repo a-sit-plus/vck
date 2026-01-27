@@ -15,7 +15,8 @@ class InMemorySubjectCredentialStore : SubjectCredentialStore {
     override suspend fun storeCredential(
         vc: VerifiableCredentialJws,
         vcSerialized: String,
-        scheme: ConstantIndex.CredentialScheme
+        scheme: ConstantIndex.CredentialScheme,
+        refreshToken: RefreshTokenInfo?,
     ) = SubjectCredentialStore.StoreEntry.Vc(vcSerialized, vc, scheme.schemaUri)
         .also { credentials += it }
 
@@ -23,13 +24,15 @@ class InMemorySubjectCredentialStore : SubjectCredentialStore {
         vc: VerifiableCredentialSdJwt,
         vcSerialized: String,
         disclosures: Map<String, SelectiveDisclosureItem?>,
-        scheme: ConstantIndex.CredentialScheme
+        scheme: ConstantIndex.CredentialScheme,
+        refreshToken: RefreshTokenInfo?,
     ) = SubjectCredentialStore.StoreEntry.SdJwt(vcSerialized, vc, disclosures, scheme.schemaUri)
         .also { credentials += it }
 
     override suspend fun storeCredential(
         issuerSigned: IssuerSigned,
-        scheme: ConstantIndex.CredentialScheme
+        scheme: ConstantIndex.CredentialScheme,
+        refreshToken: RefreshTokenInfo?,
     ) = SubjectCredentialStore.StoreEntry.Iso(issuerSigned, scheme.schemaUri)
         .also { credentials += it }
 
