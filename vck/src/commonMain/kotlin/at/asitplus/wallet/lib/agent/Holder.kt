@@ -122,5 +122,7 @@ interface Holder {
         dcqlQuery: DCQLQuery,
         filterById: String? = null
     ): KmmResult<DCQLQueryResult<SubjectCredentialStore.StoreEntry>>
+
+    suspend fun getInvalidCredentials(filterById: String? = null): List<SubjectCredentialStore.StoreEntry>?
 }
 

@@ -146,6 +146,30 @@ class HolderAgent(
         }.map { it.first }
     }
 
+    /** Gets a list of all stored credentials that are no longer valid, possibly filtered by [filterById]. */
+    override suspend fun getInvalidCredentials(filterById: String?): List<StoreEntry>? {
+        val availableCredentials = getCredentials() ?: return null
+
+        val presortedCredentials = availableCredentials
+            .filter { filterById == null || it.getDcApiId() == filterById }
+            .sortedBy { it.sortKey() }
+
+        val withRevocationStatusQueryIssued = presortedCredentials.map {
+            it to coroutineScope {
+                async {
+                    validator.checkCredentialFreshness(it)
+                }
+            }
+        }
+        withRevocationStatusQueryIssued.map { it.second }.joinAll()
+        val withRevocationStatusAvailable = withRevocationStatusQueryIssued.map {
+            it.first to it.second.await()
+        }
+        return withRevocationStatusAvailable
+            .filter { !it.second.isFresh }
+            .map { it.first }
+    }
+
     /** Prefer credentials with support for selective disclosure. */
     private fun StoreEntry.sortKey(): Int = when (this) {
         is StoreEntry.Vc -> 2
