@@ -41,26 +41,26 @@ Release 5.11.0 (unreleased):
 - OAuth 2.0:
    - In `SimpleAuthorizationService` offer `client_attestation_pop_signing_alg_values_supported` and `client_attestation_signing_alg_values_supported` in line with [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-07.html#name-authorization-server-metada)
    - Use DPoP proofs on client calls
-- Dependency Updates:
-   * Gradle 9.2.0
-   * Kotlin 2.3.0
-   * Dokka 2.10.0
-   * Return value checker defaults to `check`
-   * AGP 8.12.3
-   * Ktor 3.3.3
-   * Bouncy Castle 1.83 (no more forcing exact version)
-   * TestBalloon 0.7.1-K2.3.0
  - DCQL for OpenID for Verifiable Presentations:
     - Support attribute `multiple` in query
     - Support attribute `require_cryptographic_holder_binding` in query
     - Support Trusted Authorities Query, i.e. attribute `trusted_authorities` in query, for Authority Key Identifier `aki` only
     - Support queries for W3C Verifiable Credentials
  - BREAKING CHANGE: DCQL validation result now carries a list of AuthnResponseResult instead of a single one
-   * Signum 3.19.1
  - DCQL updates
    - Add: Support OpenID4VP attribute DCQLCredentialQuery::multiple
    - Add: Support OpenID4VP attribute DCQLCredentialQuery::trustedAuthority
    - Add: Support OpenID4VP attribute DCQLCredentialQuery::require_cryptographic_holder_binding
+- Dependency Updates:
+    * Gradle 9.2.0
+    * Kotlin 2.3.0
+    * Dokka 2.10.0
+    * Return value checker defaults to `check`
+    * AGP 8.12.3
+    * Ktor 3.3.3
+    * Bouncy Castle 1.83 (no more forcing exact version)
+    * TestBalloon 0.8.2-K2.3.0
+    * Signum 3.19.2
 
 Release 5.10.1:
  - Proximity presentations:
