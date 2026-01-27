@@ -14,7 +14,7 @@ data class StatusListJwt(
     override val resolvedAt: Instant?,
 ) : StatusListToken() {
 
-    override val payload: KmmResult<StatusListTokenPayload> = KmmResult.success(value.payload)
+    override val parsedPayload: KmmResult<StatusListTokenPayload> = KmmResult.success(value.payload)
 
     /**
      * Validate the Status List Token:

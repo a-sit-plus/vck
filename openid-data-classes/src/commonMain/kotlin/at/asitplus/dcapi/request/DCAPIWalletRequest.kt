@@ -1,6 +1,7 @@
 package at.asitplus.dcapi.request
 
 import at.asitplus.openid.RequestParameters
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
@@ -12,9 +13,11 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 @JsonClassDiscriminator("protocol")
 sealed interface DCAPIWalletRequest {
     val protocol: ExchangeProtocolIdentifier
+
     /** The credential ID of the credential the user has chosen in the UI provided by the system.
     Not available on iOS. */
     val credentialId: String?
+
     /** The package name of the calling (browser) application providing the calling origin. Not available on iOS. */
     val callingPackageName: String?
     val callingOrigin: String
@@ -69,6 +72,20 @@ sealed interface DCAPIWalletRequest {
     ) : DCAPIWalletRequest, OpenId4Vp() {
         override val protocol: ExchangeProtocolIdentifier
             get() = ExchangeProtocolIdentifier.OPENID4VP_V1_UNSIGNED
+
+        @Deprecated("Removed, use constructor without protocol and parsed request", level = DeprecationLevel.ERROR)
+        constructor(
+            protocol: String,
+            requestData: String,
+            credentialId: String,
+            callingPackageName: String,
+            callingOrigin: String,
+        ) : this(
+            request = joseCompliantSerializer.decodeFromString(requestData),
+            credentialId = credentialId,
+            callingPackageName = callingPackageName,
+            callingOrigin = callingOrigin
+        )
     }
 
 }

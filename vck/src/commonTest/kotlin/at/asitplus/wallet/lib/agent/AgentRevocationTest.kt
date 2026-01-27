@@ -118,7 +118,7 @@ val AgentRevocationTest by testSuite {
                 time = timestamp,
             )
             providedToken.shouldBeInstanceOf<StatusListCwt>()
-                .payload.getOrThrow().revocationList shouldBe issuedToken.payload.revocationList
+                .parsedPayload.getOrThrow().revocationList shouldBe issuedToken.payload.revocationList
         }
 
 

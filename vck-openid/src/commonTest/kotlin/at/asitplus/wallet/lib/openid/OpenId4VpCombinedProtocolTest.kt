@@ -22,6 +22,7 @@ import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.assertions.AssertionErrorBuilder.Companion.fail
+import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -170,7 +171,7 @@ val OpenId4VpCombinedProtocolTest by testSuite {
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
                 .shouldBeInstanceOf<AuthnResponseResult.VerifiableDCQLPresentationValidationResults>()
-                .validationResults.values.first().first()
+                .allValidationResults.values.shouldBeSingleton().first().shouldBeSingleton().first()
                 .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
                 .verifiableCredentialSdJwt.verifiableCredentialType shouldBe ConstantIndex.AtomicAttribute2023.sdJwtType
         }

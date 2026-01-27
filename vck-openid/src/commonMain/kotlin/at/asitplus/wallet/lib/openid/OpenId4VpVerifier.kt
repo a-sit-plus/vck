@@ -632,7 +632,10 @@ class OpenId4VpVerifier(
             }
             // TODO: Validation errors are (sometimes) put into a VerifiableDCQLPresentationValidationResults which means that the success page is shown
             // However, if we return a ValidationError, a BadRequest is sent, which is not shown to the user in the UI
-            AuthnResponseResult.VerifiableDCQLPresentationValidationResults(presentation)
+            AuthnResponseResult.VerifiableDCQLPresentationValidationResults(
+                validationResults = presentation.mapValues { it.value.firstOrList() },
+                allValidationResults = presentation
+            )
         } ?: throw IllegalArgumentException("Unsupported presentation mechanism")
     }
 
@@ -765,7 +768,7 @@ class OpenId4VpVerifier(
         clientId: String?,
         nonce: String,
         hasBeenEncrypted: Boolean,
-        responseUrl: String
+        responseUrl: String,
     ): SessionTranscript = SessionTranscript.forOpenId(
         OpenId4VpHandover(
             type = OpenId4VpHandover.TYPE_OPENID4VP,

@@ -32,6 +32,10 @@ sealed interface OpenId4VpResponse {
     val protocol: ExchangeProtocolIdentifier
     val data: AuthenticationResponseParameters
     val origin: String?
+
+    @Deprecated("Removed", level = DeprecationLevel.ERROR)
+    val response: String?
+        get() = null
 }
 
 @Serializable

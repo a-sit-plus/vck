@@ -9,7 +9,7 @@ import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import io.github.aakira.napier.Napier
 
 fun DCQLQueryResult<SubjectCredentialStore.StoreEntry>.toDefaultSubmission(
-    allowsMultiple: Collection<DCQLCredentialQueryIdentifier>
+    allowsMultiple: Collection<DCQLCredentialQueryIdentifier> = listOf()
 ): KmmResult<Map<DCQLCredentialQueryIdentifier, List<DCQLCredentialSubmissionOption<SubjectCredentialStore.StoreEntry>>>> =
     catching {
         // submit the first options of the required queries by default

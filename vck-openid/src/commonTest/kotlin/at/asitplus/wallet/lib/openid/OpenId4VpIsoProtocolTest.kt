@@ -264,7 +264,7 @@ val OpenId4VpIsoProtocolTest by testSuite {
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
                 .shouldBeInstanceOf<VerifiableDCQLPresentationValidationResults>()
-                .validationResults.shouldHaveSize(2).apply {
+                .allValidationResults.shouldHaveSize(2).apply {
                     values.first { it.first().hasDocType(AtomicAttribute2023.isoDocType) }.first()
                         .shouldBeInstanceOf<SuccessIso>().documents.first()
                         .validItems.shouldHaveSingleElement { it.elementIdentifier == atomicGivenName }

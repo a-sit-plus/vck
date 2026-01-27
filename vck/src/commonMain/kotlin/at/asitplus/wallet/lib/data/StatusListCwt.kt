@@ -16,7 +16,7 @@ data class StatusListCwt(
     override val resolvedAt: Instant?,
 ) : StatusListToken() {
 
-    override val payload: KmmResult<StatusListTokenPayload>
+    override val parsedPayload: KmmResult<StatusListTokenPayload>
         get() = catching { coseCompliantSerializer.decodeFromByteArray<StatusListTokenPayload>(value.payload!!) }
 
     /**
