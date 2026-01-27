@@ -58,7 +58,7 @@ class HolderAgent(
      * Stores the verifiable credential in [credential] if it parses and validates,
      * and returns it for future reference.
      */
-    override suspend fun storeCredential(credential: Holder.StoreCredentialInput) = catching {
+    override suspend fun storeCredential(credential: Holder.StoreCredentialInput, refreshTokenInfo: RefreshTokenInfo?) = catching {
         when (credential) {
             is Holder.StoreCredentialInput.Vc -> {
                 val validated = validatorVcJws.verifyVcJws(credential.signedVcJws, keyMaterial.publicKey)
@@ -71,6 +71,7 @@ class HolderAgent(
                     vc = validated.jws,
                     vcSerialized = credential.vcJws,
                     scheme = credential.scheme,
+                    refreshToken = refreshTokenInfo
                 )
             }
 
@@ -87,6 +88,7 @@ class HolderAgent(
                     vcSerialized = credential.vcSdJwt,
                     disclosures = validated.disclosures,
                     scheme = credential.scheme,
+                    refreshToken = refreshTokenInfo
                 )
             }
 
@@ -99,7 +101,8 @@ class HolderAgent(
                 }
                 subjectCredentialStore.storeCredential(
                     issuerSigned = validated.issuerSigned,
-                    scheme = credential.scheme
+                    scheme = credential.scheme,
+                    refreshToken = refreshTokenInfo
                 )
             }
         }
