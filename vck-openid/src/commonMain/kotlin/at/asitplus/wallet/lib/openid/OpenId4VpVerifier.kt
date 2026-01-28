@@ -606,39 +606,19 @@ class OpenId4VpVerifier(
                     ?: throw IllegalArgumentException("Unknown credential query identifier.")
 
                 catchingUnwrapped {
-                    when (relatedPresentation) {
-                        // TODO: remove JsonPrimitive switch when dropping backwards compatibility to pre-list era
-                        is JsonPrimitive -> listOf(
-                            verifyPresentationResult(
-                                claimFormat = credentialQuery.format.toClaimFormat(),
-                                relatedPresentation = relatedPresentation,
-                                expectedNonce = expectedNonce,
-                                input = responseParameters,
-                                clientId = authnRequest.clientId,
-                                responseUrl = authnRequest.responseUrl
-                                    ?: authnRequest.redirectUrlExtracted,
-                                transactionData = authnRequest.transactionData,
-                                clientIdRequired = clientIdRequired,
-                                origin = (originalResponseParameters as? ResponseParametersFrom.DcApi)?.origin,
-                            )
+                    relatedPresentation.jsonArray.map {
+                        verifyPresentationResult(
+                            claimFormat = credentialQuery.format.toClaimFormat(),
+                            relatedPresentation = it.jsonPrimitive,
+                            expectedNonce = expectedNonce,
+                            input = responseParameters,
+                            clientId = authnRequest.clientId,
+                            responseUrl = authnRequest.responseUrl
+                                ?: authnRequest.redirectUrlExtracted,
+                            transactionData = authnRequest.transactionData,
+                            clientIdRequired = clientIdRequired,
+                            origin = (originalResponseParameters as? ResponseParametersFrom.DcApi)?.origin,
                         )
-
-                        is JsonArray -> relatedPresentation.jsonArray.map {
-                            verifyPresentationResult(
-                                claimFormat = credentialQuery.format.toClaimFormat(),
-                                relatedPresentation = it.jsonPrimitive,
-                                expectedNonce = expectedNonce,
-                                input = responseParameters,
-                                clientId = authnRequest.clientId,
-                                responseUrl = authnRequest.responseUrl
-                                    ?: authnRequest.redirectUrlExtracted,
-                                transactionData = authnRequest.transactionData,
-                                clientIdRequired = clientIdRequired,
-                                origin = (originalResponseParameters as? ResponseParametersFrom.DcApi)?.origin,
-                            )
-                        }
-
-                        is JsonObject -> throw IllegalArgumentException("Verifiable presentations must not be Json Objects")
                     }.map {
                         it.mapToAuthnResponseResult(responseParameters.parameters.state)
                     }
@@ -767,7 +747,8 @@ class OpenId4VpVerifier(
         DCAPIHandover(
             type = DCAPIHandover.TYPE_OPENID4VP,
             hash = coseCompliantSerializer.encodeToByteArray<OpenID4VPDCAPIHandoverInfo>(
-                toBeHashed as? OpenID4VPDCAPIHandoverInfo ?: throw IllegalArgumentException("Unsupported DCAPIHandoverInfo")
+                toBeHashed as? OpenID4VPDCAPIHandoverInfo
+                    ?: throw IllegalArgumentException("Unsupported DCAPIHandoverInfo")
             ).sha256(),
         )
     )
@@ -800,7 +781,6 @@ class OpenId4VpVerifier(
             ).sha256(),
         )
     )
-
 
 
     private fun VerifyPresentationResult.mapToAuthnResponseResult(state: String?) = when (this) {

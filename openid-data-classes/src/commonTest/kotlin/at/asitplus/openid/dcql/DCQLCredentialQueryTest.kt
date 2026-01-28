@@ -45,7 +45,6 @@ val DCQLCredentialQueryTest by testSuite {
 
         val expectedJsonObject = buildJsonObject {
             put(DCQLCredentialQuery.SerialNames.ID, JsonPrimitive(value.id.string))
-            put(DCQLCredentialQuery.SerialNames.META, JsonPrimitive(value.id.string))
             put(
                 DCQLCredentialQuery.SerialNames.FORMAT,
                 JsonPrimitive(CredentialFormatEnum.DC_SD_JWT.text)
@@ -70,7 +69,9 @@ val DCQLCredentialQueryTest by testSuite {
             })
         }
 
-        Json.encodeToJsonElement(value) shouldBe expectedJsonObject
+        Json.encodeToJsonElement(value) shouldBe expectedJsonObject.also {
+            println(it)
+        }
         Json.decodeFromJsonElement<DCQLCredentialQuery>(expectedJsonObject) shouldBe value
     }
 }
