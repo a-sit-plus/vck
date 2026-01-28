@@ -9,7 +9,7 @@ package at.asitplus.openid.dcql
  * see the "LICENSE" file for more details
  */
 
-import at.asitplus.openid.CredentialFormatEnum
+import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.minus
 import de.infix.testBalloon.framework.core.testSuite
@@ -22,6 +22,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 
+@Suppress("unused")
 val DCQLJwtVcCredentialMetadataAndValidityConstraintsTest by testSuite {
     "specification" - {
         "serial names" {
@@ -31,7 +32,7 @@ val DCQLJwtVcCredentialMetadataAndValidityConstraintsTest by testSuite {
     "instance serialization" {
         val serialized = Json.encodeToJsonElement(
             DCQLJwtVcCredentialMetadataAndValidityConstraints(
-                typeValues = listOf(listOf("dummy document type"))
+                typeValues = nonEmptyListOf(listOf("dummy document type"))
             )
         ).jsonObject
         DCQLJwtVcCredentialMetadataAndValidityConstraints.SerialNames.TYPE_VALUES shouldBeIn serialized.keys
@@ -39,26 +40,25 @@ val DCQLJwtVcCredentialMetadataAndValidityConstraintsTest by testSuite {
     "handle null or empty " {
         shouldThrow<IllegalArgumentException> {
             DCQLJwtVcCredentialMetadataAndValidityConstraints(
-                typeValues = listOf(emptyList()),
+                typeValues = nonEmptyListOf(emptyList()),
             ).validate(emptyList()).getOrThrow()
         }
         shouldThrow<IllegalArgumentException> {
             DCQLJwtVcCredentialMetadataAndValidityConstraints(
-                typeValues = listOf(listOf("dummy document type")),
+                typeValues = nonEmptyListOf(listOf("dummy document type")),
             ).validate(null).getOrThrow()
         }
     }
     "constraints query" {
         shouldNotThrowAny {
             DCQLJwtVcCredentialMetadataAndValidityConstraints(
-                typeValues = listOf(listOf("dummy document type")),
+                typeValues = nonEmptyListOf(listOf("dummy document type")),
             ).validate(listOf("dummy document type")).getOrThrow()
 
             DCQLCredentialQuery.Procedures.validateCredentialMetadataAndValidityConstraints(
                 credential = "",
-                credentialFormatIdentifier = CredentialFormatEnum.JWT_VC,
                 credentialMetadataAndValidityConstraints = DCQLJwtVcCredentialMetadataAndValidityConstraints(
-                    typeValues = listOf(listOf("dummy document type")),
+                    typeValues = nonEmptyListOf(listOf("dummy document type")),
                 ),
                 mdocCredentialDoctypeExtractor = {
                     throw IllegalArgumentException("MDOC credential type cannot be extracted")
@@ -71,15 +71,14 @@ val DCQLJwtVcCredentialMetadataAndValidityConstraintsTest by testSuite {
         }
         shouldThrowAny {
             DCQLJwtVcCredentialMetadataAndValidityConstraints(
-                typeValues = listOf(listOf("dummy document type")),
+                typeValues = nonEmptyListOf(listOf("dummy document type")),
             ).validate(listOf("DIFFERENT dummy document type")).getOrThrow()
         }
         shouldThrowAny {
             DCQLCredentialQuery.Procedures.validateCredentialMetadataAndValidityConstraints(
                 credential = "",
-                credentialFormatIdentifier = CredentialFormatEnum.JWT_VC,
                 credentialMetadataAndValidityConstraints = DCQLJwtVcCredentialMetadataAndValidityConstraints(
-                    typeValues = listOf(listOf("dummy document type")),
+                    typeValues = nonEmptyListOf(listOf("dummy document type")),
                 ),
                 mdocCredentialDoctypeExtractor = {
                     throw IllegalArgumentException("MDOC credential type cannot be extracted")

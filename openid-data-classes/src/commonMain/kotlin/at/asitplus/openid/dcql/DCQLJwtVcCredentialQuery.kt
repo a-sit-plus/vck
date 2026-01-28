@@ -11,6 +11,7 @@ package at.asitplus.openid.dcql
 
 import at.asitplus.data.NonEmptyList
 import at.asitplus.openid.CredentialFormatEnum
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -24,8 +25,6 @@ import kotlinx.serialization.Serializable
 data class DCQLJwtVcCredentialQuery(
     @SerialName(DCQLCredentialQuery.SerialNames.ID)
     override val id: DCQLCredentialQueryIdentifier,
-    @SerialName(DCQLCredentialQuery.SerialNames.FORMAT)
-    override val format: CredentialFormatEnum,
     @SerialName(DCQLCredentialQuery.SerialNames.META)
     override val meta: DCQLJwtVcCredentialMetadataAndValidityConstraints,
     @SerialName(DCQLCredentialQuery.SerialNames.CLAIMS)
@@ -35,20 +34,25 @@ data class DCQLJwtVcCredentialQuery(
     @SerialName(DCQLCredentialQuery.SerialNames.MULTIPLE)
     override val multiple: Boolean? = false,
     @SerialName(DCQLCredentialQuery.SerialNames.TRUSTED_AUTHORITIES)
-    override val trustedAuthorities: List<String>? = null,
+    override val trustedAuthorities: NonEmptyList<DCQLTrustedAuthorityQueryEntry>? = null,
     @SerialName(DCQLCredentialQuery.SerialNames.REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING)
     override val requireCryptographicHolderBinding: Boolean? = true,
+    @SerialName(DCQLCredentialQuery.SerialNames.FORMAT)
+    @EncodeDefault(mode = EncodeDefault.Mode.ALWAYS)
+    override val format: CredentialFormatEnum = CREDENTIAL_FORMAT,
 ) : DCQLCredentialQuery {
     init {
-        validate(this)
+        validate()
     }
 
-    companion object Companion {
-        fun validate(query: DCQLJwtVcCredentialQuery) = query.run {
-            DCQLCredentialQuery.validate(this)
-            if (format != CredentialFormatEnum.JWT_VC) {
-                throw IllegalArgumentException("Value has an invalid format identifier in this context.")
-            }
+    companion object {
+        val CREDENTIAL_FORMAT = CredentialFormatEnum.JWT_VC
+    }
+
+    override fun validate() {
+        super.validate()
+        require(format == CREDENTIAL_FORMAT) {
+            "Value has an invalid format identifier in this context."
         }
     }
 }

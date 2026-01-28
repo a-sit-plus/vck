@@ -1,12 +1,12 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.FormatContainerJwt
 import at.asitplus.dif.FormatContainerSdJwt
 import at.asitplus.dif.InputDescriptor
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.openid.OpenIdConstants.SCOPE_PROFILE
@@ -15,15 +15,18 @@ import at.asitplus.openid.TransactionData
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment
 import at.asitplus.openid.dcql.DCQLClaimsQueryList
+import at.asitplus.openid.dcql.DCQLCredentialQuery
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
-import at.asitplus.openid.dcql.DCQLCredentialQueryInstance
 import at.asitplus.openid.dcql.DCQLCredentialQueryList
-import at.asitplus.openid.dcql.DCQLEmptyCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLIsoMdocClaimsQuery
 import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstraints
+import at.asitplus.openid.dcql.DCQLIsoMdocCredentialQuery
 import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
+import at.asitplus.openid.dcql.DCQLJwtVcCredentialMetadataAndValidityConstraints
+import at.asitplus.openid.dcql.DCQLJwtVcCredentialQuery
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
+import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import at.asitplus.wallet.lib.RequestOptions
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
@@ -121,56 +124,70 @@ data class OpenId4VpRequestOptions(
     fun buildScope(): String = listOf(SCOPE_OPENID, SCOPE_PROFILE).joinToString(" ")
 
     fun toDCQLQuery(): DCQLQuery? = if (credentials.isEmpty()) null else DCQLQuery(
-        credentials = DCQLCredentialQueryList<DCQLCredentialQueryInstance>(
-            credentials.map<RequestOptionsCredential, DCQLCredentialQueryInstance> { credential ->
-                val format = when (credential.representation) {
-                    CredentialRepresentation.PLAIN_JWT -> CredentialFormatEnum.JWT_VC
-                    CredentialRepresentation.SD_JWT -> CredentialFormatEnum.DC_SD_JWT
-                    CredentialRepresentation.ISO_MDOC -> CredentialFormatEnum.MSO_MDOC
-                }
-                val meta = when (credential.representation) {
-                    CredentialRepresentation.PLAIN_JWT -> DCQLEmptyCredentialMetadataAndValidityConstraints
-                    CredentialRepresentation.SD_JWT -> DCQLSdJwtCredentialMetadataAndValidityConstraints(
-                        vctValues = listOf(credential.credentialScheme.sdJwtType!!)
-                    )
-
-                    CredentialRepresentation.ISO_MDOC -> DCQLIsoMdocCredentialMetadataAndValidityConstraints(
-                        doctypeValue = credential.credentialScheme.isoDocType!!
-                    )
-                }
+        credentials = DCQLCredentialQueryList(
+            credentials.map<RequestOptionsCredential, DCQLCredentialQuery> { credential ->
                 val requestedAttributes = (credential.requestedAttributes?.map {
                     it to true
                 } ?: listOf()) + (credential.requestedOptionalAttributes?.map {
                     it to false
                 } ?: listOf())
 
-                val claims = requestedAttributes.map { (attribute, isRequired) ->
-                    // TODO: how to properly handle non-required claims?
-                    when (credential.representation) {
-                        CredentialRepresentation.SD_JWT,
-                        CredentialRepresentation.PLAIN_JWT,
-                            -> DCQLJsonClaimsQuery(
-                            path = splitByDotToDcqlPath(attribute)
-                        )
+                when (credential.representation) {
+                    CredentialRepresentation.PLAIN_JWT -> DCQLJwtVcCredentialQuery(
+                        id = DCQLCredentialQueryIdentifier(credential.id),
+                        meta = DCQLJwtVcCredentialMetadataAndValidityConstraints(
+                            typeValues = nonEmptyListOf(
+                                listOfNotNull(credential.credentialScheme.vcType)
+                            )
+                        ),
+                        claims = requestedAttributes.takeIf {
+                            it.isNotEmpty() // requesting all claims if none are specified
+                        }?.map { (attribute, _) ->
+                            // TODO: how to properly handle non-required claims?
+                            DCQLJsonClaimsQuery(
+                                path = splitByDotToDcqlPath(attribute)
+                            )
+                        }?.toNonEmptyList()?.let {
+                            DCQLClaimsQueryList(it)
+                        }
+                    )
 
-                        CredentialRepresentation.ISO_MDOC -> DCQLIsoMdocClaimsQuery(
-                            namespace = credential.credentialScheme.isoNamespace!!,
-                            claimName = attribute,
-                            path = DCQLClaimsPathPointer(credential.credentialScheme.isoNamespace!!, attribute)
-                        )
-                    }
-                }.ifEmpty {
-                    null // requesting all claims if none are specified
-                }?.toNonEmptyList()?.let {
-                    DCQLClaimsQueryList(it)
+                    CredentialRepresentation.SD_JWT -> DCQLSdJwtCredentialQuery(
+                        id = DCQLCredentialQueryIdentifier(credential.id),
+                        meta = DCQLSdJwtCredentialMetadataAndValidityConstraints(
+                            vctValues = listOf(credential.credentialScheme.sdJwtType!!)
+                        ),
+                        claims = requestedAttributes.takeIf {
+                            it.isNotEmpty() // requesting all claims if none are specified
+                        }?.map { (attribute, _) ->
+                            // TODO: how to properly handle non-required claims?
+                            DCQLJsonClaimsQuery(
+                                path = splitByDotToDcqlPath(attribute)
+                            )
+                        }?.toNonEmptyList()?.let {
+                            DCQLClaimsQueryList(it)
+                        }
+                    )
+
+                    CredentialRepresentation.ISO_MDOC -> DCQLIsoMdocCredentialQuery(
+                        id = DCQLCredentialQueryIdentifier(credential.id),
+                        meta = DCQLIsoMdocCredentialMetadataAndValidityConstraints(
+                            doctypeValue = credential.credentialScheme.isoDocType!!
+                        ),
+                        claims = requestedAttributes.takeIf {
+                            it.isNotEmpty() // requesting all claims if none are specified
+                        }?.map { (attribute, _) ->
+                            // TODO: how to properly handle non-required claims?
+                            DCQLIsoMdocClaimsQuery(
+                                namespace = credential.credentialScheme.isoNamespace!!,
+                                claimName = attribute,
+                                path = DCQLClaimsPathPointer(credential.credentialScheme.isoNamespace!!, attribute)
+                            )
+                        }?.toNonEmptyList()?.let {
+                            DCQLClaimsQueryList(it)
+                        }
+                    )
                 }
-
-                DCQLCredentialQueryInstance(
-                    id = DCQLCredentialQueryIdentifier(credential.id),
-                    format = format,
-                    meta = meta,
-                    claims = claims,
-                )
             }.toNonEmptyList()
         ),
     )

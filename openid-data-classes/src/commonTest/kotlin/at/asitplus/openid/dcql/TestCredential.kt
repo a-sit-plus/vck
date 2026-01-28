@@ -47,6 +47,8 @@ sealed interface TestCredential {
     data class JwtVcCredential(
         override val claimStructure: JsonElement,
         val types: List<String>,
+        override val satisfiesCryptographicHolderBinding: Boolean = false,
+        override val authorityKeyIdentifiers: Collection<DCQLAuthorityKeyIdentifier> = listOf(),
     ) : JsonCredential {
         override val format: CredentialFormatEnum
             get() = CredentialFormatEnum.JWT_VC

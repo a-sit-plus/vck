@@ -9,6 +9,7 @@ package at.asitplus.openid.dcql
  * see the "LICENSE" file for more details
  */
 
+import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.testballoon.invoke
@@ -24,6 +25,7 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlin.random.Random
 
+@Suppress("unused")
 val DCQLJwtVcCredentialQueryTest by testSuite {
     "serialization" {
         val value = DCQLJwtVcCredentialQuery(
@@ -36,7 +38,11 @@ val DCQLJwtVcCredentialQueryTest by testSuite {
                     path = DCQLClaimsPathPointer(null)
                 )
             ),
-            meta = DCQLJwtVcCredentialMetadataAndValidityConstraints(listOf())
+            meta = DCQLJwtVcCredentialMetadataAndValidityConstraints(
+                typeValues = nonEmptyListOf(
+                    listOf()
+                )
+            )
         )
 
         val expectedJsonObject = buildJsonObject {
@@ -47,7 +53,9 @@ val DCQLJwtVcCredentialQueryTest by testSuite {
             )
             put(DCQLCredentialQuery.SerialNames.META,
                 buildJsonObject {
-                    put(DCQLJwtVcCredentialMetadataAndValidityConstraints.SerialNames.TYPE_VALUES, buildJsonArray {})
+                    put(DCQLJwtVcCredentialMetadataAndValidityConstraints.SerialNames.TYPE_VALUES, buildJsonArray {
+                        add(buildJsonArray {  })
+                    })
                 })
             put(DCQLCredentialQuery.SerialNames.CLAIMS, buildJsonArray {
                 add(buildJsonObject {

@@ -12,6 +12,7 @@ package at.asitplus.openid.dcql
  * see the "LICENSE" file for more details
  */
 
+import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.minus
 import de.infix.testBalloon.framework.core.testSuite
@@ -22,6 +23,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 
+@Suppress("unused")
 val DCQLCredentialMetadataAndValidityConstraintsTest by testSuite {
      "serialization" - {
          "iso" {
@@ -50,7 +52,7 @@ val DCQLCredentialMetadataAndValidityConstraintsTest by testSuite {
          }
          "jwt-vc" {
              val value = DCQLJwtVcCredentialMetadataAndValidityConstraints(
-                 typeValues = listOf(listOf("test"))
+                 typeValues = nonEmptyListOf(listOf("test"))
              )
 
              val base: DCQLCredentialMetadataAndValidityConstraints = value

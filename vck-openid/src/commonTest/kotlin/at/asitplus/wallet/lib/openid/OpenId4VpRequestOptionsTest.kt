@@ -16,6 +16,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
+@Suppress("unused")
 val OpenId4VpRequestOptionsTest by testSuite {
 
     test("transaction data requires matching credential ids") {
@@ -84,7 +85,7 @@ val OpenId4VpRequestOptionsTest by testSuite {
 
         val query = options.toDCQLQuery().shouldNotBeNull()
         val credentialQuery = query.credentials.first()
-            .shouldBeInstanceOf<at.asitplus.openid.dcql.DCQLCredentialQueryInstance>()
+            .shouldBeInstanceOf<at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery>()
 
         credentialQuery.meta.shouldBeInstanceOf<DCQLSdJwtCredentialMetadataAndValidityConstraints>()
             .vctValues shouldContain ConstantIndex.AtomicAttribute2023.sdJwtType
@@ -117,7 +118,7 @@ val OpenId4VpRequestOptionsTest by testSuite {
 
         val query = options.toDCQLQuery().shouldNotBeNull()
         val credentialQuery = query.credentials.first()
-            .shouldBeInstanceOf<at.asitplus.openid.dcql.DCQLCredentialQueryInstance>()
+            .shouldBeInstanceOf<at.asitplus.openid.dcql.DCQLIsoMdocCredentialQuery>()
 
         credentialQuery.meta.shouldBeInstanceOf<DCQLIsoMdocCredentialMetadataAndValidityConstraints>()
             .doctypeValue shouldBe ConstantIndex.AtomicAttribute2023.isoDocType

@@ -23,17 +23,21 @@ data class DCQLIsoMdocCredentialQuery(
     @SerialName(DCQLCredentialQuery.SerialNames.REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING)
     override val requireCryptographicHolderBinding: Boolean? = true,
     @SerialName(DCQLCredentialQuery.SerialNames.FORMAT)
-    @EncodeDefault
-    override val format: CredentialFormatEnum = CredentialFormatEnum.MSO_MDOC,
+    @EncodeDefault(EncodeDefault.Mode.ALWAYS)
+    override val format: CredentialFormatEnum = CREDENTIAL_FORMAT,
 ) : DCQLCredentialQuery {
     init {
         validate()
     }
 
+    companion object {
+        val CREDENTIAL_FORMAT = CredentialFormatEnum.MSO_MDOC
+    }
+
     override fun validate() {
         super.validate()
-        if (format != CredentialFormatEnum.MSO_MDOC) {
-            throw IllegalArgumentException("Value has an invalid format identifier in this context.")
+        require(format == CREDENTIAL_FORMAT) {
+            "Value has an invalid format identifier in this context."
         }
     }
 }

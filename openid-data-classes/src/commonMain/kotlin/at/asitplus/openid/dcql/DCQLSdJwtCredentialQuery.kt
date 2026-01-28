@@ -29,19 +29,21 @@ data class DCQLSdJwtCredentialQuery(
     @SerialName(DCQLCredentialQuery.SerialNames.REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING)
     override val requireCryptographicHolderBinding: Boolean? = true,
     @SerialName(DCQLCredentialQuery.SerialNames.FORMAT)
-    @EncodeDefault
-    override val format: CredentialFormatEnum = CredentialFormatEnum.DC_SD_JWT,
+    @EncodeDefault(EncodeDefault.Mode.ALWAYS)
+    override val format: CredentialFormatEnum = CREDENTIAL_FORMAT,
 ) : DCQLCredentialQuery {
-
     init {
         validate()
     }
 
+    companion object {
+        val CREDENTIAL_FORMAT = CredentialFormatEnum.DC_SD_JWT
+    }
+
     override fun validate() {
         super.validate()
-
-        if (format != CredentialFormatEnum.DC_SD_JWT) {
-            throw IllegalArgumentException("Value has an invalid format identifier in this context.")
+        require(format == CREDENTIAL_FORMAT) {
+            "Value has an invalid format identifier in this context."
         }
     }
 }

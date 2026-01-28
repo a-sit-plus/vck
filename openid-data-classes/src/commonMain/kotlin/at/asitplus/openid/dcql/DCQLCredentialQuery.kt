@@ -99,10 +99,10 @@ sealed interface DCQLCredentialQuery {
             trustedAuthorities: NonEmptyList<DCQLTrustedAuthorityQueryEntry>? = null,
             requireCryptographicHolderBinding: Boolean? = true,
         ): DCQLCredentialQuery = when (format) {
-            CredentialFormatEnum.JWT_VC -> DCQLW3CVerifiableCredentialQuery(
+            CredentialFormatEnum.JWT_VC -> DCQLJwtVcCredentialQuery(
                 id = id,
                 format = format,
-                meta = meta as DCQLW3CVerifiableCredentialMetadataAndValidityConstraints,
+                meta = meta as DCQLJwtVcCredentialMetadataAndValidityConstraints,
                 claims = claims?.map {
                     it as DCQLJsonClaimsQuery
                 }?.toNonEmptyList()?.let(::DCQLClaimsQueryList),
@@ -307,17 +307,6 @@ sealed interface DCQLCredentialQuery {
                     credentialMetadataAndValidityConstraints.validate(
                         jwtVcCredentialTypeExtractor(credential)
                     ).getOrThrow()
-                }
-
-                CredentialFormatEnum.JWT_VC -> {
-                    credentialMetadataAndValidityConstraints as DCQLJwtVcCredentialMetadataAndValidityConstraints
-                    credentialMetadataAndValidityConstraints.validate(
-                        jwtVcCredentialTypeExtractor(credential)
-                    ).getOrThrow()
-                }
-
-                is DCQLW3CVerifiableCredentialMetadataAndValidityConstraints -> {
-                    // TODO: implement
                 }
             }
         }

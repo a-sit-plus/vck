@@ -12,17 +12,15 @@ package at.asitplus.wallet.lib.agent
  * see the "LICENSE" file for more details
  */
 
-import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
+import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialQueryList
 import at.asitplus.openid.dcql.DCQLJwtVcCredentialMetadataAndValidityConstraints
+import at.asitplus.openid.dcql.DCQLJwtVcCredentialQuery
 import at.asitplus.openid.dcql.DCQLQuery
-import at.asitplus.openid.dcql.DCQLW3CVerifiableCredentialMetadataAndValidityConstraints
-import at.asitplus.openid.dcql.DCQLW3CVerifiableCredentialQuery
-import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
@@ -42,6 +40,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 
+@Suppress("unused")
 val AgentTest by testSuite {
 
     withFixtureGenerator {
@@ -274,20 +273,16 @@ val AgentTest by testSuite {
 
         val singularDCQLRequest = DCQLQuery(
             credentials = DCQLCredentialQueryList(
-                DCQLW3CVerifiableCredentialQuery(
+                DCQLJwtVcCredentialQuery(
                     id = DCQLCredentialQueryIdentifier(uuid4().toString()),
                     format = CredentialFormatEnum.JWT_VC,
                     meta = DCQLJwtVcCredentialMetadataAndValidityConstraints(
-                        typeValues = listOf(
+                        typeValues = nonEmptyListOf(
                             listOf(
                                 VERIFIABLE_CREDENTIAL,
                                 ConstantIndex.AtomicAttribute2023.vcType
                             )
                         )
-                    )
-                    format = CredentialFormatEnum.JWT_VC,
-                    meta = DCQLW3CVerifiableCredentialMetadataAndValidityConstraints(
-                        typeValues = listOf(listOf("").toNonEmptyList()).toNonEmptyList()
                     ),
                 )
             ),

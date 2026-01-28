@@ -11,6 +11,7 @@ package at.asitplus.openid.dcql
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.data.NonEmptyList
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -32,7 +33,8 @@ data class DCQLJwtVcCredentialMetadataAndValidityConstraints(
      * expanded types that MUST be present in the fully expanded types in the type property of
      * the Verifiable Credential, regardless of order or the presence of additional types.
      */
-    @SerialName(SerialNames.TYPE_VALUES) val typeValues: List<List<String>>
+    @SerialName(SerialNames.TYPE_VALUES)
+    val typeValues: NonEmptyList<List<String>>
 ) : DCQLCredentialMetadataAndValidityConstraints {
     object SerialNames {
         const val TYPE_VALUES = "type_values"
