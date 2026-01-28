@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
 import at.asitplus.catchingUnwrapped
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.testballoon.minus
 import at.asitplus.testballoon.withData
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
@@ -10,7 +11,6 @@ import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.cbor.Cbor
 import kotlinx.serialization.decodeFromHexString
 import kotlinx.serialization.encodeToHexString
 import kotlinx.serialization.json.Json
@@ -19,7 +19,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 
 @OptIn(ExperimentalSerializationApi::class)
-
 val StatusListSerializationTest by testSuite {
     "json" - {
         "deserialization" - {
@@ -85,7 +84,7 @@ val StatusListSerializationTest by testSuite {
                           "bits": 2,
                           "lst": "eNo76fITAAPfAgc"
                         }""",
-                        listOf(1,2,0,3,0,1,0,1,1,2,3,3).map {
+                        listOf(1, 2, 0, 3, 0, 1, 0, 1, 1, 2, 3, 3).map {
                             TokenStatus(it.toUByte())
                         }
                     ),
@@ -152,12 +151,12 @@ val StatusListSerializationTest by testSuite {
                 ),
             )
         ) { (cborString, expectedStatusList) ->
-            val statusList = Cbor.decodeFromHexString<StatusList>(cborString)
+            val statusList = coseCompliantSerializer.decodeFromHexString<StatusList>(cborString)
             expectedStatusList.forEachIndexed { index, it ->
                 statusList.toView()[index.toULong()] shouldBe it
             }
 
-            Cbor.decodeFromHexString<StatusList>(Cbor.encodeToHexString(statusList)) shouldBe statusList
+            coseCompliantSerializer.decodeFromHexString<StatusList>(coseCompliantSerializer.encodeToHexString(statusList)) shouldBe statusList
         }
     }
 }
