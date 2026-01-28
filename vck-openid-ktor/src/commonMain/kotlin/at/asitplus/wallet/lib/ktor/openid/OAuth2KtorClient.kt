@@ -406,7 +406,7 @@ class OAuth2KtorClient(
         token: String,
         popAudience: String,
         retryCount: Int = 0,
-    ): TokenInfo = oauthMetadata.introspectionEndpoint?.let { introspectionUrl ->
+    ): TokenIntrospectionResponse = oauthMetadata.introspectionEndpoint?.let { introspectionUrl ->
         client.request {
             url(introspectionUrl)
             method = HttpMethod.Post
@@ -426,15 +426,13 @@ class OAuth2KtorClient(
                 ?.takeIf { retryCount == 0 }
                 ?.let { callTokenIntrospection(oauthMetadata, request, token, popAudience, retryCount + 1) }
                 ?: throw Exception("Error requesting Token Introspection: ${this?.errorDescription ?: this?.error}")
-        }.onSuccessTokenIntrospection { response ->
+        }.onSuccessTokenIntrospection { httpResponse ->
+            val dpopNonce = httpResponse.dpopNonce
+            updateDpopNonce(introspectionUrl, dpopNonce)
             if (!active) {
                 throw InvalidToken("Introspected token is not active")
             }
-            TokenInfo(
-                token = token,
-                scope = scope,
-                authorizationDetails = authorizationDetails
-            )
+            this
         }
     } ?: throw InvalidToken("No introspection endpoint found in Authorization Server metadata")
 

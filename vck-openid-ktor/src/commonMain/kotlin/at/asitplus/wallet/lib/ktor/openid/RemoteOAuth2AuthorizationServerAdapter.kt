@@ -5,6 +5,7 @@ import at.asitplus.catching
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants.WellKnownPaths
 import at.asitplus.openid.TokenIntrospectionRequest
+import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
@@ -25,6 +26,7 @@ import io.ktor.client.plugins.cookies.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -106,7 +108,7 @@ class RemoteOAuth2AuthorizationServerAdapter(
             request = request,
             token = token,
             popAudience = publicContext
-        )
+        ).toTokenInfo(token)
     }
 
     /**
@@ -161,6 +163,12 @@ class RemoteOAuth2AuthorizationServerAdapter(
 
     override suspend fun getDpopNonce() = dpopNonceService.provideNonce()
 }
+
+private fun TokenIntrospectionResponse.toTokenInfo(token: String) = TokenInfo(
+    token = token,
+    scope = this.scope,
+    authorizationDetails = this.authorizationDetails,
+)
 
 private suspend inline fun <R> IntermediateResult<R>.onSuccessUserInfo(
     block: JsonObject.(httpResponse: HttpResponse) -> R,

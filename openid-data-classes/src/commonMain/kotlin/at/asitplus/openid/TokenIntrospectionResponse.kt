@@ -25,7 +25,7 @@ data class TokenIntrospectionResponse(
     val active: Boolean,
 
     /**
-     * OPTIONAL.A JSON string containing a space-separated list of
+     * OPTIONAL. A JSON string containing a space-separated list of
      * scopes associated with this token, in the format described in
      * Section 3.3 of OAuth 2.0 [RFC6749](https://datatracker.ietf.org/doc/html/rfc6749).
      */
