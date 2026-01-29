@@ -46,7 +46,12 @@ object LegacyCoseHeaderAlgorithmExtractor : CoseHeaderAlgorithmExtractor {
     override suspend fun invoke(keyMaterial: KeyMaterial): CoseAlgorithm =
         keyMaterial.signatureAlgorithm.toCoseAlgorithm().getOrThrow().notFullySpecified()
 
-    private fun CoseAlgorithm.Signature.notFullySpecified() = this
+    private fun CoseAlgorithm.Signature.notFullySpecified() = when (this) {
+        CoseAlgorithm.Signature.ESP256 -> CoseAlgorithm.Signature.ES256
+        CoseAlgorithm.Signature.ESP384 -> CoseAlgorithm.Signature.ES384
+        CoseAlgorithm.Signature.ESP512 -> CoseAlgorithm.Signature.ES512
+        else -> this
+    }
 }
 
 /**
