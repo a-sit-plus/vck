@@ -1,5 +1,17 @@
 package at.asitplus.wallet.lib.oidvci
 
+/*
+ * Software Name : VC-K
+ * SPDX-FileCopyrightText: Copyright (c) A-SIT Plus GmbH
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Modifications: Credential subject is now a JsonElement
+ * SPDX-FileCopyrightText: Copyright (c) Orange Business
+ *
+ * This software is distributed under the Apache License 2.0,
+ * see the "LICENSE" file for more details
+ */
+
 import at.asitplus.catching
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
@@ -26,11 +38,14 @@ import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlin.time.Clock.System
 
 val OidvciAttestationTest by testSuite {
@@ -48,7 +63,10 @@ val OidvciAttestationTest by testSuite {
                     identifier = "https://issuer.example.com".toUri(),
                     randomSource = RandomSource.Default
                 ),
-                credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme),
+                credentialSchemes = setOf(
+                    ConstantIndex.AtomicAttribute2023,
+                    MobileDrivingLicenceScheme
+                ),
                 proofValidator = ProofValidator(
                     verifyAttestationProof = { true },
                     requireKeyAttestation = true, // this is important, to require key attestation
@@ -63,9 +81,10 @@ val OidvciAttestationTest by testSuite {
                     resource = issuer.metadata.credentialIssuer
                 )
                 val input = authnRequest as RequestParameters
-                val authnResponse = authorizationService.authorize(input) { catching { dummyUser() } }
-                    .getOrThrow()
-                    .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+                val authnResponse =
+                    authorizationService.authorize(input) { catching { dummyUser() } }
+                        .getOrThrow()
+                        .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
                 val code = authnResponse.params?.code
                     .shouldNotBeNull()
                 val tokenRequest = oauth2Client.createTokenRequestParameters(
@@ -131,7 +150,15 @@ val OidvciAttestationTest by testSuite {
                         .first().credentialString.shouldNotBeNull(),
                     vckJsonSerializer
                 ).getOrThrow()
-                    .payload.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
+                    .payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
+                    .also { credentialSubject ->
+                        shouldNotThrowAny {
+                            Json.decodeFromJsonElement(
+                                AtomicAttribute2023.serializer(),
+                                credentialSubject
+                            )
+                        }
+                    }
             }
         }
 
@@ -142,7 +169,10 @@ val OidvciAttestationTest by testSuite {
                     identifier = "https://issuer.example.com".toUri(),
                     randomSource = RandomSource.Default
                 ),
-                credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme),
+                credentialSchemes = setOf(
+                    ConstantIndex.AtomicAttribute2023,
+                    MobileDrivingLicenceScheme
+                ),
                 proofValidator = ProofValidator(
                     verifyAttestationProof = { false }, // do not accept key attestation
                     requireKeyAttestation = true, // this is important, to require key attestation
@@ -204,4 +234,5 @@ val OidvciAttestationTest by testSuite {
     }
 }
 
-private fun dummyUser(): OidcUserInfoExtended = OidcUserInfoExtended.deserialize("{\"sub\": \"foo\"}").getOrThrow()
+private fun dummyUser(): OidcUserInfoExtended =
+    OidcUserInfoExtended.deserialize("{\"sub\": \"foo\"}").getOrThrow()

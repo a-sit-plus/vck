@@ -1,16 +1,29 @@
 package at.asitplus.wallet.lib.agent
 
+/*
+ * Software Name : VC-K
+ * SPDX-FileCopyrightText: Copyright (c) A-SIT Plus GmbH
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Modifications: Credential subject is now a JsonElement and according to the W3C Verifiable Credential Data Model 1.1
+ * https://www.w3.org/TR/vc-data-model-1.1/#jwt-decoding subject ("sub") can be null if vc.credentialSubject does not have an "id" key.
+ * SPDX-FileCopyrightText: Copyright (c) Orange Business
+ *
+ * This software is distributed under the Apache License 2.0,
+ * see the "LICENSE" file for more details
+ */
+
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
-import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.ktx.extractId
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
@@ -24,7 +37,6 @@ import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.comparables.shouldBeLessThan
 import io.kotest.matchers.comparables.shouldNotBeGreaterThan
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlin.time.Clock
@@ -65,7 +77,6 @@ val ValidatorVcTest by testSuite {
             ): VerifiableCredential {
                 credential.shouldBeInstanceOf<CredentialToBeIssued.VcJwt>()
                 val sub = credential.subject
-                sub as AtomicAttribute2023
                 val vcId = "urn:uuid:${uuid4()}"
                 val exp = expirationDate ?: (Clock.System.now() + 60.seconds)
                 val statusListIndex = issuerCredentialStore.createStatusListIndex(
@@ -96,7 +107,7 @@ val ValidatorVcTest by testSuite {
 
             fun wrapVcInJws(
                 it: VerifiableCredential,
-                subject: String = it.credentialSubject.id,
+                subject: String? = it.credentialSubject.extractId(),
                 issuer: String = it.issuer,
                 jwtId: String = it.id,
                 issuanceDate: Instant = it.issuanceDate,
@@ -120,7 +131,7 @@ val ValidatorVcTest by testSuite {
             suspend fun wrapVcInJwsWrongKey(vcJws: VerifiableCredentialJws) =
                 SignJwt<VerifiableCredentialJws>(
                     issuerKeyMaterial
-                ) { header: JwsHeader, keyMaterial: KeyMaterial ->
+                ) { header: JwsHeader, _: KeyMaterial ->
                     // this should be issuerKeyMaterial.jsonWebKey, but is a wrong key
                     header.copy(jsonWebKey = EphemeralKeyWithoutCert().jsonWebKey)
                 }(
@@ -292,19 +303,19 @@ val ValidatorVcTest by testSuite {
                 PLAIN_JWT
             ).getOrThrow().let {
                 context.issueCredential(it, expirationDate = Clock.System.now() - 1.hours)
-                    .let {
+                    .let { vc ->
                         VerifiableCredentialJws(
-                            vc = it,
-                            subject = it.credentialSubject.id,
-                            notBefore = it.issuanceDate,
-                            issuer = it.issuer,
+                            vc = vc,
+                            subject = vc.credentialSubject.extractId(),
+                            notBefore = vc.issuanceDate,
+                            issuer = vc.issuer,
                             expiration = Clock.System.now() + 1.hours,
-                            jwtId = it.id
+                            jwtId = vc.id
                         )
                     }
-                    .let { context.signJws(it) }
-                    .let {
-                        context.validator.verifyVcJws(it, context.verifierKeyMaterial.publicKey)
+                    .let { vcJws -> context.signJws(vcJws) }
+                    .let { signVcJws ->
+                        context.validator.verifyVcJws(signVcJws, context.verifierKeyMaterial.publicKey)
                             .shouldBeInstanceOf<VerifyCredentialResult.ValidationError>()
                     }
             }

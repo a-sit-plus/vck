@@ -8,6 +8,10 @@ package at.asitplus.wallet.lib.procedures.dcql
  * Modifications: Added jwt_vc_json DCQL support for Orange implementation
  * SPDX-FileCopyrightText: Copyright (c) Orange Business
  *
+ * Modifications: According to the W3C Verifiable Credential Data Model 1.1 https://www.w3.org/TR/vc-data-model-1.1/#jwt-decoding
+ * subject ("sub") can be null if vc.credentialSubject does not have an "id" key.
+ * SPDX-FileCopyrightText: Copyright (c) Orange Business
+ *
  * This software is distributed under the Apache License 2.0,
  * see the "LICENSE" file for more details
  */
@@ -19,10 +23,7 @@ import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLQueryResult
 import at.asitplus.signum.indispensable.asn1.Asn1Decodable
 import at.asitplus.signum.indispensable.asn1.Asn1Element
-import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
 import at.asitplus.signum.indispensable.asn1.Asn1Encodable
-import at.asitplus.signum.indispensable.asn1.Asn1OctetString
-import at.asitplus.signum.indispensable.asn1.Asn1PrimitiveOctetString
 import at.asitplus.signum.indispensable.asn1.Asn1Sequence
 import at.asitplus.signum.indispensable.asn1.Identifiable
 import at.asitplus.signum.indispensable.asn1.KnownOIDs
@@ -85,7 +86,7 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
             when (it) {
                 is SubjectCredentialStore.StoreEntry.Iso -> it.issuerSigned.issuerAuth.payload?.deviceKeyInfo != null
                 is SubjectCredentialStore.StoreEntry.SdJwt -> it.sdJwt.confirmationClaim != null
-                is SubjectCredentialStore.StoreEntry.Vc -> it.vc.subject.isNotEmpty()
+                is SubjectCredentialStore.StoreEntry.Vc -> !it.vc.subject.isNullOrEmpty()
             }
         },
         authorityKeyIdentifiers = {

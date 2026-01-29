@@ -1,5 +1,17 @@
 package at.asitplus.wallet.lib.agent
 
+/*
+ * Software Name : VC-K
+ * SPDX-FileCopyrightText: Copyright (c) A-SIT Plus GmbH
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Modifications: Extract credentialSubject id from a JsonElement
+ * SPDX-FileCopyrightText: Copyright (c) Orange Business
+ *
+ * This software is distributed under the Apache License 2.0,
+ * see the "LICENSE" file for more details
+ */
+
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.iso.DeviceKeyInfo
@@ -21,6 +33,7 @@ import at.asitplus.wallet.lib.cbor.SignCoseFun
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
+import at.asitplus.wallet.lib.data.ktx.extractId
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -235,7 +248,7 @@ class IssuerAgent(
 
     private fun VerifiableCredential.toJws() = VerifiableCredentialJws(
         vc = this,
-        subject = credentialSubject.id,
+        subject = credentialSubject.extractId(),
         notBefore = issuanceDate,
         issuer = issuer,
         expiration = expirationDate,

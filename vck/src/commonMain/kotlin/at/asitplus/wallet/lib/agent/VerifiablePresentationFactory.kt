@@ -1,5 +1,19 @@
 package at.asitplus.wallet.lib.agent
 
+/*
+ * Software Name : VC-K
+ * SPDX-FileCopyrightText: Copyright (c) A-SIT Plus GmbH
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Modifications: According to the W3C Verifiable Credential Data Model 1.1 https://www.w3.org/TR/vc-data-model-1.1/#jwt-encoding,
+ * "iss MUST represent the issuer property of a verifiable credential or the holder property of a verifiable presentation."
+ * So in this case the issuer is the wallet holder, represented by it's DID.
+ * SPDX-FileCopyrightText: Copyright (c) Orange Business
+ *
+ * This software is distributed under the Apache License 2.0,
+ * see the "LICENSE" file for more details
+ */
+
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.iso.DeviceAuth
@@ -297,7 +311,7 @@ class VerifiablePresentationFactory(
             JwsContentTypeConstants.JWT,
             VerifiablePresentation(validCredentials.map { it.vcSerialized }).toJws(
                 request.nonce,
-                validCredentials.map { it.vc.vc.credentialSubject.id }.first(),
+                keyMaterial.publicKey.didEncoded,
                 request.audience
             ),
             VerifiablePresentationJws.serializer(),

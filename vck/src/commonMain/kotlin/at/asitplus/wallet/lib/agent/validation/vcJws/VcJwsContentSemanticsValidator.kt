@@ -1,7 +1,20 @@
 package at.asitplus.wallet.lib.agent.validation.vcJws
 
+/*
+ * Software Name : VC-K
+ * SPDX-FileCopyrightText: Copyright (c) A-SIT Plus GmbH
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Modifications: Extract credentialSubject id from a JsonElement
+ * SPDX-FileCopyrightText: Copyright (c) Orange Business
+ *
+ * This software is distributed under the Apache License 2.0,
+ * see the "LICENSE" file for more details
+ */
+
 import at.asitplus.wallet.lib.data.VcDataModelConstants
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.ktx.extractId
 import io.github.aakira.napier.Napier
 
 class VcJwsContentSemanticsValidator {
@@ -18,10 +31,10 @@ class VcJwsContentSemanticsValidator {
                 credentialId = vcJws.vc.id,
             )
         } else null,
-        inconsistentSubjectError = if (vcJws.subject != vcJws.vc.credentialSubject.id) {
+        inconsistentSubjectError = if (vcJws.subject != vcJws.vc.credentialSubject.extractId()) {
             VcJwsContentSemanticsValidationSummary.InconsistentSubjectError(
                 jwsSubject = vcJws.subject,
-                credentialSubjectId = vcJws.vc.credentialSubject.id,
+                credentialSubjectId = vcJws.vc.credentialSubject.extractId(),
             )
         } else null,
         missingCredentialTypeError = if (!vcJws.vc.type.contains(VcDataModelConstants.VERIFIABLE_CREDENTIAL)) {
@@ -43,7 +56,7 @@ class VcJwsContentSemanticsValidator {
             )
         } else null,
     ).also {
-        if(it.isSuccess) {
+        if (it.isSuccess) {
             Napier.d("VC structure is valid")
         }
     }

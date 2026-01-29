@@ -1,5 +1,17 @@
 package at.asitplus.wallet.lib.agent
 
+/*
+ * Software Name : VC-K
+ * SPDX-FileCopyrightText: Copyright (c) A-SIT Plus GmbH
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Modifications: Credential subject is now a JsonElement
+ * SPDX-FileCopyrightText: Copyright (c) Orange Business
+ *
+ * This software is distributed under the Apache License 2.0,
+ * see the "LICENSE" file for more details
+ */
+
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.iso.IssuerSignedItem
@@ -12,6 +24,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT
+import at.asitplus.wallet.lib.data.toJsonElement
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import kotlinx.datetime.LocalDate
 import kotlin.random.Random
@@ -41,16 +54,22 @@ object DummyCredentialDataProvider {
                 expiration = expiration,
                 scheme = credentialScheme,
                 subjectPublicKey = subjectPublicKey,
-                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject"))
+                    .getOrThrow(),
                 sdAlgorithm = supportedSdAlgorithms.random()
             )
 
             ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
-                subject = AtomicAttribute2023(subjectId, CLAIM_GIVEN_NAME, "Susanne"),
+                subject = AtomicAttribute2023(
+                    subjectId,
+                    CLAIM_GIVEN_NAME,
+                    "Susanne"
+                ).toJsonElement(),
                 expiration = expiration,
                 scheme = credentialScheme,
                 subjectPublicKey = subjectPublicKey,
-                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject"))
+                    .getOrThrow(),
             )
 
             ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
@@ -60,7 +79,8 @@ object DummyCredentialDataProvider {
                 expiration = expiration,
                 scheme = credentialScheme,
                 subjectPublicKey = subjectPublicKey,
-                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject"))
+                    .getOrThrow(),
             )
         }
     }
@@ -72,14 +92,15 @@ object DummyCredentialDataProvider {
         claim: ClaimToBeIssued
     ): KmmResult<CredentialToBeIssued> = catching {
         val expiration = Clock.System.now() + defaultLifetime
-        val subjectId = subjectPublicKey.didEncoded
+        subjectPublicKey.didEncoded
         when (representation) {
             ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialToBeIssued.VcSd(
                 claims = listOf(claim),
                 expiration = expiration,
                 scheme = credentialScheme,
                 subjectPublicKey = subjectPublicKey,
-                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject"))
+                    .getOrThrow(),
                 sdAlgorithm = supportedSdAlgorithms.random()
             )
 
@@ -90,7 +111,8 @@ object DummyCredentialDataProvider {
                 expiration = expiration,
                 scheme = credentialScheme,
                 subjectPublicKey = subjectPublicKey,
-                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject"))
+                    .getOrThrow(),
             )
         }
     }
