@@ -27,6 +27,7 @@ Release 5.11.0 (unreleased):
   - Replace `Status` claim with `RevocationListInfo` in VC / SD-JWT / MSO payloads
  - Token status list:
   - CBOR encoded token status list shall not be tagged with 24 like other COSE payloads (`d818` in hex)
+  - Move some methods from `IssuerCredentialStore` to new interface `ReferencedTokenStore` to decouple `StatusListAgent` from `IssuerAgent`
  - OpenID for Verifiable Credential Issuance:
    - In `SimpleAuthorizationService` add parameter `configurationIds` to method `credentialOfferWithAuthorizationCode`
    - Support different supported credential formats having the same scope value (as this is covered by the spec)

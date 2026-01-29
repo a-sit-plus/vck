@@ -190,7 +190,7 @@ private fun verifyStatusList(statusList: StatusList, expectedRevokedIndexes: Lis
     }
 }
 
-private suspend fun IssuerCredentialStore.revokeCredentialsWithIndexes(revokedIndexes: List<ULong>) {
+private suspend fun InMemoryIssuerCredentialStore.revokeCredentialsWithIndexes(revokedIndexes: List<ULong>) {
     val cred = AtomicAttribute2023("sub", "name", "value", "text")
     val issuanceDate = Clock.System.now()
     val expirationDate = issuanceDate + 60.seconds
@@ -212,7 +212,7 @@ private suspend fun IssuerCredentialStore.revokeCredentialsWithIndexes(revokedIn
     }
 }
 
-private suspend fun IssuerCredentialStore.revokeRandomCredentials(): List<ULong> {
+private suspend fun InMemoryIssuerCredentialStore.revokeRandomCredentials(): List<ULong> {
     val expectedRevocationList = mutableListOf<ULong>()
     val cred = AtomicAttribute2023("sub", "name", "value", "text")
     val issuanceDate = Clock.System.now()

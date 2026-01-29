@@ -4,6 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListView
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.ReferencedTokenStore
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBitSize
 import com.benasher44.uuid.uuid4
@@ -12,7 +13,7 @@ import kotlin.time.Instant
 
 class InMemoryIssuerCredentialStore(
     val tokenStatusBitSize: TokenStatusBitSize = TokenStatusBitSize.ONE,
-) : IssuerCredentialStore {
+) : IssuerCredentialStore, ReferencedTokenStore {
     private val indexMutex = Mutex()
 
     data class Credential(
