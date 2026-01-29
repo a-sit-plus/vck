@@ -1,5 +1,17 @@
 package at.asitplus.wallet.lib.oidvci
 
+/*
+ * Software Name : VC-K
+ * SPDX-FileCopyrightText: Copyright (c) A-SIT Plus GmbH
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Modifications: Credential subject is now a JsonElement
+ * SPDX-FileCopyrightText: Copyright (c) Orange Business
+ *
+ * This software is distributed under the Apache License 2.0,
+ * see the "LICENSE" file for more details
+ */
+
 import at.asitplus.catching
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.openid.AuthorizationDetails
@@ -19,7 +31,9 @@ import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc3986.toUri
@@ -35,6 +49,7 @@ import at.asitplus.wallet.lib.utils.MapStore
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldBeSingleton
@@ -49,6 +64,8 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.decodeFromByteArray
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 
 val OidvciCodeFlowTest by testSuite {
 
@@ -75,16 +92,20 @@ val OidvciCodeFlowTest by testSuite {
             val oauth2Client = OAuth2Client()
             val state = uuid4().toString()
 
-            suspend fun getToken(scope: String, setScopeInTokenRequest: Boolean = true): TokenResponseParameters {
+            suspend fun getToken(
+                scope: String,
+                setScopeInTokenRequest: Boolean = true
+            ): TokenResponseParameters {
                 val authnRequest = oauth2Client.createAuthRequestJar(
                     state = state,
                     scope = scope,
                     resource = issuer.metadata.credentialIssuer
                 )
                 val input = authnRequest as RequestParameters
-                val authnResponse = authorizationService.authorize(input) { catching { DummyUserProvider.user } }
-                    .getOrThrow()
-                    .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+                val authnResponse =
+                    authorizationService.authorize(input) { catching { DummyUserProvider.user } }
+                        .getOrThrow()
+                        .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
                 val code = authnResponse.params?.code
                     .shouldNotBeNull()
                 val tokenRequest = oauth2Client.createTokenRequestParameters(
@@ -105,9 +126,10 @@ val OidvciCodeFlowTest by testSuite {
                     authorizationDetails = authorizationDetails
                 )
                 val input = authnRequest as RequestParameters
-                val authnResponse = authorizationService.authorize(input) { catching { DummyUserProvider.user } }
-                    .getOrThrow()
-                    .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+                val authnResponse =
+                    authorizationService.authorize(input) { catching { DummyUserProvider.user } }
+                        .getOrThrow()
+                        .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
                 val code = authnResponse.params?.code
                     .shouldNotBeNull()
                 val tokenRequest = oauth2Client.createTokenRequestParameters(
@@ -126,8 +148,9 @@ val OidvciCodeFlowTest by testSuite {
         }
     } - {
         test("metadata validation") {
-            val issuerCredentialFormats = it.issuer.metadata.supportedCredentialConfigurations.shouldNotBeNull()
-                .shouldNotBeEmpty()
+            val issuerCredentialFormats =
+                it.issuer.metadata.supportedCredentialConfigurations.shouldNotBeNull()
+                    .shouldNotBeEmpty()
             issuerCredentialFormats.forEach { entry: Map.Entry<String, SupportedCredentialFormat> ->
                 entry.key.shouldNotBeEmpty()
                 entry.value.shouldNotBeNull().apply {
@@ -151,8 +174,9 @@ val OidvciCodeFlowTest by testSuite {
 
         test("request one credential, using scope") {
             val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
-            val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
-                .shouldNotBeNull()
+            val credentialFormat =
+                it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
+                    .shouldNotBeNull()
             val scope = credentialFormat.scope.shouldNotBeNull()
             val token = it.getToken(scope)
 
@@ -172,12 +196,20 @@ val OidvciCodeFlowTest by testSuite {
             val serializedCredential = credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
 
-            JwsSigned.deserialize<VerifiableCredentialJws>(
+            val result = JwsSigned.deserialize<VerifiableCredentialJws>(
                 VerifiableCredentialJws.serializer(),
                 serializedCredential,
                 vckJsonSerializer
             ).getOrThrow()
-                .payload.vc.credentialSubject.shouldBeInstanceOf<at.asitplus.wallet.lib.data.AtomicAttribute2023>()
+                .payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
+                .also { credentialSubject ->
+                    shouldNotThrowAny {
+                        Json.decodeFromJsonElement(
+                            at.asitplus.wallet.lib.data.AtomicAttribute2023.serializer(),
+                            credentialSubject
+                        )
+                    }
+                }
 
         }
 
@@ -198,7 +230,8 @@ val OidvciCodeFlowTest by testSuite {
                         tokenResponse = token,
                         metadata = it.issuer.metadata,
                         credentialFormat = requestOption.key,
-                        clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
+                        clientNonce = it.issuer.nonceWithDpopNonce()
+                            .getOrThrow().response.clientNonce,
                     ).getOrThrow().shouldBeSingleton().first(),
                     credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
                 ).getOrThrow()
@@ -276,8 +309,9 @@ val OidvciCodeFlowTest by testSuite {
 
         test("request credential in SD-JWT, using scope") {
             val requestOptions = RequestOptions(AtomicAttribute2023, SD_JWT)
-            val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
-                .shouldNotBeNull()
+            val credentialFormat =
+                it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
+                    .shouldNotBeNull()
             val scope = credentialFormat.scope.shouldNotBeNull()
             val token = it.getToken(scope)
 
@@ -301,10 +335,14 @@ val OidvciCodeFlowTest by testSuite {
 
         test("request credential in SD-JWT, using scope only in authn request") {
             val requestOptions = RequestOptions(AtomicAttribute2023, SD_JWT)
-            val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
-                .shouldNotBeNull()
+            val credentialFormat =
+                it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
+                    .shouldNotBeNull()
             val scope = credentialFormat.scope.shouldNotBeNull()
-            val token = it.getToken(scope, false) // do not set scope in token request, only in authn request
+            val token = it.getToken(
+                scope,
+                false
+            ) // do not set scope in token request, only in authn request
 
             val credential = it.issuer.credential(
                 authorizationHeader = token.toHttpHeaderValue(),
@@ -339,9 +377,10 @@ val OidvciCodeFlowTest by testSuite {
                 resource = it.issuer.metadata.credentialIssuer
             )
             val input = authnRequest as RequestParameters
-            val authnResponse = it.authorizationService.authorize(input) { catching { DummyUserProvider.user } }
-                .getOrThrow()
-                .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+            val authnResponse =
+                it.authorizationService.authorize(input) { catching { DummyUserProvider.user } }
+                    .getOrThrow()
+                    .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             val code = authnResponse.params?.code
                 .shouldNotBeNull()
             val tokenRequest = it.oauth2Client.createTokenRequestParameters(
@@ -356,7 +395,8 @@ val OidvciCodeFlowTest by testSuite {
         }
 
         test("request credential in SD-JWT, using authorization details") {
-            val credentialConfigurationId = it.mapper.toCredentialIdentifier(AtomicAttribute2023, SD_JWT)
+            val credentialConfigurationId =
+                it.mapper.toCredentialIdentifier(AtomicAttribute2023, SD_JWT)
             val authorizationDetails = it.client.buildAuthorizationDetails(
                 credentialConfigurationId = credentialConfigurationId,
                 authorizationServers = it.issuer.metadata.authorizationServers
@@ -385,7 +425,8 @@ val OidvciCodeFlowTest by testSuite {
         }
 
         test("request credential in SD-JWT, using authorization details only in authnrequest") {
-            val credentialConfigurationId = it.mapper.toCredentialIdentifier(AtomicAttribute2023, SD_JWT)
+            val credentialConfigurationId =
+                it.mapper.toCredentialIdentifier(AtomicAttribute2023, SD_JWT)
             val authorizationDetails = it.client.buildAuthorizationDetails(
                 credentialConfigurationId = credentialConfigurationId,
                 authorizationServers = it.issuer.metadata.authorizationServers
@@ -393,7 +434,10 @@ val OidvciCodeFlowTest by testSuite {
             val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations
                 .shouldNotBeNull()[credentialConfigurationId]
                 .shouldNotBeNull()
-            val token = it.getToken(authorizationDetails, false) // do not set authn details in token request
+            val token = it.getToken(
+                authorizationDetails,
+                false
+            ) // do not set authn details in token request
 
             val credential = it.issuer.credential(
                 authorizationHeader = token.toHttpHeaderValue(),
@@ -415,11 +459,17 @@ val OidvciCodeFlowTest by testSuite {
 
         test("request credential in SD-JWT, using authorization details in access token different to auth code") {
             val authCodeAuthnDetails = it.client.buildAuthorizationDetails(
-                credentialConfigurationId = it.mapper.toCredentialIdentifier(AtomicAttribute2023, SD_JWT),
+                credentialConfigurationId = it.mapper.toCredentialIdentifier(
+                    AtomicAttribute2023,
+                    SD_JWT
+                ),
                 authorizationServers = it.issuer.metadata.authorizationServers
             )
             val tokenAuthnDetails = it.client.buildAuthorizationDetails(
-                credentialConfigurationId = it.mapper.toCredentialIdentifier(AtomicAttribute2023, ISO_MDOC),
+                credentialConfigurationId = it.mapper.toCredentialIdentifier(
+                    AtomicAttribute2023,
+                    ISO_MDOC
+                ),
                 authorizationServers = it.issuer.metadata.authorizationServers
             )
             val authnRequest = it.oauth2Client.createAuthRequestJar(
@@ -427,9 +477,10 @@ val OidvciCodeFlowTest by testSuite {
                 authorizationDetails = authCodeAuthnDetails
             )
             val input = authnRequest as RequestParameters
-            val authnResponse = it.authorizationService.authorize(input) { catching { DummyUserProvider.user } }
-                .getOrThrow()
-                .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+            val authnResponse =
+                it.authorizationService.authorize(input) { catching { DummyUserProvider.user } }
+                    .getOrThrow()
+                    .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             val code = authnResponse.params?.code
                 .shouldNotBeNull()
             val tokenRequest = it.oauth2Client.createTokenRequestParameters(
@@ -444,11 +495,17 @@ val OidvciCodeFlowTest by testSuite {
 
         test("request credential in SD-JWT, using more authorization details in access token than in auth code") {
             val authCodeAuthnDetails = it.client.buildAuthorizationDetails(
-                credentialConfigurationId = it.mapper.toCredentialIdentifier(AtomicAttribute2023, SD_JWT),
+                credentialConfigurationId = it.mapper.toCredentialIdentifier(
+                    AtomicAttribute2023,
+                    SD_JWT
+                ),
                 authorizationServers = it.issuer.metadata.authorizationServers
             )
             val tokenAuthnDetails = it.client.buildAuthorizationDetails(
-                credentialConfigurationId = it.mapper.toCredentialIdentifier(AtomicAttribute2023, ISO_MDOC),
+                credentialConfigurationId = it.mapper.toCredentialIdentifier(
+                    AtomicAttribute2023,
+                    ISO_MDOC
+                ),
                 authorizationServers = it.issuer.metadata.authorizationServers
             )
             val authnRequest = it.oauth2Client.createAuthRequestJar(
@@ -456,9 +513,10 @@ val OidvciCodeFlowTest by testSuite {
                 authorizationDetails = authCodeAuthnDetails
             )
             val input = authnRequest as RequestParameters
-            val authnResponse = it.authorizationService.authorize(input) { catching { DummyUserProvider.user } }
-                .getOrThrow()
-                .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+            val authnResponse =
+                it.authorizationService.authorize(input) { catching { DummyUserProvider.user } }
+                    .getOrThrow()
+                    .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             val code = authnResponse.params?.code
                 .shouldNotBeNull()
             val tokenRequest = it.oauth2Client.createTokenRequestParameters(
@@ -485,7 +543,10 @@ val OidvciCodeFlowTest by testSuite {
                     credentialSchemes = setOf(EuPidScheme),
                 )
             ) {
-                it.client.selectSupportedCredentialFormat(RequestOptions(EuPidScheme, SD_JWT), metadata)
+                it.client.selectSupportedCredentialFormat(
+                    RequestOptions(EuPidScheme, SD_JWT),
+                    metadata
+                )
             }
 
             val scope = credentialFormat?.scope.shouldNotBeNull()
@@ -498,7 +559,8 @@ val OidvciCodeFlowTest by testSuite {
                         tokenResponse = token,
                         metadata = it.issuer.metadata,
                         credentialFormat = credentialFormat,
-                        clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
+                        clientNonce = it.issuer.nonceWithDpopNonce()
+                            .getOrThrow().response.clientNonce,
                     ).getOrThrow().shouldBeSingleton().first(),
                     credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
                 ).getOrThrow()
@@ -521,7 +583,8 @@ val OidvciCodeFlowTest by testSuite {
                         tokenResponse = token,
                         metadata = it.issuer.metadata,
                         credentialFormat = credentialFormat,
-                        clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
+                        clientNonce = it.issuer.nonceWithDpopNonce()
+                            .getOrThrow().response.clientNonce,
                     ).getOrThrow().shouldBeSingleton().first().wrongCredentialIdentifier(it.mapper),
                     credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
                 ).getOrThrow()
@@ -535,7 +598,10 @@ val OidvciCodeFlowTest by testSuite {
             ).shouldNotBeNull()
             val scope = credentialFormat.scope.shouldNotBeNull()
             val authorizationDetails = it.client.buildAuthorizationDetails(
-                credentialConfigurationId = it.mapper.toCredentialIdentifier(AtomicAttribute2023, SD_JWT),
+                credentialConfigurationId = it.mapper.toCredentialIdentifier(
+                    AtomicAttribute2023,
+                    SD_JWT
+                ),
                 authorizationServers = it.issuer.metadata.authorizationServers
             )
 
@@ -547,8 +613,10 @@ val OidvciCodeFlowTest by testSuite {
                         tokenResponse = token,
                         metadata = it.issuer.metadata,
                         credentialFormat = credentialFormat,
-                        clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
-                    ).getOrThrow().shouldBeSingleton().first().wrongCredentialConfigurationId(scope),
+                        clientNonce = it.issuer.nonceWithDpopNonce()
+                            .getOrThrow().response.clientNonce,
+                    ).getOrThrow().shouldBeSingleton().first()
+                        .wrongCredentialConfigurationId(scope),
                     credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
                 ).getOrThrow()
             }
@@ -557,8 +625,9 @@ val OidvciCodeFlowTest by testSuite {
 
         "request credential in ISO MDOC, using scope" { it ->
             val requestOptions = RequestOptions(MobileDrivingLicenceScheme, ISO_MDOC)
-            val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
-                .shouldNotBeNull()
+            val credentialFormat =
+                it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
+                    .shouldNotBeNull()
             val scope = credentialFormat.scope.shouldNotBeNull()
             val token = it.getToken(scope)
 
@@ -600,26 +669,28 @@ private fun String.assertSdJwtReceived(): Int = JwsSigned.deserialize(
     .shouldNotBeNull()
     .size shouldBeGreaterThan 1
 
-private fun WalletService.CredentialRequest.wrongCredentialIdentifier(mapper: DefaultCredentialSchemeMapper) = when (this) {
-    is WalletService.CredentialRequest.Encrypted -> this
-    is WalletService.CredentialRequest.Plain -> WalletService.CredentialRequest.Plain(
-        this.request.copy(
-            // enforces error on client, setting credential_identifier, although access token was for scope
-            // (which should be credential_configuration_id in credential request)
-            credentialIdentifier = mapper.toCredentialIdentifier(AtomicAttribute2023, SD_JWT),
-            credentialConfigurationId = null,
+private fun WalletService.CredentialRequest.wrongCredentialIdentifier(mapper: DefaultCredentialSchemeMapper) =
+    when (this) {
+        is WalletService.CredentialRequest.Encrypted -> this
+        is WalletService.CredentialRequest.Plain -> WalletService.CredentialRequest.Plain(
+            this.request.copy(
+                // enforces error on client, setting credential_identifier, although access token was for scope
+                // (which should be credential_configuration_id in credential request)
+                credentialIdentifier = mapper.toCredentialIdentifier(AtomicAttribute2023, SD_JWT),
+                credentialConfigurationId = null,
+            )
         )
-    )
-}
+    }
 
-private fun WalletService.CredentialRequest.wrongCredentialConfigurationId(scope: String) = when (this) {
-    is WalletService.CredentialRequest.Encrypted -> this
-    is WalletService.CredentialRequest.Plain -> WalletService.CredentialRequest.Plain(
-        this.request.copy(
-            // enforces error on client, setting credential_configuration_id, although access token was for
-            // authorization details (which should be credential_identifier in credential request)
-            credentialConfigurationId = scope,
-            credentialIdentifier = null
+private fun WalletService.CredentialRequest.wrongCredentialConfigurationId(scope: String) =
+    when (this) {
+        is WalletService.CredentialRequest.Encrypted -> this
+        is WalletService.CredentialRequest.Plain -> WalletService.CredentialRequest.Plain(
+            this.request.copy(
+                // enforces error on client, setting credential_configuration_id, although access token was for
+                // authorization details (which should be credential_identifier in credential request)
+                credentialConfigurationId = scope,
+                credentialIdentifier = null
+            )
         )
-    )
-}
+    }

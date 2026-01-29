@@ -1,5 +1,17 @@
 package at.asitplus.wallet.lib.openid
 
+/*
+ * Software Name : VC-K
+ * SPDX-FileCopyrightText: Copyright (c) A-SIT Plus GmbH
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Modifications: Credential subject is now a JsonElement
+ * SPDX-FileCopyrightText: Copyright (c) Orange Business
+ *
+ * This software is distributed under the Apache License 2.0,
+ * see the "LICENSE" file for more details
+ */
+
 import at.asitplus.openid.RequestParameters
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JsonWebKey
@@ -25,9 +37,12 @@ import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 
@@ -85,7 +100,11 @@ val VerifierAttestationTest by testSuite {
             verifierOid4vp.validateAuthnResponse(authnResponse.url)
                 .shouldBeInstanceOf<AuthnResponseResult.Success>().apply {
                     vp.freshVerifiableCredentials.shouldNotBeEmpty().map { it.vcJws }.forEach {
-                        it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
+                        it.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
+                            shouldNotThrowAny {
+                                Json.decodeFromJsonElement(AtomicAttribute2023.serializer(), credentialSubject)
+                            }
+                        }
                     }
                 }
         }

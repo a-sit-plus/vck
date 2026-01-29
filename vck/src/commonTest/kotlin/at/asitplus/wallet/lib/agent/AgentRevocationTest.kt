@@ -1,5 +1,17 @@
 package at.asitplus.wallet.lib.agent
 
+/*
+ * Software Name : VC-K
+ * SPDX-FileCopyrightText: Copyright (c) A-SIT Plus GmbH
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Modifications: Credential subject is now a JsonElement
+ * SPDX-FileCopyrightText: Copyright (c) Orange Business
+ *
+ * This software is distributed under the Apache License 2.0,
+ * see the "LICENSE" file for more details
+ */
+
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
@@ -17,6 +29,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc3986.toUri
+import at.asitplus.wallet.lib.data.toJsonElement
 import at.asitplus.wallet.lib.extensions.toView
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import de.infix.testBalloon.framework.core.testSuite
@@ -191,7 +204,7 @@ private fun verifyStatusList(statusList: StatusList, expectedRevokedIndexes: Lis
 }
 
 private suspend fun InMemoryIssuerCredentialStore.revokeCredentialsWithIndexes(revokedIndexes: List<ULong>) {
-    val cred = AtomicAttribute2023("sub", "name", "value", "text")
+    val cred = AtomicAttribute2023("sub", "name", "value", "text").toJsonElement()
     val issuanceDate = Clock.System.now()
     val expirationDate = issuanceDate + 60.seconds
     for (i in 1..16) {
@@ -214,7 +227,7 @@ private suspend fun InMemoryIssuerCredentialStore.revokeCredentialsWithIndexes(r
 
 private suspend fun InMemoryIssuerCredentialStore.revokeRandomCredentials(): List<ULong> {
     val expectedRevocationList = mutableListOf<ULong>()
-    val cred = AtomicAttribute2023("sub", "name", "value", "text")
+    val cred = AtomicAttribute2023("sub", "name", "value", "text").toJsonElement()
     val issuanceDate = Clock.System.now()
     val expirationDate = issuanceDate + 60.seconds
     for (i in 1..256) {
