@@ -24,7 +24,7 @@ import kotlin.time.Duration.Companion.minutes
 private data class Config(
     val issuer: Issuer,
     val statusListIssuer: StatusListIssuer,
-    val issuerCredentialStore: IssuerCredentialStore,
+    val issuerCredentialStore: InMemoryIssuerCredentialStore,
     val issuerKeyMaterial: KeyMaterial,
     val verifierKeyMaterial: KeyMaterial,
     val validator: ValidatorMdoc
@@ -107,7 +107,8 @@ val ValidatorMdocTest by testSuite {
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessIso>()
             issuerCredentialStore.setStatus(
                 timePeriod = FixedTimePeriodProvider.timePeriod,
-                index = credential.issuerSigned.issuerAuth.payload.shouldNotBeNull().status.shouldBeInstanceOf<StatusListInfo>().index,
+                index = credential.issuerSigned.issuerAuth.payload.shouldNotBeNull()
+                    .status.shouldBeInstanceOf<StatusListInfo>().index,
                 status = TokenStatus.Invalid,
             ) shouldBe true
             validator.checkRevocationStatus(value.issuerSigned)

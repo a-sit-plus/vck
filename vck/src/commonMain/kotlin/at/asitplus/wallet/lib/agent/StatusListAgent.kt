@@ -18,6 +18,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.MediaTypes
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListAggregation
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.ReferencedTokenStore
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.PositiveDuration
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
@@ -40,7 +41,7 @@ import kotlin.time.Instant
 class StatusListAgent(
     /** Should either be [PublishedKeyMaterial] or contain a certificate, so clients can look up the key. */
     private val keyMaterial: KeyMaterial = EphemeralKeyWithSelfSignedCert(),
-    private val issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
+    private val issuerCredentialStore: ReferencedTokenStore = InMemoryIssuerCredentialStore(),
     private val statusListBaseUrl: String = "https://wallet.a-sit.at/backend/credentials/status",
     private val statusListAggregationUrl: String? = null,
     private val zlibService: ZlibService = DefaultZlibService(),
@@ -62,7 +63,9 @@ class StatusListAgent(
         time: Instant?,
         kind: RevocationList.Kind
     ): JwsSigned<StatusListTokenPayload> =
-        catching { require(kind == RevocationList.Kind.STATUS_LIST) { "JWT only supports revocation list kind StatusList" } }.transform {
+        catching {
+            require(kind == RevocationList.Kind.STATUS_LIST) { "JWT only supports revocation list kind StatusList" }
+        }.transform {
             signStatusListJwt(
                 type = MediaTypes.STATUSLIST_JWT,
                 payload = buildStatusListTokenPayload(time.toTimePeriod(), RevocationList.Kind.STATUS_LIST),
@@ -79,7 +82,7 @@ class StatusListAgent(
     override suspend fun issueStatusListCwt(time: Instant?, kind: RevocationList.Kind) =
         with(buildStatusListTokenPayload(time.toTimePeriod(), kind)) {
             signStatusListCwt(
-                protectedHeader = CoseHeader(type = if (kind == RevocationList.Kind.STATUS_LIST) MediaTypes.Application.STATUSLIST_CWT else MediaTypes.Application.IDENTIFIERLIST_CWT),
+                protectedHeader = CoseHeader(type = kind.mediaType()),
                 unprotectedHeader = null,
                 payload = coseCompliantSerializer.encodeToByteArray(this),
                 serializer = ByteArraySerializer(),
@@ -87,6 +90,12 @@ class StatusListAgent(
                 throw IllegalStateException("Status token could not be created", it)
             }
         }
+
+    private fun RevocationList.Kind.mediaType(): String =
+        if (this == RevocationList.Kind.STATUS_LIST)
+            MediaTypes.Application.STATUSLIST_CWT
+        else
+            MediaTypes.Application.IDENTIFIERLIST_CWT
 
     /**
      * Wraps the revocation information from [issuerCredentialStore] into a Token Payload
@@ -108,11 +117,11 @@ class StatusListAgent(
      */
     override fun buildRevocationList(timePeriod: Int?, kind: RevocationList.Kind): RevocationList =
         when (kind) {
-            RevocationList.Kind.STATUS_LIST -> issuerCredentialStore.getStatusListView(
-                timePeriod ?: timePeriodProvider.getCurrentTimePeriod(clock)
-            ).toStatusList(zlibService, statusListAggregationUrl)
+            RevocationList.Kind.STATUS_LIST -> issuerCredentialStore
+                .getStatusListView(timePeriod ?: timePeriodProvider.getCurrentTimePeriod(clock))
+                .toStatusList(zlibService, statusListAggregationUrl)
 
-            RevocationList.Kind.IDENTIFIER_LIST -> TODO("IdentifierList has not been implemented yet")//IdentifierList(mapOf(), null)
+            RevocationList.Kind.IDENTIFIER_LIST -> TODO("IdentifierList has not been implemented yet")
         }
 
     /**

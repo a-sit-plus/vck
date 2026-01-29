@@ -31,14 +31,4 @@ interface IssuerCredentialStore {
         reference: StoredCredentialReference,
         credential: Issuer.IssuedCredential,
     ): KmmResult<StoredCredentialReference>
-
-    /**
-     * Returns a list of revoked credentials, represented by their `statusListIndex`
-     */
-    fun getStatusListView(timePeriod: Int): StatusListView
-
-    /**
-     * Set the [status] of the credential with this [index] for the [timePeriod], if it exists
-     */
-    fun setStatus(timePeriod: Int, index: ULong, status: TokenStatus): Boolean
 }
