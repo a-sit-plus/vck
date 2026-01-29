@@ -30,4 +30,14 @@ data class CredentialOffer(
      */
     @SerialName("grants")
     val grants: CredentialOfferGrants? = null,
+    /**
+     * Additional Credential Offer parameters MAY be defined and used. The Wallet MUST ignore any unrecognized
+     * parameters. Practical DC API Issuing implementations send the authorization_server_metadata and
+     * credential_issuer_metadata with the credential offer.
+     */
+    @SerialName("authorization_server_metadata")
+    val authorizationServerMetadata: OAuth2AuthorizationServerMetadata? = null,
+
+    @SerialName("credential_issuer_metadata")
+    val credentialIssuerMetadata: IssuerMetadata? = null,
 )
