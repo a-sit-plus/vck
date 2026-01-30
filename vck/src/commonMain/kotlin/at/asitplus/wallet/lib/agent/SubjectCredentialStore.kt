@@ -79,6 +79,8 @@ interface SubjectCredentialStore {
     suspend fun getCredentials(credentialSchemes: Collection<ConstantIndex.CredentialScheme>? = null)
             : KmmResult<List<StoreEntry>>
 
+    suspend fun deleteCredential(credential: StoreEntry)
+
     @Serializable
     sealed interface StoreEntry {
         val schemaUri: String

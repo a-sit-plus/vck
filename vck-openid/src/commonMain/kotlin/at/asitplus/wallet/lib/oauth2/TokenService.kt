@@ -113,6 +113,7 @@ interface TokenService {
         /** Build a [TokenService] combining [BearerTokenGenerationService] and [BearerTokenVerificationService]. */
         fun bearer(
             nonceService: NonceService = DefaultNonceService(),
+            issueRefreshTokens: Boolean = false
         ) = BearerTokenGenerationService(
             nonceService = nonceService
         ).let { generationService ->
@@ -122,7 +123,7 @@ interface TokenService {
                     tokenGenerationService = generationService
                 ),
                 dpopSigningAlgValuesSupportedStrings = null,
-                supportsRefreshTokens = false,
+                supportsRefreshTokens = issueRefreshTokens,
             )
         }
     }

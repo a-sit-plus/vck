@@ -110,7 +110,7 @@ class SimpleAuthorizationService(
     /** Associates the issued request_uri to the auth request from the client. */
     private val requestUriToPushedAuthorizationRequest: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
     /** Service to create and validate access tokens. */
-    private val tokenService: TokenService = TokenService.bearer(),
+    private val tokenService: TokenService = TokenService.bearer(issueRefreshTokens = true),
     /** Handles client authentication in [par] and [token]. */
     private val clientAuthenticationService: ClientAuthenticationService = ClientAuthenticationService(
         enforceClientAuthentication = false,

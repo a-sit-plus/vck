@@ -54,6 +54,11 @@ interface Holder {
     suspend fun storeCredential(credential: StoreCredentialInput, refreshTokenInfo: CredentialRenewalInfo? = null): KmmResult<SubjectCredentialStore.StoreEntry>
 
     /**
+     * Deletes a credential from the store.
+     */
+    suspend fun deleteCredential(credential: SubjectCredentialStore.StoreEntry)
+
+    /**
      * Gets a list of all stored credentials, with a revocation status.
      */
     suspend fun getCredentials(): Collection<SubjectCredentialStore.StoreEntry>?
