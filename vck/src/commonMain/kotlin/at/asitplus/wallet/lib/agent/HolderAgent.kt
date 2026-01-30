@@ -108,6 +108,10 @@ class HolderAgent(
         }
     }
 
+    override suspend fun deleteCredential(credential: StoreEntry) {
+        subjectCredentialStore.deleteCredential(credential)
+    }
+
     private fun Holder.StoreCredentialInput.Iso.extractIssuerKey(): CoseKey? =
         issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull()?.let {
             catchingUnwrapped { X509Certificate.decodeFromDer(it) }.getOrNull()?.decodedPublicKey?.getOrNull()

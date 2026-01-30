@@ -49,4 +49,8 @@ class InMemorySubjectCredentialStore : SubjectCredentialStore {
             }.toList()
         } ?: credentials
     }
+
+    override suspend fun deleteCredential(credential: SubjectCredentialStore.StoreEntry) {
+        credentials.removeAll { it.getDcApiId() == credential.getDcApiId() }
+    }
 }
