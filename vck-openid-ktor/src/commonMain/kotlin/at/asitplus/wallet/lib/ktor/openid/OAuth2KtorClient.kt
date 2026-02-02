@@ -29,6 +29,7 @@ import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.OAuth2Client.AuthorizationForToken
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationPoPJwt
 import at.asitplus.wallet.lib.oidvci.BuildDPoPHeader
+import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 import at.asitplus.wallet.lib.oidvci.TokenInfo
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
@@ -275,11 +276,9 @@ class OAuth2KtorClient(
             }))
             applyAuthnForToken(oauthMetadata, popAudience, tokenEndpointUrl, HttpMethod.Post, true)()
         }.onFailure { response ->
-            dpopNonce(response)
-                ?.let { updateDpopNonce(tokenEndpointUrl, it) }
-                ?.takeIf { retryCount == 0 }
-                ?.let { postToken(oauthMetadata, tokenRequest, popAudience, retryCount + 1) }
-                ?: throw Exception("Error requesting Token: ${this?.errorDescription ?: this?.error}")
+            updateDpopNonceAndRetry(response, tokenEndpointUrl, retryCount) {
+                postToken(oauthMetadata, tokenRequest, popAudience, retryCount + 1)
+            }
         }.onSuccessToken { response ->
             val dpopNonce = response.dpopNonce
             updateDpopNonce(tokenEndpointUrl, dpopNonce)
@@ -381,14 +380,11 @@ class OAuth2KtorClient(
             }))
             applyAuthnForToken(oauthMetadata, popAudience, parEndpointUrl, HttpMethod.Post, true)()
         }.onFailure { response ->
-            dpopNonce(response)
-                ?.let { updateDpopNonce(parEndpointUrl, it) }
-                ?.takeIf { retryCount == 0 }
-                ?.let { pushAuthorizationRequest(oauthMetadata, authRequest, state, popAudience, retryCount + 1) }
-                ?: throw Exception("Error requesting PAR: ${this?.errorDescription ?: this?.error}")
+            updateDpopNonceAndRetry(response, parEndpointUrl, retryCount) {
+                pushAuthorizationRequest(oauthMetadata, authRequest, state, popAudience, retryCount + 1)
+            }
         }.onSuccessPar { httpResponse ->
-            val dpopNonce = httpResponse.dpopNonce
-            updateDpopNonce(parEndpointUrl, dpopNonce)
+            updateDpopNonce(parEndpointUrl, httpResponse.dpopNonce)
             JarRequestParameters(
                 clientId = oAuth2Client.clientId,
                 requestUri = requestUri ?: throw Exception("No request_uri from PAR response at $parEndpointUrl"),
@@ -421,20 +417,29 @@ class OAuth2KtorClient(
                 useDpop = true,
             )()
         }.onFailure { response ->
-            dpopNonce(response)
-                ?.let { updateDpopNonce(introspectionUrl, it) }
-                ?.takeIf { retryCount == 0 }
-                ?.let { callTokenIntrospection(oauthMetadata, request, token, popAudience, retryCount + 1) }
-                ?: throw Exception("Error requesting Token Introspection: ${this?.errorDescription ?: this?.error}")
+            updateDpopNonceAndRetry(response, introspectionUrl, retryCount) {
+                callTokenIntrospection(oauthMetadata, request, token, popAudience, retryCount + 1)
+            }
         }.onSuccessTokenIntrospection { httpResponse ->
-            val dpopNonce = httpResponse.dpopNonce
-            updateDpopNonce(introspectionUrl, dpopNonce)
+            updateDpopNonce(introspectionUrl, httpResponse.dpopNonce)
             if (!active) {
                 throw InvalidToken("Introspected token is not active")
             }
             this
         }
     } ?: throw InvalidToken("No introspection endpoint found in Authorization Server metadata")
+
+    /** Store the DPoP nonce if it is set, and retry the previous action */
+    suspend fun <T> OAuth2Error?.updateDpopNonceAndRetry(
+        response: HttpResponse,
+        url: String,
+        retryCount: Int,
+        action: suspend () -> T
+    ): T = dpopNonce(response)
+        ?.let { updateDpopNonce(url, it) }
+        ?.takeIf { retryCount == 0 }
+        ?.let { action() }
+        ?: throw Exception("Error requesting $url: ${this?.errorDescription ?: this?.error}")
 
     /**
      * Sets the appropriate headers when accessing [resourceUrl], by reading data from [tokenResponse],

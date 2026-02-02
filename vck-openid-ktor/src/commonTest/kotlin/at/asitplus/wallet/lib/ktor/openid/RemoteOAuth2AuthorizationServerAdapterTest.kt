@@ -6,27 +6,20 @@ import at.asitplus.openid.OpenIdConstants.Errors.USE_DPOP_NONCE
 import at.asitplus.openid.OpenIdConstants.WellKnownPaths
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.TokenVerificationService
-import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 import at.asitplus.wallet.lib.oidvci.TokenInfo
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
-import io.ktor.client.engine.mock.MockEngine
-import io.ktor.client.engine.mock.respond
-import io.ktor.client.engine.mock.respondError
-import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.headers
-import io.ktor.http.headersOf
+import io.ktor.client.engine.mock.*
+import io.ktor.http.*
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -123,9 +116,9 @@ val RemoteOAuth2AuthorizationServerAdapterTest by testSuite {
             internalTokenVerificationService = tokenVerificationService,
         )
 
-        val result = adapter.getTokenInfo("Bearer token", null)
-        result.isFailure.shouldBeTrue()
-        result.exceptionOrNull().shouldNotBeNull().message.shouldContain("Error requesting Token Introspection")
+        adapter.getTokenInfo("Bearer token", null)
+            .exceptionOrNull().shouldNotBeNull()
+            .message.shouldContain("Error requesting https://issuer.example.com/introspect")
     }
 
     test("getTokenInfo handles inactive token") {
