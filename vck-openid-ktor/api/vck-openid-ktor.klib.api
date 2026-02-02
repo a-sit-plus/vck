@@ -1,0 +1,331 @@
+// Klib ABI Dump
+// Targets: [iosArm64, iosSimulatorArm64, iosX64]
+// Rendering settings:
+// - Signature version: 2
+// - Show manifest properties: true
+// - Show declarations: true
+
+// Library unique name: <at.asitplus.wallet:vck-openid-ktor>
+sealed interface at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult { // at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult|null[0]
+    final class OpenUrlForAuthnRequest : at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult { // at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.OpenUrlForAuthnRequest|null[0]
+        constructor <init>(kotlin/String, at.asitplus.wallet.lib.ktor.openid/ProvisioningContext) // at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.OpenUrlForAuthnRequest.<init>|<init>(kotlin.String;at.asitplus.wallet.lib.ktor.openid.ProvisioningContext){}[0]
+
+        final val context // at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.OpenUrlForAuthnRequest.context|{}context[0]
+            final fun <get-context>(): at.asitplus.wallet.lib.ktor.openid/ProvisioningContext // at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.OpenUrlForAuthnRequest.context.<get-context>|<get-context>(){}[0]
+        final val url // at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.OpenUrlForAuthnRequest.url|{}url[0]
+            final fun <get-url>(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.OpenUrlForAuthnRequest.url.<get-url>|<get-url>(){}[0]
+
+        final fun component1(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.OpenUrlForAuthnRequest.component1|component1(){}[0]
+        final fun component2(): at.asitplus.wallet.lib.ktor.openid/ProvisioningContext // at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.OpenUrlForAuthnRequest.component2|component2(){}[0]
+        final fun copy(kotlin/String = ..., at.asitplus.wallet.lib.ktor.openid/ProvisioningContext = ...): at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.OpenUrlForAuthnRequest // at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.OpenUrlForAuthnRequest.copy|copy(kotlin.String;at.asitplus.wallet.lib.ktor.openid.ProvisioningContext){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.OpenUrlForAuthnRequest.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.OpenUrlForAuthnRequest.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.OpenUrlForAuthnRequest.toString|toString(){}[0]
+    }
+
+    final class Success : at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult { // at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.Success|null[0]
+        constructor <init>(kotlin.collections/Collection<at.asitplus.wallet.lib.agent/Holder.StoreCredentialInput>, at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo? = ...) // at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.Success.<init>|<init>(kotlin.collections.Collection<at.asitplus.wallet.lib.agent.Holder.StoreCredentialInput>;at.asitplus.wallet.lib.ktor.openid.RefreshTokenInfo?){}[0]
+
+        final val credentials // at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.Success.credentials|{}credentials[0]
+            final fun <get-credentials>(): kotlin.collections/Collection<at.asitplus.wallet.lib.agent/Holder.StoreCredentialInput> // at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.Success.credentials.<get-credentials>|<get-credentials>(){}[0]
+        final val refreshToken // at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.Success.refreshToken|{}refreshToken[0]
+            final fun <get-refreshToken>(): at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo? // at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.Success.refreshToken.<get-refreshToken>|<get-refreshToken>(){}[0]
+
+        final fun component1(): kotlin.collections/Collection<at.asitplus.wallet.lib.agent/Holder.StoreCredentialInput> // at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.Success.component1|component1(){}[0]
+        final fun component2(): at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo? // at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.Success.component2|component2(){}[0]
+        final fun copy(kotlin.collections/Collection<at.asitplus.wallet.lib.agent/Holder.StoreCredentialInput> = ..., at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo? = ...): at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.Success // at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.Success.copy|copy(kotlin.collections.Collection<at.asitplus.wallet.lib.agent.Holder.StoreCredentialInput>;at.asitplus.wallet.lib.ktor.openid.RefreshTokenInfo?){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.Success.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.Success.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.Success.toString|toString(){}[0]
+    }
+}
+
+final class at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo { // at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo|null[0]
+    constructor <init>(at.asitplus.openid/IssuerMetadata, kotlin/String, at.asitplus.openid/SupportedCredentialFormat) // at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo.<init>|<init>(at.asitplus.openid.IssuerMetadata;kotlin.String;at.asitplus.openid.SupportedCredentialFormat){}[0]
+
+    final val credentialIdentifier // at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo.credentialIdentifier|{}credentialIdentifier[0]
+        final fun <get-credentialIdentifier>(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo.credentialIdentifier.<get-credentialIdentifier>|<get-credentialIdentifier>(){}[0]
+    final val issuerMetadata // at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo.issuerMetadata|{}issuerMetadata[0]
+        final fun <get-issuerMetadata>(): at.asitplus.openid/IssuerMetadata // at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo.issuerMetadata.<get-issuerMetadata>|<get-issuerMetadata>(){}[0]
+    final val supportedCredentialFormat // at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo.supportedCredentialFormat|{}supportedCredentialFormat[0]
+        final fun <get-supportedCredentialFormat>(): at.asitplus.openid/SupportedCredentialFormat // at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo.supportedCredentialFormat.<get-supportedCredentialFormat>|<get-supportedCredentialFormat>(){}[0]
+
+    final fun component1(): at.asitplus.openid/IssuerMetadata // at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo.component1|component1(){}[0]
+    final fun component2(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo.component2|component2(){}[0]
+    final fun component3(): at.asitplus.openid/SupportedCredentialFormat // at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo.component3|component3(){}[0]
+    final fun copy(at.asitplus.openid/IssuerMetadata = ..., kotlin/String = ..., at.asitplus.openid/SupportedCredentialFormat = ...): at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo // at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo.copy|copy(at.asitplus.openid.IssuerMetadata;kotlin.String;at.asitplus.openid.SupportedCredentialFormat){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo.toString|toString(){}[0]
+
+    final object $serializer : kotlinx.serialization.internal/GeneratedSerializer<at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo> { // at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo.$serializer|null[0]
+        final val descriptor // at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo.$serializer.descriptor|{}descriptor[0]
+            final fun <get-descriptor>(): kotlinx.serialization.descriptors/SerialDescriptor // at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo.$serializer.descriptor.<get-descriptor>|<get-descriptor>(){}[0]
+
+        final fun childSerializers(): kotlin/Array<kotlinx.serialization/KSerializer<*>> // at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo.$serializer.childSerializers|childSerializers(){}[0]
+        final fun deserialize(kotlinx.serialization.encoding/Decoder): at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo // at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo.$serializer.deserialize|deserialize(kotlinx.serialization.encoding.Decoder){}[0]
+        final fun serialize(kotlinx.serialization.encoding/Encoder, at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo) // at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo.$serializer.serialize|serialize(kotlinx.serialization.encoding.Encoder;at.asitplus.wallet.lib.ktor.openid.CredentialIdentifierInfo){}[0]
+    }
+
+    final object Companion { // at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo.Companion|null[0]
+        final fun serializer(): kotlinx.serialization/KSerializer<at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo> // at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo.Companion.serializer|serializer(){}[0]
+    }
+}
+
+final class at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient { // at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient|null[0]
+    constructor <init>(io.ktor.client.engine/HttpClientEngine, io.ktor.client.plugins.cookies/CookiesStorage? = ..., kotlin/Function1<io.ktor.client/HttpClientConfig<*>, kotlin/Unit>? = ..., kotlin.coroutines/SuspendFunction0<kotlin/String>? = ..., at.asitplus.wallet.lib.jws/SignJwtFun<at.asitplus.signum.indispensable.josef/JsonWebToken>? = ..., at.asitplus.wallet.lib.jws/SignJwtFun<at.asitplus.signum.indispensable.josef/JsonWebToken> = ..., at.asitplus.signum.indispensable.josef/JwsAlgorithm = ..., at.asitplus.wallet.lib.oauth2/OAuth2Client, at.asitplus.wallet.lib.agent/RandomSource = ...) // at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient.<init>|<init>(io.ktor.client.engine.HttpClientEngine;io.ktor.client.plugins.cookies.CookiesStorage?;kotlin.Function1<io.ktor.client.HttpClientConfig<*>,kotlin.Unit>?;kotlin.coroutines.SuspendFunction0<kotlin.String>?;at.asitplus.wallet.lib.jws.SignJwtFun<at.asitplus.signum.indispensable.josef.JsonWebToken>?;at.asitplus.wallet.lib.jws.SignJwtFun<at.asitplus.signum.indispensable.josef.JsonWebToken>;at.asitplus.signum.indispensable.josef.JwsAlgorithm;at.asitplus.wallet.lib.oauth2.OAuth2Client;at.asitplus.wallet.lib.agent.RandomSource){}[0]
+
+    final val client // at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient.client|{}client[0]
+        final fun <get-client>(): io.ktor.client/HttpClient // at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient.client.<get-client>|<get-client>(){}[0]
+    final val oAuth2Client // at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient.oAuth2Client|{}oAuth2Client[0]
+        final fun <get-oAuth2Client>(): at.asitplus.wallet.lib.oauth2/OAuth2Client // at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient.oAuth2Client.<get-oAuth2Client>|<get-oAuth2Client>(){}[0]
+
+    final suspend fun applyAuthnForToken(at.asitplus.openid/OAuth2AuthorizationServerMetadata, kotlin/String, kotlin/String, io.ktor.http/HttpMethod, kotlin/Boolean, kotlin/String? = ...): kotlin/Function1<io.ktor.client.request/HttpRequestBuilder, kotlin/Unit> // at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient.applyAuthnForToken|applyAuthnForToken(at.asitplus.openid.OAuth2AuthorizationServerMetadata;kotlin.String;kotlin.String;io.ktor.http.HttpMethod;kotlin.Boolean;kotlin.String?){}[0]
+    final suspend fun applyToken(at.asitplus.openid/TokenResponseParameters, kotlin/String, io.ktor.http/HttpMethod, kotlin/String? = ...): kotlin/Function1<io.ktor.client.request/HttpRequestBuilder, kotlin/Unit> // at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient.applyToken|applyToken(at.asitplus.openid.TokenResponseParameters;kotlin.String;io.ktor.http.HttpMethod;kotlin.String?){}[0]
+    final suspend fun requestTokenWithAuthCode(at.asitplus.openid/OAuth2AuthorizationServerMetadata, kotlin/String, kotlin/String, kotlin/String, kotlin/String? = ..., kotlin.collections/Set<at.asitplus.openid/OpenIdAuthorizationDetails>? = ...): at.asitplus/KmmResult<at.asitplus.wallet.lib.ktor.openid/TokenResponseWithDpopNonce> // at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient.requestTokenWithAuthCode|requestTokenWithAuthCode(at.asitplus.openid.OAuth2AuthorizationServerMetadata;kotlin.String;kotlin.String;kotlin.String;kotlin.String?;kotlin.collections.Set<at.asitplus.openid.OpenIdAuthorizationDetails>?){}[0]
+    final suspend fun requestTokenWithPreAuthorizedCode(at.asitplus.openid/OAuth2AuthorizationServerMetadata, kotlin/String, kotlin/String, kotlin/String?, kotlin/String?, kotlin.collections/Set<at.asitplus.openid/OpenIdAuthorizationDetails>): at.asitplus/KmmResult<at.asitplus.wallet.lib.ktor.openid/TokenResponseWithDpopNonce> // at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient.requestTokenWithPreAuthorizedCode|requestTokenWithPreAuthorizedCode(at.asitplus.openid.OAuth2AuthorizationServerMetadata;kotlin.String;kotlin.String;kotlin.String?;kotlin.String?;kotlin.collections.Set<at.asitplus.openid.OpenIdAuthorizationDetails>){}[0]
+    final suspend fun requestTokenWithRefreshToken(at.asitplus.openid/OAuth2AuthorizationServerMetadata, kotlin/String, kotlin/String, kotlin/String?, kotlin.collections/Set<at.asitplus.openid/OpenIdAuthorizationDetails>): at.asitplus/KmmResult<at.asitplus.wallet.lib.ktor.openid/TokenResponseWithDpopNonce> // at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient.requestTokenWithRefreshToken|requestTokenWithRefreshToken(at.asitplus.openid.OAuth2AuthorizationServerMetadata;kotlin.String;kotlin.String;kotlin.String?;kotlin.collections.Set<at.asitplus.openid.OpenIdAuthorizationDetails>){}[0]
+    final suspend fun requestTokenWithTokenExchange(at.asitplus.openid/OAuth2AuthorizationServerMetadata, kotlin/String, kotlin/String, kotlin/String?): at.asitplus/KmmResult<at.asitplus.wallet.lib.ktor.openid/TokenResponseWithDpopNonce> // at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient.requestTokenWithTokenExchange|requestTokenWithTokenExchange(at.asitplus.openid.OAuth2AuthorizationServerMetadata;kotlin.String;kotlin.String;kotlin.String?){}[0]
+    final suspend fun startAuthorization(at.asitplus.openid/OAuth2AuthorizationServerMetadata, kotlin/String, kotlin/String = ..., kotlin/String? = ..., kotlin.collections/Set<at.asitplus.openid/OpenIdAuthorizationDetails>? = ..., kotlin/String? = ...): at.asitplus/KmmResult<at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient.OpenUrlForAuthnRequest> // at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient.startAuthorization|startAuthorization(at.asitplus.openid.OAuth2AuthorizationServerMetadata;kotlin.String;kotlin.String;kotlin.String?;kotlin.collections.Set<at.asitplus.openid.OpenIdAuthorizationDetails>?;kotlin.String?){}[0]
+
+    final class OpenUrlForAuthnRequest { // at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient.OpenUrlForAuthnRequest|null[0]
+        constructor <init>(kotlin/String, kotlin/String) // at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient.OpenUrlForAuthnRequest.<init>|<init>(kotlin.String;kotlin.String){}[0]
+
+        final val state // at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient.OpenUrlForAuthnRequest.state|{}state[0]
+            final fun <get-state>(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient.OpenUrlForAuthnRequest.state.<get-state>|<get-state>(){}[0]
+        final val url // at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient.OpenUrlForAuthnRequest.url|{}url[0]
+            final fun <get-url>(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient.OpenUrlForAuthnRequest.url.<get-url>|<get-url>(){}[0]
+
+        final fun component1(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient.OpenUrlForAuthnRequest.component1|component1(){}[0]
+        final fun component2(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient.OpenUrlForAuthnRequest.component2|component2(){}[0]
+        final fun copy(kotlin/String = ..., kotlin/String = ...): at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient.OpenUrlForAuthnRequest // at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient.OpenUrlForAuthnRequest.copy|copy(kotlin.String;kotlin.String){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient.OpenUrlForAuthnRequest.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient.OpenUrlForAuthnRequest.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient.OpenUrlForAuthnRequest.toString|toString(){}[0]
+    }
+}
+
+final class at.asitplus.wallet.lib.ktor.openid/OpenId4VciClient { // at.asitplus.wallet.lib.ktor.openid/OpenId4VciClient|null[0]
+    constructor <init>(io.ktor.client.engine/HttpClientEngine, io.ktor.client.plugins.cookies/CookiesStorage? = ..., kotlin/Function1<io.ktor.client/HttpClientConfig<*>, kotlin/Unit>? = ..., at.asitplus.wallet.lib.oidvci/WalletService = ..., at.asitplus.wallet.lib.oauth2/OAuth2Client = ..., at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient = ...) // at.asitplus.wallet.lib.ktor.openid/OpenId4VciClient.<init>|<init>(io.ktor.client.engine.HttpClientEngine;io.ktor.client.plugins.cookies.CookiesStorage?;kotlin.Function1<io.ktor.client.HttpClientConfig<*>,kotlin.Unit>?;at.asitplus.wallet.lib.oidvci.WalletService;at.asitplus.wallet.lib.oauth2.OAuth2Client;at.asitplus.wallet.lib.ktor.openid.OAuth2KtorClient){}[0]
+
+    final suspend fun loadCredentialMetadata(kotlin/String): at.asitplus/KmmResult<kotlin.collections/Collection<at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo>> // at.asitplus.wallet.lib.ktor.openid/OpenId4VciClient.loadCredentialMetadata|loadCredentialMetadata(kotlin.String){}[0]
+    final suspend fun loadCredentialWithOfferReturningResult(at.asitplus.openid/CredentialOffer, at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo, kotlin/String? = ...): at.asitplus/KmmResult<at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult> // at.asitplus.wallet.lib.ktor.openid/OpenId4VciClient.loadCredentialWithOfferReturningResult|loadCredentialWithOfferReturningResult(at.asitplus.openid.CredentialOffer;at.asitplus.wallet.lib.ktor.openid.CredentialIdentifierInfo;kotlin.String?){}[0]
+    final suspend fun refreshCredentialReturningResult(at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo): at.asitplus/KmmResult<at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.Success> // at.asitplus.wallet.lib.ktor.openid/OpenId4VciClient.refreshCredentialReturningResult|refreshCredentialReturningResult(at.asitplus.wallet.lib.ktor.openid.RefreshTokenInfo){}[0]
+    final suspend fun resumeWithAuthCode(kotlin/String, at.asitplus.wallet.lib.ktor.openid/ProvisioningContext): at.asitplus/KmmResult<at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.Success> // at.asitplus.wallet.lib.ktor.openid/OpenId4VciClient.resumeWithAuthCode|resumeWithAuthCode(kotlin.String;at.asitplus.wallet.lib.ktor.openid.ProvisioningContext){}[0]
+    final suspend fun startProvisioningWithAuthRequestReturningResult(kotlin/String, at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo): at.asitplus/KmmResult<at.asitplus.wallet.lib.ktor.openid/CredentialIssuanceResult.OpenUrlForAuthnRequest> // at.asitplus.wallet.lib.ktor.openid/OpenId4VciClient.startProvisioningWithAuthRequestReturningResult|startProvisioningWithAuthRequestReturningResult(kotlin.String;at.asitplus.wallet.lib.ktor.openid.CredentialIdentifierInfo){}[0]
+}
+
+final class at.asitplus.wallet.lib.ktor.openid/OpenId4VpSuccess { // at.asitplus.wallet.lib.ktor.openid/OpenId4VpSuccess|null[0]
+    constructor <init>(kotlin/String) // at.asitplus.wallet.lib.ktor.openid/OpenId4VpSuccess.<init>|<init>(kotlin.String){}[0]
+
+    final val redirectUri // at.asitplus.wallet.lib.ktor.openid/OpenId4VpSuccess.redirectUri|{}redirectUri[0]
+        final fun <get-redirectUri>(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/OpenId4VpSuccess.redirectUri.<get-redirectUri>|<get-redirectUri>(){}[0]
+
+    final fun component1(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/OpenId4VpSuccess.component1|component1(){}[0]
+    final fun copy(kotlin/String = ...): at.asitplus.wallet.lib.ktor.openid/OpenId4VpSuccess // at.asitplus.wallet.lib.ktor.openid/OpenId4VpSuccess.copy|copy(kotlin.String){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // at.asitplus.wallet.lib.ktor.openid/OpenId4VpSuccess.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // at.asitplus.wallet.lib.ktor.openid/OpenId4VpSuccess.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/OpenId4VpSuccess.toString|toString(){}[0]
+
+    final object $serializer : kotlinx.serialization.internal/GeneratedSerializer<at.asitplus.wallet.lib.ktor.openid/OpenId4VpSuccess> { // at.asitplus.wallet.lib.ktor.openid/OpenId4VpSuccess.$serializer|null[0]
+        final val descriptor // at.asitplus.wallet.lib.ktor.openid/OpenId4VpSuccess.$serializer.descriptor|{}descriptor[0]
+            final fun <get-descriptor>(): kotlinx.serialization.descriptors/SerialDescriptor // at.asitplus.wallet.lib.ktor.openid/OpenId4VpSuccess.$serializer.descriptor.<get-descriptor>|<get-descriptor>(){}[0]
+
+        final fun childSerializers(): kotlin/Array<kotlinx.serialization/KSerializer<*>> // at.asitplus.wallet.lib.ktor.openid/OpenId4VpSuccess.$serializer.childSerializers|childSerializers(){}[0]
+        final fun deserialize(kotlinx.serialization.encoding/Decoder): at.asitplus.wallet.lib.ktor.openid/OpenId4VpSuccess // at.asitplus.wallet.lib.ktor.openid/OpenId4VpSuccess.$serializer.deserialize|deserialize(kotlinx.serialization.encoding.Decoder){}[0]
+        final fun serialize(kotlinx.serialization.encoding/Encoder, at.asitplus.wallet.lib.ktor.openid/OpenId4VpSuccess) // at.asitplus.wallet.lib.ktor.openid/OpenId4VpSuccess.$serializer.serialize|serialize(kotlinx.serialization.encoding.Encoder;at.asitplus.wallet.lib.ktor.openid.OpenId4VpSuccess){}[0]
+    }
+
+    final object Companion { // at.asitplus.wallet.lib.ktor.openid/OpenId4VpSuccess.Companion|null[0]
+        final fun serializer(): kotlinx.serialization/KSerializer<at.asitplus.wallet.lib.ktor.openid/OpenId4VpSuccess> // at.asitplus.wallet.lib.ktor.openid/OpenId4VpSuccess.Companion.serializer|serializer(){}[0]
+    }
+}
+
+final class at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet { // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet|null[0]
+    constructor <init>(io.ktor.client.engine/HttpClientEngine, kotlin/Function1<io.ktor.client/HttpClientConfig<*>, kotlin/Unit>? = ..., at.asitplus.wallet.lib.agent/KeyMaterial, at.asitplus.wallet.lib.agent/HolderAgent, at.asitplus.wallet.lib.agent/RandomSource = ...) // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.<init>|<init>(io.ktor.client.engine.HttpClientEngine;kotlin.Function1<io.ktor.client.HttpClientConfig<*>,kotlin.Unit>?;at.asitplus.wallet.lib.agent.KeyMaterial;at.asitplus.wallet.lib.agent.HolderAgent;at.asitplus.wallet.lib.agent.RandomSource){}[0]
+
+    final val openId4VpHolder // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.openId4VpHolder|{}openId4VpHolder[0]
+        final fun <get-openId4VpHolder>(): at.asitplus.wallet.lib.openid/OpenId4VpHolder // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.openId4VpHolder.<get-openId4VpHolder>|<get-openId4VpHolder>(){}[0]
+
+    final suspend fun finalizeAuthorizationResponse(at.asitplus.wallet.lib.openid/AuthorizationResponsePreparationState, at.asitplus.wallet.lib.data/CredentialPresentation? = ...): at.asitplus/KmmResult<at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.AuthenticationResult> // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.finalizeAuthorizationResponse|finalizeAuthorizationResponse(at.asitplus.wallet.lib.openid.AuthorizationResponsePreparationState;at.asitplus.wallet.lib.data.CredentialPresentation?){}[0]
+    final suspend fun getMatchingCredentials(at.asitplus.wallet.lib.openid/AuthorizationResponsePreparationState): kotlin/Result<at.asitplus.wallet.lib.openid/CredentialMatchingResult<at.asitplus.wallet.lib.agent/SubjectCredentialStore.StoreEntry>> // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.getMatchingCredentials|getMatchingCredentials(at.asitplus.wallet.lib.openid.AuthorizationResponsePreparationState){}[0]
+    final suspend fun sendAuthnErrorResponse(kotlin/Throwable, at.asitplus.openid/RequestParametersFrom<at.asitplus.openid/AuthenticationRequestParameters>) // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.sendAuthnErrorResponse|sendAuthnErrorResponse(kotlin.Throwable;at.asitplus.openid.RequestParametersFrom<at.asitplus.openid.AuthenticationRequestParameters>){}[0]
+    final suspend fun startAuthorizationResponsePreparation(at.asitplus.openid/RequestParametersFrom<at.asitplus.openid/AuthenticationRequestParameters>): at.asitplus/KmmResult<at.asitplus.wallet.lib.openid/AuthorizationResponsePreparationState> // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.startAuthorizationResponsePreparation|startAuthorizationResponsePreparation(at.asitplus.openid.RequestParametersFrom<at.asitplus.openid.AuthenticationRequestParameters>){}[0]
+    final suspend fun startAuthorizationResponsePreparation(kotlin/String): at.asitplus/KmmResult<at.asitplus.wallet.lib.openid/AuthorizationResponsePreparationState> // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.startAuthorizationResponsePreparation|startAuthorizationResponsePreparation(kotlin.String){}[0]
+    final suspend fun startPresentationReturningUrl(at.asitplus.openid/RequestParametersFrom<at.asitplus.openid/AuthenticationRequestParameters>): at.asitplus/KmmResult<at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.AuthenticationSuccess> // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.startPresentationReturningUrl|startPresentationReturningUrl(at.asitplus.openid.RequestParametersFrom<at.asitplus.openid.AuthenticationRequestParameters>){}[0]
+
+    sealed interface AuthenticationResult // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.AuthenticationResult|null[0]
+
+    final class AuthenticationForward : at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.AuthenticationResult { // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.AuthenticationForward|null[0]
+        constructor <init>(at.asitplus.wallet.lib.openid/AuthenticationResponseResult.DcApi) // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.AuthenticationForward.<init>|<init>(at.asitplus.wallet.lib.openid.AuthenticationResponseResult.DcApi){}[0]
+
+        final val authenticationResponseResult // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.AuthenticationForward.authenticationResponseResult|{}authenticationResponseResult[0]
+            final fun <get-authenticationResponseResult>(): at.asitplus.wallet.lib.openid/AuthenticationResponseResult.DcApi // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.AuthenticationForward.authenticationResponseResult.<get-authenticationResponseResult>|<get-authenticationResponseResult>(){}[0]
+
+        final fun component1(): at.asitplus.wallet.lib.openid/AuthenticationResponseResult.DcApi // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.AuthenticationForward.component1|component1(){}[0]
+        final fun copy(at.asitplus.wallet.lib.openid/AuthenticationResponseResult.DcApi = ...): at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.AuthenticationForward // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.AuthenticationForward.copy|copy(at.asitplus.wallet.lib.openid.AuthenticationResponseResult.DcApi){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.AuthenticationForward.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.AuthenticationForward.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.AuthenticationForward.toString|toString(){}[0]
+    }
+
+    final class AuthenticationSuccess : at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.AuthenticationResult { // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.AuthenticationSuccess|null[0]
+        constructor <init>(kotlin/String? = ...) // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.AuthenticationSuccess.<init>|<init>(kotlin.String?){}[0]
+
+        final val redirectUri // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.AuthenticationSuccess.redirectUri|{}redirectUri[0]
+            final fun <get-redirectUri>(): kotlin/String? // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.AuthenticationSuccess.redirectUri.<get-redirectUri>|<get-redirectUri>(){}[0]
+
+        final fun component1(): kotlin/String? // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.AuthenticationSuccess.component1|component1(){}[0]
+        final fun copy(kotlin/String? = ...): at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.AuthenticationSuccess // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.AuthenticationSuccess.copy|copy(kotlin.String?){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.AuthenticationSuccess.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.AuthenticationSuccess.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.AuthenticationSuccess.toString|toString(){}[0]
+    }
+
+    final class FormDataContentPlain : io.ktor.http.content/OutgoingContent.ByteArrayContent { // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.FormDataContentPlain|null[0]
+        constructor <init>(io.ktor.http/Parameters) // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.FormDataContentPlain.<init>|<init>(io.ktor.http.Parameters){}[0]
+
+        final val contentLength // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.FormDataContentPlain.contentLength|{}contentLength[0]
+            final fun <get-contentLength>(): kotlin/Long // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.FormDataContentPlain.contentLength.<get-contentLength>|<get-contentLength>(){}[0]
+        final val contentType // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.FormDataContentPlain.contentType|{}contentType[0]
+            final fun <get-contentType>(): io.ktor.http/ContentType // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.FormDataContentPlain.contentType.<get-contentType>|<get-contentType>(){}[0]
+
+        final fun bytes(): kotlin/ByteArray // at.asitplus.wallet.lib.ktor.openid/OpenId4VpWallet.FormDataContentPlain.bytes|bytes(){}[0]
+    }
+}
+
+final class at.asitplus.wallet.lib.ktor.openid/ProvisioningContext { // at.asitplus.wallet.lib.ktor.openid/ProvisioningContext|null[0]
+    constructor <init>(kotlin/String, at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo, at.asitplus.openid/OAuth2AuthorizationServerMetadata, at.asitplus.openid/IssuerMetadata) // at.asitplus.wallet.lib.ktor.openid/ProvisioningContext.<init>|<init>(kotlin.String;at.asitplus.wallet.lib.ktor.openid.CredentialIdentifierInfo;at.asitplus.openid.OAuth2AuthorizationServerMetadata;at.asitplus.openid.IssuerMetadata){}[0]
+
+    final val credential // at.asitplus.wallet.lib.ktor.openid/ProvisioningContext.credential|{}credential[0]
+        final fun <get-credential>(): at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo // at.asitplus.wallet.lib.ktor.openid/ProvisioningContext.credential.<get-credential>|<get-credential>(){}[0]
+    final val issuerMetadata // at.asitplus.wallet.lib.ktor.openid/ProvisioningContext.issuerMetadata|{}issuerMetadata[0]
+        final fun <get-issuerMetadata>(): at.asitplus.openid/IssuerMetadata // at.asitplus.wallet.lib.ktor.openid/ProvisioningContext.issuerMetadata.<get-issuerMetadata>|<get-issuerMetadata>(){}[0]
+    final val oauthMetadata // at.asitplus.wallet.lib.ktor.openid/ProvisioningContext.oauthMetadata|{}oauthMetadata[0]
+        final fun <get-oauthMetadata>(): at.asitplus.openid/OAuth2AuthorizationServerMetadata // at.asitplus.wallet.lib.ktor.openid/ProvisioningContext.oauthMetadata.<get-oauthMetadata>|<get-oauthMetadata>(){}[0]
+    final val state // at.asitplus.wallet.lib.ktor.openid/ProvisioningContext.state|{}state[0]
+        final fun <get-state>(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/ProvisioningContext.state.<get-state>|<get-state>(){}[0]
+
+    final fun component1(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/ProvisioningContext.component1|component1(){}[0]
+    final fun component2(): at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo // at.asitplus.wallet.lib.ktor.openid/ProvisioningContext.component2|component2(){}[0]
+    final fun component3(): at.asitplus.openid/OAuth2AuthorizationServerMetadata // at.asitplus.wallet.lib.ktor.openid/ProvisioningContext.component3|component3(){}[0]
+    final fun component4(): at.asitplus.openid/IssuerMetadata // at.asitplus.wallet.lib.ktor.openid/ProvisioningContext.component4|component4(){}[0]
+    final fun copy(kotlin/String = ..., at.asitplus.wallet.lib.ktor.openid/CredentialIdentifierInfo = ..., at.asitplus.openid/OAuth2AuthorizationServerMetadata = ..., at.asitplus.openid/IssuerMetadata = ...): at.asitplus.wallet.lib.ktor.openid/ProvisioningContext // at.asitplus.wallet.lib.ktor.openid/ProvisioningContext.copy|copy(kotlin.String;at.asitplus.wallet.lib.ktor.openid.CredentialIdentifierInfo;at.asitplus.openid.OAuth2AuthorizationServerMetadata;at.asitplus.openid.IssuerMetadata){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // at.asitplus.wallet.lib.ktor.openid/ProvisioningContext.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // at.asitplus.wallet.lib.ktor.openid/ProvisioningContext.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/ProvisioningContext.toString|toString(){}[0]
+
+    final object $serializer : kotlinx.serialization.internal/GeneratedSerializer<at.asitplus.wallet.lib.ktor.openid/ProvisioningContext> { // at.asitplus.wallet.lib.ktor.openid/ProvisioningContext.$serializer|null[0]
+        final val descriptor // at.asitplus.wallet.lib.ktor.openid/ProvisioningContext.$serializer.descriptor|{}descriptor[0]
+            final fun <get-descriptor>(): kotlinx.serialization.descriptors/SerialDescriptor // at.asitplus.wallet.lib.ktor.openid/ProvisioningContext.$serializer.descriptor.<get-descriptor>|<get-descriptor>(){}[0]
+
+        final fun childSerializers(): kotlin/Array<kotlinx.serialization/KSerializer<*>> // at.asitplus.wallet.lib.ktor.openid/ProvisioningContext.$serializer.childSerializers|childSerializers(){}[0]
+        final fun deserialize(kotlinx.serialization.encoding/Decoder): at.asitplus.wallet.lib.ktor.openid/ProvisioningContext // at.asitplus.wallet.lib.ktor.openid/ProvisioningContext.$serializer.deserialize|deserialize(kotlinx.serialization.encoding.Decoder){}[0]
+        final fun serialize(kotlinx.serialization.encoding/Encoder, at.asitplus.wallet.lib.ktor.openid/ProvisioningContext) // at.asitplus.wallet.lib.ktor.openid/ProvisioningContext.$serializer.serialize|serialize(kotlinx.serialization.encoding.Encoder;at.asitplus.wallet.lib.ktor.openid.ProvisioningContext){}[0]
+    }
+
+    final object Companion { // at.asitplus.wallet.lib.ktor.openid/ProvisioningContext.Companion|null[0]
+        final fun serializer(): kotlinx.serialization/KSerializer<at.asitplus.wallet.lib.ktor.openid/ProvisioningContext> // at.asitplus.wallet.lib.ktor.openid/ProvisioningContext.Companion.serializer|serializer(){}[0]
+    }
+}
+
+final class at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo { // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo|null[0]
+    constructor <init>(kotlin/String, at.asitplus.openid/IssuerMetadata, at.asitplus.openid/OAuth2AuthorizationServerMetadata, at.asitplus.openid/SupportedCredentialFormat, kotlin/String) // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo.<init>|<init>(kotlin.String;at.asitplus.openid.IssuerMetadata;at.asitplus.openid.OAuth2AuthorizationServerMetadata;at.asitplus.openid.SupportedCredentialFormat;kotlin.String){}[0]
+
+    final val credentialFormat // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo.credentialFormat|{}credentialFormat[0]
+        final fun <get-credentialFormat>(): at.asitplus.openid/SupportedCredentialFormat // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo.credentialFormat.<get-credentialFormat>|<get-credentialFormat>(){}[0]
+    final val credentialIdentifier // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo.credentialIdentifier|{}credentialIdentifier[0]
+        final fun <get-credentialIdentifier>(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo.credentialIdentifier.<get-credentialIdentifier>|<get-credentialIdentifier>(){}[0]
+    final val issuerMetadata // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo.issuerMetadata|{}issuerMetadata[0]
+        final fun <get-issuerMetadata>(): at.asitplus.openid/IssuerMetadata // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo.issuerMetadata.<get-issuerMetadata>|<get-issuerMetadata>(){}[0]
+    final val oauthMetadata // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo.oauthMetadata|{}oauthMetadata[0]
+        final fun <get-oauthMetadata>(): at.asitplus.openid/OAuth2AuthorizationServerMetadata // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo.oauthMetadata.<get-oauthMetadata>|<get-oauthMetadata>(){}[0]
+    final val refreshToken // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo.refreshToken|{}refreshToken[0]
+        final fun <get-refreshToken>(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo.refreshToken.<get-refreshToken>|<get-refreshToken>(){}[0]
+
+    final fun component1(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo.component1|component1(){}[0]
+    final fun component2(): at.asitplus.openid/IssuerMetadata // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo.component2|component2(){}[0]
+    final fun component3(): at.asitplus.openid/OAuth2AuthorizationServerMetadata // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo.component3|component3(){}[0]
+    final fun component4(): at.asitplus.openid/SupportedCredentialFormat // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo.component4|component4(){}[0]
+    final fun component5(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo.component5|component5(){}[0]
+    final fun copy(kotlin/String = ..., at.asitplus.openid/IssuerMetadata = ..., at.asitplus.openid/OAuth2AuthorizationServerMetadata = ..., at.asitplus.openid/SupportedCredentialFormat = ..., kotlin/String = ...): at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo.copy|copy(kotlin.String;at.asitplus.openid.IssuerMetadata;at.asitplus.openid.OAuth2AuthorizationServerMetadata;at.asitplus.openid.SupportedCredentialFormat;kotlin.String){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo.toString|toString(){}[0]
+
+    final object $serializer : kotlinx.serialization.internal/GeneratedSerializer<at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo> { // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo.$serializer|null[0]
+        final val descriptor // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo.$serializer.descriptor|{}descriptor[0]
+            final fun <get-descriptor>(): kotlinx.serialization.descriptors/SerialDescriptor // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo.$serializer.descriptor.<get-descriptor>|<get-descriptor>(){}[0]
+
+        final fun childSerializers(): kotlin/Array<kotlinx.serialization/KSerializer<*>> // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo.$serializer.childSerializers|childSerializers(){}[0]
+        final fun deserialize(kotlinx.serialization.encoding/Decoder): at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo.$serializer.deserialize|deserialize(kotlinx.serialization.encoding.Decoder){}[0]
+        final fun serialize(kotlinx.serialization.encoding/Encoder, at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo) // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo.$serializer.serialize|serialize(kotlinx.serialization.encoding.Encoder;at.asitplus.wallet.lib.ktor.openid.RefreshTokenInfo){}[0]
+    }
+
+    final object Companion { // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo.Companion|null[0]
+        final fun serializer(): kotlinx.serialization/KSerializer<at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo> // at.asitplus.wallet.lib.ktor.openid/RefreshTokenInfo.Companion.serializer|serializer(){}[0]
+    }
+}
+
+final class at.asitplus.wallet.lib.ktor.openid/RemoteOAuth2AuthorizationServerAdapter : at.asitplus.wallet.lib.oidvci/OAuth2AuthorizationServerAdapter { // at.asitplus.wallet.lib.ktor.openid/RemoteOAuth2AuthorizationServerAdapter|null[0]
+    constructor <init>(kotlin/String, io.ktor.client.engine/HttpClientEngine, io.ktor.client.plugins.cookies/CookiesStorage? = ..., kotlin/Function1<io.ktor.client/HttpClientConfig<*>, kotlin/Unit>? = ..., kotlinx.coroutines/CoroutineScope = ..., at.asitplus.wallet.lib.ktor.openid/OAuth2KtorClient = ..., at.asitplus.wallet.lib.oauth2/TokenVerificationService, at.asitplus.wallet.lib.oidvci/NonceService = ...) // at.asitplus.wallet.lib.ktor.openid/RemoteOAuth2AuthorizationServerAdapter.<init>|<init>(kotlin.String;io.ktor.client.engine.HttpClientEngine;io.ktor.client.plugins.cookies.CookiesStorage?;kotlin.Function1<io.ktor.client.HttpClientConfig<*>,kotlin.Unit>?;kotlinx.coroutines.CoroutineScope;at.asitplus.wallet.lib.ktor.openid.OAuth2KtorClient;at.asitplus.wallet.lib.oauth2.TokenVerificationService;at.asitplus.wallet.lib.oidvci.NonceService){}[0]
+
+    final val dpopNonceService // at.asitplus.wallet.lib.ktor.openid/RemoteOAuth2AuthorizationServerAdapter.dpopNonceService|{}dpopNonceService[0]
+        final fun <get-dpopNonceService>(): at.asitplus.wallet.lib.oidvci/NonceService // at.asitplus.wallet.lib.ktor.openid/RemoteOAuth2AuthorizationServerAdapter.dpopNonceService.<get-dpopNonceService>|<get-dpopNonceService>(){}[0]
+    final val internalTokenVerificationService // at.asitplus.wallet.lib.ktor.openid/RemoteOAuth2AuthorizationServerAdapter.internalTokenVerificationService|{}internalTokenVerificationService[0]
+        final fun <get-internalTokenVerificationService>(): at.asitplus.wallet.lib.oauth2/TokenVerificationService // at.asitplus.wallet.lib.ktor.openid/RemoteOAuth2AuthorizationServerAdapter.internalTokenVerificationService.<get-internalTokenVerificationService>|<get-internalTokenVerificationService>(){}[0]
+    final val publicContext // at.asitplus.wallet.lib.ktor.openid/RemoteOAuth2AuthorizationServerAdapter.publicContext|{}publicContext[0]
+        final fun <get-publicContext>(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/RemoteOAuth2AuthorizationServerAdapter.publicContext.<get-publicContext>|<get-publicContext>(){}[0]
+
+    final suspend fun getDpopNonce(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/RemoteOAuth2AuthorizationServerAdapter.getDpopNonce|getDpopNonce(){}[0]
+    final suspend fun getTokenInfo(kotlin/String, at.asitplus.wallet.lib.oauth2/RequestInfo?): at.asitplus/KmmResult<at.asitplus.wallet.lib.oidvci/TokenInfo> // at.asitplus.wallet.lib.ktor.openid/RemoteOAuth2AuthorizationServerAdapter.getTokenInfo|getTokenInfo(kotlin.String;at.asitplus.wallet.lib.oauth2.RequestInfo?){}[0]
+    final suspend fun getUserInfo(kotlin/String, at.asitplus.wallet.lib.oauth2/RequestInfo?): at.asitplus/KmmResult<kotlinx.serialization.json/JsonObject> // at.asitplus.wallet.lib.ktor.openid/RemoteOAuth2AuthorizationServerAdapter.getUserInfo|getUserInfo(kotlin.String;at.asitplus.wallet.lib.oauth2.RequestInfo?){}[0]
+    final suspend fun metadata(): at.asitplus.openid/OAuth2AuthorizationServerMetadata // at.asitplus.wallet.lib.ktor.openid/RemoteOAuth2AuthorizationServerAdapter.metadata|metadata(){}[0]
+    final suspend fun validateAccessToken(kotlin/String, at.asitplus.wallet.lib.oauth2/RequestInfo?): at.asitplus/KmmResult<kotlin/Boolean> // at.asitplus.wallet.lib.ktor.openid/RemoteOAuth2AuthorizationServerAdapter.validateAccessToken|validateAccessToken(kotlin.String;at.asitplus.wallet.lib.oauth2.RequestInfo?){}[0]
+}
+
+final class at.asitplus.wallet.lib.ktor.openid/TokenResponseWithDpopNonce { // at.asitplus.wallet.lib.ktor.openid/TokenResponseWithDpopNonce|null[0]
+    constructor <init>(at.asitplus.openid/TokenResponseParameters, kotlin/String?) // at.asitplus.wallet.lib.ktor.openid/TokenResponseWithDpopNonce.<init>|<init>(at.asitplus.openid.TokenResponseParameters;kotlin.String?){}[0]
+
+    final val dpopNonce // at.asitplus.wallet.lib.ktor.openid/TokenResponseWithDpopNonce.dpopNonce|{}dpopNonce[0]
+        final fun <get-dpopNonce>(): kotlin/String? // at.asitplus.wallet.lib.ktor.openid/TokenResponseWithDpopNonce.dpopNonce.<get-dpopNonce>|<get-dpopNonce>(){}[0]
+    final val params // at.asitplus.wallet.lib.ktor.openid/TokenResponseWithDpopNonce.params|{}params[0]
+        final fun <get-params>(): at.asitplus.openid/TokenResponseParameters // at.asitplus.wallet.lib.ktor.openid/TokenResponseWithDpopNonce.params.<get-params>|<get-params>(){}[0]
+
+    final fun component1(): at.asitplus.openid/TokenResponseParameters // at.asitplus.wallet.lib.ktor.openid/TokenResponseWithDpopNonce.component1|component1(){}[0]
+    final fun component2(): kotlin/String? // at.asitplus.wallet.lib.ktor.openid/TokenResponseWithDpopNonce.component2|component2(){}[0]
+    final fun copy(at.asitplus.openid/TokenResponseParameters = ..., kotlin/String? = ...): at.asitplus.wallet.lib.ktor.openid/TokenResponseWithDpopNonce // at.asitplus.wallet.lib.ktor.openid/TokenResponseWithDpopNonce.copy|copy(at.asitplus.openid.TokenResponseParameters;kotlin.String?){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // at.asitplus.wallet.lib.ktor.openid/TokenResponseWithDpopNonce.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // at.asitplus.wallet.lib.ktor.openid/TokenResponseWithDpopNonce.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/TokenResponseWithDpopNonce.toString|toString(){}[0]
+}
+
+sealed class <#A: kotlin/Any?> at.asitplus.wallet.lib.ktor.openid/IntermediateResult { // at.asitplus.wallet.lib.ktor.openid/IntermediateResult|null[0]
+    final class <#A1: kotlin/Any?> Failure : at.asitplus.wallet.lib.ktor.openid/IntermediateResult<#A1> { // at.asitplus.wallet.lib.ktor.openid/IntermediateResult.Failure|null[0]
+        constructor <init>(#A1) // at.asitplus.wallet.lib.ktor.openid/IntermediateResult.Failure.<init>|<init>(1:0){}[0]
+
+        final val result // at.asitplus.wallet.lib.ktor.openid/IntermediateResult.Failure.result|{}result[0]
+            final fun <get-result>(): #A1 // at.asitplus.wallet.lib.ktor.openid/IntermediateResult.Failure.result.<get-result>|<get-result>(){}[0]
+    }
+
+    final class <#A1: kotlin/Any?> Success : at.asitplus.wallet.lib.ktor.openid/IntermediateResult<#A1> { // at.asitplus.wallet.lib.ktor.openid/IntermediateResult.Success|null[0]
+        constructor <init>(io.ktor.client.statement/HttpResponse) // at.asitplus.wallet.lib.ktor.openid/IntermediateResult.Success.<init>|<init>(io.ktor.client.statement.HttpResponse){}[0]
+
+        final val httpResponse // at.asitplus.wallet.lib.ktor.openid/IntermediateResult.Success.httpResponse|{}httpResponse[0]
+            final fun <get-httpResponse>(): io.ktor.client.statement/HttpResponse // at.asitplus.wallet.lib.ktor.openid/IntermediateResult.Success.httpResponse.<get-httpResponse>|<get-httpResponse>(){}[0]
+    }
+}
+
+final val at.asitplus.wallet.lib.ktor.openid/DPoP // at.asitplus.wallet.lib.ktor.openid/DPoP|@io.ktor.http.HttpHeaders{}DPoP[0]
+    final fun (io.ktor.http/HttpHeaders).<get-DPoP>(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/DPoP.<get-DPoP>|<get-DPoP>@io.ktor.http.HttpHeaders(){}[0]
+final val at.asitplus.wallet.lib.ktor.openid/DPoPNonce // at.asitplus.wallet.lib.ktor.openid/DPoPNonce|@io.ktor.http.HttpHeaders{}DPoPNonce[0]
+    final fun (io.ktor.http/HttpHeaders).<get-DPoPNonce>(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/DPoPNonce.<get-DPoPNonce>|<get-DPoPNonce>@io.ktor.http.HttpHeaders(){}[0]
+final val at.asitplus.wallet.lib.ktor.openid/OAuthClientAttestation // at.asitplus.wallet.lib.ktor.openid/OAuthClientAttestation|@io.ktor.http.HttpHeaders{}OAuthClientAttestation[0]
+    final fun (io.ktor.http/HttpHeaders).<get-OAuthClientAttestation>(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/OAuthClientAttestation.<get-OAuthClientAttestation>|<get-OAuthClientAttestation>@io.ktor.http.HttpHeaders(){}[0]
+final val at.asitplus.wallet.lib.ktor.openid/OAuthClientAttestationPop // at.asitplus.wallet.lib.ktor.openid/OAuthClientAttestationPop|@io.ktor.http.HttpHeaders{}OAuthClientAttestationPop[0]
+    final fun (io.ktor.http/HttpHeaders).<get-OAuthClientAttestationPop>(): kotlin/String // at.asitplus.wallet.lib.ktor.openid/OAuthClientAttestationPop.<get-OAuthClientAttestationPop>|<get-OAuthClientAttestationPop>@io.ktor.http.HttpHeaders(){}[0]
+
+final fun (at.asitplus.wallet.lib.oidvci/OAuth2Error?).at.asitplus.wallet.lib.ktor.openid/dpopNonce(io.ktor.client.statement/HttpResponse): kotlin/String? // at.asitplus.wallet.lib.ktor.openid/dpopNonce|dpopNonce@at.asitplus.wallet.lib.oidvci.OAuth2Error?(io.ktor.client.statement.HttpResponse){}[0]
+final fun <#A: kotlin/Any?> (kotlinx.coroutines/CoroutineScope).at.asitplus.wallet.lib.ktor.openid/lazyDeferred(kotlin.coroutines/SuspendFunction1<kotlinx.coroutines/CoroutineScope, #A>): kotlin/Lazy<kotlinx.coroutines/Deferred<#A>> // at.asitplus.wallet.lib.ktor.openid/lazyDeferred|lazyDeferred@kotlinx.coroutines.CoroutineScope(kotlin.coroutines.SuspendFunction1<kotlinx.coroutines.CoroutineScope,0:0>){0§<kotlin.Any?>}[0]
+final suspend inline fun <#A: reified kotlin/Any?, #B: kotlin/Any?> (at.asitplus.wallet.lib.ktor.openid/IntermediateResult<#B>).at.asitplus.wallet.lib.ktor.openid/onSuccess(kotlin/Function2<#A, io.ktor.client.statement/HttpResponse, #B>): #B // at.asitplus.wallet.lib.ktor.openid/onSuccess|onSuccess@at.asitplus.wallet.lib.ktor.openid.IntermediateResult<0:1>(kotlin.Function2<0:0,io.ktor.client.statement.HttpResponse,0:1>){0§<kotlin.Any?>;1§<kotlin.Any?>}[0]
+final suspend inline fun <#A: reified kotlin/Any?> (io.ktor.client.statement/HttpResponse).at.asitplus.wallet.lib.ktor.openid/onFailure(kotlin/Function2<at.asitplus.wallet.lib.oidvci/OAuth2Error?, io.ktor.client.statement/HttpResponse, #A>): at.asitplus.wallet.lib.ktor.openid/IntermediateResult<#A> // at.asitplus.wallet.lib.ktor.openid/onFailure|onFailure@io.ktor.client.statement.HttpResponse(kotlin.Function2<at.asitplus.wallet.lib.oidvci.OAuth2Error?,io.ktor.client.statement.HttpResponse,0:0>){0§<kotlin.Any?>}[0]

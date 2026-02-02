@@ -28,7 +28,6 @@ kotlin {
 
     }
     sourceSets {
-
         commonMain {
             dependencies {
                 api(project(":vck-openid"))
@@ -39,7 +38,6 @@ kotlin {
                 commonImplementationDependencies()
             }
         }
-
         if (project.hasAndroidSdk()) {
             androidMain {
                 dependencies {
@@ -47,7 +45,6 @@ kotlin {
                 }
             }
         }
-
         commonTest {
             dependencies {
                 implementation("at.asitplus.wallet:eupidcredential:${VcLibVersions.eupidcredential}")
@@ -56,12 +53,15 @@ kotlin {
                 implementation(kotest("assertions-core"))
             }
         }
-
         iosTest {
             dependencies {
                 implementation(ktor("client-darwin"))
             }
         }
+    }
+    @OptIn(org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation::class)
+    abiValidation {
+        enabled.set(true)
     }
 }
 

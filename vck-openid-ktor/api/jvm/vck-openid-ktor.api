@@ -1,0 +1,296 @@
+public final class at/asitplus/wallet/lib/ktor/openid/CredentialIdentifierInfo {
+	public static final field Companion Lat/asitplus/wallet/lib/ktor/openid/CredentialIdentifierInfo$Companion;
+	public fun <init> (Lat/asitplus/openid/IssuerMetadata;Ljava/lang/String;Lat/asitplus/openid/SupportedCredentialFormat;)V
+	public final fun component1 ()Lat/asitplus/openid/IssuerMetadata;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Lat/asitplus/openid/SupportedCredentialFormat;
+	public final fun copy (Lat/asitplus/openid/IssuerMetadata;Ljava/lang/String;Lat/asitplus/openid/SupportedCredentialFormat;)Lat/asitplus/wallet/lib/ktor/openid/CredentialIdentifierInfo;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/ktor/openid/CredentialIdentifierInfo;Lat/asitplus/openid/IssuerMetadata;Ljava/lang/String;Lat/asitplus/openid/SupportedCredentialFormat;ILjava/lang/Object;)Lat/asitplus/wallet/lib/ktor/openid/CredentialIdentifierInfo;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCredentialIdentifier ()Ljava/lang/String;
+	public final fun getIssuerMetadata ()Lat/asitplus/openid/IssuerMetadata;
+	public final fun getSupportedCredentialFormat ()Lat/asitplus/openid/SupportedCredentialFormat;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class at/asitplus/wallet/lib/ktor/openid/CredentialIdentifierInfo$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/ktor/openid/CredentialIdentifierInfo$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lat/asitplus/wallet/lib/ktor/openid/CredentialIdentifierInfo;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lat/asitplus/wallet/lib/ktor/openid/CredentialIdentifierInfo;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/ktor/openid/CredentialIdentifierInfo$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public abstract interface class at/asitplus/wallet/lib/ktor/openid/CredentialIssuanceResult {
+}
+
+public final class at/asitplus/wallet/lib/ktor/openid/CredentialIssuanceResult$OpenUrlForAuthnRequest : at/asitplus/wallet/lib/ktor/openid/CredentialIssuanceResult {
+	public fun <init> (Ljava/lang/String;Lat/asitplus/wallet/lib/ktor/openid/ProvisioningContext;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Lat/asitplus/wallet/lib/ktor/openid/ProvisioningContext;
+	public final fun copy (Ljava/lang/String;Lat/asitplus/wallet/lib/ktor/openid/ProvisioningContext;)Lat/asitplus/wallet/lib/ktor/openid/CredentialIssuanceResult$OpenUrlForAuthnRequest;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/ktor/openid/CredentialIssuanceResult$OpenUrlForAuthnRequest;Ljava/lang/String;Lat/asitplus/wallet/lib/ktor/openid/ProvisioningContext;ILjava/lang/Object;)Lat/asitplus/wallet/lib/ktor/openid/CredentialIssuanceResult$OpenUrlForAuthnRequest;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getContext ()Lat/asitplus/wallet/lib/ktor/openid/ProvisioningContext;
+	public final fun getUrl ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/ktor/openid/CredentialIssuanceResult$Success : at/asitplus/wallet/lib/ktor/openid/CredentialIssuanceResult {
+	public fun <init> (Ljava/util/Collection;Lat/asitplus/wallet/lib/ktor/openid/RefreshTokenInfo;)V
+	public synthetic fun <init> (Ljava/util/Collection;Lat/asitplus/wallet/lib/ktor/openid/RefreshTokenInfo;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/util/Collection;
+	public final fun component2 ()Lat/asitplus/wallet/lib/ktor/openid/RefreshTokenInfo;
+	public final fun copy (Ljava/util/Collection;Lat/asitplus/wallet/lib/ktor/openid/RefreshTokenInfo;)Lat/asitplus/wallet/lib/ktor/openid/CredentialIssuanceResult$Success;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/ktor/openid/CredentialIssuanceResult$Success;Ljava/util/Collection;Lat/asitplus/wallet/lib/ktor/openid/RefreshTokenInfo;ILjava/lang/Object;)Lat/asitplus/wallet/lib/ktor/openid/CredentialIssuanceResult$Success;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCredentials ()Ljava/util/Collection;
+	public final fun getRefreshToken ()Lat/asitplus/wallet/lib/ktor/openid/RefreshTokenInfo;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/ktor/openid/ExtensionsKt {
+	public static final fun dpopNonce (Lat/asitplus/wallet/lib/oidvci/OAuth2Error;Lio/ktor/client/statement/HttpResponse;)Ljava/lang/String;
+	public static final fun lazyDeferred (Lkotlinx/coroutines/CoroutineScope;Lkotlin/jvm/functions/Function2;)Lkotlin/Lazy;
+}
+
+public abstract class at/asitplus/wallet/lib/ktor/openid/IntermediateResult {
+}
+
+public final class at/asitplus/wallet/lib/ktor/openid/IntermediateResult$Failure : at/asitplus/wallet/lib/ktor/openid/IntermediateResult {
+	public fun <init> (Ljava/lang/Object;)V
+	public final fun getResult ()Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/ktor/openid/IntermediateResult$Success : at/asitplus/wallet/lib/ktor/openid/IntermediateResult {
+	public fun <init> (Lio/ktor/client/statement/HttpResponse;)V
+	public final fun getHttpResponse ()Lio/ktor/client/statement/HttpResponse;
+}
+
+public final class at/asitplus/wallet/lib/ktor/openid/OAuth2KtorClient {
+	public fun <init> (Lio/ktor/client/engine/HttpClientEngine;Lio/ktor/client/plugins/cookies/CookiesStorage;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lat/asitplus/wallet/lib/jws/SignJwtFun;Lat/asitplus/wallet/lib/jws/SignJwtFun;Lat/asitplus/signum/indispensable/josef/JwsAlgorithm;Lat/asitplus/wallet/lib/oauth2/OAuth2Client;Lat/asitplus/wallet/lib/agent/RandomSource;)V
+	public synthetic fun <init> (Lio/ktor/client/engine/HttpClientEngine;Lio/ktor/client/plugins/cookies/CookiesStorage;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lat/asitplus/wallet/lib/jws/SignJwtFun;Lat/asitplus/wallet/lib/jws/SignJwtFun;Lat/asitplus/signum/indispensable/josef/JwsAlgorithm;Lat/asitplus/wallet/lib/oauth2/OAuth2Client;Lat/asitplus/wallet/lib/agent/RandomSource;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun applyAuthnForToken (Lat/asitplus/openid/OAuth2AuthorizationServerMetadata;Ljava/lang/String;Ljava/lang/String;Lio/ktor/http/HttpMethod;ZLjava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun applyAuthnForToken$default (Lat/asitplus/wallet/lib/ktor/openid/OAuth2KtorClient;Lat/asitplus/openid/OAuth2AuthorizationServerMetadata;Ljava/lang/String;Ljava/lang/String;Lio/ktor/http/HttpMethod;ZLjava/lang/String;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun applyToken (Lat/asitplus/openid/TokenResponseParameters;Ljava/lang/String;Lio/ktor/http/HttpMethod;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun applyToken$default (Lat/asitplus/wallet/lib/ktor/openid/OAuth2KtorClient;Lat/asitplus/openid/TokenResponseParameters;Ljava/lang/String;Lio/ktor/http/HttpMethod;Ljava/lang/String;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun getClient ()Lio/ktor/client/HttpClient;
+	public final fun getOAuth2Client ()Lat/asitplus/wallet/lib/oauth2/OAuth2Client;
+	public final fun requestTokenWithAuthCode (Lat/asitplus/openid/OAuth2AuthorizationServerMetadata;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/Set;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun requestTokenWithAuthCode$default (Lat/asitplus/wallet/lib/ktor/openid/OAuth2KtorClient;Lat/asitplus/openid/OAuth2AuthorizationServerMetadata;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/Set;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun requestTokenWithPreAuthorizedCode (Lat/asitplus/openid/OAuth2AuthorizationServerMetadata;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/Set;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun requestTokenWithRefreshToken (Lat/asitplus/openid/OAuth2AuthorizationServerMetadata;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/Set;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun requestTokenWithTokenExchange (Lat/asitplus/openid/OAuth2AuthorizationServerMetadata;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun startAuthorization (Lat/asitplus/openid/OAuth2AuthorizationServerMetadata;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/Set;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun startAuthorization$default (Lat/asitplus/wallet/lib/ktor/openid/OAuth2KtorClient;Lat/asitplus/openid/OAuth2AuthorizationServerMetadata;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/Set;Ljava/lang/String;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/ktor/openid/OAuth2KtorClient$OpenUrlForAuthnRequest {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;)Lat/asitplus/wallet/lib/ktor/openid/OAuth2KtorClient$OpenUrlForAuthnRequest;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/ktor/openid/OAuth2KtorClient$OpenUrlForAuthnRequest;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lat/asitplus/wallet/lib/ktor/openid/OAuth2KtorClient$OpenUrlForAuthnRequest;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getState ()Ljava/lang/String;
+	public final fun getUrl ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/ktor/openid/OAuth2KtorClientKt {
+	public static final fun getDPoP (Lio/ktor/http/HttpHeaders;)Ljava/lang/String;
+	public static final fun getDPoPNonce (Lio/ktor/http/HttpHeaders;)Ljava/lang/String;
+	public static final fun getOAuthClientAttestation (Lio/ktor/http/HttpHeaders;)Ljava/lang/String;
+	public static final fun getOAuthClientAttestationPop (Lio/ktor/http/HttpHeaders;)Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/ktor/openid/OpenId4VciClient {
+	public fun <init> (Lio/ktor/client/engine/HttpClientEngine;Lio/ktor/client/plugins/cookies/CookiesStorage;Lkotlin/jvm/functions/Function1;Lat/asitplus/wallet/lib/oidvci/WalletService;Lat/asitplus/wallet/lib/oauth2/OAuth2Client;Lat/asitplus/wallet/lib/ktor/openid/OAuth2KtorClient;)V
+	public synthetic fun <init> (Lio/ktor/client/engine/HttpClientEngine;Lio/ktor/client/plugins/cookies/CookiesStorage;Lkotlin/jvm/functions/Function1;Lat/asitplus/wallet/lib/oidvci/WalletService;Lat/asitplus/wallet/lib/oauth2/OAuth2Client;Lat/asitplus/wallet/lib/ktor/openid/OAuth2KtorClient;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun loadCredentialMetadata (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun loadCredentialWithOfferReturningResult (Lat/asitplus/openid/CredentialOffer;Lat/asitplus/wallet/lib/ktor/openid/CredentialIdentifierInfo;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun loadCredentialWithOfferReturningResult$default (Lat/asitplus/wallet/lib/ktor/openid/OpenId4VciClient;Lat/asitplus/openid/CredentialOffer;Lat/asitplus/wallet/lib/ktor/openid/CredentialIdentifierInfo;Ljava/lang/String;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun refreshCredentialReturningResult (Lat/asitplus/wallet/lib/ktor/openid/RefreshTokenInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun resumeWithAuthCode (Ljava/lang/String;Lat/asitplus/wallet/lib/ktor/openid/ProvisioningContext;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun startProvisioningWithAuthRequestReturningResult (Ljava/lang/String;Lat/asitplus/wallet/lib/ktor/openid/CredentialIdentifierInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/ktor/openid/OpenId4VpSuccess {
+	public static final field Companion Lat/asitplus/wallet/lib/ktor/openid/OpenId4VpSuccess$Companion;
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lat/asitplus/wallet/lib/ktor/openid/OpenId4VpSuccess;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/ktor/openid/OpenId4VpSuccess;Ljava/lang/String;ILjava/lang/Object;)Lat/asitplus/wallet/lib/ktor/openid/OpenId4VpSuccess;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getRedirectUri ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class at/asitplus/wallet/lib/ktor/openid/OpenId4VpSuccess$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/ktor/openid/OpenId4VpSuccess$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lat/asitplus/wallet/lib/ktor/openid/OpenId4VpSuccess;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lat/asitplus/wallet/lib/ktor/openid/OpenId4VpSuccess;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/ktor/openid/OpenId4VpSuccess$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/ktor/openid/OpenId4VpWallet {
+	public fun <init> (Lio/ktor/client/engine/HttpClientEngine;Lkotlin/jvm/functions/Function1;Lat/asitplus/wallet/lib/agent/KeyMaterial;Lat/asitplus/wallet/lib/agent/HolderAgent;Lat/asitplus/wallet/lib/agent/RandomSource;)V
+	public synthetic fun <init> (Lio/ktor/client/engine/HttpClientEngine;Lkotlin/jvm/functions/Function1;Lat/asitplus/wallet/lib/agent/KeyMaterial;Lat/asitplus/wallet/lib/agent/HolderAgent;Lat/asitplus/wallet/lib/agent/RandomSource;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun finalizeAuthorizationResponse (Lat/asitplus/wallet/lib/openid/AuthorizationResponsePreparationState;Lat/asitplus/wallet/lib/data/CredentialPresentation;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun finalizeAuthorizationResponse$default (Lat/asitplus/wallet/lib/ktor/openid/OpenId4VpWallet;Lat/asitplus/wallet/lib/openid/AuthorizationResponsePreparationState;Lat/asitplus/wallet/lib/data/CredentialPresentation;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun getMatchingCredentials-gIAlu-s (Lat/asitplus/wallet/lib/openid/AuthorizationResponsePreparationState;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun getOpenId4VpHolder ()Lat/asitplus/wallet/lib/openid/OpenId4VpHolder;
+	public final fun sendAuthnErrorResponse (Ljava/lang/Throwable;Lat/asitplus/openid/RequestParametersFrom;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun startAuthorizationResponsePreparation (Lat/asitplus/openid/RequestParametersFrom;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun startAuthorizationResponsePreparation (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun startPresentationReturningUrl (Lat/asitplus/openid/RequestParametersFrom;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/ktor/openid/OpenId4VpWallet$AuthenticationForward : at/asitplus/wallet/lib/ktor/openid/OpenId4VpWallet$AuthenticationResult {
+	public fun <init> (Lat/asitplus/wallet/lib/openid/AuthenticationResponseResult$DcApi;)V
+	public final fun component1 ()Lat/asitplus/wallet/lib/openid/AuthenticationResponseResult$DcApi;
+	public final fun copy (Lat/asitplus/wallet/lib/openid/AuthenticationResponseResult$DcApi;)Lat/asitplus/wallet/lib/ktor/openid/OpenId4VpWallet$AuthenticationForward;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/ktor/openid/OpenId4VpWallet$AuthenticationForward;Lat/asitplus/wallet/lib/openid/AuthenticationResponseResult$DcApi;ILjava/lang/Object;)Lat/asitplus/wallet/lib/ktor/openid/OpenId4VpWallet$AuthenticationForward;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAuthenticationResponseResult ()Lat/asitplus/wallet/lib/openid/AuthenticationResponseResult$DcApi;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class at/asitplus/wallet/lib/ktor/openid/OpenId4VpWallet$AuthenticationResult {
+}
+
+public final class at/asitplus/wallet/lib/ktor/openid/OpenId4VpWallet$AuthenticationSuccess : at/asitplus/wallet/lib/ktor/openid/OpenId4VpWallet$AuthenticationResult {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lat/asitplus/wallet/lib/ktor/openid/OpenId4VpWallet$AuthenticationSuccess;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/ktor/openid/OpenId4VpWallet$AuthenticationSuccess;Ljava/lang/String;ILjava/lang/Object;)Lat/asitplus/wallet/lib/ktor/openid/OpenId4VpWallet$AuthenticationSuccess;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getRedirectUri ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/ktor/openid/OpenId4VpWallet$FormDataContentPlain : io/ktor/http/content/OutgoingContent$ByteArrayContent {
+	public fun <init> (Lio/ktor/http/Parameters;)V
+	public fun bytes ()[B
+	public fun getContentLength ()Ljava/lang/Long;
+	public fun getContentType ()Lio/ktor/http/ContentType;
+}
+
+public final class at/asitplus/wallet/lib/ktor/openid/ProvisioningContext {
+	public static final field Companion Lat/asitplus/wallet/lib/ktor/openid/ProvisioningContext$Companion;
+	public fun <init> (Ljava/lang/String;Lat/asitplus/wallet/lib/ktor/openid/CredentialIdentifierInfo;Lat/asitplus/openid/OAuth2AuthorizationServerMetadata;Lat/asitplus/openid/IssuerMetadata;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Lat/asitplus/wallet/lib/ktor/openid/CredentialIdentifierInfo;
+	public final fun component3 ()Lat/asitplus/openid/OAuth2AuthorizationServerMetadata;
+	public final fun component4 ()Lat/asitplus/openid/IssuerMetadata;
+	public final fun copy (Ljava/lang/String;Lat/asitplus/wallet/lib/ktor/openid/CredentialIdentifierInfo;Lat/asitplus/openid/OAuth2AuthorizationServerMetadata;Lat/asitplus/openid/IssuerMetadata;)Lat/asitplus/wallet/lib/ktor/openid/ProvisioningContext;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/ktor/openid/ProvisioningContext;Ljava/lang/String;Lat/asitplus/wallet/lib/ktor/openid/CredentialIdentifierInfo;Lat/asitplus/openid/OAuth2AuthorizationServerMetadata;Lat/asitplus/openid/IssuerMetadata;ILjava/lang/Object;)Lat/asitplus/wallet/lib/ktor/openid/ProvisioningContext;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCredential ()Lat/asitplus/wallet/lib/ktor/openid/CredentialIdentifierInfo;
+	public final fun getIssuerMetadata ()Lat/asitplus/openid/IssuerMetadata;
+	public final fun getOauthMetadata ()Lat/asitplus/openid/OAuth2AuthorizationServerMetadata;
+	public final fun getState ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class at/asitplus/wallet/lib/ktor/openid/ProvisioningContext$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/ktor/openid/ProvisioningContext$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lat/asitplus/wallet/lib/ktor/openid/ProvisioningContext;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lat/asitplus/wallet/lib/ktor/openid/ProvisioningContext;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/ktor/openid/ProvisioningContext$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/ktor/openid/RefreshTokenInfo {
+	public static final field Companion Lat/asitplus/wallet/lib/ktor/openid/RefreshTokenInfo$Companion;
+	public fun <init> (Ljava/lang/String;Lat/asitplus/openid/IssuerMetadata;Lat/asitplus/openid/OAuth2AuthorizationServerMetadata;Lat/asitplus/openid/SupportedCredentialFormat;Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Lat/asitplus/openid/IssuerMetadata;
+	public final fun component3 ()Lat/asitplus/openid/OAuth2AuthorizationServerMetadata;
+	public final fun component4 ()Lat/asitplus/openid/SupportedCredentialFormat;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Lat/asitplus/openid/IssuerMetadata;Lat/asitplus/openid/OAuth2AuthorizationServerMetadata;Lat/asitplus/openid/SupportedCredentialFormat;Ljava/lang/String;)Lat/asitplus/wallet/lib/ktor/openid/RefreshTokenInfo;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/ktor/openid/RefreshTokenInfo;Ljava/lang/String;Lat/asitplus/openid/IssuerMetadata;Lat/asitplus/openid/OAuth2AuthorizationServerMetadata;Lat/asitplus/openid/SupportedCredentialFormat;Ljava/lang/String;ILjava/lang/Object;)Lat/asitplus/wallet/lib/ktor/openid/RefreshTokenInfo;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCredentialFormat ()Lat/asitplus/openid/SupportedCredentialFormat;
+	public final fun getCredentialIdentifier ()Ljava/lang/String;
+	public final fun getIssuerMetadata ()Lat/asitplus/openid/IssuerMetadata;
+	public final fun getOauthMetadata ()Lat/asitplus/openid/OAuth2AuthorizationServerMetadata;
+	public final fun getRefreshToken ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class at/asitplus/wallet/lib/ktor/openid/RefreshTokenInfo$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/ktor/openid/RefreshTokenInfo$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lat/asitplus/wallet/lib/ktor/openid/RefreshTokenInfo;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lat/asitplus/wallet/lib/ktor/openid/RefreshTokenInfo;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/ktor/openid/RefreshTokenInfo$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/ktor/openid/RemoteOAuth2AuthorizationServerAdapter : at/asitplus/wallet/lib/oidvci/OAuth2AuthorizationServerAdapter {
+	public fun <init> (Ljava/lang/String;Lio/ktor/client/engine/HttpClientEngine;Lio/ktor/client/plugins/cookies/CookiesStorage;Lkotlin/jvm/functions/Function1;Lkotlinx/coroutines/CoroutineScope;Lat/asitplus/wallet/lib/ktor/openid/OAuth2KtorClient;Lat/asitplus/wallet/lib/oauth2/TokenVerificationService;Lat/asitplus/wallet/lib/oidvci/NonceService;)V
+	public synthetic fun <init> (Ljava/lang/String;Lio/ktor/client/engine/HttpClientEngine;Lio/ktor/client/plugins/cookies/CookiesStorage;Lkotlin/jvm/functions/Function1;Lkotlinx/coroutines/CoroutineScope;Lat/asitplus/wallet/lib/ktor/openid/OAuth2KtorClient;Lat/asitplus/wallet/lib/oauth2/TokenVerificationService;Lat/asitplus/wallet/lib/oidvci/NonceService;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun getDpopNonce (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun getDpopNonceService ()Lat/asitplus/wallet/lib/oidvci/NonceService;
+	public final fun getInternalTokenVerificationService ()Lat/asitplus/wallet/lib/oauth2/TokenVerificationService;
+	public fun getPublicContext ()Ljava/lang/String;
+	public fun getTokenInfo (Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun getUserInfo (Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun metadata (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun validateAccessToken (Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/ktor/openid/TokenResponseWithDpopNonce {
+	public fun <init> (Lat/asitplus/openid/TokenResponseParameters;Ljava/lang/String;)V
+	public final fun component1 ()Lat/asitplus/openid/TokenResponseParameters;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun copy (Lat/asitplus/openid/TokenResponseParameters;Ljava/lang/String;)Lat/asitplus/wallet/lib/ktor/openid/TokenResponseWithDpopNonce;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/ktor/openid/TokenResponseWithDpopNonce;Lat/asitplus/openid/TokenResponseParameters;Ljava/lang/String;ILjava/lang/Object;)Lat/asitplus/wallet/lib/ktor/openid/TokenResponseWithDpopNonce;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getDpopNonce ()Ljava/lang/String;
+	public final fun getParams ()Lat/asitplus/openid/TokenResponseParameters;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+

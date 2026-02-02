@@ -25,7 +25,6 @@ kotlin {
 
     }
     sourceSets {
-
         commonMain {
             dependencies {
                 api(project(":vck"))
@@ -33,20 +32,22 @@ kotlin {
                 commonImplementationDependencies()
             }
         }
-
         commonTest {
             dependencies {
                 implementation("at.asitplus.wallet:eupidcredential:${VcLibVersions.eupidcredential}")
                 implementation("at.asitplus.wallet:mobiledrivinglicence:${VcLibVersions.mdl}")
             }
         }
-
         jvmTest {
             dependencies {
                 implementation("at.asitplus.signum:indispensable-josef:${VcLibVersions.signum}")
                 implementation("org.json:json:${VcLibVersions.Jvm.json}")
             }
         }
+    }
+    @OptIn(org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation::class)
+    abiValidation {
+        enabled.set(true)
     }
 }
 

@@ -42,6 +42,10 @@ kotlin {
             }
         }
     }
+    @OptIn(org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation::class)
+    abiValidation {
+        enabled.set(true)
+    }
 }
 if ("true" != disableAppleTargets) exportXCFramework(
     name = "VckKmm",

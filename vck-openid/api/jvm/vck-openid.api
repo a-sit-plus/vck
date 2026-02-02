@@ -1,0 +1,1840 @@
+public final class at/asitplus/wallet/lib/RemoteResourceRetrieverInput {
+	public fun <init> (Ljava/lang/String;Lio/ktor/http/HttpMethod;Ljava/util/Map;Lat/asitplus/openid/RequestObjectParameters;)V
+	public synthetic fun <init> (Ljava/lang/String;Lio/ktor/http/HttpMethod;Ljava/util/Map;Lat/asitplus/openid/RequestObjectParameters;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Lio/ktor/http/HttpMethod;
+	public final fun component3 ()Ljava/util/Map;
+	public final fun component4 ()Lat/asitplus/openid/RequestObjectParameters;
+	public final fun copy (Ljava/lang/String;Lio/ktor/http/HttpMethod;Ljava/util/Map;Lat/asitplus/openid/RequestObjectParameters;)Lat/asitplus/wallet/lib/RemoteResourceRetrieverInput;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/RemoteResourceRetrieverInput;Ljava/lang/String;Lio/ktor/http/HttpMethod;Ljava/util/Map;Lat/asitplus/openid/RequestObjectParameters;ILjava/lang/Object;)Lat/asitplus/wallet/lib/RemoteResourceRetrieverInput;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getHeaders ()Ljava/util/Map;
+	public final fun getMethod ()Lio/ktor/http/HttpMethod;
+	public final fun getRequestObjectParameters ()Lat/asitplus/openid/RequestObjectParameters;
+	public final fun getUrl ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class at/asitplus/wallet/lib/oauth2/AuthorizationService {
+	public abstract fun authorize (Lat/asitplus/openid/RequestParameters;Lat/asitplus/wallet/lib/oidvci/OAuth2LoadUserFun;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun par (Lat/asitplus/openid/RequestParameters;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun par (Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun par$default (Lat/asitplus/wallet/lib/oauth2/AuthorizationService;Lat/asitplus/openid/RequestParameters;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public static synthetic fun par$default (Lat/asitplus/wallet/lib/oauth2/AuthorizationService;Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public abstract fun token (Lat/asitplus/openid/TokenRequestParameters;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun token$default (Lat/asitplus/wallet/lib/oauth2/AuthorizationService;Lat/asitplus/openid/TokenRequestParameters;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public abstract fun tokenIntrospection (Lat/asitplus/openid/TokenIntrospectionRequest;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun tokenIntrospection$default (Lat/asitplus/wallet/lib/oauth2/AuthorizationService;Lat/asitplus/openid/TokenIntrospectionRequest;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public abstract fun userInfo (Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun userInfo$default (Lat/asitplus/wallet/lib/oauth2/AuthorizationService;Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/oauth2/AuthorizationService$DefaultImpls {
+	public static synthetic fun par$default (Lat/asitplus/wallet/lib/oauth2/AuthorizationService;Lat/asitplus/openid/RequestParameters;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public static synthetic fun par$default (Lat/asitplus/wallet/lib/oauth2/AuthorizationService;Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public static synthetic fun token$default (Lat/asitplus/wallet/lib/oauth2/AuthorizationService;Lat/asitplus/openid/TokenRequestParameters;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public static synthetic fun tokenIntrospection$default (Lat/asitplus/wallet/lib/oauth2/AuthorizationService;Lat/asitplus/openid/TokenIntrospectionRequest;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public static synthetic fun userInfo$default (Lat/asitplus/wallet/lib/oauth2/AuthorizationService;Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+}
+
+public abstract interface class at/asitplus/wallet/lib/oauth2/AuthorizationServiceStrategy {
+	public abstract fun allCredentialIdentifier ()Ljava/util/Collection;
+	public abstract fun filterAuthorizationDetailsForTokenResponse (Ljava/util/Collection;)Ljava/util/Set;
+	public abstract fun filterScope (Ljava/lang/String;)Ljava/lang/String;
+	public abstract fun matchAndFilterAuthorizationDetailsForTokenResponse (Ljava/util/Collection;Ljava/util/Set;)Ljava/util/Set;
+	public abstract fun validAuthorizationDetails (Ljava/lang/String;)Ljava/util/Collection;
+	public abstract fun validScopes ()Ljava/lang/String;
+	public abstract fun validateAuthorizationDetails (Ljava/util/Collection;)V
+}
+
+public final class at/asitplus/wallet/lib/oauth2/BearerTokenGenerationService : at/asitplus/wallet/lib/oauth2/TokenGenerationService {
+	public fun <init> ()V
+	public fun <init> (Lat/asitplus/wallet/lib/oidvci/NonceService;Lat/asitplus/wallet/lib/oidvci/MapStore;)V
+	public synthetic fun <init> (Lat/asitplus/wallet/lib/oidvci/NonceService;Lat/asitplus/wallet/lib/oidvci/MapStore;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun buildToken (Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lat/asitplus/openid/OidcUserInfoExtended;Ljava/util/Set;Ljava/lang/String;Lat/asitplus/signum/indispensable/josef/JsonWebKey;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun dpopNonce (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun removeAccessToken (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun verifyAccessToken (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/oauth2/BearerTokenService : at/asitplus/wallet/lib/oauth2/TokenService {
+	public fun <init> (Lat/asitplus/wallet/lib/oauth2/BearerTokenGenerationService;Lat/asitplus/wallet/lib/oauth2/BearerTokenVerificationService;Ljava/util/Set;Z)V
+	public fun dpopNonce (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun getDpopSigningAlgValuesSupportedStrings ()Ljava/util/Set;
+	public fun getGeneration ()Lat/asitplus/wallet/lib/oauth2/BearerTokenGenerationService;
+	public synthetic fun getGeneration ()Lat/asitplus/wallet/lib/oauth2/TokenGenerationService;
+	public fun getSupportsRefreshTokens ()Z
+	public fun getVerification ()Lat/asitplus/wallet/lib/oauth2/BearerTokenVerificationService;
+	public synthetic fun getVerification ()Lat/asitplus/wallet/lib/oauth2/TokenVerificationService;
+	public fun readUserInfo (Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun tokenExchange (Lat/asitplus/openid/TokenRequestParameters;Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun validateTokenForTokenExchange (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/oauth2/BearerTokenVerificationService : at/asitplus/wallet/lib/oauth2/TokenVerificationService {
+	public fun <init> (Lat/asitplus/wallet/lib/oauth2/BearerTokenGenerationService;)V
+	public fun extractValidatedClientKey (Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun getTokenInfo (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun validateAccessToken (Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lat/asitplus/wallet/lib/oidvci/NonceService;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun validateRefreshToken (Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lat/asitplus/signum/indispensable/josef/JsonWebKey;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/oauth2/ClientAuthRequest {
+	public fun <init> (Ljava/lang/String;Lat/asitplus/openid/OidcUserInfoExtended;Ljava/lang/String;Ljava/util/Collection;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Lat/asitplus/openid/OidcUserInfoExtended;Ljava/lang/String;Ljava/util/Collection;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Lat/asitplus/openid/OidcUserInfoExtended;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/util/Collection;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Lat/asitplus/openid/OidcUserInfoExtended;Ljava/lang/String;Ljava/util/Collection;Ljava/lang/String;)Lat/asitplus/wallet/lib/oauth2/ClientAuthRequest;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/oauth2/ClientAuthRequest;Ljava/lang/String;Lat/asitplus/openid/OidcUserInfoExtended;Ljava/lang/String;Ljava/util/Collection;Ljava/lang/String;ILjava/lang/Object;)Lat/asitplus/wallet/lib/oauth2/ClientAuthRequest;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAuthnDetails ()Ljava/util/Collection;
+	public final fun getCodeChallenge ()Ljava/lang/String;
+	public final fun getIssuedCode ()Ljava/lang/String;
+	public final fun getScope ()Ljava/lang/String;
+	public final fun getUserInfo ()Lat/asitplus/openid/OidcUserInfoExtended;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/oauth2/ClientAuthenticationService {
+	public fun <init> ()V
+	public fun <init> (ZLat/asitplus/wallet/lib/jws/VerifyJwsObjectFun;Lat/asitplus/wallet/lib/jws/VerifyJwsSignatureWithCnfFun;Lkotlin/jvm/functions/Function2;)V
+	public synthetic fun <init> (ZLat/asitplus/wallet/lib/jws/VerifyJwsObjectFun;Lat/asitplus/wallet/lib/jws/VerifyJwsSignatureWithCnfFun;Lkotlin/jvm/functions/Function2;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun authenticateClient (Lat/asitplus/wallet/lib/oauth2/RequestInfo;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/oauth2/JwtTokenGenerationService : at/asitplus/wallet/lib/oauth2/TokenGenerationService {
+	public fun <init> ()V
+	public fun <init> (Lat/asitplus/wallet/lib/oidvci/NonceService;Lat/asitplus/wallet/lib/oidvci/NonceService;Ljava/lang/String;Lat/asitplus/wallet/lib/agent/KeyMaterial;Lat/asitplus/wallet/lib/jws/SignJwtFun;Lkotlin/time/Clock;ZLat/asitplus/wallet/lib/oidvci/MapStore;)V
+	public synthetic fun <init> (Lat/asitplus/wallet/lib/oidvci/NonceService;Lat/asitplus/wallet/lib/oidvci/NonceService;Ljava/lang/String;Lat/asitplus/wallet/lib/agent/KeyMaterial;Lat/asitplus/wallet/lib/jws/SignJwtFun;Lkotlin/time/Clock;ZLat/asitplus/wallet/lib/oidvci/MapStore;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun buildToken (Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lat/asitplus/openid/OidcUserInfoExtended;Ljava/util/Set;Ljava/lang/String;Lat/asitplus/signum/indispensable/josef/JsonWebKey;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun dpopNonce (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun getUserInfoExtended (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/oauth2/JwtTokenService : at/asitplus/wallet/lib/oauth2/TokenService {
+	public fun <init> (Lat/asitplus/wallet/lib/oauth2/JwtTokenGenerationService;Lat/asitplus/wallet/lib/oauth2/JwtTokenVerificationService;Ljava/util/Set;Z)V
+	public fun dpopNonce (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun getDpopSigningAlgValuesSupportedStrings ()Ljava/util/Set;
+	public fun getGeneration ()Lat/asitplus/wallet/lib/oauth2/JwtTokenGenerationService;
+	public synthetic fun getGeneration ()Lat/asitplus/wallet/lib/oauth2/TokenGenerationService;
+	public fun getSupportsRefreshTokens ()Z
+	public fun getVerification ()Lat/asitplus/wallet/lib/oauth2/JwtTokenVerificationService;
+	public synthetic fun getVerification ()Lat/asitplus/wallet/lib/oauth2/TokenVerificationService;
+	public fun readUserInfo (Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun tokenExchange (Lat/asitplus/openid/TokenRequestParameters;Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun validateTokenForTokenExchange (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/oauth2/JwtTokenVerificationService : at/asitplus/wallet/lib/oauth2/TokenVerificationService {
+	public synthetic fun <init> (Lat/asitplus/wallet/lib/oidvci/NonceService;Lat/asitplus/wallet/lib/oidvci/NonceService;Lat/asitplus/signum/indispensable/josef/JsonWebKey;Lat/asitplus/wallet/lib/jws/VerifyJwsObjectFun;Lat/asitplus/wallet/lib/jws/VerifyJwsSignatureWithKeyFun;Lkotlin/time/Clock;JILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Lat/asitplus/wallet/lib/oidvci/NonceService;Lat/asitplus/wallet/lib/oidvci/NonceService;Lat/asitplus/signum/indispensable/josef/JsonWebKey;Lat/asitplus/wallet/lib/jws/VerifyJwsObjectFun;Lat/asitplus/wallet/lib/jws/VerifyJwsSignatureWithKeyFun;Lkotlin/time/Clock;JLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun extractValidatedClientKey (Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun getTokenInfo (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun validateAccessToken (Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lat/asitplus/wallet/lib/oidvci/NonceService;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun validateRefreshToken (Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lat/asitplus/signum/indispensable/josef/JsonWebKey;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/oauth2/OAuth2Client {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lat/asitplus/wallet/lib/oidvci/MapStore;Lat/asitplus/wallet/lib/jws/SignJwtFun;Lat/asitplus/wallet/lib/agent/RandomSource;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lat/asitplus/wallet/lib/oidvci/MapStore;Lat/asitplus/wallet/lib/jws/SignJwtFun;Lat/asitplus/wallet/lib/agent/RandomSource;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun createAuthRequest (Ljava/lang/String;Ljava/util/Set;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun createAuthRequest$default (Lat/asitplus/wallet/lib/oauth2/OAuth2Client;Ljava/lang/String;Ljava/util/Set;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun createAuthRequestAfterPar (Lat/asitplus/openid/PushedAuthenticationResponseParameters;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun createAuthRequestJar (Ljava/lang/String;Ljava/util/Set;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun createAuthRequestJar$default (Lat/asitplus/wallet/lib/oauth2/OAuth2Client;Ljava/lang/String;Ljava/util/Set;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun createTokenRequestParameters (Lat/asitplus/wallet/lib/oauth2/OAuth2Client$AuthorizationForToken;Ljava/lang/String;Ljava/util/Set;Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun createTokenRequestParameters$default (Lat/asitplus/wallet/lib/oauth2/OAuth2Client;Lat/asitplus/wallet/lib/oauth2/OAuth2Client$AuthorizationForToken;Ljava/lang/String;Ljava/util/Set;Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun generateCodeVerifier (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun getClientId ()Ljava/lang/String;
+	public final fun getRedirectUrl ()Ljava/lang/String;
+	public final fun getSignPushedAuthorizationRequest ()Lat/asitplus/wallet/lib/jws/SignJwtFun;
+}
+
+public abstract class at/asitplus/wallet/lib/oauth2/OAuth2Client$AuthorizationForToken {
+}
+
+public final class at/asitplus/wallet/lib/oauth2/OAuth2Client$AuthorizationForToken$Code : at/asitplus/wallet/lib/oauth2/OAuth2Client$AuthorizationForToken {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lat/asitplus/wallet/lib/oauth2/OAuth2Client$AuthorizationForToken$Code;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/oauth2/OAuth2Client$AuthorizationForToken$Code;Ljava/lang/String;ILjava/lang/Object;)Lat/asitplus/wallet/lib/oauth2/OAuth2Client$AuthorizationForToken$Code;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCode ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/oauth2/OAuth2Client$AuthorizationForToken$PreAuthCode : at/asitplus/wallet/lib/oauth2/OAuth2Client$AuthorizationForToken {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;)Lat/asitplus/wallet/lib/oauth2/OAuth2Client$AuthorizationForToken$PreAuthCode;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/oauth2/OAuth2Client$AuthorizationForToken$PreAuthCode;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lat/asitplus/wallet/lib/oauth2/OAuth2Client$AuthorizationForToken$PreAuthCode;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getPreAuthorizedCode ()Ljava/lang/String;
+	public final fun getTransactionCode ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/oauth2/OAuth2Client$AuthorizationForToken$RefreshToken : at/asitplus/wallet/lib/oauth2/OAuth2Client$AuthorizationForToken {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lat/asitplus/wallet/lib/oauth2/OAuth2Client$AuthorizationForToken$RefreshToken;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/oauth2/OAuth2Client$AuthorizationForToken$RefreshToken;Ljava/lang/String;ILjava/lang/Object;)Lat/asitplus/wallet/lib/oauth2/OAuth2Client$AuthorizationForToken$RefreshToken;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getRefreshToken ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/oauth2/OAuth2Client$AuthorizationForToken$TokenExchange : at/asitplus/wallet/lib/oauth2/OAuth2Client$AuthorizationForToken {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lat/asitplus/wallet/lib/oauth2/OAuth2Client$AuthorizationForToken$TokenExchange;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/oauth2/OAuth2Client$AuthorizationForToken$TokenExchange;Ljava/lang/String;ILjava/lang/Object;)Lat/asitplus/wallet/lib/oauth2/OAuth2Client$AuthorizationForToken$TokenExchange;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getSubjectToken ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/oauth2/OAuth2Utils {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oauth2/OAuth2Utils;
+	public final fun insertWellKnownPath (Ljava/lang/String;Ljava/util/List;)Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/oauth2/OpenId4VciAccessToken {
+	public static final field Companion Lat/asitplus/wallet/lib/oauth2/OpenId4VciAccessToken$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lkotlin/time/Instant;Lkotlin/time/Instant;Ljava/lang/String;Lat/asitplus/signum/indispensable/josef/ConfirmationClaim;Ljava/lang/String;Ljava/util/Set;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lkotlin/time/Instant;Lkotlin/time/Instant;Ljava/lang/String;Lat/asitplus/signum/indispensable/josef/ConfirmationClaim;Ljava/lang/String;Ljava/util/Set;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Lkotlin/time/Instant;
+	public final fun component4 ()Lkotlin/time/Instant;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun component6 ()Lat/asitplus/signum/indispensable/josef/ConfirmationClaim;
+	public final fun component7 ()Ljava/lang/String;
+	public final fun component8 ()Ljava/util/Set;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Lkotlin/time/Instant;Lkotlin/time/Instant;Ljava/lang/String;Lat/asitplus/signum/indispensable/josef/ConfirmationClaim;Ljava/lang/String;Ljava/util/Set;)Lat/asitplus/wallet/lib/oauth2/OpenId4VciAccessToken;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/oauth2/OpenId4VciAccessToken;Ljava/lang/String;Ljava/lang/String;Lkotlin/time/Instant;Lkotlin/time/Instant;Ljava/lang/String;Lat/asitplus/signum/indispensable/josef/ConfirmationClaim;Ljava/lang/String;Ljava/util/Set;ILjava/lang/Object;)Lat/asitplus/wallet/lib/oauth2/OpenId4VciAccessToken;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAudience ()Ljava/lang/String;
+	public final fun getAuthorizationDetails ()Ljava/util/Set;
+	public final fun getConfirmationClaim ()Lat/asitplus/signum/indispensable/josef/ConfirmationClaim;
+	public final fun getExpiration ()Lkotlin/time/Instant;
+	public final fun getIssuer ()Ljava/lang/String;
+	public final fun getJwtId ()Ljava/lang/String;
+	public final fun getNotBefore ()Lkotlin/time/Instant;
+	public final fun getScope ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class at/asitplus/wallet/lib/oauth2/OpenId4VciAccessToken$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oauth2/OpenId4VciAccessToken$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lat/asitplus/wallet/lib/oauth2/OpenId4VciAccessToken;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lat/asitplus/wallet/lib/oauth2/OpenId4VciAccessToken;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oauth2/OpenId4VciAccessToken$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oauth2/RequestInfo {
+	public fun <init> (Ljava/lang/String;Lio/ktor/http/HttpMethod;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Lio/ktor/http/HttpMethod;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Lio/ktor/http/HttpMethod;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Lio/ktor/http/HttpMethod;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lat/asitplus/wallet/lib/oauth2/RequestInfo;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/oauth2/RequestInfo;Ljava/lang/String;Lio/ktor/http/HttpMethod;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lat/asitplus/wallet/lib/oauth2/RequestInfo;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getClientAttestation ()Ljava/lang/String;
+	public final fun getClientAttestationPop ()Ljava/lang/String;
+	public final fun getDpop ()Ljava/lang/String;
+	public final fun getMethod ()Lio/ktor/http/HttpMethod;
+	public final fun getUrl ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/oauth2/SimpleAuthorizationService : at/asitplus/wallet/lib/oauth2/AuthorizationService, at/asitplus/wallet/lib/oidvci/OAuth2AuthorizationServerAdapter {
+	public fun <init> (Lat/asitplus/wallet/lib/oauth2/AuthorizationServiceStrategy;Lat/asitplus/wallet/lib/oidvci/CodeService;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lat/asitplus/wallet/lib/oidvci/MapStore;Lat/asitplus/wallet/lib/oidvci/MapStore;Lat/asitplus/wallet/lib/oidvci/MapStore;Lat/asitplus/wallet/lib/oidvci/MapStore;Lat/asitplus/wallet/lib/oauth2/TokenService;Lat/asitplus/wallet/lib/oauth2/ClientAuthenticationService;Lat/asitplus/wallet/lib/openid/RequestParser;ZLjava/util/Set;)V
+	public synthetic fun <init> (Lat/asitplus/wallet/lib/oauth2/AuthorizationServiceStrategy;Lat/asitplus/wallet/lib/oidvci/CodeService;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lat/asitplus/wallet/lib/oidvci/MapStore;Lat/asitplus/wallet/lib/oidvci/MapStore;Lat/asitplus/wallet/lib/oidvci/MapStore;Lat/asitplus/wallet/lib/oidvci/MapStore;Lat/asitplus/wallet/lib/oauth2/TokenService;Lat/asitplus/wallet/lib/oauth2/ClientAuthenticationService;Lat/asitplus/wallet/lib/openid/RequestParser;ZLjava/util/Set;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun authorize (Lat/asitplus/openid/RequestParameters;Lat/asitplus/wallet/lib/oidvci/OAuth2LoadUserFun;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun credentialOfferWithAuthorizationCode (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun credentialOfferWithPreAuthnForUser (Lat/asitplus/openid/OidcUserInfoExtended;Ljava/lang/String;Ljava/util/Collection;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun credentialOfferWithPreAuthnForUser$default (Lat/asitplus/wallet/lib/oauth2/SimpleAuthorizationService;Lat/asitplus/openid/OidcUserInfoExtended;Ljava/lang/String;Ljava/util/Collection;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public fun getDpopNonce (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun getPublicContext ()Ljava/lang/String;
+	public fun getTokenInfo (Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun getUserInfo (Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun metadata (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun par (Lat/asitplus/openid/RequestParameters;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun par (Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun providePreAuthorizedCode (Lat/asitplus/openid/OidcUserInfoExtended;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun token (Lat/asitplus/openid/TokenRequestParameters;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun tokenIntrospection (Lat/asitplus/openid/TokenIntrospectionRequest;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun userInfo (Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun validateAccessToken (Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public abstract interface class at/asitplus/wallet/lib/oauth2/TokenGenerationService {
+	public abstract fun buildToken (Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lat/asitplus/openid/OidcUserInfoExtended;Ljava/util/Set;Ljava/lang/String;Lat/asitplus/signum/indispensable/josef/JsonWebKey;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun dpopNonce (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public abstract interface class at/asitplus/wallet/lib/oauth2/TokenService {
+	public static final field Companion Lat/asitplus/wallet/lib/oauth2/TokenService$Companion;
+	public fun dpopNonce (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun getDpopSigningAlgValuesSupportedStrings ()Ljava/util/Set;
+	public abstract fun getGeneration ()Lat/asitplus/wallet/lib/oauth2/TokenGenerationService;
+	public abstract fun getSupportsRefreshTokens ()Z
+	public abstract fun getVerification ()Lat/asitplus/wallet/lib/oauth2/TokenVerificationService;
+	public abstract fun readUserInfo (Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun tokenExchange (Lat/asitplus/openid/TokenRequestParameters;Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun validateTokenForTokenExchange (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/oauth2/TokenService$Companion {
+	public final fun bearer (Lat/asitplus/wallet/lib/oidvci/NonceService;)Lat/asitplus/wallet/lib/oauth2/BearerTokenService;
+	public static synthetic fun bearer$default (Lat/asitplus/wallet/lib/oauth2/TokenService$Companion;Lat/asitplus/wallet/lib/oidvci/NonceService;ILjava/lang/Object;)Lat/asitplus/wallet/lib/oauth2/BearerTokenService;
+	public final fun jwt (Ljava/lang/String;Lat/asitplus/wallet/lib/oidvci/NonceService;Lat/asitplus/wallet/lib/oidvci/NonceService;Lat/asitplus/wallet/lib/agent/KeyMaterial;ZLjava/util/Collection;)Lat/asitplus/wallet/lib/oauth2/JwtTokenService;
+	public static synthetic fun jwt$default (Lat/asitplus/wallet/lib/oauth2/TokenService$Companion;Ljava/lang/String;Lat/asitplus/wallet/lib/oidvci/NonceService;Lat/asitplus/wallet/lib/oidvci/NonceService;Lat/asitplus/wallet/lib/agent/KeyMaterial;ZLjava/util/Collection;ILjava/lang/Object;)Lat/asitplus/wallet/lib/oauth2/JwtTokenService;
+}
+
+public final class at/asitplus/wallet/lib/oauth2/TokenService$DefaultImpls {
+	public static fun dpopNonce (Lat/asitplus/wallet/lib/oauth2/TokenService;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static fun tokenExchange (Lat/asitplus/wallet/lib/oauth2/TokenService;Lat/asitplus/openid/TokenRequestParameters;Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public abstract interface class at/asitplus/wallet/lib/oauth2/TokenVerificationService {
+	public abstract fun extractValidatedClientKey (Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun getTokenInfo (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun validateAccessToken (Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lat/asitplus/wallet/lib/oidvci/NonceService;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun validateAccessToken$default (Lat/asitplus/wallet/lib/oauth2/TokenVerificationService;Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lat/asitplus/wallet/lib/oidvci/NonceService;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public abstract fun validateRefreshToken (Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lat/asitplus/signum/indispensable/josef/JsonWebKey;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/oauth2/TokenVerificationService$DefaultImpls {
+	public static synthetic fun validateAccessToken$default (Lat/asitplus/wallet/lib/oauth2/TokenVerificationService;Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lat/asitplus/wallet/lib/oidvci/NonceService;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/oauth2/ValidatedAccessToken {
+	public static final field Companion Lat/asitplus/wallet/lib/oauth2/ValidatedAccessToken$Companion;
+	public fun <init> (Ljava/lang/String;Lat/asitplus/openid/OidcUserInfoExtended;Ljava/util/Set;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Lat/asitplus/openid/OidcUserInfoExtended;Ljava/util/Set;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Lat/asitplus/openid/OidcUserInfoExtended;
+	public final fun component3 ()Ljava/util/Set;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Lat/asitplus/openid/OidcUserInfoExtended;Ljava/util/Set;Ljava/lang/String;)Lat/asitplus/wallet/lib/oauth2/ValidatedAccessToken;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/oauth2/ValidatedAccessToken;Ljava/lang/String;Lat/asitplus/openid/OidcUserInfoExtended;Ljava/util/Set;Ljava/lang/String;ILjava/lang/Object;)Lat/asitplus/wallet/lib/oauth2/ValidatedAccessToken;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAuthorizationDetails ()Ljava/util/Set;
+	public final fun getScope ()Ljava/lang/String;
+	public final fun getToken ()Ljava/lang/String;
+	public final fun getUserInfoExtended ()Lat/asitplus/openid/OidcUserInfoExtended;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+	public final fun toTokenInfo ()Lat/asitplus/wallet/lib/oidvci/TokenInfo;
+}
+
+public final synthetic class at/asitplus/wallet/lib/oauth2/ValidatedAccessToken$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oauth2/ValidatedAccessToken$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lat/asitplus/wallet/lib/oauth2/ValidatedAccessToken;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lat/asitplus/wallet/lib/oauth2/ValidatedAccessToken;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oauth2/ValidatedAccessToken$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public abstract interface class at/asitplus/wallet/lib/oidc/RequestObjectJwsVerifier {
+	public abstract fun invoke (Lat/asitplus/signum/indispensable/josef/JwsSigned;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/BuildClientAttestationJwt {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oidvci/BuildClientAttestationJwt;
+	public final fun invoke-021xcDE (Lat/asitplus/wallet/lib/jws/SignJwtFun;Ljava/lang/String;Ljava/lang/String;Lat/asitplus/signum/indispensable/josef/JsonWebKey;Ljava/lang/String;Ljava/lang/String;JJLkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun invoke-021xcDE$default (Lat/asitplus/wallet/lib/oidvci/BuildClientAttestationJwt;Lat/asitplus/wallet/lib/jws/SignJwtFun;Ljava/lang/String;Ljava/lang/String;Lat/asitplus/signum/indispensable/josef/JsonWebKey;Ljava/lang/String;Ljava/lang/String;JJLkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/BuildClientAttestationPoPJwt {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oidvci/BuildClientAttestationPoPJwt;
+	public final fun invoke-77cDFVw (Lat/asitplus/wallet/lib/jws/SignJwtFun;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JJLat/asitplus/wallet/lib/agent/RandomSource;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun invoke-77cDFVw$default (Lat/asitplus/wallet/lib/oidvci/BuildClientAttestationPoPJwt;Lat/asitplus/wallet/lib/jws/SignJwtFun;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JJLat/asitplus/wallet/lib/agent/RandomSource;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/BuildDPoPHeader {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oidvci/BuildDPoPHeader;
+	public final fun invoke (Lat/asitplus/wallet/lib/jws/SignJwtFun;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lat/asitplus/wallet/lib/agent/RandomSource;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun invoke$default (Lat/asitplus/wallet/lib/oidvci/BuildDPoPHeader;Lat/asitplus/wallet/lib/jws/SignJwtFun;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lat/asitplus/wallet/lib/agent/RandomSource;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+}
+
+public abstract interface class at/asitplus/wallet/lib/oidvci/CodeService {
+	public abstract fun provideCode ()Ljava/lang/String;
+	public abstract fun verifyAndRemove (Ljava/lang/String;)Z
+}
+
+public final class at/asitplus/wallet/lib/oidvci/CredentialAuthorizationServiceStrategy : at/asitplus/wallet/lib/oauth2/AuthorizationServiceStrategy {
+	public fun <init> (Ljava/util/Set;)V
+	public fun allCredentialIdentifier ()Ljava/util/Collection;
+	public fun filterAuthorizationDetailsForTokenResponse (Ljava/util/Collection;)Ljava/util/Set;
+	public fun filterScope (Ljava/lang/String;)Ljava/lang/String;
+	public fun matchAndFilterAuthorizationDetailsForTokenResponse (Ljava/util/Collection;Ljava/util/Set;)Ljava/util/Set;
+	public fun validAuthorizationDetails (Ljava/lang/String;)Ljava/util/Collection;
+	public fun validScopes ()Ljava/lang/String;
+	public fun validateAuthorizationDetails (Ljava/util/Collection;)V
+}
+
+public final class at/asitplus/wallet/lib/oidvci/CredentialAuthorizationServiceStrategyKt {
+	public static final fun matches (Lat/asitplus/openid/OpenIdAuthorizationDetails;Lat/asitplus/openid/AuthorizationDetails;)Z
+}
+
+public abstract interface class at/asitplus/wallet/lib/oidvci/CredentialDataProviderFun {
+	public abstract fun invoke (Lat/asitplus/wallet/lib/oidvci/CredentialDataProviderInput;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/CredentialDataProviderInput {
+	public fun <init> (Lat/asitplus/openid/OidcUserInfoExtended;Lat/asitplus/signum/indispensable/CryptoPublicKey;Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialScheme;Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialRepresentation;)V
+	public final fun component1 ()Lat/asitplus/openid/OidcUserInfoExtended;
+	public final fun component2 ()Lat/asitplus/signum/indispensable/CryptoPublicKey;
+	public final fun component3 ()Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialScheme;
+	public final fun component4 ()Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialRepresentation;
+	public final fun copy (Lat/asitplus/openid/OidcUserInfoExtended;Lat/asitplus/signum/indispensable/CryptoPublicKey;Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialScheme;Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialRepresentation;)Lat/asitplus/wallet/lib/oidvci/CredentialDataProviderInput;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/oidvci/CredentialDataProviderInput;Lat/asitplus/openid/OidcUserInfoExtended;Lat/asitplus/signum/indispensable/CryptoPublicKey;Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialScheme;Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialRepresentation;ILjava/lang/Object;)Lat/asitplus/wallet/lib/oidvci/CredentialDataProviderInput;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCredentialRepresentation ()Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialRepresentation;
+	public final fun getCredentialScheme ()Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialScheme;
+	public final fun getSubjectPublicKey ()Lat/asitplus/signum/indispensable/CryptoPublicKey;
+	public final fun getUserInfo ()Lat/asitplus/openid/OidcUserInfoExtended;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/CredentialIssuer {
+	public fun <init> (Lat/asitplus/wallet/lib/oidvci/OAuth2AuthorizationServerAdapter;Lat/asitplus/wallet/lib/agent/Issuer;Ljava/util/Set;Ljava/util/Set;Ljava/util/Set;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZLat/asitplus/wallet/lib/oidvci/ProofValidator;Lat/asitplus/wallet/lib/jws/SignJwtFun;Lat/asitplus/wallet/lib/oidvci/IssuerEncryptionService;)V
+	public synthetic fun <init> (Lat/asitplus/wallet/lib/oidvci/OAuth2AuthorizationServerAdapter;Lat/asitplus/wallet/lib/agent/Issuer;Ljava/util/Set;Ljava/util/Set;Ljava/util/Set;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZLat/asitplus/wallet/lib/oidvci/ProofValidator;Lat/asitplus/wallet/lib/jws/SignJwtFun;Lat/asitplus/wallet/lib/oidvci/IssuerEncryptionService;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun credential (Ljava/lang/String;Lat/asitplus/openid/CredentialRequestParameters;Lat/asitplus/wallet/lib/oidvci/CredentialDataProviderFun;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun credential (Ljava/lang/String;Lat/asitplus/wallet/lib/oidvci/WalletService$CredentialRequest;Lat/asitplus/wallet/lib/oidvci/CredentialDataProviderFun;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun credential$default (Lat/asitplus/wallet/lib/oidvci/CredentialIssuer;Ljava/lang/String;Lat/asitplus/openid/CredentialRequestParameters;Lat/asitplus/wallet/lib/oidvci/CredentialDataProviderFun;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public static synthetic fun credential$default (Lat/asitplus/wallet/lib/oidvci/CredentialIssuer;Ljava/lang/String;Lat/asitplus/wallet/lib/oidvci/WalletService$CredentialRequest;Lat/asitplus/wallet/lib/oidvci/CredentialDataProviderFun;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun credentialEncryptedRequest (Ljava/lang/String;Ljava/lang/String;Lat/asitplus/wallet/lib/oidvci/CredentialDataProviderFun;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun credentialEncryptedRequest$default (Lat/asitplus/wallet/lib/oidvci/CredentialIssuer;Ljava/lang/String;Ljava/lang/String;Lat/asitplus/wallet/lib/oidvci/CredentialDataProviderFun;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun getJwtVcMetadata ()Lat/asitplus/openid/JwtVcIssuerMetadata;
+	public final fun getMetadata ()Lat/asitplus/openid/IssuerMetadata;
+	public final fun nonceWithDpopNonce (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun signedMetadata (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public abstract interface class at/asitplus/wallet/lib/oidvci/CredentialIssuer$CredentialResponse {
+}
+
+public final class at/asitplus/wallet/lib/oidvci/CredentialIssuer$CredentialResponse$Encrypted : at/asitplus/wallet/lib/oidvci/CredentialIssuer$CredentialResponse {
+	public fun <init> (Lat/asitplus/signum/indispensable/josef/JweEncrypted;)V
+	public final fun component1 ()Lat/asitplus/signum/indispensable/josef/JweEncrypted;
+	public final fun copy (Lat/asitplus/signum/indispensable/josef/JweEncrypted;)Lat/asitplus/wallet/lib/oidvci/CredentialIssuer$CredentialResponse$Encrypted;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/oidvci/CredentialIssuer$CredentialResponse$Encrypted;Lat/asitplus/signum/indispensable/josef/JweEncrypted;ILjava/lang/Object;)Lat/asitplus/wallet/lib/oidvci/CredentialIssuer$CredentialResponse$Encrypted;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getResponse ()Lat/asitplus/signum/indispensable/josef/JweEncrypted;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/CredentialIssuer$CredentialResponse$Plain : at/asitplus/wallet/lib/oidvci/CredentialIssuer$CredentialResponse {
+	public fun <init> (Lat/asitplus/openid/CredentialResponseParameters;)V
+	public final fun component1 ()Lat/asitplus/openid/CredentialResponseParameters;
+	public final fun copy (Lat/asitplus/openid/CredentialResponseParameters;)Lat/asitplus/wallet/lib/oidvci/CredentialIssuer$CredentialResponse$Plain;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/oidvci/CredentialIssuer$CredentialResponse$Plain;Lat/asitplus/openid/CredentialResponseParameters;ILjava/lang/Object;)Lat/asitplus/wallet/lib/oidvci/CredentialIssuer$CredentialResponse$Plain;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getResponse ()Lat/asitplus/openid/CredentialResponseParameters;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/CredentialIssuer$Nonce {
+	public fun <init> (Lat/asitplus/openid/ClientNonceResponse;Ljava/lang/String;)V
+	public synthetic fun <init> (Lat/asitplus/openid/ClientNonceResponse;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lat/asitplus/openid/ClientNonceResponse;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun copy (Lat/asitplus/openid/ClientNonceResponse;Ljava/lang/String;)Lat/asitplus/wallet/lib/oidvci/CredentialIssuer$Nonce;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/oidvci/CredentialIssuer$Nonce;Lat/asitplus/openid/ClientNonceResponse;Ljava/lang/String;ILjava/lang/Object;)Lat/asitplus/wallet/lib/oidvci/CredentialIssuer$Nonce;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getDpopNonce ()Ljava/lang/String;
+	public final fun getResponse ()Lat/asitplus/openid/ClientNonceResponse;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/CredentialSchemeMapping {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oidvci/CredentialSchemeMapping;
+	public final fun decodeFromCredentialIdentifier (Ljava/lang/String;)Lkotlin/Pair;
+	public final fun encodeToCredentialIdentifier (Ljava/lang/String;Lat/asitplus/openid/CredentialFormatEnum;)Ljava/lang/String;
+	public final fun toCredentialIdentifier (Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialScheme;)Ljava/util/List;
+	public final fun toCredentialIdentifier (Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialScheme;Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialRepresentation;)Ljava/lang/String;
+	public final fun toSupportedCredentialFormat (Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialScheme;)Ljava/util/Map;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/DefaultCodeService : at/asitplus/wallet/lib/oidvci/CodeService {
+	public fun <init> ()V
+	public fun provideCode ()Ljava/lang/String;
+	public fun verifyAndRemove (Ljava/lang/String;)Z
+}
+
+public final class at/asitplus/wallet/lib/oidvci/DefaultMapStore : at/asitplus/wallet/lib/oidvci/MapStore {
+	public fun <init> ()V
+	public fun get (Ljava/lang/Object;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun put (Ljava/lang/Object;Ljava/lang/Object;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun remove (Ljava/lang/Object;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/DefaultNonceService : at/asitplus/wallet/lib/oidvci/NonceService {
+	public fun <init> ()V
+	public fun provideNonce (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun verifyAndRemoveNonce (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun verifyNonce (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/ExtensionsKt {
+	public static final fun toCredentialResponseParameters (Ljava/util/Collection;)Lat/asitplus/openid/CredentialResponseParameters;
+	public static final fun toCredentialResponseSingleCredential (Lat/asitplus/wallet/lib/agent/Issuer$IssuedCredential;)Lat/asitplus/openid/CredentialResponseSingleCredential;
+	public static final fun toFormat (Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialRepresentation;)Lat/asitplus/openid/CredentialFormatEnum;
+	public static final fun toRepresentation (Lat/asitplus/openid/CredentialFormatEnum;)Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialRepresentation;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/IssuerEncryptionService {
+	public fun <init> ()V
+	public fun <init> (Lat/asitplus/wallet/lib/jws/EncryptJweFun;ZLjava/util/Set;Ljava/util/Set;ZLat/asitplus/wallet/lib/agent/KeyMaterial;Lat/asitplus/wallet/lib/jws/DecryptJweFun;)V
+	public synthetic fun <init> (Lat/asitplus/wallet/lib/jws/EncryptJweFun;ZLjava/util/Set;Ljava/util/Set;ZLat/asitplus/wallet/lib/agent/KeyMaterial;Lat/asitplus/wallet/lib/jws/DecryptJweFun;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getMetadataCredentialRequestEncryption ()Lat/asitplus/openid/SupportedAlgorithmsContainer;
+	public final fun getMetadataCredentialResponseEncryption ()Lat/asitplus/openid/SupportedAlgorithmsContainer;
+}
+
+public abstract interface class at/asitplus/wallet/lib/oidvci/MapStore {
+	public abstract fun get (Ljava/lang/Object;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun put (Ljava/lang/Object;Ljava/lang/Object;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun remove (Ljava/lang/Object;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public abstract interface class at/asitplus/wallet/lib/oidvci/NonceService {
+	public abstract fun provideNonce (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun verifyAndRemoveNonce (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun verifyNonce (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public abstract interface class at/asitplus/wallet/lib/oidvci/OAuth2AuthorizationServerAdapter {
+	public abstract fun getDpopNonce (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun getPublicContext ()Ljava/lang/String;
+	public abstract fun getTokenInfo (Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun getUserInfo (Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun metadata (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun validateAccessToken (Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Error {
+	public static final field Companion Lat/asitplus/wallet/lib/oidvci/OAuth2Error$Companion;
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lat/asitplus/wallet/lib/oidvci/OAuth2Error;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/oidvci/OAuth2Error;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lat/asitplus/wallet/lib/oidvci/OAuth2Error;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getError ()Ljava/lang/String;
+	public final fun getErrorDescription ()Ljava/lang/String;
+	public final fun getErrorUri ()Ljava/lang/String;
+	public final fun getState ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class at/asitplus/wallet/lib/oidvci/OAuth2Error$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oidvci/OAuth2Error$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lat/asitplus/wallet/lib/oidvci/OAuth2Error;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lat/asitplus/wallet/lib/oidvci/OAuth2Error;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Error$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public abstract class at/asitplus/wallet/lib/oidvci/OAuth2Exception : java/lang/Throwable {
+	public static final field Companion Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$Companion;
+	public synthetic fun <init> (ILjava/lang/String;Lkotlinx/serialization/internal/SerializationConstructorMarker;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getError ()Ljava/lang/String;
+	public final fun getErrorDescription ()Ljava/lang/String;
+	public final fun serialize ()Ljava/lang/String;
+	public final fun toOAuth2Error ()Lat/asitplus/wallet/lib/oidvci/OAuth2Error;
+	public static final synthetic fun write$Self (Lat/asitplus/wallet/lib/oidvci/OAuth2Exception;Lkotlinx/serialization/encoding/CompositeEncoder;Lkotlinx/serialization/descriptors/SerialDescriptor;)V
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$AccessDenied : at/asitplus/wallet/lib/oidvci/OAuth2Exception {
+	public static final field Companion Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$AccessDenied$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Ljava/lang/Throwable;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/Throwable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun getCause ()Ljava/lang/Throwable;
+	public final fun getDescription ()Ljava/lang/String;
+}
+
+public final synthetic class at/asitplus/wallet/lib/oidvci/OAuth2Exception$AccessDenied$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$AccessDenied$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$AccessDenied;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$AccessDenied;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$AccessDenied$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$CredentialRequestDenied : at/asitplus/wallet/lib/oidvci/OAuth2Exception {
+	public static final field Companion Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$CredentialRequestDenied$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Ljava/lang/Throwable;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/Throwable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun getCause ()Ljava/lang/Throwable;
+	public final fun getDescription ()Ljava/lang/String;
+}
+
+public final synthetic class at/asitplus/wallet/lib/oidvci/OAuth2Exception$CredentialRequestDenied$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$CredentialRequestDenied$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$CredentialRequestDenied;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$CredentialRequestDenied;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$CredentialRequestDenied$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidAuthorizationDetails : at/asitplus/wallet/lib/oidvci/OAuth2Exception {
+	public static final field Companion Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidAuthorizationDetails$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Ljava/lang/Throwable;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/Throwable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun getCause ()Ljava/lang/Throwable;
+	public final fun getDescription ()Ljava/lang/String;
+}
+
+public final synthetic class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidAuthorizationDetails$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidAuthorizationDetails$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidAuthorizationDetails;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidAuthorizationDetails;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidAuthorizationDetails$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidClient : at/asitplus/wallet/lib/oidvci/OAuth2Exception {
+	public static final field Companion Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidClient$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Ljava/lang/Throwable;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/Throwable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun getCause ()Ljava/lang/Throwable;
+	public final fun getDescription ()Ljava/lang/String;
+}
+
+public final synthetic class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidClient$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidClient$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidClient;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidClient;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidClient$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidCode : at/asitplus/wallet/lib/oidvci/OAuth2Exception {
+	public static final field Companion Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidCode$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Ljava/lang/Throwable;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/Throwable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun getCause ()Ljava/lang/Throwable;
+	public final fun getDescription ()Ljava/lang/String;
+}
+
+public final synthetic class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidCode$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidCode$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidCode;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidCode;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidCode$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidCredentialRequest : at/asitplus/wallet/lib/oidvci/OAuth2Exception {
+	public static final field Companion Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidCredentialRequest$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Ljava/lang/Throwable;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/Throwable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun getCause ()Ljava/lang/Throwable;
+	public final fun getDescription ()Ljava/lang/String;
+}
+
+public final synthetic class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidCredentialRequest$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidCredentialRequest$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidCredentialRequest;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidCredentialRequest;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidCredentialRequest$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidDpopProof : at/asitplus/wallet/lib/oidvci/OAuth2Exception, at/asitplus/wallet/lib/oidvci/OAuthAuthorizationError {
+	public static final field Companion Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidDpopProof$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Ljava/lang/Throwable;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/Throwable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun getCause ()Ljava/lang/Throwable;
+	public final fun getDescription ()Ljava/lang/String;
+}
+
+public final synthetic class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidDpopProof$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidDpopProof$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidDpopProof;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidDpopProof;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidDpopProof$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidEncryptionParameters : at/asitplus/wallet/lib/oidvci/OAuth2Exception {
+	public static final field Companion Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidEncryptionParameters$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Ljava/lang/Throwable;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/Throwable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun getCause ()Ljava/lang/Throwable;
+	public final fun getDescription ()Ljava/lang/String;
+}
+
+public final synthetic class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidEncryptionParameters$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidEncryptionParameters$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidEncryptionParameters;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidEncryptionParameters;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidEncryptionParameters$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidGrant : at/asitplus/wallet/lib/oidvci/OAuth2Exception {
+	public static final field Companion Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidGrant$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Ljava/lang/Throwable;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/Throwable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun getCause ()Ljava/lang/Throwable;
+	public final fun getDescription ()Ljava/lang/String;
+}
+
+public final synthetic class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidGrant$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidGrant$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidGrant;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidGrant;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidGrant$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidNonce : at/asitplus/wallet/lib/oidvci/OAuth2Exception {
+	public static final field Companion Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidNonce$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Ljava/lang/Throwable;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/Throwable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun getCause ()Ljava/lang/Throwable;
+	public final fun getDescription ()Ljava/lang/String;
+}
+
+public final synthetic class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidNonce$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidNonce$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidNonce;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidNonce;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidNonce$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidProof : at/asitplus/wallet/lib/oidvci/OAuth2Exception {
+	public static final field Companion Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidProof$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Ljava/lang/Throwable;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/Throwable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun getCause ()Ljava/lang/Throwable;
+	public final fun getDescription ()Ljava/lang/String;
+}
+
+public final synthetic class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidProof$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidProof$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidProof;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidProof;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidProof$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidRequest : at/asitplus/wallet/lib/oidvci/OAuth2Exception {
+	public static final field Companion Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidRequest$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Ljava/lang/Throwable;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/Throwable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun getCause ()Ljava/lang/Throwable;
+	public final fun getDescription ()Ljava/lang/String;
+}
+
+public final synthetic class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidRequest$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidRequest$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidRequest;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidRequest;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidRequest$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidScope : at/asitplus/wallet/lib/oidvci/OAuth2Exception {
+	public static final field Companion Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidScope$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Ljava/lang/Throwable;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/Throwable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun getCause ()Ljava/lang/Throwable;
+	public final fun getDescription ()Ljava/lang/String;
+}
+
+public final synthetic class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidScope$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidScope$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidScope;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidScope;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidScope$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidToken : at/asitplus/wallet/lib/oidvci/OAuth2Exception, at/asitplus/wallet/lib/oidvci/OAuthAuthorizationError {
+	public static final field Companion Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidToken$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Ljava/lang/Throwable;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/Throwable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun getCause ()Ljava/lang/Throwable;
+	public final fun getDescription ()Ljava/lang/String;
+}
+
+public final synthetic class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidToken$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidToken$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidToken;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidToken;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$InvalidToken$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$RegistrationValueNotSupported : at/asitplus/wallet/lib/oidvci/OAuth2Exception {
+	public static final field Companion Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$RegistrationValueNotSupported$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Ljava/lang/Throwable;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/Throwable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun getCause ()Ljava/lang/Throwable;
+	public final fun getDescription ()Ljava/lang/String;
+}
+
+public final synthetic class at/asitplus/wallet/lib/oidvci/OAuth2Exception$RegistrationValueNotSupported$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$RegistrationValueNotSupported$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$RegistrationValueNotSupported;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$RegistrationValueNotSupported;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$RegistrationValueNotSupported$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$UnknownCredentialConfiguration : at/asitplus/wallet/lib/oidvci/OAuth2Exception {
+	public static final field Companion Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$UnknownCredentialConfiguration$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Ljava/lang/Throwable;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/Throwable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun getCause ()Ljava/lang/Throwable;
+	public final fun getDescription ()Ljava/lang/String;
+}
+
+public final synthetic class at/asitplus/wallet/lib/oidvci/OAuth2Exception$UnknownCredentialConfiguration$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$UnknownCredentialConfiguration$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$UnknownCredentialConfiguration;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$UnknownCredentialConfiguration;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$UnknownCredentialConfiguration$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$UnknownCredentialIdentifier : at/asitplus/wallet/lib/oidvci/OAuth2Exception {
+	public static final field Companion Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$UnknownCredentialIdentifier$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Ljava/lang/Throwable;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/Throwable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun getCause ()Ljava/lang/Throwable;
+	public final fun getDescription ()Ljava/lang/String;
+}
+
+public final synthetic class at/asitplus/wallet/lib/oidvci/OAuth2Exception$UnknownCredentialIdentifier$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$UnknownCredentialIdentifier$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$UnknownCredentialIdentifier;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$UnknownCredentialIdentifier;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$UnknownCredentialIdentifier$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$UseDpopNonce : at/asitplus/wallet/lib/oidvci/OAuth2Exception, at/asitplus/wallet/lib/oidvci/OAuthAuthorizationError {
+	public static final field Companion Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$UseDpopNonce$Companion;
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun getCause ()Ljava/lang/Throwable;
+	public final fun getDescription ()Ljava/lang/String;
+	public final fun getDpopNonce ()Ljava/lang/String;
+}
+
+public final synthetic class at/asitplus/wallet/lib/oidvci/OAuth2Exception$UseDpopNonce$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$UseDpopNonce$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$UseDpopNonce;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$UseDpopNonce;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$UseDpopNonce$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$UserCancelled : at/asitplus/wallet/lib/oidvci/OAuth2Exception {
+	public static final field Companion Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$UserCancelled$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Ljava/lang/Throwable;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/Throwable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun getCause ()Ljava/lang/Throwable;
+	public final fun getDescription ()Ljava/lang/String;
+}
+
+public final synthetic class at/asitplus/wallet/lib/oidvci/OAuth2Exception$UserCancelled$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$UserCancelled$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$UserCancelled;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lat/asitplus/wallet/lib/oidvci/OAuth2Exception$UserCancelled;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2Exception$UserCancelled$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2ExceptionSerializer : kotlinx/serialization/json/JsonContentPolymorphicSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oidvci/OAuth2ExceptionSerializer;
+}
+
+public abstract interface class at/asitplus/wallet/lib/oidvci/OAuth2LoadUserFun {
+	public abstract fun invoke (Lat/asitplus/wallet/lib/oidvci/OAuth2LoadUserFunInput;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/OAuth2LoadUserFunInput {
+	public fun <init> (Lat/asitplus/openid/AuthenticationRequestParameters;)V
+	public final fun component1 ()Lat/asitplus/openid/AuthenticationRequestParameters;
+	public final fun copy (Lat/asitplus/openid/AuthenticationRequestParameters;)Lat/asitplus/wallet/lib/oidvci/OAuth2LoadUserFunInput;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/oidvci/OAuth2LoadUserFunInput;Lat/asitplus/openid/AuthenticationRequestParameters;ILjava/lang/Object;)Lat/asitplus/wallet/lib/oidvci/OAuth2LoadUserFunInput;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getRequest ()Lat/asitplus/openid/AuthenticationRequestParameters;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class at/asitplus/wallet/lib/oidvci/OAuthAuthorizationError {
+}
+
+public final class at/asitplus/wallet/lib/oidvci/ProofValidator {
+	public synthetic fun <init> (Ljava/lang/String;Lat/asitplus/wallet/lib/jws/VerifyJwsObjectFun;Ljava/util/Collection;Lkotlin/time/Clock;JLkotlin/jvm/functions/Function1;ZLat/asitplus/wallet/lib/oidvci/NonceService;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/lang/String;Lat/asitplus/wallet/lib/jws/VerifyJwsObjectFun;Ljava/util/Collection;Lkotlin/time/Clock;JLkotlin/jvm/functions/Function1;ZLat/asitplus/wallet/lib/oidvci/NonceService;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun nonce (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun validProofTypes ()Ljava/util/Map;
+	public final fun validateProofExtractSubjectPublicKeys (Lat/asitplus/openid/CredentialRequestParameters;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/SerializerSketchKt {
+	public static final fun formUrlEncode (Ljava/util/Map;)Ljava/lang/String;
+	public static final fun getJson ()Lkotlinx/serialization/json/Json;
+	public static final fun safeDecodeUrlQueryComponent (Ljava/lang/String;Z)Ljava/lang/String;
+	public static synthetic fun safeDecodeUrlQueryComponent$default (Ljava/lang/String;ZILjava/lang/Object;)Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/TokenInfo {
+	public static final field Companion Lat/asitplus/wallet/lib/oidvci/TokenInfo$Companion;
+	public fun <init> (Ljava/lang/String;Ljava/util/Set;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/util/Set;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/util/Set;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/util/Set;Ljava/lang/String;)Lat/asitplus/wallet/lib/oidvci/TokenInfo;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/oidvci/TokenInfo;Ljava/lang/String;Ljava/util/Set;Ljava/lang/String;ILjava/lang/Object;)Lat/asitplus/wallet/lib/oidvci/TokenInfo;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAuthorizationDetails ()Ljava/util/Set;
+	public final fun getScope ()Ljava/lang/String;
+	public final fun getToken ()Ljava/lang/String;
+	public final fun getValidCredentialIdentifiers ()Ljava/util/Collection;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class at/asitplus/wallet/lib/oidvci/TokenInfo$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/oidvci/TokenInfo$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lat/asitplus/wallet/lib/oidvci/TokenInfo;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lat/asitplus/wallet/lib/oidvci/TokenInfo;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/TokenInfo$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/WalletEncryptionService {
+	public fun <init> ()V
+	public fun <init> (ZZLat/asitplus/wallet/lib/jws/EncryptJweFun;Lat/asitplus/signum/indispensable/josef/JweAlgorithm;Lat/asitplus/signum/indispensable/josef/JweEncryption;Lat/asitplus/wallet/lib/agent/KeyMaterial;Lat/asitplus/wallet/lib/jws/DecryptJweFun;)V
+	public synthetic fun <init> (ZZLat/asitplus/wallet/lib/jws/EncryptJweFun;Lat/asitplus/signum/indispensable/josef/JweAlgorithm;Lat/asitplus/signum/indispensable/josef/JweEncryption;Lat/asitplus/wallet/lib/agent/KeyMaterial;Lat/asitplus/wallet/lib/jws/DecryptJweFun;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+}
+
+public final class at/asitplus/wallet/lib/oidvci/WalletService {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Lat/asitplus/wallet/lib/agent/KeyMaterial;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function2;Lat/asitplus/wallet/lib/oidvci/WalletEncryptionService;)V
+	public synthetic fun <init> (Ljava/lang/String;Lat/asitplus/wallet/lib/agent/KeyMaterial;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function2;Lat/asitplus/wallet/lib/oidvci/WalletEncryptionService;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun buildAuthorizationDetails (Ljava/lang/String;Ljava/util/Set;)Ljava/util/Set;
+	public final fun buildAuthorizationDetails (Ljava/util/Set;Ljava/util/Set;)Ljava/util/Set;
+	public static synthetic fun buildAuthorizationDetails$default (Lat/asitplus/wallet/lib/oidvci/WalletService;Ljava/lang/String;Ljava/util/Set;ILjava/lang/Object;)Ljava/util/Set;
+	public static synthetic fun buildAuthorizationDetails$default (Lat/asitplus/wallet/lib/oidvci/WalletService;Ljava/util/Set;Ljava/util/Set;ILjava/lang/Object;)Ljava/util/Set;
+	public final fun createCredential (Lat/asitplus/openid/TokenResponseParameters;Lat/asitplus/openid/IssuerMetadata;Lat/asitplus/openid/SupportedCredentialFormat;Ljava/lang/String;Ljava/lang/String;Lkotlin/time/Clock;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun createCredential$default (Lat/asitplus/wallet/lib/oidvci/WalletService;Lat/asitplus/openid/TokenResponseParameters;Lat/asitplus/openid/IssuerMetadata;Lat/asitplus/openid/SupportedCredentialFormat;Ljava/lang/String;Ljava/lang/String;Lkotlin/time/Clock;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun getClientId ()Ljava/lang/String;
+	public final fun parseCredentialOffer (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun parseCredentialResponse (Lat/asitplus/wallet/lib/oidvci/CredentialIssuer$CredentialResponse;Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialRepresentation;Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialScheme;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun parseCredentialResponse (Ljava/lang/String;ZLat/asitplus/wallet/lib/data/ConstantIndex$CredentialRepresentation;Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialScheme;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun selectSupportedCredentialFormat (Lat/asitplus/wallet/lib/oidvci/WalletService$RequestOptions;Lat/asitplus/openid/IssuerMetadata;)Lat/asitplus/openid/SupportedCredentialFormat;
+}
+
+public abstract interface class at/asitplus/wallet/lib/oidvci/WalletService$CredentialRequest {
+	public static final field Companion Lat/asitplus/wallet/lib/oidvci/WalletService$CredentialRequest$Companion;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/WalletService$CredentialRequest$Companion {
+	public final fun parse (Ljava/lang/String;)Lat/asitplus/KmmResult;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/WalletService$CredentialRequest$Encrypted : at/asitplus/wallet/lib/oidvci/WalletService$CredentialRequest {
+	public fun <init> (Lat/asitplus/signum/indispensable/josef/JweEncrypted;)V
+	public final fun component1 ()Lat/asitplus/signum/indispensable/josef/JweEncrypted;
+	public final fun copy (Lat/asitplus/signum/indispensable/josef/JweEncrypted;)Lat/asitplus/wallet/lib/oidvci/WalletService$CredentialRequest$Encrypted;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/oidvci/WalletService$CredentialRequest$Encrypted;Lat/asitplus/signum/indispensable/josef/JweEncrypted;ILjava/lang/Object;)Lat/asitplus/wallet/lib/oidvci/WalletService$CredentialRequest$Encrypted;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getRequest ()Lat/asitplus/signum/indispensable/josef/JweEncrypted;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/WalletService$CredentialRequest$Plain : at/asitplus/wallet/lib/oidvci/WalletService$CredentialRequest {
+	public fun <init> (Lat/asitplus/openid/CredentialRequestParameters;)V
+	public final fun component1 ()Lat/asitplus/openid/CredentialRequestParameters;
+	public final fun copy (Lat/asitplus/openid/CredentialRequestParameters;)Lat/asitplus/wallet/lib/oidvci/WalletService$CredentialRequest$Plain;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/oidvci/WalletService$CredentialRequest$Plain;Lat/asitplus/openid/CredentialRequestParameters;ILjava/lang/Object;)Lat/asitplus/wallet/lib/oidvci/WalletService$CredentialRequest$Plain;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getRequest ()Lat/asitplus/openid/CredentialRequestParameters;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/WalletService$KeyAttestationInput {
+	public fun <init> (Ljava/lang/String;Ljava/util/Collection;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/util/Collection;
+	public final fun copy (Ljava/lang/String;Ljava/util/Collection;)Lat/asitplus/wallet/lib/oidvci/WalletService$KeyAttestationInput;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/oidvci/WalletService$KeyAttestationInput;Ljava/lang/String;Ljava/util/Collection;ILjava/lang/Object;)Lat/asitplus/wallet/lib/oidvci/WalletService$KeyAttestationInput;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getClientNonce ()Ljava/lang/String;
+	public final fun getSupportedAlgorithms ()Ljava/util/Collection;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/oidvci/WalletService$RequestOptions {
+	public fun <init> (Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialScheme;Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialRepresentation;Ljava/lang/String;)V
+	public synthetic fun <init> (Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialScheme;Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialRepresentation;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialScheme;
+	public final fun component2 ()Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialRepresentation;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun copy (Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialScheme;Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialRepresentation;Ljava/lang/String;)Lat/asitplus/wallet/lib/oidvci/WalletService$RequestOptions;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/oidvci/WalletService$RequestOptions;Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialScheme;Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialRepresentation;Ljava/lang/String;ILjava/lang/Object;)Lat/asitplus/wallet/lib/oidvci/WalletService$RequestOptions;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCredentialScheme ()Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialScheme;
+	public final fun getRepresentation ()Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialRepresentation;
+	public final fun getState ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract class at/asitplus/wallet/lib/openid/AuthenticationResponse {
+	public synthetic fun <init> (Lat/asitplus/openid/RelyingPartyMetadata;Ljava/util/Collection;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getClientMetadata ()Lat/asitplus/openid/RelyingPartyMetadata;
+	public final fun getJsonWebKeys ()Ljava/util/Collection;
+}
+
+public final class at/asitplus/wallet/lib/openid/AuthenticationResponse$Error : at/asitplus/wallet/lib/openid/AuthenticationResponse {
+	public fun <init> (Lat/asitplus/wallet/lib/oidvci/OAuth2Error;Lat/asitplus/openid/RelyingPartyMetadata;Ljava/util/Collection;)V
+	public final fun getError ()Lat/asitplus/wallet/lib/oidvci/OAuth2Error;
+}
+
+public final class at/asitplus/wallet/lib/openid/AuthenticationResponse$Success : at/asitplus/wallet/lib/openid/AuthenticationResponse {
+	public fun <init> (Lat/asitplus/openid/AuthenticationResponseParameters;Lat/asitplus/openid/RelyingPartyMetadata;Ljava/util/Collection;)V
+	public final fun getParams ()Lat/asitplus/openid/AuthenticationResponseParameters;
+}
+
+public abstract class at/asitplus/wallet/lib/openid/AuthenticationResponseResult {
+}
+
+public final class at/asitplus/wallet/lib/openid/AuthenticationResponseResult$DcApi : at/asitplus/wallet/lib/openid/AuthenticationResponseResult {
+	public fun <init> (Lat/asitplus/openid/AuthenticationResponseParameters;)V
+	public final fun component1 ()Lat/asitplus/openid/AuthenticationResponseParameters;
+	public final fun copy (Lat/asitplus/openid/AuthenticationResponseParameters;)Lat/asitplus/wallet/lib/openid/AuthenticationResponseResult$DcApi;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/openid/AuthenticationResponseResult$DcApi;Lat/asitplus/openid/AuthenticationResponseParameters;ILjava/lang/Object;)Lat/asitplus/wallet/lib/openid/AuthenticationResponseResult$DcApi;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getParams ()Lat/asitplus/openid/AuthenticationResponseParameters;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/openid/AuthenticationResponseResult$Post : at/asitplus/wallet/lib/openid/AuthenticationResponseResult {
+	public fun <init> (Ljava/lang/String;Ljava/util/Map;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/util/Map;
+	public final fun copy (Ljava/lang/String;Ljava/util/Map;)Lat/asitplus/wallet/lib/openid/AuthenticationResponseResult$Post;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/openid/AuthenticationResponseResult$Post;Ljava/lang/String;Ljava/util/Map;ILjava/lang/Object;)Lat/asitplus/wallet/lib/openid/AuthenticationResponseResult$Post;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getParams ()Ljava/util/Map;
+	public final fun getUrl ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/openid/AuthenticationResponseResult$Redirect : at/asitplus/wallet/lib/openid/AuthenticationResponseResult {
+	public fun <init> (Ljava/lang/String;Lat/asitplus/openid/AuthenticationResponseParameters;Lat/asitplus/wallet/lib/oidvci/OAuth2Error;)V
+	public synthetic fun <init> (Ljava/lang/String;Lat/asitplus/openid/AuthenticationResponseParameters;Lat/asitplus/wallet/lib/oidvci/OAuth2Error;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Lat/asitplus/openid/AuthenticationResponseParameters;
+	public final fun component3 ()Lat/asitplus/wallet/lib/oidvci/OAuth2Error;
+	public final fun copy (Ljava/lang/String;Lat/asitplus/openid/AuthenticationResponseParameters;Lat/asitplus/wallet/lib/oidvci/OAuth2Error;)Lat/asitplus/wallet/lib/openid/AuthenticationResponseResult$Redirect;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/openid/AuthenticationResponseResult$Redirect;Ljava/lang/String;Lat/asitplus/openid/AuthenticationResponseParameters;Lat/asitplus/wallet/lib/oidvci/OAuth2Error;ILjava/lang/Object;)Lat/asitplus/wallet/lib/openid/AuthenticationResponseResult$Redirect;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getError ()Lat/asitplus/wallet/lib/oidvci/OAuth2Error;
+	public final fun getParams ()Lat/asitplus/openid/AuthenticationResponseParameters;
+	public final fun getUrl ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract class at/asitplus/wallet/lib/openid/AuthnResponseResult {
+}
+
+public final class at/asitplus/wallet/lib/openid/AuthnResponseResult$Error : at/asitplus/wallet/lib/openid/AuthnResponseResult {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/Throwable;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)Lat/asitplus/wallet/lib/openid/AuthnResponseResult$Error;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/openid/AuthnResponseResult$Error;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;ILjava/lang/Object;)Lat/asitplus/wallet/lib/openid/AuthnResponseResult$Error;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCause ()Ljava/lang/Throwable;
+	public final fun getReason ()Ljava/lang/String;
+	public final fun getState ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/openid/AuthnResponseResult$IdToken : at/asitplus/wallet/lib/openid/AuthnResponseResult {
+	public fun <init> (Lat/asitplus/openid/IdToken;Ljava/lang/String;)V
+	public synthetic fun <init> (Lat/asitplus/openid/IdToken;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lat/asitplus/openid/IdToken;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun copy (Lat/asitplus/openid/IdToken;Ljava/lang/String;)Lat/asitplus/wallet/lib/openid/AuthnResponseResult$IdToken;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/openid/AuthnResponseResult$IdToken;Lat/asitplus/openid/IdToken;Ljava/lang/String;ILjava/lang/Object;)Lat/asitplus/wallet/lib/openid/AuthnResponseResult$IdToken;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getIdToken ()Lat/asitplus/openid/IdToken;
+	public final fun getState ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/openid/AuthnResponseResult$Success : at/asitplus/wallet/lib/openid/AuthnResponseResult {
+	public fun <init> (Lat/asitplus/wallet/lib/data/VerifiablePresentationParsed;Ljava/lang/String;)V
+	public synthetic fun <init> (Lat/asitplus/wallet/lib/data/VerifiablePresentationParsed;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lat/asitplus/wallet/lib/data/VerifiablePresentationParsed;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun copy (Lat/asitplus/wallet/lib/data/VerifiablePresentationParsed;Ljava/lang/String;)Lat/asitplus/wallet/lib/openid/AuthnResponseResult$Success;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/openid/AuthnResponseResult$Success;Lat/asitplus/wallet/lib/data/VerifiablePresentationParsed;Ljava/lang/String;ILjava/lang/Object;)Lat/asitplus/wallet/lib/openid/AuthnResponseResult$Success;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getState ()Ljava/lang/String;
+	public final fun getVp ()Lat/asitplus/wallet/lib/data/VerifiablePresentationParsed;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/openid/AuthnResponseResult$SuccessIso : at/asitplus/wallet/lib/openid/AuthnResponseResult {
+	public fun <init> (Ljava/util/Collection;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/util/Collection;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/util/Collection;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun copy (Ljava/util/Collection;Ljava/lang/String;)Lat/asitplus/wallet/lib/openid/AuthnResponseResult$SuccessIso;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/openid/AuthnResponseResult$SuccessIso;Ljava/util/Collection;Ljava/lang/String;ILjava/lang/Object;)Lat/asitplus/wallet/lib/openid/AuthnResponseResult$SuccessIso;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getDocuments ()Ljava/util/Collection;
+	public final fun getState ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/openid/AuthnResponseResult$SuccessSdJwt : at/asitplus/wallet/lib/openid/AuthnResponseResult {
+	public fun <init> (Lat/asitplus/wallet/lib/jws/SdJwtSigned;Lat/asitplus/wallet/lib/data/VerifiableCredentialSdJwt;Lkotlinx/serialization/json/JsonObject;Ljava/util/Collection;Ljava/lang/String;Lat/asitplus/wallet/lib/agent/validation/CredentialFreshnessSummary$SdJwt;)V
+	public synthetic fun <init> (Lat/asitplus/wallet/lib/jws/SdJwtSigned;Lat/asitplus/wallet/lib/data/VerifiableCredentialSdJwt;Lkotlinx/serialization/json/JsonObject;Ljava/util/Collection;Ljava/lang/String;Lat/asitplus/wallet/lib/agent/validation/CredentialFreshnessSummary$SdJwt;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lat/asitplus/wallet/lib/jws/SdJwtSigned;
+	public final fun component2 ()Lat/asitplus/wallet/lib/data/VerifiableCredentialSdJwt;
+	public final fun component3 ()Lkotlinx/serialization/json/JsonObject;
+	public final fun component4 ()Ljava/util/Collection;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun component6 ()Lat/asitplus/wallet/lib/agent/validation/CredentialFreshnessSummary$SdJwt;
+	public final fun copy (Lat/asitplus/wallet/lib/jws/SdJwtSigned;Lat/asitplus/wallet/lib/data/VerifiableCredentialSdJwt;Lkotlinx/serialization/json/JsonObject;Ljava/util/Collection;Ljava/lang/String;Lat/asitplus/wallet/lib/agent/validation/CredentialFreshnessSummary$SdJwt;)Lat/asitplus/wallet/lib/openid/AuthnResponseResult$SuccessSdJwt;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/openid/AuthnResponseResult$SuccessSdJwt;Lat/asitplus/wallet/lib/jws/SdJwtSigned;Lat/asitplus/wallet/lib/data/VerifiableCredentialSdJwt;Lkotlinx/serialization/json/JsonObject;Ljava/util/Collection;Ljava/lang/String;Lat/asitplus/wallet/lib/agent/validation/CredentialFreshnessSummary$SdJwt;ILjava/lang/Object;)Lat/asitplus/wallet/lib/openid/AuthnResponseResult$SuccessSdJwt;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getDisclosures ()Ljava/util/Collection;
+	public final fun getFreshnessSummary ()Lat/asitplus/wallet/lib/agent/validation/CredentialFreshnessSummary$SdJwt;
+	public final fun getReconstructed ()Lkotlinx/serialization/json/JsonObject;
+	public final fun getSdJwtSigned ()Lat/asitplus/wallet/lib/jws/SdJwtSigned;
+	public final fun getState ()Ljava/lang/String;
+	public final fun getVerifiableCredentialSdJwt ()Lat/asitplus/wallet/lib/data/VerifiableCredentialSdJwt;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/openid/AuthnResponseResult$ValidationError : at/asitplus/wallet/lib/openid/AuthnResponseResult {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/Throwable;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)Lat/asitplus/wallet/lib/openid/AuthnResponseResult$ValidationError;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/openid/AuthnResponseResult$ValidationError;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;ILjava/lang/Object;)Lat/asitplus/wallet/lib/openid/AuthnResponseResult$ValidationError;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCause ()Ljava/lang/Throwable;
+	public final fun getField ()Ljava/lang/String;
+	public final fun getState ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/openid/AuthnResponseResult$VerifiableDCQLPresentationValidationResults : at/asitplus/wallet/lib/openid/AuthnResponseResult {
+	public fun <init> (Ljava/util/Map;)V
+	public final fun component1 ()Ljava/util/Map;
+	public final fun copy (Ljava/util/Map;)Lat/asitplus/wallet/lib/openid/AuthnResponseResult$VerifiableDCQLPresentationValidationResults;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/openid/AuthnResponseResult$VerifiableDCQLPresentationValidationResults;Ljava/util/Map;ILjava/lang/Object;)Lat/asitplus/wallet/lib/openid/AuthnResponseResult$VerifiableDCQLPresentationValidationResults;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getValidationResults ()Ljava/util/Map;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/openid/AuthnResponseResult$VerifiablePresentationValidationResults : at/asitplus/wallet/lib/openid/AuthnResponseResult {
+	public fun <init> (Ljava/util/List;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun copy (Ljava/util/List;)Lat/asitplus/wallet/lib/openid/AuthnResponseResult$VerifiablePresentationValidationResults;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/openid/AuthnResponseResult$VerifiablePresentationValidationResults;Ljava/util/List;ILjava/lang/Object;)Lat/asitplus/wallet/lib/openid/AuthnResponseResult$VerifiablePresentationValidationResults;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getValidationResults ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/openid/AuthorizationResponsePreparationState {
+	public static final field Companion Lat/asitplus/wallet/lib/openid/AuthorizationResponsePreparationState$Companion;
+	public fun <init> (Lat/asitplus/openid/RequestParametersFrom;Lat/asitplus/wallet/lib/data/CredentialPresentationRequest;Lat/asitplus/openid/RelyingPartyMetadata;Ljava/util/Collection;Ljava/lang/Boolean;Ljava/util/List;)V
+	public final fun component1 ()Lat/asitplus/openid/RequestParametersFrom;
+	public final fun component2 ()Lat/asitplus/wallet/lib/data/CredentialPresentationRequest;
+	public final fun component3 ()Lat/asitplus/openid/RelyingPartyMetadata;
+	public final fun component4 ()Ljava/util/Collection;
+	public final fun component5 ()Ljava/lang/Boolean;
+	public final fun component6 ()Ljava/util/List;
+	public final fun copy (Lat/asitplus/openid/RequestParametersFrom;Lat/asitplus/wallet/lib/data/CredentialPresentationRequest;Lat/asitplus/openid/RelyingPartyMetadata;Ljava/util/Collection;Ljava/lang/Boolean;Ljava/util/List;)Lat/asitplus/wallet/lib/openid/AuthorizationResponsePreparationState;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/openid/AuthorizationResponsePreparationState;Lat/asitplus/openid/RequestParametersFrom;Lat/asitplus/wallet/lib/data/CredentialPresentationRequest;Lat/asitplus/openid/RelyingPartyMetadata;Ljava/util/Collection;Ljava/lang/Boolean;Ljava/util/List;ILjava/lang/Object;)Lat/asitplus/wallet/lib/openid/AuthorizationResponsePreparationState;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getClientMetadata ()Lat/asitplus/openid/RelyingPartyMetadata;
+	public final fun getCredentialPresentationRequest ()Lat/asitplus/wallet/lib/data/CredentialPresentationRequest;
+	public final fun getJsonWebKeys ()Ljava/util/Collection;
+	public final fun getRequest ()Lat/asitplus/openid/RequestParametersFrom;
+	public final fun getRequestObjectVerified ()Ljava/lang/Boolean;
+	public final fun getVerifierInfo ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class at/asitplus/wallet/lib/openid/AuthorizationResponsePreparationState$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lat/asitplus/wallet/lib/openid/AuthorizationResponsePreparationState$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lat/asitplus/wallet/lib/openid/AuthorizationResponsePreparationState;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lat/asitplus/wallet/lib/openid/AuthorizationResponsePreparationState;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class at/asitplus/wallet/lib/openid/AuthorizationResponsePreparationState$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public abstract class at/asitplus/wallet/lib/openid/ClientIdScheme {
+	public synthetic fun <init> (Lat/asitplus/openid/OpenIdConstants$ClientIdScheme;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Lat/asitplus/openid/OpenIdConstants$ClientIdScheme;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getClientId ()Ljava/lang/String;
+	public final fun getClientIdWithoutPrefix ()Ljava/lang/String;
+	public final fun getIssuerUri ()Ljava/lang/String;
+	public final fun getRedirectUri ()Ljava/lang/String;
+	public final fun getScheme ()Lat/asitplus/openid/OpenIdConstants$ClientIdScheme;
+}
+
+public final class at/asitplus/wallet/lib/openid/ClientIdScheme$CertificateHash : at/asitplus/wallet/lib/openid/ClientIdScheme {
+	public fun <init> (Ljava/util/List;Ljava/lang/String;)V
+	public final fun getChain ()Ljava/util/List;
+}
+
+public final class at/asitplus/wallet/lib/openid/ClientIdScheme$CertificateSanDns : at/asitplus/wallet/lib/openid/ClientIdScheme {
+	public fun <init> (Ljava/util/List;Ljava/lang/String;Ljava/lang/String;)V
+	public final fun getChain ()Ljava/util/List;
+}
+
+public final class at/asitplus/wallet/lib/openid/ClientIdScheme$PreRegistered : at/asitplus/wallet/lib/openid/ClientIdScheme {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+}
+
+public final class at/asitplus/wallet/lib/openid/ClientIdScheme$RedirectUri : at/asitplus/wallet/lib/openid/ClientIdScheme {
+	public fun <init> (Ljava/lang/String;)V
+}
+
+public final class at/asitplus/wallet/lib/openid/ClientIdScheme$VerifierAttestation : at/asitplus/wallet/lib/openid/ClientIdScheme {
+	public fun <init> (Lat/asitplus/signum/indispensable/josef/JwsSigned;Ljava/lang/String;)V
+	public final fun getAttestationJwt ()Lat/asitplus/signum/indispensable/josef/JwsSigned;
+}
+
+public abstract interface class at/asitplus/wallet/lib/openid/CredentialMatchingResult {
+	public abstract fun getPresentationRequest ()Lat/asitplus/wallet/lib/data/CredentialPresentationRequest;
+}
+
+public final class at/asitplus/wallet/lib/openid/DCQLMatchingResult : at/asitplus/wallet/lib/openid/CredentialMatchingResult {
+	public synthetic fun <init> (Lat/asitplus/openid/dcql/DCQLQuery;Lat/asitplus/openid/dcql/DCQLQueryResult;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-1HygyMg ()Lat/asitplus/openid/dcql/DCQLQuery;
+	public final fun component2 ()Lat/asitplus/openid/dcql/DCQLQueryResult;
+	public final fun copy-RpTi1LE (Lat/asitplus/openid/dcql/DCQLQuery;Lat/asitplus/openid/dcql/DCQLQueryResult;)Lat/asitplus/wallet/lib/openid/DCQLMatchingResult;
+	public static synthetic fun copy-RpTi1LE$default (Lat/asitplus/wallet/lib/openid/DCQLMatchingResult;Lat/asitplus/openid/dcql/DCQLQuery;Lat/asitplus/openid/dcql/DCQLQueryResult;ILjava/lang/Object;)Lat/asitplus/wallet/lib/openid/DCQLMatchingResult;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getDcqlQueryResult ()Lat/asitplus/openid/dcql/DCQLQueryResult;
+	public synthetic fun getPresentationRequest ()Lat/asitplus/wallet/lib/data/CredentialPresentationRequest;
+	public fun getPresentationRequest-1HygyMg ()Lat/asitplus/openid/dcql/DCQLQuery;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/openid/JwsHeaderClientIdScheme : at/asitplus/wallet/lib/jws/JwsHeaderIdentifierFun {
+	public fun <init> (Lat/asitplus/wallet/lib/openid/ClientIdScheme;)V
+	public final fun getClientIdScheme ()Lat/asitplus/wallet/lib/openid/ClientIdScheme;
+	public fun invoke (Lat/asitplus/signum/indispensable/josef/JwsHeader;Lat/asitplus/wallet/lib/agent/KeyMaterial;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/openid/OpenId4VpHolder {
+	public fun <init> ()V
+	public fun <init> (Lat/asitplus/wallet/lib/agent/KeyMaterial;Lat/asitplus/wallet/lib/agent/Holder;Lat/asitplus/wallet/lib/jws/SignJwtFun;Lat/asitplus/wallet/lib/jws/EncryptJweFun;Ljava/util/Set;Lat/asitplus/wallet/lib/cbor/SignCoseDetachedFun;Lkotlin/time/Clock;Ljava/lang/String;Ljava/lang/String;Lkotlin/jvm/functions/Function2;Lat/asitplus/wallet/lib/oidc/RequestObjectJwsVerifier;Lat/asitplus/wallet/lib/oidvci/MapStore;Lat/asitplus/wallet/lib/agent/RandomSource;Lkotlin/jvm/functions/Function1;)V
+	public synthetic fun <init> (Lat/asitplus/wallet/lib/agent/KeyMaterial;Lat/asitplus/wallet/lib/agent/Holder;Lat/asitplus/wallet/lib/jws/SignJwtFun;Lat/asitplus/wallet/lib/jws/EncryptJweFun;Ljava/util/Set;Lat/asitplus/wallet/lib/cbor/SignCoseDetachedFun;Lkotlin/time/Clock;Ljava/lang/String;Ljava/lang/String;Lkotlin/jvm/functions/Function2;Lat/asitplus/wallet/lib/oidc/RequestObjectJwsVerifier;Lat/asitplus/wallet/lib/oidvci/MapStore;Lat/asitplus/wallet/lib/agent/RandomSource;Lkotlin/jvm/functions/Function1;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun createAuthnErrorResponse (Ljava/lang/Throwable;Lat/asitplus/openid/RequestParametersFrom;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun createAuthnResponse (Lat/asitplus/openid/RequestParametersFrom;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun createAuthnResponse (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun finalizeAuthorizationResponse (Lat/asitplus/wallet/lib/openid/AuthorizationResponsePreparationState;Lat/asitplus/wallet/lib/data/CredentialPresentation;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun finalizeAuthorizationResponse$default (Lat/asitplus/wallet/lib/openid/OpenId4VpHolder;Lat/asitplus/wallet/lib/openid/AuthorizationResponsePreparationState;Lat/asitplus/wallet/lib/data/CredentialPresentation;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun getMatchingCredentials-gIAlu-s (Lat/asitplus/wallet/lib/openid/AuthorizationResponsePreparationState;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun getMetadata ()Lat/asitplus/openid/OAuth2AuthorizationServerMetadata;
+	public final fun startAuthorizationResponsePreparation (Lat/asitplus/openid/RequestParametersFrom;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun startAuthorizationResponsePreparation (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/openid/OpenId4VpHolder$JsonWebKeyLookupInput {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lat/asitplus/wallet/lib/openid/OpenId4VpHolder$JsonWebKeyLookupInput;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/openid/OpenId4VpHolder$JsonWebKeyLookupInput;Ljava/lang/String;ILjava/lang/Object;)Lat/asitplus/wallet/lib/openid/OpenId4VpHolder$JsonWebKeyLookupInput;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getClientId ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/openid/OpenId4VpHolderKt {
+	public static final fun toOAuth2Error (Ljava/lang/Throwable;Lat/asitplus/openid/RequestParametersFrom;)Lat/asitplus/wallet/lib/oidvci/OAuth2Error;
+	public static final fun toOAuth2Error (Ljava/lang/Throwable;Ljava/lang/String;)Lat/asitplus/wallet/lib/oidvci/OAuth2Error;
+}
+
+public final class at/asitplus/wallet/lib/openid/OpenId4VpVerifier {
+	public fun <init> (Lat/asitplus/wallet/lib/openid/ClientIdScheme;Lat/asitplus/wallet/lib/agent/KeyMaterial;Lat/asitplus/wallet/lib/agent/Verifier;Lat/asitplus/wallet/lib/agent/KeyMaterial;Lat/asitplus/wallet/lib/jws/DecryptJweFun;Lat/asitplus/wallet/lib/jws/SignJwtFun;Lat/asitplus/wallet/lib/jws/VerifyJwsObjectFun;Ljava/util/Set;Lat/asitplus/wallet/lib/cbor/VerifyCoseSignatureWithKeyFun;JLkotlin/time/Clock;Lat/asitplus/wallet/lib/oidvci/NonceService;Lat/asitplus/wallet/lib/oidvci/MapStore;Lat/asitplus/signum/indispensable/josef/JweAlgorithm;Lat/asitplus/signum/indispensable/josef/JweEncryption;)V
+	public synthetic fun <init> (Lat/asitplus/wallet/lib/openid/ClientIdScheme;Lat/asitplus/wallet/lib/agent/KeyMaterial;Lat/asitplus/wallet/lib/agent/Verifier;Lat/asitplus/wallet/lib/agent/KeyMaterial;Lat/asitplus/wallet/lib/jws/DecryptJweFun;Lat/asitplus/wallet/lib/jws/SignJwtFun;Lat/asitplus/wallet/lib/jws/VerifyJwsObjectFun;Ljava/util/Set;Lat/asitplus/wallet/lib/cbor/VerifyCoseSignatureWithKeyFun;JLkotlin/time/Clock;Lat/asitplus/wallet/lib/oidvci/NonceService;Lat/asitplus/wallet/lib/oidvci/MapStore;Lat/asitplus/signum/indispensable/josef/JweAlgorithm;Lat/asitplus/signum/indispensable/josef/JweEncryption;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun createAuthnRequest (Lat/asitplus/wallet/lib/openid/RequestOptions;Lat/asitplus/openid/RequestObjectParameters;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun createAuthnRequest (Lat/asitplus/wallet/lib/openid/RequestOptions;Lat/asitplus/wallet/lib/openid/OpenId4VpVerifier$CreationOptions;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun createAuthnRequest$default (Lat/asitplus/wallet/lib/openid/OpenId4VpVerifier;Lat/asitplus/wallet/lib/openid/RequestOptions;Lat/asitplus/openid/RequestObjectParameters;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun createAuthnRequestAsSignedRequestObject (Lat/asitplus/wallet/lib/openid/RequestOptions;Lat/asitplus/openid/RequestObjectParameters;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun createAuthnRequestAsSignedRequestObject$default (Lat/asitplus/wallet/lib/openid/OpenId4VpVerifier;Lat/asitplus/wallet/lib/openid/RequestOptions;Lat/asitplus/openid/RequestObjectParameters;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun getMetadata ()Lat/asitplus/openid/RelyingPartyMetadata;
+	public final fun getMetadataWithEncryption ()Lat/asitplus/openid/RelyingPartyMetadata;
+	public final fun getVerifier ()Lat/asitplus/wallet/lib/agent/Verifier;
+	public final fun prepareAuthnRequest (Lat/asitplus/wallet/lib/openid/RequestOptions;Lat/asitplus/openid/RequestObjectParameters;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun prepareAuthnRequest$default (Lat/asitplus/wallet/lib/openid/OpenId4VpVerifier;Lat/asitplus/wallet/lib/openid/RequestOptions;Lat/asitplus/openid/RequestObjectParameters;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun submitAuthnRequest (Lat/asitplus/openid/AuthenticationRequestParameters;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun submitAuthnRequest$default (Lat/asitplus/wallet/lib/openid/OpenId4VpVerifier;Lat/asitplus/openid/AuthenticationRequestParameters;Ljava/lang/String;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun validateAuthnResponse (Lat/asitplus/openid/ResponseParametersFrom;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun validateAuthnResponse (Lat/asitplus/openid/ResponseParametersFrom;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun validateAuthnResponse (Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun validateAuthnResponse (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun validateAuthnResponse$default (Lat/asitplus/wallet/lib/openid/OpenId4VpVerifier;Lat/asitplus/openid/ResponseParametersFrom;Ljava/lang/String;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public static synthetic fun validateAuthnResponse$default (Lat/asitplus/wallet/lib/openid/OpenId4VpVerifier;Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/openid/OpenId4VpVerifier$CreatedRequest {
+	public fun <init> (Ljava/lang/String;Lkotlin/jvm/functions/Function2;)V
+	public synthetic fun <init> (Ljava/lang/String;Lkotlin/jvm/functions/Function2;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Lkotlin/jvm/functions/Function2;
+	public final fun copy (Ljava/lang/String;Lkotlin/jvm/functions/Function2;)Lat/asitplus/wallet/lib/openid/OpenId4VpVerifier$CreatedRequest;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/openid/OpenId4VpVerifier$CreatedRequest;Ljava/lang/String;Lkotlin/jvm/functions/Function2;ILjava/lang/Object;)Lat/asitplus/wallet/lib/openid/OpenId4VpVerifier$CreatedRequest;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getLoadRequestObject ()Lkotlin/jvm/functions/Function2;
+	public final fun getUrl ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract class at/asitplus/wallet/lib/openid/OpenId4VpVerifier$CreationOptions {
+}
+
+public final class at/asitplus/wallet/lib/openid/OpenId4VpVerifier$CreationOptions$Query : at/asitplus/wallet/lib/openid/OpenId4VpVerifier$CreationOptions {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lat/asitplus/wallet/lib/openid/OpenId4VpVerifier$CreationOptions$Query;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/openid/OpenId4VpVerifier$CreationOptions$Query;Ljava/lang/String;ILjava/lang/Object;)Lat/asitplus/wallet/lib/openid/OpenId4VpVerifier$CreationOptions$Query;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getWalletUrl ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/openid/OpenId4VpVerifier$CreationOptions$RequestByReference : at/asitplus/wallet/lib/openid/OpenId4VpVerifier$CreationOptions {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lat/asitplus/openid/JarRequestParameters$RequestUriMethod;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lat/asitplus/openid/JarRequestParameters$RequestUriMethod;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Lat/asitplus/openid/JarRequestParameters$RequestUriMethod;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Lat/asitplus/openid/JarRequestParameters$RequestUriMethod;)Lat/asitplus/wallet/lib/openid/OpenId4VpVerifier$CreationOptions$RequestByReference;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/openid/OpenId4VpVerifier$CreationOptions$RequestByReference;Ljava/lang/String;Ljava/lang/String;Lat/asitplus/openid/JarRequestParameters$RequestUriMethod;ILjava/lang/Object;)Lat/asitplus/wallet/lib/openid/OpenId4VpVerifier$CreationOptions$RequestByReference;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getRequestUrl ()Ljava/lang/String;
+	public final fun getRequestUrlMethod ()Lat/asitplus/openid/JarRequestParameters$RequestUriMethod;
+	public final fun getWalletUrl ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/openid/OpenId4VpVerifier$CreationOptions$SignedRequestByReference : at/asitplus/wallet/lib/openid/OpenId4VpVerifier$CreationOptions {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lat/asitplus/openid/JarRequestParameters$RequestUriMethod;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lat/asitplus/openid/JarRequestParameters$RequestUriMethod;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Lat/asitplus/openid/JarRequestParameters$RequestUriMethod;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Lat/asitplus/openid/JarRequestParameters$RequestUriMethod;)Lat/asitplus/wallet/lib/openid/OpenId4VpVerifier$CreationOptions$SignedRequestByReference;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/openid/OpenId4VpVerifier$CreationOptions$SignedRequestByReference;Ljava/lang/String;Ljava/lang/String;Lat/asitplus/openid/JarRequestParameters$RequestUriMethod;ILjava/lang/Object;)Lat/asitplus/wallet/lib/openid/OpenId4VpVerifier$CreationOptions$SignedRequestByReference;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getRequestUrl ()Ljava/lang/String;
+	public final fun getRequestUrlMethod ()Lat/asitplus/openid/JarRequestParameters$RequestUriMethod;
+	public final fun getWalletUrl ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/openid/OpenId4VpVerifier$CreationOptions$SignedRequestByValue : at/asitplus/wallet/lib/openid/OpenId4VpVerifier$CreationOptions {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lat/asitplus/wallet/lib/openid/OpenId4VpVerifier$CreationOptions$SignedRequestByValue;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/openid/OpenId4VpVerifier$CreationOptions$SignedRequestByValue;Ljava/lang/String;ILjava/lang/Object;)Lat/asitplus/wallet/lib/openid/OpenId4VpVerifier$CreationOptions$SignedRequestByValue;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getWalletUrl ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/openid/PresentationExchangeMatchingResult : at/asitplus/wallet/lib/openid/CredentialMatchingResult {
+	public fun <init> (Lat/asitplus/wallet/lib/data/CredentialPresentationRequest$PresentationExchangeRequest;Ljava/util/Map;)V
+	public final fun component1 ()Lat/asitplus/wallet/lib/data/CredentialPresentationRequest$PresentationExchangeRequest;
+	public final fun component2 ()Ljava/util/Map;
+	public final fun copy (Lat/asitplus/wallet/lib/data/CredentialPresentationRequest$PresentationExchangeRequest;Ljava/util/Map;)Lat/asitplus/wallet/lib/openid/PresentationExchangeMatchingResult;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/openid/PresentationExchangeMatchingResult;Lat/asitplus/wallet/lib/data/CredentialPresentationRequest$PresentationExchangeRequest;Ljava/util/Map;ILjava/lang/Object;)Lat/asitplus/wallet/lib/openid/PresentationExchangeMatchingResult;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMatchingInputDescriptorCredentials ()Ljava/util/Map;
+	public fun getPresentationRequest ()Lat/asitplus/wallet/lib/data/CredentialPresentationRequest$PresentationExchangeRequest;
+	public synthetic fun getPresentationRequest ()Lat/asitplus/wallet/lib/data/CredentialPresentationRequest;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/openid/PresentationMechanismEnum : java/lang/Enum {
+	public static final field DCQL Lat/asitplus/wallet/lib/openid/PresentationMechanismEnum;
+	public static final field PresentationExchange Lat/asitplus/wallet/lib/openid/PresentationMechanismEnum;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lat/asitplus/wallet/lib/openid/PresentationMechanismEnum;
+	public static fun values ()[Lat/asitplus/wallet/lib/openid/PresentationMechanismEnum;
+}
+
+public final class at/asitplus/wallet/lib/openid/RequestOptions {
+	public fun <init> (Ljava/util/Set;Lat/asitplus/wallet/lib/openid/PresentationMechanismEnum;Lat/asitplus/openid/OpenIdConstants$ResponseMode;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZLjava/util/List;)V
+	public synthetic fun <init> (Ljava/util/Set;Lat/asitplus/wallet/lib/openid/PresentationMechanismEnum;Lat/asitplus/openid/OpenIdConstants$ResponseMode;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZLjava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun buildScope ()Ljava/lang/String;
+	public final fun component1 ()Ljava/util/Set;
+	public final fun component2 ()Lat/asitplus/wallet/lib/openid/PresentationMechanismEnum;
+	public final fun component3 ()Lat/asitplus/openid/OpenIdConstants$ResponseMode;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun component6 ()Ljava/lang/String;
+	public final fun component7 ()Z
+	public final fun component8 ()Ljava/util/List;
+	public final fun copy (Ljava/util/Set;Lat/asitplus/wallet/lib/openid/PresentationMechanismEnum;Lat/asitplus/openid/OpenIdConstants$ResponseMode;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZLjava/util/List;)Lat/asitplus/wallet/lib/openid/RequestOptions;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/openid/RequestOptions;Ljava/util/Set;Lat/asitplus/wallet/lib/openid/PresentationMechanismEnum;Lat/asitplus/openid/OpenIdConstants$ResponseMode;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZLjava/util/List;ILjava/lang/Object;)Lat/asitplus/wallet/lib/openid/RequestOptions;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCredentials ()Ljava/util/Set;
+	public final fun getEncryption ()Z
+	public final fun getPresentationMechanism ()Lat/asitplus/wallet/lib/openid/PresentationMechanismEnum;
+	public final fun getResponseMode ()Lat/asitplus/openid/OpenIdConstants$ResponseMode;
+	public final fun getResponseType ()Ljava/lang/String;
+	public final fun getResponseUrl ()Ljava/lang/String;
+	public final fun getState ()Ljava/lang/String;
+	public final fun getTransactionData ()Ljava/util/List;
+	public fun hashCode ()I
+	public final fun isAnyDirectPost ()Z
+	public final fun isDcApi ()Z
+	public final fun isDcql ()Z
+	public final fun isPresentationExchange ()Z
+	public final fun isSiop ()Z
+	public final fun toDCQLQuery ()Lat/asitplus/openid/dcql/DCQLQuery;
+	public final fun toInputDescriptor (Lat/asitplus/dif/FormatContainerJwt;Lat/asitplus/dif/FormatContainerSdJwt;)Ljava/util/List;
+	public final fun toPresentationDefinition (Lat/asitplus/dif/FormatContainerJwt;Lat/asitplus/dif/FormatContainerSdJwt;)Lat/asitplus/dif/PresentationDefinition;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/openid/RequestOptionsCredential {
+	public fun <init> (Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialScheme;Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialRepresentation;Ljava/util/Set;Ljava/util/Set;Ljava/lang/String;)V
+	public synthetic fun <init> (Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialScheme;Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialRepresentation;Ljava/util/Set;Ljava/util/Set;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun buildId ()Ljava/lang/String;
+	public final fun component1 ()Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialScheme;
+	public final fun component2 ()Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialRepresentation;
+	public final fun component3 ()Ljava/util/Set;
+	public final fun component4 ()Ljava/util/Set;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun copy (Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialScheme;Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialRepresentation;Ljava/util/Set;Ljava/util/Set;Ljava/lang/String;)Lat/asitplus/wallet/lib/openid/RequestOptionsCredential;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/openid/RequestOptionsCredential;Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialScheme;Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialRepresentation;Ljava/util/Set;Ljava/util/Set;Ljava/lang/String;ILjava/lang/Object;)Lat/asitplus/wallet/lib/openid/RequestOptionsCredential;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCredentialScheme ()Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialScheme;
+	public final fun getId ()Ljava/lang/String;
+	public final fun getRepresentation ()Lat/asitplus/wallet/lib/data/ConstantIndex$CredentialRepresentation;
+	public final fun getRequestedAttributes ()Ljava/util/Set;
+	public final fun getRequestedOptionalAttributes ()Ljava/util/Set;
+	public fun hashCode ()I
+	public final fun toConstraint ()Lat/asitplus/dif/Constraint;
+	public final fun toFormatHolder (Lat/asitplus/dif/FormatContainerJwt;Lat/asitplus/dif/FormatContainerSdJwt;)Lat/asitplus/dif/FormatHolder;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/openid/RequestParser {
+	public fun <init> ()V
+	public fun <init> (Lkotlin/jvm/functions/Function2;Lat/asitplus/wallet/lib/oidc/RequestObjectJwsVerifier;Lkotlin/jvm/functions/Function1;)V
+	public synthetic fun <init> (Lkotlin/jvm/functions/Function2;Lat/asitplus/wallet/lib/oidc/RequestObjectJwsVerifier;Lkotlin/jvm/functions/Function1;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun extractRequest (Lat/asitplus/openid/JarRequestParameters;Lat/asitplus/openid/RequestParametersFrom;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun parseRequestParameters (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/openid/ResponseParser {
+	public fun <init> ()V
+	public fun <init> (Lat/asitplus/wallet/lib/jws/DecryptJweFun;Lat/asitplus/wallet/lib/jws/VerifyJwsObjectFun;)V
+	public synthetic fun <init> (Lat/asitplus/wallet/lib/jws/DecryptJweFun;Lat/asitplus/wallet/lib/jws/VerifyJwsObjectFun;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun parseAuthnResponse (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public abstract class at/asitplus/wallet/lib/rqes/OAuth2RqesParameters {
+}
+
+public final class at/asitplus/wallet/lib/rqes/OAuth2RqesParameters$CredentialRequired : at/asitplus/wallet/lib/rqes/OAuth2RqesParameters {
+	public fun <init> ([BLat/asitplus/csc/enums/SignatureQualifier;ILjava/util/List;Lat/asitplus/signum/indispensable/asn1/ObjectIdentifier;)V
+	public final fun component1 ()[B
+	public final fun component2 ()Lat/asitplus/csc/enums/SignatureQualifier;
+	public final fun component3 ()I
+	public final fun component4 ()Ljava/util/List;
+	public final fun component5 ()Lat/asitplus/signum/indispensable/asn1/ObjectIdentifier;
+	public final fun copy ([BLat/asitplus/csc/enums/SignatureQualifier;ILjava/util/List;Lat/asitplus/signum/indispensable/asn1/ObjectIdentifier;)Lat/asitplus/wallet/lib/rqes/OAuth2RqesParameters$CredentialRequired;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/rqes/OAuth2RqesParameters$CredentialRequired;[BLat/asitplus/csc/enums/SignatureQualifier;ILjava/util/List;Lat/asitplus/signum/indispensable/asn1/ObjectIdentifier;ILjava/lang/Object;)Lat/asitplus/wallet/lib/rqes/OAuth2RqesParameters$CredentialRequired;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCredentialID ()[B
+	public final fun getHashAlgorithmOid ()Lat/asitplus/signum/indispensable/asn1/ObjectIdentifier;
+	public final fun getHashes ()Ljava/util/List;
+	public final fun getNumSignatures ()I
+	public final fun getSignatureQualifier ()Lat/asitplus/csc/enums/SignatureQualifier;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/rqes/OAuth2RqesParameters$Optional {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Lat/asitplus/signum/indispensable/josef/JsonWebToken;Ljava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Lat/asitplus/signum/indispensable/josef/JsonWebToken;Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Lat/asitplus/signum/indispensable/josef/JsonWebToken;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Lat/asitplus/signum/indispensable/josef/JsonWebToken;Ljava/lang/String;Ljava/lang/String;)Lat/asitplus/wallet/lib/rqes/OAuth2RqesParameters$Optional;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/rqes/OAuth2RqesParameters$Optional;Ljava/lang/String;Lat/asitplus/signum/indispensable/josef/JsonWebToken;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lat/asitplus/wallet/lib/rqes/OAuth2RqesParameters$Optional;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAccountToken ()Lat/asitplus/signum/indispensable/josef/JsonWebToken;
+	public final fun getClientData ()Ljava/lang/String;
+	public final fun getDescription ()Ljava/lang/String;
+	public final fun getLang ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/rqes/QtspAuthorizationServiceStrategy : at/asitplus/wallet/lib/oauth2/AuthorizationServiceStrategy {
+	public fun <init> (Lat/asitplus/wallet/lib/oidvci/CredentialAuthorizationServiceStrategy;)V
+	public fun allCredentialIdentifier ()Ljava/util/Collection;
+	public fun filterAuthorizationDetailsForTokenResponse (Ljava/util/Collection;)Ljava/util/Set;
+	public fun filterScope (Ljava/lang/String;)Ljava/lang/String;
+	public fun matchAndFilterAuthorizationDetailsForTokenResponse (Ljava/util/Collection;Ljava/util/Set;)Ljava/util/Set;
+	public fun validAuthorizationDetails (Ljava/lang/String;)Ljava/util/Collection;
+	public fun validScopes ()Ljava/lang/String;
+	public fun validateAuthorizationDetails (Ljava/util/Collection;)V
+}
+
+public final class at/asitplus/wallet/lib/rqes/RqesWalletService {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/OAuth2Client;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/OAuth2Client;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun createCredentialAuthenticationRequest (Lat/asitplus/wallet/lib/rqes/RqesWalletService$SigningCredential;Ljava/util/Collection;Ljava/lang/String;Lat/asitplus/signum/indispensable/Digest;Lat/asitplus/wallet/lib/rqes/OAuth2RqesParameters$Optional;Ljava/util/Collection;Lat/asitplus/wallet/lib/rqes/RqesWalletService$SignatureProperties;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun createCredentialAuthenticationRequest$default (Lat/asitplus/wallet/lib/rqes/RqesWalletService;Lat/asitplus/wallet/lib/rqes/RqesWalletService$SigningCredential;Ljava/util/Collection;Ljava/lang/String;Lat/asitplus/signum/indispensable/Digest;Lat/asitplus/wallet/lib/rqes/OAuth2RqesParameters$Optional;Ljava/util/Collection;Lat/asitplus/wallet/lib/rqes/RqesWalletService$SignatureProperties;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun createOAuth2TokenRequest (Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/OAuth2Client$AuthorizationForToken;Ljava/util/Set;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun createOAuth2TokenRequest$default (Lat/asitplus/wallet/lib/rqes/RqesWalletService;Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/OAuth2Client$AuthorizationForToken;Ljava/util/Set;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun createServiceAuthenticationRequest (Ljava/lang/String;Lat/asitplus/wallet/lib/rqes/OAuth2RqesParameters$Optional;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun createServiceAuthenticationRequest$default (Lat/asitplus/wallet/lib/rqes/RqesWalletService;Ljava/lang/String;Lat/asitplus/wallet/lib/rqes/OAuth2RqesParameters$Optional;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun createSignHashRequestParameters (Lat/asitplus/wallet/lib/rqes/RqesWalletService$SigningCredential;Ljava/util/List;Ljava/lang/String;Lat/asitplus/signum/indispensable/X509SignatureAlgorithm;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun getCscAuthenticationDetails (Lat/asitplus/wallet/lib/rqes/RqesWalletService$SigningCredential;Ljava/util/Collection;Lat/asitplus/signum/indispensable/Digest;Ljava/util/Collection;Lat/asitplus/wallet/lib/rqes/RqesWalletService$SignatureProperties;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun getCscAuthenticationDetails$default (Lat/asitplus/wallet/lib/rqes/RqesWalletService;Lat/asitplus/wallet/lib/rqes/RqesWalletService$SigningCredential;Ljava/util/Collection;Lat/asitplus/signum/indispensable/Digest;Ljava/util/Collection;Lat/asitplus/wallet/lib/rqes/RqesWalletService$SignatureProperties;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun getCscDocumentDigests (Ljava/util/Collection;Lat/asitplus/signum/indispensable/X509SignatureAlgorithm;Lat/asitplus/wallet/lib/rqes/RqesWalletService$SignatureProperties;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun getCscDocumentDigests$default (Lat/asitplus/wallet/lib/rqes/RqesWalletService;Ljava/util/Collection;Lat/asitplus/signum/indispensable/X509SignatureAlgorithm;Lat/asitplus/wallet/lib/rqes/RqesWalletService$SignatureProperties;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+}
+
+public final class at/asitplus/wallet/lib/rqes/RqesWalletService$RqesOauthScope : java/lang/Enum {
+	public static final field CREDENTIAL Lat/asitplus/wallet/lib/rqes/RqesWalletService$RqesOauthScope;
+	public static final field SERVICE Lat/asitplus/wallet/lib/rqes/RqesWalletService$RqesOauthScope;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getValue ()Ljava/lang/String;
+	public static fun valueOf (Ljava/lang/String;)Lat/asitplus/wallet/lib/rqes/RqesWalletService$RqesOauthScope;
+	public static fun values ()[Lat/asitplus/wallet/lib/rqes/RqesWalletService$RqesOauthScope;
+}
+
+public final class at/asitplus/wallet/lib/rqes/RqesWalletService$SignatureProperties {
+	public fun <init> ()V
+	public fun <init> (Lat/asitplus/csc/enums/SignatureQualifier;Lat/asitplus/csc/enums/SignatureFormat;Lat/asitplus/csc/enums/ConformanceLevel;Lat/asitplus/csc/enums/SignedEnvelopeProperty;)V
+	public synthetic fun <init> (Lat/asitplus/csc/enums/SignatureQualifier;Lat/asitplus/csc/enums/SignatureFormat;Lat/asitplus/csc/enums/ConformanceLevel;Lat/asitplus/csc/enums/SignedEnvelopeProperty;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lat/asitplus/csc/enums/SignatureQualifier;
+	public final fun component2 ()Lat/asitplus/csc/enums/SignatureFormat;
+	public final fun component3 ()Lat/asitplus/csc/enums/ConformanceLevel;
+	public final fun component4 ()Lat/asitplus/csc/enums/SignedEnvelopeProperty;
+	public final fun copy (Lat/asitplus/csc/enums/SignatureQualifier;Lat/asitplus/csc/enums/SignatureFormat;Lat/asitplus/csc/enums/ConformanceLevel;Lat/asitplus/csc/enums/SignedEnvelopeProperty;)Lat/asitplus/wallet/lib/rqes/RqesWalletService$SignatureProperties;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/rqes/RqesWalletService$SignatureProperties;Lat/asitplus/csc/enums/SignatureQualifier;Lat/asitplus/csc/enums/SignatureFormat;Lat/asitplus/csc/enums/ConformanceLevel;Lat/asitplus/csc/enums/SignedEnvelopeProperty;ILjava/lang/Object;)Lat/asitplus/wallet/lib/rqes/RqesWalletService$SignatureProperties;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getConformanceLevel ()Lat/asitplus/csc/enums/ConformanceLevel;
+	public final fun getSignatureFormat ()Lat/asitplus/csc/enums/SignatureFormat;
+	public final fun getSignatureQualifier ()Lat/asitplus/csc/enums/SignatureQualifier;
+	public final fun getSignedEnvelopeProperty ()Lat/asitplus/csc/enums/SignedEnvelopeProperty;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/rqes/RqesWalletService$SigningCredential {
+	public fun <init> (Ljava/lang/String;Ljava/util/List;Ljava/util/List;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/util/List;
+	public final fun component3 ()Ljava/util/List;
+	public final fun copy (Ljava/lang/String;Ljava/util/List;Ljava/util/List;)Lat/asitplus/wallet/lib/rqes/RqesWalletService$SigningCredential;
+	public static synthetic fun copy$default (Lat/asitplus/wallet/lib/rqes/RqesWalletService$SigningCredential;Ljava/lang/String;Ljava/util/List;Ljava/util/List;ILjava/lang/Object;)Lat/asitplus/wallet/lib/rqes/RqesWalletService$SigningCredential;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCertificates ()Ljava/util/List;
+	public final fun getCredentialId ()Ljava/lang/String;
+	public final fun getSupportedSigningAlgorithms ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class at/asitplus/wallet/lib/rqes/RqesWalletServiceKt {
+	public static final fun toSigningCredential (Lat/asitplus/csc/CredentialInfo;)Lat/asitplus/wallet/lib/rqes/RqesWalletService$SigningCredential;
+}
+
+public final class at/asitplus/wallet/lib/rqes/SimpleQtspAuthorizationService : at/asitplus/wallet/lib/oauth2/AuthorizationService, at/asitplus/wallet/lib/oidvci/OAuth2AuthorizationServerAdapter {
+	public fun <init> (Ljava/util/Collection;)V
+	public fun authorize (Lat/asitplus/openid/RequestParameters;Lat/asitplus/wallet/lib/oidvci/OAuth2LoadUserFun;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun getDpopNonce (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun getPublicContext ()Ljava/lang/String;
+	public fun getTokenInfo (Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun getUserInfo (Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun metadata (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun par (Lat/asitplus/openid/RequestParameters;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun par (Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun token (Lat/asitplus/openid/TokenRequestParameters;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun tokenIntrospection (Lat/asitplus/openid/TokenIntrospectionRequest;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun userInfo (Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun validateAccessToken (Ljava/lang/String;Lat/asitplus/wallet/lib/oauth2/RequestInfo;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
