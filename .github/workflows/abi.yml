@@ -1,0 +1,57 @@
+name: Check ABI
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+  deployments: write
+jobs:
+  abi_report:
+    name: ABI diff report (informational)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Cache gradle
+        uses: actions/cache@v4
+        env:
+          cache-name: cache-gradle
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.m2/repository
+          key: Android-${{ hashFiles('./gradle/libs.versions.toml', './gradle/wrapper/gradle-wrapper.properties') }}
+      - name: Run ABI check
+        id: abi
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          ./gradlew updateLegacyAbi
+      - name: Write ABI diff exceprt
+        if: always()
+        shell: bash
+        run: |
+          git diff -- . > abi.diff || true
+          npx diff2html-cli -i file -F abi-diff.html -- abi.diff
+      - name: Upload full ABI html
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: abi-check-output
+          path: abi-diff.html
+  abi_approval:
+    name: Maintainer approval (ABI diff is OK)
+    needs: abi_report
+    runs-on: ubuntu-latest
+    # This is the manual gate. Configure required reviewers on this Environment in repo settings.
+    environment: abi-approval
+    steps:
+      - name: Approved
+        run: echo "Approved ABI diff accepted."
