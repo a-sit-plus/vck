@@ -2,8 +2,6 @@ package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.catching
 import at.asitplus.iso.IssuerSignedItem
-import at.asitplus.openid.ClientNonceResponse
-import at.asitplus.openid.CredentialResponseParameters
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OidcUserInfo
@@ -26,7 +24,6 @@ import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.ResponseWithDpopNonce
 import at.asitplus.wallet.lib.oidvci.CredentialDataProviderFun
 import at.asitplus.wallet.lib.oidvci.CredentialIssuer
-import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.openid.toOAuth2Error
 import io.github.aakira.napier.Napier
@@ -46,7 +43,7 @@ import kotlin.time.Clock
 object TestUtils {
 
     fun MockRequestHandleScope.respondOAuth2Error(throwable: Throwable): HttpResponseData = respond(
-        vckJsonSerializer.encodeToString<OAuth2Error>(throwable.toOAuth2Error(null)),
+        vckJsonSerializer.encodeToString(throwable.toOAuth2Error(null)),
         headers = headers {
             append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             (throwable as? OAuth2Exception.UseDpopNonce)?.dpopNonce
@@ -132,20 +129,11 @@ object TestUtils {
         }
     }
 
-    fun MockRequestHandleScope.respond(result: PushedAuthenticationResponseParameters): HttpResponseData =
-        respond(
-            vckJsonSerializer.encodeToString<PushedAuthenticationResponseParameters>(result),
-            headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-        )
-
-    fun MockRequestHandleScope.respondWithDpopNoncePar(
-        result: ResponseWithDpopNonce<PushedAuthenticationResponseParameters>
+    fun MockRequestHandleScope.respond(
+        result: PushedAuthenticationResponseParameters
     ): HttpResponseData = respond(
-        vckJsonSerializer.encodeToString<PushedAuthenticationResponseParameters>(result.response),
-        headers = headers {
-            append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            result.dpopNonce?.let { set(HttpHeaders.DPoPNonce, it) }
-        }
+        vckJsonSerializer.encodeToString(result),
+        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
     )
 
     fun MockRequestHandleScope.respond(result: CredentialIssuer.CredentialResponse): HttpResponseData =
@@ -156,62 +144,46 @@ object TestUtils {
             )
 
             is CredentialIssuer.CredentialResponse.Plain -> respond(
-                vckJsonSerializer.encodeToString<CredentialResponseParameters>(result.response),
+                vckJsonSerializer.encodeToString(result.response),
                 headers = headersOf(HttpHeaders.ContentType, MediaTypes.Application.JSON)
             )
         }
 
-    fun MockRequestHandleScope.respond(result: CredentialIssuer.Nonce): HttpResponseData = respond(
-        vckJsonSerializer.encodeToString<ClientNonceResponse>(result.response),
-        headers = headers {
-            append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            result.dpopNonce?.let { set(HttpHeaders.DPoPNonce, it) }
-        }
-    )
+    fun MockRequestHandleScope.respond(result: CredentialIssuer.Nonce): HttpResponseData =
+        respondIncludingDpopNonce(ResponseWithDpopNonce(result.response, result.dpopNonce))
 
     fun MockRequestHandleScope.respond(result: TokenResponseParameters): HttpResponseData = respond(
-        vckJsonSerializer.encodeToString<TokenResponseParameters>(result),
+        vckJsonSerializer.encodeToString(result),
         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
     )
 
-    fun MockRequestHandleScope.respondWithDpopNonceToken(
-        result: ResponseWithDpopNonce<TokenResponseParameters>
+    inline fun <reified T> MockRequestHandleScope.respondIncludingDpopNonce(
+        result: ResponseWithDpopNonce<T>
     ): HttpResponseData = respond(
-        vckJsonSerializer.encodeToString<TokenResponseParameters>(result.response),
+        vckJsonSerializer.encodeToString(result.response),
         headers = headers {
             append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             result.dpopNonce?.let { set(HttpHeaders.DPoPNonce, it) }
         }
     )
 
-
     fun MockRequestHandleScope.respond(result: TokenIntrospectionResponse): HttpResponseData = respond(
-        vckJsonSerializer.encodeToString<TokenIntrospectionResponse>(result),
+        vckJsonSerializer.encodeToString(result),
         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
     )
 
     fun MockRequestHandleScope.respond(result: JsonObject): HttpResponseData = respond(
-        vckJsonSerializer.encodeToString<JsonObject>(result),
+        vckJsonSerializer.encodeToString(result),
         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
     )
 
-    fun MockRequestHandleScope.respondWithDpopNonceJson(
-        result: ResponseWithDpopNonce<JsonObject>
-    ): HttpResponseData = respond(
-        vckJsonSerializer.encodeToString<JsonObject>(result.response),
-        headers = headers {
-            append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            result.dpopNonce?.let { set(HttpHeaders.DPoPNonce, it) }
-        }
-    )
-
     fun MockRequestHandleScope.respond(result: IssuerMetadata): HttpResponseData = respond(
-        vckJsonSerializer.encodeToString<IssuerMetadata>(result),
+        vckJsonSerializer.encodeToString(result),
         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
     )
 
     fun MockRequestHandleScope.respond(result: OAuth2AuthorizationServerMetadata): HttpResponseData = respond(
-        vckJsonSerializer.encodeToString<OAuth2AuthorizationServerMetadata>(result),
+        vckJsonSerializer.encodeToString(result),
         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
     )
 

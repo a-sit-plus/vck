@@ -14,10 +14,8 @@ import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.dummyUser
-import at.asitplus.wallet.lib.ktor.openid.TestUtils.respond
+import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondIncludingDpopNonce
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondOAuth2Error
-import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondWithDpopNoncePar
-import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondWithDpopNonceToken
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.toRequestInfo
 import at.asitplus.wallet.lib.oauth2.ClientAuthenticationService
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
@@ -78,7 +76,7 @@ val OAuth2KtorClientTest by testSuite {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val authnRequest: RequestParameters = requestBody.decodeFromPostBody()
                     authorizationService.parWithDpopNonce(authnRequest, request.toRequestInfo()).fold(
-                        onSuccess = { respondWithDpopNoncePar(it) },
+                        onSuccess = { respondIncludingDpopNonce(it) },
                         onFailure = { respondOAuth2Error(it) }
                     )
                 }
@@ -100,7 +98,7 @@ val OAuth2KtorClientTest by testSuite {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val params: TokenRequestParameters = requestBody.decodeFromPostBody<TokenRequestParameters>()
                     authorizationService.tokenWithDpopNonce(params, request.toRequestInfo()).fold(
-                        onSuccess = { respondWithDpopNonceToken(it) },
+                        onSuccess = { respondIncludingDpopNonce(it) },
                         onFailure = { respondOAuth2Error(it) },
                     )
                 }
