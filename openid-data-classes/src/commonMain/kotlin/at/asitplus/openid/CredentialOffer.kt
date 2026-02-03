@@ -30,14 +30,28 @@ data class CredentialOffer(
      */
     @SerialName("grants")
     val grants: CredentialOfferGrants? = null,
+
     /**
-     * Additional Credential Offer parameters MAY be defined and used. The Wallet MUST ignore any unrecognized
-     * parameters. Practical DC API Issuing implementations send the authorization_server_metadata and
-     * credential_issuer_metadata with the credential offer.
+     * Additional parameters for issuance via the Digital Credentials API, as per OID4VCI draft pull request
+     * https://github.com/openid/OpenID4VCI/pull/476
+     */
+
+    /**
+     * OID4VCI: REQUIRED for DC API. The Issuer's Credential Issuer Metadata object.
+     */
+    @SerialName("credential_issuer_metadata")
+    val credentialIssuerMetadata: IssuerMetadata? = null,
+
+    /**
+     * OID4VCI: OPTIONAL and only for DC API. The Authorization Server metadata object as defined by Section 2 of [@!RFC8414].
+     * When provided, the authorization_server parameter must not be present.
      */
     @SerialName("authorization_server_metadata")
     val authorizationServerMetadata: OAuth2AuthorizationServerMetadata? = null,
-
-    @SerialName("credential_issuer_metadata")
-    val credentialIssuerMetadata: IssuerMetadata? = null,
-)
+) {
+    init {
+        if (authorizationServerMetadata != null) {
+            require(grants?.authorizationCode?.authorizationServer == null)
+        }
+    }
+}
