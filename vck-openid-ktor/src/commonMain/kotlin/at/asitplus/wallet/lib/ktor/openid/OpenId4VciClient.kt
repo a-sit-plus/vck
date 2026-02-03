@@ -68,25 +68,36 @@ class OpenId4VciClient(
 ) {
 
     /**
-     * Loads credential metadata info from [host], parses it, returns list of [CredentialIdentifierInfo].
+     * Loads credential metadata info from [host], call parseCredentialMetadata to parse it,
+     * returns a list of [CredentialIdentifierInfo].
      */
     suspend fun loadCredentialMetadata(
         host: String,
     ): KmmResult<Collection<CredentialIdentifierInfo>> = catching {
         Napier.i("loadCredentialMetadata: $host")
         val issuerMetadata = loadIssuerMetadata(host).getOrThrow()
-        val supported = issuerMetadata.supportedCredentialConfigurations
-            ?: throw Exception("No supported credential configurations")
-        supported.map {
-            CredentialIdentifierInfo(
-                issuerMetadata = issuerMetadata,
-                credentialIdentifier = it.key,
-                supportedCredentialFormat = it.value
-            )
-        }.also {
+        parseCredentialMetadata(issuerMetadata).also {
             Napier.i("loadCredentialMetadata for $host returns $it")
-        }
+        }.getOrThrow()
     }
+
+    /**
+     * Parses IssuerMetadata and returns a list of [CredentialIdentifierInfo].
+     */
+    fun parseCredentialMetadata(issuerMetadata: IssuerMetadata): KmmResult<Collection<CredentialIdentifierInfo>> =
+        catching {
+            val supported = issuerMetadata.supportedCredentialConfigurations
+                ?: throw Exception("No supported credential configurations")
+            supported.map {
+                CredentialIdentifierInfo(
+                    issuerMetadata = issuerMetadata,
+                    credentialIdentifier = it.key,
+                    supportedCredentialFormat = it.value
+                )
+            }.also {
+                Napier.i("parseCredentialMetadata returns $it")
+            }
+        }
 
     private fun SupportedCredentialFormat.resolveCredentialScheme(): ConstantIndex.CredentialScheme? =
         (credentialDefinition?.types?.firstNotNullOfOrNull {
