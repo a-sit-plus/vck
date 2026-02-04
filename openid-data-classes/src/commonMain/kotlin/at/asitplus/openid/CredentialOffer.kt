@@ -40,4 +40,10 @@ data class CredentialOffer(
 
     @SerialName("credential_issuer_metadata")
     val credentialIssuerMetadata: IssuerMetadata? = null,
-)
+) {
+    init {
+        if (authorizationServerMetadata != null) {
+            require(grants?.authorizationCode?.authorizationServer == null)
+        }
+    }
+}
