@@ -26,10 +26,11 @@ class InMemoryIssuerCredentialStore(
 
     /** Maps timePeriod to credentials */
     private val credentialMap = mutableMapOf<Int, MutableList<Credential>>()
+    private val indexMap = mutableMapOf<Int, MutableList<ULong>>()
 
     override suspend fun createStatusListIndex(
         timePeriod: Int,
-    ): ULong = credentialMap.getOrPut(timePeriod) { mutableListOf() }.maxOfOrNull { it.statusListIndex + 1U } ?: 0U
+    ): ULong = indexMap.getOrPut(timePeriod) { mutableListOf() }.maxOfOrNull { it + 1U } ?: 0U
 
     override suspend fun storeCredential(
         timePeriod: Int,
