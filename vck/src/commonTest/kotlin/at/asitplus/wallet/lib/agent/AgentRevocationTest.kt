@@ -5,7 +5,6 @@ import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.FixedTimePeriodProvider.timePeriod
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
-import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.StatusListCwt
@@ -189,12 +188,16 @@ private fun verifyStatusList(statusList: StatusList, expectedRevokedIndexes: Lis
 }
 
 private suspend fun InMemoryIssuerCredentialStore.revokeCredentialsWithIndexes(revokedIndexes: List<ULong>) {
-    val cred = AtomicAttribute2023("sub", "name", "value", "text")
     val issuanceDate = Clock.System.now()
-    val expirationDate = issuanceDate + 60.seconds
-    for (i in 1..16) {
+    (1..16).forEach { _ ->
         val reference = createStatusListIndex(
             timePeriod
+        )
+        storeCredential(
+            timePeriod = timePeriod,
+            reference = reference,
+            validUntil = issuanceDate + 60.seconds,
+            scheme = ConstantIndex.AtomicAttribute2023,
         )
         if (revokedIndexes.contains(reference)) {
             setStatus(timePeriod, reference, TokenStatus.Invalid)
@@ -204,15 +207,13 @@ private suspend fun InMemoryIssuerCredentialStore.revokeCredentialsWithIndexes(r
 
 private suspend fun InMemoryIssuerCredentialStore.revokeRandomCredentials(): List<ULong> {
     val expectedRevocationList = mutableListOf<ULong>()
-    val cred = AtomicAttribute2023("sub", "name", "value", "text")
     val issuanceDate = Clock.System.now()
-    val expirationDate = issuanceDate + 60.seconds
-    for (i in 1..256) {
+    (1..256).forEach { _ ->
         val revListIndex = createStatusListIndex(timePeriod)
         storeCredential(
             timePeriod = timePeriod,
             reference = revListIndex,
-            validUntil = issuanceDate + 6000.seconds,
+            validUntil = issuanceDate + 60.seconds,
             scheme = ConstantIndex.AtomicAttribute2023,
         )
         if (Random.nextBoolean()) {
