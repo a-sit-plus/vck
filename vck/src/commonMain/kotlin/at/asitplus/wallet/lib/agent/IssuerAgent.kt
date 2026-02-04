@@ -18,7 +18,6 @@ import at.asitplus.wallet.lib.cbor.CoseHeaderCertificate
 import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.cbor.SignCoseFun
-import at.asitplus.wallet.lib.data.Status
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
@@ -87,14 +86,14 @@ class IssuerAgent(
     ): Issuer.IssuedCredential {
         val expirationDate = credential.expiration
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
-        val reference = issuerCredentialStore.createStatusListIndex(credential, timePeriod).getOrThrow()
+        val reference = issuerCredentialStore.createStatusListIndex(timePeriod)
         val coseKey = credential.subjectPublicKey.toCoseKey()
             .getOrElse { throw IllegalStateException("Could not create subject COSE key", it) }
         val deviceKeyInfo = DeviceKeyInfo(coseKey)
 
         //TODO add IdentifierListInfo option
         val credentialStatus = StatusListInfo(
-            index = reference.statusListIndex,
+            index = reference,
             uri = UniformResourceIdentifier(getRevocationListUrlFor(timePeriod)),
         )
         val mso = MobileSecurityObject(
@@ -130,7 +129,7 @@ class IssuerAgent(
             subjectPublicKey = credential.subjectPublicKey,
             userInfo = credential.userInfo
         ).also {
-            issuerCredentialStore.updateStoredCredential(reference, it).getOrThrow()
+            issuerCredentialStore.storeCredential(timePeriod, reference, it.validUntil, it.scheme).getOrThrow()
         }
     }
 
@@ -141,9 +140,9 @@ class IssuerAgent(
         val vcId = "urn:uuid:${uuid4()}"
         val expirationDate = credential.expiration
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
-        val reference = issuerCredentialStore.createStatusListIndex(credential, timePeriod).getOrThrow()
+        val reference = issuerCredentialStore.createStatusListIndex(timePeriod)
         val credentialStatus = StatusListInfo(
-            index = reference.statusListIndex,
+            index = reference,
             uri = UniformResourceIdentifier(getRevocationListUrlFor(timePeriod)),
         )
         val vc = VerifiableCredential(
@@ -171,7 +170,7 @@ class IssuerAgent(
             subjectPublicKey = credential.subjectPublicKey,
             userInfo = credential.userInfo,
         ).also {
-            issuerCredentialStore.updateStoredCredential(reference, it).getOrThrow()
+            issuerCredentialStore.storeCredential(timePeriod, reference, it.validUntil, it.scheme).getOrThrow()
         }
     }
 
@@ -182,9 +181,9 @@ class IssuerAgent(
         val expirationDate = credential.expiration
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
         val subjectId = credential.subjectPublicKey.didEncoded // TODO not necessarily!
-        val reference = issuerCredentialStore.createStatusListIndex(credential, timePeriod).getOrThrow()
+        val reference = issuerCredentialStore.createStatusListIndex(timePeriod)
         val credentialStatus = StatusListInfo(
-            index = reference.statusListIndex,
+            index = reference,
             uri = UniformResourceIdentifier(getRevocationListUrlFor(timePeriod)),
         )
         val (sdJwt, disclosures) = credential.claims.toSdJsonObject(randomSource, credential.sdAlgorithm)
@@ -226,7 +225,7 @@ class IssuerAgent(
             subjectPublicKey = credential.subjectPublicKey,
             userInfo = credential.userInfo,
         ).also {
-            issuerCredentialStore.updateStoredCredential(reference, it).getOrThrow()
+            issuerCredentialStore.storeCredential(timePeriod, reference, it.validUntil, it.scheme).getOrThrow()
         }
     }
 

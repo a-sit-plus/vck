@@ -28,37 +28,24 @@ class InMemoryIssuerCredentialStore(
     private val credentialMap = mutableMapOf<Int, MutableList<Credential>>()
 
     override suspend fun createStatusListIndex(
-        credential: CredentialToBeIssued,
         timePeriod: Int,
-    ): KmmResult<IssuerCredentialStore.StoredCredentialReference> = catching {
-        val list = credentialMap.getOrPut(timePeriod) { mutableListOf() }
-        val newIndex: ULong = (list.maxOfOrNull { it.statusListIndex } ?: 0U) + 1U
-        val vcId = uuid4().toString()
-        list += Credential(
-            vcId = vcId,
-            statusListIndex = newIndex,
-            status = TokenStatus.Valid,
-            expirationDate = credential.expiration,
-            scheme = credential.scheme,
-        )
-        IssuerCredentialStore.StoredCredentialReference(vcId, timePeriod, newIndex)
-    }
+    ): ULong = credentialMap.getOrPut(timePeriod) { mutableListOf() }.maxOfOrNull { it.statusListIndex + 1U } ?: 0U
 
-    override suspend fun updateStoredCredential(
-        reference: IssuerCredentialStore.StoredCredentialReference,
-        credential: Issuer.IssuedCredential,
-    ): KmmResult<IssuerCredentialStore.StoredCredentialReference> = catching {
-        val list = credentialMap.getOrPut(reference.timePeriod) { mutableListOf() }
-        if (list.find { it.vcId == reference.id } == null) {
+    override suspend fun storeCredential(
+        timePeriod: Int,
+        reference: ULong,
+        validUntil: Instant,
+        scheme: ConstantIndex.CredentialScheme
+    ): KmmResult<Boolean> = catching {
+        val list = credentialMap.getOrElse(timePeriod) { throw Exception("Credential $timePeriod not found") }
             list += Credential(
-                vcId = reference.id,
-                statusListIndex = reference.statusListIndex,
+                vcId = uuid4().toString(),
+                statusListIndex = reference,
                 status = TokenStatus.Valid,
-                expirationDate = credential.validUntil,
-                scheme = credential.scheme
+                expirationDate = validUntil,
+                scheme = scheme
             )
-        }
-        reference
+        true
     }
 
     override fun getStatusListView(timePeriod: Int): StatusListView {
@@ -100,9 +87,11 @@ class InMemoryIssuerCredentialStore(
     }
 }
 
-private val Issuer.IssuedCredential.validUntil: Instant
+val Issuer.IssuedCredential.validUntil: Instant
     get() = when (this) {
-        is Issuer.IssuedCredential.Iso -> this.issuerSigned.issuerAuth.payload?.validityInfo?.validUntil ?: Instant.DISTANT_PAST
-        is Issuer.IssuedCredential.VcJwt -> this.vc.expirationDate?: Instant.DISTANT_PAST
+        is Issuer.IssuedCredential.Iso -> this.issuerSigned.issuerAuth.payload?.validityInfo?.validUntil
+            ?: Instant.DISTANT_PAST
+
+        is Issuer.IssuedCredential.VcJwt -> this.vc.expirationDate ?: Instant.DISTANT_PAST
         is Issuer.IssuedCredential.VcSdJwt -> this.sdJwtVc.expiration ?: Instant.DISTANT_PAST
     }

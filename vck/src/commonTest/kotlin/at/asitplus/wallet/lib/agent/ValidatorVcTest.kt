@@ -1,7 +1,5 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.openid.OidcUserInfo
-import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
@@ -24,7 +22,6 @@ import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.comparables.shouldBeLessThan
 import io.kotest.matchers.comparables.shouldNotBeGreaterThan
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlin.time.Clock
@@ -69,15 +66,8 @@ val ValidatorVcTest by testSuite {
                 val vcId = "urn:uuid:${uuid4()}"
                 val exp = expirationDate ?: (Clock.System.now() + 60.seconds)
                 val statusListIndex = issuerCredentialStore.createStatusListIndex(
-                    CredentialToBeIssued.VcJwt(
-                        subject = sub,
-                        expiration = exp,
-                        scheme = ConstantIndex.AtomicAttribute2023,
-                        subjectPublicKey = issuerKeyMaterial.publicKey,
-                        userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
-                    ),
                     FixedTimePeriodProvider.timePeriod
-                ).getOrThrow().statusListIndex
+                )
                 val credentialStatus = StatusListInfo(
                     index = statusListIndex,
                     uri = UniformResourceIdentifier(revocationListUrl),

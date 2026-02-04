@@ -1,7 +1,5 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.openid.OidcUserInfo
-import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
@@ -196,18 +194,10 @@ private suspend fun InMemoryIssuerCredentialStore.revokeCredentialsWithIndexes(r
     val expirationDate = issuanceDate + 60.seconds
     for (i in 1..16) {
         val reference = createStatusListIndex(
-            CredentialToBeIssued.VcJwt(
-                subject = cred,
-                expiration = expirationDate,
-                scheme = ConstantIndex.AtomicAttribute2023,
-                subjectPublicKey = EphemeralKeyWithoutCert().publicKey,
-                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
-            ),
             timePeriod
-        ).getOrThrow()
-        val revListIndex = reference.statusListIndex
-        if (revokedIndexes.contains(revListIndex)) {
-            setStatus(timePeriod, revListIndex, TokenStatus.Invalid)
+        )
+        if (revokedIndexes.contains(reference)) {
+            setStatus(timePeriod, reference, TokenStatus.Invalid)
         }
     }
 }
@@ -218,16 +208,13 @@ private suspend fun InMemoryIssuerCredentialStore.revokeRandomCredentials(): Lis
     val issuanceDate = Clock.System.now()
     val expirationDate = issuanceDate + 60.seconds
     for (i in 1..256) {
-        val revListIndex = createStatusListIndex(
-            CredentialToBeIssued.VcJwt(
-                subject = cred,
-                expiration = expirationDate,
-                scheme = ConstantIndex.AtomicAttribute2023,
-                subjectPublicKey = EphemeralKeyWithoutCert().publicKey,
-                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
-            ),
-            timePeriod
-        ).getOrThrow().statusListIndex
+        val revListIndex = createStatusListIndex(timePeriod)
+        storeCredential(
+            timePeriod = timePeriod,
+            reference = revListIndex,
+            validUntil = issuanceDate + 6000.seconds,
+            scheme = ConstantIndex.AtomicAttribute2023,
+        )
         if (Random.nextBoolean()) {
             expectedRevocationList += revListIndex
             setStatus(timePeriod, revListIndex, TokenStatus.Invalid)
