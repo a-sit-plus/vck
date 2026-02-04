@@ -14,7 +14,6 @@ import kotlin.time.Instant
 class InMemoryIssuerCredentialStore(
     val tokenStatusBitSize: TokenStatusBitSize = TokenStatusBitSize.ONE,
 ) : IssuerCredentialStore, ReferencedTokenStore {
-    private val indexMutex = Mutex()
 
     data class Credential(
         val vcId: String,
