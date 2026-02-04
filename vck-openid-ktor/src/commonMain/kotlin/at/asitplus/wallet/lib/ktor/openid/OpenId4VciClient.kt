@@ -287,15 +287,14 @@ class OpenId4VciClient(
         }
         return CredentialIssuanceResult.Success(
             storeCredentialInputs,
-            tokenResponse.params.refreshToken?.let {
-                CredentialRenewalInfo(
-                    refreshToken = tokenResponse.params.refreshToken!!,
+            CredentialRenewalInfo(
+                    refreshToken = tokenResponse.params.refreshToken,
                     issuerMetadata = issuerMetadata,
                     oauthMetadata = oauthMetadata,
                     credentialFormat = credentialFormat,
                     credentialIdentifier = credentialIdentifier,
                 )
-            })
+            )
     }
 
     private suspend fun fetchCredential(

@@ -108,8 +108,8 @@ class HolderAgent(
         }
     }
 
-    override suspend fun deleteCredential(credential: StoreEntry) {
-        subjectCredentialStore.deleteCredential(credential)
+    override suspend fun deleteCredential(id: Long) {
+        subjectCredentialStore.removeStoreEntryById(id)
     }
 
     private fun Holder.StoreCredentialInput.Iso.extractIssuerKey(): CoseKey? =
@@ -151,27 +151,8 @@ class HolderAgent(
     }
 
     /** Gets a list of all stored credentials that are no longer valid, possibly filtered by [filterById]. */
-    override suspend fun getInvalidCredentials(filterById: String?): List<StoreEntry>? {
-        val availableCredentials = getCredentials() ?: return null
-
-        val presortedCredentials = availableCredentials
-            .filter { filterById == null || it.getDcApiId() == filterById }
-            .sortedBy { it.sortKey() }
-
-        val withRevocationStatusQueryIssued = presortedCredentials.map {
-            it to coroutineScope {
-                async {
-                    validator.checkCredentialFreshness(it)
-                }
-            }
-        }
-        withRevocationStatusQueryIssued.map { it.second }.joinAll()
-        val withRevocationStatusAvailable = withRevocationStatusQueryIssued.map {
-            it.first to it.second.await()
-        }
-        return withRevocationStatusAvailable
-            .filter { !it.second.isFresh }
-            .map { it.first }
+    override suspend fun getInvalidCredentials(): List<Pair<Long, StoreEntry>> {
+        return subjectCredentialStore.getInvalidCredentials()
     }
 
     /** Prefer credentials with support for selective disclosure. */

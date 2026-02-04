@@ -50,7 +50,9 @@ class InMemorySubjectCredentialStore : SubjectCredentialStore {
         } ?: credentials
     }
 
-    override suspend fun deleteCredential(credential: SubjectCredentialStore.StoreEntry) {
-        credentials.removeAll { it.getDcApiId() == credential.getDcApiId() }
+    override suspend fun removeStoreEntryById(storeEntryId: Long) {
+        // No-op: This functionality is not required for this store implementation
     }
+
+    override suspend fun getInvalidCredentials(): List<Pair<Long, SubjectCredentialStore.StoreEntry>> = emptyList()
 }

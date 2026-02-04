@@ -54,11 +54,6 @@ interface Holder {
     suspend fun storeCredential(credential: StoreCredentialInput, refreshTokenInfo: CredentialRenewalInfo? = null): KmmResult<SubjectCredentialStore.StoreEntry>
 
     /**
-     * Deletes a credential from the store.
-     */
-    suspend fun deleteCredential(credential: SubjectCredentialStore.StoreEntry)
-
-    /**
      * Gets a list of all stored credentials, with a revocation status.
      */
     suspend fun getCredentials(): Collection<SubjectCredentialStore.StoreEntry>?
@@ -128,6 +123,10 @@ interface Holder {
         filterById: String? = null
     ): KmmResult<DCQLQueryResult<SubjectCredentialStore.StoreEntry>>
 
-    suspend fun getInvalidCredentials(filterById: String? = null): List<SubjectCredentialStore.StoreEntry>?
+    /**
+     * Deletes a credential from the store.
+     */
+    suspend fun deleteCredential(id: Long)
+    suspend fun getInvalidCredentials(): List<Pair<Long, SubjectCredentialStore.StoreEntry>>
 }
 
