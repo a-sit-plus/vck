@@ -1,33 +1,20 @@
 # Changelog
 
 Release 5.11.0 (unreleased):
- - Add `VerifyStatusListTokenHAIP` and related resolver/tests to enforce HAIP d04
  - Digital Credentials API:
    - Add request/response models for OpenID4VP and ISO 18013-7 Annex C flows, including protocol identifiers, wallet/verifier request options, and typed responses
    - Add serializers for `DeviceRequest`, `EncryptionInfo`, and encrypted responses for Annex C/DC API interop
- - ISO/IEC 18013-7:
-   - Introduce Annex C verifier/request options to create mdoc requests, derive session transcripts, and validate encrypted device responses
-   - Adapt Wallet data classes to allow supporting iOS
- - OpenID for Verifiable Presentations:
-   - Rename `RequestOptions` to `OpenId4VpRequestOptions` and add DC API/DCQL options like `expected_origins`, optional `client_id`, and stricter `transaction_data` checks
-   - Build session transcripts for DC API responses, verify `expected_origins`, and parse DC API `OpenId4VpResponse` inputs without requiring `state`
- - Utilities:
-   - Move shared nonce/map store utilities and add helpers to choose encryption keys and compute session transcript thumbprints to main vck
- - Deprecations:
-   - `at.asitplus.wallet.lib.oidvci.NonceService` is now `at.asitplus.wallet.lib.NonceService`
-   - `at.asitplus.wallet.lib.oidvci.DefaultNonceService` is now `at.asitplus.wallet.lib.DefaultNonceService`
-   - `at.asitplus.wallet.lib.oidvci.MapStore` is now `at.asitplus.wallet.lib.utils.MapStore`
-   - `at.asitplus.wallet.lib.oidvci.DefaultMapStore` is now `at.asitplus.wallet.lib.utils.DefaultMapStore`
-   - `at.asitplus.wallet.lib.openid.RequestOptions` is now `at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions`
-   - `at.asitplus.dcapi.request.DCAPIRequest` is now `at.asitplus.dcapi.request.DCAPIWalletRequest`
-   - `at.asitplus.dcapi.request.Oid4vpDCAPIRequest` is now `at.asitplus.dcapi.request.DCAPIWalletRequest.OpenId4VpUnsigned` or `at.asitplus.dcapi.request.DCAPIWalletRequest.OpenId4VpSigned`
- - Add `IdentifierList` and `IdentifierListInfo` and related classes
- - StatusListToken:
-  - Add `RevocationList` and `RevocationListInfo` sealed classes
-  - Replace `Status` claim with `RevocationListInfo` in VC / SD-JWT / MSO payloads
+ - ISO/IEC 18013-5 and 18013-7:
+   - Introduce Annex C verifier and request options to create mdoc requests, derive session transcripts, and validate encrypted device responses
+   - Adapt wallet data classes to prepare support for iOS
+   - Add data classes and serializers for zero-knowledge proofs
+   - Add `ZkSystemParamRegistry` to enable zero-knowledge backends to register serializers for their custom parameters
  - Token status list:
-  - CBOR encoded token status list shall not be tagged with 24 like other COSE payloads (`d818` in hex)
-  - Move some methods from `IssuerCredentialStore` to new interface `ReferencedTokenStore` to decouple `StatusListAgent` from `IssuerAgent`
+   - Add `IdentifierList` and `IdentifierListInfo` and related classes
+   - Add `RevocationList` and `RevocationListInfo` sealed classes
+   - Replace `Status` claim with `RevocationListInfo` in VC / SD-JWT / MSO payloads
+   - CBOR encoded token status list shall not be tagged with 24 like other COSE payloads (`d818` in hex)
+   - Move some methods from `IssuerCredentialStore` to new interface `ReferencedTokenStore` to decouple `StatusListAgent` from `IssuerAgent`
  - OpenID for Verifiable Credential Issuance:
    - In `SimpleAuthorizationService` add parameter `configurationIds` to method `credentialOfferWithAuthorizationCode`
    - Support different supported credential formats having the same scope value (as this is covered by the spec)
@@ -39,30 +26,40 @@ Release 5.11.0 (unreleased):
    - In `AuthnResponseResult` returned from `OpenId4VpVerifier.validateAuthnResponse()` remove parameter `state`
    - In `OpenId4VpVerifier` remove `validateAuthnResponse(input: Map)`
    - In `OpenId4VpVerifier` add option to provide `externalId` when validating authn responses, useful for DCAPI flows
-- OAuth 2.0:
+   - Rename `RequestOptions` to `OpenId4VpRequestOptions` and add DC API/DCQL options like `expected_origins`, optional `client_id`, and stricter `transaction_data` checks
+   - Build session transcripts for DC API responses, verify `expected_origins`, and parse DC API `OpenId4VpResponse` inputs without requiring `state`
+ - DCQL in OpenID for Verifiable Presentations:
+   - Support attribute `multiple` in in `DCQLCredentialQuery`
+   - Support attribute `require_cryptographic_holder_binding` in `DCQLCredentialQuery`
+   - Support attribute `trusted_authorities` in `DCQLCredentialQuery`, for Authority Key Identifier `aki` only
+   - Result in `VerifiableDCQLPresentationValidationResults` now carries a map of query id to a list of `AuthnResponseResult` instead of a single one
+   - Support queries for W3C Verifiable Credentials (format `jwt_vc_json`), with thanks to [etnafed](https://github.com/etnafed)
+ - OpenID4VC High Assurance Interoperability Profile (HAIP):
+   - Add `VerifyStatusListTokenHAIP` and related resolver/tests to enforce requirements from draft 04
+ - OAuth 2.0:
    - In `SimpleAuthorizationService` offer `client_attestation_pop_signing_alg_values_supported` and `client_attestation_signing_alg_values_supported` in line with [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-07.html#name-authorization-server-metada)
    - `OAuth2KtorClient`: Read and cache `DPoP-Nonce` from success responses and include it in subsequent DPoP proofs
    - In `SimpleAuthorizationService` provide methods `parWithDpopNonce`, `tokenWithDpopNonce` and `userInfoWithDpopNonce` to provide nonces to clients for their next request
- - DCQL for OpenID for Verifiable Presentations:
-    - Support attribute `multiple` in query
-    - Support attribute `require_cryptographic_holder_binding` in query
-    - Support Trusted Authorities Query, i.e. attribute `trusted_authorities` in query, for Authority Key Identifier `aki` only
-    - Support queries for W3C Verifiable Credentials
- - BREAKING CHANGE: DCQL validation result now carries a list of AuthnResponseResult instead of a single one
- - DCQL updates
-   - Add: Support OpenID4VP attribute DCQLCredentialQuery::multiple
-   - Add: Support OpenID4VP attribute DCQLCredentialQuery::trustedAuthority
-   - Add: Support OpenID4VP attribute DCQLCredentialQuery::require_cryptographic_holder_binding
-- Dependency Updates:
-    * Gradle 9.2.0
-    * Kotlin 2.3.0
-    * Dokka 2.10.0
-    * Return value checker defaults to `check`
-    * AGP 8.12.3
-    * Ktor 3.3.3
-    * Bouncy Castle 1.83 (no more forcing exact version)
-    * TestBalloon 0.8.2-K2.3.0
-    * Signum 3.19.2
+ - Refactoring:
+   - Move shared nonce/map store utilities and add helpers to choose encryption keys and compute session transcript thumbprints to main module
+ - Deprecations:
+   - `at.asitplus.wallet.lib.oidvci.NonceService` is now `at.asitplus.wallet.lib.NonceService`
+   - `at.asitplus.wallet.lib.oidvci.DefaultNonceService` is now `at.asitplus.wallet.lib.DefaultNonceService`
+   - `at.asitplus.wallet.lib.oidvci.MapStore` is now `at.asitplus.wallet.lib.utils.MapStore`
+   - `at.asitplus.wallet.lib.oidvci.DefaultMapStore` is now `at.asitplus.wallet.lib.utils.DefaultMapStore`
+   - `at.asitplus.wallet.lib.openid.RequestOptions` is now `at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions`
+   - `at.asitplus.dcapi.request.DCAPIRequest` is now `at.asitplus.dcapi.request.DCAPIWalletRequest`
+   - `at.asitplus.dcapi.request.Oid4vpDCAPIRequest` is now `at.asitplus.dcapi.request.DCAPIWalletRequest.OpenId4VpUnsigned` or `at.asitplus.dcapi.request.DCAPIWalletRequest.OpenId4VpSigned`
+ - Dependency Updates:
+   - Gradle 9.2.0
+   - Kotlin 2.3.0
+   - Dokka 2.10.0
+   - Return value checker defaults to `check`
+   - AGP 8.12.3
+   - Ktor 3.3.3
+   - Bouncy Castle 1.83 (no more forcing exact version)
+   - TestBalloon 0.8.2-K2.3.0
+   - Signum 3.19.3
 
 Release 5.10.1:
  - Proximity presentations:
