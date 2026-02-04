@@ -59,7 +59,7 @@ Release 5.11.0 (unreleased):
    - Ktor 3.3.3
    - Bouncy Castle 1.83 (no more forcing exact version)
    - TestBalloon 0.8.2-K2.3.0
-   - Signum 3.19.2
+   - Signum 3.19.3
 
 Release 5.10.1:
  - Proximity presentations:
