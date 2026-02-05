@@ -10,6 +10,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBit
 import com.benasher44.uuid.uuid4
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.let
 import kotlin.time.Instant
 
 class InMemoryIssuerCredentialStore(
@@ -31,13 +32,12 @@ class InMemoryIssuerCredentialStore(
     private val indexMap = mutableMapOf<Int, ULong>()
     private val indexMutex = Mutex()
 
-    override suspend fun createStatusListIndex(
-        timePeriod: Int,
-    ): ULong = indexMutex.withLock {
-        val next = (indexMap[timePeriod] ?: 0U) + 1U
-        indexMap[timePeriod] = next
-        next
-    }
+    override suspend fun createStatusListIndex(timePeriod: Int): ULong =
+        indexMutex.withLock {
+            indexMap.getOrPut(timePeriod) { 0u }.also { index ->
+                indexMap[timePeriod] = index + 1u
+            }
+        }
 
     override suspend fun storeCredential(
         timePeriod: Int,
