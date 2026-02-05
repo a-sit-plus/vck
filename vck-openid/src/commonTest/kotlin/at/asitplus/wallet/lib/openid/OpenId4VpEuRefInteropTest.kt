@@ -284,8 +284,6 @@ val OpenId4VpEuRefInteropTest by testSuite {
             val cm = parsed.clientMetadata
             cm.shouldNotBeNull()
             cm.subjectSyntaxTypesSupported.shouldNotBeNull() shouldHaveSingleElement "urn:ietf:params:oauth:jwk-thumbprint"
-            cm.authorizationEncryptedResponseAlg shouldBe JweAlgorithm.ECDH_ES
-            cm.authorizationEncryptedResponseEncoding shouldBe JweEncryption.A128CBC_HS256
             cm.idTokenEncryptedResponseAlg shouldBe JweAlgorithm.RSA_OAEP_256
             cm.idTokenEncryptedResponseEncoding shouldBe JweEncryption.A128CBC_HS256
             cm.idTokenSignedResponseAlg shouldBe JwsAlgorithm.Signature.RS256

@@ -15,7 +15,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex.supportsIso
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import at.asitplus.wallet.lib.data.VcDataModelConstants
-import at.asitplus.wallet.lib.oidvci.CredentialSchemeMapping.encodeToCredentialIdentifier
 import com.benasher44.uuid.uuid4
 
 class SameScopeCredentialSchemeMapper(
@@ -39,51 +38,50 @@ class SameScopeCredentialSchemeMapper(
         CredentialRepresentation.SD_JWT -> encodeToCredentialIdentifier(scheme.sdJwtType!!, DC_SD_JWT)
         CredentialRepresentation.ISO_MDOC -> scheme.isoNamespace!!
     }
-}
 
-
-@Suppress("DEPRECATION")
-private fun CredentialScheme.toSupportedCredentialFormatWithSameScope(scope: String): Map<String, SupportedCredentialFormat> {
-    val iso = if (supportsIso) {
-        with(isoNamespace!!) {
-            this to SupportedCredentialFormat.forIsoMdoc(
-                format = CredentialFormatEnum.MSO_MDOC,
-                scope = scope,
-                docType = isoDocType!!,
-                supportedBindingMethods = setOf(BINDING_METHOD_JWK, BINDING_METHOD_COSE_KEY),
-                isoClaims = claimNames.map {
-                    ClaimDescription(path = listOf(isoNamespace!!) + it.split("."))
-                }.toSet()
-            )
-        }
-    } else null
-    val jwtVc = if (supportsVcJwt) {
-        with(encodeToCredentialIdentifier(vcType!!, JWT_VC)) {
-            this to SupportedCredentialFormat.forVcJwt(
-                format = JWT_VC,
-                scope = scope,
-                credentialDefinition = SupportedCredentialFormatDefinition(
-                    types = setOf(VcDataModelConstants.VERIFIABLE_CREDENTIAL, vcType!!),
-                ),
-                supportedBindingMethods = setOf(BINDING_METHOD_JWK, URN_TYPE_JWK_THUMBPRINT),
-                vcJwtClaims = claimNames.map {
-                    ClaimDescription(path = it.split("."))
-                }.toSet()
-            )
-        }
-    } else null
-    val sdJwt = if (supportsSdJwt) {
-        with(encodeToCredentialIdentifier(sdJwtType!!, DC_SD_JWT)) {
-            this to SupportedCredentialFormat.forSdJwt(
-                format = DC_SD_JWT,
-                scope = scope,
-                sdJwtVcType = sdJwtType!!,
-                supportedBindingMethods = setOf(BINDING_METHOD_JWK, URN_TYPE_JWK_THUMBPRINT),
-                sdJwtClaims = claimNames.map {
-                    ClaimDescription(path = it.split("."))
-                }.toSet()
-            )
-        }
-    } else null
-    return listOfNotNull(iso, jwtVc, sdJwt).toMap()
+    @Suppress("DEPRECATION")
+    private fun CredentialScheme.toSupportedCredentialFormatWithSameScope(scope: String): Map<String, SupportedCredentialFormat> {
+        val iso = if (supportsIso) {
+            with(isoNamespace!!) {
+                this to SupportedCredentialFormat.forIsoMdoc(
+                    format = CredentialFormatEnum.MSO_MDOC,
+                    scope = scope,
+                    docType = isoDocType!!,
+                    supportedBindingMethods = setOf(BINDING_METHOD_JWK, BINDING_METHOD_COSE_KEY),
+                    isoClaims = claimNames.map {
+                        ClaimDescription(path = listOf(isoNamespace!!) + it.split("."))
+                    }.toSet()
+                )
+            }
+        } else null
+        val jwtVc = if (supportsVcJwt) {
+            with(encodeToCredentialIdentifier(vcType!!, JWT_VC)) {
+                this to SupportedCredentialFormat.forVcJwt(
+                    format = JWT_VC,
+                    scope = scope,
+                    credentialDefinition = SupportedCredentialFormatDefinition(
+                        types = setOf(VcDataModelConstants.VERIFIABLE_CREDENTIAL, vcType!!),
+                    ),
+                    supportedBindingMethods = setOf(BINDING_METHOD_JWK, URN_TYPE_JWK_THUMBPRINT),
+                    vcJwtClaims = claimNames.map {
+                        ClaimDescription(path = it.split("."))
+                    }.toSet()
+                )
+            }
+        } else null
+        val sdJwt = if (supportsSdJwt) {
+            with(encodeToCredentialIdentifier(sdJwtType!!, DC_SD_JWT)) {
+                this to SupportedCredentialFormat.forSdJwt(
+                    format = DC_SD_JWT,
+                    scope = scope,
+                    sdJwtVcType = sdJwtType!!,
+                    supportedBindingMethods = setOf(BINDING_METHOD_JWK, URN_TYPE_JWK_THUMBPRINT),
+                    sdJwtClaims = claimNames.map {
+                        ClaimDescription(path = it.split("."))
+                    }.toSet()
+                )
+            }
+        } else null
+        return listOfNotNull(iso, jwtVc, sdJwt).toMap()
+    }
 }

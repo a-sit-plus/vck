@@ -51,12 +51,6 @@ sealed class AuthnResponseResult {
      * Validation results of all returned verifiable presentations
      */
     data class VerifiableDCQLPresentationValidationResults(
-        @Deprecated(
-            "This might no be entirely correct, always use [allValidationResults] instead.",
-            ReplaceWith("allValidationResults"),
-            DeprecationLevel.ERROR
-        )
-        val validationResults: Map<DCQLCredentialQueryIdentifier, AuthnResponseResult>,
         val allValidationResults: Map<DCQLCredentialQueryIdentifier, List<AuthnResponseResult>>,
     ) : AuthnResponseResult()
 

@@ -63,9 +63,6 @@ data class OpenId4VpRequestOptions(
     /** Opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]. */
     override val state: String = uuid4().toString(),
 
-    @Deprecated("Encryption depends on [responseMode]")
-    val encryption: Boolean = false,
-
     /**
      * Non-empty array of strings, where each string is a base64url-encoded JSON object that contains a typed parameter
      * set with details about the transaction that the Verifier is requesting the End-User to authorize.

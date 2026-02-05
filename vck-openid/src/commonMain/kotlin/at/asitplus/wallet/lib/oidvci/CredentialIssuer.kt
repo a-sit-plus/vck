@@ -159,43 +159,6 @@ class CredentialIssuer(
         Nonce(proofValidator.nonce(), authorizationService.getDpopNonce())
     }
 
-    @Deprecated("Use [credential] with [WalletService.CredentialRequest] instead")
-    suspend fun credentialEncryptedRequest(
-        authorizationHeader: String,
-        input: String,
-        credentialDataProvider: CredentialDataProviderFun,
-        request: RequestInfo? = null,
-    ): KmmResult<CredentialResponseParameters> = catching {
-        credentialInternal(
-            authorizationHeader = authorizationHeader,
-            request = encryptionService.decrypt(input).getOrThrow(),
-            credentialDataProvider = credentialDataProvider,
-            requestInfo = request,
-            hasBeenEncrypted = true,
-        ).getOrThrow().toCredentialResponseParameters()
-    }
-
-    private fun CredentialResponse.toCredentialResponseParameters() = when (this) {
-        is CredentialResponse.Encrypted -> TODO()
-        is CredentialResponse.Plain -> response
-    }
-
-    @Deprecated("Use [credential] with [WalletService.CredentialRequest] instead")
-    suspend fun credential(
-        authorizationHeader: String,
-        params: CredentialRequestParameters,
-        credentialDataProvider: CredentialDataProviderFun,
-        request: RequestInfo? = null,
-    ): KmmResult<CredentialResponseParameters> = catching {
-        credentialInternal(
-            authorizationHeader = authorizationHeader,
-            request = params,
-            credentialDataProvider = credentialDataProvider,
-            requestInfo = request,
-            hasBeenEncrypted = false,
-        ).getOrThrow().toCredentialResponseParameters()
-    }
-
     /**
      * Verifies the [authorizationHeader] to contain a token from [authorizationService],
      * verifies the proof sent by the client (must contain a nonce sent from [authorizationService]),

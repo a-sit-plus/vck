@@ -17,34 +17,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import at.asitplus.wallet.lib.data.VcDataModelConstants
 
-object CredentialSchemeMapping {
-
-    @Suppress("DEPRECATION")
-    @Deprecated("Use instance of CredentialSchemeMapper instead")
-    fun CredentialScheme.toSupportedCredentialFormat(): Map<String, SupportedCredentialFormat> =
-        DefaultCredentialSchemeMapper().map(this)
-
-    @Suppress("DEPRECATION")
-    @Deprecated("Should not be used at all, need to specify representation for CredentialSchemeMapper")
-    fun CredentialScheme.toCredentialIdentifier() = listOfNotNull(
-        if (supportsIso) isoNamespace!! else null,
-        if (supportsVcJwt) encodeToCredentialIdentifier(vcType!!, JWT_VC) else null,
-        if (supportsSdJwt) encodeToCredentialIdentifier(sdJwtType!!, DC_SD_JWT) else null
-    )
-
-    @Deprecated("Use instance of CredentialSchemeMapper instead")
-    fun CredentialScheme.toCredentialIdentifier(rep: CredentialRepresentation) =
-        DefaultCredentialSchemeMapper().toCredentialIdentifier(this, rep)
-
-    @Deprecated("Use instance of CredentialSchemeMapper instead")
-    fun encodeToCredentialIdentifier(type: String, format: CredentialFormatEnum): String =
-        DefaultCredentialSchemeMapper().encodeToCredentialIdentifier(type, format)
-
-    @Deprecated("Use instance of CredentialSchemeMapper instead")
-    fun decodeFromCredentialIdentifier(input: String): Pair<CredentialScheme, CredentialRepresentation>? =
-        DefaultCredentialSchemeMapper().decodeFromCredentialIdentifier(input)
-}
-
 /**
  * Defines mapping of [CredentialScheme] to identifiers used in OID4VCI in [CredentialIssuer]
  * (keys in [at.asitplus.openid.IssuerMetadata.supportedCredentialConfigurations],

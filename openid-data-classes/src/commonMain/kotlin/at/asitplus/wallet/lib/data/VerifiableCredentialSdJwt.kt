@@ -1,14 +1,10 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.catchingUnwrapped
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
-import kotlin.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.decodeFromJsonElement
+import kotlin.time.Instant
 
 /**
  * SD-JWT representation of a [VerifiableCredential].
@@ -118,20 +114,4 @@ data class VerifiableCredentialSdJwt(
      */
     @SerialName("cnf")
     val confirmationClaim: ConfirmationClaim? = null,
-) {
-
-    /**
-     * OPTIONAL. The information on how to read the status of the Verifiable Credential.
-     * By including a `status` claim in a Referenced Token, the Issuer is referencing a mechanism to retrieve status
-     * information about this Referenced Token. This specification defines one possible member of the `status` object,
-     * called `status_list`. Other members of the `status` object may be defined by other specifications. This is
-     * analogous to `cnf` claim in Section 3.1 of [RFC7800](https://datatracker.ietf.org/doc/html/rfc7800) in which
-     * different authenticity confirmation methods can be included.
-     *
-     * See [Token Status List](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-status-list-12).
-     */
-    @Deprecated(message = "Replaced by statusElement", replaceWith = ReplaceWith("statusElement"))
-    val credentialStatus: RevocationListInfo?
-        get() = statusElement
-
-}
+)

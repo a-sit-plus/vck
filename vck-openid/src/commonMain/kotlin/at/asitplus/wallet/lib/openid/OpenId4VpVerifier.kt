@@ -48,6 +48,8 @@ import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.AbstractMdocVerifier
+import at.asitplus.wallet.lib.DefaultNonceService
+import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.Verifier
@@ -58,6 +60,7 @@ import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.toBase64UrlJsonString
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.extensions.sessionTranscriptThumbprint
 import at.asitplus.wallet.lib.jws.DecryptJwe
 import at.asitplus.wallet.lib.jws.DecryptJweFun
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -67,12 +70,9 @@ import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
-import at.asitplus.wallet.lib.utils.DefaultMapStore
-import at.asitplus.wallet.lib.DefaultNonceService
-import at.asitplus.wallet.lib.utils.MapStore
-import at.asitplus.wallet.lib.NonceService
-import at.asitplus.wallet.lib.extensions.sessionTranscriptThumbprint
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
+import at.asitplus.wallet.lib.utils.DefaultMapStore
+import at.asitplus.wallet.lib.utils.MapStore
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
@@ -128,10 +128,6 @@ class OpenId4VpVerifier(
     override val nonceService: NonceService = DefaultNonceService(),
     /** Used to store issued authn requests to verify the authn response to it */
     private val stateToAuthnRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
-    @Deprecated("Use supportedJweEncryptionAlgorithms instead")
-    private val supportedJweAlgorithm: JweAlgorithm = JweAlgorithm.ECDH_ES,
-    @Deprecated("Use supportedJweEncryptionAlgorithms instead")
-    private val supportedJweEncryptionAlgorithm: JweEncryption = JweEncryption.A256GCM,
     /** Algorithms supported to decrypt responses from wallets, for [metadataWithEncryption]. */
     private val supportedJweEncryptionAlgorithms: Set<JweEncryption> = JweEncryption.entries.toSet(),
 ) : AbstractMdocVerifier() {
@@ -399,8 +395,7 @@ class OpenId4VpVerifier(
         is ClientIdScheme.VerifierAttestation,
         is ClientIdScheme.CertificateSanDns,
         is ClientIdScheme.CertificateHash,
-            ->
-            if (encryption || responseMode.requiresEncryption) metadataWithEncryption else metadata
+            -> if (responseMode.requiresEncryption) metadataWithEncryption else metadata
 
         else -> null
     }
@@ -633,7 +628,6 @@ class OpenId4VpVerifier(
             // TODO: Validation errors are (sometimes) put into a VerifiableDCQLPresentationValidationResults which means that the success page is shown
             // However, if we return a ValidationError, a BadRequest is sent, which is not shown to the user in the UI
             AuthnResponseResult.VerifiableDCQLPresentationValidationResults(
-                validationResults = presentation.mapValues { it.value.firstOrList() },
                 allValidationResults = presentation
             )
         } ?: throw IllegalArgumentException("Unsupported presentation mechanism")

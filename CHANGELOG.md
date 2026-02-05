@@ -1,7 +1,7 @@
 # Changelog
 
 Release 5.12.0 (unreleased):
-
+ - Remove code elements deprecated in 5.11.0
 
 Release 5.11.0:
  - Digital Credentials API:

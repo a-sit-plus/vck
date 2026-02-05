@@ -15,19 +15,4 @@ data class IsoMdocRequest(
     @SerialName("encryptionInfo")
     @Serializable(with = EncryptionInfoBase64UrlSerializer::class)
     val encryptionInfo: EncryptionInfo,
-) {
-    @Deprecated("Removed", ReplaceWith("DCAPIWalletRequest.IsoMdoc()"), DeprecationLevel.ERROR)
-    constructor(
-        deviceRequest: DeviceRequest,
-        encryptionInfo: EncryptionInfo,
-        credentialId: String,
-        callingPackageName: String,
-        callingOrigin: String,
-    ) : this(
-        deviceRequest = deviceRequest,
-        encryptionInfo = encryptionInfo
-    )
-
-    @Deprecated("Removed", ReplaceWith("DCAPIWalletRequest.IsoMdoc"), DeprecationLevel.ERROR)
-    val callingOrigin: String = ""
-}
+)
