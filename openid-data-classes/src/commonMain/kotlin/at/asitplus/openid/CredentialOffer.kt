@@ -44,7 +44,7 @@ data class CredentialOffer(
 
     /**
      * OID4VCI: OPTIONAL and only for DC API. The Authorization Server metadata object as defined by Section 2 of [@!RFC8414].
-     * When provided, the authorization_server parameter must not be present.
+     * When provided, the authorization_server parameter must not be present. TODO do they really mean authorization_server or actually authorization_servers? check with final spec
      */
     @SerialName("authorization_server_metadata")
     val authorizationServerMetadata: OAuth2AuthorizationServerMetadata? = null,

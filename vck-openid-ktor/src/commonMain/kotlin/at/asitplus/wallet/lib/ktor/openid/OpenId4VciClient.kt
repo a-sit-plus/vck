@@ -343,17 +343,19 @@ class OpenId4VciClient(
      * @param credentialOffer as loaded and decoded from the QR Code
      * @param credentialIdentifierInfo as selected by the user from the issuer's metadata
      * @param transactionCode if required from Issuing service, i.e. transmitted out-of-band to the user
+     * @param authorizationServerMetadata oauthMetadata optionally transmitted via the DC API. Set to null for other flows as it will be fetched from the authorizationServer/credentialIssuer.
      */
     suspend fun loadCredentialWithOfferReturningResult(
         credentialOffer: CredentialOffer,
         credentialIdentifierInfo: CredentialIdentifierInfo,
         transactionCode: String? = null,
+        authorizationServerMetadata: OAuth2AuthorizationServerMetadata? = null
     ): KmmResult<CredentialIssuanceResult> = catching {
         Napier.i("loadCredentialWithOffer: $credentialOffer")
         val issuerMetadata = credentialIdentifierInfo.issuerMetadata
         val authorizationServer = issuerMetadata.authorizationServers?.firstOrNull()
             ?: credentialOffer.credentialIssuer
-        val oauthMetadata = loadOauthMetadata(authorizationServer).getOrThrow()
+        val oauthMetadata = authorizationServerMetadata ?: loadOauthMetadata(authorizationServer).getOrThrow()
         val state = uuid4().toString()
         val preAuthorizedCode = credentialOffer.grants?.preAuthorizedCode
         if (preAuthorizedCode != null) {
