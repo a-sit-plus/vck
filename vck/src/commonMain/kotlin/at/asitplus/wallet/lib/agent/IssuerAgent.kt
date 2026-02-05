@@ -129,7 +129,7 @@ class IssuerAgent(
             subjectPublicKey = credential.subjectPublicKey,
             userInfo = credential.userInfo
         ).also {
-            issuerCredentialStore.storeCredential(timePeriod, reference, it.validUntil, it.scheme).getOrThrow()
+            issuerCredentialStore.storeCredential(timePeriod, reference, it).getOrThrow()
         }
     }
 
@@ -170,7 +170,7 @@ class IssuerAgent(
             subjectPublicKey = credential.subjectPublicKey,
             userInfo = credential.userInfo,
         ).also {
-            issuerCredentialStore.storeCredential(timePeriod, reference, it.validUntil, it.scheme).getOrThrow()
+            issuerCredentialStore.storeCredential(timePeriod, reference, it).getOrThrow()
         }
     }
 
@@ -225,7 +225,7 @@ class IssuerAgent(
             subjectPublicKey = credential.subjectPublicKey,
             userInfo = credential.userInfo,
         ).also {
-            issuerCredentialStore.storeCredential(timePeriod, reference, it.validUntil, it.scheme).getOrThrow()
+            issuerCredentialStore.storeCredential(timePeriod, reference, it).getOrThrow()
         }
     }
 

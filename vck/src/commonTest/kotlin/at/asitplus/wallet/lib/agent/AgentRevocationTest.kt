@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
@@ -28,28 +29,30 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.json.Json
 import kotlin.random.Random
 import kotlin.time.Clock
-import kotlin.time.Duration.Companion.seconds
 
 val AgentRevocationTest by testSuite {
 
     withFixtureGenerator(suspend {
         val issuerCredentialStore = InMemoryIssuerCredentialStore()
-        val expectedRevokedIndexes = issuerCredentialStore.revokeRandomCredentials()
-        object {
-            val issuerCredentialStore = issuerCredentialStore
-            val expectedRevokedIndexes = expectedRevokedIndexes
-            val issuer = IssuerAgent(
-                issuerCredentialStore = issuerCredentialStore,
-                identifier = "https://issuer.example.com/".toUri(),
-                randomSource = RandomSource.Default
-            )
-            val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
-            val verifierKeyMaterial = EphemeralKeyWithoutCert()
+        val issuer = IssuerAgent(
+            issuerCredentialStore = issuerCredentialStore,
+            identifier = "https://issuer.example.com/".toUri(),
+            randomSource = RandomSource.Default
+        )
+        val verifierKeyMaterial = EphemeralKeyWithoutCert()
 
+        object {
+            val expectedRevokedIndexes: List<ULong> = listOf(1U, 2U, 4U, 6U, 7U, 9U, 10U, 12U, 13U, 14U)
+            val issuer = issuer
+            val issuerCredentialStore = issuerCredentialStore
+            val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
+            val verifierKeyMaterial = verifierKeyMaterial
         }
     }) - {
 
         "revocation list should contain indices of revoked credential" {
+            batchIssueCredentials(15, it.issuer, it.verifierKeyMaterial.publicKey)
+            it.issuerCredentialStore.revokeCredentialsWithIndexes(it.expectedRevokedIndexes)
             val statusList = it.statusListIssuer.issueStatusListJwt()
                 .shouldNotBeNull().payload.revocationList.shouldBeInstanceOf<StatusList>()
 
@@ -57,15 +60,7 @@ val AgentRevocationTest by testSuite {
         }
 
         "aggregation should contain links if statuses have been set" {
-            it.issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    it.verifierKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    PLAIN_JWT,
-                ).getOrThrow()
-            ).getOrElse {
-                fail("no issued credentials")
-            }
+            issueCredential(it.issuer, it.verifierKeyMaterial.publicKey)
             it.issuerCredentialStore.revokeCredentialsWithIndexes(listOf(0U))
 
             val statusListAggregation = it.statusListIssuer.provideStatusListAggregation()
@@ -73,15 +68,7 @@ val AgentRevocationTest by testSuite {
         }
 
         "issued jwt should have same status list as provided token when asking for jwt" {
-            it.issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    it.verifierKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    PLAIN_JWT,
-                ).getOrThrow()
-            ).getOrElse {
-                fail("no issued credentials")
-            }
+            issueCredential(it.issuer, it.verifierKeyMaterial.publicKey)
             it.issuerCredentialStore.revokeCredentialsWithIndexes(listOf(0U))
 
             val timestamp = Clock.System.now()
@@ -97,15 +84,7 @@ val AgentRevocationTest by testSuite {
         }
 
         "issued cwt should have same status list as provided token when asking for cwt" {
-            it.issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    it.verifierKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    PLAIN_JWT,
-                ).getOrThrow()
-            ).getOrElse {
-                fail("no issued credentials")
-            }
+            issueCredential(it.issuer, it.verifierKeyMaterial.publicKey)
             it.issuerCredentialStore.revokeCredentialsWithIndexes(listOf(0U))
 
             val timestamp = Clock.System.now()
@@ -135,15 +114,10 @@ val AgentRevocationTest by testSuite {
         }
 
         "credentials should contain status information" {
-            val result = it.issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    it.verifierKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    PLAIN_JWT,
-                ).getOrThrow()
-            ).getOrElse {
-                fail("no issued credentials")
-            }.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
+            val result = issueCredential(
+                it.issuer,
+                it.verifierKeyMaterial.publicKey
+            ).shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
             ValidatorVcJws().verifyVcJws(result.signedVcJws, it.verifierKeyMaterial.publicKey)
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
@@ -154,26 +128,37 @@ val AgentRevocationTest by testSuite {
         }
 
         "encoding to a known value works" {
-            val issuerCredentialStore = InMemoryIssuerCredentialStore()
-            val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
             val expectedRevokedIndexes: List<ULong> = listOf(1U, 2U, 4U, 6U, 7U, 9U, 10U, 12U, 13U, 14U)
-            issuerCredentialStore.revokeCredentialsWithIndexes(expectedRevokedIndexes)
+            batchIssueCredentials(15, it.issuer, it.verifierKeyMaterial.publicKey)
+            it.issuerCredentialStore.revokeCredentialsWithIndexes(expectedRevokedIndexes)
 
-            val revocationList = statusListIssuer.buildRevocationList(timePeriod).shouldNotBeNull()
+            val revocationList = it.statusListIssuer.buildRevocationList(timePeriod).shouldNotBeNull()
 
             verifyStatusList(revocationList.shouldBeInstanceOf<StatusList>(), expectedRevokedIndexes)
         }
 
         "decoding a known value works" {
-            val expectedRevokedIndexes: List<ULong> = listOf(1U, 2U, 4U, 6U, 7U, 9U, 10U, 12U, 13U, 14U)
-
             val revocationList =
                 Json.decodeFromString<StatusList>("""{"lst": "eJy7VgYAAiQBTQ==", "bits": 1}""")
 
-            verifyStatusList(revocationList, expectedRevokedIndexes)
+            verifyStatusList(revocationList, it.expectedRevokedIndexes)
         }
     }
 }
+
+private suspend fun issueCredential(issuer: Issuer, publicKey: CryptoPublicKey) =
+    issuer.issueCredential(
+        DummyCredentialDataProvider.getCredential(
+            publicKey,
+            ConstantIndex.AtomicAttribute2023,
+            PLAIN_JWT,
+        ).getOrThrow()
+    ).getOrElse {
+        fail("no issued credentials")
+    }
+
+private suspend fun batchIssueCredentials(numCred: Int, issuer: Issuer, publicKey: CryptoPublicKey) =
+    (0..<numCred).forEach { _ -> issueCredential(issuer, publicKey) }
 
 private fun verifyStatusList(statusList: StatusList, expectedRevokedIndexes: List<ULong>) {
     val expectedRevocationStatuses = MutableList(expectedRevokedIndexes.max().toInt() + 1) {
@@ -188,38 +173,7 @@ private fun verifyStatusList(statusList: StatusList, expectedRevokedIndexes: Lis
 }
 
 private suspend fun InMemoryIssuerCredentialStore.revokeCredentialsWithIndexes(revokedIndexes: List<ULong>) {
-    val issuanceDate = Clock.System.now()
-    (1..16).forEach { _ ->
-        val reference = createStatusListIndex(
-            timePeriod
-        )
-        storeCredential(
-            timePeriod = timePeriod,
-            reference = reference,
-            validUntil = issuanceDate + 60.seconds,
-            scheme = ConstantIndex.AtomicAttribute2023,
-        )
-        if (revokedIndexes.contains(reference)) {
-            setStatus(timePeriod, reference, TokenStatus.Invalid)
-        }
+    revokedIndexes.forEach { id ->
+        setStatus(timePeriod, id, TokenStatus.Invalid)
     }
-}
-
-private suspend fun InMemoryIssuerCredentialStore.revokeRandomCredentials(): List<ULong> {
-    val expectedRevocationList = mutableListOf<ULong>()
-    val issuanceDate = Clock.System.now()
-    (1..256).forEach { _ ->
-        val revListIndex = createStatusListIndex(timePeriod)
-        storeCredential(
-            timePeriod = timePeriod,
-            reference = revListIndex,
-            validUntil = issuanceDate + 60.seconds,
-            scheme = ConstantIndex.AtomicAttribute2023,
-        )
-        if (Random.nextBoolean()) {
-            expectedRevocationList += revListIndex
-            setStatus(timePeriod, revListIndex, TokenStatus.Invalid)
-        }
-    }
-    return expectedRevocationList.toList()
 }

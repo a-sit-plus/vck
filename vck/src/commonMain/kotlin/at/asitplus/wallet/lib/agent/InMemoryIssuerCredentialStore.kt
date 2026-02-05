@@ -10,7 +10,6 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBit
 import com.benasher44.uuid.uuid4
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlin.let
 import kotlin.time.Instant
 
 class InMemoryIssuerCredentialStore(
@@ -42,8 +41,7 @@ class InMemoryIssuerCredentialStore(
     override suspend fun storeCredential(
         timePeriod: Int,
         reference: ULong,
-        validUntil: Instant,
-        scheme: ConstantIndex.CredentialScheme
+        credential: Issuer.IssuedCredential
     ): KmmResult<Boolean> = catching {
         require(reference <= indexMap[timePeriod]!!) { "Invalid reference!" }
         val list = credentialMap.getOrPut(timePeriod) { mutableListOf() }
@@ -52,8 +50,8 @@ class InMemoryIssuerCredentialStore(
             vcId = uuid4().toString(),
             statusListIndex = reference,
             status = TokenStatus.Valid,
-            expirationDate = validUntil,
-            scheme = scheme
+            expirationDate = credential.validUntil,
+            scheme = credential.scheme
         )
         true
     }

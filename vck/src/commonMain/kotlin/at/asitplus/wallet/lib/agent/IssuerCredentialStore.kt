@@ -1,8 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.wallet.lib.data.ConstantIndex
-import kotlin.time.Instant
 
 /**
  * Stores all issued credentials, keeps track of the index for the revocation list
@@ -23,7 +21,6 @@ interface IssuerCredentialStore {
     suspend fun storeCredential(
         timePeriod: Int,
         reference: ULong,
-        validUntil: Instant,
-        scheme: ConstantIndex.CredentialScheme
+        credential: Issuer.IssuedCredential
     ): KmmResult<Boolean>
 }
