@@ -125,7 +125,7 @@ suspend operator fun TokenStatusResolver.invoke(storeEntry: SubjectCredentialSto
 
 suspend operator fun TokenStatusResolver.invoke(credentialWrapper: CredentialWrapper) = when (credentialWrapper) {
     is CredentialWrapper.Mdoc -> credentialWrapper.issuerSigned.issuerAuth.payload?.status
-    is CredentialWrapper.SdJwt -> credentialWrapper.sdJwt.credentialStatus
+    is CredentialWrapper.SdJwt -> credentialWrapper.sdJwt.statusElement
     is CredentialWrapper.VcJws -> credentialWrapper.verifiableCredentialJws.vc.credentialStatus
 }?.let {
     invoke(it)

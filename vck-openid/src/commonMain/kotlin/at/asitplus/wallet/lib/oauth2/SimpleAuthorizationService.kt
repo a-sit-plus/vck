@@ -176,14 +176,6 @@ class SimpleAuthorizationService(
      */
     override suspend fun metadata(): OAuth2AuthorizationServerMetadata = _metadata
 
-    @Deprecated("Use credentialOfferWithAuthorizationCode with parameter configurationIds")
-    suspend fun credentialOfferWithAuthorizationCode(
-        credentialIssuer: String,
-    ) = credentialOfferWithAuthorizationCode(
-        credentialIssuer = credentialIssuer,
-        configurationIds = strategy.allCredentialIdentifier()
-    )
-
     /**
      * Offer some credential identifiers from [strategy] to clients with auth-code flow.
      *

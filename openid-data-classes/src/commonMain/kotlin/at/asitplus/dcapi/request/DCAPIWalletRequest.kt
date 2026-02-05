@@ -1,7 +1,6 @@
 package at.asitplus.dcapi.request
 
 import at.asitplus.openid.RequestParameters
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
@@ -73,32 +72,7 @@ sealed interface DCAPIWalletRequest {
         override val protocol: ExchangeProtocolIdentifier
             get() = ExchangeProtocolIdentifier.OPENID4VP_V1_UNSIGNED
 
-        @Deprecated("Removed, use constructor without protocol and parsed request", level = DeprecationLevel.ERROR)
-        constructor(
-            protocol: String,
-            requestData: String,
-            credentialId: String,
-            callingPackageName: String,
-            callingOrigin: String,
-        ) : this(
-            request = joseCompliantSerializer.decodeFromString(requestData),
-            credentialId = credentialId,
-            callingPackageName = callingPackageName,
-            callingOrigin = callingOrigin
-        )
     }
 
 }
 
-@Deprecated(
-    "Replaced with DCAPIWalletRequest.OpenId4VpUnsigned / DCAPIWalletRequest.OpenId4VpSigned depending on your protocol variable",
-    level = DeprecationLevel.ERROR
-)
-class Oid4vpDCAPIRequest
-
-@Deprecated(
-    "Replaced with DCAPIWalletRequest",
-    replaceWith = ReplaceWith("at.asitplus.dcapi.request.DCAPIWalletRequest"),
-    level = DeprecationLevel.ERROR
-)
-class DCAPIRequest

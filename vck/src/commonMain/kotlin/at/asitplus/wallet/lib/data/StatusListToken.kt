@@ -15,10 +15,6 @@ sealed class StatusListToken {
     abstract val resolvedAt: Instant?
     abstract val parsedPayload: KmmResult<StatusListTokenPayload>
 
-    @Deprecated("Use parsedPayload instead", ReplaceWith("parsedPayload.getOrThrow()"))
-    val payload: StatusListTokenPayload
-        get() = parsedPayload.getOrThrow()
-
     /**
      * Validate the Status List Token:
      *

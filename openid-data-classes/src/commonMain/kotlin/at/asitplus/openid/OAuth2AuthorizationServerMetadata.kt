@@ -234,10 +234,6 @@ data class OAuth2AuthorizationServerMetadata(
     @SerialName("vp_formats_supported")
     val vpFormatsSupported: VpFormatsSupported? = null,
 
-    @Deprecated("Removed in OpenID4VP 1.0", ReplaceWith("clientIdPrefixesSupported"))
-    @SerialName("client_id_schemes_supported")
-    val clientIdSchemesSupported: Set<String>? = null,
-
     /**
      * OID4VP: OPTIONAL. A non-empty array of strings containing the values of the Client Identifier Prefixes that the
      * Wallet supports. The values defined by this specification are `pre-registered` (which represents the behavior

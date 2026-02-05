@@ -56,14 +56,6 @@ data class RelyingPartyMetadata(
     @SerialName("id_token_signed_response_alg")
     val idTokenSignedResponseAlgString: String? = null,
 
-    @Deprecated("Not used in OpenID4VP 1.0, use [encryptedResponseEncValuesSupported] instead")
-    @SerialName("authorization_encrypted_response_alg")
-    val authorizationEncryptedResponseAlgString: String? = null,
-
-    @Deprecated("Not used in OpenID4VP 1.0, use [encryptedResponseEncValuesSupported] instead")
-    @SerialName("authorization_encrypted_response_enc")
-    val authorizationEncryptedResponseEncodingString: String? = null,
-
     /**
      * OpenID4VP: OPTIONAL. Non-empty array of strings, where each string is a JWE
      * [RFC7516](https://datatracker.ietf.org/doc/html/rfc7516) `enc` algorithm that can be used as the content
@@ -106,17 +98,7 @@ data class RelyingPartyMetadata(
      */
     @SerialName("vp_formats_supported")
     val vpFormatsSupported: VpFormatsSupported? = null,
-
-    @SerialName("client_id_scheme")
-    @Deprecated("Removed in OpenID4VP 1.0, is encoded in client_id")
-    val clientIdScheme: OpenIdConstants.ClientIdScheme? = OpenIdConstants.ClientIdScheme.PreRegistered,
 ) {
-
-    @Suppress("DEPRECATION")
-    @Transient
-    @Deprecated("Not used in OpenID4VP 1.0, use [encryptedResponseEncValues] instead")
-    val authorizationEncryptedResponseAlg: JweAlgorithm? = authorizationEncryptedResponseAlgString
-        ?.let { s -> JweAlgorithm.entries.firstOrNull { it.identifier == s } }
 
     /**
      * OIDC Registration: OPTIONAL. JWE alg algorithm REQUIRED for encrypting the ID Token issued to this Client.
@@ -137,12 +119,6 @@ data class RelyingPartyMetadata(
      */
     @Transient
     val idTokenSignedResponseAlg: JwsAlgorithm? = idTokenSignedResponseAlgString?.toJwsAlgorithm()
-
-    @Suppress("DEPRECATION")
-    @Transient
-    @Deprecated("Not used in OpenID4VP 1.0, use [encryptedResponseEncValues] instead")
-    val authorizationEncryptedResponseEncoding: JweEncryption? = authorizationEncryptedResponseEncodingString
-        ?.let { s -> JweEncryption.entries.firstOrNull { it.identifier == s } }
 
     /**
      * OpenID4VP: OPTIONAL. Non-empty array of strings, where each string is a JWE

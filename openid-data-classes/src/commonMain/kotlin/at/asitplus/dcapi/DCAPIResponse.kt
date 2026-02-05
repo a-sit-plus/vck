@@ -3,7 +3,6 @@ package at.asitplus.dcapi
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.io.TransformingSerializerTemplate
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.SerialName
@@ -22,18 +21,7 @@ data class DCAPIResponse(
     @SerialName("response")
     @Serializable(with = EncryptedResponseBase64UrlSerializer::class)
     val response: EncryptedResponse,
-) {
-
-    companion object {
-        @Deprecated("Removed", ReplaceWith("IsoMdocResponse()"), DeprecationLevel.ERROR)
-        fun createIsoMdocResponse(response: EncryptedResponse): DCAPIResponse =
-            DCAPIResponse(response)
-
-        @Deprecated("Removed with platform code", level = DeprecationLevel.ERROR)
-        fun createOid4vpResponse(response: String): DCAPIResponse =
-            DCAPIResponse(joseCompliantSerializer.decodeFromString(response))
-    }
-}
+)
 
 object EncryptedResponseBase64UrlSerializer : TransformingSerializerTemplate<EncryptedResponse, String>(
     parent = String.serializer(),

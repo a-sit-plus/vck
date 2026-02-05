@@ -35,10 +35,6 @@ data class SignatureRequestParameters(
     @SerialName("client_id")
     val clientId: String,
 
-    @Deprecated("Removed in OpenID4VP 1.0, is encoded in client_id")
-    @SerialName("client_id_scheme")
-    val clientIdScheme: OpenIdConstants.ClientIdScheme? = null,
-
     /**
      * OAuth 2.0 Responses: OPTIONAL. Informs the Authorization Server of the mechanism to be used for returning
      * Authorization Response parameters from the Authorization Endpoint. This use of this parameter is NOT RECOMMENDED

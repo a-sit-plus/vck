@@ -40,8 +40,6 @@ class WalletEncryptionService(
     private val encryptCredentialRequest: EncryptJweFun = EncryptJwe(EphemeralKeyWithoutCert()),
     /** Algorithms to indicate support for credential response encryption. */
     private val supportedJweAlgorithm: JweAlgorithm = JweAlgorithm.ECDH_ES,
-    @Deprecated("Use fallbackJweEncryptionAlgorithm instead.")
-    private val supportedJweEncryptionAlgorithm: JweEncryption = JweEncryption.A256GCM,
     /** Algorithm to fallback to for credential response encryption. */
     private val fallbackJweEncryptionAlgorithm: JweEncryption = JweEncryption.A256GCM,
     /** Key to offer for credential response encryption. */
