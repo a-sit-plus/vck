@@ -9,6 +9,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBitSize
 import com.benasher44.uuid.uuid4
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.time.Instant
 
 class InMemoryIssuerCredentialStore(
@@ -25,11 +26,18 @@ class InMemoryIssuerCredentialStore(
 
     /** Maps timePeriod to credentials */
     private val credentialMap = mutableMapOf<Int, MutableList<Credential>>()
-    private val indexMap = mutableMapOf<Int, MutableList<ULong>>()
+
+    /** Index is map of timePeriod to counter */
+    private val indexMap = mutableMapOf<Int, ULong>()
+    private val indexMutex = Mutex()
 
     override suspend fun createStatusListIndex(
         timePeriod: Int,
-    ): ULong = indexMap.getOrPut(timePeriod) { mutableListOf() }.maxOfOrNull { it + 1U } ?: 0U
+    ): ULong = indexMutex.withLock {
+        val next = (indexMap[timePeriod] ?: 0U) + 1U
+        indexMap[timePeriod] = next
+        next
+    }
 
     override suspend fun storeCredential(
         timePeriod: Int,
@@ -37,14 +45,16 @@ class InMemoryIssuerCredentialStore(
         validUntil: Instant,
         scheme: ConstantIndex.CredentialScheme
     ): KmmResult<Boolean> = catching {
-        val list = credentialMap.getOrElse(timePeriod) { throw Exception("Credential $timePeriod not found") }
-            list += Credential(
-                vcId = uuid4().toString(),
-                statusListIndex = reference,
-                status = TokenStatus.Valid,
-                expirationDate = validUntil,
-                scheme = scheme
-            )
+        require(reference <= indexMap[timePeriod]!!) { "Invalid reference!" }
+        val list = credentialMap.getOrPut(timePeriod) { mutableListOf() }
+        require(list.find { it.statusListIndex == reference } == null) { "Reference already used!" }
+        list += Credential(
+            vcId = uuid4().toString(),
+            statusListIndex = reference,
+            status = TokenStatus.Valid,
+            expirationDate = validUntil,
+            scheme = scheme
+        )
         true
     }
 
