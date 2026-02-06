@@ -51,7 +51,7 @@ data class CredentialOffer(
 ) {
     init {
         if (authorizationServerMetadata != null) {
-            require(grants?.authorizationCode?.authorizationServer == null)
+            require(grants?.authorizationCode?.authorizationServer == null) { "authorization_server_metadata and authorization_server are mutually exclusive" }
         }
     }
 
