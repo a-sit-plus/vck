@@ -15,4 +15,8 @@ data class DigitalCredentialCreateRequest(
     val protocol: IssuanceProtocolIdentifier,
     @SerialName("data")
     val data: CredentialOffer,
-)
+) {
+    init {
+        data.checkDcApiRequirements()
+    }
+}

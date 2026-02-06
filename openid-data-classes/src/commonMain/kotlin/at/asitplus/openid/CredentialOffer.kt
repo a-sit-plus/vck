@@ -54,4 +54,8 @@ data class CredentialOffer(
             require(grants?.authorizationCode?.authorizationServer == null)
         }
     }
+
+    fun checkDcApiRequirements() {
+        require(credentialIssuerMetadata != null) { "credential_issuer_metadata is required for DC API" }
+    }
 }
