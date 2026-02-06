@@ -4,6 +4,9 @@ Release 5.12.0 (unreleased):
  - Remove code elements deprecated in 5.11.0
  - ISO mdoc:
    - Preserve `Document.errors` in parsed ISO document results instead of failing validation
+- Digital Credentials API:
+  - Add issuance data classes: `CredentialCreationOptions`, `DigitalCredentialCreationOptions`, `DigitalCredentialCreateRequest`, `DigitalCredentialOfferReturn`, and `DigitalCredentialOfferReturnData`. These classes are based on a preliminary specification and are subject to change.
+  - Add `CredentialRequestOptions.create` method which automatically sets mediation to required and takes the list of requests, make the default constructor private.
 
 Release 5.11.0:
  - Digital Credentials API:

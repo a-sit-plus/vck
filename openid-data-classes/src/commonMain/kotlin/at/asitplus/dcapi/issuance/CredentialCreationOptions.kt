@@ -27,7 +27,8 @@ data class CredentialCreationOptions private constructor(
             offer: CredentialOffer,
             protocol: IssuanceProtocolIdentifier = IssuanceProtocolIdentifier.OPENID4VCI_V1,
         ) = CredentialCreationOptions(
-            mediation = MEDIATION_REQUIRED, digital = DigitalCredentialCreationOptions(
+            mediation = MEDIATION_REQUIRED,
+            digital = DigitalCredentialCreationOptions(
                 listOf(
                     DigitalCredentialCreateRequest(protocol, offer)
                 )
