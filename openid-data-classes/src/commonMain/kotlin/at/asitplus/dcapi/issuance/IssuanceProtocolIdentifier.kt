@@ -42,7 +42,8 @@ value class IssuanceProtocolIdentifier(
         /** `openid4vci-v1` */
         val OPENID4VCI_V1 = IssuanceProtocolIdentifier("$PART_OPENID4VCI$DELIMITER$PART_V1")
 
-        /** `openid4vci1.0` */
+        @Deprecated("Not specified, but used by implementations: `openid4vci1.0`", level = DeprecationLevel.WARNING)
+        /** Not specified, but used by implementations: `openid4vci1.0` */
         val OPENID4VCI_V1_LEGACY = IssuanceProtocolIdentifier("$PART_OPENID4VCI$PART_V1_LEGACY")
     }
 }

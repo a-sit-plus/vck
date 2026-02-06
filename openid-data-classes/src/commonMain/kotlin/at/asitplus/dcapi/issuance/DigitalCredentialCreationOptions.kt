@@ -1,11 +1,12 @@
 package at.asitplus.dcapi.issuance
 
+import io.github.aakira.napier.Napier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 
 /**
- * Parent for DC API issuance requests
+ * Contained in [CredentialCreationOptions]
  */
 @Serializable
 data class DigitalCredentialCreationOptions(
