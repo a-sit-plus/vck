@@ -49,10 +49,4 @@ class InMemorySubjectCredentialStore : SubjectCredentialStore {
             }.toList()
         } ?: credentials
     }
-
-    override suspend fun removeStoreEntryById(storeEntryId: Long) {
-        // No-op: This functionality is not required for this store implementation
-    }
-
-    override suspend fun getInvalidCredentials(): List<Pair<Long, SubjectCredentialStore.StoreEntry>> = emptyList()
 }
