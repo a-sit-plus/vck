@@ -115,7 +115,8 @@ interface TokenService {
             nonceService: NonceService = DefaultNonceService(),
             issueRefreshTokens: Boolean = false
         ) = BearerTokenGenerationService(
-            nonceService = nonceService
+            nonceService = nonceService,
+            issueRefreshToken = issueRefreshTokens
         ).let { generationService ->
             BearerTokenService(
                 generation = generationService,

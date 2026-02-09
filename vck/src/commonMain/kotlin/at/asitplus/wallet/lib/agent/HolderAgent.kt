@@ -108,10 +108,6 @@ class HolderAgent(
         }
     }
 
-    override suspend fun deleteCredential(id: Long) {
-        subjectCredentialStore.removeStoreEntryById(id)
-    }
-
     private fun Holder.StoreCredentialInput.Iso.extractIssuerKey(): CoseKey? =
         issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull()?.let {
             catchingUnwrapped { X509Certificate.decodeFromDer(it) }.getOrNull()?.decodedPublicKey?.getOrNull()
@@ -148,11 +144,6 @@ class HolderAgent(
         return withRevocationStatusAvailable.sortedBy {
             if (it.second.isFresh) 0 else 1
         }.map { it.first }
-    }
-
-    /** Gets a list of all stored credentials that are no longer valid, possibly filtered by [filterById]. */
-    override suspend fun getInvalidCredentials(): List<Pair<Long, StoreEntry>> {
-        return subjectCredentialStore.getInvalidCredentials()
     }
 
     /** Prefer credentials with support for selective disclosure. */

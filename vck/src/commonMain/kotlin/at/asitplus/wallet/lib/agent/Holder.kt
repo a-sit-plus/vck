@@ -122,11 +122,5 @@ interface Holder {
         dcqlQuery: DCQLQuery,
         filterById: String? = null
     ): KmmResult<DCQLQueryResult<SubjectCredentialStore.StoreEntry>>
-
-    /**
-     * Deletes a credential from the store.
-     */
-    suspend fun deleteCredential(id: Long)
-    suspend fun getInvalidCredentials(): List<Pair<Long, SubjectCredentialStore.StoreEntry>>
 }
 
