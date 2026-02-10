@@ -12,6 +12,11 @@ Release 5.12.0 (unreleased):
 Release 5.11.1:
  - OAuth 2.0:
    - Fix bug in `SimpleAuthorizationRequest` validating `issuer_state` on pushed authorization requests twice (and failing on the second time)
+ - OID4VCI refresh token storage:
+   - Moved the class `RefreshTokenInfo` from `OpenId4VciClient` to `SubjectCredentialStore.kt` and renamed it to `CredentialRenewalInfo` to better describe its role in the renewal process.
+     Kept `RefreshTokenInfo` as a typealias in the original package for backward compatibility
+   - Added `CredentialRenewalInfo` to `SubjectCredentialStore.StoreEntry`
+   - Added support for refresh tokens in BearerTokenService
 
 Release 5.11.0:
  - Digital Credentials API:
