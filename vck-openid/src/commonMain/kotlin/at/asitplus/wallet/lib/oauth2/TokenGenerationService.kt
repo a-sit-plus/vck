@@ -145,30 +145,6 @@ class BearerTokenGenerationService(
     private val issueRefreshToken: Boolean = false
 ) : TokenGenerationService {
 
-//    override suspend fun buildToken(
-//        httpRequest: RequestInfo?,
-//        userInfo: OidcUserInfoExtended,
-//        authorizationDetails: Set<AuthorizationDetails>?,
-//        scope: String?,
-//        validatedClientKey: JsonWebKey?
-//    ): TokenResponseParameters = TokenResponseParameters(
-//        expires = 5.minutes,
-//        tokenType = TOKEN_TYPE_BEARER,
-//        accessToken = nonceService.provideNonce(),
-//        authorizationDetails = authorizationDetails,
-//        scope = scope,
-//    ).also {
-//        accessTokenToValidatedAccessToken.put(
-//            it.accessToken,
-//            ValidatedAccessToken(
-//                token = it.accessToken,
-//                userInfoExtended = userInfo,
-//                authorizationDetails = authorizationDetails,
-//                scope = scope
-//            )
-//        )
-//    }
-
     override suspend fun buildToken(
         httpRequest: RequestInfo?,
         userInfo: OidcUserInfoExtended,
