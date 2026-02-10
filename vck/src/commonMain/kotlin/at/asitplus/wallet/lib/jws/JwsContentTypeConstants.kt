@@ -18,4 +18,6 @@ object JwsContentTypeConstants {
     const val CLIENT_ATTESTATION_JWT = "oauth-client-attestation+jwt"
     /** OAuth 2.0 Attestation-Based Client Authentication */
     const val CLIENT_ATTESTATION_POP_JWT = "oauth-client-attestation-pop+jwt"
+    /** RFC 9701: OAuth 2.0 Token Introspection Response */
+    const val TOKEN_INTROSPECTION_JWT = "token-introspection+jwt"
 }

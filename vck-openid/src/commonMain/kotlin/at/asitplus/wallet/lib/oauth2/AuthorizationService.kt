@@ -5,7 +5,7 @@ import at.asitplus.KmmResult
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenIntrospectionRequest
-import at.asitplus.openid.TokenIntrospectionResponse
+import at.asitplus.openid.TokenIntrospectionResult
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
@@ -92,5 +92,5 @@ interface AuthorizationService {
     suspend fun tokenIntrospection(
         request: TokenIntrospectionRequest,
         httpRequest: RequestInfo? = null,
-    ): KmmResult<TokenIntrospectionResponse>
+    ): KmmResult<TokenIntrospectionResult>
 }

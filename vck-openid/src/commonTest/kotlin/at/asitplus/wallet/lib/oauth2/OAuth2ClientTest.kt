@@ -3,8 +3,13 @@ package at.asitplus.wallet.lib.oauth2
 import at.asitplus.catching
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
+import at.asitplus.openid.TokenIntrospectionJwtResponse
 import at.asitplus.openid.TokenIntrospectionRequest
+import at.asitplus.openid.TokenIntrospectionRequest.ResponseFormat
+import at.asitplus.openid.TokenIntrospectionResponse
+import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.randomString
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
@@ -77,9 +82,31 @@ val OAuth2ClientTest by testSuite {
             it.server.tokenIntrospection(
                 TokenIntrospectionRequest(token = token.accessToken),
                 null
-            ).getOrThrow().apply {
-                active shouldBe true
-            }
+            ).getOrThrow()
+                .shouldBeInstanceOf<TokenIntrospectionResponse>()
+                .apply { active shouldBe true }
+        }
+        test("token introspection JWT response") {
+            val preAuth = it.server.providePreAuthorizedCode(user)
+                .shouldNotBeNull()
+            val state = uuid4().toString()
+            val tokenRequest = it.client.createTokenRequestParameters(
+                state = state,
+                authorization = OAuth2Client.AuthorizationForToken.PreAuthCode(preAuth),
+                scope = it.scope
+            )
+            val token = it.server.token(tokenRequest, null).getOrThrow()
+            val jwtResponse = it.server.tokenIntrospection(
+                TokenIntrospectionRequest(token = token.accessToken, responseFormat = ResponseFormat.JWT),
+                null
+            ).getOrThrow()
+                .shouldBeInstanceOf<TokenIntrospectionJwtResponse>()
+            val parsed = JwsSigned.deserialize(
+                TokenIntrospectionResponse.serializer(),
+                jwtResponse.jwt,
+                vckJsonSerializer
+            ).getOrThrow()
+            parsed.payload.active shouldBe true
         }
         test("process with pushed authorization request and JAR") {
             val state = uuid4().toString()
@@ -107,9 +134,9 @@ val OAuth2ClientTest by testSuite {
             it.server.tokenIntrospection(
                 TokenIntrospectionRequest(token = token.accessToken),
                 null
-            ).getOrThrow().apply {
-                active shouldBe true
-            }
+            ).getOrThrow()
+                .shouldBeInstanceOf<TokenIntrospectionResponse>()
+                .apply { active shouldBe true }
         }
         test("process with authorization code flow, and JAR") {
             val state = uuid4().toString()
@@ -134,9 +161,9 @@ val OAuth2ClientTest by testSuite {
             it.server.tokenIntrospection(
                 TokenIntrospectionRequest(token = token.accessToken),
                 null
-            ).getOrThrow().apply {
-                active shouldBe true
-            }
+            ).getOrThrow()
+                .shouldBeInstanceOf<TokenIntrospectionResponse>()
+                .apply { active shouldBe true }
         }
 
         test("process with authorization code flow, front channel") {
@@ -207,9 +234,9 @@ val OAuth2ClientTest by testSuite {
             it.server.tokenIntrospection(
                 TokenIntrospectionRequest(token = token.accessToken),
                 null
-            ).getOrThrow().apply {
-                active shouldBe true
-            }
+            ).getOrThrow()
+                .shouldBeInstanceOf<TokenIntrospectionResponse>()
+                .apply { active shouldBe true }
         }
     }
 }

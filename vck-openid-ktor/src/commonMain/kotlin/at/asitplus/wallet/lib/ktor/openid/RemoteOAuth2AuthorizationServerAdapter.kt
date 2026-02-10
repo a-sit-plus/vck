@@ -4,6 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants.WellKnownPaths
+import at.asitplus.openid.TokenIntrospectionJwtResponse
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenResponseParameters
@@ -12,6 +13,7 @@ import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.TokenVerificationService
+import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.oidvci.OAuth2AuthorizationServerAdapter
@@ -173,3 +175,24 @@ private fun TokenIntrospectionResponse.toTokenInfo(token: String) = TokenInfo(
 private suspend inline fun <R> IntermediateResult<R>.onSuccessUserInfo(
     block: JsonObject.(httpResponse: HttpResponse) -> R,
 ) = onSuccess<JsonObject, R>(block)
+
+private suspend inline fun <R> IntermediateResult<R>.onSuccessTokenIntrospection(
+    block: TokenIntrospectionResponse.(httpResponse: HttpResponse) -> R,
+) = when (this) {
+    is IntermediateResult.Failure<R> -> result
+    is IntermediateResult.Success<R> -> {
+        val parsed = parseTokenIntrospectionResponse(httpResponse.bodyAsText())
+        block(parsed, httpResponse)
+    }
+}
+
+private fun parseTokenIntrospectionResponse(body: String): TokenIntrospectionResponse {
+    return runCatching {
+        vckJsonSerializer.decodeFromString(TokenIntrospectionResponse.serializer(), body)
+    }.getOrElse {
+        val jwtResponse = vckJsonSerializer.decodeFromString(TokenIntrospectionJwtResponse.serializer(), body)
+        JwsSigned.deserialize(TokenIntrospectionResponse.serializer(), jwtResponse.jwt, vckJsonSerializer)
+            .getOrThrow()
+            .payload
+    }
+}

@@ -19,6 +19,8 @@ Release 5.12.0 (unreleased):
      Kept `RefreshTokenInfo` in the original package for backward compatibility
    - Added `CredentialRenewalInfo` to `SubjectCredentialStore.StoreEntry`
    - Added support for refresh tokens in BearerTokenService
+ - OAuth 2.0:
+   - In `SimpleAuthorizationService` implement [JWT Response for OAuth Token Introspection](https://datatracker.ietf.org/doc/html/rfc9701/)
 
 Release 5.11.1:
  - OAuth 2.0:

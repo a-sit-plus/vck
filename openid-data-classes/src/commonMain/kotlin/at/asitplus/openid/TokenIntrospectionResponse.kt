@@ -8,6 +8,8 @@ import kotlin.time.Instant
 /**
  * [RFC 7662: OAuth 2.0 Token Introspection](https://datatracker.ietf.org/doc/html/rfc7662): Response.
  */
+sealed interface TokenIntrospectionResult
+
 @Serializable
 data class TokenIntrospectionResponse(
     /**
@@ -111,4 +113,16 @@ data class TokenIntrospectionResponse(
     @SerialName("authorization_details")
     val authorizationDetails: Set<AuthorizationDetails>? = null,
 
-    )
+    ) : TokenIntrospectionResult
+
+/**
+ * [RFC 9701: JWT Response for OAuth 2.0 Token Introspection](https://datatracker.ietf.org/doc/rfc9701/): Response.
+ */
+@Serializable
+data class TokenIntrospectionJwtResponse(
+    /**
+     * REQUIRED.  JWT containing the token introspection response claims.
+     */
+    @SerialName("jwt")
+    val jwt: String,
+) : TokenIntrospectionResult
