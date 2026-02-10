@@ -1,8 +1,13 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.catchingUnwrapped
+import at.asitplus.iso.DeviceAuth
+import at.asitplus.iso.DeviceNameSpaces
+import at.asitplus.iso.DeviceSigned
+import at.asitplus.iso.Document
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.toCoseKey
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -113,6 +118,38 @@ val ValidatorMdocTest by testSuite {
             ) shouldBe true
             validator.checkRevocationStatus(value.issuerSigned)
                 .shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
+        }
+    }
+    with(Config.random()) {
+        "document errors are preserved in parsed output" {
+            val credential = issuer.issueCredential(
+                DummyCredentialDataProvider.getCredential(
+                    verifierKeyMaterial.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    ISO_MDOC,
+                ).getOrThrow()
+            ).getOrThrow()
+                .shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
+
+            val documentErrors = mapOf(
+                ConstantIndex.AtomicAttribute2023.isoNamespace to mapOf(
+                    ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME to 42,
+                ),
+            )
+
+            val document = Document(
+                docType = ConstantIndex.AtomicAttribute2023.isoDocType,
+                issuerSigned = credential.issuerSigned,
+                deviceSigned = DeviceSigned(
+                    namespaces = ByteStringWrapper(DeviceNameSpaces(mapOf())),
+                    deviceAuth = DeviceAuth(),
+                ),
+                errors = documentErrors,
+            )
+
+            val parsed = validator.verifyDocument(document) { _, _ -> true }
+
+            parsed.documentErrors shouldBe documentErrors
         }
     }
 }

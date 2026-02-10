@@ -15,4 +15,5 @@ data class IsoDocumentParsed(
     val validItems: List<IssuerSignedItem> = listOf(),
     val invalidItems: List<IssuerSignedItem> = listOf(),
     val freshnessSummary: CredentialFreshnessSummary.Mdoc,
+    val documentErrors: Map<String, Map<String, Int>> = emptyMap(),
 )
