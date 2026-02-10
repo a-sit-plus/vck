@@ -65,7 +65,7 @@ class ValidatorMdoc(
         document: Document,
         verifyDocumentCallback: suspend (MobileSecurityObject, Document) -> Boolean,
     ): IsoDocumentParsed {
-        require(document.errors == null) { "Errors: ${document.errors}" }
+        val documentErrors = document.errors.orEmpty()
         val issuerSigned = document.issuerSigned
         val issuerAuth = issuerSigned.issuerAuth
 
@@ -108,6 +108,7 @@ class ValidatorMdoc(
             validItems = validItems,
             invalidItems = invalidItems,
             freshnessSummary = validator.checkCredentialFreshness(issuerSigned),
+            documentErrors = documentErrors,
         )
     }
 
