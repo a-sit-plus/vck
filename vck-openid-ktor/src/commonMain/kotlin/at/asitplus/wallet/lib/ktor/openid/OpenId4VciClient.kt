@@ -127,6 +127,7 @@ class OpenId4VciClient(
     suspend fun startProvisioningWithAuthRequestReturningResult(
         credentialIssuerUrl: String,
         credentialIdentifierInfo: CredentialIdentifierInfo,
+        reissuingStoreEntryId: Long? = null
     ): KmmResult<CredentialIssuanceResult.OpenUrlForAuthnRequest> = catching {
         Napier.i("startProvisioningWithAuthRequest: $credentialIssuerUrl with $credentialIdentifierInfo")
         val issuerMetadata = credentialIdentifierInfo.issuerMetadata
@@ -149,7 +150,8 @@ class OpenId4VciClient(
                     state = it.state,
                     credential = credentialIdentifierInfo,
                     oauthMetadata = oauthMetadata,
-                    issuerMetadata = issuerMetadata
+                    issuerMetadata = issuerMetadata,
+                    reissuingStoreEntryId = reissuingStoreEntryId
                 )
             )
         }
@@ -452,6 +454,7 @@ data class ProvisioningContext(
     val credential: CredentialIdentifierInfo,
     val oauthMetadata: OAuth2AuthorizationServerMetadata,
     val issuerMetadata: IssuerMetadata,
+    val reissuingStoreEntryId: Long? = null,
 )
 
 /**
