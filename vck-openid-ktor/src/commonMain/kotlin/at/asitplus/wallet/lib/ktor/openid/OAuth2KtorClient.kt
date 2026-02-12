@@ -480,8 +480,8 @@ class OAuth2KtorClient(
         httpMethod: HttpMethod,
         useDpop: Boolean,
     ): HttpRequestBuilder.() -> Unit {
-        val (clientAttJwt, clientAttPop) = oauthMetadata.useClientAuth().takeIf { it }?.let {
-            loadClientAttestationJwt?.invoke()?.let { clientAttestationJwt ->
+        val (clientAttJwt, clientAttPop) = oauthMetadata.let {
+        loadClientAttestationJwt?.invoke()?.let { clientAttestationJwt ->
                 clientAttestationJwt to signClientAttestationPop?.let {
                     BuildClientAttestationPoPJwt(
                         signClientAttestationPop,
@@ -493,7 +493,7 @@ class OAuth2KtorClient(
             }
         } ?: (null to null)
 
-        val dpopHeader = oauthMetadata.hasMatchingDpopAlgorithm().takeIf { it && useDpop }?.let {
+        val dpopHeader = useDpop.takeIf { true }?.let {
             BuildDPoPHeader(
                 signDpop = signDpop,
                 url = resourceUrl,
