@@ -31,6 +31,7 @@ import at.asitplus.wallet.lib.agent.ValidatorMdoc
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
 import io.github.aakira.napier.Napier
@@ -69,6 +70,9 @@ class Iso180137AnnexCVerifier(
         requestOptions: Iso180137AnnexCRequestOptions,
     ): IsoMdocRequest {
         val docRequests = requestOptions.credentials.map {
+            if (it.representation != CredentialRepresentation.ISO_MDOC) {
+                throw UnsupportedOperationException("Wrong representation: Only ISO MDoc is supported")
+            }
             val namespace = it.credentialScheme.isoNamespace ?: throw IllegalStateException("Missing namespace")
             val docType = it.credentialScheme.isoDocType ?: throw IllegalStateException("Missing doc type")
             val itemsRequestsListEntries = it.requestedAttributes?.map { reqAttr ->
