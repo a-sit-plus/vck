@@ -426,7 +426,10 @@ class OAuth2KtorClient(
             updateDpopNonceAndRetry(response, introspectionUrl, retryCount) {
                 callTokenIntrospection(oauthMetadata, request, token, popAudience, retryCount + 1)
             }
-        }.onSuccessTokenIntrospection(verifyTokenIntrospectionJwt) { httpResponse ->
+        }.onSuccessTokenIntrospection(
+            verifyTokenIntrospectionJwt = verifyTokenIntrospectionJwt,
+            requestedResponseFormat = request.responseFormat,
+        ) { httpResponse ->
             updateDpopNonce(introspectionUrl, httpResponse.dpopNonce)
             if (!active) {
                 throw InvalidToken("Introspected token is not active")
@@ -551,11 +554,16 @@ private suspend inline fun <R> IntermediateResult<R>.onSuccessToken(
 
 private suspend inline fun <R> IntermediateResult<R>.onSuccessTokenIntrospection(
     noinline verifyTokenIntrospectionJwt: suspend (JwsSigned<TokenIntrospectionResponse>) -> Boolean,
+    requestedResponseFormat: TokenIntrospectionRequest.ResponseFormat?,
     block: TokenIntrospectionResponse.(httpResponse: HttpResponse) -> R,
 ) = when (this) {
     is IntermediateResult.Failure<R> -> result
     is IntermediateResult.Success<R> -> {
-        val parsed = parseTokenIntrospectionResponse(httpResponse.bodyAsText(), verifyTokenIntrospectionJwt)
+        val parsed = parseTokenIntrospectionResponse(
+            body = httpResponse.bodyAsText(),
+            verifyTokenIntrospectionJwt = verifyTokenIntrospectionJwt,
+            requestedResponseFormat = requestedResponseFormat,
+        )
         block(parsed, httpResponse)
     }
 }
@@ -563,7 +571,18 @@ private suspend inline fun <R> IntermediateResult<R>.onSuccessTokenIntrospection
 private suspend fun parseTokenIntrospectionResponse(
     body: String,
     verifyTokenIntrospectionJwt: suspend (JwsSigned<TokenIntrospectionResponse>) -> Boolean,
+    requestedResponseFormat: TokenIntrospectionRequest.ResponseFormat?,
 ): TokenIntrospectionResponse {
+    if (requestedResponseFormat == TokenIntrospectionRequest.ResponseFormat.JWT) {
+        val jwtResponse = vckJsonSerializer.decodeFromString(TokenIntrospectionJwtResponse.serializer(), body)
+        val jws = JwsSigned.deserialize(TokenIntrospectionResponse.serializer(), jwtResponse.jwt, vckJsonSerializer)
+            .getOrThrow()
+        require(verifyTokenIntrospectionJwt(jws)) {
+            "Token introspection JWT validation failed"
+        }
+        return jws.payload
+    }
+
     return runCatching {
         vckJsonSerializer.decodeFromString(TokenIntrospectionResponse.serializer(), body)
     }.getOrElse {
