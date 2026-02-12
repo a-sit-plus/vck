@@ -470,8 +470,11 @@ class OAuth2KtorClient(
     }
 
     /**
-     * Sets the appropriate headers when accessing a token endpoint,
-     * i.e., performs client authentication, also sign DPoP proof when [useDpop] is set.
+     * Sets the appropriate headers when accessing a token endpoint:
+     * - loads client attestation when [loadClientAttestationJwt] is set
+     * - sends a DPoP proof when [useDpop] is set
+     * Previously, this method evaluated [oauthMetadata], but authorization servers are not required
+     * to set the corresponding fields in the metadata, so we set the headers anyway.
      */
     suspend fun applyAuthnForToken(
         oauthMetadata: OAuth2AuthorizationServerMetadata,
@@ -480,20 +483,18 @@ class OAuth2KtorClient(
         httpMethod: HttpMethod,
         useDpop: Boolean,
     ): HttpRequestBuilder.() -> Unit {
-        val (clientAttJwt, clientAttPop) = oauthMetadata.useClientAuth().takeIf { it }?.let {
-            loadClientAttestationJwt?.invoke()?.let { clientAttestationJwt ->
-                clientAttestationJwt to signClientAttestationPop?.let {
-                    BuildClientAttestationPoPJwt(
-                        signClientAttestationPop,
-                        clientId = oAuth2Client.clientId,
-                        audience = popAudience,
-                        lifetime = 10.minutes,
-                    ).serialize()
-                }
+        val (clientAttJwt, clientAttPop) = loadClientAttestationJwt?.invoke()?.let { jwt ->
+            jwt to signClientAttestationPop?.let {
+                BuildClientAttestationPoPJwt(
+                    signClientAttestationPop,
+                    clientId = oAuth2Client.clientId,
+                    audience = popAudience,
+                    lifetime = 10.minutes,
+                ).serialize()
             }
         } ?: (null to null)
 
-        val dpopHeader = oauthMetadata.hasMatchingDpopAlgorithm().takeIf { it && useDpop }?.let {
+        val dpopHeader = useDpop.takeIf { it }?.let {
             BuildDPoPHeader(
                 signDpop = signDpop,
                 url = resourceUrl,
@@ -512,11 +513,6 @@ class OAuth2KtorClient(
         }
     }
 
-    private fun OAuth2AuthorizationServerMetadata.useClientAuth(): Boolean =
-        tokenEndPointAuthMethodsSupported?.contains(OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH) == true
-
-    private fun OAuth2AuthorizationServerMetadata.hasMatchingDpopAlgorithm(): Boolean =
-        dpopSigningAlgValuesSupported?.contains(dpopAlgorithm) == true
 }
 
 val HttpHeaders.OAuthClientAttestation: String

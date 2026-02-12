@@ -5,7 +5,12 @@ import kotlinx.serialization.Serializable
 
 @ConsistentCopyVisibility
 @Serializable
-data class CredentialRequestOptions @Deprecated("Default constructor has been replaced with create() method", ReplaceWith("CredentialRequestOptions.create(requests)")) private constructor(
+data class CredentialRequestOptions
+@Deprecated(
+    "Default constructor has been replaced with create() method",
+    ReplaceWith("CredentialRequestOptions.create(requests)")
+)
+private constructor(
     @SerialName("mediation")
     val mediation: String,
     @SerialName("digital")
