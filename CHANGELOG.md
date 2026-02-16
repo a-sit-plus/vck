@@ -4,6 +4,7 @@ Release 5.12.0 (unreleased):
  - Remove code elements deprecated in 5.11.0
  - ISO mdoc:
    - Preserve `Document.errors` in parsed ISO document results instead of failing validation
+ - Change: Executing unsatisfiable DCQL queries no longer throws on matching, only on submission.
 
 Release 5.11.0:
  - Digital Credentials API:

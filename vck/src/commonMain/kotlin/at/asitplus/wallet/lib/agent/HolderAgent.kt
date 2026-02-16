@@ -229,10 +229,9 @@ class HolderAgent(
 
         val requestedCredentialSetQueries =
             credentialPresentation.presentationRequest.dcqlQuery.requestedCredentialSetQueries
-        val allowsMultiple = dcqlQuery.credentials.filter { it.multiple ?: false }.map { it.id }.toSet()
         val credentialSubmissions = credentialPresentation.credentialQuerySubmissions
             ?: matchDCQLQueryAgainstCredentialStore(dcqlQuery).getOrThrow()
-                .toDefaultSubmission(allowsMultiple).getOrThrow()
+                .toDefaultSubmission(dcqlQuery).getOrThrow()
 
         DCQLQuery.Procedures.isSatisfactoryCredentialSubmission(
             credentialSubmissions = credentialSubmissions.keys,
