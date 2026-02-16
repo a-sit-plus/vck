@@ -85,7 +85,6 @@ object DummyCredentialDataProvider {
         claim: ClaimToBeIssued
     ): KmmResult<CredentialToBeIssued> = catching {
         val expiration = Clock.System.now() + defaultLifetime
-        subjectPublicKey.didEncoded
         when (representation) {
             ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialToBeIssued.VcSd(
                 claims = listOf(claim),
