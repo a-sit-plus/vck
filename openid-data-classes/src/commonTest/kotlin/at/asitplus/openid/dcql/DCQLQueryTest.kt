@@ -220,7 +220,6 @@ val DCQLQueryTest by testSuite {
                     )
                 ) {
                     val result = TestCredentialQueryAdapter(dcqlQuery).execute(it).getOrThrow()
-                    result.satisfiableCredentialSetQueries shouldHaveSize 1
                     result.credentialQueryMatches shouldHaveSize 1
                     result.credentialQueryMatches.values.first() shouldHaveSize 1
                 }
@@ -389,7 +388,6 @@ val DCQLQueryTest by testSuite {
                     )
                 ) {
                     val result = TestCredentialQueryAdapter(dcqlQuery).execute(it).getOrThrow()
-                    result.satisfiableCredentialSetQueries shouldHaveSize 1
                     result.credentialQueryMatches shouldHaveSize 1
                     result.credentialQueryMatches.values.first() shouldHaveSize 1
                 }
@@ -505,7 +503,6 @@ val DCQLQueryTest by testSuite {
                     )
                 ) {
                     val result = TestCredentialQueryAdapter(dcqlQuery).execute(it).getOrThrow()
-                    result.satisfiableCredentialSetQueries shouldHaveSize 1
                     result.credentialQueryMatches shouldHaveSize 2
                     result.credentialQueryMatches.values.first() shouldHaveSize 1
                 }

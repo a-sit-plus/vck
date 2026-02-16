@@ -285,30 +285,20 @@ sealed interface DCQLCredentialQuery {
             mdocCredentialDoctypeExtractor: (Credential) -> String,
             sdJwtCredentialTypeExtractor: (Credential) -> String,
             jwtVcCredentialTypeExtractor: (Credential) -> List<String>,
-        ): KmmResult<Unit> = catching {
-            when (credentialMetadataAndValidityConstraints) {
-                DCQLEmptyCredentialMetadataAndValidityConstraints -> {
-                    // noop
-                }
+        ): KmmResult<Unit> = when (credentialMetadataAndValidityConstraints) {
+            DCQLEmptyCredentialMetadataAndValidityConstraints -> KmmResult.success(Unit)
 
-                is DCQLIsoMdocCredentialMetadataAndValidityConstraints -> {
-                    credentialMetadataAndValidityConstraints.validate(
-                        mdocCredentialDoctypeExtractor(credential)
-                    ).getOrThrow()
-                }
+            is DCQLIsoMdocCredentialMetadataAndValidityConstraints -> credentialMetadataAndValidityConstraints.validate(
+                mdocCredentialDoctypeExtractor(credential)
+            )
 
-                is DCQLSdJwtCredentialMetadataAndValidityConstraints -> {
-                    credentialMetadataAndValidityConstraints.validate(
-                        sdJwtCredentialTypeExtractor(credential)
-                    ).getOrThrow()
-                }
+            is DCQLSdJwtCredentialMetadataAndValidityConstraints -> credentialMetadataAndValidityConstraints.validate(
+                sdJwtCredentialTypeExtractor(credential)
+            )
 
-                is DCQLJwtVcCredentialMetadataAndValidityConstraints -> {
-                    credentialMetadataAndValidityConstraints.validate(
-                        jwtVcCredentialTypeExtractor(credential)
-                    ).getOrThrow()
-                }
-            }
+            is DCQLJwtVcCredentialMetadataAndValidityConstraints -> credentialMetadataAndValidityConstraints.validate(
+                jwtVcCredentialTypeExtractor(credential)
+            )
         }
     }
 }

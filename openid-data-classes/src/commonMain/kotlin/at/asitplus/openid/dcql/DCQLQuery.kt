@@ -16,7 +16,6 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.data.NonEmptyList
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
-import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.openid.CredentialFormatEnum
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -131,17 +130,8 @@ data class DCQLQuery(
                 authorityKeyIdentifiers = authorityKeyIdentifiers,
             )
 
-            val satisfiableCredentialSetQueryOptions = findSatisfactoryCredentialSetQueryOptions(
-                credentialQueryMatches = credentialQueryMatches,
-                requestedCredentialSetQueries = requestedCredentialSetQueries,
-                credentialQueries
-            ).getOrElse {
-                throw IllegalArgumentException("Submission requirements cannot be satisfied.", it)
-            }
-
             DCQLQueryResult(
-                credentialQueryMatches = credentialQueryMatches,
-                satisfiableCredentialSetQueries = satisfiableCredentialSetQueryOptions
+                credentialQueryMatches = credentialQueryMatches
             )
         }
 
@@ -173,35 +163,6 @@ data class DCQLQuery(
                             matchingResult = it
                         )
                     }
-                }
-            }
-        }
-
-        fun <Credential : Any> findSatisfactoryCredentialSetQueryOptions(
-            credentialQueryMatches: Map<DCQLCredentialQueryIdentifier, List<DCQLCredentialSubmissionOption<Credential>>>,
-            requestedCredentialSetQueries: List<DCQLCredentialSetQuery>,
-            credentialQueries: List<DCQLCredentialQuery>,
-        ): KmmResult<List<DCQLCredentialSetQuery>> = catching {
-            requestedCredentialSetQueries.mapNotNull { credentialSetQuery ->
-                catching<DCQLCredentialSetQuery?> {
-                    credentialSetQuery.copy(
-                        options = credentialSetQuery.options.filter { option ->
-                            option.all {
-                                credentialQueryMatches[it]?.isNotEmpty() == true
-                            }
-                        }.toNonEmptyList()
-                    )
-                }.getOrElse {
-                    if (credentialSetQuery.required) {
-                        val failedQuery = credentialQueries.find {
-                            it.id.string in credentialSetQuery.options.list.flatten().map { it.string }
-                        }
-                        throw IllegalArgumentException(
-                            "Required credential set query is not satisfiable: $credentialSetQuery and $failedQuery}",
-                            it
-                        )
-                    }
-                    null
                 }
             }
         }
