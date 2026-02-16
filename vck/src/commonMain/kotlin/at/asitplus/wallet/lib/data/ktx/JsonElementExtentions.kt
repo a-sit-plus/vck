@@ -12,6 +12,7 @@ package at.asitplus.wallet.lib.data.ktx
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
@@ -40,10 +41,8 @@ import kotlinx.serialization.json.jsonPrimitive
  * val id = jsonArray.extractId() // Returns null
  * ```
  */
-fun JsonElement.extractId(): String? {
-    return if (this is JsonObject) {
-        this.jsonObject["id"]?.jsonPrimitive?.content
-    } else {
-        null
-    }
+fun JsonElement.extractId(): String? = if (this is JsonObject) {
+    this.jsonObject["id"]?.jsonPrimitive?.content
+} else {
+    null
 }

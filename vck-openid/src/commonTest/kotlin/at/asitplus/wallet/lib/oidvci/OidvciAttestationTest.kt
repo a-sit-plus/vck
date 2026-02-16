@@ -63,10 +63,7 @@ val OidvciAttestationTest by testSuite {
                     identifier = "https://issuer.example.com".toUri(),
                     randomSource = RandomSource.Default
                 ),
-                credentialSchemes = setOf(
-                    ConstantIndex.AtomicAttribute2023,
-                    MobileDrivingLicenceScheme
-                ),
+                credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme),
                 proofValidator = ProofValidator(
                     verifyAttestationProof = { true },
                     requireKeyAttestation = true, // this is important, to require key attestation
@@ -81,12 +78,9 @@ val OidvciAttestationTest by testSuite {
                     resource = issuer.metadata.credentialIssuer
                 )
                 val input = authnRequest as RequestParameters
-                val authnResponse =
-                    authorizationService.authorize(input) { catching { dummyUser() } }
-                        .getOrThrow()
-                        .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-                val code = authnResponse.params?.code
-                    .shouldNotBeNull()
+                val authnResponse = authorizationService.authorize(input) { catching { dummyUser() } }.getOrThrow()
+                    .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+                val code = authnResponse.params?.code.shouldNotBeNull()
                 val tokenRequest = oauth2Client.createTokenRequestParameters(
                     state = state,
                     authorization = OAuth2Client.AuthorizationForToken.Code(code),
@@ -169,10 +163,7 @@ val OidvciAttestationTest by testSuite {
                     identifier = "https://issuer.example.com".toUri(),
                     randomSource = RandomSource.Default
                 ),
-                credentialSchemes = setOf(
-                    ConstantIndex.AtomicAttribute2023,
-                    MobileDrivingLicenceScheme
-                ),
+                credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme),
                 proofValidator = ProofValidator(
                     verifyAttestationProof = { false }, // do not accept key attestation
                     requireKeyAttestation = true, // this is important, to require key attestation
@@ -234,5 +225,4 @@ val OidvciAttestationTest by testSuite {
     }
 }
 
-private fun dummyUser(): OidcUserInfoExtended =
-    OidcUserInfoExtended.deserialize("{\"sub\": \"foo\"}").getOrThrow()
+private fun dummyUser(): OidcUserInfoExtended = OidcUserInfoExtended.deserialize("{\"sub\": \"foo\"}").getOrThrow()
