@@ -8,6 +8,7 @@ import at.asitplus.dif.FormatContainerSdJwt
 import at.asitplus.dif.InputDescriptor
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.OpenIdConstants.ResponseMode
 import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.openid.OpenIdConstants.SCOPE_PROFILE
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
@@ -44,7 +45,7 @@ data class OpenId4VpRequestOptions(
      * by default [OpenIdConstants.ResponseMode.Fragment].
      * Setting this to any other value may require setting [responseUrl] too.
      */
-    val responseMode: OpenIdConstants.ResponseMode = OpenIdConstants.ResponseMode.Fragment,
+    val responseMode: ResponseMode = ResponseMode.Fragment,
 
     /**
      * Response URL to set in the [at.asitplus.openid.AuthenticationRequestParameters.responseUrl],
@@ -109,88 +110,90 @@ data class OpenId4VpRequestOptions(
         get() = presentationMechanism == PresentationMechanismEnum.PresentationExchange
 
     val isAnyDirectPost: Boolean
-        get() = (responseMode == OpenIdConstants.ResponseMode.DirectPost) ||
-                (responseMode == OpenIdConstants.ResponseMode.DirectPostJwt)
+        get() = (responseMode == ResponseMode.DirectPost) ||
+                (responseMode == ResponseMode.DirectPostJwt)
 
     val isAnyDcApi: Boolean
-        get() = responseMode == OpenIdConstants.ResponseMode.DcApi || responseMode == OpenIdConstants.ResponseMode.DcApiJwt
+        get() = responseMode == ResponseMode.DcApi || responseMode == ResponseMode.DcApiJwt
 
     val isSiop: Boolean
         get() = responseType.contains(OpenIdConstants.ID_TOKEN)
 
     fun buildScope(): String = listOf(SCOPE_OPENID, SCOPE_PROFILE).joinToString(" ")
 
-    fun toDCQLQuery(): DCQLQuery? = if (credentials.isEmpty()) null else DCQLQuery(
-        credentials = DCQLCredentialQueryList(
-            credentials.map<RequestOptionsCredential, DCQLCredentialQuery> { credential ->
-                val requestedAttributes = (credential.requestedAttributes?.map {
-                    it to true
-                } ?: listOf()) + (credential.requestedOptionalAttributes?.map {
-                    it to false
-                } ?: listOf())
+    fun toDCQLQuery(): DCQLQuery? =
+        if (credentials.isEmpty()) null
+        else DCQLQuery(
+            credentials = DCQLCredentialQueryList(
+                credentials.mapNotNull { it.toQuery() }.takeIf { it.isNotEmpty() }?.toNonEmptyList()
+                    ?: return null
+            ),
+        )
 
-                when (credential.representation) {
-                    CredentialRepresentation.PLAIN_JWT -> DCQLJwtVcCredentialQuery(
-                        id = DCQLCredentialQueryIdentifier(credential.id),
-                        meta = DCQLJwtVcCredentialMetadataAndValidityConstraints(
-                            typeValues = nonEmptyListOf(
-                                listOfNotNull(credential.credentialScheme.vcType)
-                            )
-                        ),
-                        claims = requestedAttributes.takeIf {
-                            it.isNotEmpty() // requesting all claims if none are specified
-                        }?.map { (attribute, _) ->
-                            // TODO: how to properly handle non-required claims?
-                            DCQLJsonClaimsQuery(
-                                path = splitByDotToDcqlPath(attribute)
-                            )
-                        }?.toNonEmptyList()?.let {
-                            DCQLClaimsQueryList(it)
-                        }
+    private fun RequestOptionsCredential.toQuery(): DCQLCredentialQuery? = when (representation) {
+        CredentialRepresentation.PLAIN_JWT -> toJwtVcQuery()
+        CredentialRepresentation.SD_JWT -> toSdJwtQuery()
+        CredentialRepresentation.ISO_MDOC -> toIsoMdocQuery()
+    }
+
+    // TODO: how to properly handle non-required claims?
+    private fun RequestOptionsCredential.nonOptionalAndOptionalRequestedAttributes(): List<Pair<String, Boolean>> =
+        (requestedAttributes?.map { it to true } ?: listOf()) +
+                (requestedOptionalAttributes?.map { it to false } ?: listOf())
+
+    private fun RequestOptionsCredential.toJwtVcQuery() = credentialScheme.vcType?.let { vcType ->
+        DCQLJwtVcCredentialQuery(
+            id = DCQLCredentialQueryIdentifier(id),
+            meta = DCQLJwtVcCredentialMetadataAndValidityConstraints(
+                typeValues = nonEmptyListOf(
+                    listOfNotNull(vcType)
+                )
+            ),
+            claims = nonOptionalAndOptionalRequestedAttributes()
+                .takeIf { it.isNotEmpty() } // requesting all claims if none are specified
+                ?.map { (attribute, _) ->
+                    DCQLJsonClaimsQuery(path = attribute.splitByDotToDcqlPath())
+                }?.toNonEmptyList()
+                ?.let { DCQLClaimsQueryList(it) }
+        )
+    }
+
+    private fun RequestOptionsCredential.toSdJwtQuery() = credentialScheme.sdJwtType?.let { sdJwtType ->
+        DCQLSdJwtCredentialQuery(
+            id = DCQLCredentialQueryIdentifier(id),
+            meta = DCQLSdJwtCredentialMetadataAndValidityConstraints(
+                vctValues = listOf(sdJwtType)
+            ),
+            claims = nonOptionalAndOptionalRequestedAttributes()
+                .takeIf { it.isNotEmpty() } // requesting all claims if none are specified
+                ?.map { (attribute, _) ->
+                    DCQLJsonClaimsQuery(path = attribute.splitByDotToDcqlPath())
+                }?.toNonEmptyList()
+                ?.let { DCQLClaimsQueryList(it) }
+        )
+    }
+
+    private fun RequestOptionsCredential.toIsoMdocQuery() = credentialScheme.isoDocType?.let { isoDocType ->
+        DCQLIsoMdocCredentialQuery(
+            id = DCQLCredentialQueryIdentifier(id),
+            meta = DCQLIsoMdocCredentialMetadataAndValidityConstraints(
+                doctypeValue = isoDocType
+            ),
+            claims = nonOptionalAndOptionalRequestedAttributes()
+                .takeIf { it.isNotEmpty() } // requesting all claims if none are specified
+                ?.map { (attribute, _) ->
+                    DCQLIsoMdocClaimsQuery(
+                        namespace = credentialScheme.isoNamespace!!,
+                        claimName = attribute,
+                        path = DCQLClaimsPathPointer(credentialScheme.isoNamespace!!, attribute)
                     )
+                }?.toNonEmptyList()
+                ?.let { DCQLClaimsQueryList(it) }
+        )
+    }
 
-                    CredentialRepresentation.SD_JWT -> DCQLSdJwtCredentialQuery(
-                        id = DCQLCredentialQueryIdentifier(credential.id),
-                        meta = DCQLSdJwtCredentialMetadataAndValidityConstraints(
-                            vctValues = listOf(credential.credentialScheme.sdJwtType!!)
-                        ),
-                        claims = requestedAttributes.takeIf {
-                            it.isNotEmpty() // requesting all claims if none are specified
-                        }?.map { (attribute, _) ->
-                            // TODO: how to properly handle non-required claims?
-                            DCQLJsonClaimsQuery(
-                                path = splitByDotToDcqlPath(attribute)
-                            )
-                        }?.toNonEmptyList()?.let {
-                            DCQLClaimsQueryList(it)
-                        }
-                    )
-
-                    CredentialRepresentation.ISO_MDOC -> DCQLIsoMdocCredentialQuery(
-                        id = DCQLCredentialQueryIdentifier(credential.id),
-                        meta = DCQLIsoMdocCredentialMetadataAndValidityConstraints(
-                            doctypeValue = credential.credentialScheme.isoDocType!!
-                        ),
-                        claims = requestedAttributes.takeIf {
-                            it.isNotEmpty() // requesting all claims if none are specified
-                        }?.map { (attribute, _) ->
-                            // TODO: how to properly handle non-required claims?
-                            DCQLIsoMdocClaimsQuery(
-                                namespace = credential.credentialScheme.isoNamespace!!,
-                                claimName = attribute,
-                                path = DCQLClaimsPathPointer(credential.credentialScheme.isoNamespace!!, attribute)
-                            )
-                        }?.toNonEmptyList()?.let {
-                            DCQLClaimsQueryList(it)
-                        }
-                    )
-                }
-            }.toNonEmptyList()
-        ),
-    )
-
-    private fun splitByDotToDcqlPath(attribute: String) = DCQLClaimsPathPointer(
-        attribute.split(".").map { DCQLClaimsPathPointerSegment.NameSegment(it) }.toNonEmptyList()
+    private fun String.splitByDotToDcqlPath() = DCQLClaimsPathPointer(
+        split(".").map { DCQLClaimsPathPointerSegment.NameSegment(it) }.toNonEmptyList()
     )
 
     fun toPresentationDefinition(
