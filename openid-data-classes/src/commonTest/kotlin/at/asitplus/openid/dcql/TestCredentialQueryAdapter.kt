@@ -12,6 +12,7 @@ package at.asitplus.openid.dcql
  * see the "LICENSE" file for more details
  */
 
+import io.kotest.matchers.shouldBe
 import kotlin.jvm.JvmInline
 
 @JvmInline
@@ -57,4 +58,13 @@ value class TestCredentialQueryAdapter(val dcqlQuery: DCQLQuery) {
             it.authorityKeyIdentifiers
         }
     )
+
+    fun isSatisfiable(availableCredentials: List<TestCredential>): Boolean {
+        val matching = execute(availableCredentials)
+        return dcqlQuery.isSatisfiedWith(
+            matching.credentialQueryMatches.filter {
+                it.value.isNotEmpty()
+            }.keys
+        )
+    }
 }

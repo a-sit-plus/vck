@@ -1,5 +1,6 @@
 package at.asitplus.openid.dcql
 
+import at.asitplus.csc.or
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.openid.CredentialFormatEnum
@@ -132,9 +133,7 @@ val DCQLQueryTest by testSuite {
                         ),
                     ),
                 ) {
-                    shouldThrowAny {
-                        TestCredentialQueryAdapter(dcqlQuery).execute(it).getOrThrow()
-                    }
+                    TestCredentialQueryAdapter(dcqlQuery).isSatisfiable(it) shouldBe false
                 }
             }
 
@@ -219,7 +218,7 @@ val DCQLQueryTest by testSuite {
                         ),
                     )
                 ) {
-                    val result = TestCredentialQueryAdapter(dcqlQuery).execute(it).getOrThrow()
+                    val result = TestCredentialQueryAdapter(dcqlQuery).execute(it)
                     result.credentialQueryMatches shouldHaveSize 1
                     result.credentialQueryMatches.values.first() shouldHaveSize 1
                 }
@@ -304,9 +303,7 @@ val DCQLQueryTest by testSuite {
                         ),
                     ),
                 ) {
-                    shouldThrowAny {
-                        TestCredentialQueryAdapter(dcqlQuery).execute(it).getOrThrow()
-                    }
+                    TestCredentialQueryAdapter(dcqlQuery).isSatisfiable(it) shouldBe false
                 }
             }
 
@@ -387,7 +384,7 @@ val DCQLQueryTest by testSuite {
                         ),
                     )
                 ) {
-                    val result = TestCredentialQueryAdapter(dcqlQuery).execute(it).getOrThrow()
+                    val result = TestCredentialQueryAdapter(dcqlQuery).execute(it)
                     result.credentialQueryMatches shouldHaveSize 1
                     result.credentialQueryMatches.values.first() shouldHaveSize 1
                 }
@@ -466,9 +463,7 @@ val DCQLQueryTest by testSuite {
                         ),
                     ),
                 ) {
-                    shouldThrowAny {
-                        TestCredentialQueryAdapter(dcqlQuery).execute(it).getOrThrow()
-                    }
+                    TestCredentialQueryAdapter(dcqlQuery).isSatisfiable(it) shouldBe false
                 }
             }
 
@@ -502,7 +497,7 @@ val DCQLQueryTest by testSuite {
                         ),
                     )
                 ) {
-                    val result = TestCredentialQueryAdapter(dcqlQuery).execute(it).getOrThrow()
+                    val result = TestCredentialQueryAdapter(dcqlQuery).execute(it)
                     result.credentialQueryMatches shouldHaveSize 2
                     result.credentialQueryMatches.values.first() shouldHaveSize 1
                 }
@@ -658,9 +653,7 @@ val DCQLQueryTest by testSuite {
                         ),
                     ),
                 ) {
-                    shouldThrowAny {
-                        TestCredentialQueryAdapter(dcqlQuery).execute(it).getOrThrow()
-                    }
+                    TestCredentialQueryAdapter(dcqlQuery).isSatisfiable(it) shouldBe false
                 }
             }
 
@@ -692,7 +685,7 @@ val DCQLQueryTest by testSuite {
                         ),
                     )
                 ) {
-                    TestCredentialQueryAdapter(dcqlQuery).execute(it).getOrThrow()
+                    TestCredentialQueryAdapter(dcqlQuery).isSatisfiable(it) shouldBe true
                 }
             }
         }
@@ -887,9 +880,7 @@ val DCQLQueryTest by testSuite {
                         ),
                     ),
                 ) {
-                    shouldThrowAny {
-                        TestCredentialQueryAdapter(dcqlQuery).execute(it).getOrThrow()
-                    }
+                    TestCredentialQueryAdapter(dcqlQuery).isSatisfiable(it) shouldBe false
                 }
             }
 
@@ -964,7 +955,7 @@ val DCQLQueryTest by testSuite {
                         ),
                     )
                 ) {
-                    TestCredentialQueryAdapter(dcqlQuery).execute(it).getOrThrow()
+                    TestCredentialQueryAdapter(dcqlQuery).isSatisfiable(it) shouldBe true
                 }
             }
         }
@@ -1103,9 +1094,7 @@ val DCQLQueryTest by testSuite {
                         ),
                     ),
                 ) {
-                    shouldThrowAny {
-                        TestCredentialQueryAdapter(dcqlQuery).execute(it).getOrThrow()
-                    }
+                    TestCredentialQueryAdapter(dcqlQuery).isSatisfiable(it) shouldBe false
                 }
             }
 
@@ -1131,7 +1120,7 @@ val DCQLQueryTest by testSuite {
                         ),
                     )
                 ) {
-                    TestCredentialQueryAdapter(dcqlQuery).execute(it).getOrThrow()
+                    TestCredentialQueryAdapter(dcqlQuery).isSatisfiable(it) shouldBe true
                 }
             }
         }
@@ -1285,9 +1274,7 @@ val DCQLQueryTest by testSuite {
                         ),
                     ),
                 ) {
-                    shouldThrowAny {
-                        TestCredentialQueryAdapter(dcqlQuery).execute(it).getOrThrow()
-                    }
+                    TestCredentialQueryAdapter(dcqlQuery).isSatisfiable(it) shouldBe false
                 }
             }
 
@@ -1298,7 +1285,7 @@ val DCQLQueryTest by testSuite {
                         "valid2" to listOf(valid2),
                     )
                 ) {
-                    TestCredentialQueryAdapter(dcqlQuery).execute(it).getOrThrow()
+                    TestCredentialQueryAdapter(dcqlQuery).isSatisfiable(it) shouldBe true
                 }
             }
         }
@@ -1442,32 +1429,24 @@ val DCQLQueryTest by testSuite {
 
                 withData(testVector.second) {
                     val test = buildSdJwtValueCredential(it)
-                    shouldNotThrowAny {
-                        TestCredentialQueryAdapter(sdJwtDcqlQuery).execute(
-                            listOf(test)
-                        ).getOrThrow()
-                    }
+                    TestCredentialQueryAdapter(sdJwtDcqlQuery).isSatisfiable(
+                        listOf(test)
+                    ) shouldBe true
                 }
                 withData(testVector.second) {
-                    shouldNotThrowAny {
-                        TestCredentialQueryAdapter(mdocDcqlQuery).execute(
-                            listOf(buildMdocValueCredential(it))
-                        ).getOrThrow()
-                    }
+                    TestCredentialQueryAdapter(mdocDcqlQuery).isSatisfiable(
+                        listOf(buildMdocValueCredential(it))
+                    ) shouldBe true
                 }
                 withData(testVector.third) {
-                    shouldThrowAny {
-                        TestCredentialQueryAdapter(sdJwtDcqlQuery).execute(
-                            listOf(buildSdJwtValueCredential(it))
-                        ).getOrThrow()
-                    }
+                    TestCredentialQueryAdapter(sdJwtDcqlQuery).isSatisfiable(
+                        listOf(buildSdJwtValueCredential(it))
+                    ) shouldBe false
                 }
                 withData(testVector.third) {
-                    shouldThrowAny {
-                        TestCredentialQueryAdapter(mdocDcqlQuery).execute(
-                            listOf(buildMdocValueCredential(it))
-                        ).getOrThrow()
-                    }
+                    TestCredentialQueryAdapter(mdocDcqlQuery).isSatisfiable(
+                        listOf(buildMdocValueCredential(it))
+                    ) shouldBe false
                 }
             }
         }
@@ -1494,10 +1473,9 @@ val DCQLQueryTest by testSuite {
                         satisfiesCryptographicHolderBinding = it,
                     ),
                 )
-                val executionResult = TestCredentialQueryAdapter(sdJwtDcqlQuery).execute(
+                TestCredentialQueryAdapter(sdJwtDcqlQuery).isSatisfiable(
                     credentials
-                )
-                executionResult.isSuccess shouldBe it
+                ) shouldBe it
             }
         }
         "mdoc credential" - {
@@ -1521,10 +1499,9 @@ val DCQLQueryTest by testSuite {
                         satisfiesCryptographicHolderBinding = it
                     ),
                 )
-                val executionResult = TestCredentialQueryAdapter(mdocDcqlQuery).execute(
+                TestCredentialQueryAdapter(mdocDcqlQuery).isSatisfiable(
                     credentials
-                )
-                executionResult.isSuccess shouldBe it
+                ) shouldBe it
             }
         }
     }
@@ -1564,8 +1541,7 @@ val DCQLQueryTest by testSuite {
                         satisfiesCryptographicHolderBinding = true,
                     ),
                 )
-                val executionResult = TestCredentialQueryAdapter(sdJwtDcqlQuery).execute(credentials)
-                executionResult.isSuccess shouldBe it.isNotEmpty()
+                TestCredentialQueryAdapter(sdJwtDcqlQuery).isSatisfiable(credentials) shouldBe it.isNotEmpty()
             }
         }
         "authority key identifiers in mdoc credential" - {
@@ -1603,8 +1579,7 @@ val DCQLQueryTest by testSuite {
                         satisfiesCryptographicHolderBinding = true,
                     ),
                 )
-                val executionResult = TestCredentialQueryAdapter(mdocDcqlQuery).execute(credentials)
-                executionResult.isSuccess shouldBe it.isNotEmpty()
+                TestCredentialQueryAdapter(mdocDcqlQuery).isSatisfiable(credentials) shouldBe it.isNotEmpty()
             }
         }
     }

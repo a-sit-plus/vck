@@ -323,10 +323,12 @@ class HolderAgent(
     override suspend fun matchDCQLQueryAgainstCredentialStore(
         dcqlQuery: DCQLQuery,
         filterById: String?,
-    ): KmmResult<DCQLQueryResult<StoreEntry>> = DCQLQueryAdapter(dcqlQuery).select(
-        credentials = getValidCredentialsByPriority(filterById)
-            ?: throw PresentationException("Credentials could not be retrieved from the store"),
-    )
+    ): KmmResult<DCQLQueryResult<StoreEntry>> = catching {
+        DCQLQueryAdapter(dcqlQuery).select(
+            credentials = getValidCredentialsByPriority(filterById)
+                ?: throw PresentationException("Credentials could not be retrieved from the store"),
+        )
+    }
 
     private fun PresentationSubmission.Companion.fromMatches(
         presentationId: String?,

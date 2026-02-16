@@ -45,7 +45,7 @@ import kotlin.jvm.JvmInline
 value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
     fun select(
         credentials: List<SubjectCredentialStore.StoreEntry>
-    ): KmmResult<DCQLQueryResult<SubjectCredentialStore.StoreEntry>> = dcqlQuery.execute(
+    ): DCQLQueryResult<SubjectCredentialStore.StoreEntry> = dcqlQuery.execute(
         availableCredentials = credentials,
         credentialFormatExtractor = { it.credentialFormat },
         mdocCredentialDoctypeExtractor = {
