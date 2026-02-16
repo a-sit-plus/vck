@@ -54,22 +54,16 @@ object DummyCredentialDataProvider {
                 expiration = expiration,
                 scheme = credentialScheme,
                 subjectPublicKey = subjectPublicKey,
-                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject"))
-                    .getOrThrow(),
+                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
                 sdAlgorithm = supportedSdAlgorithms.random()
             )
 
             ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
-                subject = AtomicAttribute2023(
-                    subjectId,
-                    CLAIM_GIVEN_NAME,
-                    "Susanne"
-                ).toJsonElement(),
+                subject = AtomicAttribute2023(subjectId, CLAIM_GIVEN_NAME, "Susanne").toJsonElement(),
                 expiration = expiration,
                 scheme = credentialScheme,
                 subjectPublicKey = subjectPublicKey,
-                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject"))
-                    .getOrThrow(),
+                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
             )
 
             ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
@@ -79,8 +73,7 @@ object DummyCredentialDataProvider {
                 expiration = expiration,
                 scheme = credentialScheme,
                 subjectPublicKey = subjectPublicKey,
-                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject"))
-                    .getOrThrow(),
+                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
             )
         }
     }
@@ -99,8 +92,7 @@ object DummyCredentialDataProvider {
                 expiration = expiration,
                 scheme = credentialScheme,
                 subjectPublicKey = subjectPublicKey,
-                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject"))
-                    .getOrThrow(),
+                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
                 sdAlgorithm = supportedSdAlgorithms.random()
             )
 
@@ -111,8 +103,7 @@ object DummyCredentialDataProvider {
                 expiration = expiration,
                 scheme = credentialScheme,
                 subjectPublicKey = subjectPublicKey,
-                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject"))
-                    .getOrThrow(),
+                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
             )
         }
     }
