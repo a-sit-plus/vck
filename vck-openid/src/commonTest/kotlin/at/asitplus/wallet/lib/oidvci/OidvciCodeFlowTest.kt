@@ -236,10 +236,8 @@ val OidvciCodeFlowTest by testSuite {
 
         test("proof over different keys leads to different credentials") {
             val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
-            val scope = it.client.selectSupportedCredentialFormat(
-                requestOptions,
-                it.issuer.metadata
-            )?.scope.shouldNotBeNull()
+            val scope = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)?.scope
+                .shouldNotBeNull()
             val clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce
             val token = it.getToken(scope)
             val proof = it.client.createCredentialRequestProofJwt(
@@ -289,10 +287,8 @@ val OidvciCodeFlowTest by testSuite {
                 credentialSchemes = setOf(AtomicAttribute2023),
             )
             val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
-            val scope = it.client.selectSupportedCredentialFormat(
-                requestOptions,
-                it.issuer.metadata
-            )?.scope.shouldNotBeNull()
+            val scope = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)?.scope
+                .shouldNotBeNull()
 
             shouldThrow<OAuth2Exception> {
                 it.getToken(scope)
@@ -381,8 +377,7 @@ val OidvciCodeFlowTest by testSuite {
         }
 
         test("request credential in SD-JWT, using authorization details") {
-            val credentialConfigurationId =
-                it.mapper.toCredentialIdentifier(AtomicAttribute2023, SD_JWT)
+            val credentialConfigurationId = it.mapper.toCredentialIdentifier(AtomicAttribute2023, SD_JWT)
             val authorizationDetails = it.client.buildAuthorizationDetails(
                 credentialConfigurationId = credentialConfigurationId,
                 authorizationServers = it.issuer.metadata.authorizationServers
@@ -411,8 +406,7 @@ val OidvciCodeFlowTest by testSuite {
         }
 
         test("request credential in SD-JWT, using authorization details only in authnrequest") {
-            val credentialConfigurationId =
-                it.mapper.toCredentialIdentifier(AtomicAttribute2023, SD_JWT)
+            val credentialConfigurationId = it.mapper.toCredentialIdentifier(AtomicAttribute2023, SD_JWT)
             val authorizationDetails = it.client.buildAuthorizationDetails(
                 credentialConfigurationId = credentialConfigurationId,
                 authorizationServers = it.issuer.metadata.authorizationServers
@@ -420,10 +414,7 @@ val OidvciCodeFlowTest by testSuite {
             val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations
                 .shouldNotBeNull()[credentialConfigurationId]
                 .shouldNotBeNull()
-            val token = it.getToken(
-                authorizationDetails,
-                false
-            ) // do not set authn details in token request
+            val token = it.getToken(authorizationDetails, false) // do not set authn details in token request
 
             val credential = it.issuer.credential(
                 authorizationHeader = token.toHttpHeaderValue(),

@@ -67,11 +67,7 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialDataProviderFun {
             )
 
             MobileDrivingLicenceScheme -> getMdl(input.userInfo, input.subjectPublicKey)
-            EuPidScheme -> getEuPid(
-                input.userInfo,
-                input.subjectPublicKey,
-                input.credentialRepresentation
-            )
+            EuPidScheme -> getEuPid(input.userInfo, input.subjectPublicKey, input.credentialRepresentation)
 
             else -> throw NotImplementedError()
         }
