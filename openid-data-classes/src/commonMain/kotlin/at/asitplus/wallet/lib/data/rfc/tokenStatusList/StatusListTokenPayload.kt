@@ -15,10 +15,10 @@ import kotlin.time.Instant
  * iat: REQUIRED. As generally defined in RFC7519. The iat (issued at) claim MUST specify the
  * time at which the Status List Token was issued.
  *
- * exp: OPTIONAL. As generally defined in RFC7519. The exp (expiration time) claim, if present,
+ * exp: RECOMMENDED. As generally defined in RFC7519. The exp (expiration time) claim, if present,
  * MUST specify the time at which the Status List Token is considered expired by the Status Issuer.
  *
- * ttl: OPTIONAL. The ttl (time to live) claim, if present, MUST specify the maximum amount of
+ * ttl: RECOMMENDED. The ttl (time to live) claim, if present, MUST specify the maximum amount of
  * time, in seconds, that the Status List Token can be cached by a consumer before a fresh copy
  * SHOULD be retrieved. The value of the claim MUST be a positive number encoded in JSON as a
  * number.

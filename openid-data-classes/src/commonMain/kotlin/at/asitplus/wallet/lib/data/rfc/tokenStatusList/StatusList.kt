@@ -18,7 +18,7 @@ import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonEncoder
 
 /**
- * specification: https://www.ietf.org/archive/id/draft-ietf-oauth-status-list-06.html#name-status-list
+ * specification: https://www.ietf.org/archive/id/draft-ietf-oauth-status-list-17.html#name-status-list
  * Status list in its compressed form.
  */
 @Serializable

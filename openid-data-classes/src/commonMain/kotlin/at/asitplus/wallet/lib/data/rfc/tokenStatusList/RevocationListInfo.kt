@@ -25,7 +25,7 @@ sealed class RevocationListInfo {
      */
     abstract val certificate: ByteArray?
     /**
-     * specification: https://www.ietf.org/archive/id/draft-ietf-oauth-status-list-06.html#name-status-claim
+     * specification: https://www.ietf.org/archive/id/draft-ietf-oauth-status-list-17.html#name-status-claim
      *
      * By including a "status" claim in a Referenced Token, the Issuer is referencing a mechanism to
      * retrieve status information about this Referenced Token. The claim contains members used to
