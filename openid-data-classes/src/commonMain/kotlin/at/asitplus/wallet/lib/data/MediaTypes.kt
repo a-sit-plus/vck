@@ -13,13 +13,19 @@ data object MediaTypes {
         /** `application/statuslist+jwt` */
         const val STATUSLIST_JWT = MediaTypes.Application.STATUSLIST_JWT
 
-        /** `application/statuslist+json` */
-        const val STATUSLIST_JSON = MediaTypes.Application.STATUSLIST_JSON
-
         /** `application/statuslist+cwt` */
         const val STATUSLIST_CWT = MediaTypes.Application.STATUSLIST_CWT
 
-        /** `application/statuslist+cbor` */
+        @Deprecated(
+            message = "Unsigned status list media types were removed from the OAuth Status List specification.",
+            level = DeprecationLevel.WARNING,
+        )
+        const val STATUSLIST_JSON = MediaTypes.Application.STATUSLIST_JSON
+
+        @Deprecated(
+            message = "Unsigned status list media types were removed from the OAuth Status List specification.",
+            level = DeprecationLevel.WARNING,
+        )
         const val STATUSLIST_CBOR = MediaTypes.Application.STATUSLIST_CBOR
 
         /** `application/json` */

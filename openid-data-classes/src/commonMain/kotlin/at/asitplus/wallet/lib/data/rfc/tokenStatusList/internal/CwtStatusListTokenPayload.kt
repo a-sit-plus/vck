@@ -14,7 +14,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.CborLabel
 
 /**
- * [Specification](https://www.ietf.org/archive/id/draft-ietf-oauth-status-list-06.html#name-status-list-token-in-cwt-fo)
+ * [Specification](https://www.ietf.org/archive/id/draft-ietf-oauth-status-list-17.html#name-status-list-token-in-cwt-fo)
  * The Status List Token MUST be encoded as a "CBOR Web Token (CWT)" according to RFC8392.
  */
 @Serializable
