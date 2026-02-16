@@ -1,5 +1,9 @@
 # Changelog
 
+Release 5.11.1:
+ - OAuth 2.0:
+   - Fix bug in `SimpleAuthorizationRequest` validating `issuer_state` on pushed authorization requests twice (and failing on the second time)
+
 Release 5.11.0:
  - Digital Credentials API:
    - Add request/response models for OpenID4VP and ISO 18013-7 Annex C flows, including protocol identifiers, wallet/verifier request options, and typed responses

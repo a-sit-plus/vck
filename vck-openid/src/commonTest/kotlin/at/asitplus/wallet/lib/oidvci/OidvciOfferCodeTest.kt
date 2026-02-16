@@ -181,6 +181,32 @@ val OidvciOfferCodeTest by testSuite {
             }
         }
 
+        test("process with code after credential offer over par and request_uri") {
+            val credentialOffer = it.authorizationService.credentialOfferWithAuthorizationCode(
+                credentialIssuer = it.issuer.publicContext,
+                configurationIds = listOf(),
+            )
+            val credentialIdToRequest = credentialOffer.configurationIds.first()
+            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations
+                ?.get(credentialIdToRequest)
+                .shouldNotBeNull()
+            val authnRequest = it.oauth2Client.createAuthRequest(
+                state = it.state,
+                scope = credentialFormat.scope.shouldNotBeNull(),
+                resource = it.issuer.metadata.credentialIssuer,
+                issuerState = credentialOffer.grants?.authorizationCode?.issuerState,
+            )
+            val parResponse = it.authorizationService.par(
+                request = authnRequest,
+                httpRequest = null
+            ).getOrThrow()
+            val authnResponse = it.authorizationService.authorize(
+                input = it.oauth2Client.createAuthRequestAfterPar(parResponse),
+                loadUserFun = { catching { DummyUserProvider.user } }
+            ).getOrThrow().shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+            authnResponse.params?.code.shouldNotBeNull()
+        }
+
         test("process with code after credential offer, and authorization details for one credential") {
             val credentialOffer = it.authorizationService.credentialOfferWithAuthorizationCode(
                 credentialIssuer = it.issuer.publicContext,

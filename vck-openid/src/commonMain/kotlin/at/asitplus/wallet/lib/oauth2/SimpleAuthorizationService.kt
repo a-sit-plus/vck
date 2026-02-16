@@ -269,7 +269,9 @@ class SimpleAuthorizationService(
         val actualRequest = request.extractPushedRequestParams()
         Napier.i("par called with $actualRequest")
         clientAuthenticationService.authenticateClient(httpRequest, actualRequest.clientId)
-        actualRequest.validate()
+        // PAR stores the request for later authorization. issuer_state is single-use and must only be consumed
+        // when /authorize is executed with the referenced request_uri.
+        actualRequest.validate(validateIssuerState = false)
         val requestUri = "urn:ietf:params:oauth:request_uri:${uuid4()}".also {
             requestUriToPushedAuthorizationRequest.put(it, actualRequest)
         }
@@ -375,7 +377,9 @@ class SimpleAuthorizationService(
      *  * [AuthenticationRequestParameters.scope] is validated by [strategy]
      *  * [AuthenticationRequestParameters.authorizationDetails] are validated by [strategy]
      */
-    private suspend fun AuthenticationRequestParameters.validate(): AuthenticationRequestParameters {
+    private suspend fun AuthenticationRequestParameters.validate(
+        validateIssuerState: Boolean = true,
+    ): AuthenticationRequestParameters {
         require(redirectUrl != null) { "redirect_uri not set" }
         scope?.let {
             strategy.filterScope(it)
@@ -384,7 +388,7 @@ class SimpleAuthorizationService(
         authorizationDetails?.let {
             strategy.validateAuthorizationDetails(it)
         }
-        if (issuerState != null) {
+        if (validateIssuerState && issuerState != null) {
             // The wallet could have started an auth code flow without any credential offer,
             // so the issuerState may be in fact null.
             if (!codeService.verifyAndRemove(issuerState!!))
