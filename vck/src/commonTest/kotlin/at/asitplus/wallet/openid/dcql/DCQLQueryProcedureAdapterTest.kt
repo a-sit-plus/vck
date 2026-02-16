@@ -88,43 +88,46 @@ val DCQLQueryProcedureAdapterTest by testSuite {
             )
         ).select(
             credentials = listOf(credential)
-        ).getOrThrow().credentialQueryMatches shouldHaveSize 1
+        ).credentialQueryMatches shouldHaveSize 1
 
-        DCQLQueryAdapter(
-            Json.decodeFromString<DCQLQuery>(
-                """
+        val dcqlQuery = Json.decodeFromString<DCQLQuery>(
+            """
+              {
+                "credential_sets": [
                   {
-                    "credential_sets": [
+                    "options": [
+                      ["pid_sd_jwt"]
+                    ]
+                  }
+                ],
+                "credentials": [
+                  {
+                    "id": "pid_sd_jwt",
+                    "format": "dc+sd-jwt",
+                    "meta": {
+                      "vct_values": ["AtomicAttribute2023"]
+                    },
+                    "claims": [
                       {
-                        "options": [
-                          ["pid_sd_jwt"]
-                        ]
-                      }
-                    ],
-                    "credentials": [
+                        "path": ["${ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME}"]
+                      },
                       {
-                        "id": "pid_sd_jwt",
-                        "format": "dc+sd-jwt",
-                        "meta": {
-                          "vct_values": ["AtomicAttribute2023"]
-                        },
-                        "claims": [
-                          {
-                            "path": ["${ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME}"]
-                          },
-                          {
-                            "path": ["iss"],
-                            "values": ["${issuerIdentifier.reversed()}"]
-                          }
-                        ]
+                        "path": ["iss"],
+                        "values": ["${issuerIdentifier.reversed()}"]
                       }
                     ]
                   }
-                """.trimIndent()
-            )
-        ).select(
+                ]
+              }
+            """.trimIndent()
+        )
+        DCQLQueryAdapter(dcqlQuery).select(
             credentials = listOf(credential)
-        ).isFailure shouldBe true
+        ).let {
+            dcqlQuery.isSatisfiedWith(it.credentialQueryMatches.filter {
+                it.value.isNotEmpty()
+            }.keys) shouldBe false
+        }
     }
 
     "Match authority key identifier" {
@@ -192,44 +195,47 @@ val DCQLQueryProcedureAdapterTest by testSuite {
             )
         ).select(
             credentials = listOf(credential)
-        ).getOrThrow().credentialQueryMatches shouldHaveSize 1
+        ).credentialQueryMatches shouldHaveSize 1
 
-        DCQLQueryAdapter(
-            Json.decodeFromString<DCQLQuery>(
-                """
+        val dcqlQuery = Json.decodeFromString<DCQLQuery>(
+            """
+              {
+                "credential_sets": [
                   {
-                    "credential_sets": [
+                    "options": [
+                      ["pid_sd_jwt"]
+                    ]
+                  }
+                ],
+                "credentials": [
+                  {
+                    "id": "pid_sd_jwt",
+                    "format": "dc+sd-jwt",
+                    "meta": {
+                      "vct_values": ["AtomicAttribute2023"]
+                    },
+                    "trusted_authorities": [
                       {
-                        "options": [
-                          ["pid_sd_jwt"]
-                        ]
+                        "type": "aki",
+                        "values": ["${aki.encodeToString(Base64UrlStrict).reversed()}"]
                       }
                     ],
-                    "credentials": [
+                    "claims": [
                       {
-                        "id": "pid_sd_jwt",
-                        "format": "dc+sd-jwt",
-                        "meta": {
-                          "vct_values": ["AtomicAttribute2023"]
-                        },
-                        "trusted_authorities": [
-                          {
-                            "type": "aki",
-                            "values": ["${aki.encodeToString(Base64UrlStrict).reversed()}"]
-                          }
-                        ],
-                        "claims": [
-                          {
-                            "path": ["${ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME}"]
-                          }
-                        ]
+                        "path": ["${ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME}"]
                       }
                     ]
                   }
-                """.trimIndent()
-            )
-        ).select(
+                ]
+              }
+            """.trimIndent()
+        )
+        DCQLQueryAdapter(dcqlQuery).select(
             credentials = listOf(credential)
-        ).isFailure shouldBe true
+        ).let {
+            dcqlQuery.isSatisfiedWith(it.credentialQueryMatches.filter {
+                it.value.isNotEmpty()
+            }.keys) shouldBe false
+        }
     }
 }

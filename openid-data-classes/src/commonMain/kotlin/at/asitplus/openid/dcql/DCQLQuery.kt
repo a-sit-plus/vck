@@ -13,7 +13,6 @@ package at.asitplus.openid.dcql
  */
 
 import at.asitplus.KmmResult
-import at.asitplus.catching
 import at.asitplus.data.NonEmptyList
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.openid.CredentialFormatEnum
@@ -75,9 +74,8 @@ data class DCQLQuery(
         credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
         satisfiesCryptographicHolderBinding: (Credential) -> Boolean,
         authorityKeyIdentifiers: (Credential) -> Collection<DCQLAuthorityKeyIdentifier>,
-    ): KmmResult<DCQLQueryResult<Credential>> = Procedures.executeQuery(
+    ): DCQLQueryResult<Credential> = Procedures.executeQuery(
         credentialQueries = credentials,
-        requestedCredentialSetQueries = requestedCredentialSetQueries,
         availableCredentials = availableCredentials,
         credentialFormatExtractor = credentialFormatExtractor,
         mdocCredentialDoctypeExtractor = mdocCredentialDoctypeExtractor,
@@ -86,6 +84,13 @@ data class DCQLQuery(
         credentialClaimStructureExtractor = credentialClaimStructureExtractor,
         satisfiesCryptographicHolderBinding = satisfiesCryptographicHolderBinding,
         authorityKeyIdentifiers = authorityKeyIdentifiers,
+    )
+
+    fun isSatisfiedWith(
+        credentialSubmissions: Set<DCQLCredentialQueryIdentifier>,
+    ) = Procedures.isSatisfactoryCredentialSubmission(
+        credentialSubmissions = credentialSubmissions,
+        requestedCredentialSetQueries = requestedCredentialSetQueries,
     )
 
     object Procedures {
@@ -108,7 +113,6 @@ data class DCQLQuery(
          */
         fun <Credential : Any> executeQuery(
             credentialQueries: List<DCQLCredentialQuery>,
-            requestedCredentialSetQueries: List<DCQLCredentialSetQuery>,
             availableCredentials: List<Credential>,
             credentialFormatExtractor: (Credential) -> CredentialFormatEnum,
             mdocCredentialDoctypeExtractor: (Credential) -> String,
@@ -117,8 +121,8 @@ data class DCQLQuery(
             credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
             satisfiesCryptographicHolderBinding: (Credential) -> Boolean,
             authorityKeyIdentifiers: (Credential) -> Collection<DCQLAuthorityKeyIdentifier>,
-        ): KmmResult<DCQLQueryResult<Credential>> = catching {
-            val credentialQueryMatches = findCredentialQueryMatches(
+        ): DCQLQueryResult<Credential> = DCQLQueryResult(
+            credentialQueryMatches = findCredentialQueryMatches(
                 credentialQueries = credentialQueries,
                 availableCredentials = availableCredentials,
                 credentialFormatExtractor = credentialFormatExtractor,
@@ -129,11 +133,7 @@ data class DCQLQuery(
                 satisfiesCryptographicHolderBinding = satisfiesCryptographicHolderBinding,
                 authorityKeyIdentifiers = authorityKeyIdentifiers,
             )
-
-            DCQLQueryResult(
-                credentialQueryMatches = credentialQueryMatches
-            )
-        }
+        )
 
         fun <Credential : Any> findCredentialQueryMatches(
             credentialQueries: List<DCQLCredentialQuery>,
