@@ -30,12 +30,13 @@ kotlin {
                 api(project(":dif-data-classes"))
                 api(project(":openid-data-classes"))
                 commonImplementationAndApiDependencies()
+                implementation("com.squareup.okio:okio:${VcLibVersions.okio}")
             }
         }
         jvmTest {
             dependencies {
                 implementation("at.asitplus.signum:indispensable-josef:${VcLibVersions.signum}")
-                implementation("com.nimbusds:nimbus-jose-jwt:9.31")
+                implementation("com.nimbusds:nimbus-jose-jwt:${VcLibVersions.Jvm.nimbus}")
                 implementation(kotlin("reflect"))
                 implementation("org.json:json:${VcLibVersions.Jvm.json}")
                 implementation("com.authlete:cbor:${VcLibVersions.Jvm.`authlete-cbor`}")

@@ -22,6 +22,9 @@ Release 5.12.0 (unreleased):
    - Added support for refresh tokens in BearerTokenService
  - OAuth 2.0:
    - In `SimpleAuthorizationService` implement [JWT Response for OAuth Token Introspection](https://datatracker.ietf.org/doc/html/rfc9701/)
+ - Token status list:
+   - Replace platform-specific `DefaultZlibService` implementations with a single Kotlin Multiplatform implementation backed by `okio`
+   - Align zlib/DEFLATE behavior across JVM and iOS and remove the iOS generic-fallback `TODO` path
 
 Release 5.11.1:
  - OAuth 2.0:

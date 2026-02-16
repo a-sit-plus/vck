@@ -25,11 +25,13 @@ class VcLibVersions(private val project: Project) {
     val obor get() = versionOf("obor")
     val eupidcredential get() = versionOf("eupid")
     val mdl get() = versionOf("mdl")
+    val okio get() = versionOf("okio")
 
     val Jvm = JvmVersions()
 
     inner class JvmVersions {
         val json get() = versionOf("jvmJson")
+        val nimbus get() = versionOf("jvmNimbus")
         val `authlete-cbor` get() = versionOf("jvmCbor")
     }
 
