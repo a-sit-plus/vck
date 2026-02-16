@@ -558,40 +558,41 @@ private suspend inline fun <R> IntermediateResult<R>.onSuccessTokenIntrospection
     block: TokenIntrospectionResponse.(httpResponse: HttpResponse) -> R,
 ) = when (this) {
     is IntermediateResult.Failure<R> -> result
-    is IntermediateResult.Success<R> -> {
-        val parsed = parseTokenIntrospectionResponse(
+    is IntermediateResult.Success<R> -> block(
+        parseTokenIntrospectionResponse(
             body = httpResponse.bodyAsText(),
             verifyTokenIntrospectionJwt = verifyTokenIntrospectionJwt,
             requestedResponseFormat = requestedResponseFormat,
-        )
-        block(parsed, httpResponse)
-    }
+        ), httpResponse
+    )
 }
 
 private suspend fun parseTokenIntrospectionResponse(
     body: String,
     verifyTokenIntrospectionJwt: suspend (JwsSigned<TokenIntrospectionResponse>) -> Boolean,
     requestedResponseFormat: TokenIntrospectionRequest.ResponseFormat?,
-): TokenIntrospectionResponse {
+): TokenIntrospectionResponse = runCatching {
     if (requestedResponseFormat == TokenIntrospectionRequest.ResponseFormat.JWT) {
-        val jwtResponse = vckJsonSerializer.decodeFromString(TokenIntrospectionJwtResponse.serializer(), body)
-        val jws = JwsSigned.deserialize(TokenIntrospectionResponse.serializer(), jwtResponse.jwt, vckJsonSerializer)
-            .getOrThrow()
-        require(verifyTokenIntrospectionJwt(jws)) {
-            "Token introspection JWT validation failed"
+        parseJwt(body, verifyTokenIntrospectionJwt)
+    } else {
+        runCatching {
+            vckJsonSerializer.decodeFromString(TokenIntrospectionResponse.serializer(), body)
+        }.getOrElse {
+            parseJwt(body, verifyTokenIntrospectionJwt)
         }
-        return jws.payload
     }
-
-    return runCatching {
-        vckJsonSerializer.decodeFromString(TokenIntrospectionResponse.serializer(), body)
-    }.getOrElse {
-        val jwtResponse = vckJsonSerializer.decodeFromString(TokenIntrospectionJwtResponse.serializer(), body)
-        val jws = JwsSigned.deserialize(TokenIntrospectionResponse.serializer(), jwtResponse.jwt, vckJsonSerializer)
-            .getOrThrow()
-        require(verifyTokenIntrospectionJwt(jws)) {
-            "Token introspection JWT validation failed"
-        }
-        jws.payload
-    }
+}.getOrElse {
+    throw InvalidToken("Token introspection response could not be parsed", it)
 }
+
+private suspend fun parseJwt(
+    body: String,
+    verifyTokenIntrospectionJwt: suspend (JwsSigned<TokenIntrospectionResponse>) -> Boolean
+): TokenIntrospectionResponse =
+    vckJsonSerializer.decodeFromString(TokenIntrospectionJwtResponse.serializer(), body).let { jwtResponse ->
+        JwsSigned.deserialize(TokenIntrospectionResponse.serializer(), jwtResponse.jwt, vckJsonSerializer)
+            .getOrThrow().run {
+                require(verifyTokenIntrospectionJwt(this)) { "Token introspection JWT validation failed" }
+                payload
+            }
+    }
