@@ -10,6 +10,7 @@ Release 5.12.0 (unreleased):
  - Remove code elements deprecated in 5.11.0
  - ISO mdoc:
    - Preserve `Document.errors` in parsed ISO document results instead of failing validation
+   - Add data classes from ISO/IEC 18013-5 from 2026
  - OpenID for Verifiable Presentations:
    - Change: Executing unsatisfiable DCQL queries no longer throws on matching, only on submission.
    - Change: Update DCQLClaimsQuery to OpenID4VP 1.0
