@@ -74,7 +74,7 @@ data class DCQLQuery(
         credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
         satisfiesCryptographicHolderBinding: (Credential) -> Boolean,
         authorityKeyIdentifiers: (Credential) -> Collection<DCQLAuthorityKeyIdentifier>,
-    ): DCQLQueryResult<Credential> = Procedures.executeQuery(
+    ): DCQLQueryMatchingResult = Procedures.executeQuery(
         credentialQueries = credentials,
         availableCredentials = availableCredentials,
         credentialFormatExtractor = credentialFormatExtractor,
@@ -121,8 +121,8 @@ data class DCQLQuery(
             credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
             satisfiesCryptographicHolderBinding: (Credential) -> Boolean,
             authorityKeyIdentifiers: (Credential) -> Collection<DCQLAuthorityKeyIdentifier>,
-        ): DCQLQueryResult<Credential> = DCQLQueryResult(
-            credentialQueryMatches = findCredentialQueryMatches(
+        ): DCQLQueryMatchingResult = DCQLQueryMatchingResult(
+            credentialMatchingResults = matchCredentials(
                 credentialQueries = credentialQueries,
                 availableCredentials = availableCredentials,
                 credentialFormatExtractor = credentialFormatExtractor,
@@ -135,7 +135,7 @@ data class DCQLQuery(
             )
         )
 
-        fun <Credential : Any> findCredentialQueryMatches(
+        fun <Credential : Any> matchCredentials(
             credentialQueries: List<DCQLCredentialQuery>,
             availableCredentials: List<Credential>,
             credentialFormatExtractor: (Credential) -> CredentialFormatEnum,
@@ -145,9 +145,9 @@ data class DCQLQuery(
             credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
             satisfiesCryptographicHolderBinding: (Credential) -> Boolean,
             authorityKeyIdentifiers: (Credential) -> Collection<DCQLAuthorityKeyIdentifier>,
-        ): Map<DCQLCredentialQueryIdentifier, List<DCQLCredentialSubmissionOption<Credential>>> {
+        ): Map<DCQLCredentialQueryIdentifier, List<KmmResult<DCQLCredentialQueryMatchingResult>>> {
             return credentialQueries.associate { credentialQuery ->
-                credentialQuery.id to availableCredentials.mapNotNull { credential ->
+                credentialQuery.id to availableCredentials.map { credential ->
                     credentialQuery.executeCredentialQueryAgainstCredential(
                         credential = credential,
                         credentialFormatExtractor = credentialFormatExtractor,
@@ -157,12 +157,7 @@ data class DCQLQuery(
                         satisfiesCryptographicHolderBinding = satisfiesCryptographicHolderBinding,
                         authorityKeyIdentifiers = authorityKeyIdentifiers,
                         jwtVcCredentialTypeExtractor = jwtVcCredentialTypeExtractor,
-                    ).getOrNull()?.let {
-                        DCQLCredentialSubmissionOption(
-                            credential = credential,
-                            matchingResult = it
-                        )
-                    }
+                    )
                 }
             }
         }

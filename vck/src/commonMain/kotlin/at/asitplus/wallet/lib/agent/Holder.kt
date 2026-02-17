@@ -8,7 +8,6 @@ import at.asitplus.iso.IssuerSigned
 import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.dcql.DCQLQuery
-import at.asitplus.openid.dcql.DCQLQueryResult
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialPresentation
@@ -94,7 +93,7 @@ interface Holder {
         fallbackFormatHolder: FormatHolder? = null,
         pathAuthorizationValidator: PathAuthorizationValidator? = null,
         filterById: String? = null
-    ): KmmResult<Map<String, InputDescriptorMatches>>
+    ): KmmResult<HolderPresentationExchangeQueryMatchingResult<SubjectCredentialStore.StoreEntry>>
 
     /**
      * Evaluates a given input descriptor against a store entry.
@@ -121,6 +120,6 @@ interface Holder {
     suspend fun matchDCQLQueryAgainstCredentialStore(
         dcqlQuery: DCQLQuery,
         filterById: String? = null
-    ): KmmResult<DCQLQueryResult<SubjectCredentialStore.StoreEntry>>
+    ): KmmResult<HolderDCQLQueryMatchingResult<SubjectCredentialStore.StoreEntry>>
 }
 

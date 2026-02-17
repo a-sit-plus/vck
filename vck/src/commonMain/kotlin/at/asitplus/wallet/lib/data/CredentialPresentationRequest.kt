@@ -26,7 +26,7 @@ sealed interface CredentialPresentationRequest {
         override fun toCredentialPresentation() = toCredentialPresentation(null)
 
         fun toCredentialPresentation(
-            inputDescriptorSubmissions: Map<String, PresentationExchangeCredentialDisclosure>?
+            inputDescriptorSubmissions: Map<String, PresentationExchangeCredentialDisclosure<SubjectCredentialStore.StoreEntry>>?
         ): CredentialPresentation = CredentialPresentation.PresentationExchangePresentation(
             presentationRequest = this,
             inputDescriptorSubmissions = inputDescriptorSubmissions

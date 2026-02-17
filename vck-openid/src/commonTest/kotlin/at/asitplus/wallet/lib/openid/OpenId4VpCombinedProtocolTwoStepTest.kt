@@ -26,6 +26,7 @@ import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.matchers.collections.shouldBeSingleton
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.maps.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -70,7 +71,11 @@ val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
             val inputDescriptorId = presentationDefinition.inputDescriptors.first().id
 
             it.holderAgent.matchInputDescriptorsAgainstCredentialStore(presentationDefinition.inputDescriptors)
-                .getOrThrow()[inputDescriptorId]
+                .getOrThrow().also {
+                    it.queryMatchingResult.inputDescriptorMatchingResults.forEach {
+                        it.value.shouldHaveSize(3)
+                    }
+                }.inputDescriptorMatches[inputDescriptorId]
                 .shouldNotBeNull().apply {
                     this shouldHaveSize 2
                     keys.forEach {
@@ -102,7 +107,11 @@ val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
             val inputDescriptorId = presentationDefinition.inputDescriptors.first().id
             val matches = it.holderAgent.matchInputDescriptorsAgainstCredentialStore(
                 presentationDefinition.inputDescriptors
-            ).getOrThrow().also { it shouldHaveSize 1 }
+            ).getOrThrow().also {
+                it.queryMatchingResult.inputDescriptorMatchingResults.forEach {
+                    it.value.shouldHaveSize(3) // 2x iso, 1x stJwt
+                }
+            }.inputDescriptorMatches.also { it shouldHaveSize 1 }
 
             val inputDescriptorMatches = matches[inputDescriptorId].shouldNotBeNull()
                 .also { it shouldHaveSize 2 }
@@ -158,7 +167,11 @@ val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
             val inputDescriptorId = presentationDefinition.inputDescriptors.first().id
             val matches = it.holderAgent.matchInputDescriptorsAgainstCredentialStore(
                 presentationDefinition.inputDescriptors
-            ).getOrThrow().also { it shouldHaveSize 1 }
+            ).getOrThrow().also {
+                it.queryMatchingResult.inputDescriptorMatchingResults.forEach {
+                    it.value.shouldHaveSize(1)
+                }
+            }.inputDescriptorMatches.also { it shouldHaveSize 1 }
 
             matches[inputDescriptorId].shouldNotBeNull().entries
                 .shouldBeSingleton().first().apply {
@@ -209,6 +222,10 @@ val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
                 it.holderAgent.matchInputDescriptorsAgainstCredentialStore(
                     presentationDefinitionSdJwt.inputDescriptors,
                 ).getOrThrow().also {
+                    it.queryMatchingResult.inputDescriptorMatchingResults.forEach {
+                        it.value.shouldHaveSize(3)
+                    }
+                }.inputDescriptorMatches.also {
                     it.shouldHaveSize(1)
                     it.entries.first().value.let {
                         it.shouldHaveSize(1)
@@ -240,6 +257,10 @@ val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
             val matches = it.holderAgent.matchInputDescriptorsAgainstCredentialStore(
                 presentationDefinition.inputDescriptors,
             ).getOrThrow().also {
+                it.queryMatchingResult.inputDescriptorMatchingResults.forEach {
+                    it.value.shouldHaveSize(3)
+                }
+            }.inputDescriptorMatches.also {
                 it shouldHaveSize 1
             }
 

@@ -49,15 +49,18 @@ import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessIso
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessSdJwt
 import at.asitplus.wallet.lib.openid.ClientIdScheme
+import at.asitplus.wallet.lib.openid.DCQLMatchingResult
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.CreationOptions
 import at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions
+import at.asitplus.wallet.lib.openid.PresentationExchangeMatchingResult
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
 import io.github.aakira.napier.Napier
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.client.*
@@ -438,9 +441,17 @@ val OpenId4VpWalletTest by testSuite {
             )
 
             val preparationState = it.wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
-            shouldThrow<OAuth2Exception.AccessDenied> {
-                it.wallet.getMatchingCredentials(preparationState).getOrThrow()
-            }
+            when(val matchingResult = it.wallet.getMatchingCredentials(preparationState).getOrThrow()) {
+                is DCQLMatchingResult -> matchingResult.presentationRequest.dcqlQuery.isSatisfiedWith(
+                    matchingResult.matchingResult.toDefaultSubmission(
+                        matchingResult.presentationRequest.dcqlQuery
+                    ).getOrThrow().keys
+                )
+
+                is PresentationExchangeMatchingResult -> matchingResult.presentationRequest.presentationDefinition.inputDescriptors.map {
+                    it.id
+                }.toSet() == matchingResult.matchingResult.toDefaultSubmission().keys
+            } shouldBe false
         }
     }
 }

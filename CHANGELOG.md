@@ -8,6 +8,7 @@ Release 5.12.0 (unreleased):
  - ISO mdoc:
    - Preserve `Document.errors` in parsed ISO document results instead of failing validation
  - Change: Executing unsatisfiable DCQL queries no longer throws on matching, only on submission.
+ - Change: Do not fail when only matching credentials without submitting a presentation
 
 Release 5.11.0:
  - Digital Credentials API:
