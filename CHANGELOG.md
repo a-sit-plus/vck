@@ -9,6 +9,10 @@ Release 5.12.0 (unreleased):
    - Preserve `Document.errors` in parsed ISO document results instead of failing validation
  - Change: Executing unsatisfiable DCQL queries no longer throws on matching, only on submission.
 
+Release 5.11.1:
+ - OAuth 2.0:
+   - Fix bug in `SimpleAuthorizationRequest` validating `issuer_state` on pushed authorization requests twice (and failing on the second time)
+
 Release 5.11.0:
  - Digital Credentials API:
    - Add request/response models for OpenID4VP and ISO 18013-7 Annex C flows, including protocol identifiers, wallet/verifier request options, and typed responses
