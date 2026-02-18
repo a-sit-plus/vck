@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
@@ -70,7 +69,7 @@ val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
                 .presentationDefinition
             val inputDescriptorId = presentationDefinition.inputDescriptors.first().id
 
-            it.holderAgent.matchInputDescriptorsAgainstCredentialStore(presentationDefinition.inputDescriptors)
+            it.holderAgent.matchInputDescriptorsAgainstCredentialStoreV2(presentationDefinition.inputDescriptors)
                 .getOrThrow().also {
                     it.queryMatchingResult.inputDescriptorMatchingResults.forEach {
                         it.value.shouldHaveSize(3)
@@ -105,7 +104,7 @@ val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
             val presentationDefinition = presentationExchangeRequest.presentationDefinition
 
             val inputDescriptorId = presentationDefinition.inputDescriptors.first().id
-            val matches = it.holderAgent.matchInputDescriptorsAgainstCredentialStore(
+            val matches = it.holderAgent.matchInputDescriptorsAgainstCredentialStoreV2(
                 presentationDefinition.inputDescriptors
             ).getOrThrow().also {
                 it.queryMatchingResult.inputDescriptorMatchingResults.forEach {
@@ -165,7 +164,7 @@ val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
             val presentationDefinition = presentationExchangeRequest.presentationDefinition
 
             val inputDescriptorId = presentationDefinition.inputDescriptors.first().id
-            val matches = it.holderAgent.matchInputDescriptorsAgainstCredentialStore(
+            val matches = it.holderAgent.matchInputDescriptorsAgainstCredentialStoreV2(
                 presentationDefinition.inputDescriptors
             ).getOrThrow().also {
                 it.queryMatchingResult.inputDescriptorMatchingResults.forEach {
@@ -219,7 +218,7 @@ val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
                     .shouldBeInstanceOf<PresentationExchangeRequest>()
                     .presentationDefinition
 
-                it.holderAgent.matchInputDescriptorsAgainstCredentialStore(
+                it.holderAgent.matchInputDescriptorsAgainstCredentialStoreV2(
                     presentationDefinitionSdJwt.inputDescriptors,
                 ).getOrThrow().also {
                     it.queryMatchingResult.inputDescriptorMatchingResults.forEach {
@@ -254,7 +253,7 @@ val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
                 .presentationDefinition
             val inputDescriptorId = presentationDefinition.inputDescriptors.first().id
 
-            val matches = it.holderAgent.matchInputDescriptorsAgainstCredentialStore(
+            val matches = it.holderAgent.matchInputDescriptorsAgainstCredentialStoreV2(
                 presentationDefinition.inputDescriptors,
             ).getOrThrow().also {
                 it.queryMatchingResult.inputDescriptorMatchingResults.forEach {

@@ -362,7 +362,7 @@ class OpenId4VpHolder(
             }
 
             is CredentialPresentationRequest.PresentationExchangeRequest ->
-                holder.matchInputDescriptorsAgainstCredentialStore(
+                holder.matchInputDescriptorsAgainstCredentialStoreV2(
                     inputDescriptors = presentationRequest.presentationDefinition.inputDescriptors,
                     fallbackFormatHolder = presentationRequest.fallbackFormatHolder,
                     filterById = preparationState.request.credentialId()

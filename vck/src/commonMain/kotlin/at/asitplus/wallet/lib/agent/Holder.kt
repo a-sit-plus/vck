@@ -88,12 +88,27 @@ interface Holder {
      *  authorization rules on attribute credentials that are to be disclosed.
      * @param filterById filter the list of possible credentials by the provided ID
      */
-    suspend fun matchInputDescriptorsAgainstCredentialStore(
+    suspend fun matchInputDescriptorsAgainstCredentialStoreV2(
         inputDescriptors: Collection<InputDescriptor>,
         fallbackFormatHolder: FormatHolder? = null,
         pathAuthorizationValidator: PathAuthorizationValidator? = null,
         filterById: String? = null
     ): KmmResult<HolderPresentationExchangeQueryMatchingResult<SubjectCredentialStore.StoreEntry>>
+
+    @Deprecated("Deprecated in favor of more detailed matching result", replaceWith = ReplaceWith("matchInputDescriptorsAgainstCredentialStoreV2.inputDescriptorMatches"))
+    suspend fun matchInputDescriptorsAgainstCredentialStore(
+        inputDescriptors: Collection<InputDescriptor>,
+        fallbackFormatHolder: FormatHolder? = null,
+        pathAuthorizationValidator: PathAuthorizationValidator? = null,
+        filterById: String? = null
+    ): KmmResult<Map<String, Map<SubjectCredentialStore.StoreEntry, InputDescriptorMatching>>> = matchInputDescriptorsAgainstCredentialStoreV2(
+        inputDescriptors = inputDescriptors,
+        fallbackFormatHolder = fallbackFormatHolder,
+        pathAuthorizationValidator = pathAuthorizationValidator,
+        filterById = filterById,
+    ).map {
+        it.inputDescriptorMatches
+    }
 
     /**
      * Evaluates a given input descriptor against a store entry.
