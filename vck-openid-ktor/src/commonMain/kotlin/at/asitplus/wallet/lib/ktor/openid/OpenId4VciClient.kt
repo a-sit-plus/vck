@@ -245,6 +245,19 @@ class OpenId4VciClient(
         }
     }
 
+    @Deprecated(
+        message = "Use refreshCredentialReturningResult(CredentialRenewalInfo)",
+        replaceWith = ReplaceWith(
+            "refreshCredentialReturningResult(refreshTokenInfo.toCredentialRenewalInfo())"
+        )
+    )
+    suspend fun refreshCredentialReturningResult(
+        refreshTokenInfo: RefreshTokenInfo
+    ): KmmResult<CredentialIssuanceResult.Success> =
+        refreshCredentialReturningResult(
+            refreshTokenInfo.toCredentialRenewalInfo()
+        )
+
     /**
      * Will use the [tokenResponse] to request a credential and store it with [storeCredential].
      */
@@ -501,7 +514,23 @@ data class CredentialIdentifierInfo(
         "at.asitplus.wallet.lib.agent.CredentialRenewalInfo"
     )
 )
-typealias RefreshTokenInfo = CredentialRenewalInfo
+@Serializable
+data class RefreshTokenInfo(
+    val refreshToken: String,
+    val issuerMetadata: IssuerMetadata,
+    val oauthMetadata: OAuth2AuthorizationServerMetadata,
+    val credentialFormat: SupportedCredentialFormat,
+    val credentialIdentifier: String,
+)
+
+fun RefreshTokenInfo.toCredentialRenewalInfo() =
+    CredentialRenewalInfo(
+        refreshToken = refreshToken,
+        issuerMetadata = issuerMetadata,
+        oauthMetadata = oauthMetadata,
+        credentialFormat = credentialFormat,
+        credentialIdentifier = credentialIdentifier
+    )
 
 private suspend inline fun <R> IntermediateResult<R>.onSuccessCredential(
     block: String.(httpResponse: HttpResponse) -> R,

@@ -161,7 +161,7 @@ class BearerTokenGenerationService(
             scope = scope
         )
         accessTokenToValidatedAccessToken.put(accessToken, validatedToken)
-        if (issueRefreshToken) refreshTokenToValidatedAccessToken.put(refreshToken!!, validatedToken.copy(token = refreshToken))
+        refreshToken?.let { refreshTokenToValidatedAccessToken.put(it, validatedToken.copy(token = it)) }
         return TokenResponseParameters(
             expires = 5.minutes,
             tokenType = TOKEN_TYPE_BEARER,
