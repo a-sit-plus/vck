@@ -13,10 +13,12 @@ import at.asitplus.wallet.eupid.EuPidScheme.SdJwtAttributes.FAMILY_NAME
 import at.asitplus.wallet.eupid.EuPidScheme.SdJwtAttributes.GIVEN_NAME
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.toTransactionData
 import at.asitplus.wallet.lib.openid.ClientIdScheme
+import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions
 import com.benasher44.uuid.bytes
@@ -59,14 +61,16 @@ internal fun buildRequestOptions(
         responseUrl = if (responseMode == OpenIdConstants.ResponseMode.DirectPost)
             "https://example.com/rp/${uuid4()}"
         else null,
-        credentials = setOf(
-            RequestOptionsCredential(
-                credentialScheme = EuPidScheme,
-                representation = SD_JWT,
-                requestedAttributes = setOf(FAMILY_NAME, GIVEN_NAME),
-                id = credentialId
-            )
-        ),
+        presentationRequest = CredentialPresentationRequestBuilder(
+            credentials = setOf(
+                RequestOptionsCredential(
+                    credentialScheme = EuPidScheme,
+                    representation = SD_JWT,
+                    requestedAttributes = setOf(FAMILY_NAME, GIVEN_NAME),
+                    id = credentialId
+                )
+            ),
+        ).toPresentationExchangeRequest(),
         transactionData = listOf(
             getTransactionData(setOf(credentialId), transactionDataHashAlgorithms),
             getTransactionData(setOf(credentialId), transactionDataHashAlgorithms)

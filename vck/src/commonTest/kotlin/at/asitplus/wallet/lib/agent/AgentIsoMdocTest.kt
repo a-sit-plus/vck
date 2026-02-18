@@ -298,7 +298,7 @@ private suspend fun IsoMdocFixture.createDcqlDeviceResponse(vararg attributeName
 )
 
 private suspend fun IsoMdocFixture.verifyPresentation(deviceResponse: CreatePresentationResult.DeviceResponse) =
-    verifier.verifyPresentationIsoMdoc(deviceResponse.deviceResponse, documentVerifier())
+    verifier.verifyPresentationIsoMdoc(deviceResponse.deviceResponse, documentVerifier()).getOrThrow()
         .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessIso>()
 
 private suspend fun IsoMdocFixture.revokeSingleStoredCredential(): Boolean {

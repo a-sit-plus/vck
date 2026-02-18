@@ -68,9 +68,11 @@ val OpenId4VpSdJwtProtocolTest by testSuite {
             val requestedClaim = AtomicAttribute2023.CLAIM_GIVEN_NAME
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
-                    setOf(
-                        RequestOptionsCredential(AtomicAttribute2023, SD_JWT, setOf(requestedClaim))
-                    )
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        setOf(
+                            RequestOptionsCredential(AtomicAttribute2023, SD_JWT, setOf(requestedClaim))
+                        )
+                    ).toPresentationExchangeRequest(),
                 ),
                 OpenId4VpVerifier.CreationOptions.Query(it.walletUrl)
             ).getOrThrow().url
@@ -95,9 +97,11 @@ val OpenId4VpSdJwtProtocolTest by testSuite {
             )
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
-                    credentials = setOf(
-                        RequestOptionsCredential(EuPidScheme, SD_JWT, requestedClaims)
-                    )
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        credentials = setOf(
+                            RequestOptionsCredential(EuPidScheme, SD_JWT, requestedClaims)
+                        )
+                    ).toPresentationExchangeRequest(),
                 ),
                 OpenId4VpVerifier.CreationOptions.Query(it.walletUrl)
             ).getOrThrow().url

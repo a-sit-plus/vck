@@ -43,7 +43,9 @@ val AuthenticationRequestParameterFromSerializerTest by testSuite {
 
     representations.forEach { representation ->
         val reqOptions = OpenId4VpRequestOptions(
-            credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, representation))
+            presentationRequest = CredentialPresentationRequestBuilder(
+                credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, representation))
+            ).toPresentationExchangeRequest(),
         )
 
         "URL test $representation" {

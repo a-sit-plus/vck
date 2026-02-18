@@ -164,7 +164,7 @@ val AgentRevocationTest by testSuite {
                 fail("no issued credentials")
             }.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-            ValidatorVcJws().verifyVcJws(result.signedVcJws, it.verifierKeyMaterial.publicKey)
+            ValidatorVcJws().verifyVcJws(result.signedVcJws, it.verifierKeyMaterial.publicKey).getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
                 .jws.vc.credentialStatus
                 .shouldNotBeNull()

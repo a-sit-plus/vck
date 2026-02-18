@@ -5,6 +5,10 @@ import at.asitplus.wallet.lib.agent.HolderPresentationExchangeQueryMatchingResul
 import at.asitplus.wallet.lib.agent.HolderPresentationRequestMatchingResult
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 
+/**
+ * This interface represents the result of matching a [CredentialPresentationRequest]
+ * against a list of available credentials
+ */
 sealed interface CredentialMatchingResult<Credential: Any> {
     val presentationRequest: CredentialPresentationRequest
     val matchingResult: HolderPresentationRequestMatchingResult<Credential>

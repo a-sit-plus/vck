@@ -109,8 +109,7 @@ object TestUtils {
         credentials.shouldBeSingleton().also {
             it.first().shouldBeInstanceOf<Holder.StoreCredentialInput.SdJwt>().also {
                 it.scheme shouldBe EuPidScheme
-                ValidatorSdJwt().verifySdJwt(it.signedSdJwtVc, credentialKey)
-                    .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessSdJwt>()
+                ValidatorSdJwt().verifySdJwt(it.signedSdJwtVc, credentialKey).getOrThrow()
                     .disclosures.values.any {
                         it.claimName == claimName &&
                                 it.claimValue.jsonPrimitive.content == expectedClaimValue

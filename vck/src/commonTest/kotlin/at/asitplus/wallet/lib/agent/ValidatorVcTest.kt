@@ -35,6 +35,7 @@ import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.randomCwtOrJwtResolver
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.comparables.shouldBeLessThan
 import io.kotest.matchers.comparables.shouldNotBeGreaterThan
 import io.kotest.matchers.shouldBe
@@ -157,7 +158,7 @@ val ValidatorVcTest by testSuite {
                 }
 
 
-            it.validator.verifyVcJws(credential.signedVcJws, it.verifierKeyMaterial.publicKey)
+            it.validator.verifyVcJws(credential.signedVcJws, it.verifierKeyMaterial.publicKey).getOrThrow()
                 .shouldBeInstanceOf<VerifyCredentialResult.SuccessJwt>()
         }
 
@@ -171,7 +172,7 @@ val ValidatorVcTest by testSuite {
             ).getOrThrow()
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-            val value = it.validator.verifyVcJws(credential.signedVcJws, it.verifierKeyMaterial.publicKey)
+            val value = it.validator.verifyVcJws(credential.signedVcJws, it.verifierKeyMaterial.publicKey).getOrThrow()
                 .shouldBeInstanceOf<VerifyCredentialResult.SuccessJwt>()
             it.issuerCredentialStore.setStatus(
                 timePeriod = FixedTimePeriodProvider.timePeriod,
@@ -179,7 +180,7 @@ val ValidatorVcTest by testSuite {
                 status = TokenStatus.Invalid,
             ) shouldBe true
 
-            it.validator.verifyVcJws(credential.signedVcJws, it.verifierKeyMaterial.publicKey)
+            it.validator.verifyVcJws(credential.signedVcJws, it.verifierKeyMaterial.publicKey).getOrThrow()
                 .shouldBeInstanceOf<VerifyCredentialResult.SuccessJwt>()
 
             it.validator.checkRevocationStatus(value.jws)
@@ -197,8 +198,9 @@ val ValidatorVcTest by testSuite {
             ).getOrThrow()
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-            it.validator.verifyVcJws(credential.signedVcJws, it.verifierKeyMaterial.publicKey)
-                .shouldBeInstanceOf<VerifyCredentialResult.ValidationError>()
+            shouldThrowAny {
+                it.validator.verifyVcJws(credential.signedVcJws, it.verifierKeyMaterial.publicKey).getOrThrow()
+            }
         }
 
         test("credential with invalid JWS format is not valid") {
@@ -211,10 +213,12 @@ val ValidatorVcTest by testSuite {
             ).getOrThrow()
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-            it.validator.verifyVcJws(
-                credential.signedVcJws.serialize().replaceFirstChar { "f" },
-                it.verifierKeyMaterial.publicKey
-            ).shouldBeInstanceOf<VerifyCredentialResult.ValidationError>()
+            shouldThrowAny {
+                it.validator.verifyVcJws(
+                    credential.signedVcJws.serialize().replaceFirstChar { "f" },
+                    it.verifierKeyMaterial.publicKey
+                ).getOrThrow()
+            }
         }
 
         "Manually created and valid credential is valid" { context ->
@@ -227,7 +231,7 @@ val ValidatorVcTest by testSuite {
                     .let { context.wrapVcInJws(it) }
                     .let { context.signJws(it) }
                     .let {
-                        context.validator.verifyVcJws(it, context.verifierKeyMaterial.publicKey)
+                        context.validator.verifyVcJws(it, context.verifierKeyMaterial.publicKey).getOrThrow()
                             .shouldBeInstanceOf<VerifyCredentialResult.SuccessJwt>()
                     }
             }
@@ -243,8 +247,9 @@ val ValidatorVcTest by testSuite {
                     .let { context.wrapVcInJws(it) }
                     .let { context.wrapVcInJwsWrongKey(it) }
                     .let {
-                        context.validator.verifyVcJws(it, context.verifierKeyMaterial.publicKey)
-                            .shouldBeInstanceOf<VerifyCredentialResult.ValidationError>()
+                        shouldThrowAny {
+                            context.validator.verifyVcJws(it, context.verifierKeyMaterial.publicKey).getOrThrow()
+                        }
                     }
             }
         }
@@ -259,8 +264,9 @@ val ValidatorVcTest by testSuite {
                     .let { context.wrapVcInJws(it, subject = "vc.id") }
                     .let { context.signJws(it) }
                     .let {
-                        context.validator.verifyVcJws(it, context.verifierKeyMaterial.publicKey)
-                            .shouldBeInstanceOf<VerifyCredentialResult.ValidationError>()
+                        shouldThrowAny {
+                            context.validator.verifyVcJws(it, context.verifierKeyMaterial.publicKey).getOrThrow()
+                        }
                     }
             }
         }
@@ -274,8 +280,9 @@ val ValidatorVcTest by testSuite {
                 context.issueCredential(it)
                     .let { context.wrapVcInJws(it, issuer = "vc.issuer") }
                     .let { context.signJws(it) }.let {
-                        context.validator.verifyVcJws(it, context.verifierKeyMaterial.publicKey)
-                            .shouldBeInstanceOf<VerifyCredentialResult.ValidationError>()
+                        shouldThrowAny {
+                            context.validator.verifyVcJws(it, context.verifierKeyMaterial.publicKey).getOrThrow()
+                        }
                     }
             }
         }
@@ -290,8 +297,9 @@ val ValidatorVcTest by testSuite {
                     .let { context.wrapVcInJws(it, jwtId = "vc.jwtId") }
                     .let { context.signJws(it) }
                     .let {
-                        context.validator.verifyVcJws(it, context.verifierKeyMaterial.publicKey)
-                            .shouldBeInstanceOf<VerifyCredentialResult.ValidationError>()
+                        shouldThrowAny {
+                            context.validator.verifyVcJws(it, context.verifierKeyMaterial.publicKey).getOrThrow()
+                        }
                     }
             }
         }
@@ -315,8 +323,9 @@ val ValidatorVcTest by testSuite {
                     }
                     .let { vcJws -> context.signJws(vcJws) }
                     .let { signVcJws ->
-                        context.validator.verifyVcJws(signVcJws, context.verifierKeyMaterial.publicKey)
-                            .shouldBeInstanceOf<VerifyCredentialResult.ValidationError>()
+                        shouldThrowAny {
+                            context.validator.verifyVcJws(signVcJws, context.verifierKeyMaterial.publicKey).getOrThrow()
+                        }
                     }
             }
         }
@@ -331,8 +340,7 @@ val ValidatorVcTest by testSuite {
                     .let { context.wrapVcInJws(it) }
                     .let { context.signJws(it) }
                     .let {
-                        context.validator.verifyVcJws(it, context.verifierKeyMaterial.publicKey)
-                            .shouldBeInstanceOf<VerifyCredentialResult.SuccessJwt>()
+                        context.validator.verifyVcJws(it, context.verifierKeyMaterial.publicKey).getOrThrow()
                     }
             }
         }
@@ -347,8 +355,9 @@ val ValidatorVcTest by testSuite {
                     .let { context.wrapVcInJws(it, expirationDate = Clock.System.now() - 1.hours) }
                     .let { context.signJws(it) }
                     .let {
-                        context.validator.verifyVcJws(it, context.verifierKeyMaterial.publicKey)
-                            .shouldBeInstanceOf<VerifyCredentialResult.ValidationError>()
+                        shouldThrowAny {
+                            context.validator.verifyVcJws(it, context.verifierKeyMaterial.publicKey).getOrThrow()
+                        }
                     }
             }
         }
@@ -363,8 +372,9 @@ val ValidatorVcTest by testSuite {
                     .let { context.wrapVcInJws(it, expirationDate = Clock.System.now() + 2.hours) }
                     .let { context.signJws(it) }
                     .let {
-                        context.validator.verifyVcJws(it, context.verifierKeyMaterial.publicKey)
-                            .shouldBeInstanceOf<VerifyCredentialResult.ValidationError>()
+                        shouldThrowAny {
+                            context.validator.verifyVcJws(it, context.verifierKeyMaterial.publicKey).getOrThrow()
+                        }
                     }
             }
         }
@@ -379,8 +389,9 @@ val ValidatorVcTest by testSuite {
                     .let { context.wrapVcInJws(it, issuanceDate = Clock.System.now() + 2.hours) }
                     .let { context.signJws(it) }
                     .let {
-                        context.validator.verifyVcJws(it, context.verifierKeyMaterial.publicKey)
-                            .shouldBeInstanceOf<VerifyCredentialResult.ValidationError>()
+                        shouldThrowAny {
+                            context.validator.verifyVcJws(it, context.verifierKeyMaterial.publicKey).getOrThrow()
+                        }
                     }
             }
         }
@@ -395,10 +406,9 @@ val ValidatorVcTest by testSuite {
                     .let { context.wrapVcInJws(it) }
                     .let { context.signJws(it) }
                     .let {
-                        context.validator.verifyVcJws(it, context.verifierKeyMaterial.publicKey)
-                            .shouldBeInstanceOf<VerifyCredentialResult.SuccessJwt>().apply {
-                                context.validator.checkCredentialTimeliness(this.jws).isTimely shouldBe false
-                            }
+                        context.validator.verifyVcJws(it, context.verifierKeyMaterial.publicKey).getOrThrow().apply {
+                            context.validator.checkCredentialTimeliness(this.jws).isTimely shouldBe false
+                        }
                     }
             }
         }
@@ -413,8 +423,9 @@ val ValidatorVcTest by testSuite {
                     .let { context.wrapVcInJws(it, issuanceDate = Clock.System.now()) }
                     .let { context.signJws(it) }
                     .let {
-                        context.validator.verifyVcJws(it, context.verifierKeyMaterial.publicKey)
-                            .shouldBeInstanceOf<VerifyCredentialResult.ValidationError>()
+                        shouldThrowAny {
+                            context.validator.verifyVcJws(it, context.verifierKeyMaterial.publicKey).getOrThrow()
+                        }
                     }
             }
         }

@@ -33,6 +33,11 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
+import at.asitplus.wallet.lib.utils.MapStore
+import at.asitplus.wallet.lib.NonceService
+import at.asitplus.wallet.lib.RequestOptionsCredential
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
@@ -94,9 +99,11 @@ val PreRegisteredClientTest by testSuite {
                 decryptionKeyMaterial = decryptionKeyMaterial
             )
             val defaultRequestOptions = OpenId4VpRequestOptions(
-                credentials = setOf(
-                    RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
-                ),
+                presentationRequest = CredentialPresentationRequestBuilder(
+                    credentials = setOf(
+                        RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+                    ),
+                ).toPresentationExchangeRequest(),
             )
         }
     }) - {
@@ -104,7 +111,9 @@ val PreRegisteredClientTest by testSuite {
         "test with Fragment" {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
-                    credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                    ).toPresentationExchangeRequest(),
                     responseMode = OpenIdConstants.ResponseMode.Fragment,
                 ),
                 OpenId4VpVerifier.CreationOptions.Query(it.walletUrl)
@@ -134,7 +143,9 @@ val PreRegisteredClientTest by testSuite {
             val expectedState = uuid4().toString()
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
-                    credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                    ).toPresentationExchangeRequest(),
                     responseMode = OpenIdConstants.ResponseMode.Query,
                     state = expectedState,
                 ),
@@ -165,7 +176,9 @@ val PreRegisteredClientTest by testSuite {
                 }
             )
             val requestOptions = OpenId4VpRequestOptions(
-                credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                presentationRequest = CredentialPresentationRequestBuilder(
+                    credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                ).toPresentationExchangeRequest(),
                 responseType = OpenIdConstants.ID_TOKEN,
             )
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
@@ -225,7 +238,9 @@ val PreRegisteredClientTest by testSuite {
         "test with direct_post" {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
-                    credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                    ).toPresentationExchangeRequest(),
                     responseMode = OpenIdConstants.ResponseMode.DirectPost,
                     responseUrl = it.redirectUrl
                 ),
@@ -244,7 +259,9 @@ val PreRegisteredClientTest by testSuite {
         "test with direct_post.jwt" {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
-                    credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                    ).toPresentationExchangeRequest(),
                     responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                     responseUrl = it.redirectUrl
                 ),
@@ -270,7 +287,9 @@ val PreRegisteredClientTest by testSuite {
             )
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
-                    credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                    ).toPresentationExchangeRequest(),
                     responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                     responseUrl = it.redirectUrl
                 ),
@@ -438,9 +457,11 @@ val PreRegisteredClientTest by testSuite {
 }
 
 private fun requestOptionsAtomicAttribute() = OpenId4VpRequestOptions(
-    credentials = setOf(
-        RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
-    ),
+    presentationRequest = CredentialPresentationRequestBuilder(
+        credentials = setOf(
+            RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+        ),
+    ).toPresentationExchangeRequest(),
 )
 
 private suspend fun verifySecondProtocolRun(

@@ -33,11 +33,14 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
+import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.CredentialPresentation.DCQLPresentation
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
+import at.asitplus.wallet.lib.data.CredentialSubject
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -49,7 +52,7 @@ import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessIso
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessSdJwt
 import at.asitplus.wallet.lib.openid.ClientIdScheme
-import at.asitplus.wallet.lib.openid.DCQLMatchingResult
+import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.CreationOptions
 import at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions
@@ -101,17 +104,20 @@ val OpenId4VpWalletTest by testSuite {
                 storeCredentials: Boolean = true,
             ) {
                 val requestOptions = OpenId4VpRequestOptions(
-                    credentials = setOf(
-                        RequestOptionsCredential(
-                            credentialScheme = scheme,
-                            representation = representation,
-                            requestedAttributes = attributes.keys
-                        )
-                    ),
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        credentials = setOf(
+                            RequestOptionsCredential(
+                                credentialScheme = scheme,
+                                representation = representation,
+                                requestedAttributes = attributes.keys
+                            )
+                        ),
+                    ).toPresentationExchangeRequest(),
                     responseMode = responseMode,
                 )
-                if (storeCredentials)
+                if (storeCredentials) {
                     storeMockCredentials(scheme, representation, attributes)
+                }
                 setupRelyingPartyService(clientId, requestOptions) {
                     verifyReceivedAttributes(it, attributes)
                 }
@@ -151,6 +157,14 @@ val OpenId4VpWalletTest by testSuite {
                 scheme: ConstantIndex.CredentialScheme,
                 attributes: Map<String, Any>,
             ): CredentialToBeIssued = when (this) {
+                ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
+                    subject = AtomicAttribute2023("sub", "name", "value", "text"),
+                    expiration = Clock.System.now().plus(1.minutes),
+                    scheme = scheme,
+                    subjectPublicKey = keyMaterial.publicKey,
+                    userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+                )
+
                 SD_JWT -> CredentialToBeIssued.VcSd(
                     claims = attributes.map { it.toClaimToBeIssued() },
                     expiration = Clock.System.now().plus(1.minutes),
@@ -167,8 +181,6 @@ val OpenId4VpWalletTest by testSuite {
                     subjectPublicKey = keyMaterial.publicKey,
                     userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
                 )
-
-                else -> TODO()
             }
 
             /**
@@ -229,7 +241,6 @@ val OpenId4VpWalletTest by testSuite {
 
         }
     } - {
-
         test("presentEuPidCredentialSdJwtDirectPost") {
             it.setup(
                 scheme = EuPidScheme,
@@ -249,7 +260,6 @@ val OpenId4VpWalletTest by testSuite {
 
             assertPresentation(it.countdownLatch)
         }
-
 
         test("presentEuPidCredentialIsoQuery") {
             it.setup(

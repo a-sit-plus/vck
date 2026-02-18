@@ -4,6 +4,7 @@ import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.wallet.lib.agent.validation.CredentialFreshnessSummary
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import at.asitplus.wallet.lib.data.VcJwsVerificationResultWrapper
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 import at.asitplus.wallet.lib.jws.SdJwtSigned
@@ -59,6 +60,14 @@ sealed class AuthnResponseResult {
      */
     data class Success(
         val vp: VerifiablePresentationParsed,
+        val state: String? = null,
+    ) : AuthnResponseResult()
+
+    /**
+     * Successfully decoded the response from the Wallet (VC in JWT without cryptographic holder binding)
+     */
+    data class SuccessUnsigned(
+        val vc: VcJwsVerificationResultWrapper,
         val state: String? = null,
     ) : AuthnResponseResult()
 

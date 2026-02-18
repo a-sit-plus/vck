@@ -33,8 +33,10 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.randomCwtOrJwtResolver
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -104,8 +106,8 @@ val AgentTest by testSuite {
                 .shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
 
             val vp = presentationParameters.presentationResults.first()
-                .shouldBeInstanceOf<CreatePresentationResult.Signed>()
-            it.verifier.verifyPresentationVcJwt(vp.jwsSigned, it.challenge)
+                .shouldBeInstanceOf<CreatePresentationResult.VpJws>()
+            it.verifier.verifyPresentationVcJwt(vp.jwsSigned.shouldNotBeNull(), it.challenge).getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
         }
 
@@ -130,9 +132,10 @@ val AgentTest by testSuite {
                 .shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
 
             val vp = presentationParameters.presentationResults.first()
-                .shouldBeInstanceOf<CreatePresentationResult.Signed>()
-            it.verifier.verifyPresentationVcJwt(vp.jwsSigned, it.challenge)
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
+                .shouldBeInstanceOf<CreatePresentationResult.VpJws>()
+            shouldThrowAny {
+                it.verifier.verifyPresentationVcJwt(vp.jwsSigned.shouldNotBeNull(), it.challenge).getOrThrow()
+            }
         }
 
         test("presex: getting credentials when there are no credentials stored") {
@@ -221,9 +224,9 @@ val AgentTest by testSuite {
 
             val vp = presentationParameters.presentationResults.firstOrNull()
                 .shouldNotBeNull()
-                .shouldBeInstanceOf<CreatePresentationResult.Signed>()
+                .shouldBeInstanceOf<CreatePresentationResult.VpJws>()
 
-            it.verifier.verifyPresentationVcJwt(vp.jwsSigned, it.challenge)
+            it.verifier.verifyPresentationVcJwt(vp.jwsSigned.shouldNotBeNull(), it.challenge).getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
                 .also {
                     it.vp.notVerifiablyFreshVerifiableCredentials.shouldBeEmpty()
@@ -252,7 +255,7 @@ val AgentTest by testSuite {
 
             val vp = presentationParameters.presentationResults.firstOrNull()
                 .shouldNotBeNull()
-                .shouldBeInstanceOf<CreatePresentationResult.Signed>()
+                .shouldBeInstanceOf<CreatePresentationResult.VpJws>()
 
             val credentialToRevoke = it.issuer.issueCredential(
                 DummyCredentialDataProvider.getCredential(
@@ -267,7 +270,7 @@ val AgentTest by testSuite {
                 credentialToRevoke.vc.credentialStatus.shouldBeInstanceOf<StatusListInfo>().index
             ) shouldBe true
 
-            it.verifier.verifyPresentationVcJwt(vp.jwsSigned, it.challenge)
+            it.verifier.verifyPresentationVcJwt(vp.jwsSigned.shouldNotBeNull(), it.challenge).getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
         }
 
@@ -310,8 +313,8 @@ val AgentTest by testSuite {
                 )
             ).getOrThrow() as PresentationResponseParameters.DCQLParameters
             val vp = presentationParameters.verifiablePresentations.values.flatten().first()
-                .shouldBeInstanceOf<CreatePresentationResult.Signed>()
-            it.verifier.verifyPresentationVcJwt(vp.jwsSigned, it.challenge)
+                .shouldBeInstanceOf<CreatePresentationResult.VpJws>()
+            it.verifier.verifyPresentationVcJwt(vp.jwsSigned.shouldNotBeNull(), it.challenge).getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
         }
 
@@ -336,9 +339,10 @@ val AgentTest by testSuite {
                 )
             ).getOrThrow() as PresentationResponseParameters.DCQLParameters
             val vp = presentationParameters.verifiablePresentations.values.flatten().first()
-                .shouldBeInstanceOf<CreatePresentationResult.Signed>()
-            it.verifier.verifyPresentationVcJwt(vp.jwsSigned, it.challenge)
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
+                .shouldBeInstanceOf<CreatePresentationResult.VpJws>()
+            shouldThrowAny {
+                it.verifier.verifyPresentationVcJwt(vp.jwsSigned.shouldNotBeNull(), it.challenge).getOrThrow()
+            }
         }
 
         test("dcql: building presentation without necessary credentials") {
@@ -374,9 +378,9 @@ val AgentTest by testSuite {
             presentationParameters.shouldNotBeNull()
             val vp = presentationParameters.verifiablePresentations.values.flatten().firstOrNull()
                 .shouldNotBeNull()
-                .shouldBeInstanceOf<CreatePresentationResult.Signed>()
+                .shouldBeInstanceOf<CreatePresentationResult.VpJws>()
 
-            it.verifier.verifyPresentationVcJwt(vp.jwsSigned, it.challenge)
+            it.verifier.verifyPresentationVcJwt(vp.jwsSigned.shouldNotBeNull(), it.challenge).getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
                 .also {
                     it.vp.notVerifiablyFreshVerifiableCredentials.shouldBeEmpty()
@@ -405,7 +409,7 @@ val AgentTest by testSuite {
             presentationParameters.shouldNotBeNull()
             val vp = presentationParameters.verifiablePresentations.values.flatten().firstOrNull()
                 .shouldNotBeNull()
-                .shouldBeInstanceOf<CreatePresentationResult.Signed>()
+                .shouldBeInstanceOf<CreatePresentationResult.VpJws>()
 
             val credentialToRevoke = it.issuer.issueCredential(
                 DummyCredentialDataProvider.getCredential(
@@ -421,8 +425,48 @@ val AgentTest by testSuite {
                 credentialToRevoke.vc.credentialStatus.shouldBeInstanceOf<StatusListInfo>().index
             ) shouldBe true
 
-            it.verifier.verifyPresentationVcJwt(vp.jwsSigned, it.challenge)
+            it.verifier.verifyPresentationVcJwt(vp.jwsSigned.shouldNotBeNull(), it.challenge).getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
+        }
+
+        test("dcql: present raw vcjws when requiring no cryptographic holder binding") {
+            val credentials = it.issuer.issueCredential(
+                DummyCredentialDataProvider.getCredential(
+                    it.holderKeyMaterial.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    PLAIN_JWT,
+                ).getOrThrow()
+            ).getOrThrow()
+            it.holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
+            val presentationParameters = it.holder.createDefaultPresentation(
+                request = PresentationRequestParameters(
+                    nonce = it.challenge,
+                    audience = it.verifierId
+                ),
+                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
+                    dcqlQuery = DCQLQuery(
+                        credentials = DCQLCredentialQueryList(
+                            DCQLJwtVcCredentialQuery(
+                                id = DCQLCredentialQueryIdentifier(uuid4().toString()),
+                                format = CredentialFormatEnum.JWT_VC,
+                                meta = DCQLJwtVcCredentialMetadataAndValidityConstraints(
+                                    typeValues = nonEmptyListOf(
+                                        listOf(
+                                            VERIFIABLE_CREDENTIAL,
+                                            ConstantIndex.AtomicAttribute2023.vcType
+                                        )
+                                    )
+                                ),
+                                requireCryptographicHolderBinding = false,
+                            )
+                        ),
+                    )
+                )
+            ).getOrNull() as PresentationResponseParameters.DCQLParameters?
+            presentationParameters.shouldNotBeNull()
+            presentationParameters.verifiablePresentations.values.flatten().firstOrNull()
+                .shouldNotBeNull()
+                .shouldBeInstanceOf<CreatePresentationResult.VcJws>()
         }
     }
 }

@@ -24,8 +24,10 @@ import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -349,15 +351,17 @@ val OpenId4VpEuRefInteropTest by testSuite {
             val requestUrl = "https://example.com/request/$nonce"
             val (walletUrl, jar) = verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        credentials = setOf(
+                            RequestOptionsCredential(
+                                ConstantIndex.AtomicAttribute2023,
+                                ConstantIndex.CredentialRepresentation.SD_JWT,
+                                setOf(CLAIM_FAMILY_NAME, CLAIM_GIVEN_NAME)
+                            )
+                        )
+                    ).toPresentationExchangeRequest(),
                     responseMode = OpenIdConstants.ResponseMode.DirectPost,
                     responseUrl = "https://example.com/response",
-                    credentials = setOf(
-                        RequestOptionsCredential(
-                            ConstantIndex.AtomicAttribute2023,
-                            ConstantIndex.CredentialRepresentation.SD_JWT,
-                            setOf(CLAIM_FAMILY_NAME, CLAIM_GIVEN_NAME)
-                        )
-                    )
                 ),
                 OpenId4VpVerifier.CreationOptions.SignedRequestByReference("https://wallet.a-sit.at/mobile", requestUrl)
             ).getOrThrow()

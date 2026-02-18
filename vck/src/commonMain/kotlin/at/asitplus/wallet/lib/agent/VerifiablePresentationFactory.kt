@@ -306,7 +306,7 @@ class VerifiablePresentationFactory(
     suspend fun createVcPresentation(
         validCredentials: List<StoreEntry.Vc>,
         request: PresentationRequestParameters,
-    ): CreatePresentationResult.Signed = with(
+    ): CreatePresentationResult.VcJwsPresentationData = with(
         signVerifiablePresentation(
             JwsContentTypeConstants.JWT,
             VerifiablePresentation(validCredentials.map { it.vcSerialized }).toJws(
@@ -318,6 +318,6 @@ class VerifiablePresentationFactory(
         ).getOrElse {
             throw PresentationException(it)
         }) {
-        CreatePresentationResult.Signed(serialize(), this)
+        CreatePresentationResult.VpJws(serialize(), this)
     }
 }

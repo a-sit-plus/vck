@@ -41,7 +41,7 @@ sealed interface DCQLCredentialQuery {
      *  OID4VP 1.0: multiple: OPTIONAL. A boolean which indicates whether multiple Credentials can be returned
      *  for this Credential Query. If omitted, the default value is false.
      */
-    val multiple: Boolean?
+    val multiple: Boolean
 
     /**
      * OID4VP 1.0: meta: REQUIRED. An object defining additional properties requested by the
@@ -68,7 +68,7 @@ sealed interface DCQLCredentialQuery {
      *  with Cryptographic Holder Binding is required. If set to false, the Verifier accepts a Credential without
      *  Cryptographic Holder Binding proof.
      */
-    val requireCryptographicHolderBinding: Boolean?
+    val requireCryptographicHolderBinding: Boolean
 
     /**
      * OID4VP 1.0: claims: OPTIONAL. A non-empty array of objects as defined in Section 6.3
@@ -95,9 +95,9 @@ sealed interface DCQLCredentialQuery {
             meta: DCQLCredentialMetadataAndValidityConstraints,
             claims: DCQLClaimsQueryList<DCQLClaimsQuery>? = null,
             claimSets: NonEmptyList<List<DCQLClaimsQueryIdentifier>>? = null,
-            multiple: Boolean? = false,
+            multiple: Boolean? = null,
             trustedAuthorities: NonEmptyList<DCQLTrustedAuthorityQueryEntry>? = null,
-            requireCryptographicHolderBinding: Boolean? = true,
+            requireCryptographicHolderBinding: Boolean? = null,
         ): DCQLCredentialQuery = when (format) {
             CredentialFormatEnum.JWT_VC -> DCQLJwtVcCredentialQuery(
                 id = id,
@@ -107,9 +107,9 @@ sealed interface DCQLCredentialQuery {
                     it as DCQLJsonClaimsQuery
                 }?.toNonEmptyList()?.let(::DCQLClaimsQueryList),
                 claimSets = claimSets,
-                multiple = multiple,
+                multiple = multiple ?: Defaults.MULTIPLE,
                 trustedAuthorities = trustedAuthorities,
-                requireCryptographicHolderBinding = requireCryptographicHolderBinding,
+                requireCryptographicHolderBinding = requireCryptographicHolderBinding ?: Defaults.REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING,
             )
 
             CredentialFormatEnum.DC_SD_JWT -> DCQLSdJwtCredentialQuery(
@@ -120,9 +120,9 @@ sealed interface DCQLCredentialQuery {
                     it as DCQLJsonClaimsQuery
                 }?.toNonEmptyList()?.let(::DCQLClaimsQueryList),
                 claimSets = claimSets,
-                multiple = multiple,
+                multiple = multiple ?: Defaults.MULTIPLE,
                 trustedAuthorities = trustedAuthorities,
-                requireCryptographicHolderBinding = requireCryptographicHolderBinding,
+                requireCryptographicHolderBinding = requireCryptographicHolderBinding ?: Defaults.REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING,
             )
 
             CredentialFormatEnum.MSO_MDOC -> DCQLIsoMdocCredentialQuery(
@@ -133,13 +133,18 @@ sealed interface DCQLCredentialQuery {
                     it as DCQLIsoMdocClaimsQuery
                 }?.toNonEmptyList()?.let(::DCQLClaimsQueryList),
                 claimSets = claimSets,
-                multiple = multiple,
+                multiple = multiple ?: Defaults.MULTIPLE,
                 trustedAuthorities = trustedAuthorities,
-                requireCryptographicHolderBinding = requireCryptographicHolderBinding,
+                requireCryptographicHolderBinding = requireCryptographicHolderBinding ?: Defaults.REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING,
             )
 
             else -> throw IllegalArgumentException("Unsupported credential format: ${format}")
         }
+    }
+
+    object Defaults {
+        const val MULTIPLE = false
+        const val REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING = true
     }
 
     object SerialNames {

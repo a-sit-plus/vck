@@ -22,7 +22,6 @@ import kotlin.collections.plus
 typealias RequestedAttributes = Set<String>
 
 interface RequestOptions {
-    val credentials: Set<RequestOptionsCredential>
     val state: String
 }
 

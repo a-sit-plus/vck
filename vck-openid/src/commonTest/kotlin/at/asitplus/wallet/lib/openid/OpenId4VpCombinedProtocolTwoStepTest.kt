@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -57,9 +58,11 @@ val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
 
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 requestOptions = OpenId4VpRequestOptions(
-                    credentials = setOf(
-                        RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC)
-                    )
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        credentials = setOf(
+                            RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC)
+                        )
+                    ).toPresentationExchangeRequest(),
                 )
             )
             val preparationState = it.holderOid4vp.startAuthorizationResponsePreparation(authnRequest.serialize())
@@ -90,9 +93,11 @@ val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
 
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 requestOptions = OpenId4VpRequestOptions(
-                    credentials = setOf(
-                        RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC)
-                    )
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        credentials = setOf(
+                            RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC)
+                        )
+                    ).toPresentationExchangeRequest(),
                 )
             )
 
@@ -143,16 +148,18 @@ val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
 
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 requestOptions = OpenId4VpRequestOptions(
-                    credentials = setOf(
-                        RequestOptionsCredential(
-                            credentialScheme = AtomicAttribute2023,
-                            representation = ISO_MDOC,
-                            requestedOptionalAttributes = setOf(
-                                AtomicAttribute2023.CLAIM_FAMILY_NAME,
-                                AtomicAttribute2023.CLAIM_GIVEN_NAME
-                            )
-                        ),
-                    )
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        credentials = setOf(
+                            RequestOptionsCredential(
+                                credentialScheme = AtomicAttribute2023,
+                                representation = ISO_MDOC,
+                                requestedOptionalAttributes = setOf(
+                                    AtomicAttribute2023.CLAIM_FAMILY_NAME,
+                                    AtomicAttribute2023.CLAIM_GIVEN_NAME
+                                )
+                            ),
+                        )
+                    ).toPresentationExchangeRequest(),
                 )
             )
 
@@ -205,9 +212,11 @@ val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
             val sdJwtMatches = run {
                 val authnRequestSdJwt = it.verifierOid4vp.createAuthnRequest(
                     requestOptions = OpenId4VpRequestOptions(
-                        credentials = setOf(
-                            RequestOptionsCredential(AtomicAttribute2023, SD_JWT)
-                        )
+                        presentationRequest = CredentialPresentationRequestBuilder(
+                            credentials = setOf(
+                                RequestOptionsCredential(AtomicAttribute2023, SD_JWT)
+                            )
+                        ).toPresentationExchangeRequest(),
                     )
                 )
 
@@ -238,9 +247,11 @@ val OpenId4VpCombinedProtocolTwoStepTest by testSuite {
 
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 requestOptions = OpenId4VpRequestOptions(
-                    credentials = setOf(
-                        RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC)
-                    )
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        credentials = setOf(
+                            RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC)
+                        )
+                    ).toPresentationExchangeRequest(),
                 )
             )
 

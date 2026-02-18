@@ -15,6 +15,7 @@ import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import com.benasher44.uuid.uuid4
@@ -85,24 +86,26 @@ val OpenId4VpComplexSdJwtProtocolTest by testSuite {
                 "$CLAIM_ADDRESS.$CLAIM_ADDRESS_REGION",
                 "$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
             )
+
             val requestOptions = OpenId4VpRequestOptions(
-                credentials = setOf(
-                    RequestOptionsCredential(AtomicAttribute2023, SD_JWT, requestedClaims)
-                ),
-                presentationMechanism = PresentationMechanismEnum.PresentationExchange
-            ).apply {
-                toInputDescriptor(FormatContainerJwt(), FormatContainerSdJwt()).shouldBeSingleton().first().apply {
-                    constraints.shouldNotBeNull().apply {
-                        fields.shouldNotBeNull().forEach {
-                            it.path.shouldBeSingleton().first().apply {
-                                JsonPath(this)
-                                if (!this.contains("vct"))
-                                    split(".").shouldHaveSize(3) // "$", first segment, second segment
+                presentationRequest = CredentialPresentationRequestBuilder(
+                    setOf(
+                        RequestOptionsCredential(AtomicAttribute2023, SD_JWT, requestedClaims)
+                    )
+                ).toPresentationExchangeRequest().apply {
+                    presentationDefinition.inputDescriptors.shouldBeSingleton().first().apply {
+                        constraints.shouldNotBeNull().apply {
+                            fields.shouldNotBeNull().forEach {
+                                it.path.shouldBeSingleton().first().apply {
+                                    JsonPath(this)
+                                    if (!this.contains("vct"))
+                                        split(".").shouldHaveSize(3) // "$", first segment, second segment
+                                }
                             }
                         }
                     }
                 }
-            }
+            )
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 requestOptions,
                 OpenId4VpVerifier.CreationOptions.Query(it.walletUrl)
@@ -129,12 +132,13 @@ val OpenId4VpComplexSdJwtProtocolTest by testSuite {
                 "$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
             )
             val requestOptions = OpenId4VpRequestOptions(
-                credentials = setOf(
-                    RequestOptionsCredential(AtomicAttribute2023, SD_JWT, requestedClaims)
-                ),
-                presentationMechanism = PresentationMechanismEnum.DCQL
+                presentationRequest = CredentialPresentationRequestBuilder(
+                    setOf(
+                        RequestOptionsCredential(AtomicAttribute2023, SD_JWT, requestedClaims)
+                    )
+                ).toDCQLRequest()
             ).apply {
-                toDCQLQuery().shouldNotBeNull().apply {
+                (presentationRequest as? CredentialPresentationRequest.DCQLRequest)?.dcqlQuery.shouldNotBeNull().apply {
                     credentials.shouldBeSingleton().first().apply {
                         claims.shouldNotBeNull().forEach {
                             it.path.shouldNotBeNull().shouldHaveSize(2)

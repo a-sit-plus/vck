@@ -86,7 +86,7 @@ val ValidatorMdocTest by testSuite {
                         ?.getOrNull()
                 }
 
-            validator.verifyIsoCred(credential.issuerSigned, issuerKey)
+            validator.verifyIsoCred(credential.issuerSigned, issuerKey).getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessIso>()
         }
     }
@@ -108,7 +108,7 @@ val ValidatorMdocTest by testSuite {
                         ?.getOrNull()
                 }
 
-            val value = validator.verifyIsoCred(credential.issuerSigned, issuerKey)
+            val value = validator.verifyIsoCred(credential.issuerSigned, issuerKey).getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessIso>()
             issuerCredentialStore.setStatus(
                 timePeriod = FixedTimePeriodProvider.timePeriod,

@@ -69,7 +69,7 @@ val AgentComplexSdJwtDcqlTest by testSuite {
             val vp = createPresentation(it.holder, it.challenge, dcqlQuery, it.verifierId)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            it.verifier.verifyPresentationSdJwt(vp.sdJwt, it.challenge)
+            it.verifier.verifyPresentationSdJwt(vp.sdJwt, it.challenge).getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     disclosures.size shouldBe 1 // for address only
                     reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
@@ -102,7 +102,7 @@ val AgentComplexSdJwtDcqlTest by testSuite {
             val vp = createPresentation(it.holder, it.challenge, dcqlQuery, it.verifierId)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            it.verifier.verifyPresentationSdJwt(vp.sdJwt, it.challenge)
+            it.verifier.verifyPresentationSdJwt(vp.sdJwt, it.challenge).getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     disclosures.size shouldBe 2 // for region, country
 
@@ -137,7 +137,7 @@ val AgentComplexSdJwtDcqlTest by testSuite {
             val vp = createPresentation(it.holder, it.challenge, dcqlQuery, it.verifierId)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            it.verifier.verifyPresentationSdJwt(vp.sdJwt, it.challenge)
+            it.verifier.verifyPresentationSdJwt(vp.sdJwt, it.challenge).getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     disclosures.size shouldBe 3 // for address, region, country
                     reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
@@ -164,7 +164,7 @@ val AgentComplexSdJwtDcqlTest by testSuite {
             val vp = createPresentation(it.holder, it.challenge, dcqlQuery, it.verifierId)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            it.verifier.verifyPresentationSdJwt(vp.sdJwt, it.challenge)
+            it.verifier.verifyPresentationSdJwt(vp.sdJwt, it.challenge).getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     disclosures.size shouldBe 3 // for address, region, country
                     reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
@@ -193,7 +193,7 @@ val AgentComplexSdJwtDcqlTest by testSuite {
             val vp = createPresentation(it.holder, it.challenge, dcqlQuery, it.verifierId)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            it.verifier.verifyPresentationSdJwt(vp.sdJwt, it.challenge)
+            it.verifier.verifyPresentationSdJwt(vp.sdJwt, it.challenge).getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     disclosures.size shouldBe 3 // for address, region, country
                     reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
@@ -220,7 +220,7 @@ val AgentComplexSdJwtDcqlTest by testSuite {
             val vp = createPresentation(it.holder, it.challenge, dcqlQuery, it.verifierId)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            it.verifier.verifyPresentationSdJwt(vp.sdJwt, it.challenge)
+            it.verifier.verifyPresentationSdJwt(vp.sdJwt, it.challenge).getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     disclosures.size shouldBe 2 // claim_given_name, claim_family_name
                     reconstructedJsonObject[AtomicAttribute2023.CLAIM_GIVEN_NAME]

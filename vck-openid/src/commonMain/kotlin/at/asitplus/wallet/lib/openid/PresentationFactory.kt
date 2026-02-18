@@ -256,7 +256,7 @@ internal class PresentationFactory(
     private fun CreatePresentationResult.toFormat(): ClaimFormat = when (this) {
         is CreatePresentationResult.DeviceResponse -> ClaimFormat.MSO_MDOC
         is CreatePresentationResult.SdJwt -> ClaimFormat.SD_JWT
-        is CreatePresentationResult.Signed -> ClaimFormat.JWT_VP
+        is CreatePresentationResult.VcJwsPresentationData -> ClaimFormat.JWT_VP
     }
 
 }

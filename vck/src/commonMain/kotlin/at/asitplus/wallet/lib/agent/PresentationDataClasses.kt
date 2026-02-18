@@ -103,7 +103,8 @@ sealed interface PresentationResponseParameters {
 
     companion object {
         private fun CreatePresentationResult.toJsonPrimitive() = when (val presentationResult = this) {
-            is CreatePresentationResult.Signed -> JsonPrimitive(presentationResult.serialized)
+            is CreatePresentationResult.VpJws -> JsonPrimitive(presentationResult.serialized)
+            is CreatePresentationResult.VcJws -> JsonPrimitive(presentationResult.serialized)
             is CreatePresentationResult.SdJwt -> JsonPrimitive(presentationResult.serialized)
             is CreatePresentationResult.DeviceResponse -> JsonPrimitive(
                 coseCompliantSerializer.encodeToByteArray(presentationResult.deviceResponse)
@@ -113,20 +114,26 @@ sealed interface PresentationResponseParameters {
     }
 }
 
-sealed class CreatePresentationResult {
-    data class Signed(
+sealed interface CreatePresentationResult {
+    sealed interface VcJwsPresentationData : CreatePresentationResult
+
+    data class VcJws(
+        val serialized: String,
+    ) : VcJwsPresentationData
+
+    data class VpJws(
         val serialized: String,
         val jwsSigned: JwsSigned<VerifiablePresentationJws>,
-    ) : CreatePresentationResult()
+    ) : VcJwsPresentationData
 
     data class SdJwt(
         val serialized: String,
         val sdJwt: SdJwtSigned,
-    ) : CreatePresentationResult()
+    ) : CreatePresentationResult
 
     data class DeviceResponse(
         val deviceResponse: at.asitplus.iso.DeviceResponse,
-    ) : CreatePresentationResult()
+    ) : CreatePresentationResult
 }
 
 @Serializable

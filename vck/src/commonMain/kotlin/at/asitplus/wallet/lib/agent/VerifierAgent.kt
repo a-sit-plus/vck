@@ -1,12 +1,14 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.catchingUnwrapped
+import at.asitplus.KmmResult
+import at.asitplus.catching
 import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.Document
 import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
+import at.asitplus.wallet.lib.data.VcJwsVerificationResultWrapper
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 
@@ -24,32 +26,46 @@ class VerifierAgent(
     private val validatorSdJwt: ValidatorSdJwt = ValidatorSdJwt(),
     private val validatorMdoc: ValidatorMdoc = ValidatorMdoc(),
 ) : Verifier {
-
     override suspend fun verifyPresentationSdJwt(
         input: SdJwtSigned,
         challenge: String,
         transactionData: List<TransactionDataBase64Url>?,
-    ): VerifyPresentationResult = catchingUnwrapped {
-        validatorSdJwt.verifyVpSdJwt(input, challenge, identifier, transactionData)
-    }.getOrElse {
-        VerifyPresentationResult.ValidationError(it)
-    }
+    ): KmmResult<VerifyPresentationResult.SuccessSdJwt> = validatorSdJwt.verifyVpSdJwt(
+        input = input,
+        challenge = challenge,
+        clientId = identifier,
+        transactionData = transactionData,
+    )
 
     override suspend fun verifyPresentationVcJwt(
         input: JwsSigned<VerifiablePresentationJws>,
         challenge: String,
-    ): VerifyPresentationResult = catchingUnwrapped {
-        validatorVcJws.verifyVpJws(input, challenge, identifier)
-    }.getOrElse {
-        VerifyPresentationResult.ValidationError(it)
+    ): KmmResult<VerifyPresentationResult.Success> = validatorVcJws.verifyVpJws(
+        input = input,
+        challenge = challenge,
+        clientId = identifier,
+    )
+
+    override suspend fun verifyUnsignedVcJws(
+        input: String
+    ): KmmResult<VerifyPresentationResult.SuccessUnsignedVcJws> = validatorVcJws.verifyVcJws(
+        input = input,
+        publicKey = null,
+        vpJws = null
+    ).map { jws ->
+        VerifyPresentationResult.SuccessUnsignedVcJws(
+            VcJwsVerificationResultWrapper(
+                vcJws = jws.jws,
+                freshnessSummary = validatorVcJws.checkCredentialFreshness(jws.jws),
+            )
+        )
     }
 
     override suspend fun verifyPresentationIsoMdoc(
         input: DeviceResponse,
         verifyDocument: suspend (MobileSecurityObject, Document) -> Boolean,
-    ): VerifyPresentationResult = catchingUnwrapped {
-        validatorMdoc.verifyDeviceResponse(input, verifyDocument)
-    }.getOrElse {
-        VerifyPresentationResult.ValidationError(it)
-    }
+    ): KmmResult<VerifyPresentationResult.SuccessIso> = validatorMdoc.verifyDeviceResponse(
+        deviceResponse = input,
+        verifyDocumentCallback = verifyDocument,
+    )
 }
