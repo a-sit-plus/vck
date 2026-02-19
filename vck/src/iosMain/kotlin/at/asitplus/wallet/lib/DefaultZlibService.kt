@@ -4,6 +4,7 @@ package at.asitplus.wallet.lib
 
 import at.asitplus.wallet.lib.data.rfc1950.CompressionMethod
 import at.asitplus.wallet.lib.data.rfc1950.CompressionMethodAndFlags
+import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.MemScope
@@ -84,6 +85,7 @@ actual class DefaultZlibService actual constructor() : ZlibService {
     }
 }
 
+@OptIn(BetaInteropApi::class)
 @Suppress("NOTHING_TO_INLINE")
 inline fun MemScope.toData(array: ByteArray): NSData =
     NSData.create(
