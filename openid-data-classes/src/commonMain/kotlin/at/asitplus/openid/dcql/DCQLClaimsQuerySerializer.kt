@@ -9,8 +9,8 @@ object DCQLClaimsQuerySerializer : JsonContentPolymorphicSerializer<DCQLClaimsQu
     override fun selectDeserializer(element: JsonElement): DeserializationStrategy<DCQLClaimsQuery> {
         val parameters = element.jsonObject
         return when {
-            DCQLIsoMdocClaimsQuery.SerialNames.NAMESPACE in parameters || DCQLIsoMdocClaimsQuery.SerialNames.CLAIM_NAME in parameters -> DCQLIsoMdocClaimsQuery.serializer()
-            else -> DCQLJsonClaimsQuery.serializer()
+            DCQLIsoMdocClaimsQuery.SerialNames.INTENT_TO_RETAIN in parameters -> DCQLIsoMdocClaimsQuery.serializer()
+            else -> DCQLAmbiguousClaimsQuery.serializer()
         }
     }
 }

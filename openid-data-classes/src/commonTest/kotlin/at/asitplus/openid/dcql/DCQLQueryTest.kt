@@ -236,12 +236,10 @@ val DCQLQueryTest by testSuite {
                       },
                       "claims": [
                         {
-                          "namespace": "org.iso.7367.1",
-                          "claim_name": "vehicle_holder"
+                          "${DCQLClaimsQuery.SerialNames.PATH}": ["org.iso.7367.1", "vehicle_holder"]
                         },
                         {
-                          "namespace": "org.iso.18013.5.1",
-                          "claim_name": "first_name"
+                          "${DCQLClaimsQuery.SerialNames.PATH}": ["org.iso.18013.5.1", "first_name"]
                         }
                       ]
                     }
@@ -415,12 +413,10 @@ val DCQLQueryTest by testSuite {
                       },
                       "claims": [
                         {
-                          "namespace": "org.iso.7367.1",
-                          "claim_name": "vehicle_holder"
+                          "path": ["org.iso.7367.1", "vehicle_holder"]
                         },
                         {
-                          "namespace": "org.iso.18013.5.1",
-                          "claim_name": "first_name"
+                          "path": ["org.iso.18013.5.1", "first_name"]
                         }
                       ]
                     }
@@ -703,18 +699,15 @@ val DCQLQueryTest by testSuite {
                       "claims": [
                         {
                           "id": "given_name",
-                          "namespace": "org.iso.18013.5.1",
-                          "claim_name": "given_name"
+                          "path": ["org.iso.18013.5.1", "given_name"]
                         },
                         {
                           "id": "family_name",
-                          "namespace": "org.iso.18013.5.1",
-                          "claim_name": "family_name"
+                          "path": ["org.iso.18013.5.1", "family_name"]
                         },
                         {
                           "id": "portrait",
-                          "namespace": "org.iso.18013.5.1",
-                          "claim_name": "portrait"
+                          "path": ["org.iso.18013.5.1", "portrait"]
                         }
                       ]
                     },
@@ -727,13 +720,11 @@ val DCQLQueryTest by testSuite {
                       "claims": [
                         {
                           "id": "resident_address",
-                          "namespace": "org.iso.18013.5.1",
-                          "claim_name": "resident_address"
+                          "path": ["org.iso.18013.5.1", "resident_address"]
                         },
                         {
                           "id": "resident_country",
-                          "namespace": "org.iso.18013.5.1",
-                          "claim_name": "resident_country"
+                          "path": ["org.iso.18013.5.1", "resident_country"]
                         }
                       ]
                     },
@@ -746,18 +737,15 @@ val DCQLQueryTest by testSuite {
                       "claims": [
                         {
                           "id": "given_name",
-                          "namespace": "org.iso.23220.1",
-                          "claim_name": "given_name"
+                          "path": ["org.iso.23220.1", "given_name"]
                         },
                         {
                           "id": "family_name",
-                          "namespace": "org.iso.23220.1",
-                          "claim_name": "family_name"
+                          "path": ["org.iso.23220.1", "family_name"]
                         },
                         {
                           "id": "portrait",
-                          "namespace": "org.iso.23220.1",
-                          "claim_name": "portrait"
+                          "path": ["org.iso.23220.1", "portrait"]
                         }
                       ]
                     },
@@ -770,13 +758,11 @@ val DCQLQueryTest by testSuite {
                       "claims": [
                         {
                           "id": "resident_address",
-                          "namespace": "org.iso.23220.1",
-                          "claim_name": "resident_address"
+                          "path": ["org.iso.23220.1", "resident_address"]
                         },
                         {
                           "id": "resident_country",
-                          "namespace": "org.iso.23220.1",
-                          "claim_name": "resident_country"
+                          "path": ["org.iso.23220.1", "resident_country"]
                         }
                       ]
                     }
@@ -1397,8 +1383,7 @@ val DCQLQueryTest by testSuite {
                           "format": "${CredentialFormatEnum.MSO_MDOC.text}",
                           "claims": [
                               {
-                                "${DCQLIsoMdocClaimsQuery.SerialNames.NAMESPACE}": "namespace",
-                                "${DCQLIsoMdocClaimsQuery.SerialNames.CLAIM_NAME}": "claimName",
+                                "${DCQLClaimsQuery.SerialNames.PATH}": ["namespace", "claimName"],
                                 "${DCQLClaimsQuery.SerialNames.VALUES}": ${testVector.first}
                               }
                           ],

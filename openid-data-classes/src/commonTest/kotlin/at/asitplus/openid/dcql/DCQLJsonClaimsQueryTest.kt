@@ -1,7 +1,5 @@
 package at.asitplus.openid.dcql
 
-import at.asitplus.openid.CredentialFormatEnum
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.minus
 import de.infix.testBalloon.framework.core.testSuite
@@ -9,19 +7,17 @@ import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
-import kotlin.random.Random
 
 val DCQLJsonClaimsQueryTest by testSuite {
     "specification" - {
         "serial names" {
-            DCQLJsonClaimsQuery.SerialNames.PATH shouldBe "path"
+            DCQLClaimsQuery.SerialNames.PATH shouldBe "path"
         }
     }
     "instance serialization" {
@@ -37,7 +33,7 @@ val DCQLJsonClaimsQueryTest by testSuite {
         serialized.jsonObject.entries shouldHaveSize 2
 
         DCQLClaimsQuery.SerialNames.ID shouldBeIn serialized.jsonObject.keys
-        DCQLJsonClaimsQuery.SerialNames.PATH shouldBeIn serialized.jsonObject.keys
+        DCQLClaimsQuery.SerialNames.PATH shouldBeIn serialized.jsonObject.keys
     }
     "execution" {
         val credential = buildJsonArray {
@@ -111,19 +107,7 @@ val DCQLJsonClaimsQueryTest by testSuite {
                 DCQLExpectedClaimValue.BooleanValue(true),
             )
         ).executeJsonClaimsQueryAgainstCredential(
-            credential = credential,
-            credentialStructureExtractor = {
-                DCQLCredentialClaimStructure.JsonBasedStructure(it)
-            },
-            credentialQuery = DCQLSdJwtCredentialQuery(
-                id = DCQLCredentialQueryIdentifier(
-                    Random.nextBytes(32).encodeToString(Base64UrlStrict),
-                ),
-                format = CredentialFormatEnum.DC_SD_JWT,
-                meta = DCQLSdJwtCredentialMetadataAndValidityConstraints(
-                    vctValues = listOf("anything")
-                )
-            )
+            DCQLCredentialClaimStructure.JsonBasedStructure(credential)
         ).getOrThrow().shouldBeInstanceOf<DCQLClaimsQueryResult.JsonResult>().let {
             it.nodeList shouldHaveSize 3
         }
@@ -138,19 +122,7 @@ val DCQLJsonClaimsQueryTest by testSuite {
                 DCQLExpectedClaimValue.BooleanValue(true),
             )
         ).executeJsonClaimsQueryAgainstCredential(
-            credential = credential,
-            credentialStructureExtractor = {
-                DCQLCredentialClaimStructure.JsonBasedStructure(it)
-            },
-            credentialQuery = DCQLIsoMdocCredentialQuery(
-                id = DCQLCredentialQueryIdentifier(
-                    Random.nextBytes(32).encodeToString(Base64UrlStrict),
-                ),
-                format = CredentialFormatEnum.MSO_MDOC,
-                meta = DCQLIsoMdocCredentialMetadataAndValidityConstraints(
-                    doctypeValue = "anything"
-                )
-            )
+            DCQLCredentialClaimStructure.JsonBasedStructure(credential)
         ).isSuccess shouldBe false
     }
 }

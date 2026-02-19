@@ -2,7 +2,6 @@ package at.asitplus.openid.dcql
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.openid.CredentialFormatEnum
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.booleanOrNull
@@ -24,10 +23,6 @@ data class DCQLJsonClaimsQuery(
     @SerialName(DCQLClaimsQuery.SerialNames.PATH)
     override val path: DCQLClaimsPathPointer
 ) : DCQLClaimsQuery {
-    object SerialNames {
-        const val PATH = "path"
-    }
-
     /**
      *  6.3.1.1. Selecting Claims
      *
@@ -57,20 +52,18 @@ data class DCQLJsonClaimsQuery(
      * requested by the Verifier according to these rules, it MUST NOT return the respective
      * Credential.
      */
-    fun <Credential : Any> executeJsonClaimsQueryAgainstCredential(
-        credentialQuery: DCQLCredentialQuery,
-        credential: Credential,
-        credentialStructureExtractor: (Credential) -> DCQLCredentialClaimStructure.JsonBasedStructure,
-        jsonBasedCredentialFormats: List<CredentialFormatEnum> = listOf(
-            CredentialFormatEnum.DC_SD_JWT,
-            CredentialFormatEnum.JWT_VC,
-        )
-    ): KmmResult<DCQLClaimsQueryResult.JsonResult> = catching {
-        if (credentialQuery.format !in jsonBasedCredentialFormats) {
-            throw IllegalArgumentException("Inconsistent credential format and claims query")
+    override fun executeClaimsQueryAgainstCredential(
+        credentialStructure: DCQLCredentialClaimStructure
+    ): KmmResult<DCQLClaimsQueryResult> {
+        require(credentialStructure is DCQLCredentialClaimStructure.JsonBasedStructure) {
+            "Incompatible credential claim structure: Expected JSON but got $credentialStructure"
         }
+        return executeJsonClaimsQueryAgainstCredential(credentialStructure)
+    }
 
-        val credentialStructure = credentialStructureExtractor(credential)
+    fun executeJsonClaimsQueryAgainstCredential(
+        credentialStructure: DCQLCredentialClaimStructure.JsonBasedStructure,
+    ): KmmResult<DCQLClaimsQueryResult.JsonResult> = catching {
         val queryResults = path.query(credentialStructure.jsonElement)
         val result = values?.let { values ->
             queryResults.filter { result ->

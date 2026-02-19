@@ -21,18 +21,19 @@ val DCQLClaimsQueryTest by testSuite {
         "iso" {
             val value = DCQLIsoMdocClaimsQuery(
                 id = DCQLClaimsQueryIdentifier("test"),
-                namespace = "dummyNamespace",
-                claimName = "dummyClaimName"
+                path = DCQLClaimsPathPointer(
+                    "dummyNamespace",
+                    "dummyClaimName"
+                )
             )
 
             val base: DCQLClaimsQuery = value
             val serialized = Json.encodeToJsonElement(base)
             serialized shouldBe Json.encodeToJsonElement(value)
-            serialized.jsonObject.entries shouldHaveSize 3
+            serialized.jsonObject.entries shouldHaveSize 2
 
             DCQLClaimsQuery.SerialNames.ID shouldBeIn serialized.jsonObject.keys
-            DCQLIsoMdocClaimsQuery.SerialNames.NAMESPACE shouldBeIn serialized.jsonObject.keys
-            DCQLIsoMdocClaimsQuery.SerialNames.CLAIM_NAME shouldBeIn serialized.jsonObject.keys
+            DCQLClaimsQuery.SerialNames.PATH shouldBeIn serialized.jsonObject.keys
         }
         "other" {
             val value = DCQLJsonClaimsQuery(
@@ -48,7 +49,7 @@ val DCQLClaimsQueryTest by testSuite {
             serialized.jsonObject.entries shouldHaveSize 2
 
             DCQLClaimsQuery.SerialNames.ID shouldBeIn serialized.jsonObject.keys
-            DCQLJsonClaimsQuery.SerialNames.PATH shouldBeIn serialized.jsonObject.keys
+            DCQLClaimsQuery.SerialNames.PATH shouldBeIn serialized.jsonObject.keys
         }
     }
 }

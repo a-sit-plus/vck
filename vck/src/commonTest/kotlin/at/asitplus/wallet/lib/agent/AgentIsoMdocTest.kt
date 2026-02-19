@@ -10,6 +10,7 @@ import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment.NameSegment
 import at.asitplus.openid.CredentialFormatEnum
+import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLClaimsQueryList
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialQueryList
@@ -157,12 +158,16 @@ val AgentIsoMdocTest by testSuite {
                 credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
                     buildDCQLQuery(
                         DCQLIsoMdocClaimsQuery(
-                            namespace = ConstantIndex.AtomicAttribute2023.isoNamespace,
-                            claimName = CLAIM_GIVEN_NAME
+                            path = DCQLClaimsPathPointer(
+                                ConstantIndex.AtomicAttribute2023.isoNamespace,
+                                CLAIM_GIVEN_NAME
+                            )
                         ),
                         DCQLIsoMdocClaimsQuery(
-                            namespace = ConstantIndex.AtomicAttribute2023.isoNamespace,
-                            claimName = CLAIM_DATE_OF_BIRTH
+                            path = DCQLClaimsPathPointer(
+                                ConstantIndex.AtomicAttribute2023.isoNamespace,
+                                CLAIM_DATE_OF_BIRTH
+                            )
                         ),
                     )
                 )
@@ -194,8 +199,10 @@ val AgentIsoMdocTest by testSuite {
                 credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
                     buildDCQLQuery(
                         DCQLIsoMdocClaimsQuery(
-                            namespace = ConstantIndex.AtomicAttribute2023.isoNamespace,
-                            claimName = CLAIM_GIVEN_NAME
+                            path = DCQLClaimsPathPointer(
+                                ConstantIndex.AtomicAttribute2023.isoNamespace,
+                                CLAIM_GIVEN_NAME
+                            ),
                         ),
                     ),
                 )
