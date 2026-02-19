@@ -1,6 +1,5 @@
 package at.asitplus.openid.dcql
 
-import at.asitplus.csc.or
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.openid.CredentialFormatEnum
@@ -11,8 +10,6 @@ import at.asitplus.testballoon.withData
 import at.asitplus.testballoon.withDataSuites
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
-import io.kotest.assertions.throwables.shouldNotThrowAny
-import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.maps.shouldHaveSize
@@ -73,9 +70,9 @@ val DCQLQueryTest by testSuite {
                     "vct_values": [ "https://credentials.example.com/identity_credential" ]
                   },
                   "claims": [
-                      {"path": ["last_name"]},
-                      {"path": ["first_name"]},
-                      {"path": ["address", "street_address"]}
+                    {"path": ["last_name"] },
+                    {"path": ["first_name"] },
+                    {"path": ["address", "street_address"] }
                   ]
                 }
               ]
@@ -133,7 +130,9 @@ val DCQLQueryTest by testSuite {
                         ),
                     ),
                 ) {
-                    TestCredentialQueryAdapter(dcqlQuery).isSatisfiable(it) shouldBe false
+                    TestCredentialQueryAdapter(dcqlQuery).isSatisfiable(
+                        it,
+                    ) shouldBe false
                 }
             }
 

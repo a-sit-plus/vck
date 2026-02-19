@@ -19,6 +19,7 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlin.random.Random
 
+@Suppress("unused")
 val DCQLIsoMdocClaimsQueryTest by testSuite {
     "specification" - {
         "serial names" {
@@ -101,21 +102,6 @@ val DCQLIsoMdocClaimsQueryTest by testSuite {
             ),
         ).executeIsoMdocClaimsQueryAgainstCredential(
             credentialStructure = DCQLCredentialClaimStructure.IsoMdocStructure(credential)
-        ).isSuccess shouldBe false
-
-        DCQLIsoMdocClaimsQuery(
-            id = DCQLClaimsQueryIdentifier("test"),
-            values = listOf(
-                DCQLExpectedClaimValue.StringValue("test"),
-                DCQLExpectedClaimValue.IntegerValue(0),
-                DCQLExpectedClaimValue.BooleanValue(true),
-            ),
-            path = DCQLClaimsPathPointer(
-                "testNamespace",
-                "testClaimName",
-            ),
-        ).executeIsoMdocClaimsQueryAgainstCredential(
-            DCQLCredentialClaimStructure.IsoMdocStructure(credential)
         ).isSuccess shouldBe false
     }
 

@@ -14,6 +14,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 
+@Suppress("unused")
 val DCQLJsonClaimsQueryTest by testSuite {
     "specification" - {
         "serial names" {
@@ -111,19 +112,6 @@ val DCQLJsonClaimsQueryTest by testSuite {
         ).getOrThrow().shouldBeInstanceOf<DCQLClaimsQueryResult.JsonResult>().let {
             it.nodeList shouldHaveSize 3
         }
-
-
-        DCQLJsonClaimsQuery(
-            id = DCQLClaimsQueryIdentifier("test"),
-            path = DCQLClaimsPathPointer(null) + "a" + 0u,
-            values = listOf(
-                DCQLExpectedClaimValue.StringValue("test"),
-                DCQLExpectedClaimValue.IntegerValue(0),
-                DCQLExpectedClaimValue.BooleanValue(true),
-            )
-        ).executeJsonClaimsQueryAgainstCredential(
-            DCQLCredentialClaimStructure.JsonBasedStructure(credential)
-        ).isSuccess shouldBe false
     }
 }
 

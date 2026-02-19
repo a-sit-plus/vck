@@ -41,7 +41,7 @@ sealed interface DCQLCredentialQuery {
      *  OID4VP 1.0: multiple: OPTIONAL. A boolean which indicates whether multiple Credentials can be returned
      *  for this Credential Query. If omitted, the default value is false.
      */
-    val multiple: Boolean
+    val multiple: Boolean?
 
     /**
      * OID4VP 1.0: meta: REQUIRED. An object defining additional properties requested by the
@@ -68,7 +68,7 @@ sealed interface DCQLCredentialQuery {
      *  with Cryptographic Holder Binding is required. If set to false, the Verifier accepts a Credential without
      *  Cryptographic Holder Binding proof.
      */
-    val requireCryptographicHolderBinding: Boolean
+    val requireCryptographicHolderBinding: Boolean?
 
     /**
      * OID4VP 1.0: claims: OPTIONAL. A non-empty array of objects as defined in Section 6.3
@@ -95,9 +95,9 @@ sealed interface DCQLCredentialQuery {
             meta: DCQLCredentialMetadataAndValidityConstraints,
             claims: DCQLClaimsQueryList<DCQLClaimsQuery>? = null,
             claimSets: NonEmptyList<List<DCQLClaimsQueryIdentifier>>? = null,
-            multiple: Boolean? = null,
+            multiple: Boolean? = false,
             trustedAuthorities: NonEmptyList<DCQLTrustedAuthorityQueryEntry>? = null,
-            requireCryptographicHolderBinding: Boolean? = null,
+            requireCryptographicHolderBinding: Boolean? = true,
         ): DCQLCredentialQuery = when (format) {
             CredentialFormatEnum.JWT_VC -> DCQLJwtVcCredentialQuery(
                 id = id,
@@ -107,10 +107,9 @@ sealed interface DCQLCredentialQuery {
                     it as DCQLJsonClaimsQuery
                 }?.toNonEmptyList()?.let(::DCQLClaimsQueryList),
                 claimSets = claimSets,
-                multiple = multiple ?: Defaults.MULTIPLE,
+                multiple = multiple,
                 trustedAuthorities = trustedAuthorities,
-                requireCryptographicHolderBinding = requireCryptographicHolderBinding
-                    ?: Defaults.REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING,
+                requireCryptographicHolderBinding = requireCryptographicHolderBinding,
             )
 
             CredentialFormatEnum.DC_SD_JWT -> DCQLSdJwtCredentialQuery(
@@ -121,10 +120,9 @@ sealed interface DCQLCredentialQuery {
                     it as DCQLJsonClaimsQuery
                 }?.toNonEmptyList()?.let(::DCQLClaimsQueryList),
                 claimSets = claimSets,
-                multiple = multiple ?: Defaults.MULTIPLE,
+                multiple = multiple,
                 trustedAuthorities = trustedAuthorities,
-                requireCryptographicHolderBinding = requireCryptographicHolderBinding
-                    ?: Defaults.REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING,
+                requireCryptographicHolderBinding = requireCryptographicHolderBinding,
             )
 
             CredentialFormatEnum.MSO_MDOC -> DCQLIsoMdocCredentialQuery(
@@ -135,19 +133,13 @@ sealed interface DCQLCredentialQuery {
                     it as DCQLIsoMdocClaimsQuery
                 }?.toNonEmptyList()?.let(::DCQLClaimsQueryList),
                 claimSets = claimSets,
-                multiple = multiple ?: Defaults.MULTIPLE,
+                multiple = multiple,
                 trustedAuthorities = trustedAuthorities,
-                requireCryptographicHolderBinding = requireCryptographicHolderBinding
-                    ?: Defaults.REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING,
+                requireCryptographicHolderBinding = requireCryptographicHolderBinding,
             )
 
             else -> throw IllegalArgumentException("Unsupported credential format: ${format}")
         }
-    }
-
-    object Defaults {
-        const val MULTIPLE = false
-        const val REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING = true
     }
 
     object SerialNames {
@@ -241,7 +233,7 @@ sealed interface DCQLCredentialQuery {
             throw IllegalArgumentException("Credential matches to none of the trusted authorities.")
         }
 
-        if (requireCryptographicHolderBinding == true && !satisfiesCryptographicHolderBinding(credential)) {
+        if (requireCryptographicHolderBinding != false && !satisfiesCryptographicHolderBinding(credential)) {
             throw IllegalArgumentException("Credential does not satisfy constraint `require_cryptographic_holder_binding`.")
         }
 

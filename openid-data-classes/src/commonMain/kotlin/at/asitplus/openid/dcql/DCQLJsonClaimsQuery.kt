@@ -79,7 +79,9 @@ data class DCQLJsonClaimsQuery(
                 }.getOrNull() ?: false
             }
         } ?: queryResults
-
+        require(result.isNotEmpty()) {
+            throw IllegalStateException("Credential does not satisfy claims query: $this")
+        }
         DCQLClaimsQueryResult.JsonResult(result)
     }
 }
