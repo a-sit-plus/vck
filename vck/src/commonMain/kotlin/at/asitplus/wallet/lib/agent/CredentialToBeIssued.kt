@@ -18,6 +18,7 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialSubject
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
 import at.asitplus.wallet.lib.jws.JwsHeaderModifierFun
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -74,6 +75,7 @@ sealed class CredentialToBeIssued {
         override val scheme: ConstantIndex.CredentialScheme,
         override val subjectPublicKey: CryptoPublicKey,
         override val userInfo: OidcUserInfoExtended,
+        val revocationKind: RevocationList.Kind
     ) : CredentialToBeIssued()
 }
 
