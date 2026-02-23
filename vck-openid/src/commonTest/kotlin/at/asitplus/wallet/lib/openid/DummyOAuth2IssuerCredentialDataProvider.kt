@@ -32,6 +32,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MD
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.LocalDateOrInstant
+import at.asitplus.wallet.lib.data.toJsonElement
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import at.asitplus.wallet.lib.oidvci.CredentialDataProviderFun
 import at.asitplus.wallet.lib.oidvci.CredentialDataProviderInput
@@ -109,10 +110,7 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialDataProviderFun {
             )
 
             PLAIN_JWT -> CredentialToBeIssued.VcJwt(
-                Json.encodeToJsonElement(
-                    AtomicAttribute2023.serializer(),
-                    AtomicAttribute2023(subjectId, GIVEN_NAME, givenName ?: "no value")
-                ),
+                AtomicAttribute2023(subjectId, GIVEN_NAME, givenName ?: "no value").toJsonElement(),
                 expiration,
                 ConstantIndex.AtomicAttribute2023,
                 subjectPublicKey,

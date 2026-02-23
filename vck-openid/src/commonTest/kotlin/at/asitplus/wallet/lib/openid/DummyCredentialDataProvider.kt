@@ -75,11 +75,7 @@ object DummyCredentialDataProvider {
                 )
 
                 PLAIN_JWT -> CredentialToBeIssued.VcJwt(
-                    subject = AtomicAttribute2023(
-                        subjectId,
-                        CLAIM_GIVEN_NAME,
-                        "Susanne"
-                    ).toJsonElement(),
+                    subject = AtomicAttribute2023(subjectId, CLAIM_GIVEN_NAME, "Susanne").toJsonElement(),
                     expiration = expiration,
                     scheme = credentialScheme,
                     subjectPublicKey = subjectPublicKey,
