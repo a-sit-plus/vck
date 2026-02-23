@@ -28,6 +28,8 @@ data object MediaTypes {
         )
         const val STATUSLIST_CBOR = MediaTypes.Application.STATUSLIST_CBOR
 
+        const val IDENTIFIERLIST_CWT = MediaTypes.Application.IDENTIFIERLIST_CWT
+
         /** `application/json` */
         const val JSON = "application/json"
 
