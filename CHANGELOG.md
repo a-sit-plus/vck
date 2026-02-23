@@ -1,8 +1,8 @@
 # Changelog
 
 Release 5.12.0 (unreleased):
- - W3C Verifiable Presentation validation: now verifies that the subject field contains the VP issuer's public key (VC holder's public key).
- - W3C Verifiable Credential: Replaced `CredentialSubject` abstract class with `JsonElement` for W3C VC `credentialSubject` field. Polymorphic deserialization using `type` discriminator is unreliable since OpenID4VC W3C Data Model Spec 1.1 doesn't guarantee this field's presence.
+- W3C Verifiable Presentation validation: Now verifies that the subject field contains the VP issuer's public key (VC holder's public key).
+- W3C Verifiable Credential: Replaced `CredentialSubject` abstract class with `JsonElement` for W3C VC `credentialSubject` field. Polymorphic deserialization using `type` discriminator is unreliable since W3C Data Model Spec 1.1 doesn't guarantee this field's presence.
  - Digital Credentials API:
    - Add issuance data classes: `CredentialCreationOptions`, `DigitalCredentialCreationOptions`, `DigitalCredentialCreateRequest`, `DigitalCredentialOfferReturn`, and `DigitalCredentialOfferReturnData`. These classes are based on a preliminary specification and are subject to change.
    - Add `CredentialRequestOptions.create()` method which automatically sets `mediation` to required and takes the list of requests, make the default constructor private.
