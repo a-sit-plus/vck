@@ -75,7 +75,7 @@ sealed class CredentialToBeIssued {
         override val scheme: ConstantIndex.CredentialScheme,
         override val subjectPublicKey: CryptoPublicKey,
         override val userInfo: OidcUserInfoExtended,
-        val revocationKind: RevocationList.Kind
+        val revocationKind: RevocationList.Kind = RevocationList.Kind.STATUS_LIST
     ) : CredentialToBeIssued()
 }
 

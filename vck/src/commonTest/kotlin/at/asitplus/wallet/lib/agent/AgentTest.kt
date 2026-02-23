@@ -178,7 +178,7 @@ val AgentTest by testSuite {
                 .getOrThrow()
                 .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Vc>()
 
-            it.statusListIssuer.revokeCredential(
+            it.statusListIssuer.revokeCredentialByIndex(
                 FixedTimePeriodProvider.timePeriod,
                 credential.vc.credentialStatus.shouldBeInstanceOf<StatusListInfo>().index
             ) shouldBe true
@@ -262,7 +262,7 @@ val AgentTest by testSuite {
                 ).getOrThrow()
             ).getOrThrow()
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
-            it.statusListIssuer.revokeCredential(
+            it.statusListIssuer.revokeCredentialByIndex(
                 FixedTimePeriodProvider.timePeriod,
                 credentialToRevoke.vc.credentialStatus.shouldBeInstanceOf<StatusListInfo>().index
             ) shouldBe true
@@ -416,7 +416,7 @@ val AgentTest by testSuite {
             ).getOrThrow()
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-            it.statusListIssuer.revokeCredential(
+            it.statusListIssuer.revokeCredentialByIndex(
                 FixedTimePeriodProvider.timePeriod,
                 credentialToRevoke.vc.credentialStatus.shouldBeInstanceOf<StatusListInfo>().index
             ) shouldBe true

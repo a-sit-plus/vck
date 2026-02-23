@@ -3,19 +3,22 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListView
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.ReferencedTokenStore
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.iso18013.Identifier
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.iso18013.IdentifierInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBitSize
 import com.benasher44.uuid.uuid4
 import kotlinx.coroutines.sync.Mutex
+import kotlin.collections.mutableListOf
 import kotlin.time.Instant
 
 class InMemoryIssuerCredentialStore(
     val tokenStatusBitSize: TokenStatusBitSize = TokenStatusBitSize.ONE,
 ) : IssuerCredentialStore, ReferencedTokenStore {
     private val indexMutex = Mutex()
-
     data class Credential(
         val vcId: String,
         val statusListIndex: ULong,
@@ -27,7 +30,10 @@ class InMemoryIssuerCredentialStore(
     /** Maps timePeriod to credentials */
     private val credentialMap = mutableMapOf<Int, MutableList<Credential>>()
 
-    override suspend fun createStatusListIndex(
+    /** Tracks revoked identifiers for timePeriod to build [IdentifierList]; Sets to remove duplicates */
+    private val identifierRevokationList = mutableMapOf<Int, MutableSet<String>>()
+
+    override suspend fun createStoredCredentialReference(
         credential: CredentialToBeIssued,
         timePeriod: Int,
     ): KmmResult<IssuerCredentialStore.StoredCredentialReference> = catching {
@@ -81,14 +87,16 @@ class InMemoryIssuerCredentialStore(
         )
     }
 
+    override fun getRawIdentifierList(timePeriod: Int): Map<Identifier, IdentifierInfo> =
+        identifierRevokationList.getOrPut(timePeriod) { mutableSetOf() }.associate {
+            Identifier(it.encodeToByteArray()) to IdentifierInfo()
+        }
+
     override fun setStatus(
         timePeriod: Int,
         index: ULong,
         status: TokenStatus,
     ): Boolean {
-        if (status.value > tokenStatusBitSize.maxValue) {
-            throw IllegalStateException("Credential store only accepts token statuses of bitlength `${tokenStatusBitSize.value}`.")
-        }
         val entry = credentialMap.getOrPut(timePeriod) {
             mutableListOf()
         }.find {
@@ -96,6 +104,24 @@ class InMemoryIssuerCredentialStore(
         } ?: return false
 
         entry.status = status
+        if (status == TokenStatus.Invalid) {
+            identifierRevokationList.getOrPut(timePeriod) { mutableSetOf() }.add(entry.vcId)
+        }
+        return true
+    }
+
+    override fun revokeIdentifier(
+        timePeriod: Int,
+        identifier: ByteArray
+    ): Boolean {
+        val entry = credentialMap.getOrPut(timePeriod) {
+            mutableListOf()
+        }.find {
+            it.vcId == identifier.toString()
+        } ?: return false
+
+        identifierRevokationList.getOrPut(timePeriod) { mutableSetOf() }.add(entry.vcId)
+        entry.status = TokenStatus.Invalid
         return true
     }
 }
