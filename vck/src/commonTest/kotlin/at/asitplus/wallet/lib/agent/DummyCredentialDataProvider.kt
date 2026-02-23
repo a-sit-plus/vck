@@ -24,8 +24,10 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
 import at.asitplus.wallet.lib.data.toJsonElement
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
+import io.github.aakira.napier.Napier
 import kotlinx.datetime.LocalDate
 import kotlin.random.Random
 import kotlin.time.Clock
@@ -39,7 +41,11 @@ object DummyCredentialDataProvider {
         subjectPublicKey: CryptoPublicKey,
         credentialScheme: ConstantIndex.CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation,
+        revocationKind: RevocationList.Kind = RevocationList.Kind.STATUS_LIST,
     ): KmmResult<CredentialToBeIssued> = catching {
+        if (representation != ConstantIndex.CredentialRepresentation.ISO_MDOC && revocationKind != RevocationList.Kind.STATUS_LIST) {
+            Napier.w { "Revocation via IdentifierList only defined for ISO - Input ignored!" }
+        }
         val expiration = Clock.System.now() + defaultLifetime
         val claims = listOf(
             ClaimToBeIssued(CLAIM_GIVEN_NAME, "Susanne"),
@@ -74,6 +80,7 @@ object DummyCredentialDataProvider {
                 scheme = credentialScheme,
                 subjectPublicKey = subjectPublicKey,
                 userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+                revocationKind = revocationKind,
             )
         }
     }

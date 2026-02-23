@@ -24,6 +24,9 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.StatusListCwt
 import at.asitplus.wallet.lib.data.StatusListJwt
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierList
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierListInfo
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
@@ -188,8 +191,68 @@ val AgentRevocationTest by testSuite {
 
             verifyStatusList(revocationList, expectedRevokedIndexes)
         }
+
+        "ISO_MDOC credential can carry IdentifierList status info" {
+            val issuedCredential = it.issuer.issueCredential(
+                DummyCredentialDataProvider.getCredential(
+                    it.verifierKeyMaterial.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                    revocationKind = RevocationList.Kind.IDENTIFIER_LIST,
+                ).getOrThrow()
+            ).getOrElse {
+                fail("no issued credentials")
+            }.shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
+
+            issuedCredential.mdocIdentifierListInfo().uri.string shouldContain "/identifier/"
+        }
+
+        "IdentifierList token should contain revoked ISO_MDOC identifier" {
+            val issuedCredential = it.issuer.issueCredential(
+                DummyCredentialDataProvider.getCredential(
+                    it.verifierKeyMaterial.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                    revocationKind = RevocationList.Kind.IDENTIFIER_LIST,
+                ).getOrThrow()
+            ).getOrElse {
+                fail("no issued credentials")
+            }.shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
+            val statusInfo = issuedCredential.mdocIdentifierListInfo()
+
+            it.statusListIssuer.revokeCredentialByIdentifier(timePeriod, statusInfo.identifier) shouldBe true
+
+            val payload = StatusListCwt(
+                value = it.statusListIssuer.issueStatusListCwt(kind = RevocationList.Kind.IDENTIFIER_LIST),
+                resolvedAt = Clock.System.now(),
+            ).parsedPayload.getOrThrow()
+
+            val identifierList = payload.revocationList.shouldBeInstanceOf<IdentifierList>()
+            identifierList.identifiers.keys.any {
+                it.value.contentEquals(statusInfo.identifier)
+            } shouldBe true
+            payload.subject shouldBe statusInfo.uri
+        }
+
+        "revokeCredentialByIdentifier should return false for unknown identifier" {
+            it.statusListIssuer.revokeCredentialByIdentifier(timePeriod, Random.nextBytes(16)) shouldBe false
+        }
+
+        "identifier list JWT should not be issued" {
+            runCatching {
+                it.statusListIssuer.issueStatusListJwt(kind = RevocationList.Kind.IDENTIFIER_LIST)
+            }.isFailure shouldBe true
+        }
+
+        "identifier list aggregation should contain identifier URLs" {
+            val aggregation = it.statusListIssuer.provideIdentifierListAggregation()
+            aggregation.statusLists.map { uri -> uri.string }.any { it.contains("/identifier/") } shouldBe true
+        }
     }
 }
+
+private fun Issuer.IssuedCredential.Iso.mdocIdentifierListInfo(): IdentifierListInfo =
+    issuerSigned.issuerAuth.payload.shouldNotBeNull().status.shouldNotBeNull().shouldBeInstanceOf<IdentifierListInfo>()
 
 private fun verifyStatusList(statusList: StatusList, expectedRevokedIndexes: List<ULong>) {
     val expectedRevocationStatuses = MutableList(expectedRevokedIndexes.max().toInt() + 1) {
