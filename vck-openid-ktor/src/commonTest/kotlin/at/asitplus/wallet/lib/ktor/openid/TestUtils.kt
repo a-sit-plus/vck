@@ -20,6 +20,7 @@ import at.asitplus.wallet.lib.agent.ValidatorSdJwt
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.MediaTypes
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import at.asitplus.wallet.lib.oauth2.RequestInfo
@@ -67,7 +68,8 @@ object TestUtils {
     fun credentialDataProviderFun(
         scheme: ConstantIndex.CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation,
-        attributes: Map<String, String>
+        attributes: Map<String, String>,
+        revocationKind: RevocationList.Kind = RevocationList.Kind.STATUS_LIST,
     ): CredentialDataProviderFun = CredentialDataProviderFun {
         catching {
             require(it.credentialScheme == scheme)
@@ -93,6 +95,7 @@ object TestUtils {
                     it.credentialScheme,
                     it.subjectPublicKey,
                     OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+                    revocationKind = revocationKind,
                 )
             }
         }

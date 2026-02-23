@@ -9,12 +9,21 @@ import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.FixedTimePeriodProvider
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.InMemoryIssuerCredentialStore
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.agent.StatusListAgent
+import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.StatusListCwt
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierListInfo
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
@@ -40,6 +49,7 @@ import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
 import io.github.aakira.napier.Napier
 import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.client.*
 import io.ktor.client.engine.mock.*
@@ -61,6 +71,7 @@ val OpenId4VciClientTest by testSuite {
         val mockEngine: MockEngine,
         val credentialIssuer: CredentialIssuer,
         val authorizationService: SimpleAuthorizationService,
+        val statusListIssuer: StatusListAgent,
         val client: OpenId4VciClient,
     )
 
@@ -68,6 +79,7 @@ val OpenId4VciClientTest by testSuite {
         scheme: ConstantIndex.CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation,
         attributes: Map<String, String>,
+        revocationKind: RevocationList.Kind = RevocationList.Kind.STATUS_LIST,
     ): Context {
         val credentialKeyMaterial = EphemeralKeyWithoutCert()
         val dpopKeyMaterial = EphemeralKeyWithoutCert()
@@ -92,11 +104,14 @@ val OpenId4VciClientTest by testSuite {
                 issueRefreshTokens = true
             ),
         )
+        val issuerCredentialStore = InMemoryIssuerCredentialStore()
         val issuer = IssuerAgent(
             keyMaterial = EphemeralKeyWithSelfSignedCert(),
+            issuerCredentialStore = issuerCredentialStore,
             identifier = "https://issuer.example.com/".toUri(),
             randomSource = RandomSource.Default
         )
+        val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
         val credentialIssuer = CredentialIssuer(
             authorizationService = authorizationService,
             issuer = issuer,
@@ -154,7 +169,12 @@ val OpenId4VciClientTest by testSuite {
                     credentialIssuer.credential(
                         authorizationHeader = authn,
                         params = WalletService.CredentialRequest.parse(requestBody).getOrThrow(),
-                        credentialDataProvider = credentialDataProviderFun(scheme, representation, attributes),
+                        credentialDataProvider = credentialDataProviderFun(
+                            scheme = scheme,
+                            representation = representation,
+                            attributes = attributes,
+                            revocationKind = revocationKind,
+                        ),
                         request = request.toRequestInfo(),
                     ).fold(
                         onSuccess = { respond(it) },
@@ -175,6 +195,7 @@ val OpenId4VciClientTest by testSuite {
             mockEngine = mockEngine,
             credentialIssuer = credentialIssuer,
             authorizationService = authorizationService,
+            statusListIssuer = statusListIssuer,
             client = OpenId4VciClient(
                 engine = mockEngine,
                 oid4vciService = WalletService(
@@ -238,6 +259,52 @@ val OpenId4VciClientTest by testSuite {
                     credentialKeyMaterial.publicKey
                 )
             }
+        }
+    }
+
+    "loadEuPidCredentialIsoWithOfferIdentifierListRevocation" {
+        val expectedAttributeValue = uuid4().toString()
+        val expectedAttributeName = EuPidScheme.Attributes.GIVEN_NAME
+        with(
+            setup(
+                scheme = EuPidScheme,
+                representation = ISO_MDOC,
+                attributes = mapOf(expectedAttributeName to expectedAttributeValue),
+                revocationKind = RevocationList.Kind.IDENTIFIER_LIST,
+            )
+        ) {
+            val credentialIdentifierInfos = client.loadCredentialMetadata("http://localhost").getOrThrow()
+            val selectedCredential = credentialIdentifierInfos
+                .first { it.supportedCredentialFormat.format == CredentialFormatEnum.MSO_MDOC }
+
+            val offer = authorizationService.credentialOfferWithPreAuthnForUser(
+                dummyUser(),
+                credentialIssuer.metadata.credentialIssuer
+            )
+            val issuedCredential = client.loadCredentialWithOfferReturningResult(offer, selectedCredential, null)
+                .getOrThrow()
+                .shouldBeInstanceOf<CredentialIssuanceResult.Success>()
+                .also { it.verifyIsoMdocCredential(expectedAttributeName, expectedAttributeValue) }
+                .credentials.first().shouldBeInstanceOf<Holder.StoreCredentialInput.Iso>()
+
+            val statusInfo = issuedCredential.issuerSigned.issuerAuth.payload.shouldNotBeNull()
+                .status.shouldNotBeNull().shouldBeInstanceOf<IdentifierListInfo>()
+
+            val tokenStatusResolver = TokenStatusResolverImpl(
+                resolveStatusListToken = { _ ->
+                    StatusListCwt(
+                        value = statusListIssuer.issueStatusListCwt(kind = RevocationList.Kind.IDENTIFIER_LIST),
+                        resolvedAt = null,
+                    )
+                }
+            )
+
+            tokenStatusResolver(statusInfo).getOrThrow() shouldBe TokenStatus.Valid
+            statusListIssuer.revokeCredentialByIdentifier(
+                FixedTimePeriodProvider.timePeriod,
+                statusInfo.identifier
+            ) shouldBe true
+            tokenStatusResolver(statusInfo).getOrThrow() shouldBe TokenStatus.Invalid
         }
     }
 
