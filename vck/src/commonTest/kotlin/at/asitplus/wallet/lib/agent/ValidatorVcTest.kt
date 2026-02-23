@@ -79,7 +79,7 @@ val ValidatorVcTest by testSuite {
                 val sub = credential.subject
                 val vcId = "urn:uuid:${uuid4()}"
                 val exp = expirationDate ?: (Clock.System.now() + 60.seconds)
-                val statusListIndex = issuerCredentialStore.createStatusListIndex(
+                val statusListIndex = issuerCredentialStore.createStoredCredentialReference(
                     CredentialToBeIssued.VcJwt(
                         subject = sub,
                         expiration = exp,

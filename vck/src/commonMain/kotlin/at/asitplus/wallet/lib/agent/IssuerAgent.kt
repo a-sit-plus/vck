@@ -102,7 +102,7 @@ class IssuerAgent(
     ): Issuer.IssuedCredential {
         val expirationDate = credential.expiration
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
-        val reference = issuerCredentialStore.createStatusListIndex(credential, timePeriod).getOrThrow()
+        val reference = issuerCredentialStore.createStoredCredentialReference(credential, timePeriod).getOrThrow()
         val coseKey = credential.subjectPublicKey.toCoseKey()
             .getOrElse { throw IllegalStateException("Could not create subject COSE key", it) }
         val deviceKeyInfo = DeviceKeyInfo(coseKey)
@@ -115,7 +115,7 @@ class IssuerAgent(
 
             RevocationList.Kind.IDENTIFIER_LIST -> IdentifierListInfo(
                 identifier = reference.id.encodeToByteArray(),
-                uri = UniformResourceIdentifier(identifierListBaseUrl),
+                uri = UniformResourceIdentifier(getIdentifierListUrlFor(timePeriod)),
                 certificate = null //TODO
             )
         }
@@ -163,7 +163,7 @@ class IssuerAgent(
         val vcId = "urn:uuid:${uuid4()}"
         val expirationDate = credential.expiration
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
-        val reference = issuerCredentialStore.createStatusListIndex(credential, timePeriod).getOrThrow()
+        val reference = issuerCredentialStore.createStoredCredentialReference(credential, timePeriod).getOrThrow()
         val credentialStatus = StatusListInfo(
             index = reference.statusListIndex,
             uri = UniformResourceIdentifier(getStatusListUrlFor(timePeriod)),
@@ -204,7 +204,7 @@ class IssuerAgent(
         val expirationDate = credential.expiration
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
         val subjectId = credential.subjectPublicKey.didEncoded // TODO not necessarily!
-        val reference = issuerCredentialStore.createStatusListIndex(credential, timePeriod).getOrThrow()
+        val reference = issuerCredentialStore.createStoredCredentialReference(credential, timePeriod).getOrThrow()
         val credentialStatus = StatusListInfo(
             index = reference.statusListIndex,
             uri = UniformResourceIdentifier(getStatusListUrlFor(timePeriod)),

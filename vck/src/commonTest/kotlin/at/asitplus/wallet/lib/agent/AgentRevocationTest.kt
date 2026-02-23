@@ -208,7 +208,7 @@ private suspend fun InMemoryIssuerCredentialStore.revokeCredentialsWithIndexes(r
     val issuanceDate = Clock.System.now()
     val expirationDate = issuanceDate + 60.seconds
     for (i in 1..16) {
-        val reference = createStatusListIndex(
+        val reference = createStoredCredentialReference(
             CredentialToBeIssued.VcJwt(
                 subject = cred,
                 expiration = expirationDate,
@@ -231,7 +231,7 @@ private suspend fun InMemoryIssuerCredentialStore.revokeRandomCredentials(): Lis
     val issuanceDate = Clock.System.now()
     val expirationDate = issuanceDate + 60.seconds
     for (i in 1..256) {
-        val revListIndex = createStatusListIndex(
+        val revListIndex = createStoredCredentialReference(
             CredentialToBeIssued.VcJwt(
                 subject = cred,
                 expiration = expirationDate,

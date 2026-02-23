@@ -131,7 +131,7 @@ val AgentIsoMdocTest by testSuite {
                 .filterIsInstance<SubjectCredentialStore.StoreEntry.Iso>()
                 .shouldBeSingleton().single()
                 .apply {
-                    it.statusListIssuer.revokeCredential(
+                    it.statusListIssuer.revokeCredentialByIndex(
                         FixedTimePeriodProvider.timePeriod,
                         mdocStatusListIndex()
                     ) shouldBe true
@@ -215,7 +215,7 @@ val AgentIsoMdocTest by testSuite {
                 .filterIsInstance<SubjectCredentialStore.StoreEntry.Iso>()
                 .shouldBeSingleton().single()
                 .apply {
-                    it.statusListIssuer.revokeCredential(
+                    it.statusListIssuer.revokeCredentialByIndex(
                         FixedTimePeriodProvider.timePeriod,
                         mdocStatusListIndex()
                     ) shouldBe true

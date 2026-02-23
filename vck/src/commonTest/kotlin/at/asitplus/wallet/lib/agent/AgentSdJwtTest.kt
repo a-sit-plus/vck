@@ -40,7 +40,6 @@ import at.asitplus.wallet.lib.randomCwtOrJwtResolver
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.collections.shouldContain
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldNotBeInstanceOf
@@ -173,7 +172,7 @@ val AgentSdJwtTest by testSuite {
             it.holderCredentialStore.getCredentials().getOrThrow()
                 .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
                 .forEach { storeEntry ->
-                    it.statusListIssuer.revokeCredential(
+                    it.statusListIssuer.revokeCredentialByIndex(
                         FixedTimePeriodProvider.timePeriod,
                         storeEntry.sdJwt.statusElement.shouldBeInstanceOf<StatusListInfo>().index
                     ) shouldBe true
@@ -274,7 +273,7 @@ val AgentSdJwtTest by testSuite {
             it.holderCredentialStore.getCredentials().getOrThrow()
                 .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
                 .forEach { storeEntry ->
-                    it.statusListIssuer.revokeCredential(
+                    it.statusListIssuer.revokeCredentialByIndex(
                         FixedTimePeriodProvider.timePeriod,
                         storeEntry.sdJwt.statusElement.shouldBeInstanceOf<StatusListInfo>().index,
                     ) shouldBe true
