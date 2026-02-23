@@ -109,7 +109,15 @@ class StatusListAgent(
             issuedAt = clock.now().truncateToSeconds(),
             timeToLive = PositiveDuration(revocationListLifetime),
             subject = UniformResourceIdentifier(
-                getStatusListUrlFor(timePeriod ?: timePeriodProvider.getCurrentTimePeriod(clock))
+                when (kind) {
+                    RevocationList.Kind.STATUS_LIST -> getStatusListUrlFor(
+                        timePeriod ?: timePeriodProvider.getCurrentTimePeriod(clock)
+                    )
+
+                    RevocationList.Kind.IDENTIFIER_LIST -> getIdentifierListUrlFor(
+                        timePeriod ?: timePeriodProvider.getCurrentTimePeriod(clock)
+                    )
+                }
             ),
         ).also {
             Napier.d("revocation status list: ${it.revocationList}")

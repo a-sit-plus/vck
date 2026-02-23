@@ -88,7 +88,7 @@ class InMemoryIssuerCredentialStore(
     }
 
     override fun getRawIdentifierList(timePeriod: Int): Map<Identifier, IdentifierInfo> =
-        identifierRevokationList.getOrPut(timePeriod) { mutableSetOf() }.associate {
+        identifierRevokationList.getOrElse(timePeriod) { emptySet() }.associate {
             Identifier(it.encodeToByteArray()) to IdentifierInfo()
         }
 
@@ -117,7 +117,7 @@ class InMemoryIssuerCredentialStore(
         val entry = credentialMap.getOrPut(timePeriod) {
             mutableListOf()
         }.find {
-            it.vcId == identifier.toString()
+            it.vcId == identifier.decodeToString()
         } ?: return false
 
         identifierRevokationList.getOrPut(timePeriod) { mutableSetOf() }.add(entry.vcId)
