@@ -506,10 +506,7 @@ val OidvciCodeFlowTest by testSuite {
                     credentialSchemes = setOf(EuPidScheme),
                 )
             ) {
-                it.client.selectSupportedCredentialFormat(
-                    RequestOptions(EuPidScheme, SD_JWT),
-                    metadata
-                )
+                it.client.selectSupportedCredentialFormat(RequestOptions(EuPidScheme, SD_JWT), metadata)
             }
 
             val scope = credentialFormat?.scope.shouldNotBeNull()
