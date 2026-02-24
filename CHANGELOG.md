@@ -12,6 +12,7 @@ Release 5.12.0 (unreleased):
    - Preserve `Document.errors` in parsed ISO document results instead of failing validation
  - OpenID for Verifiable Presentations:
    - Change: Executing unsatisfiable DCQL queries no longer throws on matching, only on submission.
+   - Change: Update DCQLClaimsQuery to OpenID4VP 1.0
    - Change: Do not fail when only matching credentials without submitting a presentation
  - OpenID for Verifiable Credential Issuance:
    - Moved the class `RefreshTokenInfo` from `OpenId4VciClient` to `SubjectCredentialStore.kt` and renamed it to `CredentialRenewalInfo` to better describe its role in the renewal process.

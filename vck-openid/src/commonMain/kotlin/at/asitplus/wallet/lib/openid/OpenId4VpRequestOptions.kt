@@ -183,8 +183,6 @@ data class OpenId4VpRequestOptions(
                 .takeIf { it.isNotEmpty() } // requesting all claims if none are specified
                 ?.map { (attribute, _) ->
                     DCQLIsoMdocClaimsQuery(
-                        namespace = credentialScheme.isoNamespace!!,
-                        claimName = attribute,
                         path = DCQLClaimsPathPointer(credentialScheme.isoNamespace!!, attribute)
                     )
                 }?.toNonEmptyList()

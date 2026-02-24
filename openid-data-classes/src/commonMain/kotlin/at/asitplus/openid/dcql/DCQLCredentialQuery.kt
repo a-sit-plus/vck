@@ -233,7 +233,7 @@ sealed interface DCQLCredentialQuery {
             throw IllegalArgumentException("Credential matches to none of the trusted authorities.")
         }
 
-        if (requireCryptographicHolderBinding == true && !satisfiesCryptographicHolderBinding(credential)) {
+        if (requireCryptographicHolderBinding != false && !satisfiesCryptographicHolderBinding(credential)) {
             throw IllegalArgumentException("Credential does not satisfy constraint `require_cryptographic_holder_binding`.")
         }
 
@@ -265,10 +265,25 @@ sealed interface DCQLCredentialQuery {
         val result = requestedClaimsQueryCombinations.firstNotNullOf { claimQueryCombination ->
             catching {
                 claimQueryCombination.map { claimQuery ->
+                    val credentialStructure = credentialClaimStructureExtractor(credential)
+
+                    val acceptedFormats = when (credentialStructure) {
+                        is DCQLCredentialClaimStructure.IsoMdocStructure -> listOf(
+                            CredentialFormatEnum.MSO_MDOC
+                        )
+
+                        is DCQLCredentialClaimStructure.JsonBasedStructure -> listOf(
+                            CredentialFormatEnum.DC_SD_JWT,
+                            CredentialFormatEnum.JWT_VC,
+                        )
+                    }
+
+                    require(format in acceptedFormats) {
+                        "Inconsistent credential format and claim query"
+                    }
+
                     claimQuery.executeClaimsQueryAgainstCredential(
-                        credentialQuery = this,
-                        credential = credential,
-                        credentialStructureExtractor = credentialClaimStructureExtractor,
+                        credentialStructure = credentialStructure,
                     ).getOrThrow()
                 }
             }.onFailure {

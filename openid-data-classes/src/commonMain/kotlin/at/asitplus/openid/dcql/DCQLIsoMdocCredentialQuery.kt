@@ -17,11 +17,11 @@ data class DCQLIsoMdocCredentialQuery(
     @SerialName(DCQLCredentialQuery.SerialNames.CLAIM_SETS)
     override val claimSets: NonEmptyList<List<DCQLClaimsQueryIdentifier>>? = null,
     @SerialName(DCQLCredentialQuery.SerialNames.MULTIPLE)
-    override val multiple: Boolean? = false,
+    override val multiple: Boolean? = null,
     @SerialName(DCQLCredentialQuery.SerialNames.TRUSTED_AUTHORITIES)
     override val trustedAuthorities: NonEmptyList<DCQLTrustedAuthorityQueryEntry>? = null,
     @SerialName(DCQLCredentialQuery.SerialNames.REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING)
-    override val requireCryptographicHolderBinding: Boolean? = true,
+    override val requireCryptographicHolderBinding: Boolean? = null,
     @SerialName(DCQLCredentialQuery.SerialNames.FORMAT)
     @EncodeDefault(EncodeDefault.Mode.ALWAYS)
     override val format: CredentialFormatEnum = CREDENTIAL_FORMAT,

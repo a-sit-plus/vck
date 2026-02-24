@@ -59,7 +59,7 @@ val DCQLJwtVcCredentialQueryTest by testSuite {
                 })
             put(DCQLCredentialQuery.SerialNames.CLAIMS, buildJsonArray {
                 add(buildJsonObject {
-                    put(DCQLJsonClaimsQuery.SerialNames.PATH, buildJsonArray {
+                    put(DCQLClaimsQuery.SerialNames.PATH, buildJsonArray {
                         add(JsonNull)
                     })
                 })

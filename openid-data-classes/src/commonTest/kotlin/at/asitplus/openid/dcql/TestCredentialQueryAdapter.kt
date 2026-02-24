@@ -12,7 +12,6 @@ package at.asitplus.openid.dcql
  * see the "LICENSE" file for more details
  */
 
-import io.kotest.matchers.shouldBe
 import kotlin.jvm.JvmInline
 
 @JvmInline

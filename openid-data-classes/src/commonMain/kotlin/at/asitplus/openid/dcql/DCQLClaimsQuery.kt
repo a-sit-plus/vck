@@ -1,11 +1,10 @@
 package at.asitplus.openid.dcql
 
 import at.asitplus.KmmResult
-import at.asitplus.catching
 import kotlinx.serialization.Serializable
 
 @Serializable(with = DCQLClaimsQuerySerializer::class)
-interface DCQLClaimsQuery {
+sealed interface DCQLClaimsQuery {
     /**
      * OID4VP draft 23: id: REQUIRED if claim_sets is present in the Credential Query; OPTIONAL
      * otherwise. A string identifying the particular claim. The value MUST be a non-empty string
@@ -22,7 +21,11 @@ interface DCQLClaimsQuery {
      */
     val values: List<DCQLExpectedClaimValue>?
 
-    val path: DCQLClaimsPathPointer?
+    /**
+     * OID4VP 1.0: REQUIRED The value MUST be a non-empty array representing a claims path pointer that specifies the
+     * path to a claim within the Credential, as defined in Section 7.
+     */
+    val path: DCQLClaimsPathPointer
 
     object SerialNames {
         const val ID = "id"
@@ -30,34 +33,9 @@ interface DCQLClaimsQuery {
         const val PATH = "path"
     }
 
-    fun <Credential : Any> executeClaimsQueryAgainstCredential(
-        credentialQuery: DCQLCredentialQuery,
-        credential: Credential,
-        credentialStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
-    ): KmmResult<DCQLClaimsQueryResult> = catching {
-        when (this) {
-            is DCQLJsonClaimsQuery -> executeJsonClaimsQueryAgainstCredential(
-                credentialQuery = credentialQuery,
-                credential = credential,
-                credentialStructureExtractor = {
-                    credentialStructureExtractor(it) as DCQLCredentialClaimStructure.JsonBasedStructure
-                }
-            ).getOrThrow().also {
-                if (it.nodeList.isEmpty()) {
-                    throw IllegalStateException("Credential does not satisfy claims query: $this")
-                }
-            }
-
-            is DCQLIsoMdocClaimsQuery -> executeIsoMdocClaimsQueryAgainstCredential(
-                credentialQuery = credentialQuery,
-                credential = credential,
-                credentialStructureExtractor = {
-                    credentialStructureExtractor(it) as DCQLCredentialClaimStructure.IsoMdocStructure
-                }
-            ).getOrThrow()
-
-            else -> throw IllegalStateException("Unsupported claim query type: $this")
-        }
-    }
+    fun executeClaimsQueryAgainstCredential(
+        credentialStructure: DCQLCredentialClaimStructure,
+    ): KmmResult<DCQLClaimsQueryResult>
 }
+
 

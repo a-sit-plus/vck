@@ -10,6 +10,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 
+@Suppress("unused")
 val DCQLIsoMdocCredentialQueryTest by testSuite {
     "serialization" {
         val value = DCQLIsoMdocCredentialQuery(
