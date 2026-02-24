@@ -140,6 +140,15 @@ class StatusListAgent(
             )
         }
 
+
+    /**
+     * Sets the status of one specific credential to [at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus.Invalid].
+     * Returns true if this credential has been revoked.
+     */
+    @Deprecated("Renamed", replaceWith = ReplaceWith("revokeCredentialByIndex"))
+    override fun revokeCredential(timePeriod: Int, statusListIndex: ULong): Boolean =
+        revokeCredentialByIndex(timePeriod, statusListIndex)
+
     /**
      * Sets the status of one specific credential to [TokenStatus.Invalid].
      * Returns true if this credential has been revoked.
@@ -147,6 +156,10 @@ class StatusListAgent(
     override fun revokeCredentialByIndex(timePeriod: Int, statusListIndex: ULong): Boolean =
         issuerCredentialStore.setStatus(timePeriod, statusListIndex, TokenStatus.Invalid)
 
+    /**
+     * Sets the status of one specific credential to [TokenStatus.Invalid].
+     * Returns true if this credential has been revoked.
+     */
     override fun revokeCredentialByIdentifier(timePeriod: Int, identifier: ByteArray): Boolean =
         issuerCredentialStore.revokeIdentifier(timePeriod, identifier)
 
