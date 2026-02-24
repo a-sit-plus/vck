@@ -32,6 +32,7 @@ private data class TestCredentialScheme(
     ),
 ) : ConstantIndex.CredentialScheme
 
+@Suppress("DEPRECATION")
 val LibraryInitializerTest by testSuite {
     "registerExtensionLibrary registers schemes and serializers" {
         @Serializable

@@ -12,14 +12,14 @@ val DefaultNonceServiceTest by testSuite {
     test("verify is correct") {
         with(
             DefaultNonceService(
-                lifetime = 20.milliseconds,
+                lifetime = 50.milliseconds,
                 sizeToCheckForExpiration = 1U
             )
         ) {
             val nonce = provideNonce()
             verifyNonce(nonce).shouldBeTrue()
             verifyNonce(uuid4().toString()).shouldBeFalse()
-            delay(50.milliseconds)
+            delay(100.milliseconds)
             verifyNonce(nonce).shouldBeFalse()
             verifyNonce(uuid4().toString()).shouldBeFalse()
         }
@@ -28,14 +28,14 @@ val DefaultNonceServiceTest by testSuite {
     test("verifyAndRemove is correct") {
         with(
             DefaultNonceService(
-                lifetime = 20.milliseconds,
+                lifetime = 50.milliseconds,
                 sizeToCheckForExpiration = 1U
             )
         ) {
             val nonce = provideNonce()
             verifyAndRemoveNonce(nonce).shouldBeTrue()
             verifyAndRemoveNonce(uuid4().toString()).shouldBeFalse()
-            delay(50.milliseconds)
+            delay(100.milliseconds)
             verifyNonce(nonce).shouldBeFalse()
             verifyAndRemoveNonce(uuid4().toString()).shouldBeFalse()
         }
