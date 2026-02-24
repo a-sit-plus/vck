@@ -350,7 +350,7 @@ private suspend fun createDcqlDeviceResponse(
         DCQLIsoMdocClaimsQuery(
             path = DCQLClaimsPathPointer(
                 ConstantIndex.AtomicAttribute2023.isoNamespace,
-                CLAIM_GIVEN_NAME
+                it
             )
         )
     }.toTypedArray()

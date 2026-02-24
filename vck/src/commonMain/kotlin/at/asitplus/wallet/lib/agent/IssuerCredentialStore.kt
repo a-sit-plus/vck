@@ -17,6 +17,16 @@ interface IssuerCredentialStore {
      * Called by an [Issuer] when creating a new credential to get a `statusListIndex` and `identifier first.
      * [Issuer] will call [updateStoredCredential] with the issued credential afterwards.
      */
+    @Deprecated("Renamed", replaceWith = ReplaceWith("createStoredCredentialReference"))
+    suspend fun createStatusListIndex(
+        credential: CredentialToBeIssued,
+        timePeriod: Int,
+    ): KmmResult<StoredCredentialReference>
+
+    /**
+     * Called by an [Issuer] when creating a new credential to get a `statusListIndex` and `identifier first.
+     * [Issuer] will call [updateStoredCredential] with the issued credential afterwards.
+     */
     suspend fun createStoredCredentialReference(
         credential: CredentialToBeIssued,
         timePeriod: Int,
