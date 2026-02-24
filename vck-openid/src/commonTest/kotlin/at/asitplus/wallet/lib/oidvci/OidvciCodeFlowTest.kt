@@ -1,5 +1,17 @@
 package at.asitplus.wallet.lib.oidvci
 
+/*
+ * Software Name : VC-K
+ * SPDX-FileCopyrightText: Copyright (c) A-SIT Plus GmbH
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Modifications: Credential subject is now a JsonElement
+ * SPDX-FileCopyrightText: Copyright (c) Orange Business
+ *
+ * This software is distributed under the Apache License 2.0,
+ * see the "LICENSE" file for more details
+ */
+
 import at.asitplus.catching
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.openid.AuthorizationDetails
@@ -19,7 +31,9 @@ import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc3986.toUri
@@ -35,6 +49,7 @@ import at.asitplus.wallet.lib.utils.MapStore
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldBeSingleton
@@ -49,6 +64,8 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.decodeFromByteArray
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 
 val OidvciCodeFlowTest by testSuite {
 
@@ -177,7 +194,15 @@ val OidvciCodeFlowTest by testSuite {
                 serializedCredential,
                 vckJsonSerializer
             ).getOrThrow()
-                .payload.vc.credentialSubject.shouldBeInstanceOf<at.asitplus.wallet.lib.data.AtomicAttribute2023>()
+                .payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
+                .also { credentialSubject ->
+                    shouldNotThrowAny {
+                        Json.decodeFromJsonElement(
+                            at.asitplus.wallet.lib.data.AtomicAttribute2023.serializer(),
+                            credentialSubject
+                        )
+                    }
+                }
 
         }
 
@@ -211,10 +236,8 @@ val OidvciCodeFlowTest by testSuite {
 
         test("proof over different keys leads to different credentials") {
             val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
-            val scope = it.client.selectSupportedCredentialFormat(
-                requestOptions,
-                it.issuer.metadata
-            )?.scope.shouldNotBeNull()
+            val scope = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)?.scope
+                .shouldNotBeNull()
             val clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce
             val token = it.getToken(scope)
             val proof = it.client.createCredentialRequestProofJwt(
@@ -264,10 +287,8 @@ val OidvciCodeFlowTest by testSuite {
                 credentialSchemes = setOf(AtomicAttribute2023),
             )
             val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
-            val scope = it.client.selectSupportedCredentialFormat(
-                requestOptions,
-                it.issuer.metadata
-            )?.scope.shouldNotBeNull()
+            val scope = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)?.scope
+                .shouldNotBeNull()
 
             shouldThrow<OAuth2Exception> {
                 it.getToken(scope)
@@ -548,7 +569,8 @@ val OidvciCodeFlowTest by testSuite {
                         metadata = it.issuer.metadata,
                         credentialFormat = credentialFormat,
                         clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
-                    ).getOrThrow().shouldBeSingleton().first().wrongCredentialConfigurationId(scope),
+                    ).getOrThrow().shouldBeSingleton().first()
+                        .wrongCredentialConfigurationId(scope),
                     credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
                 ).getOrThrow()
             }
@@ -600,17 +622,18 @@ private fun String.assertSdJwtReceived(): Int = JwsSigned.deserialize(
     .shouldNotBeNull()
     .size shouldBeGreaterThan 1
 
-private fun WalletService.CredentialRequest.wrongCredentialIdentifier(mapper: DefaultCredentialSchemeMapper) = when (this) {
-    is WalletService.CredentialRequest.Encrypted -> this
-    is WalletService.CredentialRequest.Plain -> WalletService.CredentialRequest.Plain(
-        this.request.copy(
-            // enforces error on client, setting credential_identifier, although access token was for scope
-            // (which should be credential_configuration_id in credential request)
-            credentialIdentifier = mapper.toCredentialIdentifier(AtomicAttribute2023, SD_JWT),
-            credentialConfigurationId = null,
+private fun WalletService.CredentialRequest.wrongCredentialIdentifier(mapper: DefaultCredentialSchemeMapper) =
+    when (this) {
+        is WalletService.CredentialRequest.Encrypted -> this
+        is WalletService.CredentialRequest.Plain -> WalletService.CredentialRequest.Plain(
+            this.request.copy(
+                // enforces error on client, setting credential_identifier, although access token was for scope
+                // (which should be credential_configuration_id in credential request)
+                credentialIdentifier = mapper.toCredentialIdentifier(AtomicAttribute2023, SD_JWT),
+                credentialConfigurationId = null,
+            )
         )
-    )
-}
+    }
 
 private fun WalletService.CredentialRequest.wrongCredentialConfigurationId(scope: String) = when (this) {
     is WalletService.CredentialRequest.Encrypted -> this

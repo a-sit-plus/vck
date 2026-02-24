@@ -261,7 +261,10 @@ class BearerTokenVerificationService(
         httpRequest: RequestInfo?,
         validatedClientKey: JsonWebKey?,
     ): String {
-        throw InvalidToken("Refresh tokens are not supported by this verifier")
+        val validated = tokenGenerationService.verifyRefreshToken(refreshToken)
+            ?: throw InvalidToken("Refresh token not valid")
+
+        return validated.token
     }
 
     /** Not supported for Bearer tokens. */

@@ -13,7 +13,7 @@ interface StatusListIssuer : StatusIssuer, StatusProvider {
 
     /**
      * Returns a revocation list which can either be
-     * status list as defined in [TokenListStatus](https://www.ietf.org/archive/id/draft-ietf-oauth-status-list-06.html)
+     * status list as defined in [TokenListStatus](https://www.ietf.org/archive/id/draft-ietf-oauth-status-list-17.html)
      * or an identifier list as defined in ISO18013-5
      */
     fun buildRevocationList(

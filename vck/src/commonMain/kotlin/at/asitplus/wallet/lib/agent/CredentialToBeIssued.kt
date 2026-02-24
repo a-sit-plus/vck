@@ -1,5 +1,17 @@
 package at.asitplus.wallet.lib.agent
 
+/*
+ * Software Name : VC-K
+ * SPDX-FileCopyrightText: Copyright (c) A-SIT Plus GmbH
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Modifications: VcJwt subject type changed from CredentialSubject to JsonElement
+ * SPDX-FileCopyrightText: Copyright (c) Orange Business
+ *
+ * This software is distributed under the Apache License 2.0,
+ * see the "LICENSE" file for more details
+ */
+
 import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.CryptoPublicKey
@@ -7,6 +19,9 @@ import at.asitplus.signum.indispensable.Digest
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialSubject
 import at.asitplus.wallet.lib.jws.JwsHeaderModifierFun
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.encodeToJsonElement
 import kotlin.time.Instant
 
 sealed class CredentialToBeIssued {
@@ -16,12 +31,31 @@ sealed class CredentialToBeIssued {
     abstract val userInfo: OidcUserInfoExtended
 
     data class VcJwt(
-        val subject: CredentialSubject,
+        val subject: JsonElement,
         override val expiration: Instant,
         override val scheme: ConstantIndex.CredentialScheme,
         override val subjectPublicKey: CryptoPublicKey,
         override val userInfo: OidcUserInfoExtended,
-    ) : CredentialToBeIssued()
+    ) : CredentialToBeIssued() {
+        @Deprecated(
+            message = "Use constructor with JsonElement subject instead",
+            replaceWith = ReplaceWith("VcJwt(subject as JsonElement, expiration, scheme, subjectPublicKey, userInfo)"),
+            level = DeprecationLevel.ERROR
+        )
+        constructor(
+            subject: CredentialSubject,
+            expiration: Instant,
+            scheme: ConstantIndex.CredentialScheme,
+            subjectPublicKey: CryptoPublicKey,
+            userInfo: OidcUserInfoExtended,
+        ) : this(
+            subject = Json.encodeToJsonElement(subject),
+            expiration = expiration,
+            scheme = scheme,
+            subjectPublicKey = subjectPublicKey,
+            userInfo = userInfo
+        )
+    }
 
     data class VcSd(
         val claims: Collection<ClaimToBeIssued>,

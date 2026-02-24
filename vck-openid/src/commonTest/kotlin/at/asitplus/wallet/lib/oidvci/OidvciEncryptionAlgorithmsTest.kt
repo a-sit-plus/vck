@@ -1,5 +1,17 @@
 package at.asitplus.wallet.lib.oidvci
 
+/*
+ * Software Name : VC-K
+ * SPDX-FileCopyrightText: Copyright (c) A-SIT Plus GmbH
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Modifications: Credential subject is now a JsonElement
+ * SPDX-FileCopyrightText: Copyright (c) Orange Business
+ *
+ * This software is distributed under the Apache License 2.0,
+ * see the "LICENSE" file for more details
+ */
+
 import at.asitplus.catching
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenResponseParameters
@@ -20,10 +32,13 @@ import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.openid.DummyUserProvider
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 
 val OidvciEncryptionAlgorithmsTest by testSuite {
 
@@ -104,7 +119,12 @@ val OidvciEncryptionAlgorithmsTest by testSuite {
                 }
                 it.client.parseCredentialResponse(this, PLAIN_JWT, ConstantIndex.AtomicAttribute2023)
                     .getOrThrow().first().shouldBeInstanceOf<Holder.StoreCredentialInput.Vc>().apply {
-                        signedVcJws.payload.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
+                        signedVcJws.payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
+                            .also { credentialSubject ->
+                                shouldNotThrowAny {
+                                    Json.decodeFromJsonElement(AtomicAttribute2023.serializer(), credentialSubject)
+                                }
+                            }
                     }
             }
         }
@@ -137,7 +157,12 @@ val OidvciEncryptionAlgorithmsTest by testSuite {
                 }
                 it.client.parseCredentialResponse(this, PLAIN_JWT, ConstantIndex.AtomicAttribute2023)
                     .getOrThrow().first().shouldBeInstanceOf<Holder.StoreCredentialInput.Vc>().apply {
-                        signedVcJws.payload.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
+                        signedVcJws.payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
+                            .also { credentialSubject ->
+                                shouldNotThrowAny {
+                                    Json.decodeFromJsonElement(AtomicAttribute2023.serializer(), credentialSubject)
+                                }
+                            }
                     }
             }
         }

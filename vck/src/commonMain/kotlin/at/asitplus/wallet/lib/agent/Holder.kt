@@ -50,7 +50,7 @@ interface Holder {
      * Stores the verifiable credential in [credential] if it parses and validates,
      * and returns it for future reference.
      */
-    suspend fun storeCredential(credential: StoreCredentialInput): KmmResult<SubjectCredentialStore.StoreEntry>
+    suspend fun storeCredential(credential: StoreCredentialInput, renewalInfo: CredentialRenewalInfo? = null): KmmResult<SubjectCredentialStore.StoreEntry>
 
     /**
      * Gets a list of all stored credentials, with a revocation status.

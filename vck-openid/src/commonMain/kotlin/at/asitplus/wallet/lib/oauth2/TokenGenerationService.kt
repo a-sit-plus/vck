@@ -141,6 +141,8 @@ class BearerTokenGenerationService(
     /** Used to create nonces for tokens during issuing. */
     internal val nonceService: NonceService = DefaultNonceService(),
     private val accessTokenToValidatedAccessToken: MapStore<String, ValidatedAccessToken> = DefaultMapStore(),
+    private val refreshTokenToValidatedAccessToken: MapStore<String, ValidatedAccessToken> = DefaultMapStore(),
+    private val issueRefreshToken: Boolean = false
 ) : TokenGenerationService {
 
     override suspend fun buildToken(
@@ -149,21 +151,24 @@ class BearerTokenGenerationService(
         authorizationDetails: Set<AuthorizationDetails>?,
         scope: String?,
         validatedClientKey: JsonWebKey?
-    ): TokenResponseParameters = TokenResponseParameters(
-        expires = 5.minutes,
-        tokenType = TOKEN_TYPE_BEARER,
-        accessToken = nonceService.provideNonce(),
-        authorizationDetails = authorizationDetails,
-        scope = scope,
-    ).also {
-        accessTokenToValidatedAccessToken.put(
-            it.accessToken,
-            ValidatedAccessToken(
-                token = it.accessToken,
-                userInfoExtended = userInfo,
-                authorizationDetails = authorizationDetails,
-                scope = scope
-            )
+    ): TokenResponseParameters {
+        val accessToken = nonceService.provideNonce()
+        val refreshToken = if (issueRefreshToken) nonceService.provideNonce() else null
+        val validatedToken = ValidatedAccessToken(
+            token = accessToken,
+            userInfoExtended = userInfo,
+            authorizationDetails = authorizationDetails,
+            scope = scope
+        )
+        accessTokenToValidatedAccessToken.put(accessToken, validatedToken)
+        refreshToken?.let { refreshTokenToValidatedAccessToken.put(it, validatedToken.copy(token = it)) }
+        return TokenResponseParameters(
+            expires = 5.minutes,
+            tokenType = TOKEN_TYPE_BEARER,
+            accessToken = accessToken,
+            refreshToken = refreshToken,
+            authorizationDetails = authorizationDetails,
+            scope = scope,
         )
     }
 
@@ -172,6 +177,12 @@ class BearerTokenGenerationService(
 
     suspend fun verifyAccessToken(accessToken: String) =
         accessTokenToValidatedAccessToken.get(accessToken)
+
+    suspend fun verifyRefreshToken(token: String) =
+        refreshTokenToValidatedAccessToken.get(token)
+
+    suspend fun removeRefreshToken(token: String) =
+        refreshTokenToValidatedAccessToken.remove(token)
 
     override suspend fun dpopNonce() = null
 }

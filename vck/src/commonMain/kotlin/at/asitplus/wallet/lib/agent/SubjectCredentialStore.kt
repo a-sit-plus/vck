@@ -6,6 +6,9 @@ import at.asitplus.dif.ClaimFormat
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.sha256
 import at.asitplus.openid.CredentialFormatEnum
+import at.asitplus.openid.IssuerMetadata
+import at.asitplus.openid.OAuth2AuthorizationServerMetadata
+import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.data.AttributeIndex
@@ -18,7 +21,6 @@ import at.asitplus.wallet.lib.data.VcFallbackCredentialScheme
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.ktor.utils.io.core.toByteArray
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -40,6 +42,7 @@ interface SubjectCredentialStore {
         vc: VerifiableCredentialJws,
         vcSerialized: String,
         scheme: ConstantIndex.CredentialScheme,
+        renewalInfo: CredentialRenewalInfo? = null,
     ): StoreEntry
 
     /**
@@ -54,6 +57,7 @@ interface SubjectCredentialStore {
         vcSerialized: String,
         disclosures: Map<String, SelectiveDisclosureItem?>,
         scheme: ConstantIndex.CredentialScheme,
+        renewalInfo: CredentialRenewalInfo? = null,
     ): StoreEntry
 
     /**
@@ -65,6 +69,7 @@ interface SubjectCredentialStore {
     suspend fun storeCredential(
         issuerSigned: IssuerSigned,
         scheme: ConstantIndex.CredentialScheme,
+        renewalInfo: CredentialRenewalInfo? = null,
     ): StoreEntry
 
     /**
@@ -81,6 +86,7 @@ interface SubjectCredentialStore {
             get() = AttributeIndex.resolveSchemaUri(schemaUri) ?: getFallbackScheme()
         val credentialFormat: CredentialFormatEnum
         val claimFormat: ClaimFormat
+        val renewalInfo: CredentialRenewalInfo?
 
         fun getFallbackScheme(): ConstantIndex.CredentialScheme?
 
@@ -92,6 +98,8 @@ interface SubjectCredentialStore {
             val vc: VerifiableCredentialJws,
             @SerialName("schema-uri")
             override val schemaUri: String,
+            @SerialName("credential-renewal-info")
+            override val renewalInfo: CredentialRenewalInfo? = null,
         ) : StoreEntry {
             override fun getFallbackScheme(): ConstantIndex.CredentialScheme =
                 VcFallbackCredentialScheme(vc.vc.type.first { it != VERIFIABLE_CREDENTIAL })
@@ -111,6 +119,8 @@ interface SubjectCredentialStore {
             val disclosures: Map<String, SelectiveDisclosureItem?>,
             @SerialName("schema-uri")
             override val schemaUri: String,
+            @SerialName("credential-renewal-info")
+            override val renewalInfo: CredentialRenewalInfo? = null,
         ) : StoreEntry {
             override fun getFallbackScheme(): ConstantIndex.CredentialScheme =
                 SdJwtFallbackCredentialScheme(sdJwt.verifiableCredentialType)
@@ -125,6 +135,8 @@ interface SubjectCredentialStore {
             val issuerSigned: IssuerSigned,
             @SerialName("schema-uri")
             override val schemaUri: String,
+            @SerialName("credential-renewal-info")
+            override val renewalInfo: CredentialRenewalInfo? = null,
         ) : StoreEntry {
             override fun getFallbackScheme(): ConstantIndex.CredentialScheme? = catchingUnwrapped {
                 IsoMdocFallbackCredentialScheme(issuerSigned.issuerAuth.payload?.docType!!)
@@ -147,3 +159,16 @@ interface SubjectCredentialStore {
 
     }
 }
+
+/**
+ * Holds all information needed to refresh a credential, pass it to [OpenId4VciClient.refreshCredential].
+ */
+@Serializable
+data class CredentialRenewalInfo(
+    /** Even if refresh token is not returned, other properties are used to initiate full re-issuance process */
+    val refreshToken: String?,
+    val issuerMetadata: IssuerMetadata,
+    val oauthMetadata: OAuth2AuthorizationServerMetadata,
+    val credentialFormat: SupportedCredentialFormat,
+    val credentialIdentifier: String,
+)

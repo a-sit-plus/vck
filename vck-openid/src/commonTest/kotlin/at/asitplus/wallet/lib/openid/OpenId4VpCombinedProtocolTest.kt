@@ -1,5 +1,17 @@
 package at.asitplus.wallet.lib.openid
 
+/*
+ * Software Name : VC-K
+ * SPDX-FileCopyrightText: Copyright (c) A-SIT Plus GmbH
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Modifications: Credential subject is now a JsonElement
+ * SPDX-FileCopyrightText: Copyright (c) Orange Business
+ *
+ * This software is distributed under the Apache License 2.0,
+ * see the "LICENSE" file for more details
+ */
+
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
@@ -15,18 +27,23 @@ import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.assertions.AssertionErrorBuilder.Companion.fail
+import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 
 private fun AuthenticationRequestParameters.serialize(): String = vckJsonSerializer.encodeToString(this)
 
@@ -89,7 +106,11 @@ val OpenId4VpCombinedProtocolTest by testSuite {
                 .shouldBeInstanceOf<AuthnResponseResult.Success>()
                 .vp.freshVerifiableCredentials.shouldNotBeEmpty()
                 .map { it.vcJws }.forEach {
-                    it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
+                    it.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
+                        shouldNotThrowAny {
+                            Json.decodeFromJsonElement(AtomicAttribute2023.serializer(), credentialSubject)
+                        }
+                    }
                 }
         }
 

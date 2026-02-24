@@ -1,5 +1,17 @@
 package at.asitplus.wallet.lib.agent
 
+/*
+ * Software Name : VC-K
+ * SPDX-FileCopyrightText: Copyright (c) A-SIT Plus GmbH
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Modifications: Get the public key from the JWS header when verifying a vp.
+ * SPDX-FileCopyrightText: Copyright (c) Orange Business
+ *
+ * This software is distributed under the Apache License 2.0,
+ * see the "LICENSE" file for more details
+ */
+
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
@@ -60,7 +72,7 @@ class ValidatorVcJws(
         verifyJwsObject(input).getOrThrow()
         val vpJws = input.payload.validate(challenge, clientId)
         val vcValidationResults = vpJws.vp.verifiableCredential
-            .map { it to verifyVcJws(it, null, input) }
+            .map { it to verifyVcJws(it, input.header.publicKey, input) }
 
         val invalidVcList = vcValidationResults.filter {
             it.second !is SuccessJwt
@@ -118,7 +130,7 @@ class ValidatorVcJws(
      */
     suspend fun verifyVcJws(
         input: JwsSigned<VerifiableCredentialJws>,
-        publicKey: CryptoPublicKey?,
+        publicKey: CryptoPublicKey,
         vpJws: JwsSigned<VerifiablePresentationJws>? = null,
     ) = verifyVcJws(input.serialize(), publicKey, vpJws)
 

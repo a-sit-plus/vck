@@ -1,5 +1,17 @@
 package at.asitplus.wallet.lib.openid
 
+/*
+ * Software Name : VC-K
+ * SPDX-FileCopyrightText: Copyright (c) A-SIT Plus GmbH
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Modifications: Credential subject is now a JsonElement
+ * SPDX-FileCopyrightText: Copyright (c) Orange Business
+ *
+ * This software is distributed under the Apache License 2.0,
+ * see the "LICENSE" file for more details
+ */
+
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.iso.IssuerSignedItem
@@ -16,8 +28,11 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.LocalDateOrInstant
+import at.asitplus.wallet.lib.data.toJsonElement
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import at.asitplus.wallet.lib.oidvci.CredentialDataProviderFun
 import at.asitplus.wallet.lib.oidvci.CredentialDataProviderInput
@@ -31,6 +46,7 @@ import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.json.Json
 import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
@@ -53,6 +69,7 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialDataProviderFun {
 
             MobileDrivingLicenceScheme -> getMdl(input.userInfo, input.subjectPublicKey)
             EuPidScheme -> getEuPid(input.userInfo, input.subjectPublicKey, input.credentialRepresentation)
+
             else -> throw NotImplementedError()
         }
     }
@@ -93,7 +110,7 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialDataProviderFun {
             )
 
             PLAIN_JWT -> CredentialToBeIssued.VcJwt(
-                AtomicAttribute2023(subjectId, GIVEN_NAME, givenName ?: "no value"),
+                AtomicAttribute2023(subjectId, GIVEN_NAME, givenName ?: "no value").toJsonElement(),
                 expiration,
                 ConstantIndex.AtomicAttribute2023,
                 subjectPublicKey,
@@ -171,15 +188,17 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialDataProviderFun {
             )
 
             PLAIN_JWT -> CredentialToBeIssued.VcJwt(
-                EuPidCredential(
-                    id = subjectId,
-                    familyName = familyName,
-                    givenName = givenName,
-                    birthDate = birthDate,
-                    issuanceDate = issuanceDate,
-                    expiryDate = expirationDate,
-                    issuingCountry = issuingCountry,
-                    issuingAuthority = issuingCountry,
+                Json.encodeToJsonElement(
+                    EuPidCredential.serializer(), EuPidCredential(
+                        id = subjectId,
+                        familyName = familyName,
+                        givenName = givenName,
+                        birthDate = birthDate,
+                        issuanceDate = issuanceDate,
+                        expiryDate = expirationDate,
+                        issuingCountry = issuingCountry,
+                        issuingAuthority = issuingCountry,
+                    )
                 ),
                 expiration,
                 EuPidScheme,
