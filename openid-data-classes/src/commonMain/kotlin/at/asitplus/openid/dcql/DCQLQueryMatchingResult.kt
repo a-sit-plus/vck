@@ -2,6 +2,10 @@ package at.asitplus.openid.dcql
 
 import at.asitplus.KmmResult
 
+
+@Deprecated("Use DCQLQueryMatchingResult instead")
+typealias DCQLQueryResult<Any> = DCQLQueryMatchingResult
+
 data class DCQLQueryMatchingResult(
     /**
      * each entry in the result list refers to the credential at the same index from those provided for matching

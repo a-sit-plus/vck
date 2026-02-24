@@ -1,9 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.PresentationSubmission
 import at.asitplus.iso.DeviceNameSpaces
-import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
@@ -102,6 +100,7 @@ sealed interface PresentationResponseParameters {
     }
 
     companion object {
+        @Suppress("DEPRECATION")
         private fun CreatePresentationResult.toJsonPrimitive() = when (val presentationResult = this) {
             is CreatePresentationResult.Signed -> JsonPrimitive(presentationResult.serialized)
             is CreatePresentationResult.VpJws -> JsonPrimitive(presentationResult.serialized)

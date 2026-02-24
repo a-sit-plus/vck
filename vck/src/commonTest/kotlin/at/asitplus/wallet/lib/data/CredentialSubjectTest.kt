@@ -7,6 +7,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
+@Suppress("DEPRECATION")
 val CredentialSubjectTest by testSuite {
     "Subclasses are correctly deserialized" {
         @Serializable

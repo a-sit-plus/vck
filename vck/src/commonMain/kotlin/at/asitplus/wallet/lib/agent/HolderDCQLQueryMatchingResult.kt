@@ -25,7 +25,7 @@ data class HolderDCQLQueryMatchingResult<Credential: Any>(
         dcqlQuery: DCQLQuery,
     ): KmmResult<Map<DCQLCredentialQueryIdentifier, List<DCQLCredentialSubmissionOption<Credential>>>> =
         catching {
-            val allowsMultiple = dcqlQuery.credentials.filter { it.multiple ?: false }.map { it.id }.toSet()
+            val allowsMultiple = dcqlQuery.credentials.filter { it.multiple }.map { it.id }.toSet()
             // submit the first options of the required queries by default
             val queriesToBePresented = dcqlQuery.requestedCredentialSetQueries.filter {
                 it.required
