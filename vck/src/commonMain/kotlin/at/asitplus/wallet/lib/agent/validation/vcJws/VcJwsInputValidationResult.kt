@@ -1,5 +1,17 @@
 package at.asitplus.wallet.lib.agent.validation.vcJws
 
+/*
+ * Software Name : VC-K
+ * SPDX-FileCopyrightText: Copyright (c) A-SIT Plus GmbH
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Modifications: Rename VcJwsToVpJwsMappingValidationSummary to VpJwsValidationSummary
+ * SPDX-FileCopyrightText: Copyright (c) Orange Business
+ *
+ * This software is distributed under the Apache License 2.0,
+ * see the "LICENSE" file for more details
+ */
+
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.validation.common.SubjectMatchingResult
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
@@ -21,7 +33,7 @@ sealed interface VcJwsInputValidationResult {
         val isIntegrityGood: Boolean,
         val subjectMatchingResult: SubjectMatchingResult?,
         val contentSemanticsValidationSummary: VcJwsContentSemanticsValidationSummary,
-        val vpMappingValidationSummary: VcJwsToVpJwsMappingValidationSummary?,
+        val vpValidationSummary: VpJwsValidationSummary?,
     ) : VcJwsInputValidationResult {
         val payload: VerifiableCredentialJws
             get() = parsed.payload
@@ -31,7 +43,7 @@ sealed interface VcJwsInputValidationResult {
                 isIntegrityGood,
                 subjectMatchingResult?.isSuccess != false,
                 contentSemanticsValidationSummary.isSuccess,
-                vpMappingValidationSummary?.isSuccess != false,
+                vpValidationSummary?.isSuccess != false,
             ).all { it }
     }
 }

@@ -8,6 +8,7 @@ import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.eupid.EuPidScheme
+import at.asitplus.wallet.lib.agent.CredentialRenewalInfo
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.IssuerAgent
@@ -22,6 +23,7 @@ import at.asitplus.wallet.lib.ktor.openid.TestUtils.respond
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondIncludingDpopNonce
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.toRequestInfo
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.verifySdJwtCredential
+import at.asitplus.wallet.lib.ktor.openid.toCredentialRenewalInfo
 import at.asitplus.wallet.lib.oauth2.ClientAuthenticationService
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
@@ -201,7 +203,7 @@ val OpenId4VciClientIntegratedDPoPTest by testSuite {
         )
     } - {
         test("loadEuPidCredentialSdJwt") { context ->
-            var refreshTokenStore: RefreshTokenInfo? = null
+            var refreshTokenStore: CredentialRenewalInfo? = null
 
             val credentialIdentifierInfos = context.client.loadCredentialMetadata("http://localhost").getOrThrow()
             val selectedCredential = credentialIdentifierInfos

@@ -13,6 +13,7 @@ import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
+import at.asitplus.wallet.lib.agent.CredentialRenewalInfo
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued.Iso
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued.VcSd
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
@@ -299,7 +300,7 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
         val expectedAttributeValue = uuid4().toString()
         val expectedAttributeName = EuPidScheme.Attributes.FAMILY_NAME
         with(setup(EuPidScheme, SD_JWT, mapOf(expectedAttributeName to expectedAttributeValue))) {
-            var refreshTokenStore: RefreshTokenInfo? = null
+            var refreshTokenStore: CredentialRenewalInfo? = null
             // Load credential identifier infos from Issuing service
             val credentialIdentifierInfos = client.loadCredentialMetadata(issuerPublicContext).getOrThrow()
             // just pick the first credential in SD-JWT that is available
@@ -338,7 +339,7 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
         val expectedAttributeValue = uuid4().toString()
         val expectedAttributeName = EuPidScheme.Attributes.GIVEN_NAME
         with(setup(EuPidScheme, ISO_MDOC, mapOf(expectedAttributeName to expectedAttributeValue))) {
-            var refreshTokenStore: RefreshTokenInfo? = null
+            var refreshTokenStore: CredentialRenewalInfo? = null
             // Load credential identifier infos from Issuing service
             val credentialIdentifierInfos = client.loadCredentialMetadata(issuerPublicContext).getOrThrow()
             // just pick the first credential in MSO_MDOC that is available

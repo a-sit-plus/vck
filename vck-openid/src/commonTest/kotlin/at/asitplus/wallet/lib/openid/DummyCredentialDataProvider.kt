@@ -1,5 +1,17 @@
 package at.asitplus.wallet.lib.openid
 
+/*
+ * Software Name : VC-K
+ * SPDX-FileCopyrightText: Copyright (c) A-SIT Plus GmbH
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Modifications: Credential subject is now a JsonElement
+ * SPDX-FileCopyrightText: Copyright (c) Orange Business
+ *
+ * This software is distributed under the Apache License 2.0,
+ * see the "LICENSE" file for more details
+ */
+
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.iso.IssuerSignedItem
@@ -11,14 +23,18 @@ import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.LocalDateOrInstant
+import at.asitplus.wallet.lib.data.toJsonElement
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import at.asitplus.wallet.mdl.DrivingPrivilege
 import at.asitplus.wallet.mdl.DrivingPrivilegeCode
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.json.Json
 import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
@@ -39,8 +55,14 @@ object DummyCredentialDataProvider {
             val claims = listOfNotNull(
                 ClaimToBeIssued(ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME, "Susanne"),
                 ClaimToBeIssued(ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME, "Meier"),
-                ClaimToBeIssued(ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH, LocalDate.parse("1990-01-01")),
-                ClaimToBeIssued(ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT, Random.Default.nextBytes(32)),
+                ClaimToBeIssued(
+                    ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH,
+                    LocalDate.parse("1990-01-01")
+                ),
+                ClaimToBeIssued(
+                    ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT,
+                    Random.Default.nextBytes(32)
+                ),
             )
             when (representation) {
                 SD_JWT -> CredentialToBeIssued.VcSd(
@@ -53,11 +75,7 @@ object DummyCredentialDataProvider {
                 )
 
                 PLAIN_JWT -> CredentialToBeIssued.VcJwt(
-                    subject = AtomicAttribute2023(
-                        subjectId,
-                        CLAIM_GIVEN_NAME,
-                        "Susanne"
-                    ),
+                    subject = AtomicAttribute2023(subjectId, CLAIM_GIVEN_NAME, "Susanne").toJsonElement(),
                     expiration = expiration,
                     scheme = credentialScheme,
                     subjectPublicKey = subjectPublicKey,
@@ -163,16 +181,18 @@ object DummyCredentialDataProvider {
                     )
 
                 PLAIN_JWT -> CredentialToBeIssued.VcJwt(
-                    subject = EuPidCredential(
-                        id = subjectId,
-                        familyName = familyName,
-                        givenName = givenName,
-                        birthDate = birthDate,
-                        ageOver18 = true,
-                        issuanceDate = issuanceDate,
-                        expiryDate = expirationDate,
-                        issuingCountry = issuingCountry,
-                        issuingAuthority = issuingCountry,
+                    subject = Json.encodeToJsonElement(
+                        EuPidCredential.serializer(), EuPidCredential(
+                            id = subjectId,
+                            familyName = familyName,
+                            givenName = givenName,
+                            birthDate = birthDate,
+                            ageOver18 = true,
+                            issuanceDate = issuanceDate,
+                            expiryDate = expirationDate,
+                            issuingCountry = issuingCountry,
+                            issuingAuthority = issuingCountry,
+                        )
                     ),
                     expiration = expiration,
                     scheme = credentialScheme,

@@ -6,7 +6,6 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
-import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -47,6 +46,8 @@ import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.util.*
+import at.asitplus.testballoon.invoke
+import at.asitplus.wallet.lib.agent.CredentialRenewalInfo
 
 /**
  * Tests [OpenId4VciClient] against [CredentialIssuer] with our own internal [SimpleAuthorizationService].
@@ -204,7 +205,7 @@ val OpenId4VciClientTest by testSuite {
         val expectedFamilyName = uuid4().toString()
         val expectedAttributeName = EuPidScheme.Attributes.FAMILY_NAME
         with(setup(EuPidScheme, SD_JWT, mapOf(expectedAttributeName to expectedFamilyName))) {
-            var refreshTokenStore: RefreshTokenInfo? = null
+            var refreshTokenStore: CredentialRenewalInfo? = null
 
             // Load credential identifier infos from Issuing service
             val credentialIdentifierInfos = client.loadCredentialMetadata("http://localhost").getOrThrow()
@@ -244,7 +245,7 @@ val OpenId4VciClientTest by testSuite {
         val expectedAttributeValue = uuid4().toString()
         val expectedAttributeName = EuPidScheme.Attributes.GIVEN_NAME
         with(setup(EuPidScheme, ISO_MDOC, mapOf(expectedAttributeName to expectedAttributeValue))) {
-            var refreshTokenStore: RefreshTokenInfo? = null
+            var refreshTokenStore: CredentialRenewalInfo? = null
             // Load credential identifier infos from Issuing service
             val credentialIdentifierInfos = client.loadCredentialMetadata("http://localhost").getOrThrow()
             // just pick the first credential in MSO_MDOC that is available

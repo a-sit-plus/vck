@@ -52,11 +52,7 @@ data class StatusListJwt(
         }
         val type = jwsSigned.header.type?.lowercase()
             ?: throw IllegalArgumentException("Invalid type header")
-        val validTypes = listOf(
-            MediaTypes.STATUSLIST_JWT.lowercase(),
-            MediaTypes.Application.STATUSLIST_JWT.lowercase()
-        )
-        if (type !in validTypes) {
+        if (type != MediaTypes.STATUSLIST_JWT.lowercase()) {
             throw IllegalArgumentException("Invalid type header: $type")
         }
         jwsSigned.payload

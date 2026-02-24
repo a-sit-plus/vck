@@ -12,7 +12,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * specification: https://www.ietf.org/archive/id/draft-ietf-oauth-status-list-06.html#name-status-list-token-in-jwt-fo
+ * specification: https://www.ietf.org/archive/id/draft-ietf-oauth-status-list-17.html#name-status-list-token-in-jwt-fo
  */
 @Serializable
 internal data class JwtStatusListTokenPayload(
