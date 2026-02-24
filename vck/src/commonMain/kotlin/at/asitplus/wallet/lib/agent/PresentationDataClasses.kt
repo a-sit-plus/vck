@@ -130,27 +130,10 @@ sealed class CreatePresentationResult {
 }
 
 @Serializable
-data class PresentationExchangeCredentialDisclosure(
-    val credential: SubjectCredentialStore.StoreEntry,
+data class PresentationExchangeCredentialDisclosure<Credential: Any>(
+    val credential: Credential,
     val disclosedAttributes: Collection<NormalizedJsonPath>,
 )
-
-typealias InputDescriptorMatches = Map<SubjectCredentialStore.StoreEntry, Map<ConstraintField, NodeList>>
-
-fun Map<String, Map<SubjectCredentialStore.StoreEntry, Map<ConstraintField, NodeList>>>.toDefaultSubmission() =
-    mapNotNull { descriptorCredentialMatches ->
-        descriptorCredentialMatches.value.entries.firstNotNullOfOrNull { credentialConstraintFieldMatches ->
-            PresentationExchangeCredentialDisclosure(
-                credential = credentialConstraintFieldMatches.key,
-                disclosedAttributes = credentialConstraintFieldMatches.value.values.mapNotNull {
-                    it.firstOrNull()?.normalizedJsonPath
-                },
-            )
-        }?.let {
-            descriptorCredentialMatches.key to it
-        }
-    }.toMap()
-
 
 /**
  * Implementations should return true, when the credential attribute may be disclosed to the verifier.

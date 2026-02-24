@@ -16,11 +16,10 @@ package at.asitplus.wallet.lib.procedures.dcql
  * see the "LICENSE" file for more details
  */
 
-import at.asitplus.KmmResult
 import at.asitplus.openid.dcql.DCQLAuthorityKeyIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialClaimStructure
 import at.asitplus.openid.dcql.DCQLQuery
-import at.asitplus.openid.dcql.DCQLQueryResult
+import at.asitplus.openid.dcql.DCQLQueryMatchingResult
 import at.asitplus.signum.indispensable.asn1.Asn1Decodable
 import at.asitplus.signum.indispensable.asn1.Asn1Element
 import at.asitplus.signum.indispensable.asn1.Asn1Encodable
@@ -46,7 +45,7 @@ import kotlin.jvm.JvmInline
 value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
     fun select(
         credentials: List<SubjectCredentialStore.StoreEntry>
-    ): DCQLQueryResult<SubjectCredentialStore.StoreEntry> = dcqlQuery.execute(
+    ): DCQLQueryMatchingResult = dcqlQuery.execute(
         availableCredentials = credentials,
         credentialFormatExtractor = { it.credentialFormat },
         mdocCredentialDoctypeExtractor = {

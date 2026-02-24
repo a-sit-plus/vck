@@ -8,7 +8,6 @@ import at.asitplus.iso.IssuerSigned
 import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.dcql.DCQLQuery
-import at.asitplus.openid.dcql.DCQLQueryResult
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialPresentation
@@ -89,12 +88,27 @@ interface Holder {
      *  authorization rules on attribute credentials that are to be disclosed.
      * @param filterById filter the list of possible credentials by the provided ID
      */
+    suspend fun matchInputDescriptorsAgainstCredentialStoreV2(
+        inputDescriptors: Collection<InputDescriptor>,
+        fallbackFormatHolder: FormatHolder? = null,
+        pathAuthorizationValidator: PathAuthorizationValidator? = null,
+        filterById: String? = null
+    ): KmmResult<HolderPresentationExchangeQueryMatchingResult<SubjectCredentialStore.StoreEntry>>
+
+    @Deprecated("Deprecated in favor of more detailed matching result", replaceWith = ReplaceWith("matchInputDescriptorsAgainstCredentialStoreV2.inputDescriptorMatches"))
     suspend fun matchInputDescriptorsAgainstCredentialStore(
         inputDescriptors: Collection<InputDescriptor>,
         fallbackFormatHolder: FormatHolder? = null,
         pathAuthorizationValidator: PathAuthorizationValidator? = null,
         filterById: String? = null
-    ): KmmResult<Map<String, InputDescriptorMatches>>
+    ): KmmResult<Map<String, Map<SubjectCredentialStore.StoreEntry, InputDescriptorMatching>>> = matchInputDescriptorsAgainstCredentialStoreV2(
+        inputDescriptors = inputDescriptors,
+        fallbackFormatHolder = fallbackFormatHolder,
+        pathAuthorizationValidator = pathAuthorizationValidator,
+        filterById = filterById,
+    ).map {
+        it.inputDescriptorMatches
+    }
 
     /**
      * Evaluates a given input descriptor against a store entry.
@@ -121,6 +135,6 @@ interface Holder {
     suspend fun matchDCQLQueryAgainstCredentialStore(
         dcqlQuery: DCQLQuery,
         filterById: String? = null
-    ): KmmResult<DCQLQueryResult<SubjectCredentialStore.StoreEntry>>
+    ): KmmResult<HolderDCQLQueryMatchingResult<SubjectCredentialStore.StoreEntry>>
 }
 

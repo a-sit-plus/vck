@@ -1,20 +1,23 @@
 # Changelog
 
 Release 5.12.0 (unreleased):
-- W3C Verifiable Presentation validation: Now verifies that the subject field contains the VP issuer's public key (VC holder's public key).
-- W3C Verifiable Credential: Replaced `CredentialSubject` abstract class with `JsonElement` for W3C VC `credentialSubject` field. Polymorphic deserialization using `type` discriminator is unreliable since W3C Data Model Spec 1.1 doesn't guarantee this field's presence.
+ - W3C JWT VC:
+   - Presentation validation: Now verifies that the subject field contains the VP issuer's public key (VC holder's public key).
+   - Replaced `CredentialSubject` abstract class with `JsonElement` for W3C VC `credentialSubject` field. Polymorphic deserialization using `type` discriminator is unreliable since W3C Data Model Spec 1.1 doesn't guarantee this field's presence.
  - Digital Credentials API:
    - Add issuance data classes: `CredentialCreationOptions`, `DigitalCredentialCreationOptions`, `DigitalCredentialCreateRequest`, `DigitalCredentialOfferReturn`, and `DigitalCredentialOfferReturnData`. These classes are based on a preliminary specification and are subject to change.
    - Add `CredentialRequestOptions.create()` method which automatically sets `mediation` to required and takes the list of requests, make the default constructor private.
  - Remove code elements deprecated in 5.11.0
  - ISO mdoc:
    - Preserve `Document.errors` in parsed ISO document results instead of failing validation
- - Change: Executing unsatisfiable DCQL queries no longer throws on matching, only on submission.
- - OID4VCI refresh token storage:
- - Moved the class `RefreshTokenInfo` from `OpenId4VciClient` to `SubjectCredentialStore.kt` and renamed it to `CredentialRenewalInfo` to better describe its role in the renewal process.
-   Kept `RefreshTokenInfo` in the original package for backward compatibility
- - Added `CredentialRenewalInfo` to `SubjectCredentialStore.StoreEntry`
- - Added support for refresh tokens in BearerTokenService
+ - OpenID for Verifiable Presentations:
+   - Change: Executing unsatisfiable DCQL queries no longer throws on matching, only on submission.
+   - Change: Do not fail when only matching credentials without submitting a presentation
+ - OpenID for Verifiable Credential Issuance:
+   - Moved the class `RefreshTokenInfo` from `OpenId4VciClient` to `SubjectCredentialStore.kt` and renamed it to `CredentialRenewalInfo` to better describe its role in the renewal process.
+     Kept `RefreshTokenInfo` in the original package for backward compatibility
+   - Added `CredentialRenewalInfo` to `SubjectCredentialStore.StoreEntry`
+   - Added support for refresh tokens in BearerTokenService
 
 Release 5.11.1:
  - OAuth 2.0:

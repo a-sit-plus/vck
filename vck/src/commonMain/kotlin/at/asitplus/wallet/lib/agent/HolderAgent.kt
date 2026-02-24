@@ -11,7 +11,6 @@ import at.asitplus.dif.PresentationSubmissionDescriptor
 import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.dcql.DCQLQuery
-import at.asitplus.openid.dcql.DCQLQueryResult
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
@@ -23,7 +22,6 @@ import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.dif.PresentationExchangeInputEvaluator
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
-import at.asitplus.wallet.lib.extensions.toDefaultSubmission
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -177,7 +175,7 @@ class HolderAgent(
         val presentationDefinition = credentialPresentation.presentationRequest.presentationDefinition
 
         val presentationCredentialSelection = credentialPresentation.inputDescriptorSubmissions
-            ?: matchInputDescriptorsAgainstCredentialStore(
+            ?: matchInputDescriptorsAgainstCredentialStoreV2(
                 inputDescriptors = presentationDefinition.inputDescriptors,
                 fallbackFormatHolder = credentialPresentation.presentationRequest.fallbackFormatHolder,
             ).getOrThrow().toDefaultSubmission()
@@ -246,10 +244,10 @@ class HolderAgent(
         }
 
         val verifiablePresentations = credentialSubmissions.mapValues { match ->
-            val query = credentialPresentation.presentationRequest.dcqlQuery.credentials.first { 
+            val query = credentialPresentation.presentationRequest.dcqlQuery.credentials.first {
                 it.id == match.key
             }
-            if(query.multiple != true && match.value.size != 1) {
+            if (query.multiple != true && match.value.size != 1) {
                 throw IllegalArgumentException("Credential query ${query.id} does not allow multiple submission, but ${match.value.size} were provided.")
             }
             match.value.map {
@@ -264,7 +262,7 @@ class HolderAgent(
         PresentationResponseParameters.DCQLParameters(verifiablePresentations)
     }
 
-    override suspend fun matchInputDescriptorsAgainstCredentialStore(
+    override suspend fun matchInputDescriptorsAgainstCredentialStoreV2(
         inputDescriptors: Collection<InputDescriptor>,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: PathAuthorizationValidator?,
@@ -281,27 +279,30 @@ class HolderAgent(
 
     private fun findInputDescriptorMatches(
         inputDescriptors: Collection<InputDescriptor>,
-        credentials: Collection<StoreEntry>,
+        credentials: List<StoreEntry>,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: PathAuthorizationValidator?,
-    ) = inputDescriptors.associateWith { inputDescriptor ->
-        credentials.mapNotNull { credential ->
-            evaluateInputDescriptorAgainstCredential(
-                inputDescriptor = inputDescriptor,
-                credential = credential,
-                fallbackFormatHolder = fallbackFormatHolder,
-                pathAuthorizationValidator = {
-                    pathAuthorizationValidator?.invoke(credential, it) ?: true
-                },
-            ).onFailure {
-                Napier.d("findInputDescriptorMatches failed for credential with schemaUri ${credential.schemaUri}", it)
-            }.getOrNull()?.let {
-                credential to it
-            }
-        }.toMap()
-    }.mapKeys {
-        it.key.id
-    }
+    ) = HolderPresentationExchangeQueryMatchingResult(
+        credentials = credentials,
+        queryMatchingResult = PresentationExchangeQueryMatchingResult(
+            inputDescriptors.associateWith { inputDescriptor ->
+                credentials.map { credential ->
+                    evaluateInputDescriptorAgainstCredential(
+                        inputDescriptor = inputDescriptor,
+                        credential = credential,
+                        fallbackFormatHolder = fallbackFormatHolder,
+                        pathAuthorizationValidator = {
+                            pathAuthorizationValidator?.invoke(credential, it) ?: true
+                        },
+                    ).onFailure {
+                        Napier.d("findInputDescriptorMatches failed for credential with schemaUri ${credential.schemaUri}", it)
+                    }
+                }
+            }.mapKeys {
+                it.key.id
+            },
+        )
+    )
 
     override fun evaluateInputDescriptorAgainstCredential(
         inputDescriptor: InputDescriptor,
@@ -326,16 +327,20 @@ class HolderAgent(
     override suspend fun matchDCQLQueryAgainstCredentialStore(
         dcqlQuery: DCQLQuery,
         filterById: String?,
-    ): KmmResult<DCQLQueryResult<StoreEntry>> = catching {
-        DCQLQueryAdapter(dcqlQuery).select(
-            credentials = getValidCredentialsByPriority(filterById)
-                ?: throw PresentationException("Credentials could not be retrieved from the store"),
+    ): KmmResult<HolderDCQLQueryMatchingResult<StoreEntry>> = catching {
+        val credentials = getValidCredentialsByPriority(filterById)
+            ?: throw PresentationException("Credentials could not be retrieved from the store")
+        HolderDCQLQueryMatchingResult(
+            dcqlQueryMatchingResult = DCQLQueryAdapter(dcqlQuery).select(
+                credentials = credentials
+            ),
+            credentials = credentials,
         )
     }
 
     private fun PresentationSubmission.Companion.fromMatches(
         presentationId: String?,
-        matches: List<Pair<String, PresentationExchangeCredentialDisclosure>>,
+        matches: List<Pair<String, PresentationExchangeCredentialDisclosure<StoreEntry>>>,
         isSingleIsoMdocPresentation: Boolean = false,
     ) = PresentationSubmission(
         id = uuid4().toString(),
@@ -365,7 +370,7 @@ class HolderAgent(
     )
 
     private fun CredentialPresentationRequest.PresentationExchangeRequest.validateSubmission(
-        credentialSubmissions: Map<String, PresentationExchangeCredentialDisclosure>,
+        credentialSubmissions: Map<String, PresentationExchangeCredentialDisclosure<StoreEntry>>,
     ) = catching {
         val validator = PresentationSubmissionValidator.createInstance(presentationDefinition).getOrThrow()
         require(validator.isValidSubmission(credentialSubmissions.keys)) { "Submission requirements are not satisfied" }

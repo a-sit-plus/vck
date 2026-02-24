@@ -350,30 +350,27 @@ class OpenId4VpHolder(
     suspend fun getMatchingCredentials(
         preparationState: AuthorizationResponsePreparationState,
     ) = catchingUnwrapped {
-        when (val it = preparationState.credentialPresentationRequest) {
-            is CredentialPresentationRequest.DCQLRequest ->
+        when (val presentationRequest = preparationState.credentialPresentationRequest) {
+            is CredentialPresentationRequest.DCQLRequest -> holder.matchDCQLQueryAgainstCredentialStore(
+                dcqlQuery = presentationRequest.dcqlQuery,
+                filterById = preparationState.request.credentialId()
+            ).getOrThrow().let {
                 DCQLMatchingResult(
-                    presentationRequest = it,
-                    dcqlQueryResult = holder.matchDCQLQueryAgainstCredentialStore(
-                        dcqlQuery = it.dcqlQuery,
-                        filterById = preparationState.request.credentialId()
-                    ).getOrThrow()
+                    presentationRequest = presentationRequest,
+                    matchingResult = it,
                 )
+            }
 
             is CredentialPresentationRequest.PresentationExchangeRequest ->
-                holder.matchInputDescriptorsAgainstCredentialStore(
-                    inputDescriptors = it.presentationDefinition.inputDescriptors,
-                    fallbackFormatHolder = it.fallbackFormatHolder,
+                holder.matchInputDescriptorsAgainstCredentialStoreV2(
+                    inputDescriptors = presentationRequest.presentationDefinition.inputDescriptors,
+                    fallbackFormatHolder = presentationRequest.fallbackFormatHolder,
                     filterById = preparationState.request.credentialId()
                 ).getOrThrow().let { matchInputDescriptors ->
-                    if (matchInputDescriptors.values.find { it.size != 0 } == null) {
-                        throw OAuth2Exception.AccessDenied("No matching credential")
-                    } else {
-                        PresentationExchangeMatchingResult(
-                            presentationRequest = it,
-                            matchingInputDescriptorCredentials = matchInputDescriptors
-                        )
-                    }
+                    PresentationExchangeMatchingResult(
+                        presentationRequest = presentationRequest,
+                        matchingResult = matchInputDescriptors
+                    )
                 }
 
             null -> TODO()
