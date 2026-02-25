@@ -10,9 +10,7 @@ import kotlinx.serialization.Serializable
 data class ServerResponse(
     @SerialName("version")
     val version: String,
-    /**
-     * A single document is a [JwsSigned], whose payload may be a `MobileDrivingLicenceJws`
-     */
+    /** A single document is a [at.asitplus.signum.indispensable.josef.JwsSigned]. */
     @SerialName("documents")
     val documents: Array<String>,
     @SerialName("documentErrors")

@@ -63,7 +63,7 @@ class RqesWalletService(
     }
 
     /**
-     * Here [OAuthDocumentDigest.hash] is the DTBS/R and will be hashed again with [hashAlgorithmOid]
+     * Here [OAuthDocumentDigest.hash] is the DTBS/R and will be hashed again with [hashAlgorithm]
      */
     suspend fun getCscAuthenticationDetails(
         signingCredential: SigningCredential,

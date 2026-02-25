@@ -6,7 +6,7 @@ import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
 
 /**
- * Intermediate DTO to hold the parsed [clientMetadata] as well as the created [params].
+ * Intermediate DTO to hold the parsed [clientMetadata] as well as the created `params` in [Success].
  *
  * Comes in handy when we need to encrypt the response according to keys passed in [jsonWebKeys].
  */

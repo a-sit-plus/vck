@@ -17,7 +17,7 @@ data class SignDocResponseParameters(
      * One or more Base64-encoded signatures enveloped within the
      * documents. This element SHALL carry a value only if the client application
      * requested the creation of signature(s) enveloped within the signed
-     * document(s) and when when [SignDocRequestParameters.operationMode] is not [OperationMode.ASYNCHRONOUS].
+     * document(s) and when [SignDocRequestParameters.operationMode] is not [OperationMode.ASYNCHRONOUS].
      */
     @SerialName("DocumentWithSignature")
     val documentWithSignature: List<String>? = null,
@@ -45,7 +45,7 @@ data class SignDocResponseParameters(
      * REQUIRED-CONDITIONAL.
      * The validationInfo is a JSON Object containing validation data that SHALL
      * be included in the signing response if
-     * [SignDocRequestParameters.returnValidationInformation] was [Boolean.true].
+     * [SignDocRequestParameters.returnValidationInformation] was `true`.
      */
     @SerialName("validationInfo")
     val validationInfo: JsonObject? = null,

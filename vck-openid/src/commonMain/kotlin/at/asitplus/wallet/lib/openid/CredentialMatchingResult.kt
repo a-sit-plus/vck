@@ -4,20 +4,17 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.dif.ConstraintField
 import at.asitplus.jsonpath.core.NodeList
-import at.asitplus.openid.dcql.DCQLQueryMatchingResult
-import at.asitplus.openid.dcql.DCQLQueryResult
 import at.asitplus.wallet.lib.agent.HolderDCQLQueryMatchingResult
 import at.asitplus.wallet.lib.agent.HolderPresentationExchangeQueryMatchingResult
 import at.asitplus.wallet.lib.agent.HolderPresentationRequestMatchingResult
 import at.asitplus.wallet.lib.agent.PresentationExchangeQueryMatchingResult
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
-import kotlin.collections.flatMap
 
 /**
  * This interface represents the result of matching a [CredentialPresentationRequest]
  * against a list of available credentials
  */
-sealed interface CredentialMatchingResult<Credential: Any> {
+sealed interface CredentialMatchingResult<Credential : Any> {
     val presentationRequest: CredentialPresentationRequest
     val matchingResult: HolderPresentationRequestMatchingResult<Credential>
 }
@@ -26,19 +23,30 @@ data class PresentationExchangeMatchingResult<Credential : Any>(
     override val presentationRequest: CredentialPresentationRequest.PresentationExchangeRequest,
     override val matchingResult: HolderPresentationExchangeQueryMatchingResult<Credential>,
 ) : CredentialMatchingResult<Credential> {
-    @Deprecated("Use constructor with presentationRequest and matchingResult")
+    @Deprecated(
+        "Use constructor with presentationRequest and matchingResult",
+        level = DeprecationLevel.ERROR
+    )
     constructor(
         presentationRequest: CredentialPresentationRequest.PresentationExchangeRequest,
         matchingInputDescriptorCredentials: Map<String, Map<Credential, Map<ConstraintField, NodeList>>>
     ) : this(
         presentationRequest = presentationRequest,
-        matchingResult = HolderPresentationExchangeQueryMatchingResult(
-            credentials = matchingInputDescriptorCredentials.flatMap { it.value.keys },
-            queryMatchingResult = PresentationExchangeQueryMatchingResult(
-                matchingInputDescriptorCredentials.mapValues {
-                    it.value.map { KmmResult.success(it.value) }
-                })
-        )
+        matchingResult = matchingInputDescriptorCredentials
+            .values.flatMap { it.keys }.distinct().toList().let { credentials ->
+                HolderPresentationExchangeQueryMatchingResult(
+                    credentials = credentials,
+                    queryMatchingResult = PresentationExchangeQueryMatchingResult(
+                        inputDescriptorMatchingResults = matchingInputDescriptorCredentials.mapValues { (_, matches) ->
+                            credentials.map { credential ->
+                                KmmResult.catching {
+                                    matches[credential] ?: throw IllegalArgumentException("Unknown matching error")
+                                }
+                            }
+                        }
+                    )
+                )
+            }
     )
 }
 
@@ -47,16 +55,15 @@ data class DCQLMatchingResult<Credential : Any>(
     override val presentationRequest: CredentialPresentationRequest.DCQLRequest,
     override val matchingResult: HolderDCQLQueryMatchingResult<Credential>,
 ) : CredentialMatchingResult<Credential> {
-    @Deprecated("Use constructor with presentationRequest and matchingResult")
-    @Suppress("UNCHECKED_CAST", "DEPRECATION")
+    @Deprecated(
+        "Use constructor with presentationRequest and matchingResult",
+        level = DeprecationLevel.ERROR
+    )
+    @Suppress("DEPRECATION")
     constructor(
         presentationRequest: CredentialPresentationRequest.DCQLRequest,
-        dcqlQueryResult: DCQLQueryResult<Credential>,
+        dcqlQueryResult: at.asitplus.openid.dcql.DCQLQueryResult<Credential>,
     ) : this(
-        presentationRequest = presentationRequest,
-        matchingResult = HolderDCQLQueryMatchingResult(
-            dcqlQueryResult,
-            presentationRequest.dcqlQuery.credentials
-        ) as HolderDCQLQueryMatchingResult<Credential>
+        TODO(), TODO() as HolderDCQLQueryMatchingResult<Credential>,
     )
 }

@@ -15,8 +15,6 @@ data class JarRequestParameters(
      * as it communicates to the wallet which Client Identifier Prefix and Client Identifier to use
      * when authenticating the client through verification of the request signature or retrieving
      * client metadata.
-     *
-     * See also [clientIdWithoutPrefix] and the notes there.
      */
     @SerialName("client_id")
     val clientId: String? = null,
@@ -55,9 +53,10 @@ data class JarRequestParameters(
 ) : RequestParameters() {
 
     @Serializable
-    enum class RequestUriMethod{
+    enum class RequestUriMethod {
         @SerialName("get")
         GET,
+
         @SerialName("post")
         POST;
 

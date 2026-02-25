@@ -251,6 +251,7 @@ class OpenId4VciClient(
             "refreshCredentialReturningResult(refreshTokenInfo.toCredentialRenewalInfo())"
         )
     )
+    @Suppress("DEPRECATION")
     suspend fun refreshCredentialReturningResult(
         refreshTokenInfo: RefreshTokenInfo
     ): KmmResult<CredentialIssuanceResult.Success> =
@@ -259,7 +260,8 @@ class OpenId4VciClient(
         )
 
     /**
-     * Will use the [tokenResponse] to request a credential and store it with [storeCredential].
+     * Will use the [tokenResponse] to request a credential and store it with
+     * [at.asitplus.wallet.lib.agent.HolderAgent.storeCredential]
      */
     @Throws(Exception::class)
     private suspend fun postCredentialRequestAndStore(
@@ -505,7 +507,7 @@ data class CredentialIdentifierInfo(
 )
 
 /**
- * Holds all information needed to refresh a credential, pass it to [OpenId4VciClient.refreshCredential].
+ * Holds all information needed to refresh a credential, pass it to [OpenId4VciClient.refreshCredentialReturningResult].
  */
 @Deprecated(
     message = "Moved to at.asitplus.wallet.lib.agent and renamed to CredentialRenewalInfo",
@@ -523,6 +525,7 @@ data class RefreshTokenInfo(
     val credentialIdentifier: String,
 )
 
+@Suppress("DEPRECATION")
 fun RefreshTokenInfo.toCredentialRenewalInfo() =
     CredentialRenewalInfo(
         refreshToken = refreshToken,

@@ -22,9 +22,9 @@ import at.asitplus.csc.collection_entries.RqesDocumentDigestEntry.DocumentLocati
 sealed class Method {
     /**
      * D3.1: UC Specification WP3:
-     * The document corresponding to the parameter [hash] can be
-     * fetched from [documentLocationUri] with a https-request
-     * without further restrictions.
+     * The document corresponding to the parameter `hash` can be
+     * fetched from [at.asitplus.csc.collection_entries.RqesDocumentDigestEntry.documentLocationUri]
+     * with a https-request without further restrictions.
      */
     @Serializable
     @SerialName("public")
@@ -32,10 +32,9 @@ sealed class Method {
 
     /**
      * D3.1: UC Specification WP3:
-     * The wallet displays the parameter [oneTimePassword] to the
-     * user. A webclient accessing the uri offers a way for the user to
-     * input the shown value and only then allows to fetch the
-     * document corresponding to [hash].
+     * The wallet displays the parameter [oneTimePassword] to the user.
+     * A webclient accessing the uri offers a way for the user to input the shown value and only then allows to fetch
+     * the document corresponding to `hash`.
      */
     @Serializable
     @SerialName("OTP")
@@ -47,8 +46,8 @@ sealed class Method {
     /**
      * D3.1: UC Specification WP3:
      * The wallet fetches the document from
-     * [documentLocationUri]. The document should be fetched
-     * using the ‘Basic’ HTTP Authentication Scheme (RFC 7617).
+     * [at.asitplus.csc.collection_entries.RqesDocumentDigestEntry.documentLocationUri].
+     * The document should be fetched using the ‘Basic’ HTTP Authentication Scheme (RFC 7617).
      */
     @Serializable
     @SerialName("Basic_Auth")
@@ -57,8 +56,8 @@ sealed class Method {
     /**
      * D3.1: UC Specification WP3:
      * The wallet fetches the document from
-     * [documentLocationUri]. The document should be fetched
-     * using the ‘Digest’ HTTP Authentication Scheme (RFC 7616).
+     * [at.asitplus.csc.collection_entries.RqesDocumentDigestEntry.documentLocationUri].
+     * The document should be fetched using the ‘Digest’ HTTP Authentication Scheme (RFC 7616).
      */
     @Serializable
     @SerialName("Digest_Auth")
@@ -67,9 +66,8 @@ sealed class Method {
     /**
      * D3.1: UC Specification WP3:
      * The wallet fetches the document from
-     * [documentLocationUri]. The document should be fetched
-     * using the ‘OAuth 2.0’ Authentication Framework (RFC6749
-     * and RFC8252).
+     * [at.asitplus.csc.collection_entries.RqesDocumentDigestEntry.documentLocationUri].
+     * The document should be fetched using the ‘OAuth 2.0’ Authentication Framework (RFC6749 and RFC8252).
      */
     @Serializable
     @SerialName("OAuth_20")

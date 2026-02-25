@@ -4,8 +4,8 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.extensions.ifTrue
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
@@ -18,8 +18,9 @@ sealed class StatusListToken {
     /**
      * Validate the Status List Token:
      *
-     * Validate the Status List Token by following the rules defined in section 7.2 of [RFC7519]
-     * for JWTs and section 7.2 of [RFC8392] for CWTs
+     * Validate the Status List Token by following the rules defined in section 7.2 of
+     * [RFC7519](https://datatracker.ietf.org/doc/html/rfc7519)
+     * for JWTs and section 7.2 of [RFC8392](https://datatracker.ietf.org/doc/html/rfc8392) for CWTs
      *
      * Check for the existence of the required claims as defined in Section 5.1 and Section 5.2
      * depending on token type.

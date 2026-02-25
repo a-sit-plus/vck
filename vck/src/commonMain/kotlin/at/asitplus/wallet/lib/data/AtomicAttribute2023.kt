@@ -21,6 +21,7 @@ import kotlinx.serialization.json.JsonElement
  * VC spec leaves the representation of a single credential open to implementations.
  * We decided to make a "generic" one, i.e. with custom [name], [value] and [mimeType].
  */
+@Suppress("DEPRECATION")
 @Serializable
 @SerialName("AtomicAttribute2023")
 data class AtomicAttribute2023(

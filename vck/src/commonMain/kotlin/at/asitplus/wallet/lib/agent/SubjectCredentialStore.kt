@@ -161,7 +161,7 @@ interface SubjectCredentialStore {
 }
 
 /**
- * Holds all information needed to refresh a credential, pass it to [OpenId4VciClient.refreshCredential].
+ * Holds all information needed to refresh a credential, pass it to `OpenId4VciClient.refreshCredentialReturningResult`.
  */
 @Serializable
 data class CredentialRenewalInfo(

@@ -10,6 +10,7 @@ import at.asitplus.dif.FormatHolder
 import at.asitplus.dif.RequirementEnum
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment.NameSegment
+import at.asitplus.openid.dcql.DCQLCredentialQuery
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
@@ -60,7 +61,7 @@ data class RequestOptionsCredential(
      * ```
      */
     val requestedOptionalAttributes: RequestedAttributes? = null,
-    /** ID to be used in [DifInputDescriptor] or [QesInputDescriptor], or [DCQLCredentialQuery] */
+    /** ID to be used in [DifInputDescriptor], or [DCQLCredentialQuery] */
     val id: String = uuid4().toString(),
 ) {
     fun buildId() = if (isMdoc) credentialScheme.isoDocType!! else id

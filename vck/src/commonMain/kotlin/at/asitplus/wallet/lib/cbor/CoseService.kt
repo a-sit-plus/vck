@@ -71,7 +71,7 @@ class CoseHeaderNone<T> : CoseHeaderIdentifierFun<T> {
     ): CoseHeader? = it
 }
 
-/** Identify [KeyMaterial] with it's [KeyMaterial.identifier] in (protected) [CoseHeader.keyId]. */
+/** Identify [KeyMaterial] with it's [KeyMaterial.identifier] in (protected) [CoseHeader.kid]. */
 class CoseHeaderKeyIdForKeyMaterial : CoseHeaderIdentifierFun<KeyMaterial> {
     override suspend operator fun invoke(
         it: CoseHeader?,
@@ -79,7 +79,7 @@ class CoseHeaderKeyIdForKeyMaterial : CoseHeaderIdentifierFun<KeyMaterial> {
     ): CoseHeader? = it?.copy(kid = keyMaterial.identifier.encodeToByteArray())
 }
 
-/** Identify [CoseKey] with its key identifier in (protected) [CoseHeader.keyId]. */
+/** Identify [CoseKey] with its key identifier in (protected) [CoseHeader.kid]. */
 class CoseHeaderKeyIdForCoseKey : CoseHeaderIdentifierFun<CoseKey> {
     override suspend operator fun invoke(
         it: CoseHeader?,
@@ -428,8 +428,8 @@ fun interface PublicCoseKeyLookup {
 }
 
 /**
- * Tries to compute a public key in order from [coseKey], [kid] or
- * [certificateChain], and takes the first success or null.
+ * Tries to compute a public key in order from [CoseHeader.kid] or
+ * [CoseHeader.certificateChain], and takes the first success or null.
  */
 val CoseHeader.publicKey: CoseKey?
     get() = kid?.let { CoseKey.fromDid(it.decodeToString()) }?.getOrNull()

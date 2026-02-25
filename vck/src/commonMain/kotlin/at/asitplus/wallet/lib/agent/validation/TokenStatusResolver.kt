@@ -16,12 +16,11 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.extensions.toView
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
-import io.ktor.util.*
+import io.ktor.util.encodeBase64
 import kotlin.time.Clock
 
 /**
@@ -87,8 +86,9 @@ fun StatusListTokenResolver.toTokenStatusResolver(
 }
 
 /**
- * Decompress the Status List with a decompressor that is compatible with DEFLATE [RFC1951] and
- * ZLIB [RFC1950]
+ * Decompress the Status List with a decompressor that is compatible with DEFLATE
+ * from [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) and
+ * ZLIB [RFC1950](https://datatracker.ietf.org/doc/html/rfc1950).
  *
  * Retrieve the status value of the index specified in the Referenced Token as described in
  * Section 4. Fail if the provided index is out of bound of the Status List

@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 
 /**
  * CSC API v2.0.0.2
- * Used as part of [SignatureRequestParameters]
+ * Used as part of `at.asitplus.openid.SignatureRequestParameters`.
  */
 @Suppress("unused")
 @Serializable

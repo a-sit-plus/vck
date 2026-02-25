@@ -29,7 +29,7 @@ data class CredentialInfoRequest(
      * CSC OPTIONAL.
      * Request to return various parameters containing information from the end entity
      * certificate(s).
-     * The default value is [Boolean.false]
+     * The default value is `false`.
      */
     @SerialName("certInfo")
     val certInfo: Boolean? = false,
@@ -38,7 +38,7 @@ data class CredentialInfoRequest(
      * CSC OPTIONAL.
      * Request to return various parameters containing information on the authorization
      * mechanisms supported by the corresponding credential (auth group).
-     * The default value is [Boolean.false]
+     * The default value is `false`.
      */
     @SerialName("authInfo")
     val authInfo: Boolean? = false,

@@ -29,6 +29,7 @@ internal object JsonCredentialSerializer {
 
 var serializerModuleCollection = SerializersModule {}
 
+@Suppress("DEPRECATION")
 val vckJsonSerializer by lazy {
     Json {
         prettyPrint = false

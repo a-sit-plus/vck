@@ -252,7 +252,7 @@ class JwtTokenVerificationService(
  * This does only work for internal authorization servers, because we could not store the actual user data otherwise.
  */
 class BearerTokenVerificationService(
-    /** Loads the actual user data with [BearerTokenGenerationService.getValidatedAccessToken]. */
+    /** Loads the actual user data with [BearerTokenGenerationService.verifyAccessToken]. */
     internal val tokenGenerationService: BearerTokenGenerationService,
 ) : TokenVerificationService {
 
