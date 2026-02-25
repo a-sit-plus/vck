@@ -4,7 +4,6 @@ import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.CscAuthorizationDetails
 import at.asitplus.wallet.lib.oauth2.AuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidAuthorizationDetails
 
 /**
@@ -39,7 +38,8 @@ class QtspAuthorizationServiceStrategy(
         }
 
     /**
-     * Reject if authorization details from [tokenRequestAuthnDetails] do not match 1:1 the ones from [authRequest]
+     * Reject if authorization details from [tokenRequestAuthnDetails] do not match 1:1 the ones from
+     * [authnRequestAuthnDetails]
      */
     @Throws(InvalidAuthorizationDetails::class)
     override fun matchAndFilterAuthorizationDetailsForTokenResponse(

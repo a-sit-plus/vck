@@ -1,22 +1,19 @@
 package at.asitplus.openid
 
-import at.asitplus.dif.PresentationDefinition
-import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.csc.Hashes
-import at.asitplus.csc.serializers.HashesSerializer
 import at.asitplus.csc.enums.SignatureQualifier
-import at.asitplus.csc.contentEquals
-import at.asitplus.csc.contentHashCode
+import at.asitplus.csc.serializers.HashesSerializer
+import at.asitplus.dif.PresentationDefinition
 import at.asitplus.iso.serializeOrigin
+import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
-import kotlin.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
+import kotlin.time.Instant
 
 /**
  * Contents of an OIDC Authentication Request.
@@ -172,7 +169,7 @@ data class AuthenticationRequestParameters(
     /**
      * RFC9396: The request parameter `authorization_details` contains, in JSON notation, an array of objects.
      * Each JSON object contains the data to specify the authorization requirements for a certain type of resource.
-     * The type of resource or access requirement is determined by the [AuthorizationDetails.type] field.
+     * The type of resource or access requirement is determined by the `type` field.
      *
      * OID4VCI: This parameter MUST be used to convey th details about the Credentials the Wallet wants to obtain.
      * This specification introduces a new authorization details type `openid_credential`.

@@ -9,8 +9,7 @@ import kotlin.time.Instant
 
 /**
  * Provides a simple map of keys of type [T] to values of type [U].
- * Mainly used in OID4VCI to hold state in [at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService]
- * and [at.asitplus.wallet.lib.oidvci.WalletService].
+ * Mainly used in OID4VCI to hold state in `SimpleAuthorizationService` and `WalletService`.
  * Can be implemented to provide replication across different instances of the enclosing application.
  */
 interface MapStore<T, U> {

@@ -57,7 +57,10 @@ class HolderAgent(
      * Stores the verifiable credential in [credential] if it parses and validates,
      * and returns it for future reference.
      */
-    override suspend fun storeCredential(credential: Holder.StoreCredentialInput, renewalInfo: CredentialRenewalInfo?) = catching {
+    override suspend fun storeCredential(
+        credential: Holder.StoreCredentialInput,
+        renewalInfo: CredentialRenewalInfo?
+    ) = catching {
         when (credential) {
             is Holder.StoreCredentialInput.Vc -> {
                 val validated = validatorVcJws.verifyVcJws(credential.signedVcJws, keyMaterial.publicKey).getOrThrow()
@@ -291,7 +294,10 @@ class HolderAgent(
                             pathAuthorizationValidator?.invoke(credential, it) ?: true
                         },
                     ).onFailure {
-                        Napier.d("findInputDescriptorMatches failed for credential with schemaUri ${credential.schemaUri}", it)
+                        Napier.d(
+                            "findInputDescriptorMatches failed for credential with schemaUri ${credential.schemaUri}",
+                            it
+                        )
                     }
                 }
             }.mapKeys {

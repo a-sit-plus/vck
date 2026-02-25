@@ -24,7 +24,7 @@ data class CredentialListRequest(
      * CSC OPTIONAL.
      * Request to return the main information included in the public key certificate and
      * the public key certificate itself or the certificate chain associated to the credentials.
-     * The default value is [Boolean.false]
+     * The default value is `false`.
      */
     @SerialName("credentialInfo")
     val credentialInfo: Boolean? = false,
@@ -40,7 +40,7 @@ data class CredentialListRequest(
     /**
      * Request to return various parameters containing information from the end entity
      * certificate(s).
-     * The default value is [Boolean.false]
+     * The default value is `false`.
      */
     @SerialName("certInfo")
     val certInfo: Boolean? = false,
@@ -68,7 +68,7 @@ data class CredentialListRequest(
 
     /**
      * Arbitrary data from the signature application. It can be used to handle a
-     * transaction identifier or other application-spe cific data that may be useful for
+     * transaction identifier or other application-specific data that may be useful for
      * debugging purposes
      */
     @SerialName("clientData")

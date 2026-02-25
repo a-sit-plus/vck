@@ -24,8 +24,8 @@ data class StatusListCwt(
     /**
      * Validate the Status List Token:
      *
-     * Validate the Status List Token by following the rules defined in section 7.2 of [RFC7519]
-     * for JWTs and section 7.2 of [RFC8392] for CWTs
+     * Validate the Status List Token by following the rules defined in section 7.2 of
+     * [RFC8392](https://datatracker.ietf.org/doc/html/rfc8392) for CWTs
      *
      * Check for the existence of the required claims as defined in Section 5.1 and Section 5.2
      * depending on token type.

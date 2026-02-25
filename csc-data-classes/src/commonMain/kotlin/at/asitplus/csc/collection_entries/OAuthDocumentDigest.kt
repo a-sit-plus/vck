@@ -7,7 +7,7 @@ import kotlinx.serialization.Serializable
 /**
  * CSC-API v2.0.0.2
  * Entry for document to be signed
- * Used as part of [CscAuthorizationDetails]
+ * Used as part of `at.asitplus.openid.CscAuthorizationDetails`.
  */
 @Serializable
 data class OAuthDocumentDigest(

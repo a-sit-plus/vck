@@ -141,7 +141,7 @@ class SimpleAuthorizationService(
      * Sets [OAuth2AuthorizationServerMetadata.requestObjectSigningAlgorithmsSupported].
      * Currently, we only support [JwsAlgorithm.Signature.ES256].
      * If set the client MAY wrap [RequestParameters] as [JarRequestParameters]
-     * - this is the default behaviour of [at.asitplus.wallet.lib.ktor.openid.OAuth2KtorClient]
+     * - this is the default behaviour of `OAuth2KtorClient`
      */
     private val requestObjectSigningAlgorithms: Set<JwsAlgorithm.Signature>? = setOf(JwsAlgorithm.Signature.ES256),
     /** Used for [OAuth2AuthorizationServerMetadata.clientAttestationSigningAlgValuesSupportedStrings] */

@@ -37,7 +37,7 @@ data class CertificateParameters(
      * REQUIRED-CONDITIONAL.
      * The Issuer Distinguished Name from the X.509v3 end entity certificate as
      * UTF-8-encoded character string according to RFC 4514. This value
-     * SHALL be returned when [CredentialInfoRequest.certInfo] is [Boolean.true].
+     * SHALL be returned when [CredentialInfoRequest.certInfo] is `true`.
      */
     @SerialName("issuerDN")
     val issuerDN: String? = null,
@@ -46,7 +46,7 @@ data class CertificateParameters(
      * REQUIRED-CONDITIONAL.
      * The Serial Number from the X.509v3 end entity certificate represented
      * as hex-encoded string format. This value SHALL be returned when
-     * [CredentialInfoRequest.certInfo] is [Boolean.true].
+     * [CredentialInfoRequest.certInfo] is `true`.
      */
     @SerialName("serialNumber")
     val serialNumber: String? = null,
@@ -55,7 +55,7 @@ data class CertificateParameters(
      * REQUIRED-CONDITIONAL.
      * The Subject Distinguished Name from the X.509v3 end entity certificate
      * as UTF-8-encoded character string, according to RFC 4514 [4]. This value
-     * SHALL be returned when [CredentialInfoRequest.certInfo] is [Boolean.true]..
+     * SHALL be returned when [CredentialInfoRequest.certInfo] is `true`.
      */
     @SerialName("subjectDN")
     val subjectDN: String? = null,
@@ -65,7 +65,7 @@ data class CertificateParameters(
      * The validity start date from the X.509v3 end entity certificate as
      * character string, encoded as GeneralizedTime (RFC 5280 [8])
      * (e.g. “YYYYMMDDHHMMSSZ”). This value SHALL be returned when
-     * [CredentialInfoRequest.certInfo] is [Boolean.true]..
+     * [CredentialInfoRequest.certInfo] is `true`.
      */
     @SerialName("validFrom")
     val validFrom: String? = null,
@@ -75,7 +75,7 @@ data class CertificateParameters(
      * The validity end date from the X.509v3 end entity certificate as character
      * string, encoded as GeneralizedTime (RFC 5280 [8])
      * (e.g. “YYYYMMDDHHMMSSZ”). This value SHALL be returned when
-     * [CredentialInfoRequest.certInfo] is [Boolean.true]..
+     * [CredentialInfoRequest.certInfo] is `true`.
      */
     @SerialName("validTo")
     val validTo: String? = null,

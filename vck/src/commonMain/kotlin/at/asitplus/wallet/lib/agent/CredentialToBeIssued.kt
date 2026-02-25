@@ -42,8 +42,9 @@ sealed class CredentialToBeIssued {
             replaceWith = ReplaceWith("VcJwt(subject as JsonElement, expiration, scheme, subjectPublicKey, userInfo)"),
             level = DeprecationLevel.ERROR
         )
+        @Suppress("DEPRECATION")
         constructor(
-            subject: CredentialSubject,
+            subject: at.asitplus.wallet.lib.data.CredentialSubject,
             expiration: Instant,
             scheme: ConstantIndex.CredentialScheme,
             subjectPublicKey: CryptoPublicKey,
