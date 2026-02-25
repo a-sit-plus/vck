@@ -32,4 +32,15 @@ data class TokenIntrospectionRequest(
      */
     @SerialName("token_type_hint")
     val tokenTypeHint: String? = null,
-)
+
+    /**
+     * OPTIONAL. Response format, see RFC 9701. Use `jwt` to request a JWT response.
+     */
+    @SerialName("response_format")
+    val responseFormat: ResponseFormat? = null,
+) {
+    enum class ResponseFormat {
+        @SerialName("jwt")
+        JWT
+    }
+}

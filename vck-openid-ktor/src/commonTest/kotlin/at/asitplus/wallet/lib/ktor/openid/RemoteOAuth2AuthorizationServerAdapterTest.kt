@@ -4,10 +4,15 @@ import at.asitplus.catching
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants.Errors.USE_DPOP_NONCE
 import at.asitplus.openid.OpenIdConstants.WellKnownPaths
+import at.asitplus.openid.TokenIntrospectionJwtResponse
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.wallet.lib.NonceService
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.jws.JwsHeaderNone
+import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.TokenVerificationService
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
@@ -100,7 +105,7 @@ val RemoteOAuth2AuthorizationServerAdapterTest by testSuite {
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
 
-                request.url.encodedPath.endsWith("/introspect") -> respond(
+                request.url.toString() == introspectionEndpoint -> respond(
                     vckJsonSerializer.encodeToString(InvalidToken().toOAuth2Error()),
                     status = HttpStatusCode.BadRequest,
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
@@ -129,7 +134,7 @@ val RemoteOAuth2AuthorizationServerAdapterTest by testSuite {
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
 
-                request.url.encodedPath.endsWith("/introspect") -> respond(
+                request.url.toString() == introspectionEndpoint -> respond(
                     vckJsonSerializer.encodeToString(TokenIntrospectionResponse(active = false)),
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
@@ -149,6 +154,42 @@ val RemoteOAuth2AuthorizationServerAdapterTest by testSuite {
         }
     }
 
+    test("getTokenInfo handles jwt response") {
+        val signedJwt = SignJwt<TokenIntrospectionResponse>(
+            keyMaterial = EphemeralKeyWithoutCert(),
+            headerModifier = JwsHeaderNone()
+        ).invoke(
+            JwsContentTypeConstants.TOKEN_INTROSPECTION_JWT,
+            TokenIntrospectionResponse(active = true, scope = "scope"),
+            TokenIntrospectionResponse.serializer()
+        ).getOrThrow().serialize()
+
+        val mockEngine = MockEngine { request ->
+            when {
+                request.url.rawSegments.drop(1) == WellKnownPaths.OauthAuthorizationServer -> respond(
+                    vckJsonSerializer.encodeToString(OAuth2AuthorizationServerMetadata.serializer(), oauthMetadata()),
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+
+                request.url.toString() == introspectionEndpoint -> respond(
+                    vckJsonSerializer.encodeToString(TokenIntrospectionJwtResponse(jwt = signedJwt)),
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+
+                else -> respondError(HttpStatusCode.NotFound)
+            }
+        }
+
+        val adapter = RemoteOAuth2AuthorizationServerAdapter(
+            publicContext = issuer,
+            engine = mockEngine,
+            internalTokenVerificationService = tokenVerificationService,
+        )
+
+        val tokenInfo = adapter.getTokenInfo("Bearer token", null).getOrThrow()
+        tokenInfo.scope shouldBe "scope"
+    }
+
     test("getUserInfo retries after dpop nonce challenge") {
         var userInfoCalls = 0
         val userInfoResponse = JsonObject(mapOf("sub" to JsonPrimitive("user")))
@@ -159,7 +200,7 @@ val RemoteOAuth2AuthorizationServerAdapterTest by testSuite {
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
 
-                request.url.encodedPath.endsWith("/token") -> respond(
+                request.url.toString() == tokenEndpoint -> respond(
                     vckJsonSerializer.encodeToString(
                         TokenResponseParameters(
                             accessToken = "access-token",
@@ -170,7 +211,7 @@ val RemoteOAuth2AuthorizationServerAdapterTest by testSuite {
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
 
-                request.url.encodedPath.endsWith("/userinfo") -> {
+                request.url.toString() == userInfoEndpoint -> {
                     userInfoCalls += 1
                     if (userInfoCalls == 1) {
                         respond(

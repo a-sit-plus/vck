@@ -21,7 +21,9 @@ import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.SignatureRequestParameters
 import at.asitplus.openid.TokenIntrospectionRequest
+import at.asitplus.openid.TokenIntrospectionJwtResponse
 import at.asitplus.openid.TokenIntrospectionResponse
+import at.asitplus.openid.TokenIntrospectionResult
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -40,6 +42,11 @@ import at.asitplus.wallet.lib.oidvci.OAuth2LoadUserFunInput
 import at.asitplus.wallet.lib.oidvci.TokenInfo
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
+import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.openid.RequestParser
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
@@ -138,7 +145,10 @@ class SimpleAuthorizationService(
      */
     private val requestObjectSigningAlgorithms: Set<JwsAlgorithm.Signature>? = setOf(JwsAlgorithm.Signature.ES256),
     /** Used for [OAuth2AuthorizationServerMetadata.clientAttestationSigningAlgValuesSupportedStrings] */
-    private val supportedSigningAlgorithms: Set<JwsAlgorithm.Signature> = setOf(JwsAlgorithm.Signature.ES256)
+    private val supportedSigningAlgorithms: Set<JwsAlgorithm.Signature> = setOf(JwsAlgorithm.Signature.ES256),
+    /** Used to sign JWT introspection responses (RFC 9701). */
+    private val signIntrospectionJwt: SignJwtFun<TokenIntrospectionResponse> =
+        SignJwt(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk()),
 ) : OAuth2AuthorizationServerAdapter, AuthorizationService {
 
     private val _metadata: OAuth2AuthorizationServerMetadata by lazy {
@@ -607,19 +617,34 @@ class SimpleAuthorizationService(
     override suspend fun tokenIntrospection(
         request: TokenIntrospectionRequest,
         httpRequest: RequestInfo?,
-    ): KmmResult<TokenIntrospectionResponse> = catching {
+    ): KmmResult<TokenIntrospectionResult> = catching {
         // TODO Which client_id to pass?
         clientAuthenticationService.authenticateClient(httpRequest, null)
-        val validated = runCatching {
+        val response = runCatching {
             tokenService.verification.getTokenInfo(request.token)
-        }.getOrElse {
-            return@catching TokenIntrospectionResponse(active = false)
-        }
-        TokenIntrospectionResponse(
-            active = true,
-            scope = validated.scope,
-            authorizationDetails = validated.authorizationDetails,
+        }.fold(
+            onSuccess = {
+                TokenIntrospectionResponse(
+                    active = true,
+                    scope = it.scope,
+                    authorizationDetails = it.authorizationDetails,
+                )
+            },
+            onFailure = {
+                TokenIntrospectionResponse(active = false)
+            }
         )
+        when (request.responseFormat) {
+            TokenIntrospectionRequest.ResponseFormat.JWT -> TokenIntrospectionJwtResponse(
+                jwt = signIntrospectionJwt(
+                    JwsContentTypeConstants.TOKEN_INTROSPECTION_JWT,
+                    response,
+                    TokenIntrospectionResponse.serializer()
+                ).getOrThrow().serialize()
+            )
+
+            else -> response
+        }
     }
 
     override suspend fun validateAccessToken(

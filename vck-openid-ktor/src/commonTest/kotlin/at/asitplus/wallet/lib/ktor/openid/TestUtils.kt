@@ -7,6 +7,8 @@ import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.PushedAuthenticationResponseParameters
+import at.asitplus.openid.TokenIntrospectionJwtResponse
+import at.asitplus.openid.TokenIntrospectionResult
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.CryptoPublicKey
@@ -152,11 +154,6 @@ object TestUtils {
     fun MockRequestHandleScope.respond(result: CredentialIssuer.Nonce): HttpResponseData =
         respondIncludingDpopNonce(ResponseWithDpopNonce(result.response, result.dpopNonce))
 
-    fun MockRequestHandleScope.respond(result: TokenResponseParameters): HttpResponseData = respond(
-        vckJsonSerializer.encodeToString(result),
-        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-    )
-
     inline fun <reified T> MockRequestHandleScope.respondIncludingDpopNonce(
         result: ResponseWithDpopNonce<T>
     ): HttpResponseData = respond(
@@ -166,6 +163,19 @@ object TestUtils {
             result.dpopNonce?.let { set(HttpHeaders.DPoPNonce, it) }
         }
     )
+
+    fun MockRequestHandleScope.respond(result: TokenResponseParameters): HttpResponseData = respond(
+        vckJsonSerializer.encodeToString<TokenResponseParameters>(result),
+        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+    )
+
+    fun MockRequestHandleScope.respond(result: TokenIntrospectionResult): HttpResponseData = when (result) {
+        is TokenIntrospectionResponse -> respond(result)
+        is TokenIntrospectionJwtResponse -> respond(
+            vckJsonSerializer.encodeToString<TokenIntrospectionJwtResponse>(result),
+            headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+        )
+    }
 
     fun MockRequestHandleScope.respond(result: TokenIntrospectionResponse): HttpResponseData = respond(
         vckJsonSerializer.encodeToString(result),

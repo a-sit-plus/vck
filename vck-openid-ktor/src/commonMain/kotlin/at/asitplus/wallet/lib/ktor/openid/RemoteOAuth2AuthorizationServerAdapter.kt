@@ -173,3 +173,4 @@ private fun TokenIntrospectionResponse.toTokenInfo(token: String) = TokenInfo(
 private suspend inline fun <R> IntermediateResult<R>.onSuccessUserInfo(
     block: JsonObject.(httpResponse: HttpResponse) -> R,
 ) = onSuccess<JsonObject, R>(block)
+

@@ -6,6 +6,7 @@ import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenIntrospectionRequest
+import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -83,9 +84,9 @@ val OAuth2ClientDPoPTest by testSuite {
             it.server.tokenIntrospection(
                 TokenIntrospectionRequest(token = token.accessToken),
                 null
-            ).getOrThrow().apply {
-                active shouldBe true
-            }
+            ).getOrThrow()
+                .shouldBeInstanceOf<TokenIntrospectionResponse>()
+                .apply { active shouldBe true }
 
             val dpopForResource = BuildDPoPHeader(
                 signDpop = it.signDpop,
@@ -134,9 +135,9 @@ val OAuth2ClientDPoPTest by testSuite {
             it.server.tokenIntrospection(
                 TokenIntrospectionRequest(token = token.accessToken),
                 null
-            ).getOrThrow().apply {
-                active shouldBe true
-            }
+            ).getOrThrow()
+                .shouldBeInstanceOf<TokenIntrospectionResponse>()
+                .apply { active shouldBe true }
 
             val refreshedAccessToken = it.server.token(
                 request = it.client.createTokenRequestParameters(
@@ -161,9 +162,9 @@ val OAuth2ClientDPoPTest by testSuite {
             it.server.tokenIntrospection(
                 TokenIntrospectionRequest(token = refreshedAccessToken.accessToken),
                 null
-            ).getOrThrow().apply {
-                active shouldBe true
-            }
+            ).getOrThrow()
+                .shouldBeInstanceOf<TokenIntrospectionResponse>()
+                .apply { active shouldBe true }
 
             val dpopForResource = BuildDPoPHeader(
                 signDpop = it.signDpop,
@@ -211,9 +212,9 @@ val OAuth2ClientDPoPTest by testSuite {
             it.server.tokenIntrospection(
                 TokenIntrospectionRequest(token = token.accessToken),
                 null
-            ).getOrThrow().apply {
-                active shouldBe true
-            }
+            ).getOrThrow()
+                .shouldBeInstanceOf<TokenIntrospectionResponse>()
+                .apply { active shouldBe true }
 
             val wrongSignDpop = SignJwt<JsonWebToken>(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk())
             shouldThrow<OAuth2Exception.InvalidDpopProof> {
@@ -327,9 +328,9 @@ val OAuth2ClientDPoPTest by testSuite {
             it.server.tokenIntrospection(
                 TokenIntrospectionRequest(token = token.accessToken),
                 null
-            ).getOrThrow().apply {
-                active shouldBe true
-            }
+            ).getOrThrow()
+                .shouldBeInstanceOf<TokenIntrospectionResponse>()
+                .apply { active shouldBe true }
 
             // simulate access to protected resource, i.e. verify access token
             shouldThrow<OAuth2Exception> {
@@ -364,9 +365,9 @@ val OAuth2ClientDPoPTest by testSuite {
             it.server.tokenIntrospection(
                 TokenIntrospectionRequest(token = token.accessToken),
                 null
-            ).getOrThrow().apply {
-                active shouldBe true
-            }
+            ).getOrThrow()
+                .shouldBeInstanceOf<TokenIntrospectionResponse>()
+                .apply { active shouldBe true }
 
             val wrongSignDpop = SignJwt<JsonWebToken>(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk())
             val dpopForResource = BuildDPoPHeader(

@@ -12,12 +12,14 @@ import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.SupportedCredentialFormat
+import at.asitplus.openid.TokenIntrospectionJwtResponse
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
+import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -90,6 +92,10 @@ class OAuth2KtorClient(
     val oAuth2Client: OAuth2Client,
     /** Source for random bytes, i.e., nonces for proof-of-possession of key material for sender-constrained tokens. */
     private val randomSource: RandomSource = RandomSource.Secure,
+    /**
+     * Verifies signed token introspection responses (RFC 9701). By default, every syntactically valid JWS is accepted.
+     */
+    private val verifyTokenIntrospectionJwt: suspend (JwsSigned<TokenIntrospectionResponse>) -> Boolean = { true },
 ) {
     /**
      * Stores the latest DPoP nonce per origin. RFC 9449 requires using only the most recent nonce
@@ -420,7 +426,10 @@ class OAuth2KtorClient(
             updateDpopNonceAndRetry(response, introspectionUrl, retryCount) {
                 callTokenIntrospection(oauthMetadata, request, token, popAudience, retryCount + 1)
             }
-        }.onSuccessTokenIntrospection { httpResponse ->
+        }.onSuccessTokenIntrospection(
+            verifyTokenIntrospectionJwt = verifyTokenIntrospectionJwt,
+            requestedResponseFormat = request.responseFormat,
+        ) { httpResponse ->
             updateDpopNonce(introspectionUrl, httpResponse.dpopNonce)
             if (!active) {
                 throw InvalidToken("Introspected token is not active")
@@ -544,5 +553,46 @@ private suspend inline fun <R> IntermediateResult<R>.onSuccessToken(
 ) = onSuccess<TokenResponseParameters, R>(block)
 
 private suspend inline fun <R> IntermediateResult<R>.onSuccessTokenIntrospection(
+    noinline verifyTokenIntrospectionJwt: suspend (JwsSigned<TokenIntrospectionResponse>) -> Boolean,
+    requestedResponseFormat: TokenIntrospectionRequest.ResponseFormat?,
     block: TokenIntrospectionResponse.(httpResponse: HttpResponse) -> R,
-) = onSuccess<TokenIntrospectionResponse, R>(block)
+) = when (this) {
+    is IntermediateResult.Failure<R> -> result
+    is IntermediateResult.Success<R> -> block(
+        parseTokenIntrospectionResponse(
+            body = httpResponse.bodyAsText(),
+            verifyTokenIntrospectionJwt = verifyTokenIntrospectionJwt,
+            requestedResponseFormat = requestedResponseFormat,
+        ), httpResponse
+    )
+}
+
+private suspend fun parseTokenIntrospectionResponse(
+    body: String,
+    verifyTokenIntrospectionJwt: suspend (JwsSigned<TokenIntrospectionResponse>) -> Boolean,
+    requestedResponseFormat: TokenIntrospectionRequest.ResponseFormat?,
+): TokenIntrospectionResponse = runCatching {
+    if (requestedResponseFormat == TokenIntrospectionRequest.ResponseFormat.JWT) {
+        parseJwt(body, verifyTokenIntrospectionJwt)
+    } else {
+        runCatching {
+            vckJsonSerializer.decodeFromString(TokenIntrospectionResponse.serializer(), body)
+        }.getOrElse {
+            parseJwt(body, verifyTokenIntrospectionJwt)
+        }
+    }
+}.getOrElse {
+    throw InvalidToken("Token introspection response could not be parsed", it)
+}
+
+private suspend fun parseJwt(
+    body: String,
+    verifyTokenIntrospectionJwt: suspend (JwsSigned<TokenIntrospectionResponse>) -> Boolean
+): TokenIntrospectionResponse =
+    vckJsonSerializer.decodeFromString(TokenIntrospectionJwtResponse.serializer(), body).let { jwtResponse ->
+        JwsSigned.deserialize(TokenIntrospectionResponse.serializer(), jwtResponse.jwt, vckJsonSerializer)
+            .getOrThrow().run {
+                require(verifyTokenIntrospectionJwt(this)) { "Token introspection JWT validation failed" }
+                payload
+            }
+    }

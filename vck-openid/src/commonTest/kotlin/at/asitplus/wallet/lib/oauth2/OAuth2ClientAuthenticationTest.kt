@@ -4,6 +4,7 @@ import at.asitplus.catching
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenIntrospectionRequest
+import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.testballoon.withFixtureGenerator
@@ -114,9 +115,9 @@ val OAuth2ClientAuthenticationTest by testSuite {
                     clientAttestation = it.clientAttestation.serialize(),
                     clientAttestationPop = it.clientAttestationPop.serialize()
                 )
-            ).getOrThrow().apply {
-                active shouldBe true
-            }
+            ).getOrThrow()
+                .shouldBeInstanceOf<TokenIntrospectionResponse>()
+                .apply { active shouldBe true }
         }
 
         test("pushed authorization request with wrong client attestation JWT") {
@@ -212,9 +213,9 @@ val OAuth2ClientAuthenticationTest by testSuite {
                     clientAttestation = it.clientAttestation.serialize(),
                     clientAttestationPop = it.clientAttestationPop.serialize()
                 )
-            ).getOrThrow().apply {
-                active shouldBe true
-            }
+            ).getOrThrow()
+                .shouldBeInstanceOf<TokenIntrospectionResponse>()
+                .apply { active shouldBe true }
         }
 
         test("authorization code flow without client authentication") {
