@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * Part of the ISO/IEC 18013-5:2021 standard: Data structure for mdoc request (8.3.2.1.2.1)
+ * Part of the ISO/IEC 18013-5:2026 standard: Mdoc response (10.3)
  */
 @Serializable
 data class DeviceResponse(
@@ -14,8 +14,10 @@ data class DeviceResponse(
     val documents: Array<Document>? = null,
     @SerialName("zkDocuments")
     val zkDocuments: Array<ZkDocument>? = null,
+    @SerialName("encryptedDocuments")
+    val encryptedDocuments: Array<EncryptedDocuments>? = null,
     @SerialName("documentErrors")
-    val documentErrors: Array<Pair<String, UInt>>? = null,
+    val documentErrors: Array<Map<String, Int>>? = null,
     @SerialName("status")
     val status: UInt,
 ) {
@@ -35,6 +37,10 @@ data class DeviceResponse(
             if (other.zkDocuments == null) return false
             if (!zkDocuments.contentEquals(other.zkDocuments)) return false
         } else if (other.zkDocuments != null) return false
+        if (encryptedDocuments != null) {
+            if (other.encryptedDocuments == null) return false
+            if (!encryptedDocuments.contentEquals(other.encryptedDocuments)) return false
+        } else if (other.encryptedDocuments != null) return false
         if (documentErrors != null) {
             if (other.documentErrors == null) return false
             if (!documentErrors.contentEquals(other.documentErrors)) return false
@@ -46,6 +52,7 @@ data class DeviceResponse(
         var result = version.hashCode()
         result = 31 * result + (documents?.contentHashCode() ?: 0)
         result = 31 * result + (zkDocuments?.contentHashCode() ?: 0)
+        result = 31 * result + (encryptedDocuments?.contentHashCode() ?: 0)
         result = 31 * result + (documentErrors?.contentHashCode() ?: 0)
         result = 31 * result + status.hashCode()
         return result

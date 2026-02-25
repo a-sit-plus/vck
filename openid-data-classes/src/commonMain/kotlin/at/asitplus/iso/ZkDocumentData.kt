@@ -5,8 +5,12 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.ByteString
 import kotlinx.serialization.cbor.CborLabel
-import kotlin.time.Instant
+import kotlinx.serialization.cbor.ValueTags
+import kotlinx.datetime.LocalDate
 
+/**
+ * Part of the ISO/IEC 18013-5:2026 standard: ZKP Mdoc response (10.3.4)
+ */
 @Serializable
 data class ZkDocumentData (
     @SerialName("docType")
@@ -14,7 +18,8 @@ data class ZkDocumentData (
     @SerialName("zkSystemId")
     val zkSystemId: String,
     @SerialName("timestamp")
-    val timestamp: Instant,
+    @ValueTags(1004u)
+    val timestamp: LocalDate,
     @SerialName("issuerSigned")
     @Serializable(with = NamespacedZkSignedListSerializer::class)
     val issuerSigned: Map<String, @Contextual ZkSignedList>? = null,
