@@ -42,7 +42,7 @@ class ProofValidator(
     /** Time leeway for verification of timestamps in proof elements in credential requests. */
     private val timeLeeway: Duration = 5.minutes,
     /** Callback to verify a received [KeyAttestationJwt] proof in credential requests. */
-    private val verifyAttestationProof: (JwsSigned<KeyAttestationJwt>) -> Boolean = { true },
+    private val verifyAttestationProof: suspend (JwsSigned<KeyAttestationJwt>) -> Boolean = { true },
     /** Turn on to require key attestation support in the [validProofTypes]. */
     private val requireKeyAttestation: Boolean = false,
     /** Used to provide challenges to clients to include in proof of possession of key material. */
@@ -112,7 +112,7 @@ class ProofValidator(
         val headerPublicKey = header.publicKey
             ?: throw InvalidProof("could not extract public key from $header")
 
-        return additionalKeys + headerPublicKey
+        return (additionalKeys + headerPublicKey).distinct()
     }
 
     /**
@@ -123,9 +123,7 @@ class ProofValidator(
         if (header.type != OpenIdConstants.KEY_ATTESTATION_JWT_TYPE) {
             throw InvalidProof("invalid typ: ${header.type}")
         }
-        if (payload.nonce == null || !clientNonceService.verifyNonce(payload.nonce!!)) {
-            throw InvalidNonce("invalid nonce: ${payload.nonce}")
-        }
+
         if (payload.issuedAt > (clock.now() + timeLeeway)) {
             throw InvalidProof("issuedAt in future: ${payload.issuedAt}")
         }
@@ -135,6 +133,7 @@ class ProofValidator(
         if (!verifyAttestationProof.invoke(this)) {
             throw InvalidProof("key attestation not verified: $this")
         }
+
         return payload.attestedKeys.map { it.toCryptoPublicKey().getOrThrow() }
     }
 }

@@ -2,14 +2,7 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.openid.BatchCredentialIssuanceMetadata
-import at.asitplus.openid.ClientNonceResponse
-import at.asitplus.openid.CredentialRequestParameters
-import at.asitplus.openid.CredentialResponseParameters
-import at.asitplus.openid.IssuerMetadata
-import at.asitplus.openid.JwtVcIssuerMetadata
-import at.asitplus.openid.OidcUserInfoExtended
-import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.*
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweEncrypted
@@ -17,14 +10,29 @@ import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
+import at.asitplus.wallet.lib.agent.validation.toTokenStatusResolver
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.jwt.claims.JwtStatusListClaim
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
+import at.asitplus.wallet.lib.jws.VerifyJwsObject
+import at.asitplus.wallet.lib.jws.VerifyJwsSignature
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import io.github.aakira.napier.Napier
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromJsonElement
 
 /**
  * Server implementation to issue credentials using OID4VCI.
@@ -34,6 +42,8 @@ import io.github.aakira.napier.Napier
  * 1.0 from 2025-09-16.
  */
 class CredentialIssuer(
+    /** Used to verify the validity of a unit attestation */
+    private val statusListTokenResolver: StatusListTokenResolver? = null,
     /** Used to get the user data, and access tokens. */
     private val authorizationService: OAuth2AuthorizationServerAdapter,
     /** Used to actually issue the credential. */
@@ -62,6 +72,22 @@ class CredentialIssuer(
     private val proofValidator: ProofValidator = ProofValidator(
         publicContext = publicContext,
         requireKeyAttestation = requireKeyAttestation,
+        verifyAttestationProof = {
+            val tokenStatusValid = runCatching {
+                it.payload.status?.get(JwtStatusListClaim.Specification.CLAIM_NAME)?.let { statusList ->
+                    Json.decodeFromJsonElement<StatusListInfo>(statusList).let { statusListInfo ->
+                        if (statusListTokenResolver?.toTokenStatusResolver()?.invoke(statusListInfo as RevocationListInfo)
+                            ?.getOrThrow() == TokenStatus.Invalid) throw Throwable("TokenStatus invalid")
+                    }
+                }
+            }.isSuccess
+            
+            val signatureValid = runCatching {
+                VerifyJwsObject().verifyJwsSignature(it, it.header.publicKey!!).isSuccess
+            }.getOrDefault(false)
+
+            return@ProofValidator (tokenStatusValid && signatureValid)
+        }
     ),
     /** Used to provide signed metadata in [signedMetadata]. */
     private val signMetadata: SignJwtFun<IssuerMetadata> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk()),

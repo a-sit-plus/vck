@@ -53,6 +53,8 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlin.time.Clock
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
 
 /**
  * Client service to retrieve credentials using OID4VCI
@@ -74,12 +76,21 @@ class WalletService(
      */
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
     /** Load key attestation to create [CredentialRequestProofContainer], if required by the credential issuer. */
+    @Deprecated("Removed, use new loadUnitAttestation function instead")
     private val loadKeyAttestation: (suspend (KeyAttestationInput) -> KmmResult<JwsSigned<KeyAttestationJwt>>)? = null,
     /** Handles credential request encryption and credential response decryption. */
     private val encryptionService: WalletEncryptionService = WalletEncryptionService(),
+    /** Returns a new unit attestation proof to use during credential issuance. */
+    private val loadUnitAttestationPop: (suspend (input: LoadUnitAttestationPopInput) -> KmmResult<JwsSigned<JsonWebToken>>)? = null,
 ) {
 
     data class KeyAttestationInput(val clientNonce: String?, val supportedAlgorithms: Collection<String>?)
+
+    data class LoadUnitAttestationPopInput(
+        val ttl: Duration,
+        val type: String = OpenIdConstants.PROOF_JWT_TYPE,
+        val payload: JsonWebToken
+    )
 
     sealed interface CredentialRequest {
         /**
@@ -313,7 +324,7 @@ class WalletService(
         scope: String,
         metadata: IssuerMetadata,
         credentialFormat: SupportedCredentialFormat,
-    ): Set<CredentialRequestParameters>  {
+    ): Set<CredentialRequestParameters> {
         if (credentialFormat.scope == null)
             throw OAuth2Exception.UnknownCredentialConfiguration("Credential does not support scope: $credentialFormat")
         if (!scope.trim().contains(credentialFormat.scope!!))
@@ -335,7 +346,25 @@ class WalletService(
         clock: Clock = Clock.System,
     ): CredentialRequestProofContainer =
         credentialFormat.supportedProofTypes?.get(ProofTypes.JWT)?.let {
-            createCredentialRequestProofJwt(clientNonce, metadata.credentialIssuer, clock, it.keyAttestationRequired())
+            val unitAttestationPop = loadUnitAttestationPop?.invoke(
+                LoadUnitAttestationPopInput(
+                    ttl = it.keyAttestationRequired?.preferredTtl ?: 31.days,
+                    payload = JsonWebToken(
+                        issuer = clientId, // omit when token was pre-authn?
+                        audience = metadata.credentialIssuer,
+                        issuedAt = clock.now().truncateToSeconds(),
+                        nonce = clientNonce,
+                    )
+                )
+            )?.getOrElse { err -> throw IllegalArgumentException("Key attestation required, none provided $err") }
+
+            createCredentialRequestProofJwt(
+                clientNonce,
+                metadata.credentialIssuer,
+                clock,
+                it.keyAttestationRequired(),
+                unitAttestationPop
+            )
         } ?: credentialFormat.supportedProofTypes?.get(ProofTypes.ATTESTATION)?.let {
             createCredentialRequestProofAttestation(clientNonce, it.supportedSigningAlgorithms)
         } ?: createCredentialRequestProofJwt(clientNonce, metadata.credentialIssuer, clock)
@@ -346,12 +375,24 @@ class WalletService(
     internal suspend fun createCredentialRequestProofAttestation(
         clientNonce: String?,
         supportedSigningAlgorithms: Collection<String>?,
+        unitAttestationPop: JwsSigned<JsonWebToken>? = null
     ) = CredentialRequestProofContainer(
-        attestation = setOf(
-            this.loadKeyAttestation?.invoke(KeyAttestationInput(clientNonce, supportedSigningAlgorithms))
-                ?.getOrThrow()?.serialize()
-                ?: throw IllegalArgumentException("Key attestation required, none provided")
-        )
+        attestation = when (unitAttestationPop != null) {
+            true -> {
+                setOf(
+                    unitAttestationPop.header.keyAttestation
+                        ?: throw IllegalArgumentException("Key attestation required, none provided")
+                )
+            }
+
+            else -> {
+                setOf(
+                    this.loadKeyAttestation?.invoke(KeyAttestationInput(clientNonce, supportedSigningAlgorithms))
+                        ?.getOrThrow()?.serialize()
+                        ?: throw IllegalArgumentException("Key attestation required, none provided")
+                )
+            }
+        }
     )
 
     internal suspend fun createCredentialRequestProofJwt(
@@ -359,24 +400,35 @@ class WalletService(
         credentialIssuer: String?,
         clock: Clock = Clock.System,
         addKeyAttestation: Boolean = false,
-    ) = CredentialRequestProofContainer(
-        jwt = setOf(
-            SignJwt<JsonWebToken>(
-                keyMaterial,
-                // TODO To be refactored once signJwt is not passed in the constructor but to this function
-                addKeyAttestationToJwsHeader(clientNonce, addKeyAttestation)
-            ).invoke(
-                OpenIdConstants.PROOF_JWT_TYPE,
-                JsonWebToken(
-                    issuer = clientId, // omit when token was pre-authn?
-                    audience = credentialIssuer,
-                    issuedAt = clock.now().truncateToSeconds(),
-                    nonce = clientNonce,
-                ),
-                JsonWebToken.serializer(),
-            ).getOrThrow().serialize()
+        unitAttestationPop: JwsSigned<JsonWebToken>? = null
+    ): CredentialRequestProofContainer {
+        if (addKeyAttestation && loadUnitAttestationPop == null && loadKeyAttestation == null) {
+            throw IllegalArgumentException("Key attestation required, none provided")
+        }
+        return CredentialRequestProofContainer(
+            jwt = when (unitAttestationPop != null) {
+                true ->
+                    setOf(unitAttestationPop.serialize())
+
+                else -> setOf(
+                    SignJwt<JsonWebToken>(
+                        keyMaterial,
+                        // TODO To be refactored once signJwt is not passed in the constructor but to this function
+                        addKeyAttestationToJwsHeader(clientNonce, addKeyAttestation)
+                    ).invoke(
+                        OpenIdConstants.PROOF_JWT_TYPE,
+                        JsonWebToken(
+                            issuer = clientId, // omit when token was pre-authn?
+                            audience = credentialIssuer,
+                            issuedAt = clock.now().truncateToSeconds(),
+                            nonce = clientNonce,
+                        ),
+                        JsonWebToken.serializer(),
+                    ).getOrThrow().serialize()
+                )
+            }
         )
-    )
+    }
 
     private fun addKeyAttestationToJwsHeader(
         clientNonce: String?,
@@ -414,5 +466,4 @@ class WalletService(
             )
         }.getOrElse { throw Exception("Invalid credential format: $this", it) }
     }
-
 }
