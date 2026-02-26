@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib
 import at.asitplus.testballoon.invoke
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import okio.Buffer
 import okio.buffer
@@ -36,6 +37,30 @@ val DefaultZlibServiceOkioInteropTest by testSuite {
 
         okioInflate(oursCompressed) shouldBe input
         service.decompress(okioCompressed) shouldBe input
+    }
+
+    "empty payload round-trip works both directions" {
+        val service = DefaultZlibService()
+        val empty = ByteArray(0)
+
+        val oursCompressed = service.compress(empty).shouldNotBeNull()
+        okioInflate(oursCompressed) shouldBe empty
+        service.decompress(oursCompressed) shouldBe empty
+
+        val okioCompressed = okioDeflate(empty)
+        service.decompress(okioCompressed) shouldBe empty
+        okioInflate(okioCompressed) shouldBe empty
+    }
+
+    "zero-length compressed input is rejected by our inflater" {
+        val service = DefaultZlibService()
+        service.decompress(ByteArray(0)).shouldBeNull()
+    }
+
+    "truncated zlib stream is rejected by our inflater" {
+        val service = DefaultZlibService()
+        val valid = service.compress(Random.nextBytes(64)).shouldNotBeNull()
+        service.decompress(valid.dropLast(2).toByteArray()).shouldBeNull()
     }
 }
 
