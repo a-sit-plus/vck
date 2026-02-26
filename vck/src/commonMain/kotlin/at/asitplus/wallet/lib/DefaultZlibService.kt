@@ -187,8 +187,14 @@ private fun readDynamicHuffmanTables(reader: BitReader): Pair<HuffmanTable, Huff
     }
 
     val literalLengthTable = buildHuffmanTable(literalAndDistanceLengths.copyOfRange(0, hlit)) ?: return null
-    val distanceTable = buildHuffmanTable(literalAndDistanceLengths.copyOfRange(hlit, literalAndDistanceLengths.size))
-        ?: return null
+    val distanceCodeLengths = literalAndDistanceLengths.copyOfRange(hlit, literalAndDistanceLengths.size)
+    val distanceTable = if (distanceCodeLengths.all { it == 0 }) {
+        // RFC1951 allows a literal-only dynamic block with no distance tree.
+        // Any later attempt to decode a length/distance pair will fail naturally.
+        EMPTY_DISTANCE_TABLE
+    } else {
+        buildHuffmanTable(distanceCodeLengths) ?: return null
+    }
     return literalLengthTable to distanceTable
 }
 
@@ -328,6 +334,8 @@ private class HuffmanTable(
         return null
     }
 }
+
+private val EMPTY_DISTANCE_TABLE = HuffmanTable(emptyMap(), 0)
 
 private fun buildHuffmanTable(codeLengths: IntArray): HuffmanTable? {
     val maxBits = codeLengths.maxOrNull() ?: return null
