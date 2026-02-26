@@ -31,6 +31,13 @@ Release 5.12.0 (unreleased):
    - Add: `AuthnResponseResult.SuccessUnsigned`
    - Add: `CreatePresentationResult.VcJws`
    - Rename: `CreatePresentationResult.Signed` to `CreatePresentationResult.VpJws`
+   - Add method `loadUnitAttestationPop` to `WalletService`
+   - Add data class `LoadUnitAttestationPopInput` to `WalletService`
+   - Deprecate `OAuth2KtorClient` methods `loadClientAttestationJwt` and `signClientAttestationPop`, point to `loadInstanceAttestation` and `loadInstanceAttestationPop`
+   - Deprecate `WalletService` method `loadKeyAttestation`, point to `loadUnitAttestationPop`
+   - Change method `ProofValidator.verifyAttestationProof` to suspend
+   - Add member `statusListTokenResolver` to `CredentialIssuer`
+   - Add member `preferredTtl` to `KeyAttestationRequired`
  - OAuth 2.0:
    - In `SimpleAuthorizationService` implement [JWT Response for OAuth Token Introspection](https://datatracker.ietf.org/doc/html/rfc9701/)
 - ISO MDOC:

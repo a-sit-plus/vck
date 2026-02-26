@@ -17,11 +17,14 @@ import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -30,6 +33,7 @@ import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
+import at.asitplus.wallet.lib.jws.JwsHeaderIdentifierFun
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
@@ -93,17 +97,29 @@ val OidvciAttestationTest by testSuite {
             fun buildClientWithKeyAttestation() =
                 with(EphemeralKeyWithoutCert()) {
                     client = WalletService(
-                        loadKeyAttestation = {
+                        loadUnitAttestationPop = { input ->
                             catching {
                                 SignJwt<KeyAttestationJwt>(this, JwsHeaderCertOrJwk())(
                                     OpenIdConstants.KEY_ATTESTATION_JWT_TYPE,
                                     KeyAttestationJwt(
                                         issuedAt = System.now(),
-                                        nonce = it.clientNonce,
                                         attestedKeys = setOf(this.jsonWebKey)
                                     ),
                                     KeyAttestationJwt.serializer(),
-                                ).getOrThrow()
+                                ).getOrThrow().let { unitAttestation ->
+                                    SignJwt<JsonWebToken>(
+                                        this
+                                    ) { it, keyMaterial ->
+                                        it.copy(
+                                            keyAttestation = unitAttestation.serialize(),
+                                            jsonWebKey = keyMaterial.jsonWebKey
+                                        )
+                                    }.invoke(
+                                        input.type,
+                                        input.payload,
+                                        JsonWebToken.serializer(),
+                                    ).getOrThrow()
+                                }
                             }
                         }
                     )

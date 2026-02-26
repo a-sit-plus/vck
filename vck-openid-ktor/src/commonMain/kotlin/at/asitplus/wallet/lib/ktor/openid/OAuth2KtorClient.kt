@@ -77,8 +77,10 @@ class OAuth2KtorClient(
      * the key behind [signClientAttestationPop], see
      * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-04.html)
      */
+    @Deprecated("Removed, use new loadInstanceAttestation function instead")
     private val loadClientAttestationJwt: (suspend () -> String)? = null,
     /** Used for authenticating the client at the authorization server with client attestation. */
+    @Deprecated("Removed, use new loadInstanceAttestationPop function instead")
     private val signClientAttestationPop: SignJwtFun<JsonWebToken>? =
         SignJwt(EphemeralKeyWithoutCert(), JwsHeaderNone()),
     /** Used to calculate DPoP, i.e. the key the access token and refresh token gets bound to. */
@@ -96,6 +98,11 @@ class OAuth2KtorClient(
      * Verifies signed token introspection responses (RFC 9701). By default, every syntactically valid JWS is accepted.
      */
     private val verifyTokenIntrospectionJwt: suspend (JwsSigned<TokenIntrospectionResponse>) -> Boolean = { true },
+
+    /** Returns a new instance attestation to validate the app against an authorization server. */
+    val loadInstanceAttestation: (suspend () -> KmmResult<JwsSigned<JsonWebToken>>)? = null,
+    /** Returns a proof of possession for an instance attestation */
+    val loadInstanceAttestationPop: (suspend () -> KmmResult<JwsSigned<JsonWebToken>>)? = null,
 ) {
     /**
      * Stores the latest DPoP nonce per origin. RFC 9449 requires using only the most recent nonce
@@ -492,16 +499,26 @@ class OAuth2KtorClient(
         httpMethod: HttpMethod,
         useDpop: Boolean,
     ): HttpRequestBuilder.() -> Unit {
-        val (clientAttJwt, clientAttPop) = loadClientAttestationJwt?.invoke()?.let { jwt ->
-            jwt to signClientAttestationPop?.let {
-                BuildClientAttestationPoPJwt(
-                    signClientAttestationPop,
-                    clientId = oAuth2Client.clientId,
-                    audience = popAudience,
-                    lifetime = 10.minutes,
-                ).serialize()
+        val (clientAttJwt, clientAttPop) = when (loadInstanceAttestation != null && loadInstanceAttestationPop != null) {
+            true -> {
+                loadInstanceAttestation.let {
+                    it().getOrNull()?.serialize()
+                } to loadInstanceAttestationPop.let { it().getOrNull()?.serialize() }
             }
-        } ?: (null to null)
+
+            else -> {
+                loadClientAttestationJwt?.invoke()?.let { jwt ->
+                    jwt to signClientAttestationPop?.let {
+                        BuildClientAttestationPoPJwt(
+                            signClientAttestationPop,
+                            clientId = oAuth2Client.clientId,
+                            audience = popAudience,
+                            lifetime = 10.minutes,
+                        ).serialize()
+                    }
+                } ?: (null to null)
+            }
+        }
 
         val dpopHeader = useDpop.takeIf { it }?.let {
             BuildDPoPHeader(
