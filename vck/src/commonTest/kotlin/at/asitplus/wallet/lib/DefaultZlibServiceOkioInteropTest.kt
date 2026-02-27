@@ -1,10 +1,16 @@
 package at.asitplus.wallet.lib
 
+import at.asitplus.testballoon.checkAll
 import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.minus
 import de.infix.testBalloon.framework.core.testSuite
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.property.Arb
+import io.kotest.property.arbitrary.byte
+import io.kotest.property.arbitrary.byteArray
+import io.kotest.property.arbitrary.positiveInt
 import okio.Buffer
 import okio.buffer
 import okio.deflate
@@ -12,32 +18,36 @@ import okio.inflate
 import kotlin.random.Random
 
 val DefaultZlibServiceOkioInteropTest by testSuite {
-    "ours compressed data inflates with okio" {
-        val service = DefaultZlibService()
-        val input = Random.nextBytes(2048)
+    "ours compressed data inflates with okio" - {
+        checkAll(iterations = 128, Arb.byteArray(Arb.positiveInt(1024), Arb.byte())) { input ->
+            val service = DefaultZlibService()
 
-        val oursCompressed = service.compress(input).shouldNotBeNull()
-        okioInflate(oursCompressed) shouldBe input
+            val oursCompressed = service.compress(input).shouldNotBeNull()
+            okioInflate(oursCompressed) shouldBe input
+        }
     }
 
-    "okio compressed data inflates with our implementation" {
-        val service = DefaultZlibService()
-        val input = Random.nextBytes(2048)
+    "okio compressed data inflates with our implementation" - {
+        checkAll(iterations = 128, Arb.byteArray(Arb.positiveInt(1024), Arb.byte())) { input ->
+            val service = DefaultZlibService()
 
-        val okioCompressed = okioDeflate(input)
-        service.decompress(okioCompressed) shouldBe input
+            val okioCompressed = okioDeflate(input)
+            service.decompress(okioCompressed) shouldBe input
+        }
     }
 
-    "both parsers decode each other's zlib streams" {
-        val service = DefaultZlibService()
-        val input = ("interop ".repeat(128) + "zlib/okio").encodeToByteArray()
+    "both parsers decode each other's zlib streams" - {
+        checkAll(iterations = 128, Arb.byteArray(Arb.positiveInt(1024), Arb.byte())) { input ->
+            val service = DefaultZlibService()
 
-        val oursCompressed = service.compress(input).shouldNotBeNull()
-        val okioCompressed = okioDeflate(input)
+            val oursCompressed = service.compress(input).shouldNotBeNull()
+            val okioCompressed = okioDeflate(input)
 
-        okioInflate(oursCompressed) shouldBe input
-        service.decompress(okioCompressed) shouldBe input
+            okioInflate(oursCompressed) shouldBe input
+            service.decompress(okioCompressed) shouldBe input
+        }
     }
+
 
     "dynamic literal-only block with zero distance table is accepted" {
         val service = DefaultZlibService()
