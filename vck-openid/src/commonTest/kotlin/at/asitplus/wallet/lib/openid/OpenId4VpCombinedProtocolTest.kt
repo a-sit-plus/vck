@@ -52,6 +52,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 
 private fun AuthenticationRequestParameters.serialize(): String = vckJsonSerializer.encodeToString(this)
 
@@ -156,16 +157,15 @@ val OpenId4VpCombinedProtocolTest by testSuite {
                 )
             )
 
-            val authnResponse =
-                it.holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
-                    .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             val vcFreshnessSummary = it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
                 .shouldBeInstanceOf<AuthnResponseResult.VerifiableDCQLPresentationValidationResults>()
                 .allValidationResults.entries.shouldBeSingleton().first().value.shouldBeSingleton().first()
                 .shouldBeInstanceOf<AuthnResponseResult.SuccessUnsigned>()
                 .vc
-            vcFreshnessSummary.vcJws.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
+            vcFreshnessSummary.vcJws.vc.credentialSubject.shouldBeInstanceOf<JsonObject>()
             vcFreshnessSummary.freshnessSummary.isFresh.shouldBeTrue()
         }
 

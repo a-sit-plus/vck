@@ -103,6 +103,7 @@ sealed interface PresentationResponseParameters {
 
     companion object {
         private fun CreatePresentationResult.toJsonPrimitive() = when (val presentationResult = this) {
+            is CreatePresentationResult.Signed -> JsonPrimitive(presentationResult.serialized)
             is CreatePresentationResult.VpJws -> JsonPrimitive(presentationResult.serialized)
             is CreatePresentationResult.VcJws -> JsonPrimitive(presentationResult.serialized)
             is CreatePresentationResult.SdJwt -> JsonPrimitive(presentationResult.serialized)
@@ -122,6 +123,12 @@ sealed interface CreatePresentationResult {
     ) : VcJwsPresentationData
 
     data class VpJws(
+        val serialized: String,
+        val jwsSigned: JwsSigned<VerifiablePresentationJws>,
+    ) : VcJwsPresentationData
+
+    @Deprecated("Replaced with class using more expressive name `VpJws`.", ReplaceWith("VpJws"))
+    data class Signed(
         val serialized: String,
         val jwsSigned: JwsSigned<VerifiablePresentationJws>,
     ) : VcJwsPresentationData

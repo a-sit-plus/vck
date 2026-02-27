@@ -43,6 +43,7 @@ import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
 import at.asitplus.wallet.lib.data.CredentialSubject
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.rfc3986.toUri
+import at.asitplus.wallet.lib.data.toJsonElement
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
@@ -53,6 +54,7 @@ import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessIso
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessSdJwt
 import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
+import at.asitplus.wallet.lib.openid.DCQLMatchingResult
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.CreationOptions
 import at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions
@@ -158,7 +160,7 @@ val OpenId4VpWalletTest by testSuite {
                 attributes: Map<String, Any>,
             ): CredentialToBeIssued = when (this) {
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
-                    subject = AtomicAttribute2023("sub", "name", "value", "text"),
+                    subject = AtomicAttribute2023("sub", "name", "value", "text").toJsonElement(),
                     expiration = Clock.System.now().plus(1.minutes),
                     scheme = scheme,
                     subjectPublicKey = keyMaterial.publicKey,
