@@ -175,7 +175,7 @@ val AgentIsoMdocTest by testSuite {
                         ),
                     )
 
-                    mismatchedVerifier.verifyPresentationIsoMdoc(vp.deviceResponse, documentVerifier())
+                    mismatchedVerifier.verifyPresentationIsoMdoc(vp.deviceResponse, documentVerifier()).getOrThrow()
                         .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessIso>()
                         .documents.shouldBeSingleton().first().freshnessSummary.tokenStatusValidationResult
                         .shouldBeInstanceOf<TokenStatusValidationResult.Rejected>()
@@ -281,13 +281,14 @@ private fun statusListResolver(statusListIssuer: StatusListAgent) = TokenStatusR
     }
 )
 
-private suspend fun IsoMdocFixture.createPresexDeviceResponse(vararg attributeNames: String) = createPresexDeviceResponse(
-    holder = holder,
-    challenge = challenge,
-    verifierId = verifierId,
-    signer = signer,
-    attributeNames = attributeNames,
-)
+private suspend fun IsoMdocFixture.createPresexDeviceResponse(vararg attributeNames: String) =
+    createPresexDeviceResponse(
+        holder = holder,
+        challenge = challenge,
+        verifierId = verifierId,
+        signer = signer,
+        attributeNames = attributeNames,
+    )
 
 private suspend fun IsoMdocFixture.createDcqlDeviceResponse(vararg attributeNames: String) = createDcqlDeviceResponse(
     holder = holder,
