@@ -39,7 +39,7 @@ val OpenId4VpRequestOptionsTest by testSuite {
         val requestBuilder = CredentialPresentationRequestBuilder(setOf(credential))
         listOf(
             requestBuilder.toDCQLRequest(),
-            requestBuilder.toPresentationExchangeRequest()
+            requestBuilder.toDCQLRequest()
         ).forEach {
             shouldThrowAny {
                 OpenId4VpRequestOptions(
@@ -77,7 +77,7 @@ val OpenId4VpRequestOptionsTest by testSuite {
             OpenId4VpRequestOptions(
                 presentationRequest = CredentialPresentationRequestBuilder(
                     setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023))
-                ).toPresentationExchangeRequest(),
+                ).toDCQLRequest(),
                 responseMode = OpenIdConstants.ResponseMode.Fragment,
                 populateClientId = false
             )

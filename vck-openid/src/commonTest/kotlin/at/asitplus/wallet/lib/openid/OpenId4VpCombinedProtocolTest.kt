@@ -87,7 +87,7 @@ val OpenId4VpCombinedProtocolTest by testSuite {
                         credentials = setOf(
                             RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
                         ),
-                    ).toPresentationExchangeRequest()
+                    ).toDCQLRequest()
                 )
             )
             it.holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
@@ -107,7 +107,7 @@ val OpenId4VpCombinedProtocolTest by testSuite {
                         credentials = setOf(
                             RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
                         )
-                    ).toPresentationExchangeRequest(),
+                    ).toDCQLRequest(),
                 )
             )
 
@@ -116,6 +116,10 @@ val OpenId4VpCombinedProtocolTest by testSuite {
                     .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
+                .shouldBeInstanceOf<AuthnResponseResult.VerifiableDCQLPresentationValidationResults>()
+                .allValidationResults.values
+                .shouldBeSingleton().first()
+                .shouldBeSingleton().first()
                 .shouldBeInstanceOf<AuthnResponseResult.Success>()
                 .vp.freshVerifiableCredentials.shouldNotBeEmpty()
                 .map { it.vcJws }.forEach {
@@ -180,7 +184,7 @@ val OpenId4VpCombinedProtocolTest by testSuite {
                         credentials = setOf(
                             RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, SD_JWT)
                         )
-                    ).toPresentationExchangeRequest(),
+                    ).toPresentationExchangeRequest()
                 )
             )
             it.holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()

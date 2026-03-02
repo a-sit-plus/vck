@@ -52,6 +52,7 @@ import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessIso
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessSdJwt
+import at.asitplus.wallet.lib.openid.AuthnResponseResult.VerifiableDCQLPresentationValidationResults
 import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
 import at.asitplus.wallet.lib.openid.DCQLMatchingResult
@@ -64,6 +65,7 @@ import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
 import io.github.aakira.napier.Napier
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -114,7 +116,7 @@ val OpenId4VpWalletTest by testSuite {
                                 requestedAttributes = attributes.keys
                             )
                         ),
-                    ).toPresentationExchangeRequest(),
+                    ).toDCQLRequest(),
                     responseMode = responseMode,
                 )
                 if (storeCredentials) {
@@ -358,14 +360,14 @@ val OpenId4VpWalletTest by testSuite {
                 )
             )
 
-                val credentialQuerySubmissions = mapOf(
-                    DCQLCredentialQueryIdentifier("cred1") to listOf(
-                        DCQLCredentialSubmissionOption(
-                            credential = credential,
-                            matchingResult = matchingResult
-                        )
+            val credentialQuerySubmissions = mapOf(
+                DCQLCredentialQueryIdentifier("cred1") to listOf(
+                    DCQLCredentialSubmissionOption(
+                        credential = credential,
+                        matchingResult = matchingResult
                     )
                 )
+            )
 
             // TODO test with signed request
             val request = """
@@ -453,7 +455,7 @@ val OpenId4VpWalletTest by testSuite {
             )
 
             val preparationState = it.wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
-            when(val matchingResult = it.wallet.getMatchingCredentials(preparationState).getOrThrow()) {
+            when (val matchingResult = it.wallet.getMatchingCredentials(preparationState).getOrThrow()) {
                 is DCQLMatchingResult -> matchingResult.presentationRequest.dcqlQuery.isSatisfiedWith(
                     matchingResult.matchingResult.toDefaultSubmission(
                         matchingResult.presentationRequest.dcqlQuery
@@ -476,6 +478,9 @@ private fun Map.Entry<String, Any>.toIssuerSignedItem(): IssuerSignedItem =
 
 private fun AuthnResponseResult.containsAllAttributes(expectedAttributes: Map<String, String>): Boolean =
     when (this) {
+        is VerifiableDCQLPresentationValidationResults -> this.allValidationResults.values
+            .shouldBeSingleton().first().shouldBeSingleton().first().containsAllAttributes(expectedAttributes)
+
         is SuccessSdJwt -> this.containsAllAttributes(expectedAttributes)
         is SuccessIso -> this.containsAllAttributes(expectedAttributes)
         else -> false
