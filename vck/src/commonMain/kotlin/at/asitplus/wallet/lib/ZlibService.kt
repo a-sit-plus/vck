@@ -7,8 +7,3 @@ interface ZlibService {
     fun decompress(input: ByteArray): ByteArray?
 
 }
-
-expect class DefaultZlibService() : ZlibService {
-    override fun compress(input: ByteArray): ByteArray?
-    override fun decompress(input: ByteArray): ByteArray?
-}

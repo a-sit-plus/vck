@@ -32,6 +32,11 @@ kotlin {
                 commonImplementationAndApiDependencies()
             }
         }
+        commonTest {
+            dependencies {
+                implementation("com.squareup.okio:okio:3.15.0")
+            }
+        }
         jvmTest {
             dependencies {
                 implementation("at.asitplus.signum:indispensable-josef:${VcLibVersions.signum}")
