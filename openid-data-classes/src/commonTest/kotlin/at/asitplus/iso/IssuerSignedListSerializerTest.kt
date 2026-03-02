@@ -9,19 +9,19 @@ import kotlin.random.Random
 import kotlinx.serialization.Serializable
 
 @Serializable
-private data class NestedElementValue(val value: Int)
+private data class ListNestedElementValue(val value: Int)
 
 val IssuerSignedListSerializerTest by testSuite {
     "deserializes elementValue from generic obor container once elementIdentifier is known" {
         val namespace = "test.namespace"
         val elementIdentifier = "nested"
-        CborCredentialSerializer.register(mapOf(elementIdentifier to NestedElementValue.serializer()), namespace)
+        CborCredentialSerializer.register(mapOf(elementIdentifier to ListNestedElementValue.serializer()), namespace)
 
         val item = IssuerSignedItem(
             digestId = 1u,
             random = Random.nextBytes(16),
             elementIdentifier = elementIdentifier,
-            elementValue = NestedElementValue(7),
+            elementValue = ListNestedElementValue(7),
         )
         val list = IssuerSignedList(listOf(ByteStringWrapper(item)))
 

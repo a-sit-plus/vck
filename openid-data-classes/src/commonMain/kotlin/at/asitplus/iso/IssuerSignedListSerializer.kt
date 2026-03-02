@@ -77,38 +77,11 @@ open class IssuerSignedListSerializer(private val namespace: String) : KSerializ
                 val item = Cbor.decodeFromByteArray<CborObject>(readBytes) as CborMap
                 val elementId = ((item.first { (it.key as CborText).value == IssuerSignedItem.PROP_ELEMENT_ID }).value as CborText).value
                 entries += ByteStringWrapper(
-                    item.toIssuerSignedItem(elementId),
+                    IssuerSignedItemSerializer(namespace, elementId).deserializeFromOborMap(item),
                     item.cbor
                 )
             }
         }
         return IssuerSignedList(entries)
-    }
-
-    private fun CborMap.toIssuerSignedItem(elementId: String): IssuerSignedItem {
-        val digestId = coseCompliantSerializer.decodeFromByteArray(
-            Long.serializer(),
-            first { (it.key as CborText).value == IssuerSignedItem.PROP_DIGEST_ID }.value.cbor
-        ).toUInt()
-        val random = coseCompliantSerializer.decodeFromByteArray(
-            ByteArraySerializer(),
-            first { (it.key as CborText).value == IssuerSignedItem.PROP_RANDOM }.value.cbor
-        )
-        val elementValueContainer = first { (it.key as CborText).value == IssuerSignedItem.PROP_ELEMENT_VALUE }.value
-
-        val elementValue = CborCredentialSerializer.lookupSerializer(namespace, elementId)?.let {
-            coseCompliantSerializer.decodeFromByteArray(it, elementValueContainer.cbor) as Any
-        } ?: decodeGenericElementValue(elementValueContainer)
-
-        return IssuerSignedItem(digestId, random, elementId, elementValue)
-    }
-
-    private fun decodeGenericElementValue(value: CborObject): Any {
-        runCatching { return coseCompliantSerializer.decodeFromByteArray(String.serializer(), value.cbor) }
-        runCatching { return coseCompliantSerializer.decodeFromByteArray(Long.serializer(), value.cbor) }
-        runCatching { return coseCompliantSerializer.decodeFromByteArray(Double.serializer(), value.cbor) }
-        runCatching { return coseCompliantSerializer.decodeFromByteArray(Boolean.serializer(), value.cbor) }
-        runCatching { return coseCompliantSerializer.decodeFromByteArray(ByteArraySerializer(), value.cbor) }
-        return value
     }
 }

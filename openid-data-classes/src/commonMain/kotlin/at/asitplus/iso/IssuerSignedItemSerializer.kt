@@ -1,6 +1,7 @@
 package at.asitplus.iso
 
 import at.asitplus.catchingUnwrapped
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import io.github.aakira.napier.Napier
 import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
@@ -16,6 +17,9 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.encoding.decodeStructure
 import kotlinx.serialization.encoding.encodeStructure
+import net.orandja.obor.data.CborMap
+import net.orandja.obor.data.CborObject
+import net.orandja.obor.data.CborText
 
 open class IssuerSignedItemSerializer(private val namespace: String, private val elementIdentifier: String) :
     KSerializer<IssuerSignedItem> {
@@ -155,5 +159,39 @@ open class IssuerSignedItemSerializer(private val namespace: String, private val
         throw IllegalArgumentException("Could not decode value at $index")
     }
 
-    
+    internal fun deserializeFromOborMap(item: CborMap): IssuerSignedItem = item.toIssuerSignedItem()
+
+    private fun CborMap.toIssuerSignedItem(): IssuerSignedItem {
+        val digestId = coseCompliantSerializer.decodeFromByteArray(
+            Long.serializer(),
+            first { (it.key as CborText).value == IssuerSignedItem.PROP_DIGEST_ID }.value.cbor
+        ).toUInt()
+        val random = coseCompliantSerializer.decodeFromByteArray(
+            ByteArraySerializer(),
+            first { (it.key as CborText).value == IssuerSignedItem.PROP_RANDOM }.value.cbor
+        )
+        val elementId = (first { (it.key as CborText).value == IssuerSignedItem.PROP_ELEMENT_ID }.value as CborText).value
+        if (elementIdentifier.isNotBlank() && elementIdentifier != elementId) {
+            throw IllegalArgumentException("Element identifier mismatch")
+        }
+
+        val elementValueContainer = first { (it.key as CborText).value == IssuerSignedItem.PROP_ELEMENT_VALUE }.value
+        val elementValue = CborCredentialSerializer.lookupSerializer(namespace, elementId)?.let {
+            coseCompliantSerializer.decodeFromByteArray(it, elementValueContainer.cbor) as Any
+        } ?: decodeGenericElementValue(elementValueContainer)
+
+        return IssuerSignedItem(digestId, random, elementId, elementValue)
+    }
+
+    private fun decodeGenericElementValue(value: CborObject): Any {
+        runCatching { return coseCompliantSerializer.decodeFromByteArray(LocalDate.serializer(), value.cbor) }
+        runCatching { return coseCompliantSerializer.decodeFromByteArray(InstantStringSerializer, value.cbor) }
+        runCatching { return coseCompliantSerializer.decodeFromByteArray(String.serializer(), value.cbor) }
+        runCatching { return coseCompliantSerializer.decodeFromByteArray(Long.serializer(), value.cbor) }
+        runCatching { return coseCompliantSerializer.decodeFromByteArray(Double.serializer(), value.cbor) }
+        runCatching { return coseCompliantSerializer.decodeFromByteArray(Boolean.serializer(), value.cbor) }
+        runCatching { return coseCompliantSerializer.decodeFromByteArray(ByteArraySerializer(), value.cbor) }
+        return value
+    }
+
 }
