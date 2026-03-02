@@ -102,9 +102,6 @@ open class ZkSignedItemSerializer(private val namespace: String) :
         elementIdentifier?.let {
             CborCredentialSerializer.decode(descriptor, index, this, elementIdentifier, namespace)
                 ?.let { return it }
-                ?: Napier.v(
-                    "Falling back to defaults for namespace $namespace and elementIdentifier $elementIdentifier"
-                )
         }
 
         // These are the ones that map to different CBOR data types, the rest don't, so if it is not registered, we'll

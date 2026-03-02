@@ -104,9 +104,6 @@ open class DeviceSignedItemListSerializer(private val namespace: String) :
         elementIdentifier?.let {
             CborCredentialSerializer.decode(descriptor, index, this, elementIdentifier, namespace)
                 ?.let { return it }
-                ?: Napier.v(
-                    "Falling back to defaults for namespace $namespace and elementIdentifier $elementIdentifier"
-                )
         }
 
         // These are the ones that map to different CBOR data types, the rest don't, so if it is not registered, we'll
@@ -121,7 +118,7 @@ open class DeviceSignedItemListSerializer(private val namespace: String) :
 }
 
 
-/** De-/serializes X509Certificate as Base64Url-encoded String */
+/** De-/serializes Instants as ISO 8601 Strings */
 internal object InstantStringSerializer: TransformingSerializerTemplate<Instant, String>(
     parent = String.serializer(),
     encodeAs = { it.toString() },
