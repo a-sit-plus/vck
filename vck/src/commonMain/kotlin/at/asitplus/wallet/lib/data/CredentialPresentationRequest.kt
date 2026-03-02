@@ -13,6 +13,9 @@ import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 
+/**
+ * This class encodes the credential requirements from the verifier.
+ */
 @Serializable(with = CredentialPresentationRequestSerializer::class)
 sealed interface CredentialPresentationRequest {
 

@@ -8,6 +8,7 @@ import at.asitplus.dcapi.OpenID4VPDCAPIHandoverInfo
 import at.asitplus.dcapi.OpenId4VpResponse
 import at.asitplus.dcapi.SessionTranscriptContentHashable
 import at.asitplus.dif.ClaimFormat
+import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.FormatContainerJwt
 import at.asitplus.dif.FormatContainerSdJwt
 import at.asitplus.dif.PresentationSubmissionDescriptor
@@ -57,6 +58,7 @@ import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.toBase64UrlJsonString
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -74,7 +76,7 @@ import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
 import io.github.aakira.napier.Napier
-import io.ktor.http.*
+import io.ktor.http.URLBuilder
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
@@ -366,11 +368,36 @@ class OpenId4VpVerifier(
         idTokenType = if (isSiop) IdTokenType.SUBJECT_SIGNED.text else null,
         responseMode = responseMode,
         state = if (!isAnyDcApi) state else null,
-        dcqlQuery = if (isDcql) toDCQLQuery() else null,
-        presentationDefinition = if (isPresentationExchange)
-            toPresentationDefinition(containerJwt, containerSdJwt) else null,
+        dcqlQuery = (presentationRequest as? CredentialPresentationRequest.DCQLRequest)?.dcqlQuery,
+        presentationDefinition = (presentationRequest as? CredentialPresentationRequest.PresentationExchangeRequest)?.presentationDefinition?.run {
+            copy(
+                inputDescriptors = inputDescriptors.map {
+                    when (val inputDescriptor = it) {
+                        is DifInputDescriptor -> inputDescriptor.replaceAvailableFormatHolders()
+                    }
+                }
+            )
+        },
         transactionData = transactionData?.map { it.toBase64UrlJsonString() },
         expectedOrigins = expectedOrigins,
+    )
+
+    /**
+     * Defining *some* non-null format container is our way of specifying the allowed credential representations,
+     * but provided values are overridden here
+     */
+    private fun DifInputDescriptor.replaceAvailableFormatHolders() = copy(
+        format = format?.copy(
+            jwtVp = format?.jwtVp?.let {
+                containerJwt
+            },
+            sdJwt = format?.sdJwt?.let {
+                containerSdJwt
+            },
+            msoMdoc = format?.msoMdoc?.let {
+                containerJwt
+            },
+        )
     )
 
     /**
@@ -613,6 +640,7 @@ class OpenId4VpVerifier(
                             transactionData = authnRequest.transactionData,
                             clientIdRequired = clientIdRequired,
                             origin = (originalResponseParameters as? ResponseParametersFrom.DcApi)?.origin,
+                            requireCryptographicHolderBinding = query.credentialQuery(credentialQueryId)?.requireCryptographicHolderBinding,
                         )
                     }.map {
                         it.mapToAuthnResponseResult(responseParameters.parameters.state)
@@ -668,6 +696,7 @@ class OpenId4VpVerifier(
         transactionData: List<TransactionDataBase64Url>?,
         clientIdRequired: Boolean,
         origin: String?,
+        requireCryptographicHolderBinding: Boolean? = null,
     ) = when (claimFormat) {
         ClaimFormat.SD_JWT -> verifier.verifyPresentationSdJwt(
             input = SdJwtSigned.parseCatching(relatedPresentation.extractContent()).getOrElse {
@@ -677,14 +706,22 @@ class OpenId4VpVerifier(
             transactionData = transactionData
         )
 
-        ClaimFormat.JWT_VP -> verifier.verifyPresentationVcJwt(
-            input = JwsSigned.deserialize(
-                VerifiablePresentationJws.serializer(),
-                relatedPresentation.extractContent(),
-                vckJsonSerializer
-            ).getOrThrow(),
-            challenge = expectedNonce
-        )
+        ClaimFormat.JWT_VP -> if (requireCryptographicHolderBinding != false) {
+            verifier.verifyPresentationVcJwt(
+                input = JwsSigned.deserialize(
+                    VerifiablePresentationJws.serializer(),
+                    relatedPresentation.extractContent(),
+                    vckJsonSerializer
+                ).getOrThrow(),
+                challenge = expectedNonce
+            )
+        } else {
+            verifier.verifyUnsignedVcJws(
+                input = relatedPresentation.extractContent()
+            ).map {
+                VerifyPresentationResult.SuccessUnsignedVcJws(it.vc)
+            }
+        }
 
         ClaimFormat.MSO_MDOC -> verifier.verifyPresentationIsoMdoc(
             input = relatedPresentation.extractContent().decodeToByteArray(Base64UrlStrict)
@@ -780,16 +817,28 @@ class OpenId4VpVerifier(
     )
 
 
-    private fun VerifyPresentationResult.mapToAuthnResponseResult(state: String?) = when (this) {
-        is VerifyPresentationResult.ValidationError -> AuthnResponseResult.ValidationError("vpToken", state, cause)
-        is VerifyPresentationResult.Success -> AuthnResponseResult.Success(vp, state)
-        is VerifyPresentationResult.SuccessIso -> AuthnResponseResult.SuccessIso(documents, state)
-        is VerifyPresentationResult.SuccessSdJwt -> AuthnResponseResult.SuccessSdJwt(
-            sdJwtSigned = sdJwtSigned,
-            verifiableCredentialSdJwt = verifiableCredentialSdJwt,
-            reconstructed = reconstructedJsonObject,
-            disclosures = disclosures,
-            freshnessSummary = freshnessSummary,
+    private fun KmmResult<VerifyPresentationResult>.mapToAuthnResponseResult(state: String?) = map {
+        when (it) {
+            is VerifyPresentationResult.Success -> AuthnResponseResult.Success(it.vp, state)
+            is VerifyPresentationResult.SuccessIso -> AuthnResponseResult.SuccessIso(it.documents, state)
+            is VerifyPresentationResult.SuccessSdJwt -> AuthnResponseResult.SuccessSdJwt(
+                sdJwtSigned = it.sdJwtSigned,
+                verifiableCredentialSdJwt = it.verifiableCredentialSdJwt,
+                reconstructed = it.reconstructedJsonObject,
+                disclosures = it.disclosures,
+                freshnessSummary = it.freshnessSummary,
+            )
+
+            is VerifyPresentationResult.SuccessUnsignedVcJws -> AuthnResponseResult.SuccessUnsigned(
+                vc = it.vc,
+                state = state,
+            )
+        }
+    }.getOrElse {
+        AuthnResponseResult.ValidationError(
+            "vpToken",
+            state = state,
+            cause = it,
         )
     }
 

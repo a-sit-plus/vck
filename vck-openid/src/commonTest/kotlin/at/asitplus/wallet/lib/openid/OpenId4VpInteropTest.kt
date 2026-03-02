@@ -115,15 +115,17 @@ val OpenId4VpInteropTest by testSuite {
             val requestUrl = "https://verifier.example.com/request/$requestNonce"
             val (requestUrlForWallet, requestObject) = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        credentials = setOf(
+                            RequestOptionsCredential(
+                                ConstantIndex.AtomicAttribute2023,
+                                ConstantIndex.CredentialRepresentation.SD_JWT,
+                                setOf(CLAIM_FAMILY_NAME, CLAIM_GIVEN_NAME)
+                            )
+                        )
+                    ).toPresentationExchangeRequest(),
                     responseMode = OpenIdConstants.ResponseMode.DirectPost,
                     responseUrl = "https://verifier.example.com/response/$responseNonce",
-                    credentials = setOf(
-                        RequestOptionsCredential(
-                            ConstantIndex.AtomicAttribute2023,
-                            ConstantIndex.CredentialRepresentation.SD_JWT,
-                            setOf(CLAIM_FAMILY_NAME, CLAIM_GIVEN_NAME)
-                        )
-                    )
                 ),
                 OpenId4VpVerifier.CreationOptions.SignedRequestByReference("haip://", requestUrl)
             ).getOrThrow()

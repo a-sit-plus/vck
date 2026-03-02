@@ -108,7 +108,7 @@ val AgentIsoMdocMultipleDocumentsTest by testSuite {
 
             presentationParameters.presentationResults.shouldHaveSize(2).forEach { result ->
                 result.shouldBeInstanceOf<CreatePresentationResult.DeviceResponse>()
-                it.verifier.verifyPresentationIsoMdoc(result.deviceResponse, documentVerifier())
+                it.verifier.verifyPresentationIsoMdoc(result.deviceResponse, documentVerifier()).getOrThrow()
                     .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessIso>().apply {
                         documents.shouldBeSingleton().forEach {
                             it.freshnessSummary.tokenStatusValidationResult
@@ -118,7 +118,7 @@ val AgentIsoMdocMultipleDocumentsTest by testSuite {
             }
             val validItems = presentationParameters.presentationResults
                 .filterIsInstance<CreatePresentationResult.DeviceResponse>()
-                .map { resp -> it.verifier.verifyPresentationIsoMdoc(resp.deviceResponse, documentVerifier()) }
+                .map { resp -> it.verifier.verifyPresentationIsoMdoc(resp.deviceResponse, documentVerifier()).getOrThrow() }
                 .flatMap { it.shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessIso>().documents }
                 .flatMap { it.validItems }
             validItems.firstOrNull { item -> item.elementIdentifier == CLAIM_GIVEN_NAME }
@@ -150,7 +150,7 @@ val AgentIsoMdocMultipleDocumentsTest by testSuite {
             presentationParameters.presentationResults
                 .shouldBeSingleton().firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.DeviceResponse>().let { result ->
-                    it.verifier.verifyPresentationIsoMdoc(result.deviceResponse, documentVerifier())
+                    it.verifier.verifyPresentationIsoMdoc(result.deviceResponse, documentVerifier()).getOrThrow()
                         .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessIso>().apply {
                             documents.shouldHaveSize(2).forEach {
                                 it.freshnessSummary.tokenStatusValidationResult
@@ -161,7 +161,7 @@ val AgentIsoMdocMultipleDocumentsTest by testSuite {
 
             val validItems = presentationParameters.presentationResults
                 .filterIsInstance<CreatePresentationResult.DeviceResponse>()
-                .map { resp -> it.verifier.verifyPresentationIsoMdoc(resp.deviceResponse, documentVerifier()) }
+                .map { resp -> it.verifier.verifyPresentationIsoMdoc(resp.deviceResponse, documentVerifier()).getOrThrow() }
                 .flatMap { it.shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessIso>().documents }
                 .flatMap { it.validItems }
             validItems.firstOrNull { item -> item.elementIdentifier == CLAIM_GIVEN_NAME }

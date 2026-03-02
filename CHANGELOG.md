@@ -21,12 +21,24 @@ Release 5.12.0 (unreleased):
      Kept `RefreshTokenInfo` in the original package for backward compatibility
    - Added `CredentialRenewalInfo` to `SubjectCredentialStore.StoreEntry`
    - Added support for refresh tokens in BearerTokenService
+   - Change: When no cryptographic holder binding is required, present raw W3C Verifiable Credentials
+   - Change: OpenId4VPRequestOptions now transports a presentation request directly instead of credentials and presentation mechanism
+   - Change: Return type of `Verifier.verifyPresentationSdJwt` from `VerifyPresentationResult` to `KmmResult<VerifyPresentationResult.SuccessSdJwt>`
+   - Change: Return type of `Verifier.verifyPresentationVcJwt` from `VerifyPresentationResult` to `KmmResult<VerifyPresentationResult.Success>`
+   - Change: Return type of `Verifier.verifyPresentationIsoMdoc` from `VerifyPresentationResult` to `KmmResult<VerifyPresentationResult.SuccessIso>`
+   - Add: `Verifier.verifyUnsignedVcJws`
+   - Add: `AuthnResponseResult.SuccessUnsigned`
+   - Add: `CreatePresentationResult.VcJws`
+   - Rename: `CreatePresentationResult.Signed` to `CreatePresentationResult.VpJws`
  - OAuth 2.0:
    - In `SimpleAuthorizationService` implement [JWT Response for OAuth Token Introspection](https://datatracker.ietf.org/doc/html/rfc9701/)
+- ISO MDOC:
+    - Change: Return type of `Iso180137AnnexCVerifier.validateResponse` from `Iso180137AnnexCResponseResult` to `KmmResult<Iso180137AnnexCResponseResult>`
 
 Release 5.11.1:
  - OAuth 2.0:
    - Fix bug in `SimpleAuthorizationRequest` validating `issuer_state` on pushed authorization requests twice (and failing on the second time)
+
 
 Release 5.11.0:
  - Digital Credentials API:

@@ -20,6 +20,8 @@ import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.assertions.throwables.shouldThrowAny
+import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.comparables.shouldBeLessThan
 import io.kotest.matchers.comparables.shouldNotBeGreaterThan
@@ -63,7 +65,10 @@ val ValidatorSdJwtTest by testSuite {
                 val signIssuedSdJwt: SignJwtFun<JsonObject> = SignJwt(holderKeyMaterial, JwsHeaderCertOrJwk())
                 val expirationDate = credential.expiration
                 val subjectId = credential.subjectPublicKey.didEncoded
-                val (sdJwt, disclosures) = credential.claims.toSdJsonObject(RandomSource.Default, credential.sdAlgorithm)
+                val (sdJwt, disclosures) = credential.claims.toSdJsonObject(
+                    RandomSource.Default,
+                    credential.sdAlgorithm
+                )
                 val vcSdJwt = VerifiableCredentialSdJwt(
                     subject = if (scrambleSubject) subjectId.reversed() else subjectId,
                     notBefore = issuanceDate,
@@ -106,7 +111,7 @@ val ValidatorSdJwtTest by testSuite {
             }
 
         }
-    }- {
+    } - {
 
         test("credentials are valid for holder's key") {
             val credential = it.issuer.issueCredential(it.buildCredentialData()).getOrThrow()
@@ -116,16 +121,16 @@ val ValidatorSdJwtTest by testSuite {
                     sdJwtVc.issuedAt.shouldNotBeNull() shouldNotBeGreaterThan Clock.System.now()
                 }
 
-            it.validator.verifySdJwt(credential.signedSdJwtVc, it.holderKeyMaterial.publicKey)
-                .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessSdJwt>()
+            it.validator.verifySdJwt(credential.signedSdJwtVc, it.holderKeyMaterial.publicKey).getOrThrow()
         }
 
         test("credentials are not valid for some other key") {
             val credential = it.issuer.issueCredential(it.buildCredentialData()).getOrThrow()
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>()
 
-            it.validator.verifySdJwt(credential.signedSdJwtVc, EphemeralKeyWithoutCert().publicKey)
-                .shouldBeInstanceOf<Verifier.VerifyCredentialResult.ValidationError>()
+            shouldThrowAny {
+                it.validator.verifySdJwt(credential.signedSdJwtVc, EphemeralKeyWithoutCert().publicKey).getOrThrow()
+            }
         }
 
         test("credentials without cnf are not valid") {
@@ -135,8 +140,9 @@ val ValidatorSdJwtTest by testSuite {
                 buildCnf = false,
             ).shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>()
 
-            it.validator.verifySdJwt(credential.signedSdJwtVc, it.holderKeyMaterial.publicKey)
-                .shouldBeInstanceOf<Verifier.VerifyCredentialResult.ValidationError>()
+            shouldThrowAny {
+                it.validator.verifySdJwt(credential.signedSdJwtVc, it.holderKeyMaterial.publicKey).getOrThrow()
+            }
         }
 
         test("credentials with random subject are valid") {
@@ -146,8 +152,7 @@ val ValidatorSdJwtTest by testSuite {
                 scrambleSubject = true,
             ).shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>()
 
-            it.validator.verifySdJwt(credential.signedSdJwtVc, it.holderKeyMaterial.publicKey)
-                .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessSdJwt>()
+            it.validator.verifySdJwt(credential.signedSdJwtVc, it.holderKeyMaterial.publicKey).getOrThrow()
         }
 
         test("credentials are valid with vctm added") {
@@ -171,14 +176,13 @@ val ValidatorSdJwtTest by testSuite {
                     } shouldBe typeMetadata
                 }
 
-            it.validator.verifySdJwt(credential.signedSdJwtVc, it.holderKeyMaterial.publicKey)
-                .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessSdJwt>().apply {
-                    sdJwtSigned.jws.header.vcTypeMetadata.shouldNotBeNull().shouldBeSingleton().first().let {
-                        it.decodeToByteArray(Base64UrlStrict).decodeToString().let {
-                            joseCompliantSerializer.decodeFromString<SdJwtTypeMetadata>(it)
-                        }
-                    } shouldBe typeMetadata
-                }
+            it.validator.verifySdJwt(credential.signedSdJwtVc, it.holderKeyMaterial.publicKey).getOrThrow().apply {
+                sdJwtSigned.jws.header.vcTypeMetadata.shouldNotBeNull().shouldBeSingleton().first().let {
+                    it.decodeToByteArray(Base64UrlStrict).decodeToString().let {
+                        joseCompliantSerializer.decodeFromString<SdJwtTypeMetadata>(it)
+                    }
+                } shouldBe typeMetadata
+            }
         }
     }
 

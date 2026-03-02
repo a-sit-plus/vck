@@ -1,25 +1,22 @@
 package at.asitplus.wallet.lib.iso
 
+
+import at.asitplus.KmmResult
+import at.asitplus.catching
 import at.asitplus.dcapi.DCAPIHandover
 import at.asitplus.dcapi.DCAPIHandover.Companion.TYPE_DCAPI
 import at.asitplus.dcapi.DCAPIInfo
 import at.asitplus.dcapi.DCAPIResponse
 import at.asitplus.dcapi.SessionTranscriptContentHashable
 import at.asitplus.dcapi.request.IsoMdocRequest
-import at.asitplus.iso.DeviceRequest
 import at.asitplus.iso.DeviceResponse
-import at.asitplus.iso.DocRequest
 import at.asitplus.iso.EncryptionInfo
 import at.asitplus.iso.EncryptionParameters
-import at.asitplus.iso.ItemsRequest
-import at.asitplus.iso.ItemsRequestList
 import at.asitplus.iso.SessionTranscript
-import at.asitplus.iso.SingleItemsRequest
 import at.asitplus.iso.serializeOrigin
 import at.asitplus.iso.sha256
 import at.asitplus.signum.indispensable.CryptoPrivateKey
 import at.asitplus.signum.indispensable.SecretExposure
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.wallet.lib.AbstractMdocVerifier
@@ -31,7 +28,9 @@ import at.asitplus.wallet.lib.agent.ValidatorMdoc
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
+import at.asitplus.wallet.lib.iso.Iso180137AnnexCResponseResult.Success
+import at.asitplus.wallet.lib.iso.Iso180137AnnexCResponseResult.SuccessIso
+import at.asitplus.wallet.lib.iso.Iso180137AnnexCResponseResult.SuccessUnsigned
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
 import io.github.aakira.napier.Napier
@@ -69,19 +68,7 @@ class Iso180137AnnexCVerifier(
     suspend fun createRequest(
         requestOptions: Iso180137AnnexCRequestOptions,
     ): IsoMdocRequest {
-        val docRequests = requestOptions.credentials.map {
-            if (it.representation != CredentialRepresentation.ISO_MDOC) {
-                throw UnsupportedOperationException("Wrong representation: Only ISO MDoc is supported")
-            }
-            val namespace = it.credentialScheme.isoNamespace ?: throw IllegalStateException("Missing namespace")
-            val docType = it.credentialScheme.isoDocType ?: throw IllegalStateException("Missing doc type")
-            val itemsRequestsListEntries = it.requestedAttributes?.map { reqAttr ->
-                SingleItemsRequest(reqAttr, false)
-            } ?: listOf()
-            val itemsRequestList = mapOf(namespace to ItemsRequestList(itemsRequestsListEntries))
-            DocRequest(ByteStringWrapper(ItemsRequest(docType, itemsRequestList)))
-        }.toTypedArray()
-        val deviceRequest = DeviceRequest("1.0", docRequests)
+        val deviceRequest = requestOptions.deviceRequest
 
         val encryptionParameters = EncryptionParameters(
             nonceService.provideNonce().toByteArray(),
@@ -107,11 +94,13 @@ class Iso180137AnnexCVerifier(
         )
     )
 
-    private fun VerifyPresentationResult.mapToResponseResult() = when (this) {
-        is VerifyPresentationResult.ValidationError -> Iso180137AnnexCResponseResult.ValidationError(cause = cause)
-        is VerifyPresentationResult.Success -> Iso180137AnnexCResponseResult.Success(vp)
-        is VerifyPresentationResult.SuccessIso -> Iso180137AnnexCResponseResult.SuccessIso(documents)
-        is VerifyPresentationResult.SuccessSdJwt -> throw IllegalStateException("Unexpected SuccessSdJwt")
+    private fun KmmResult<VerifyPresentationResult>.mapToResponseResult() = map {
+        when (it) {
+            is VerifyPresentationResult.Success -> Success(it.vp)
+            is VerifyPresentationResult.SuccessIso -> SuccessIso(it.documents)
+            is VerifyPresentationResult.SuccessSdJwt -> throw IllegalStateException("Unexpected SuccessSdJwt")
+            is VerifyPresentationResult.SuccessUnsignedVcJws -> SuccessUnsigned(it.vc)
+        }
     }
 
     @OptIn(SecretExposure::class)
@@ -120,7 +109,7 @@ class Iso180137AnnexCVerifier(
         externalId: String,
         decryptHpke: suspend (ByteArray, ByteArray, CryptoPrivateKey.EC.WithPublicKey, ByteArray) -> ByteArray,
         expectedOrigin: String
-    ): Iso180137AnnexCResponseResult {
+    ): KmmResult<Iso180137AnnexCResponseResult> = catching {
         val isoMdocRequest = stateToIsoMdocRequestStore.get(externalId)!!
         val privateKey = decryptionKeyMaterial.exportPrivateKey().getOrThrow()
                 as? CryptoPrivateKey.EC.WithPublicKey ?: throw IllegalStateException("Expected EC private key")

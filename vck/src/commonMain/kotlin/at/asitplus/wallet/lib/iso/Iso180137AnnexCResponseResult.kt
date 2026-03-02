@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
+import at.asitplus.wallet.lib.data.VcJwsVerificationResultWrapper
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 
 /**
@@ -16,17 +17,17 @@ sealed class Iso180137AnnexCResponseResult {
     ) : Iso180137AnnexCResponseResult()
 
     /**
-     * Error when validating
+     * Successfully decoded and validated the response from the Wallet
      */
-    data class ValidationError(
-        val cause: Throwable? = null,
+    data class Success(
+        val vp: VerifiablePresentationParsed,
     ) : Iso180137AnnexCResponseResult()
 
     /**
      * Successfully decoded and validated the response from the Wallet
      */
-    data class Success(
-        val vp: VerifiablePresentationParsed,
+    data class SuccessUnsigned(
+        val vc: VcJwsVerificationResultWrapper,
     ) : Iso180137AnnexCResponseResult()
 
     /**

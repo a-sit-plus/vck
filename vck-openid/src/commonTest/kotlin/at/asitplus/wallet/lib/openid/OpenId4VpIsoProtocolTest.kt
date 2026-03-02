@@ -11,7 +11,9 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.rfc3986.toUri
@@ -89,9 +91,11 @@ val OpenId4VpIsoProtocolTest by testSuite {
     }) - {
         "test with Fragment for mDL" {
             val requestOptions = OpenId4VpRequestOptions(
-                credentials = setOf(
-                    RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(GIVEN_NAME))
-                )
+                presentationRequest = CredentialPresentationRequestBuilder(
+                    credentials = setOf(
+                        RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(GIVEN_NAME))
+                    )
+                ).toPresentationExchangeRequest(),
             )
             val authnRequest = it.verifierOid4vp.createAuthnRequest(requestOptions, Query(it.walletUrl))
                 .getOrThrow().url
@@ -108,9 +112,11 @@ val OpenId4VpIsoProtocolTest by testSuite {
 
         "test with Fragment for custom attributes" {
             val requestOptions = OpenId4VpRequestOptions(
-                credentials = setOf(
-                    RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC, setOf(CLAIM_GIVEN_NAME))
-                )
+                presentationRequest = CredentialPresentationRequestBuilder(
+                    credentials = setOf(
+                        RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC, setOf(CLAIM_GIVEN_NAME))
+                    )
+                ).toPresentationExchangeRequest(),
             )
             val authnRequest = it.verifierOid4vp.createAuthnRequest(requestOptions, Query(it.walletUrl))
                 .getOrThrow().url
@@ -128,9 +134,11 @@ val OpenId4VpIsoProtocolTest by testSuite {
         "Selective Disclosure with mDL" {
             val requestedClaim = FAMILY_NAME
             val requestOptions = OpenId4VpRequestOptions(
-                credentials = setOf(
-                    RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(requestedClaim))
-                )
+                presentationRequest = CredentialPresentationRequestBuilder(
+                    credentials = setOf(
+                        RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(requestedClaim))
+                    )
+                ).toPresentationExchangeRequest(),
             )
             val authnRequest = it.verifierOid4vp.createAuthnRequest(requestOptions, Query(it.walletUrl))
                 .getOrThrow().url
@@ -148,9 +156,11 @@ val OpenId4VpIsoProtocolTest by testSuite {
         "Selective Disclosure with mDL (ISO/IEC 18013-7:2024 Annex B)" {
             val requestedClaim = FAMILY_NAME
             val requestOptions = OpenId4VpRequestOptions(
-                credentials = setOf(
-                    RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(requestedClaim))
-                ),
+                presentationRequest = CredentialPresentationRequestBuilder(
+                    credentials = setOf(
+                        RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(requestedClaim))
+                    ),
+                ).toPresentationExchangeRequest(),
                 responseMode = OpenIdConstants.ResponseMode.DirectPost,
                 responseUrl = "https://example.com/response",
             )
@@ -176,9 +186,11 @@ val OpenId4VpIsoProtocolTest by testSuite {
         "Selective Disclosure with mDL and encryption (ISO/IEC 18013-7:2024 Annex B)" {
             val requestedClaim = FAMILY_NAME
             val requestOptions = OpenId4VpRequestOptions(
-                credentials = setOf(
-                    RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(requestedClaim))
-                ),
+                presentationRequest = CredentialPresentationRequestBuilder(
+                    credentials = setOf(
+                        RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(requestedClaim))
+                    ),
+                ).toPresentationExchangeRequest(),
                 responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                 responseUrl = "https://example.com/response",
             )
@@ -206,13 +218,14 @@ val OpenId4VpIsoProtocolTest by testSuite {
             val mdlFamilyName = FAMILY_NAME
             val atomicGivenName = CLAIM_GIVEN_NAME
             val requestOptions = OpenId4VpRequestOptions(
-                credentials = setOf(
-                    RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(mdlFamilyName)),
-                    RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC, setOf(atomicGivenName))
-                ),
+                presentationRequest = CredentialPresentationRequestBuilder(
+                    credentials = setOf(
+                        RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(mdlFamilyName)),
+                        RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC, setOf(atomicGivenName))
+                    ),
+                ).toPresentationExchangeRequest(),
                 responseMode = OpenIdConstants.ResponseMode.DirectPost,
                 responseUrl = "https://example.com/response",
-                presentationMechanism = PresentationMechanismEnum.PresentationExchange
             )
             val authnRequest = it.verifierOid4vp.createAuthnRequest(requestOptions, Query(it.walletUrl))
                 .getOrThrow().url
@@ -241,13 +254,14 @@ val OpenId4VpIsoProtocolTest by testSuite {
             val mdlFamilyName = FAMILY_NAME
             val atomicGivenName = CLAIM_GIVEN_NAME
             val requestOptions = OpenId4VpRequestOptions(
-                credentials = setOf(
-                    RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(mdlFamilyName)),
-                    RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC, setOf(atomicGivenName))
-                ),
+                presentationRequest = CredentialPresentationRequestBuilder(
+                    credentials = setOf(
+                        RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(mdlFamilyName)),
+                        RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC, setOf(atomicGivenName))
+                    ),
+                ).toDCQLRequest(),
                 responseMode = OpenIdConstants.ResponseMode.DirectPost,
                 responseUrl = "https://example.com/response",
-                presentationMechanism = PresentationMechanismEnum.DCQL,
             )
             val authnRequest = it.verifierOid4vp.createAuthnRequest(requestOptions, Query(it.walletUrl))
                 .getOrThrow().url
@@ -276,9 +290,11 @@ val OpenId4VpIsoProtocolTest by testSuite {
 
         "Selective Disclosure with mDL JSON Path syntax" {
             val requestOptions = OpenId4VpRequestOptions(
-                credentials = setOf(
-                    RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(FAMILY_NAME))
-                )
+                presentationRequest = CredentialPresentationRequestBuilder(
+                    credentials = setOf(
+                        RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(FAMILY_NAME))
+                    )
+                ).toPresentationExchangeRequest(),
             )
             val authnRequest = it.verifierOid4vp.createAuthnRequest(requestOptions, Query(it.walletUrl))
                 .getOrThrow().url

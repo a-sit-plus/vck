@@ -1,13 +1,13 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.KmmResult
+import at.asitplus.catching
 import at.asitplus.csc.contentEquals
 import at.asitplus.iso.sha256
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.digest
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
-import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.SuccessSdJwt
-import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.ValidationError
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.agent.validation.sdJwt.SdJwtInputValidator
 import at.asitplus.wallet.lib.data.KeyBindingJws
@@ -50,48 +50,43 @@ class ValidatorSdJwt(
         challenge: String,
         clientId: String,
         transactionData: List<TransactionDataBase64Url>?,
-    ): VerifyPresentationResult {
+    ): KmmResult<VerifyPresentationResult.SuccessSdJwt> = catching {
         Napier.d("verifyVpSdJwt: '$input', '$challenge', '$clientId', '$transactionData'")
-        val sdJwtResult = verifySdJwt(input, null)
-        if (sdJwtResult !is SuccessSdJwt) {
-            val error = (sdJwtResult as? ValidationError)?.cause
-                ?: Throwable("SD-JWT not verified: $sdJwtResult")
-            return VerifyPresentationResult.ValidationError(error)
-        }
+        val sdJwtResult = verifySdJwt(input, null).getOrThrow()
         val keyBindingSigned = sdJwtResult.sdJwtSigned.keyBindingJws
-            ?: return VerifyPresentationResult.ValidationError("No key binding JWT")
+            ?: throw Throwable("No key binding JWT")
 
         val vcSdJwt = sdJwtResult.verifiableCredentialSdJwt
         vcSdJwt.confirmationClaim?.let {
             if (!verifyJwsSignatureWithCnf(keyBindingSigned, it)) {
-                return VerifyPresentationResult.ValidationError("Key binding JWT not verified (from cnf)")
+                throw Throwable("Key binding JWT not verified (from cnf)")
             }
         } ?: run {
             verifyJwsObject(keyBindingSigned).getOrElse {
-                return VerifyPresentationResult.ValidationError("Key binding JWT not verified. $it")
+                throw Throwable("Key binding JWT not verified. $it")
             }
         }
         val keyBinding = keyBindingSigned.payload
-        if (keyBinding.challenge != challenge) {
-            return VerifyPresentationResult.ValidationError("Challenge not correct: ${keyBinding.challenge}")
+        require(keyBinding.challenge == challenge) {
+            "Challenge not correct: ${keyBinding.challenge}"
         }
-        if (keyBinding.audience != clientId) {
-            return VerifyPresentationResult.ValidationError("Audience not correct: ${keyBinding.audience}")
+        require(keyBinding.audience == clientId) {
+            "Audience not correct: ${keyBinding.audience}"
         }
         if (!keyBinding.sdHash.contentEquals(input.hashInput.encodeToByteArray().sha256())) {
-            return VerifyPresentationResult.ValidationError("KB-JWT does not contain correct sd_hash")
+            throw Throwable("KB-JWT does not contain correct sd_hash")
         }
         if (verifyTransactionData) {
             transactionData?.let { data ->
                 val digests = data.map { it.digest(keyBinding.transactionDataHashesAlgorithm) }
                 if (keyBinding.transactionDataHashes?.contentEquals(digests) == false) {
-                    return VerifyPresentationResult.ValidationError("KB-JWT does not contain correct transaction data hashes")
+                    throw Throwable("KB-JWT does not contain correct transaction data hashes")
                 }
             }
         }
 
         Napier.d("verifyVpSdJwt: Valid")
-        return VerifyPresentationResult.SuccessSdJwt(
+        VerifyPresentationResult.SuccessSdJwt(
             sdJwtSigned = sdJwtResult.sdJwtSigned,
             verifiableCredentialSdJwt = vcSdJwt,
             reconstructedJsonObject = sdJwtResult.reconstructedJsonObject,
@@ -108,16 +103,16 @@ class ValidatorSdJwt(
     suspend fun verifySdJwt(
         sdJwtSigned: SdJwtSigned,
         publicKey: CryptoPublicKey?,
-    ): VerifyCredentialResult {
+    ): KmmResult<VerifyCredentialResult.SuccessSdJwt> = catching {
         Napier.d("Verifying SD-JWT $sdJwtSigned for $publicKey")
         val validationResult = sdJwtInputValidator.invoke(sdJwtSigned, publicKey)
         return when {
-            !validationResult.isIntegrityGood -> ValidationError("Signature not verified")
-            validationResult.payloadCredentialValidationSummary.getOrNull()?.isSuccess == false
-                -> ValidationError("cnf claim invalid")
+            !validationResult.isIntegrityGood -> throw Throwable("Signature not verified")
 
-            else -> validationResult.payload.getOrElse { return ValidationError(it) }
+            validationResult.payloadCredentialValidationSummary.getOrNull()?.isSuccess == false
+                -> throw IllegalArgumentException("cnf claim invalid")
+
+            else -> validationResult.payload
         }
     }
-
 }

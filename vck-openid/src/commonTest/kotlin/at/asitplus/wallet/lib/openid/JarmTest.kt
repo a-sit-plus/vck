@@ -10,6 +10,7 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.rfc3986.toUri
@@ -59,13 +60,15 @@ val JarmTest by testSuite {
         "DirectPostJwt must either be signed or encrypted" {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
-                    credentials = setOf(
-                        RequestOptionsCredential(
-                            AtomicAttribute2023,
-                            SD_JWT,
-                            setOf(AtomicAttribute2023.CLAIM_GIVEN_NAME)
-                        )
-                    ),
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        credentials = setOf(
+                            RequestOptionsCredential(
+                                AtomicAttribute2023,
+                                SD_JWT,
+                                setOf(AtomicAttribute2023.CLAIM_GIVEN_NAME)
+                            )
+                        ),
+                    ).toPresentationExchangeRequest(),
                     responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                     responseUrl = "https://example.com/${uuid4()}"
                 )

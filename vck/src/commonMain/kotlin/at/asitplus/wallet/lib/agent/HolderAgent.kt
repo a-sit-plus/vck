@@ -10,6 +10,7 @@ import at.asitplus.dif.PresentationSubmission
 import at.asitplus.dif.PresentationSubmissionDescriptor
 import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
+import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.toCoseKey
@@ -59,12 +60,7 @@ class HolderAgent(
     override suspend fun storeCredential(credential: Holder.StoreCredentialInput, renewalInfo: CredentialRenewalInfo?) = catching {
         when (credential) {
             is Holder.StoreCredentialInput.Vc -> {
-                val validated = validatorVcJws.verifyVcJws(credential.signedVcJws, keyMaterial.publicKey)
-                if (validated !is Verifier.VerifyCredentialResult.SuccessJwt) {
-                    val error = (validated as? Verifier.VerifyCredentialResult.ValidationError)?.cause
-                        ?: Throwable("Invalid VC JWS")
-                    throw VerificationError(error)
-                }
+                val validated = validatorVcJws.verifyVcJws(credential.signedVcJws, keyMaterial.publicKey).getOrThrow()
                 subjectCredentialStore.storeCredential(
                     vc = validated.jws,
                     vcSerialized = credential.vcJws,
@@ -74,13 +70,10 @@ class HolderAgent(
             }
 
             is Holder.StoreCredentialInput.SdJwt -> {
-                val validated = validatorSdJwt.verifySdJwt(credential.signedSdJwtVc, keyMaterial.publicKey)
-                if (credential.signedSdJwtVc.keyBindingJws != null) Throwable("Issued SD-JWT credentials must not contain a KB")
-                if (validated !is Verifier.VerifyCredentialResult.SuccessSdJwt) {
-                    val error = (validated as? Verifier.VerifyCredentialResult.ValidationError)?.cause
-                        ?: Throwable("Invalid SD-JWT")
-                    throw VerificationError(error)
+                if (credential.signedSdJwtVc.keyBindingJws != null) {
+                    throw Throwable("Issued SD-JWT credentials must not contain a KB")
                 }
+                val validated = validatorSdJwt.verifySdJwt(credential.signedSdJwtVc, keyMaterial.publicKey).getOrThrow()
                 subjectCredentialStore.storeCredential(
                     vc = validated.verifiableCredentialSdJwt,
                     vcSerialized = credential.vcSdJwt,
@@ -91,12 +84,7 @@ class HolderAgent(
             }
 
             is Holder.StoreCredentialInput.Iso -> {
-                val validated = validatorMdoc.verifyIsoCred(credential.issuerSigned, credential.extractIssuerKey())
-                if (validated !is Verifier.VerifyCredentialResult.SuccessIso) {
-                    val error = (validated as? Verifier.VerifyCredentialResult.ValidationError)?.cause
-                        ?: Throwable("Invalid ISO MDOC")
-                    throw VerificationError(error)
-                }
+                val validated = validatorMdoc.verifyIsoCred(credential.issuerSigned, credential.extractIssuerKey()).getOrThrow()
                 subjectCredentialStore.storeCredential(
                     issuerSigned = validated.issuerSigned,
                     scheme = credential.scheme,
@@ -243,19 +231,27 @@ class HolderAgent(
             }
         }
 
-        val verifiablePresentations = credentialSubmissions.mapValues { match ->
+        val verifiablePresentations = credentialSubmissions.mapValues { (queryId, submissions) ->
             val query = credentialPresentation.presentationRequest.dcqlQuery.credentials.first {
-                it.id == match.key
+                it.id == queryId
             }
-            if (query.multiple != true && match.value.size != 1) {
-                throw IllegalArgumentException("Credential query ${query.id} does not allow multiple submission, but ${match.value.size} were provided.")
+            if(query.multiple != true && submissions.size != 1) {
+                throw IllegalArgumentException("Credential query ${query.id} does not allow multiple submission, but ${submissions.size} were provided.")
             }
-            match.value.map {
-                verifiablePresentationFactory.createVerifiablePresentation(
-                    request = request,
-                    credential = it.credential,
-                    disclosedAttributes = it.matchingResult,
-                ).getOrThrow()
+            submissions.map {
+                val credential = it.credential
+                if(credential is StoreEntry.Vc && !query.requireCryptographicHolderBinding) {
+                    if(it.matchingResult !is DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult) {
+                        throw IllegalArgumentException("Credential type only allows disclosure of all attributes.")
+                    }
+                    CreatePresentationResult.VcJws(credential.vcSerialized)
+                } else {
+                    verifiablePresentationFactory.createVerifiablePresentation(
+                        request = request,
+                        credential = credential,
+                        disclosedAttributes = it.matchingResult,
+                    ).getOrThrow()
+                }
             }
         }
 

@@ -114,7 +114,9 @@ val RedirectUriClientTest by testSuite {
                 }
             )
             val requestOptions = OpenId4VpRequestOptions(
-                credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                presentationRequest = CredentialPresentationRequestBuilder(
+                    credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                ).toPresentationExchangeRequest(),
                 responseType = OpenIdConstants.ID_TOKEN
             )
             val authnRequest = verifierOid4vp.createAuthnRequest(
@@ -171,7 +173,9 @@ val RedirectUriClientTest by testSuite {
         "test with direct_post" {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
-                    credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                    ).toPresentationExchangeRequest(),
                     responseMode = OpenIdConstants.ResponseMode.DirectPost,
                     responseUrl = it.clientId,
                 ),
@@ -190,7 +194,9 @@ val RedirectUriClientTest by testSuite {
         "test with direct_post.jwt" {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
-                    credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                    ).toPresentationExchangeRequest(),
                     responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                     responseUrl = it.clientId,
                 ),
@@ -212,7 +218,9 @@ val RedirectUriClientTest by testSuite {
             val expectedState = uuid4().toString()
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
-                    credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                    ).toPresentationExchangeRequest(),
                     responseMode = OpenIdConstants.ResponseMode.Query,
                     state = expectedState
                 ),
@@ -277,9 +285,11 @@ val RedirectUriClientTest by testSuite {
 }
 
 private fun requestOptionsAtomicAttribute() = OpenId4VpRequestOptions(
-    credentials = setOf(
-        RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
-    ),
+    presentationRequest = CredentialPresentationRequestBuilder(
+        credentials = setOf(
+            RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+        ),
+    ).toPresentationExchangeRequest(),
 )
 
 private suspend fun verifySecondProtocolRun(
@@ -296,7 +306,9 @@ private suspend fun verifySecondProtocolRun(
 }
 
 private val defaultRequestOptions = OpenId4VpRequestOptions(
-    credentials = setOf(
-        RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
-    )
+    presentationRequest = CredentialPresentationRequestBuilder(
+        credentials = setOf(
+            RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+        )
+    ).toPresentationExchangeRequest(),
 )

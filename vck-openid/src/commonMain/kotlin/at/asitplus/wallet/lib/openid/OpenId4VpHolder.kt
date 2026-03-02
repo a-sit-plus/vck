@@ -405,14 +405,14 @@ class OpenId4VpHolder(
         ?: throw InvalidRequest("could not parse audience")
 
     private fun RequestParametersFrom<AuthenticationRequestParameters>.callingOrigin() = when (this) {
-        is RequestParametersFrom.DcApiSigned<*> -> dcApiRequest.callingOrigin
-        is RequestParametersFrom.DcApiUnsigned<*> -> dcApiRequest.callingOrigin
+        is RequestParametersFrom.DcApiSigned -> dcApiRequest.callingOrigin
+        is RequestParametersFrom.DcApiUnsigned -> dcApiRequest.callingOrigin
         else -> null
     }
 
     private fun RequestParametersFrom<AuthenticationRequestParameters>.credentialId() = when (this) {
-        is RequestParametersFrom.DcApiSigned<*> -> dcApiRequest.credentialId
-        is RequestParametersFrom.DcApiUnsigned<*> -> dcApiRequest.credentialId
+        is RequestParametersFrom.DcApiSigned -> dcApiRequest.credentialId
+        is RequestParametersFrom.DcApiUnsigned -> dcApiRequest.credentialId
         else -> null
     }
 
