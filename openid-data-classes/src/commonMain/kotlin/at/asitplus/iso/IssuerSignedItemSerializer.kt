@@ -92,7 +92,8 @@ open class IssuerSignedItemSerializer(private val namespace: String, private val
     override fun deserialize(decoder: Decoder): IssuerSignedItem {
         var digestId = 0U
         var random: ByteArray? = null
-        var elementValue: Any? = null
+        var decodedElementIdentifier: String? = elementIdentifier.takeIf { it.isNotBlank() }
+        var decodedElementValue: Any? = null
         decoder.decodeStructure(descriptor) {
             while (true) {
                 val name = decodeStringElement(descriptor, 0)
@@ -101,19 +102,29 @@ open class IssuerSignedItemSerializer(private val namespace: String, private val
                 when (name) {
                     IssuerSignedItem.PROP_DIGEST_ID -> digestId = decodeLongElement(descriptor, index).toUInt()
                     IssuerSignedItem.PROP_RANDOM -> random = decodeSerializableElement(descriptor, index, ByteArraySerializer())
-                    IssuerSignedItem.PROP_ELEMENT_ID -> if (elementIdentifier != decodeStringElement(descriptor, index))
-                        throw IllegalArgumentException("Element identifier mismatch")
+                    IssuerSignedItem.PROP_ELEMENT_ID -> {
+                        val elementIdInPayload = decodeStringElement(descriptor, index)
+                        if (decodedElementIdentifier != null && decodedElementIdentifier != elementIdInPayload)
+                            throw IllegalArgumentException("Element identifier mismatch")
+                        decodedElementIdentifier = elementIdInPayload
+                    }
 
-                    IssuerSignedItem.PROP_ELEMENT_VALUE -> elementValue = decodeAnything(index, elementIdentifier)
+                    IssuerSignedItem.PROP_ELEMENT_VALUE -> decodedElementValue = decodeAnything(index, decodedElementIdentifier)
                 }
-                if (random != null && elementValue != null) break
+                if (random != null && decodedElementValue != null) break
             }
         }
+
+        val resolvedElementIdentifier =
+            decodedElementIdentifier ?: throw IllegalArgumentException("Missing element identifier")
+
+        val resolvedElementValue = decodedElementValue ?: throw IllegalArgumentException("Missing element value")
+
         return IssuerSignedItem(
             digestId = digestId,
             random = random!!,
-            elementIdentifier = elementIdentifier,
-            elementValue = elementValue!!,
+            elementIdentifier = resolvedElementIdentifier,
+            elementValue = resolvedElementValue,
         )
     }
 
@@ -134,6 +145,8 @@ open class IssuerSignedItemSerializer(private val namespace: String, private val
 
         // These are the ones that map to different CBOR data types, the rest don't, so if it is not registered, we'll
         // lose type information. No others must be added here, as they could consume data from the underlying bytes
+        catchingUnwrapped { return decodeSerializableElement(descriptor, index, LocalDate.serializer()) }
+        catchingUnwrapped { return decodeSerializableElement(descriptor, index, InstantStringSerializer) }
         catchingUnwrapped { return decodeStringElement(descriptor, index) }
         catchingUnwrapped { return decodeLongElement(descriptor, index) }
         catchingUnwrapped { return decodeDoubleElement(descriptor, index) }
@@ -141,4 +154,6 @@ open class IssuerSignedItemSerializer(private val namespace: String, private val
 
         throw IllegalArgumentException("Could not decode value at $index")
     }
+
+    
 }
