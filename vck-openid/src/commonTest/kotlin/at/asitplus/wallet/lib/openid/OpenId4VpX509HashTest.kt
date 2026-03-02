@@ -17,6 +17,7 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.CreationOptions
 import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 
@@ -69,7 +70,7 @@ val OpenId4VpX509HashTest by testSuite {
                         credentials = setOf(
                             RequestOptionsCredential(AtomicAttribute2023, SD_JWT, setOf(CLAIM_GIVEN_NAME))
                         ),
-                    ).toPresentationExchangeRequest(),
+                    ).toDCQLRequest(),
                     responseMode = OpenIdConstants.ResponseMode.DirectPost,
                     responseUrl = "https://example.com/response",
                 ),
@@ -90,8 +91,12 @@ val OpenId4VpX509HashTest by testSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
-                .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
-                .reconstructed[CLAIM_GIVEN_NAME].shouldNotBeNull()
+                .shouldBeInstanceOf<AuthnResponseResult.VerifiableDCQLPresentationValidationResults>().apply {
+                    allValidationResults.values
+                        .shouldBeSingleton().first()
+                        .shouldBeSingleton().first().shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
+                        .reconstructed[CLAIM_GIVEN_NAME].shouldNotBeNull()
+                }
 
         }
 
@@ -103,7 +108,7 @@ val OpenId4VpX509HashTest by testSuite {
                         credentials = setOf(
                             RequestOptionsCredential(AtomicAttribute2023, SD_JWT, setOf(CLAIM_GIVEN_NAME))
                         ),
-                    ).toPresentationExchangeRequest(),
+                    ).toDCQLRequest(),
                     responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                     responseUrl = "https://example.com/response",
                 ),
@@ -124,8 +129,12 @@ val OpenId4VpX509HashTest by testSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
-                .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
-                .reconstructed[CLAIM_GIVEN_NAME].shouldNotBeNull()
+                .shouldBeInstanceOf<AuthnResponseResult.VerifiableDCQLPresentationValidationResults>().apply {
+                    allValidationResults.values
+                        .shouldBeSingleton().first()
+                        .shouldBeSingleton().first().shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
+                        .reconstructed[CLAIM_GIVEN_NAME].shouldNotBeNull()
+                }
 
         }
     }

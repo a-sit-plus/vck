@@ -95,7 +95,7 @@ val OpenId4VpIsoProtocolTest by testSuite {
                     credentials = setOf(
                         RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(GIVEN_NAME))
                     )
-                ).toPresentationExchangeRequest(),
+                ).toDCQLRequest(),
             )
             val authnRequest = it.verifierOid4vp.createAuthnRequest(requestOptions, Query(it.walletUrl))
                 .getOrThrow().url
@@ -103,10 +103,14 @@ val OpenId4VpIsoProtocolTest by testSuite {
                 .createAuthnResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
-                .shouldBeInstanceOf<SuccessIso>()
-                .documents.first().apply {
-                    validItems.shouldNotBeEmpty()
-                    invalidItems.shouldBeEmpty()
+                .shouldBeInstanceOf<VerifiableDCQLPresentationValidationResults>().apply {
+                    allValidationResults.values
+                        .shouldBeSingleton().first()
+                        .shouldBeSingleton().first().shouldBeInstanceOf<SuccessIso>()
+                        .documents.first().apply {
+                            validItems.shouldNotBeEmpty()
+                            invalidItems.shouldBeEmpty()
+                        }
                 }
         }
 
@@ -116,7 +120,7 @@ val OpenId4VpIsoProtocolTest by testSuite {
                     credentials = setOf(
                         RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC, setOf(CLAIM_GIVEN_NAME))
                     )
-                ).toPresentationExchangeRequest(),
+                ).toDCQLRequest(),
             )
             val authnRequest = it.verifierOid4vp.createAuthnRequest(requestOptions, Query(it.walletUrl))
                 .getOrThrow().url
@@ -124,10 +128,14 @@ val OpenId4VpIsoProtocolTest by testSuite {
                 .createAuthnResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
-                .shouldBeInstanceOf<SuccessIso>()
-                .documents.first().apply {
-                    validItems.shouldNotBeEmpty()
-                    invalidItems.shouldBeEmpty()
+                .shouldBeInstanceOf<VerifiableDCQLPresentationValidationResults>().apply {
+                    allValidationResults.values
+                        .shouldBeSingleton().first()
+                        .shouldBeSingleton().first().shouldBeInstanceOf<SuccessIso>()
+                        .documents.first().apply {
+                            validItems.shouldNotBeEmpty()
+                            invalidItems.shouldBeEmpty()
+                        }
                 }
         }
 
@@ -138,18 +146,22 @@ val OpenId4VpIsoProtocolTest by testSuite {
                     credentials = setOf(
                         RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(requestedClaim))
                     )
-                ).toPresentationExchangeRequest(),
+                ).toDCQLRequest(),
             )
             val authnRequest = it.verifierOid4vp.createAuthnRequest(requestOptions, Query(it.walletUrl))
                 .getOrThrow().url
             val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
-                .shouldBeInstanceOf<SuccessIso>()
-                .documents.first().apply {
-                    validItems.shouldBeSingleton()
-                    validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
-                    invalidItems.shouldBeEmpty()
+                .shouldBeInstanceOf<VerifiableDCQLPresentationValidationResults>().apply {
+                    allValidationResults.values
+                        .shouldBeSingleton().first()
+                        .shouldBeSingleton().first().shouldBeInstanceOf<SuccessIso>()
+                        .documents.first().apply {
+                            validItems.shouldBeSingleton()
+                            validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
+                            invalidItems.shouldBeEmpty()
+                        }
                 }
         }
 
@@ -160,7 +172,7 @@ val OpenId4VpIsoProtocolTest by testSuite {
                     credentials = setOf(
                         RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(requestedClaim))
                     ),
-                ).toPresentationExchangeRequest(),
+                ).toDCQLRequest(),
                 responseMode = OpenIdConstants.ResponseMode.DirectPost,
                 responseUrl = "https://example.com/response",
             )
@@ -175,11 +187,15 @@ val OpenId4VpIsoProtocolTest by testSuite {
             //println("this is the response:\n$input")
 
             it.verifierOid4vp.validateAuthnResponse(input)
-                .shouldBeInstanceOf<SuccessIso>()
-                .documents.first().apply {
-                    validItems.shouldBeSingleton()
-                    validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
-                    invalidItems.shouldBeEmpty()
+                .shouldBeInstanceOf<VerifiableDCQLPresentationValidationResults>().apply {
+                    allValidationResults.values
+                        .shouldBeSingleton().first()
+                        .shouldBeSingleton().first().shouldBeInstanceOf<SuccessIso>()
+                        .documents.first().apply {
+                            validItems.shouldBeSingleton()
+                            validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
+                            invalidItems.shouldBeEmpty()
+                        }
                 }
         }
 
@@ -190,7 +206,7 @@ val OpenId4VpIsoProtocolTest by testSuite {
                     credentials = setOf(
                         RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(requestedClaim))
                     ),
-                ).toPresentationExchangeRequest(),
+                ).toDCQLRequest(),
                 responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                 responseUrl = "https://example.com/response",
             )
@@ -206,11 +222,15 @@ val OpenId4VpIsoProtocolTest by testSuite {
             //println("this is the response:\n$input")
 
             it.verifierOid4vp.validateAuthnResponse(input)
-                .shouldBeInstanceOf<SuccessIso>()
-                .documents.first().apply {
-                    validItems.shouldBeSingleton()
-                    validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
-                    invalidItems.shouldBeEmpty()
+                .shouldBeInstanceOf<VerifiableDCQLPresentationValidationResults>().apply {
+                    allValidationResults.values
+                        .shouldBeSingleton().first()
+                        .shouldBeSingleton().first().shouldBeInstanceOf<SuccessIso>()
+                        .documents.first().apply {
+                            validItems.shouldBeSingleton()
+                            validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
+                            invalidItems.shouldBeEmpty()
+                        }
                 }
         }
 
@@ -294,18 +314,22 @@ val OpenId4VpIsoProtocolTest by testSuite {
                     credentials = setOf(
                         RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(FAMILY_NAME))
                     )
-                ).toPresentationExchangeRequest(),
+                ).toDCQLRequest(),
             )
             val authnRequest = it.verifierOid4vp.createAuthnRequest(requestOptions, Query(it.walletUrl))
                 .getOrThrow().url
             val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
-                .shouldBeInstanceOf<SuccessIso>()
-                .documents.first().apply {
-                    validItems.shouldBeSingleton()
-                    validItems.shouldHaveSingleElement { it.elementIdentifier == FAMILY_NAME }
-                    invalidItems.shouldBeEmpty()
+                .shouldBeInstanceOf<VerifiableDCQLPresentationValidationResults>().apply {
+                    allValidationResults.values
+                        .shouldBeSingleton().first()
+                        .shouldBeSingleton().first().shouldBeInstanceOf<SuccessIso>()
+                        .documents.first().apply {
+                            validItems.shouldBeSingleton()
+                            validItems.shouldHaveSingleElement { it.elementIdentifier == FAMILY_NAME }
+                            invalidItems.shouldBeEmpty()
+                        }
                 }
         }
     }

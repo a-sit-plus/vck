@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.dif.FormatContainerJwt
 import at.asitplus.dif.FormatContainerSdJwt
-import at.asitplus.jsonpath.JsonPath
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.RequestOptionsCredential
@@ -81,7 +80,7 @@ val OpenId4VpComplexSdJwtProtocolTest by testSuite {
         }
     }) - {
 
-        "Nested paths with presentation exchange" {
+        "Nested paths with DCQL" {
             val requestedClaims = setOf(
                 "$CLAIM_ADDRESS.$CLAIM_ADDRESS_REGION",
                 "$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
@@ -92,16 +91,10 @@ val OpenId4VpComplexSdJwtProtocolTest by testSuite {
                     setOf(
                         RequestOptionsCredential(AtomicAttribute2023, SD_JWT, requestedClaims)
                     )
-                ).toPresentationExchangeRequest().apply {
-                    presentationDefinition.inputDescriptors.shouldBeSingleton().first().apply {
-                        constraints.shouldNotBeNull().apply {
-                            fields.shouldNotBeNull().forEach {
-                                it.path.shouldBeSingleton().first().apply {
-                                    JsonPath(this)
-                                    if (!this.contains("vct"))
-                                        split(".").shouldHaveSize(3) // "$", first segment, second segment
-                                }
-                            }
+                ).toDCQLRequest().shouldNotBeNull().apply {
+                    dcqlQuery.credentials.shouldBeSingleton().first().apply {
+                        claims.shouldNotBeNull().forEach {
+                            it.path.shouldNotBeNull().shouldHaveSize(2)
                         }
                     }
                 }
@@ -114,19 +107,22 @@ val OpenId4VpComplexSdJwtProtocolTest by testSuite {
             val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-            it.verifierOid4vp.validateAuthnResponse(authnResponse.url).apply {
-                shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
-                verifiableCredentialSdJwt.shouldNotBeNull()
-                CLAIM_ADDRESS shouldBeIn reconstructed.keys
-                reconstructed[CLAIM_ADDRESS].shouldNotBeNull().jsonObject.apply {
-                    CLAIM_ADDRESS_REGION shouldBeIn this.keys
-                    this[CLAIM_ADDRESS_COUNTRY].shouldNotBeNull().jsonPrimitive.content shouldBe it.randomCountry
-                    this[CLAIM_ADDRESS_REGION].shouldNotBeNull().jsonPrimitive.content shouldBe it.randomRegion
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
+                .shouldBeInstanceOf<AuthnResponseResult.VerifiableDCQLPresentationValidationResults>()
+                .allValidationResults.values
+                .shouldBeSingleton().first()
+                .shouldBeSingleton().first().shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>().apply {
+                    verifiableCredentialSdJwt.shouldNotBeNull()
+                    CLAIM_ADDRESS shouldBeIn reconstructed.keys
+                    reconstructed[CLAIM_ADDRESS].shouldNotBeNull().jsonObject.apply {
+                        CLAIM_ADDRESS_REGION shouldBeIn this.keys
+                        this[CLAIM_ADDRESS_COUNTRY].shouldNotBeNull().jsonPrimitive.content shouldBe it.randomCountry
+                        this[CLAIM_ADDRESS_REGION].shouldNotBeNull().jsonPrimitive.content shouldBe it.randomRegion
+                    }
                 }
-            }
         }
 
-        "Nested paths with DCQL" {
+        "Nested paths with DCQL in request options" {
             val requestedClaims = setOf(
                 "$CLAIM_ADDRESS.$CLAIM_ADDRESS_REGION",
                 "$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
