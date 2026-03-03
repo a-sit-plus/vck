@@ -178,7 +178,11 @@ open class IssuerSignedItemSerializer(
 
         val elementValueContainer = first { (it.key as CborText).value == PROP_ELEMENT_VALUE }.value
         val elementValue = CborCredentialSerializer.lookupSerializer(namespace, elementId)?.let {
-            coseCompliantSerializer.decodeFromByteArray(it, elementValueContainer.cbor)
+            runCatching {
+                coseCompliantSerializer.decodeFromByteArray(it, elementValueContainer.cbor)
+            }.getOrElse {
+                decodeGenericElementValue(elementValueContainer.cbor)
+            }
         } ?: decodeGenericElementValue(elementValueContainer.cbor)
 
         return IssuerSignedItem(digestId, random, elementId, elementValue)
