@@ -1,5 +1,9 @@
 package at.asitplus.iso
 
+import at.asitplus.iso.IssuerSignedItem.Companion.PROP_DIGEST_ID
+import at.asitplus.iso.IssuerSignedItem.Companion.PROP_ELEMENT_ID
+import at.asitplus.iso.IssuerSignedItem.Companion.PROP_ELEMENT_VALUE
+import at.asitplus.iso.IssuerSignedItem.Companion.PROP_RANDOM
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.testballoon.invoke
@@ -7,10 +11,13 @@ import at.asitplus.testballoon.minus
 import at.asitplus.testballoon.withData
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import kotlin.random.Random
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.decodeFromByteArray
@@ -49,7 +56,7 @@ val IssuerSignedListSerializerTest by testSuite {
         coseCompliantSerializer.decodeFromByteArray(IssuerSignedListSerializer(namespace), serialized) shouldBe list
     }
 
-    "deserializes any elementValue even when no custom deserializer is given" - {
+    "can deserialize any some data types in elementValue even when no custom deserializer is given" - {
         withData(
             nameFn = { it::class.simpleName ?: it.toString() },
             listOf(
@@ -77,6 +84,35 @@ val IssuerSignedListSerializerTest by testSuite {
         }
     }
 
+    "can't deserialize some data types in elementValue when no custom deserializer is given" - {
+        withData(
+            nameFn = { it::class.simpleName ?: it.toString() },
+            listOf(
+                Random.nextBoolean(),
+                Random.nextInt(),
+                Random.nextBytes(16),
+            )
+        ) {
+            val namespace = uuid4().toString()
+            val elementIdentifier = uuid4().toString()
+
+            val item = IssuerSignedItem(
+                digestId = 1u,
+                random = Random.nextBytes(16),
+                elementIdentifier = elementIdentifier,
+                elementValue = it
+            )
+
+            val list = IssuerSignedList(listOf(ByteStringWrapper(item)))
+            val serialized = coseCompliantSerializer.encodeToByteArray(IssuerSignedListSerializer(namespace), list)
+            // can't deserialize those value back, but it works when registering custom serializers, as shown below
+            shouldThrowAny {
+                coseCompliantSerializer.decodeFromByteArray(IssuerSignedListSerializer(namespace), serialized)
+                    .shouldBe(list)
+            }
+        }
+    }
+
     "deserializes IssuerSignedItem with elementValue being a nested object before elementIdentifier" {
         val namespace = uuid4().toString()
         val elementIdentifier = uuid4().toString()
@@ -93,13 +129,13 @@ val IssuerSignedListSerializerTest by testSuite {
         )
 
         val reordered = CborObject.orderedMap(
-            CborText(IssuerSignedItem.PROP_DIGEST_ID) to CborObject.positive(item.digestId),
-            CborText(IssuerSignedItem.PROP_RANDOM) to CborObject.value(item.random),
-            CborText(IssuerSignedItem.PROP_ELEMENT_VALUE) to elementValue.toOborObject(),
-            CborText(IssuerSignedItem.PROP_ELEMENT_ID) to CborText(item.elementIdentifier),
+            CborText(PROP_DIGEST_ID) to CborObject.positive(item.digestId),
+            CborText(PROP_RANDOM) to CborObject.value(item.random),
+            CborText(PROP_ELEMENT_VALUE) to elementValue.toOborObject(),
+            CborText(PROP_ELEMENT_ID) to CborText(item.elementIdentifier),
         )
 
-        assertRoundtrip(item, namespace, reordered)
+        assertRoundtripWithIssuerSignedItemList(item, namespace, reordered)
     }
 
     "deserializes IssuerSignedItem with elementValue being a boolean before elementIdentifier" {
@@ -118,13 +154,13 @@ val IssuerSignedListSerializerTest by testSuite {
         )
 
         val reordered = CborObject.orderedMap(
-            CborText(IssuerSignedItem.PROP_DIGEST_ID) to CborObject.positive(item.digestId),
-            CborText(IssuerSignedItem.PROP_RANDOM) to CborObject.value(item.random),
-            CborText(IssuerSignedItem.PROP_ELEMENT_VALUE) to CborBoolean(elementValue),
-            CborText(IssuerSignedItem.PROP_ELEMENT_ID) to CborText(item.elementIdentifier),
+            CborText(PROP_DIGEST_ID) to CborObject.positive(item.digestId),
+            CborText(PROP_RANDOM) to CborObject.value(item.random),
+            CborText(PROP_ELEMENT_VALUE) to CborBoolean(elementValue),
+            CborText(PROP_ELEMENT_ID) to CborText(item.elementIdentifier),
         )
 
-        assertRoundtrip(item, namespace, reordered)
+        assertRoundtripWithIssuerSignedItemList(item, namespace, reordered)
     }
 
     "deserializes IssuerSignedItem with elementValue being a ULong before elementIdentifier" {
@@ -143,13 +179,13 @@ val IssuerSignedListSerializerTest by testSuite {
         )
 
         val reordered = CborObject.orderedMap(
-            CborText(IssuerSignedItem.PROP_DIGEST_ID) to CborObject.positive(item.digestId),
-            CborText(IssuerSignedItem.PROP_RANDOM) to CborObject.value(item.random),
-            CborText(IssuerSignedItem.PROP_ELEMENT_VALUE) to CborPositive(elementValue),
-            CborText(IssuerSignedItem.PROP_ELEMENT_ID) to CborText(item.elementIdentifier),
+            CborText(PROP_DIGEST_ID) to CborObject.positive(item.digestId),
+            CborText(PROP_RANDOM) to CborObject.value(item.random),
+            CborText(PROP_ELEMENT_VALUE) to CborPositive(elementValue),
+            CborText(PROP_ELEMENT_ID) to CborText(item.elementIdentifier),
         )
 
-        assertRoundtrip(item, namespace, reordered)
+        assertRoundtripWithIssuerSignedItemList(item, namespace, reordered)
     }
 
     "deserializes IssuerSignedItem with elementValue being a ByteArray before elementIdentifier" {
@@ -168,17 +204,17 @@ val IssuerSignedListSerializerTest by testSuite {
         )
 
         val reordered = CborObject.orderedMap(
-            CborText(IssuerSignedItem.PROP_DIGEST_ID) to CborObject.positive(item.digestId),
-            CborText(IssuerSignedItem.PROP_RANDOM) to CborObject.value(item.random),
-            CborText(IssuerSignedItem.PROP_ELEMENT_VALUE) to CborBytes(elementValue),
-            CborText(IssuerSignedItem.PROP_ELEMENT_ID) to CborText(item.elementIdentifier),
+            CborText(PROP_DIGEST_ID) to CborObject.positive(item.digestId),
+            CborText(PROP_RANDOM) to CborObject.value(item.random),
+            CborText(PROP_ELEMENT_VALUE) to CborBytes(elementValue),
+            CborText(PROP_ELEMENT_ID) to CborText(item.elementIdentifier),
         )
 
-        assertRoundtrip(item, namespace, reordered)
+        assertRoundtripWithIssuerSignedItemList(item, namespace, reordered)
     }
 }
 
-private fun assertRoundtrip(
+private fun assertRoundtripWithIssuerSignedItemList(
     item: IssuerSignedItem,
     namespace: String,
     reordered: CborMap
