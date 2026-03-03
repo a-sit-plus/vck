@@ -99,7 +99,7 @@ open class IssuerSignedItemSerializer(
 
 
     override fun deserialize(decoder: Decoder): IssuerSignedItem {
-        throw IllegalArgumentException("Do not use IssuerSignedItemSerializer for deserializing, but IssuerSignedItemListSerializer")
+        throw IllegalArgumentException("Do not use IssuerSignedItemSerializer for deserializing, but IssuerSignedListSerializer")
     }
 
     internal fun deserializeFromOborMap(item: CborMap): IssuerSignedItem = item.toIssuerSignedItem()

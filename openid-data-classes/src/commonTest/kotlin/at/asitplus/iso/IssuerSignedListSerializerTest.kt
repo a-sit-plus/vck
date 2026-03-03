@@ -11,13 +11,11 @@ import at.asitplus.testballoon.minus
 import at.asitplus.testballoon.withData
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import kotlin.random.Random
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.decodeFromByteArray
@@ -135,7 +133,7 @@ val IssuerSignedListSerializerTest by testSuite {
             CborText(PROP_ELEMENT_ID) to CborText(item.elementIdentifier),
         )
 
-        assertRoundtripWithIssuerSignedItemList(item, namespace, reordered)
+        assertRoundtripWithIssuerSignedList(item, namespace, reordered)
     }
 
     "deserializes IssuerSignedItem with elementValue being a boolean before elementIdentifier" {
@@ -160,7 +158,7 @@ val IssuerSignedListSerializerTest by testSuite {
             CborText(PROP_ELEMENT_ID) to CborText(item.elementIdentifier),
         )
 
-        assertRoundtripWithIssuerSignedItemList(item, namespace, reordered)
+        assertRoundtripWithIssuerSignedList(item, namespace, reordered)
     }
 
     "deserializes IssuerSignedItem with elementValue being a ULong before elementIdentifier" {
@@ -185,7 +183,7 @@ val IssuerSignedListSerializerTest by testSuite {
             CborText(PROP_ELEMENT_ID) to CborText(item.elementIdentifier),
         )
 
-        assertRoundtripWithIssuerSignedItemList(item, namespace, reordered)
+        assertRoundtripWithIssuerSignedList(item, namespace, reordered)
     }
 
     "deserializes IssuerSignedItem with elementValue being a ByteArray before elementIdentifier" {
@@ -210,11 +208,11 @@ val IssuerSignedListSerializerTest by testSuite {
             CborText(PROP_ELEMENT_ID) to CborText(item.elementIdentifier),
         )
 
-        assertRoundtripWithIssuerSignedItemList(item, namespace, reordered)
+        assertRoundtripWithIssuerSignedList(item, namespace, reordered)
     }
 }
 
-private fun assertRoundtripWithIssuerSignedItemList(
+private fun assertRoundtripWithIssuerSignedList(
     item: IssuerSignedItem,
     namespace: String,
     reordered: CborMap
@@ -222,7 +220,7 @@ private fun assertRoundtripWithIssuerSignedItemList(
     val list = IssuerSignedList(listOf(ByteStringWrapper(item)))
     val serialized = coseCompliantSerializer.encodeToHexString(IssuerSignedListSerializer(namespace), list)
 
-    val serializedReordered = reordered.wrapInIssuerSignedItemListSerialized()
+    val serializedReordered = reordered.wrapInIssuerSignedListSerialized()
     serializedReordered shouldNotBe serialized
 
     coseCompliantSerializer.decodeFromHexString(IssuerSignedListSerializer(namespace), serialized) shouldBe list
@@ -232,7 +230,7 @@ private fun assertRoundtripWithIssuerSignedItemList(
     ) shouldBe list
 }
 
-private fun CborMap.wrapInIssuerSignedItemListSerialized(): String = "81" + // array(1)
+private fun CborMap.wrapInIssuerSignedListSerialized(): String = "81" + // array(1)
         "d818" +  // encoded cbor data item, tagged(24)
         Cbor.encodeToHexString(CborBytes(Cbor.encodeToByteArray<CborMap>(this)))
 
