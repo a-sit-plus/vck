@@ -1,5 +1,6 @@
 package at.asitplus.iso
 
+import at.asitplus.catchingUnwrapped
 import at.asitplus.iso.IssuerSignedItem.Companion.PROP_DIGEST_ID
 import at.asitplus.iso.IssuerSignedItem.Companion.PROP_ELEMENT_ID
 import at.asitplus.iso.IssuerSignedItem.Companion.PROP_ELEMENT_VALUE
@@ -13,9 +14,11 @@ import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.cbor.ValueTags
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
+import kotlinx.serialization.encoding.CompositeDecoder
 import kotlinx.serialization.encoding.CompositeEncoder
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.encoding.decodeStructure
 import kotlinx.serialization.encoding.encodeStructure
 import net.orandja.obor.data.CborMap
 import net.orandja.obor.data.CborText
@@ -99,7 +102,61 @@ open class IssuerSignedItemSerializer(
 
 
     override fun deserialize(decoder: Decoder): IssuerSignedItem {
-        throw IllegalArgumentException("Do not use IssuerSignedItemSerializer for deserializing, but IssuerSignedListSerializer")
+        var digestId = 0U
+        var random: ByteArray? = null
+        var parsedElementId: String? = elementIdentifier.takeIf { it.isNotBlank() }
+        var parsedElementValue: Any? = null
+        decoder.decodeStructure(descriptor) {
+            while (true) {
+                val name = decodeStringElement(descriptor, 0)
+                // Don't call decodeElementIndex, as it would check for tags. this would break decodeAnything
+                val index = descriptor.getElementIndex(name)
+                when (name) {
+                    PROP_DIGEST_ID -> digestId = decodeLongElement(descriptor, index).toUInt()
+                    PROP_RANDOM -> random = decodeSerializableElement(descriptor, index, ByteArraySerializer())
+                    PROP_ELEMENT_ID -> {
+                        val elementIdInPayload = decodeStringElement(descriptor, index)
+                        if (parsedElementId != null && parsedElementId != elementIdInPayload)
+                            throw IllegalArgumentException("Element identifier mismatch")
+                        parsedElementId = elementIdInPayload
+                    }
+
+                    PROP_ELEMENT_VALUE -> parsedElementValue = decodeAnything(index, parsedElementId)
+                }
+                if (random != null && parsedElementValue != null) break
+            }
+        }
+
+        return IssuerSignedItem(
+            digestId = digestId,
+            random = random!!,
+            elementIdentifier = parsedElementId
+                ?: throw IllegalArgumentException("Missing element identifier"),
+            elementValue = parsedElementValue
+                ?: throw IllegalArgumentException("Missing element value"),
+        )
+    }
+
+    private fun CompositeDecoder.decodeAnything(index: Int, elementIdentifier: String?): Any {
+        if (namespace.isBlank())
+            throw IllegalArgumentException("Can not decode $elementIdentifier without namespace")
+
+        // Tags are not read out here but skipped because `decodeElementIndex` is never called, so we cannot
+        // discriminate technically, this should be a good thing though, because otherwise we'd consume more from the
+        // input
+        elementIdentifier?.let {
+            CborCredentialSerializer.decode(descriptor, index, this, elementIdentifier, namespace)
+                ?.let { return it }
+        }
+
+        catchingUnwrapped {
+            return decodeGenericElementValue(decodeSerializableElement(descriptor, index, ByteArraySerializer()))
+        }
+        catchingUnwrapped {
+            return decodeStringElement(descriptor, index)
+        }
+
+        throw IllegalArgumentException("Could not decode value at $index")
     }
 
     internal fun deserializeFromOborMap(item: CborMap): IssuerSignedItem = item.toIssuerSignedItem()

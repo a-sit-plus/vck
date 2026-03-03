@@ -103,10 +103,11 @@ val IssuerSignedListSerializerTest by testSuite {
 
             val list = IssuerSignedList(listOf(ByteStringWrapper(item)))
             val serialized = coseCompliantSerializer.encodeToByteArray(IssuerSignedListSerializer(namespace), list)
-            // can't deserialize that value back, but it works when registering custom serializers, as shown below
+            // it can deserialize back, but ...
+            val parsed = coseCompliantSerializer.decodeFromByteArray(IssuerSignedListSerializer(namespace), serialized)
+            // ... it is not the same value anymore
             shouldThrowAny {
-                coseCompliantSerializer.decodeFromByteArray(IssuerSignedListSerializer(namespace), serialized)
-                    .shouldBe(list)
+                parsed.shouldBe(list)
             }
         }
     }

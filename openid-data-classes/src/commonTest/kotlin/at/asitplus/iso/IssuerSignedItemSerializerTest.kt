@@ -4,6 +4,8 @@ import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.testballoon.withFixtureGenerator
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 import io.matthewnelson.encoding.base16.Base16
@@ -11,6 +13,8 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.decodeFromByteArray
+import kotlinx.serialization.decodeFromHexString
 import kotlinx.serialization.encodeToHexString
 import kotlin.random.Random
 import kotlin.random.nextUInt
@@ -27,21 +31,25 @@ val IssuerSignedItemSerializerTest by testSuite {
         }
     } - {
 
-        test("serialization with String") {
+        test("serialization with String (unregistered)") {
             val item = IssuerSignedItem(
                 digestId = Random.nextUInt(),
                 random = Random.nextBytes(16),
                 elementIdentifier = it.elementId,
                 elementValue = uuid4().toString(),
             )
-            coseCompliantSerializer.encodeToHexString(IssuerSignedItemSerializer(it.namespace, it.elementId), item)
+            val serialized = coseCompliantSerializer
+                .encodeToHexString(IssuerSignedItemSerializer(it.namespace, it.elementId), item)
                 .uppercase()
                 .shouldNotContain("d903ec")
+                .shouldNotBeNull()
 
-            // direct deserialization prevented, use in IssuerSignedList
+            coseCompliantSerializer
+                .decodeFromHexString(IssuerSignedItemSerializer(it.namespace, it.elementId), serialized)
+                .shouldBe(item)
         }
 
-        test("serialization with Instant") {
+        test("serialization with Instant (registered)") {
             CborCredentialSerializer.register(mapOf(it.elementId to Instant.serializer()), it.namespace)
             val item = IssuerSignedItem(
                 digestId = Random.nextUInt(),
@@ -50,17 +58,39 @@ val IssuerSignedItemSerializerTest by testSuite {
                 elementValue = Clock.System.now(),
             )
 
-            coseCompliantSerializer.encodeToHexString(IssuerSignedItemSerializer(it.namespace, it.elementId), item)
+            val serialized = coseCompliantSerializer
+                .encodeToHexString(IssuerSignedItemSerializer(it.namespace, it.elementId), item)
                 .shouldContain(
-                    "elementValue".toHex()
-                            + "c0" // tag(0)
-                            + "78" // text(..)
-                )
+                    //                     tag(0)  text(...)
+                    "elementValue".toHex() + "c0" + "78"
+                ).shouldNotBeNull()
 
-            // direct deserialization prevented, use in IssuerSignedList
+            coseCompliantSerializer
+                .decodeFromHexString(IssuerSignedItemSerializer(it.namespace, it.elementId), serialized)
+                .shouldBe(item)
         }
 
-        test("serialization with LocalDate") {
+        test("serialization with Instant (unregistered)") {
+            val item = IssuerSignedItem(
+                digestId = Random.nextUInt(),
+                random = Random.nextBytes(16),
+                elementIdentifier = it.elementId,
+                elementValue = Clock.System.now(),
+            )
+
+            val serialized = coseCompliantSerializer
+                .encodeToHexString(IssuerSignedItemSerializer(it.namespace, it.elementId), item)
+                .shouldContain(
+                    //                     tag(0)  text(...)
+                    "elementValue".toHex() + "c0" + "78"
+                ).shouldNotBeNull()
+
+            val parsed = coseCompliantSerializer
+                .decodeFromHexString(IssuerSignedItemSerializer(it.namespace, it.elementId), serialized)
+                parsed.shouldBe(item)
+        }
+
+        test("serialization with LocalDate (registered)") {
             CborCredentialSerializer.register(mapOf(it.elementId to LocalDate.serializer()), it.namespace)
             val item = IssuerSignedItem(
                 digestId = Random.nextUInt(),
@@ -69,14 +99,18 @@ val IssuerSignedItemSerializerTest by testSuite {
                 elementValue = LocalDate.fromEpochDays(Random.nextInt(32768))
             )
 
-            coseCompliantSerializer.encodeToHexString(IssuerSignedItemSerializer(it.namespace, it.elementId), item)
+            val serialized = coseCompliantSerializer
+                .encodeToHexString(IssuerSignedItemSerializer(it.namespace, it.elementId), item)
                 .shouldContain(
-                    "elementValue".toHex()
-                            + "d903ec" // tag(1004)
-                            + "6a" // text(10)
-                )
+                    //                      tag(1004)  text(10)
+                    "elementValue".toHex() + "d903ec" + "6a"
+                ).shouldNotBeNull()
 
             // direct deserialization prevented, use in IssuerSignedList
+
+            coseCompliantSerializer
+                .decodeFromHexString(IssuerSignedItemSerializer(it.namespace, it.elementId), serialized)
+                .shouldBe(item)
         }
     }
 }
