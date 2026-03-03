@@ -1,14 +1,5 @@
-package at.asitplus.wallet.lib.cbor
+package at.asitplus.iso
 
-import at.asitplus.iso.CborCredentialSerializer
-import at.asitplus.iso.DeviceNameSpaces
-import at.asitplus.iso.DeviceSigned
-import at.asitplus.iso.DeviceSignedItem
-import at.asitplus.iso.DeviceSignedItemList
-import at.asitplus.iso.Document
-import at.asitplus.iso.IssuerSigned
-import at.asitplus.iso.IssuerSignedItem
-import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.signum.indispensable.CryptoSignature
 import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseHeader
@@ -27,7 +18,7 @@ import kotlinx.serialization.encodeToByteArray
 import kotlin.random.Random
 import kotlin.random.nextUInt
 
-val DeviceSignedItemSerializationTest by testSuite {
+val DeviceSignedItemSerializerTest by testSuite {
 
     "serialization with String" {
         val namespace = uuid4().toString()
