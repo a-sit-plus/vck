@@ -4,6 +4,7 @@ import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.testballoon.withFixtureGenerator
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -49,6 +50,42 @@ val IssuerSignedItemSerializerTest by testSuite {
                 .shouldBe(item)
         }
 
+        test("serialization with Long (unregistered)") {
+            val item = IssuerSignedItem(
+                digestId = Random.nextUInt(),
+                random = Random.nextBytes(16),
+                elementIdentifier = it.elementId,
+                elementValue = Random.nextLong(),
+            )
+            val serialized = coseCompliantSerializer
+                .encodeToHexString(IssuerSignedItemSerializer(it.namespace, it.elementId), item)
+                .uppercase()
+                .shouldNotContain("d903ec")
+                .shouldNotBeNull()
+
+            coseCompliantSerializer
+                .decodeFromHexString(IssuerSignedItemSerializer(it.namespace, it.elementId), serialized)
+                .shouldBe(item)
+        }
+
+        test("serialization with Boolean (unregistered)") {
+            val item = IssuerSignedItem(
+                digestId = Random.nextUInt(),
+                random = Random.nextBytes(16),
+                elementIdentifier = it.elementId,
+                elementValue = Random.nextBoolean(),
+            )
+            val serialized = coseCompliantSerializer
+                .encodeToHexString(IssuerSignedItemSerializer(it.namespace, it.elementId), item)
+                .uppercase()
+                .shouldNotContain("d903ec")
+                .shouldNotBeNull()
+
+            coseCompliantSerializer
+                .decodeFromHexString(IssuerSignedItemSerializer(it.namespace, it.elementId), serialized)
+                .shouldBe(item)
+        }
+
         test("serialization with Instant (registered)") {
             CborCredentialSerializer.register(mapOf(it.elementId to Instant.serializer()), it.namespace)
             val item = IssuerSignedItem(
@@ -70,7 +107,7 @@ val IssuerSignedItemSerializerTest by testSuite {
                 .shouldBe(item)
         }
 
-        test("serialization with Instant (unregistered)") {
+        test("serialization with Instant (unregistered) not working") {
             val item = IssuerSignedItem(
                 digestId = Random.nextUInt(),
                 random = Random.nextBytes(16),
@@ -87,7 +124,10 @@ val IssuerSignedItemSerializerTest by testSuite {
 
             val parsed = coseCompliantSerializer
                 .decodeFromHexString(IssuerSignedItemSerializer(it.namespace, it.elementId), serialized)
+
+            shouldThrowAny {
                 parsed.shouldBe(item)
+            }
         }
 
         test("serialization with LocalDate (registered)") {
@@ -105,8 +145,6 @@ val IssuerSignedItemSerializerTest by testSuite {
                     //                      tag(1004)  text(10)
                     "elementValue".toHex() + "d903ec" + "6a"
                 ).shouldNotBeNull()
-
-            // direct deserialization prevented, use in IssuerSignedList
 
             coseCompliantSerializer
                 .decodeFromHexString(IssuerSignedItemSerializer(it.namespace, it.elementId), serialized)

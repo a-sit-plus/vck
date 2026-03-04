@@ -149,14 +149,22 @@ open class IssuerSignedItemSerializer(
                 ?.let { return it }
         }
 
+        // These are the ones that map to different CBOR data types, the rest don't, so if it is not registered, we'll
+        // lose type information. No others must be added here, as they could consume data from the underlying bytes
+        catchingUnwrapped { return decodeStringElement(descriptor, index) }
+        catchingUnwrapped { return decodeBooleanElement(descriptor, index) }
+        catchingUnwrapped { return decodeLongElement(descriptor, index) }
+        catchingUnwrapped { return decodeDoubleElement(descriptor, index) }
+
+        // Kotlinx Serialization can't really read "just the CBOR Bytes",
+        // so we can't really "try" to parse the next CBOR element as "anything",
+        // but we'll try anyway
+        // Any sensible credential implementation should have registered a custom CborCredentialSerializer
         catchingUnwrapped {
             return decodeGenericElementValue(decodeSerializableElement(descriptor, index, ByteArraySerializer()))
         }
-        catchingUnwrapped {
-            return decodeStringElement(descriptor, index)
-        }
 
-        throw IllegalArgumentException("Could not decode value at $index")
+        throw IllegalArgumentException("Could not decode value at $index for $elementIdentifier")
     }
 
     internal fun deserializeFromOborMap(item: CborMap): IssuerSignedItem = item.toIssuerSignedItem()
