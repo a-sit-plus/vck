@@ -94,13 +94,8 @@ class Iso180137AnnexCVerifier(
         )
     )
 
-    private fun KmmResult<VerifyPresentationResult>.mapToResponseResult() = map {
-        when (it) {
-            is VerifyPresentationResult.Success -> Success(it.vp)
-            is VerifyPresentationResult.SuccessIso -> SuccessIso(it.documents)
-            is VerifyPresentationResult.SuccessSdJwt -> throw IllegalStateException("Unexpected SuccessSdJwt")
-            is VerifyPresentationResult.SuccessUnsignedVcJws -> SuccessUnsigned(it.vc)
-        }
+    private fun KmmResult<VerifyPresentationResult.SuccessIso>.mapToResponseResult() = map {
+        SuccessIso(it.documents)
     }
 
     @OptIn(SecretExposure::class)
@@ -109,7 +104,7 @@ class Iso180137AnnexCVerifier(
         externalId: String,
         decryptHpke: suspend (ByteArray, ByteArray, CryptoPrivateKey.EC.WithPublicKey, ByteArray) -> ByteArray,
         expectedOrigin: String
-    ): KmmResult<Iso180137AnnexCResponseResult> = catching {
+    ): KmmResult<Iso180137AnnexCResponseResult.SuccessIso> = catching {
         val isoMdocRequest = stateToIsoMdocRequestStore.get(externalId)!!
         val privateKey = decryptionKeyMaterial.exportPrivateKey().getOrThrow()
                 as? CryptoPrivateKey.EC.WithPublicKey ?: throw IllegalStateException("Expected EC private key")
