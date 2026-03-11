@@ -107,12 +107,12 @@ internal class AuthorizationRequestValidator(
         val responseModeIsDirectPost = parameters.responseMode.isAnyDirectPost()
         val responseModeIsDcApi = parameters.responseMode.isAnyDcApi()
         if (this !is RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>
-            || jwsSigned.header.certificateChain.isNullOrEmpty()
+            || jwsSigned.jwsHeader.certificateChain.isNullOrEmpty()
         ) {
             throw InvalidRequest("x5c is null, and metadata is not set")
         }
 
-        val leaf = jwsSigned.header.certificateChain!!.leaf
+        val leaf = jwsSigned.jwsHeader.certificateChain!!.leaf
         when (clientIdScheme) {
             ClientIdScheme.X509SanDns -> verifyX509SanDns(leaf, responseModeIsDirectPost, responseModeIsDcApi)
             ClientIdScheme.X509Hash -> verifyX509SanHash(leaf)

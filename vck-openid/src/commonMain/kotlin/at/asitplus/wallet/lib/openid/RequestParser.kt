@@ -10,7 +10,7 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
 import at.asitplus.wallet.lib.data.MediaTypes
@@ -64,7 +64,7 @@ class RequestParser(
     }
 
     private suspend fun String.parseParameters(): RequestParametersFrom<out RequestParameters> =
-            parseAsJwsRequest(null)
+        parseAsJwsRequest(null)
             ?: parseFromParameters()
             ?: parseFromJson(null)
             ?: throw InvalidRequest("parse error: $this")
@@ -96,9 +96,10 @@ class RequestParser(
             is DCAPIWalletRequest.OpenId4VpSigned -> {
                 val requestStr = (this.request as? JarRequestParameters)?.request
                     ?: throw InvalidRequest("Did not find jar request parameters: $this")
-                val jwsSigned = JwsSigned.deserialize(RequestParameters.serializer(), requestStr, vckJsonSerializer).getOrThrow()
-                RequestParametersFrom.DcApiSigned(this, jwsSigned.payload, jwsSigned)
+                val jwsSigned = vckJsonSerializer.decodeFromString(JwsCompact.JwsCompactSerializer, requestStr)
+                RequestParametersFrom.DcApiSigned(this, jwsSigned.getPayload(), jwsSigned)
             }
+
             is DCAPIWalletRequest.OpenId4VpUnsigned -> {
                 val jsonString = vckJsonSerializer.encodeToString(this.request)
                 RequestParametersFrom.DcApiUnsigned(this, this.request, jsonString)
@@ -132,15 +133,13 @@ class RequestParser(
     private suspend fun String.parseAsJwsRequest(
         parent: RequestParametersFrom<out RequestParameters>?,
     ): RequestParametersFrom<*>? =
-        JwsSigned.deserialize(RequestParameters.serializer(), this, vckJsonSerializer)
-            .getOrNull()?.let { jws ->
-                RequestParametersFrom.JwsSigned(
-                    jwsSigned = jws,
-                    parameters = jws.payload,
-                    verified = requestObjectJwsVerifier.invoke(jws),
-                    parent = (parent as? RequestParametersFrom.Uri)?.url
-                )
-            }
-
+        vckJsonSerializer.decodeFromString(JwsCompact.JwsCompactSerializer, this).let {
+            RequestParametersFrom.JwsSigned(
+                it,
+                it.getPayload(RequestParameters.serializer(), vckJsonSerializer),
+                verified = false, //requestObjectJwsVerifier.invoke(it),
+                parent = (parent as? RequestParametersFrom.Uri)?.url
+            )
+        }
 }
 

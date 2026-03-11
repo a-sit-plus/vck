@@ -23,6 +23,7 @@ import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JweEncrypted
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
@@ -386,7 +387,7 @@ class WalletService(
             this.loadKeyAttestation?.invoke(KeyAttestationInput(clientNonce, null))?.getOrThrow()?.serialize()
                 ?: throw IllegalArgumentException("Key attestation required, none provided")
         } else null
-        header.copy(jsonWebKey = key.jsonWebKey, keyAttestation = keyAttestation)
+        header.copy(jsonWebKey = key.jsonWebKey, keyAttestation = keyAttestation?.let { JwsCompact(it)})
     }
 
     @Throws(Exception::class)

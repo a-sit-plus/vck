@@ -44,6 +44,7 @@ import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
@@ -868,7 +869,7 @@ class JwsHeaderClientIdScheme(val clientIdScheme: ClientIdScheme) : JwsHeaderIde
         is ClientIdScheme.CertificateSanDns -> it.copy(certificateChain = clientIdScheme.chain)
         is ClientIdScheme.VerifierAttestation -> it.copy(
             jsonWebKey = keyMaterial.jsonWebKey,
-            attestationJwt = clientIdScheme.attestationJwt.serialize()
+            attestationJwt = JwsCompact(clientIdScheme.attestationJwt.serialize()) //just a temp work-around
         )
 
         else -> it.copy(jsonWebKey = keyMaterial.jsonWebKey)
