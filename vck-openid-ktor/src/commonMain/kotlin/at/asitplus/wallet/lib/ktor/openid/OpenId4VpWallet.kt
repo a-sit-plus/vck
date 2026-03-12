@@ -6,6 +6,7 @@ import at.asitplus.catchingUnwrapped
 import at.asitplus.dcapi.request.DCAPIWalletRequest
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.signum.supreme.UserInitiatedCancellationReason
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
@@ -179,6 +180,9 @@ class OpenId4VpWallet(
             preparationState = preparationState,
             credentialPresentation = credentialPresentation
         ).getOrElse {
+            if(it is UserInitiatedCancellationReason) {
+                throw it // DON'T send error response for user initiated signature cancellation
+            }
             sendAuthnErrorResponse(it, preparationState.request)
             throw it
         }.let {
