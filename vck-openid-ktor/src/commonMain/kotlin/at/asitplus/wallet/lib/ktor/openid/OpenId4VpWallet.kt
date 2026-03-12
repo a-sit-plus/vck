@@ -180,10 +180,9 @@ class OpenId4VpWallet(
             preparationState = preparationState,
             credentialPresentation = credentialPresentation
         ).getOrElse {
-            if(it is UserInitiatedCancellationReason) {
-                throw it // DON'T send error response for user initiated signature cancellation
+            if(it !is UserInitiatedCancellationReason) {
+                sendAuthnErrorResponse(it, preparationState.request)
             }
-            sendAuthnErrorResponse(it, preparationState.request)
             throw it
         }.let {
             handleResponseResult(it)
