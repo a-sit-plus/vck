@@ -3,18 +3,18 @@
     {
       "os": "ubuntu-latest",
       "name": "jvmRunner",
-      "testArgs": "jvmTest && (cd mobile-driving-licence-credential && ./gradlew -DregressionTest=true jvmTest )"
+      "testCommand": "./gradlew jvmTest && (cd mobile-driving-licence-credential && ./gradlew -DregressionTest=true jvmTest )"
     },
     {
       "os": "ubuntu-latest",
       "name": "androidRunner",
       "enableKvm": true,
-      "testArgs": "pixelAVDAndroidDeviceTest "
+      "testCommand": "./gradlew pixelAVDAndroidDeviceTest "
     },
     {
       "os": "macos-latest",
       "name": "iosRunner",
-      "testArgs": "iosArm64MainKlibrary iosSimulatorArm64MainKlibrary iosSimulatorArm64Test && (cd mobile-driving-licence-credential && ./gradlew -DregressionTest=true iosSimulatorArm64Test )"
+      "testCommand": "./gradlew iosArm64MainKlibrary iosSimulatorArm64MainKlibrary iosSimulatorArm64Test && (cd mobile-driving-licence-credential && ./gradlew -DregressionTest=true iosSimulatorArm64Test )"
     }
   ]
 }
