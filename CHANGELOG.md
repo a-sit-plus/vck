@@ -16,6 +16,7 @@ Release 5.12.0 (unreleased):
    - Change: Update DCQLClaimsQuery to OpenID4VP 1.0
    - Change: Do not fail when only matching credentials without submitting a presentation
    - Allow issuance and verification of `IdentifierList` Revocation Mechanism
+   - Change: Don't send response on user initiated signature cancellation
  - OpenID for Verifiable Credential Issuance:
    - Moved the class `RefreshTokenInfo` from `OpenId4VciClient` to `SubjectCredentialStore.kt` and renamed it to `CredentialRenewalInfo` to better describe its role in the renewal process.
      Kept `RefreshTokenInfo` in the original package for backward compatibility

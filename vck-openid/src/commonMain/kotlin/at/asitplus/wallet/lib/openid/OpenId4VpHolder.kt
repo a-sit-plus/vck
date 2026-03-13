@@ -34,6 +34,7 @@ import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
+import at.asitplus.signum.supreme.UserInitiatedCancellationReason
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -230,10 +231,24 @@ class OpenId4VpHolder(
         finalizeAuthorizationResponseParameters(
             state = preparationState,
         ).getOrElse {
+            it.getUserSignatureCancellationException()?.let {
+                throw it // DON'T create error response for user initiated signature cancellation, just expose it
+            }
             return createAuthnErrorResponse(it, preparationState.request)
         }.let {
             authenticationResponseFactory.createAuthenticationResponse(preparationState.request, it)
         }
+    }
+
+    private fun Throwable.getUserSignatureCancellationException(): UserInitiatedCancellationReason? {
+        var current: Throwable? = this
+        while(current != null) {
+            if(current is UserInitiatedCancellationReason) {
+                return current // DON'T send error response for user cancellation
+            }
+            current = current.cause
+        }
+        return null
     }
 
     /**
@@ -293,6 +308,9 @@ class OpenId4VpHolder(
             state = preparationState,
             credentialPresentation = credentialPresentation
         ).getOrElse {
+            it.getUserSignatureCancellationException()?.let { userCancellationException ->
+                throw userCancellationException // DON'T create error response for user initiated signature cancellation
+            }
             return createAuthnErrorResponse(it, preparationState.request)
         }.let {
             authenticationResponseFactory.createAuthenticationResponse(preparationState.request, it)
