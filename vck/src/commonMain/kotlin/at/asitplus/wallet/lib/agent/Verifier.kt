@@ -37,6 +37,7 @@ interface Verifier {
         input: SdJwtSigned,
         challenge: String,
         transactionData: List<TransactionDataBase64Url>? = null,
+        requireCryptographicHolderBinding: Boolean = true,
     ): KmmResult<VerifyPresentationResult.SuccessSdJwt>
 
     /**

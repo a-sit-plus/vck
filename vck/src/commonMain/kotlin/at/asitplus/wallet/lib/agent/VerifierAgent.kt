@@ -30,6 +30,7 @@ class VerifierAgent(
         input: SdJwtSigned,
         challenge: String,
         transactionData: List<TransactionDataBase64Url>?,
+        requireCryptographicHolderBinding: Boolean,
     ): KmmResult<VerifyPresentationResult.SuccessSdJwt> = validatorSdJwt.verifyVpSdJwt(
         input = input,
         challenge = challenge,

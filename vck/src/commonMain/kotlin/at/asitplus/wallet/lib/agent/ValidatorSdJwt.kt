@@ -50,37 +50,45 @@ class ValidatorSdJwt(
         challenge: String,
         clientId: String,
         transactionData: List<TransactionDataBase64Url>?,
+        requireCryptographicHolderBinding: Boolean = true,
     ): KmmResult<VerifyPresentationResult.SuccessSdJwt> = catching {
         Napier.d("verifyVpSdJwt: '$input', '$challenge', '$clientId', '$transactionData'")
         val sdJwtResult = verifySdJwt(input, null).getOrThrow()
-        val keyBindingSigned = sdJwtResult.sdJwtSigned.keyBindingJws
-            ?: throw Throwable("No key binding JWT")
-
         val vcSdJwt = sdJwtResult.verifiableCredentialSdJwt
-        vcSdJwt.confirmationClaim?.let {
-            if (!verifyJwsSignatureWithCnf(keyBindingSigned, it)) {
-                throw Throwable("Key binding JWT not verified (from cnf)")
+
+        // verify if present or holder binding is required
+        if (requireCryptographicHolderBinding && sdJwtResult.sdJwtSigned.keyBindingJws == null) {
+            throw Throwable("No key binding JWT")
+        }
+        sdJwtResult.sdJwtSigned.keyBindingJws?.also { keyBindingSigned ->
+            vcSdJwt.confirmationClaim?.let {
+                if (!verifyJwsSignatureWithCnf(keyBindingSigned, it)) {
+                    throw Throwable("Key binding JWT not verified (from cnf)")
+                }
+            } ?: run {
+                verifyJwsObject(keyBindingSigned).getOrElse {
+                    throw Throwable("Key binding JWT not verified. $it")
+                }
             }
-        } ?: run {
-            verifyJwsObject(keyBindingSigned).getOrElse {
-                throw Throwable("Key binding JWT not verified. $it")
+
+            val keyBinding = keyBindingSigned.payload
+            require(keyBinding.challenge == challenge) {
+                "Challenge not correct: ${keyBinding.challenge}"
             }
-        }
-        val keyBinding = keyBindingSigned.payload
-        require(keyBinding.challenge == challenge) {
-            "Challenge not correct: ${keyBinding.challenge}"
-        }
-        require(keyBinding.audience == clientId) {
-            "Audience not correct: ${keyBinding.audience}"
-        }
-        if (!keyBinding.sdHash.contentEquals(input.hashInput.encodeToByteArray().sha256())) {
-            throw Throwable("KB-JWT does not contain correct sd_hash")
-        }
-        if (verifyTransactionData) {
-            transactionData?.let { data ->
-                val digests = data.map { it.digest(keyBinding.transactionDataHashesAlgorithm) }
-                if (keyBinding.transactionDataHashes?.contentEquals(digests) == false) {
-                    throw Throwable("KB-JWT does not contain correct transaction data hashes")
+            require(keyBinding.audience == clientId) {
+                "Audience not correct: ${keyBinding.audience}"
+            }
+
+            if (!keyBinding.sdHash.contentEquals(input.hashInput.encodeToByteArray().sha256())) {
+                throw Throwable("KB-JWT does not contain correct sd_hash")
+            }
+
+            if (verifyTransactionData) {
+                transactionData?.let { data ->
+                    val digests = data.map { it.digest(keyBinding.transactionDataHashesAlgorithm) }
+                    if (keyBinding.transactionDataHashes?.contentEquals(digests) == false) {
+                        throw Throwable("KB-JWT does not contain correct transaction data hashes")
+                    }
                 }
             }
         }
