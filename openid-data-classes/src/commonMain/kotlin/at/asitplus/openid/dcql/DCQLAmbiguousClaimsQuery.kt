@@ -28,7 +28,7 @@ data class DCQLAmbiguousClaimsQuery(
                 id = id,
                 path = path,
                 values = values
-            ).executeJsonClaimsQueryAgainstCredential(
+            ).executeClaimsQueryAgainstCredential(
                 credentialStructure = credentialStructure,
             ).getOrThrow()
 
@@ -36,7 +36,7 @@ data class DCQLAmbiguousClaimsQuery(
                 id = id,
                 path = path,
                 values = values
-            ).executeIsoMdocClaimsQueryAgainstCredential(
+            ).executeClaimsQueryAgainstCredential(
                 credentialStructure = credentialStructure,
             ).getOrThrow()
         }

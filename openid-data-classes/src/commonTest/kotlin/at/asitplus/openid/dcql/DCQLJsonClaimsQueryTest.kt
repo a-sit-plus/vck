@@ -107,7 +107,7 @@ val DCQLJsonClaimsQueryTest by testSuite {
                 DCQLExpectedClaimValue.IntegerValue(0),
                 DCQLExpectedClaimValue.BooleanValue(true),
             )
-        ).executeJsonClaimsQueryAgainstCredential(
+        ).executeClaimsQueryAgainstCredential(
             DCQLCredentialClaimStructure.JsonBasedStructure(credential)
         ).getOrThrow().shouldBeInstanceOf<DCQLClaimsQueryResult.JsonResult>().let {
             it.nodeList shouldHaveSize 3

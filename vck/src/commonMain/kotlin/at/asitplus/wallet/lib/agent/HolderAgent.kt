@@ -225,7 +225,7 @@ class HolderAgent(
             ?: matchDCQLQueryAgainstCredentialStore(dcqlQuery).getOrThrow()
                 .toDefaultSubmission(dcqlQuery).getOrThrow()
 
-        DCQLQuery.Procedures.isSatisfactoryCredentialSubmission(
+        DCQLQuery.Procedures.isCredentialSetQueriesSatisfied(
             credentialSubmissions = credentialSubmissions.keys,
             requestedCredentialSetQueries = requestedCredentialSetQueries,
         ).let {

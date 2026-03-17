@@ -11,6 +11,6 @@ sealed interface DCQLCredentialClaimStructure {
 
     @JvmInline
     value class IsoMdocStructure(
-        val namespaceClaimValueMap: Map<String, Map<String, Any?>>,
+        val namespaceClaimValueMap: Map<String, Map<String, Any>>,
     ) : DCQLCredentialClaimStructure
 }

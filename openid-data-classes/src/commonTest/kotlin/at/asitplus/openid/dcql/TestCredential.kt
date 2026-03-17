@@ -20,7 +20,7 @@ sealed interface TestCredential {
     val satisfiesCryptographicHolderBinding: Boolean
     val authorityKeyIdentifiers: Collection<DCQLAuthorityKeyIdentifier>
 
-    interface JsonCredential : TestCredential {
+    sealed interface JsonCredential : TestCredential {
         val claimStructure: JsonElement
     }
 
