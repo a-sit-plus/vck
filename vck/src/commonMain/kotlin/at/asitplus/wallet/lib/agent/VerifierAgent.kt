@@ -36,6 +36,7 @@ class VerifierAgent(
         challenge = challenge,
         clientId = identifier,
         transactionData = transactionData,
+        requireCryptographicHolderBinding = requireCryptographicHolderBinding,
     )
 
     override suspend fun verifyPresentationVcJwt(
