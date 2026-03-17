@@ -345,30 +345,39 @@ class WalletService(
         clientNonce: String?,
         clock: Clock = Clock.System,
     ): CredentialRequestProofContainer =
-        credentialFormat.supportedProofTypes?.get(ProofTypes.JWT)?.let {
-            val unitAttestationPop = loadUnitAttestationPop?.invoke(
+        credentialFormat.supportedProofTypes?.get(ProofTypes.JWT)?.let { type ->
+            loadUnitAttestationPop?.invoke(
                 LoadUnitAttestationPopInput(
-                    ttl = it.keyAttestationRequired?.preferredTtl ?: 31.days,
+                    ttl = type.keyAttestationRequired?.preferredTtl ?: 31.days,
                     payload = JsonWebToken(
                         issuer = clientId, // omit when token was pre-authn?
                         audience = metadata.credentialIssuer,
                         issuedAt = clock.now().truncateToSeconds(),
                         nonce = clientNonce,
                     )
+                ))?.getOrElse { err -> throw IllegalArgumentException("Key attestation required, none provided $err") }.let {
+                createCredentialRequestProofJwt(
+                    clientNonce,
+                    metadata.credentialIssuer,
+                    clock,
+                    type.keyAttestationRequired(),
+                    it
                 )
-            )?.getOrElse { err -> throw IllegalArgumentException("Key attestation required, none provided $err") }
-
-            createCredentialRequestProofJwt(
-                clientNonce,
-                metadata.credentialIssuer,
-                clock,
-                it.keyAttestationRequired(),
-                unitAttestationPop
-            )
-        } ?: credentialFormat.supportedProofTypes?.get(ProofTypes.ATTESTATION)?.let {
-            createCredentialRequestProofAttestation(clientNonce, it.supportedSigningAlgorithms)
+            }
+        } ?: credentialFormat.supportedProofTypes?.get(ProofTypes.ATTESTATION)?.let { type ->
+            loadUnitAttestationPop?.invoke(
+                LoadUnitAttestationPopInput(
+                    ttl = type.keyAttestationRequired?.preferredTtl ?: 31.days,
+                    payload = JsonWebToken(
+                        issuer = clientId, // omit when token was pre-authn?
+                        audience = metadata.credentialIssuer,
+                        issuedAt = clock.now().truncateToSeconds(),
+                        nonce = clientNonce,
+                    )
+                ))?.getOrElse { err -> throw IllegalArgumentException("Key attestation required, none provided $err") }.let {
+                createCredentialRequestProofAttestation(clientNonce, type.supportedSigningAlgorithms, it)
+            }
         } ?: createCredentialRequestProofJwt(clientNonce, metadata.credentialIssuer, clock)
-
     private fun CredentialRequestProofSupported.keyAttestationRequired(): Boolean =
         keyAttestationRequired != null
 
