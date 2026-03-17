@@ -727,23 +727,17 @@ class OpenId4VpVerifier(
         ClaimFormat.MSO_MDOC -> verifier.verifyPresentationIsoMdoc(
             input = relatedPresentation.extractContent().decodeToByteArray(Base64UrlStrict)
                 .let { coseCompliantSerializer.decodeFromByteArray<DeviceResponse>(it) },
-            verifyDocument = if (requireCryptographicHolderBinding != false) {
-                verifyDocument(
-                    sessionTranscript = createSessionTranscript(
-                        input = input,
-                        clientId = clientId,
-                        expectedNonce = expectedNonce,
-                        hasBeenEncrypted = input.hasBeenEncrypted,
-                        responseUrl = responseUrl,
-                        clientIdRequired = clientIdRequired,
-                        origin = origin
-                    )
+            verifyDocument = verifyDocument(
+                sessionTranscript = createSessionTranscript(
+                    input = input,
+                    clientId = clientId,
+                    expectedNonce = expectedNonce,
+                    hasBeenEncrypted = input.hasBeenEncrypted,
+                    responseUrl = responseUrl,
+                    clientIdRequired = clientIdRequired,
+                    origin = origin
                 )
-            } else {
-                { _, _ ->
-                    true
-                }
-            }
+            )
         )
 
         else -> throw IllegalArgumentException("descriptor.format: $claimFormat")

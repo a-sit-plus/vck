@@ -23,7 +23,7 @@ Release 5.12.0 (unreleased):
    - Added `CredentialRenewalInfo` to `SubjectCredentialStore.StoreEntry`
    - Added support for refresh tokens in BearerTokenService
    - Change: When no cryptographic holder binding is required, present raw W3C Verifiable Credentials
-   - Change: When no cryptographic holder binding is required and no holder binding is available in SdJwt and IsoMdoc credentials, still accept those credentials
+   - Change: When no cryptographic holder binding is required and no holder binding is available in SdJwt credentials, still accept those credentials
    - Change: OpenId4VPRequestOptions now transports a presentation request directly instead of credentials and presentation mechanism
    - Change: Return type of `Verifier.verifyPresentationSdJwt` from `VerifyPresentationResult` to `KmmResult<VerifyPresentationResult.SuccessSdJwt>`
    - Change: Return type of `Verifier.verifyPresentationVcJwt` from `VerifyPresentationResult` to `KmmResult<VerifyPresentationResult.Success>`
