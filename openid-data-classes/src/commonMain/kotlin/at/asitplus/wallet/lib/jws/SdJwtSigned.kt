@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.jws
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
@@ -18,9 +18,9 @@ import kotlinx.serialization.json.decodeFromJsonElement
  * possibly ending with a [keyBindingJws], that is a JWS with payload [at.asitplus.wallet.lib.data.KeyBindingJws].
  */
 data class SdJwtSigned(
-    val jws: JwsSigned<JsonElement>,
+    val jws: JwsCompact,
     val rawDisclosures: List<String>,
-    val keyBindingJws: JwsSigned<KeyBindingJws>? = null,
+    val keyBindingJws: JwsCompact? = null,
     val hashInput: String,
 ) {
     override fun equals(other: Any?): Boolean {
@@ -68,7 +68,7 @@ data class SdJwtSigned(
 
     companion object {
         fun issued(
-            jws: JwsSigned<JsonElement>,
+            jws: JwsCompact,
             disclosures: List<String>,
         ) = SdJwtSigned(
             jws = jws,
@@ -78,9 +78,9 @@ data class SdJwtSigned(
         )
 
         fun presented(
-            jws: JwsSigned<JsonElement>,
+            jws: JwsCompact,
             disclosures: Set<String>,
-            keyBinding: JwsSigned<KeyBindingJws>,
+            keyBinding: JwsCompact,
         ) = SdJwtSigned(
             jws = jws,
             rawDisclosures = disclosures.toList(),
@@ -92,7 +92,7 @@ data class SdJwtSigned(
             require(input.contains("~")) { "Could not parse SD-JWT: $input" }
             val stringList = input.replace("[^A-Za-z0-9-_.~]".toRegex(), "").split("~")
             require(stringList.isNotEmpty()) { "Could not parse SD-JWT: $input" }
-            val jws = JwsSigned.deserialize<JsonElement>(
+            val jws = JwsCompact.deserialize<JsonElement>(
                 deserializationStrategy = JsonElement.serializer(),
                 it = stringList.first(),
                 json = joseCompliantSerializer
@@ -103,7 +103,7 @@ data class SdJwtSigned(
                 .filterNot { it.isEmpty() }
             val keyBindingString = stringList.drop(1 + rawDisclosures.size).firstOrNull()
             val keyBindingJws = keyBindingString?.takeIf { it.isNotEmpty() }?.let {
-                JwsSigned.deserialize<KeyBindingJws>(
+                JwsCompact.deserialize<KeyBindingJws>(
                     deserializationStrategy = KeyBindingJws.serializer(),
                     it = it,
                     json = joseCompliantSerializer
@@ -118,9 +118,9 @@ data class SdJwtSigned(
          * disclosures and key binding appended, separated by a tilde.
          */
         fun serializePresentation(
-            jwsFromIssuer: JwsSigned<*>,
+            jwsFromIssuer: JwsCompact,
             filteredDisclosures: Set<String>,
-            keyBinding: JwsSigned<KeyBindingJws>,
+            keyBinding: JwsCompact,
         ) = (listOf(jwsFromIssuer.serialize()) + filteredDisclosures + keyBinding.serialize()).joinToString("~")
 
     }

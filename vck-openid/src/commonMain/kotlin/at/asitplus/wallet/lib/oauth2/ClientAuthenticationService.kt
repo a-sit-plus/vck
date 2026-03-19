@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
@@ -29,7 +29,7 @@ class ClientAuthenticationService(
     /** Used to verify client attestation JWTs */
     private val verifyJwsSignatureWithCnf: VerifyJwsSignatureWithCnfFun = VerifyJwsSignatureWithCnf(),
     /** Callback to verify the client attestation JWT against a set of trusted roots */
-    private val verifyClientAttestationJwt: (suspend (JwsSigned<JsonWebToken>) -> Boolean) = { true },
+    private val verifyClientAttestationJwt: (suspend (JwsCompact) -> Boolean) = { true },
 ) {
 
     /**
@@ -49,7 +49,7 @@ class ClientAuthenticationService(
         }
 
         if (httpRequest?.clientAttestation != null && httpRequest.clientAttestationPop != null) {
-            val instanceAttestation = JwsSigned.deserialize<JsonWebToken>(
+            val instanceAttestation = JwsCompact.deserialize<JsonWebToken>(
                 it = httpRequest.clientAttestation,
                 deserializationStrategy = JsonWebToken.Companion.serializer(),
             ).getOrElse {
@@ -68,7 +68,7 @@ class ClientAuthenticationService(
                 throw InvalidClient("client attestation not verified")
             }
 
-            val instanceAttestationPopJwt = JwsSigned.deserialize<JsonWebToken>(
+            val instanceAttestationPopJwt = JwsCompact.deserialize<JsonWebToken>(
                 JsonWebToken.serializer(),
                 httpRequest.clientAttestationPop,
                 vckJsonSerializer

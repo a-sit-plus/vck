@@ -5,7 +5,7 @@ import at.asitplus.openid.CredentialRequestParameters
 import at.asitplus.openid.CredentialRequestProofContainer
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.TokenResponseParameters
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
@@ -220,7 +220,7 @@ val OidvciPreAuthTest by testSuite {
                 .shouldHaveSize(2)
             // subject identifies the key of the client, here the keys of different proofs, so they should be unique
             credentials.map {
-                JwsSigned.deserialize<VerifiableCredentialJws>(
+                JwsCompact.deserialize<VerifiableCredentialJws>(
                     VerifiableCredentialJws.serializer(),
                     it.credentialString.shouldNotBeNull(),
                     vckJsonSerializer

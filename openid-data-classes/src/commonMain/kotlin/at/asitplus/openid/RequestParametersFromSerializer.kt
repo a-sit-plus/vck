@@ -13,7 +13,7 @@ import at.asitplus.openid.RequestParametersFrom.SerialNames.TYPE_JWS_SIGNED
 import at.asitplus.openid.RequestParametersFrom.SerialNames.TYPE_URI
 import at.asitplus.openid.RequestParametersFrom.SerialNames.URL
 import at.asitplus.openid.RequestParametersFrom.SerialNames.VERIFIED
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
@@ -82,11 +82,11 @@ class RequestParametersFromSerializer<T : RequestParameters>(
                 val parameters =
                     decoder.json.decodeFromJsonElement(parameterSerializer, element.jsonObject[PARAMETERS]!!)
                 val jwsString = decoder.json.decodeFromJsonElement<String>(element.jsonObject[JWS_SIGNED]!!)
-                val jwsGeneric = JwsSigned.deserialize(jwsString).getOrThrow()
+                val jwsGeneric = JwsCompact.deserialize(jwsString).getOrThrow()
                 RequestParametersFrom.DcApiSigned(
                     dcApiRequest = dcApiRequest,
                     parameters = parameters,
-                    jwsSigned = JwsSigned<T>(
+                    jwsSigned = JwsCompact<T>(
                         jwsGeneric.header,
                         parameters,
                         jwsGeneric.signature,
@@ -124,7 +124,7 @@ class RequestParametersFromSerializer<T : RequestParameters>(
                 val parameters =
                     decoder.json.decodeFromJsonElement(parameterSerializer, element.jsonObject[PARAMETERS]!!)
                 val jwsString = decoder.json.decodeFromJsonElement<String>(element.jsonObject[JWS_SIGNED]!!)
-                val jwsGeneric = JwsSigned.deserialize(jwsString).getOrThrow()
+                val jwsGeneric = JwsCompact.deserialize(jwsString).getOrThrow()
                 val verified = element.jsonObject[VERIFIED]?.let { decoder.json.decodeFromJsonElement<Boolean>(it) }
                     ?: false
                 val parent = element.jsonObject[PARENT]?.takeIf { it !is JsonNull }?.let {
@@ -132,7 +132,7 @@ class RequestParametersFromSerializer<T : RequestParameters>(
                 }
 
                 RequestParametersFrom.JwsSigned(
-                    jwsSigned = JwsSigned(
+                    jwsSigned = JwsCompact(
                         jwsGeneric.header,
                         parameters,
                         jwsGeneric.signature,

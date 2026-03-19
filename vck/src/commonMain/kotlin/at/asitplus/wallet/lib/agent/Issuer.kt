@@ -5,7 +5,7 @@ import at.asitplus.iso.IssuerSigned
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.SignatureAlgorithm
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
@@ -34,7 +34,7 @@ interface Issuer : ReferencedTokenIssuer<CredentialToBeIssued, KmmResult<Issuer.
          */
         data class VcJwt(
             val vc: VerifiableCredential,
-            val signedVcJws: JwsSigned<VerifiableCredentialJws>,
+            val signedVcJws: JwsCompact,
             override val scheme: ConstantIndex.CredentialScheme,
             override val subjectPublicKey: CryptoPublicKey,
             override val userInfo: OidcUserInfoExtended,

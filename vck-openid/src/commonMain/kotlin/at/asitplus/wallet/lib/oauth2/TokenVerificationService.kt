@@ -11,7 +11,7 @@ import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -156,7 +156,7 @@ class JwtTokenVerificationService(
     /** @param validatedClientKey the key from the extracted DPoP proof */
     internal suspend fun validateDpopProof(
         accessToken: String?,
-        tokenJwt: JwsSigned<OpenId4VciAccessToken>,
+        tokenJwt: JwsCompact,
         httpRequest: RequestInfo?,
         dpopNonceService: NonceService,
         validatedClientKey: JsonWebKey?,
@@ -205,8 +205,8 @@ class JwtTokenVerificationService(
         }
     }
 
-    private suspend fun String.parseDpopProof(): JwsSigned<JsonWebToken> =
-        JwsSigned.deserialize(JsonWebToken.serializer(), this, vckJsonSerializer).getOrElse {
+    private suspend fun String.parseDpopProof(): JwsCompact =
+        JwsCompact.deserialize(JsonWebToken.serializer(), this, vckJsonSerializer).getOrElse {
             throw InvalidDpopProof("could not parse DPoP JWT", it)
         }.also {
             verifyJwsObject(it).getOrElse {
@@ -218,8 +218,8 @@ class JwtTokenVerificationService(
         accessToken: String,
         expectedType: String,
         nonceService: NonceService = this.nonceService,
-    ): JwsSigned<OpenId4VciAccessToken> {
-        val jwt = JwsSigned.deserialize(OpenId4VciAccessToken.serializer(), accessToken, vckJsonSerializer)
+    ): JwsCompact {
+        val jwt = JwsCompact.deserialize(OpenId4VciAccessToken.serializer(), accessToken, vckJsonSerializer)
             .getOrElse { throw InvalidToken("could not parse DPoP Token", it) }
         verifyJwsSignatureWithKey(jwt, issuerKey).getOrElse {
             throw InvalidToken("DPoP Token not verified")

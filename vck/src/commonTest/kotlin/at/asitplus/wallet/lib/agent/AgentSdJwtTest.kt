@@ -13,7 +13,7 @@ import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
@@ -442,7 +442,7 @@ private suspend fun createSdJwtPresentation(
     val issuerJwtPlusDisclosures = SdJwtSigned.sdHashInput(validSdJwtCredential, filteredDisclosures)
     val keyBinding = createKeyBindingJws(signKeyBindingJws, audienceId, challenge, issuerJwtPlusDisclosures)
     val sdJwtSerialized = validSdJwtCredential.vcSerialized.substringBefore("~")
-    val jwsFromIssuer = JwsSigned.deserialize(JsonObject.serializer(), sdJwtSerialized).getOrElse {
+    val jwsFromIssuer = JwsCompact.deserialize(JsonObject.serializer(), sdJwtSerialized).getOrElse {
         throw PresentationException(it)
     }
     val sdJwt = SdJwtSigned.presented(jwsFromIssuer, filteredDisclosures, keyBinding)
@@ -454,7 +454,7 @@ private suspend fun createKeyBindingJws(
     audienceId: String,
     challenge: String,
     issuerJwtPlusDisclosures: String,
-): JwsSigned<KeyBindingJws> = signKeyBindingJws(
+): JwsCompact = signKeyBindingJws(
     JwsContentTypeConstants.KB_JWT,
     KeyBindingJws(
         issuedAt = Clock.System.now(),

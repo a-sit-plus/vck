@@ -16,7 +16,7 @@ import at.asitplus.openid.RequestParameters
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.RequestOptionsCredential
@@ -145,7 +145,7 @@ private suspend fun buildAttestationJwt(
     sprsKeyMaterial: KeyMaterial,
     clientId: String,
     verifierKeyMaterial: KeyMaterial,
-): JwsSigned<JsonWebToken> = SignJwt<JsonWebToken>(sprsKeyMaterial, JwsHeaderNone())(
+): JwsCompact = SignJwt<JsonWebToken>(sprsKeyMaterial, JwsHeaderNone())(
     null,
     JsonWebToken(
         issuer = "sprs", // allows Wallet to determine the issuer's key
@@ -159,9 +159,9 @@ private suspend fun buildAttestationJwt(
 ).getOrThrow()
 
 private fun attestationJwtVerifier(trustedKey: JsonWebKey) =
-    RequestObjectJwsVerifier { jws: JwsSigned<RequestParameters> ->
+    RequestObjectJwsVerifier { jws: JwsCompact ->
         val attestationJwt = jws.header.attestationJwt?.let {
-            JwsSigned.deserialize(JsonWebToken.serializer(), it).getOrThrow()
+            JwsCompact.deserialize(JsonWebToken.serializer(), it).getOrThrow()
         } ?: return@RequestObjectJwsVerifier false
         val verifyJwsSignatureWithKey = VerifyJwsSignatureWithKey()
         if (!verifyJwsSignatureWithKey(attestationJwt, trustedKey).isSuccess)

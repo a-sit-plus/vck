@@ -24,7 +24,7 @@ import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.eupid.EuPidScheme
@@ -189,7 +189,7 @@ val OidvciCodeFlowTest by testSuite {
             val serializedCredential = credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
 
-            JwsSigned.deserialize<VerifiableCredentialJws>(
+            JwsCompact.deserialize<VerifiableCredentialJws>(
                 VerifiableCredentialJws.serializer(),
                 serializedCredential,
                 vckJsonSerializer
@@ -265,7 +265,7 @@ val OidvciCodeFlowTest by testSuite {
                 .credentials.shouldNotBeEmpty().shouldHaveSize(2)
             // subject identifies the key of the client, here the keys of different proofs, so they should be unique
             credentials.map {
-                JwsSigned.deserialize<VerifiableCredentialJws>(
+                JwsCompact.deserialize<VerifiableCredentialJws>(
                     VerifiableCredentialJws.serializer(),
                     it.credentialString.shouldNotBeNull(),
                     vckJsonSerializer
@@ -615,7 +615,7 @@ val OidvciCodeFlowTest by testSuite {
     }
 }
 
-private fun String.assertSdJwtReceived(): Int = JwsSigned.deserialize(
+private fun String.assertSdJwtReceived(): Int = JwsCompact.deserialize(
     VerifiableCredentialSdJwt.serializer(),
     substringBefore("~")
 ).getOrThrow().payload.disclosureDigests

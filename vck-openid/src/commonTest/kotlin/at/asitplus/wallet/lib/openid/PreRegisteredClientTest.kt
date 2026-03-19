@@ -17,7 +17,7 @@ import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
@@ -219,7 +219,7 @@ val PreRegisteredClientTest by testSuite {
             authnRequest.clientId shouldBe it.clientId
             val jar = authnRequest.request
                 .shouldNotBeNull()
-            val jwsObject = JwsSigned.deserialize(AuthenticationRequestParameters.serializer(), jar, vckJsonSerializer)
+            val jwsObject = JwsCompact.deserialize(AuthenticationRequestParameters.serializer(), jar, vckJsonSerializer)
                 .getOrThrow()
             VerifyJwsObject().invoke(jwsObject).getOrThrow()
 

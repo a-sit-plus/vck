@@ -18,8 +18,8 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -154,7 +154,7 @@ val OidvciAttestationTest by testSuite {
                     .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
                     .response
 
-                JwsSigned.deserialize(
+                JwsCompact.deserialize(
                     VerifiableCredentialJws.serializer(),
                     credential.credentials.shouldNotBeEmpty()
                         .first().credentialString.shouldNotBeNull(),

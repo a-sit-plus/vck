@@ -11,7 +11,7 @@ import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.NonceService
@@ -42,7 +42,7 @@ class ProofValidator(
     /** Time leeway for verification of timestamps in proof elements in credential requests. */
     private val timeLeeway: Duration = 5.minutes,
     /** Callback to verify a received [KeyAttestationJwt] proof in credential requests. */
-    private val verifyAttestationProof: suspend (JwsSigned<KeyAttestationJwt>) -> Boolean = { true },
+    private val verifyAttestationProof: suspend (JwsCompact) -> Boolean = { true },
     /** Turn on to require key attestation support in the [validProofTypes]. */
     private val requireKeyAttestation: Boolean = false,
     /** Used to provide challenges to clients to include in proof of possession of key material. */
@@ -89,7 +89,7 @@ class ProofValidator(
         else -> null
     }
 
-    private suspend fun JwsSigned<JsonWebToken>.validateJwtProof(): Collection<CryptoPublicKey> {
+    private suspend fun JwsCompact.validateJwtProof(): Collection<CryptoPublicKey> {
         if (header.type != OpenIdConstants.PROOF_JWT_TYPE) {
             throw InvalidProof("invalid typ: ${header.type}")
         }
@@ -119,7 +119,7 @@ class ProofValidator(
      * OID4VCI 8.2.1.3: The Credential Issuer SHOULD issue a Credential for each cryptographic public key specified
      * in the `attested_keys` claim.
      */
-    private suspend fun JwsSigned<KeyAttestationJwt>.validateAttestationProof(): Collection<CryptoPublicKey> {
+    private suspend fun JwsCompact.validateAttestationProof(): Collection<CryptoPublicKey> {
         if (header.type != OpenIdConstants.KEY_ATTESTATION_JWT_TYPE) {
             throw InvalidProof("invalid typ: ${header.type}")
         }

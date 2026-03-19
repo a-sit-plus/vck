@@ -4,7 +4,7 @@ import at.asitplus.catching
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.cbor.CoseHeaderCertificate
@@ -65,7 +65,7 @@ class StatusListAgent(
     override suspend fun issueStatusListJwt(
         time: Instant?,
         kind: RevocationList.Kind
-    ): JwsSigned<StatusListTokenPayload> =
+    ): JwsCompact =
         catching {
             require(kind == RevocationList.Kind.STATUS_LIST) { "JWT only supports revocation list kind StatusList" }
         }.transform {

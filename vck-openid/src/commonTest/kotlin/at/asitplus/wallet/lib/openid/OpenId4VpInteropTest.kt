@@ -7,7 +7,7 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
@@ -234,7 +234,7 @@ val OpenId4VpInteropTest by testSuite {
             .i7Kli1T5RZzo2-TvWsw9-JpxjYPBUae8Lrc_ORfTdabHlXmuPucGVrE5lkBu7vLss2RKKEmdFFy57-ZvRFn4Tg
         """.trimIndent()
 
-            val jar = JwsSigned.deserialize<AuthenticationRequestParameters>(
+            val jar = JwsCompact.deserialize<AuthenticationRequestParameters>(
                 AuthenticationRequestParameters.serializer(),
                 input,
                 vckJsonSerializer

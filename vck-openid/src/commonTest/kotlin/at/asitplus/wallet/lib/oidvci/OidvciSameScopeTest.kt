@@ -16,7 +16,7 @@ import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenResponseParameters
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
@@ -112,7 +112,7 @@ val OidvciSameScopeTest by testSuite {
             val serializedCredential = credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
 
-            JwsSigned.deserialize<VerifiableCredentialJws>(
+            JwsCompact.deserialize<VerifiableCredentialJws>(
                 VerifiableCredentialJws.serializer(),
                 serializedCredential,
                 vckJsonSerializer
@@ -153,7 +153,7 @@ val OidvciSameScopeTest by testSuite {
 }
 
 private fun String.assertSdJwtReceived(): Int =
-    JwsSigned.deserialize(
+    JwsCompact.deserialize(
         VerifiableCredentialSdJwt.serializer(),
         substringBefore("~")
     ).getOrThrow().payload.disclosureDigests

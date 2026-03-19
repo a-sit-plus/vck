@@ -44,8 +44,8 @@ import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.AbstractMdocVerifier
@@ -313,7 +313,7 @@ class OpenId4VpVerifier(
     suspend fun createAuthnRequestAsSignedRequestObject(
         requestOptions: OpenId4VpRequestOptions,
         requestObjectParameters: RequestObjectParameters? = null,
-    ): KmmResult<JwsSigned<AuthenticationRequestParameters>> = catching {
+    ): KmmResult<JwsCompact> = catching {
         val requestObject = createAuthnRequest(requestOptions, requestObjectParameters)
         val siopClientId = "https://self-issued.me/v2"
         val issuer = when (clientIdScheme) {
@@ -549,7 +549,7 @@ class OpenId4VpVerifier(
     ): AuthnResponseResult {
         val idTokenJws = input.parameters.idToken
             ?: throw IllegalArgumentException("idToken")
-        val jwsSigned = JwsSigned.deserialize(IdToken.serializer(), idTokenJws, vckJsonSerializer)
+        val jwsSigned = JwsCompact.deserialize(IdToken.serializer(), idTokenJws, vckJsonSerializer)
             .getOrElse { throw IllegalArgumentException("idToken", it) }
         verifyJwsObject(jwsSigned).getOrElse {
             throw IllegalArgumentException("idToken.", it)
@@ -708,7 +708,7 @@ class OpenId4VpVerifier(
 
         ClaimFormat.JWT_VP -> if (requireCryptographicHolderBinding != false) {
             verifier.verifyPresentationVcJwt(
-                input = JwsSigned.deserialize(
+                input = JwsCompact.deserialize(
                     VerifiablePresentationJws.serializer(),
                     relatedPresentation.extractContent(),
                     vckJsonSerializer

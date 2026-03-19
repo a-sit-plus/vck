@@ -14,7 +14,7 @@ package at.asitplus.wallet.lib.agent.validation.vcJws
  */
 
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.wallet.lib.agent.matchesIdentifier
 import at.asitplus.wallet.lib.agent.validation.common.SubjectMatchingResult
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
@@ -31,9 +31,9 @@ data class VcJwsInputValidator(
     suspend operator fun invoke(
         input: String,
         publicKey: CryptoPublicKey?,
-        vpJws: JwsSigned<VerifiablePresentationJws>?,
+        vpJws: JwsCompact?,
     ): VcJwsInputValidationResult {
-        val jws = JwsSigned.deserialize<VerifiableCredentialJws>(
+        val jws = JwsCompact.deserialize<VerifiableCredentialJws>(
             VerifiableCredentialJws.serializer(),
             input,
             vckJsonSerializer

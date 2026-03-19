@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.data
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
@@ -10,7 +10,7 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import kotlin.time.Instant
 
 data class StatusListJwt(
-    val value: JwsSigned<StatusListTokenPayload>,
+    val value: JwsCompact,
     override val resolvedAt: Instant?,
 ) : StatusListToken() {
 

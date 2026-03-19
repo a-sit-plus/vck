@@ -23,8 +23,8 @@ import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JweEncrypted
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
@@ -77,11 +77,11 @@ class WalletService(
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
     /** Load key attestation to create [CredentialRequestProofContainer], if required by the credential issuer. */
     @Deprecated("Removed, use new loadUnitAttestation function instead")
-    private val loadKeyAttestation: (suspend (KeyAttestationInput) -> KmmResult<JwsSigned<KeyAttestationJwt>>)? = null,
+    private val loadKeyAttestation: (suspend (KeyAttestationInput) -> KmmResult<JwsCompact>)? = null,
     /** Handles credential request encryption and credential response decryption. */
     private val encryptionService: WalletEncryptionService = WalletEncryptionService(),
     /** Returns a new unit attestation proof to use during credential issuance. */
-    private val loadUnitAttestationPop: (suspend (input: LoadUnitAttestationPopInput) -> KmmResult<JwsSigned<JsonWebToken>>)? = null,
+    private val loadUnitAttestationPop: (suspend (input: LoadUnitAttestationPopInput) -> KmmResult<JwsCompact>)? = null,
 ) {
 
     data class KeyAttestationInput(val clientNonce: String?, val supportedAlgorithms: Collection<String>?)
@@ -384,7 +384,7 @@ class WalletService(
     internal suspend fun createCredentialRequestProofAttestation(
         clientNonce: String?,
         supportedSigningAlgorithms: Collection<String>?,
-        unitAttestationPop: JwsSigned<JsonWebToken>? = null
+        unitAttestationPop: JwsCompact? = null
     ) = CredentialRequestProofContainer(
         attestation = when (unitAttestationPop != null) {
             true -> {
@@ -409,7 +409,7 @@ class WalletService(
         credentialIssuer: String?,
         clock: Clock = Clock.System,
         addKeyAttestation: Boolean = false,
-        unitAttestationPop: JwsSigned<JsonWebToken>? = null
+        unitAttestationPop: JwsCompact? = null
     ): CredentialRequestProofContainer {
         if (addKeyAttestation && loadUnitAttestationPop == null && loadKeyAttestation == null) {
             throw IllegalArgumentException("Key attestation required, none provided")
@@ -456,7 +456,7 @@ class WalletService(
         credentialScheme: ConstantIndex.CredentialScheme,
     ): Holder.StoreCredentialInput = when (credentialRepresentation) {
         PLAIN_JWT -> Vc(
-            signedVcJws = JwsSigned.deserialize(VerifiableCredentialJws.serializer(), this, vckJsonSerializer)
+            signedVcJws = JwsCompact.deserialize(VerifiableCredentialJws.serializer(), this, vckJsonSerializer)
                 .getOrThrow(),
             vcJws = this,
             scheme = credentialScheme

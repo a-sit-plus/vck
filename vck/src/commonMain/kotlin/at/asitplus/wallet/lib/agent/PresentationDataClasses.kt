@@ -10,7 +10,7 @@ import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -123,13 +123,13 @@ sealed interface CreatePresentationResult {
 
     data class VpJws(
         val serialized: String,
-        val jwsSigned: JwsSigned<VerifiablePresentationJws>,
+        val jwsSigned: JwsCompact,
     ) : VcJwsPresentationData
 
     @Deprecated("Replaced with class using more expressive name `VpJws`.", ReplaceWith("VpJws"))
     data class Signed(
         val serialized: String,
-        val jwsSigned: JwsSigned<VerifiablePresentationJws>,
+        val jwsSigned: JwsCompact,
     ) : VcJwsPresentationData
 
     data class SdJwt(

@@ -6,7 +6,7 @@ import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.ResponseParametersFrom
 import at.asitplus.signum.indispensable.josef.JweDecrypted
 import at.asitplus.signum.indispensable.josef.JweEncrypted
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DecryptJwe
@@ -95,7 +95,7 @@ class ResponseParser(
     private fun JweDecrypted<String>.parseResponseParams(): AuthenticationResponseParameters =
         vckJsonSerializer.decodeFromString<AuthenticationResponseParameters>(payload)
 
-    private fun String.fromJws(): JwsSigned<AuthenticationResponseParameters>? =
-        JwsSigned.deserialize(AuthenticationResponseParameters.serializer(), this, vckJsonSerializer).getOrNull()
+    private fun String.fromJws(): JwsCompact? =
+        JwsCompact.deserialize(AuthenticationResponseParameters.serializer(), this, vckJsonSerializer).getOrNull()
 
 }

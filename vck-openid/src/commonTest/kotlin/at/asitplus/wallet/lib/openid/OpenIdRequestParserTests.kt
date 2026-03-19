@@ -5,7 +5,7 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -89,7 +89,7 @@ val OpenIdRequestParserTests by testSuite {
             m0LQZeO-00GBYNI0PQ
         """.trimIndent().replace("\n", "")
 
-    val authnRequest = JwsSigned.deserialize(JsonObject.serializer(), jws).getOrThrow().payload
+    val authnRequest = JwsCompact.deserialize(JsonObject.serializer(), jws).getOrThrow().payload
 
     val authnRequestSerialized = vckJsonSerializer.encodeToString(authnRequest)
 

@@ -6,8 +6,8 @@ import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JweHeader
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -47,7 +47,7 @@ val JwsServiceTest by testSuite {
             val signed =
                 it.signJwt(JwsContentTypeConstants.JWT, payload, ByteArraySerializer()).getOrThrow().serialize()
 
-            val parsed = JwsSigned.deserialize<ByteArray>(ByteArraySerializer(), signed).getOrThrow()
+            val parsed = JwsCompact.deserialize<ByteArray>(ByteArraySerializer(), signed).getOrThrow()
             parsed.serialize() shouldBe signed
             parsed.payload shouldBe payload
             it.verifierJwsService(parsed).getOrThrow()

@@ -4,7 +4,7 @@ import at.asitplus.signum.HazardousMaterials
 import at.asitplus.signum.indispensable.ECCurve
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
@@ -137,7 +137,7 @@ val JwsServiceJvmTest by testSuite {
                     // Parsing to our structure verifying payload
                     val signedLibObject = libObject.serialize()
                     val parsedJwsSigned =
-                        JwsSigned.deserialize<JsonElement>(JsonElement.serializer(), signedLibObject).getOrThrow()
+                        JwsCompact.deserialize<JsonElement>(JsonElement.serializer(), signedLibObject).getOrThrow()
                     parsedJwsSigned.payload.jsonPrimitive.content shouldBe randomPayload.content
                     val parsedSig = parsedJwsSigned.signature.rawByteArray.encodeToString(Base64UrlStrict)
 

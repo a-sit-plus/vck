@@ -7,7 +7,7 @@ import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.validation.CredentialFreshnessSummary
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -44,7 +44,7 @@ interface Verifier {
      * that shall include the [challenge] (sent by this verifier).
      */
     suspend fun verifyPresentationVcJwt(
-        input: JwsSigned<VerifiablePresentationJws>,
+        input: JwsCompact,
         challenge: String,
     ): KmmResult<VerifyPresentationResult.Success>
 

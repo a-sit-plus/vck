@@ -6,7 +6,7 @@ import at.asitplus.openid.*
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweEncrypted
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.KeyMaterial
@@ -157,7 +157,7 @@ class CredentialIssuer(
      * Use this only when the client accepts (see `Accept` header [io.ktor.http.HttpHeaders.Accept]) the media type
      * `application/jwt` (see [at.asitplus.wallet.lib.data.MediaTypes.Application.JWT]), otherwise serve [metadata].
      */
-    suspend fun signedMetadata(): KmmResult<JwsSigned<IssuerMetadata>> =
+    suspend fun signedMetadata(): KmmResult<JwsCompact> =
         signMetadata(null, metadata, IssuerMetadata.serializer())
 
     /**

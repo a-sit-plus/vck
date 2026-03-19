@@ -19,7 +19,7 @@ import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -97,12 +97,12 @@ class OAuth2KtorClient(
     /**
      * Verifies signed token introspection responses (RFC 9701). By default, every syntactically valid JWS is accepted.
      */
-    private val verifyTokenIntrospectionJwt: suspend (JwsSigned<TokenIntrospectionResponse>) -> Boolean = { true },
+    private val verifyTokenIntrospectionJwt: suspend (JwsCompact) -> Boolean = { true },
 
     /** Returns a new instance attestation to validate the app against an authorization server. */
-    val loadInstanceAttestation: (suspend () -> KmmResult<JwsSigned<JsonWebToken>>)? = null,
+    val loadInstanceAttestation: (suspend () -> KmmResult<JwsCompact>)? = null,
     /** Returns a proof of possession for an instance attestation */
-    val loadInstanceAttestationPop: (suspend () -> KmmResult<JwsSigned<JsonWebToken>>)? = null,
+    val loadInstanceAttestationPop: (suspend () -> KmmResult<JwsCompact>)? = null,
 ) {
     /**
      * Stores the latest DPoP nonce per origin. RFC 9449 requires using only the most recent nonce
@@ -570,7 +570,7 @@ private suspend inline fun <R> IntermediateResult<R>.onSuccessToken(
 ) = onSuccess<TokenResponseParameters, R>(block)
 
 private suspend inline fun <R> IntermediateResult<R>.onSuccessTokenIntrospection(
-    noinline verifyTokenIntrospectionJwt: suspend (JwsSigned<TokenIntrospectionResponse>) -> Boolean,
+    noinline verifyTokenIntrospectionJwt: suspend (JwsCompact) -> Boolean,
     requestedResponseFormat: TokenIntrospectionRequest.ResponseFormat?,
     block: TokenIntrospectionResponse.(httpResponse: HttpResponse) -> R,
 ) = when (this) {
@@ -586,7 +586,7 @@ private suspend inline fun <R> IntermediateResult<R>.onSuccessTokenIntrospection
 
 private suspend fun parseTokenIntrospectionResponse(
     body: String,
-    verifyTokenIntrospectionJwt: suspend (JwsSigned<TokenIntrospectionResponse>) -> Boolean,
+    verifyTokenIntrospectionJwt: suspend (JwsCompact) -> Boolean,
     requestedResponseFormat: TokenIntrospectionRequest.ResponseFormat?,
 ): TokenIntrospectionResponse = runCatching {
     if (requestedResponseFormat == TokenIntrospectionRequest.ResponseFormat.JWT) {
@@ -604,10 +604,10 @@ private suspend fun parseTokenIntrospectionResponse(
 
 private suspend fun parseJwt(
     body: String,
-    verifyTokenIntrospectionJwt: suspend (JwsSigned<TokenIntrospectionResponse>) -> Boolean
+    verifyTokenIntrospectionJwt: suspend (JwsCompact) -> Boolean
 ): TokenIntrospectionResponse =
     vckJsonSerializer.decodeFromString(TokenIntrospectionJwtResponse.serializer(), body).let { jwtResponse ->
-        JwsSigned.deserialize(TokenIntrospectionResponse.serializer(), jwtResponse.jwt, vckJsonSerializer)
+        JwsCompact.deserialize(TokenIntrospectionResponse.serializer(), jwtResponse.jwt, vckJsonSerializer)
             .getOrThrow().run {
                 require(verifyTokenIntrospectionJwt(this)) { "Token introspection JWT validation failed" }
                 payload

@@ -29,7 +29,7 @@ import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.CreatePresentationResult
@@ -202,7 +202,7 @@ internal class PresentationFactory(
         clock: Clock,
         agentPublicKey: CryptoPublicKey,
         request: RequestParametersFrom<AuthenticationRequestParameters>,
-    ): KmmResult<JwsSigned<IdToken>?> = catching {
+    ): KmmResult<JwsCompact?> = catching {
         if (request.parameters.responseType?.contains(OpenIdConstants.ID_TOKEN) != true) {
             return@catching null
         }

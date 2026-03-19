@@ -6,7 +6,7 @@ import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.Document
 import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.openid.TransactionDataBase64Url
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.data.VcJwsVerificationResultWrapper
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
@@ -38,7 +38,7 @@ class VerifierAgent(
     )
 
     override suspend fun verifyPresentationVcJwt(
-        input: JwsSigned<VerifiablePresentationJws>,
+        input: JwsCompact,
         challenge: String,
     ): KmmResult<VerifyPresentationResult.Success> = validatorVcJws.verifyVpJws(
         input = input,

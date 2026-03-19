@@ -7,7 +7,7 @@ import at.asitplus.openid.TokenIntrospectionJwtResponse
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionRequest.ResponseFormat
 import at.asitplus.openid.TokenIntrospectionResponse
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
@@ -101,7 +101,7 @@ val OAuth2ClientTest by testSuite {
                 null
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionJwtResponse>()
-            val parsed = JwsSigned.deserialize(
+            val parsed = JwsCompact.deserialize(
                 TokenIntrospectionResponse.serializer(),
                 jwtResponse.jwt,
                 vckJsonSerializer

@@ -2,6 +2,7 @@ package at.asitplus.openid
 
 import at.asitplus.dcapi.OpenId4VpResponse
 import at.asitplus.dcapi.request.ExchangeProtocolIdentifier
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import io.ktor.http.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -16,7 +17,7 @@ sealed class ResponseParametersFrom {
     abstract val hasBeenEncrypted: Boolean
 
     data class JwsSigned(
-        val jwsSigned: at.asitplus.signum.indispensable.josef.JwsSigned<AuthenticationResponseParameters>,
+        val jwsSigned: JwsCompact,
         val parent: ResponseParametersFrom,
         override val parameters: AuthenticationResponseParameters,
         override val clientIdRequired: Boolean,

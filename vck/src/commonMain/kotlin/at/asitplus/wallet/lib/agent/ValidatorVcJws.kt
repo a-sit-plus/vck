@@ -15,7 +15,7 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.agent.validation.vcJws.VcJwsInputValidationResult.ContentValidationSummary
@@ -64,7 +64,7 @@ class ValidatorVcJws(
      */
     @Throws(IllegalArgumentException::class, CancellationException::class)
     suspend fun verifyVpJws(
-        input: JwsSigned<VerifiablePresentationJws>,
+        input: JwsCompact,
         challenge: String,
         clientId: String,
     ): KmmResult<VerifyPresentationResult.Success> = catching {
@@ -129,9 +129,9 @@ class ValidatorVcJws(
      * @param vpJws Optionally, the VP enclosing the VC
      */
     suspend fun verifyVcJws(
-        input: JwsSigned<VerifiableCredentialJws>,
+        input: JwsCompact,
         publicKey: CryptoPublicKey,
-        vpJws: JwsSigned<VerifiablePresentationJws>? = null,
+        vpJws: JwsCompact? = null,
     ) = verifyVcJws(input.serialize(), publicKey, vpJws)
 
     /**
@@ -144,7 +144,7 @@ class ValidatorVcJws(
     suspend fun verifyVcJws(
         input: String,
         publicKey: CryptoPublicKey?,
-        vpJws: JwsSigned<VerifiablePresentationJws>? = null,
+        vpJws: JwsCompact? = null,
     ): KmmResult<VerifyCredentialResult.SuccessJwt> = catching {
         when (val result = vcJwsInputValidator(input, publicKey, vpJws)) {
             is ParsingError -> throw result.throwable

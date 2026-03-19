@@ -32,7 +32,7 @@ import at.asitplus.signum.indispensable.asn1.authorityKeyIdentifier_2_5_29_35
 import at.asitplus.signum.indispensable.asn1.decodeRethrowing
 import at.asitplus.signum.indispensable.asn1.encoding.Asn1
 import at.asitplus.signum.indispensable.asn1.encoding.decode
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
@@ -100,7 +100,7 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
                     it.getAuthorityKeyIdentifier()
                 } ?: listOf()
 
-                is SubjectCredentialStore.StoreEntry.Vc -> JwsSigned.deserialize(
+                is SubjectCredentialStore.StoreEntry.Vc -> JwsCompact.deserialize(
                     VerifiableCredentialJws.serializer(),
                     it.vcSerialized,
                     vckJsonSerializer
