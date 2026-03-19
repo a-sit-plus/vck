@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives
 
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.minus
 import at.asitplus.testballoon.withData
 import at.asitplus.testballoon.withDataSuites
