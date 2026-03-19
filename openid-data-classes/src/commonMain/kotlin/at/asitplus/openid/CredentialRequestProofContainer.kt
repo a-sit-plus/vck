@@ -1,9 +1,6 @@
 package at.asitplus.openid
 
-import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -31,13 +28,13 @@ data class CredentialRequestProofContainer(
 
     val jwtParsed: Collection<JwsCompact>? by lazy {
         jwt?.mapNotNull {
-            JwsCompact.deserialize<JsonWebToken>(JsonWebToken.serializer(), it, joseCompliantSerializer).getOrNull()
+            runCatching { JwsCompact(it) }.getOrNull()
         }
     }
 
     val attestationParsed: Collection<JwsCompact>? by lazy {
         attestation?.mapNotNull {
-            JwsCompact.deserialize<KeyAttestationJwt>(KeyAttestationJwt.serializer(), it, joseCompliantSerializer).getOrNull()
+            runCatching { JwsCompact(it) }.getOrNull()
         }
     }
 }
