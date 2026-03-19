@@ -369,9 +369,9 @@ class OpenId4VpHolder(
         preparationState: AuthorizationResponsePreparationState,
     ) = catchingUnwrapped {
         when (val presentationRequest = preparationState.credentialPresentationRequest) {
-            is CredentialPresentationRequest.DCQLRequest -> holder.matchDCQLQueryAgainstCredentialStore(
+            is CredentialPresentationRequest.DCQLRequest -> holder.matchDCQLQueryAgainstCredentialStoreV2(
                 dcqlQuery = presentationRequest.dcqlQuery,
-                filterById = preparationState.request.credentialId()
+                filterByIds = preparationState.request.credentialId()
             ).getOrThrow().let {
                 DCQLMatchingResult(
                     presentationRequest = presentationRequest,
@@ -380,10 +380,10 @@ class OpenId4VpHolder(
             }
 
             is CredentialPresentationRequest.PresentationExchangeRequest ->
-                holder.matchInputDescriptorsAgainstCredentialStoreV2(
+                holder.matchInputDescriptorsAgainstCredentialStoreV3(
                     inputDescriptors = presentationRequest.presentationDefinition.inputDescriptors,
                     fallbackFormatHolder = presentationRequest.fallbackFormatHolder,
-                    filterById = preparationState.request.credentialId()
+                    filterByIds = preparationState.request.credentialId()
                 ).getOrThrow().let { matchInputDescriptors ->
                     PresentationExchangeMatchingResult(
                         presentationRequest = presentationRequest,

@@ -86,14 +86,22 @@ interface Holder {
      *  This will mostly resolve to be the same `clientMetadata.vpFormats`.
      * @param pathAuthorizationValidator Provides the user of this library with a way to enforce
      *  authorization rules on attribute credentials that are to be disclosed.
-     * @param filterById filter the list of possible credentials by the provided ID
+     * @param filterByIds filter the list of possible credentials by the provided IDs
      */
+    suspend fun matchInputDescriptorsAgainstCredentialStoreV3(
+        inputDescriptors: Collection<InputDescriptor>,
+        fallbackFormatHolder: FormatHolder? = null,
+        pathAuthorizationValidator: PathAuthorizationValidator? = null,
+        filterByIds: List<String>? = null
+    ): KmmResult<HolderPresentationExchangeQueryMatchingResult<SubjectCredentialStore.StoreEntry>>
+
+    @Deprecated("Deprecated to support matching against multiple IDs", replaceWith = ReplaceWith("matchInputDescriptorsAgainstCredentialStoreV3"))
     suspend fun matchInputDescriptorsAgainstCredentialStoreV2(
         inputDescriptors: Collection<InputDescriptor>,
         fallbackFormatHolder: FormatHolder? = null,
         pathAuthorizationValidator: PathAuthorizationValidator? = null,
         filterById: String? = null
-    ): KmmResult<HolderPresentationExchangeQueryMatchingResult<SubjectCredentialStore.StoreEntry>>
+    ): KmmResult<HolderPresentationExchangeQueryMatchingResult<SubjectCredentialStore.StoreEntry>> = matchInputDescriptorsAgainstCredentialStoreV3(inputDescriptors, fallbackFormatHolder, pathAuthorizationValidator, filterById?.let { listOf(it) })
 
     @Deprecated("Deprecated in favor of more detailed matching result", replaceWith = ReplaceWith("matchInputDescriptorsAgainstCredentialStoreV2.inputDescriptorMatches"))
     suspend fun matchInputDescriptorsAgainstCredentialStore(
@@ -101,11 +109,11 @@ interface Holder {
         fallbackFormatHolder: FormatHolder? = null,
         pathAuthorizationValidator: PathAuthorizationValidator? = null,
         filterById: String? = null
-    ): KmmResult<Map<String, Map<SubjectCredentialStore.StoreEntry, InputDescriptorMatching>>> = matchInputDescriptorsAgainstCredentialStoreV2(
+    ): KmmResult<Map<String, Map<SubjectCredentialStore.StoreEntry, InputDescriptorMatching>>> = matchInputDescriptorsAgainstCredentialStoreV3(
         inputDescriptors = inputDescriptors,
         fallbackFormatHolder = fallbackFormatHolder,
         pathAuthorizationValidator = pathAuthorizationValidator,
-        filterById = filterById,
+        filterByIds = filterById?.let { listOf(it) },
     ).map {
         it.inputDescriptorMatches
     }
@@ -130,11 +138,17 @@ interface Holder {
      * Creates a mapping from the dcql credential query identifiers of the dcql query to matching
      * credentials and the claims credential set queries to be satisfied.
      *
-     * @param filterById filter the list of possible credentials by the provided ID
+     * @param filterByIds filter the list of possible credentials by the provided ID
      */
+    suspend fun matchDCQLQueryAgainstCredentialStoreV2(
+        dcqlQuery: DCQLQuery,
+        filterByIds: List<String>? = null
+    ): KmmResult<HolderDCQLQueryMatchingResult<SubjectCredentialStore.StoreEntry>>
+
+    @Deprecated("Deprecated to support matching against multiple IDs", replaceWith = ReplaceWith("matchDCQLQueryAgainstCredentialStoreV2"))
     suspend fun matchDCQLQueryAgainstCredentialStore(
         dcqlQuery: DCQLQuery,
         filterById: String? = null
-    ): KmmResult<HolderDCQLQueryMatchingResult<SubjectCredentialStore.StoreEntry>>
+    ): KmmResult<HolderDCQLQueryMatchingResult<SubjectCredentialStore.StoreEntry>> = matchDCQLQueryAgainstCredentialStoreV2(dcqlQuery, filterById?.let { listOf(it) })
 }
 
