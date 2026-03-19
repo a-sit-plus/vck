@@ -27,7 +27,7 @@ import kotlin.time.Instant
  * revocationList: Helper class; See [RevocationList]
  *
  */
-@Serializable(with = StatusListTokenPayloadSerializer::class)
+@Serializable(with = StatusListTokenSurrogateSerializer::class)
 data class StatusListTokenPayload(
     val subject: UniformResourceIdentifier,
     val issuedAt: Instant,
