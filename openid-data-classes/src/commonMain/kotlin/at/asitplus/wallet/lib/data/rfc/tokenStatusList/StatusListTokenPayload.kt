@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
 import at.asitplus.signum.indispensable.io.TransformingSerializerTemplate
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload.StatusListTokenSurrogateSerializer
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload.StatusListTokenPayloadSurrogateSerializer
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.PositiveDuration
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import kotlinx.serialization.Serializable
@@ -29,7 +29,7 @@ import kotlin.time.Instant
  * revocationList: Helper class; See [RevocationList]
  *
  */
-@Serializable(with = StatusListTokenSurrogateSerializer::class)
+@Serializable(with = StatusListTokenPayloadSurrogateSerializer::class)
 data class StatusListTokenPayload(
     val subject: UniformResourceIdentifier,
     val issuedAt: Instant,
@@ -37,7 +37,7 @@ data class StatusListTokenPayload(
     val timeToLive: PositiveDuration? = null,
     val revocationList: RevocationList,
 ) {
-    internal object StatusListTokenSurrogateSerializer :
+    internal object StatusListTokenPayloadSurrogateSerializer :
         TransformingSerializerTemplate<StatusListTokenPayload, StatusListTokenPayloadSurrogate>(
             parent = StatusListTokenPayloadSurrogate.Companion.serializer(),
             encodeAs = {
