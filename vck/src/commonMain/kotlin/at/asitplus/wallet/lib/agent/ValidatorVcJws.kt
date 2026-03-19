@@ -70,7 +70,7 @@ class ValidatorVcJws(
     ): KmmResult<VerifyPresentationResult.Success> = catching {
         Napier.d("Verifying VP $input with $challenge and $clientId")
         verifyJwsObject(input).getOrThrow()
-        val vpJws = input.getPayload<VerifiablePresentationJws>().validate(challenge, clientId)
+        val vpJws = input.getPayload<VerifiablePresentationJws>().getOrThrow().validate(challenge, clientId)
         val vcValidationResults = vpJws.vp.verifiableCredential
             .map { it to verifyVcJws(it, input.jwsHeader.publicKey, input) }
 

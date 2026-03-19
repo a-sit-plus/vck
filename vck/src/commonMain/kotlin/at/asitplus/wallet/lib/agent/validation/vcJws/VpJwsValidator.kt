@@ -24,17 +24,19 @@ class VpJwsValidator {
     operator fun invoke(
         publicKey: CryptoPublicKey?,
         vpJws: JwsCompact,
-    ) = VpJwsValidationSummary(
-        inconsistentIssuerError =
-            if (!(publicKey?.matchesIdentifier(vpJws.payload.issuer) ?: false)) {
-                VpJwsValidationSummary.InconsistentIssuerError(
-                    vpPublicKey = publicKey,
-                    vpIssuer = vpJws.payload.issuer
-                )
-            } else null
-    ).also {
-        if (it.isSuccess) {
-            Napier.d("VP mapping is valid")
+    ) = vpJws.getPayload<VerifiablePresentationJws>().getOrThrow().let {
+        VpJwsValidationSummary(
+            inconsistentIssuerError =
+                if (!(publicKey?.matchesIdentifier(it.issuer) ?: false)) {
+                    VpJwsValidationSummary.InconsistentIssuerError(
+                        vpPublicKey = publicKey,
+                        vpIssuer = it.issuer
+                    )
+                } else null
+        ).also {
+            if (it.isSuccess) {
+                Napier.d("VP mapping is valid")
+            }
         }
     }
 }

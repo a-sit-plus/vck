@@ -44,7 +44,7 @@ data class SdJwtSigned(
     }
 
     fun getPayloadAsVerifiableCredentialSdJwt(): KmmResult<VerifiableCredentialSdJwt> =
-        catching { joseCompliantSerializer.decodeFromJsonElement<VerifiableCredentialSdJwt>(jws.getPayload()) }
+        jws.getPayload<VerifiableCredentialSdJwt>()
 
     fun getPayloadAsJsonObject(): KmmResult<JsonObject> =
         catching { joseCompliantSerializer.decodeFromString<JsonObject>(jws.payload.decodeToString()) }
