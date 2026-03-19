@@ -703,7 +703,8 @@ class OpenId4VpVerifier(
                 throw IllegalArgumentException("relatedPresentation")
             },
             challenge = expectedNonce,
-            transactionData = transactionData
+            transactionData = transactionData,
+            requireCryptographicHolderBinding = requireCryptographicHolderBinding != false,
         )
 
         ClaimFormat.JWT_VP -> if (requireCryptographicHolderBinding != false) {
