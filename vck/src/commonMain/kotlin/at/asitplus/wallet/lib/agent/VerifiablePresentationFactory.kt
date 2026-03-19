@@ -41,7 +41,6 @@ import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import at.asitplus.wallet.lib.data.VerifiablePresentation
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.extensions.sdHashInput
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
@@ -51,7 +50,6 @@ import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.time.Clock
@@ -239,9 +237,8 @@ class VerifiablePresentationFactory(
         val disclosures = validSdJwtCredential.loadDisclosures(requestedClaims)
         val keyBinding = createKeyBindingJws(request, SdJwtSigned.sdHashInput(validSdJwtCredential, disclosures))
         val issuerSignedJwsSerialized = validSdJwtCredential.vcSerialized.substringBefore("~")
-        val issuerSignedJws =
-            JwsCompact.deserialize(JsonElement.serializer(), issuerSignedJwsSerialized, vckJsonSerializer)
-                .getOrElse { throw PresentationException(it) }
+        val issuerSignedJws = JwsCompact(issuerSignedJwsSerialized)
+
         val sdJwt = SdJwtSigned.presented(issuerSignedJws, disclosures, keyBinding)
         return CreatePresentationResult.SdJwt(sdJwt.serialize(), sdJwt)
     }
@@ -318,6 +315,6 @@ class VerifiablePresentationFactory(
         ).getOrElse {
             throw PresentationException(it)
         }) {
-        CreatePresentationResult.VpJws(serialize(), this)
+        CreatePresentationResult.VpJws(toString(), this)
     }
 }

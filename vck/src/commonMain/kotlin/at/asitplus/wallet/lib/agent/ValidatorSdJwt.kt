@@ -66,7 +66,7 @@ class ValidatorSdJwt(
                 throw Throwable("Key binding JWT not verified. $it")
             }
         }
-        val keyBinding = keyBindingSigned.payload
+        val keyBinding = keyBindingSigned.getPayload<KeyBindingJws>().getOrThrow()
         require(keyBinding.challenge == challenge) {
             "Challenge not correct: ${keyBinding.challenge}"
         }

@@ -131,10 +131,7 @@ class SignJwt<P : Any>(
         JwsCompact(
             protectedHeader = header,
             payload = payload.toString().toByteArray(),
-            signer = { alg, input ->
-                require(keyMaterial.jsonWebKey.algorithm?.identifier == alg.identifier) //TODO better assertion
-                keyMaterial.sign(input).asKmmResult().getOrThrow().rawByteArray
-            }
+            signer = { keyMaterial.sign(it).asKmmResult().getOrThrow().rawByteArray }
         )
     }
 }
@@ -161,10 +158,7 @@ class SignJwtExt<P : Any>(
         JwsCompact(
             protectedHeader = header,
             payload = payload.toString().toByteArray(),
-            signer = { alg, input ->
-                require(keyMaterial.jsonWebKey.algorithm?.identifier == alg.identifier) //TODO better assertion
-                keyMaterial.sign(input).asKmmResult().getOrThrow().rawByteArray
-            }
+            signer = { keyMaterial.sign(it).asKmmResult().getOrThrow().rawByteArray }
         )
     }
 }

@@ -14,7 +14,7 @@ data class StatusListJwt(
     override val resolvedAt: Instant?,
 ) : StatusListToken() {
 
-    override val parsedPayload: KmmResult<StatusListTokenPayload> = KmmResult.success(value.payload)
+    override val parsedPayload: KmmResult<StatusListTokenPayload> = value.getPayload<StatusListTokenPayload>()
 
     /**
      * Validate the Status List Token:
@@ -50,11 +50,12 @@ data class StatusListJwt(
         verifyJwsObject(jwsSigned).getOrElse {
             throw IllegalStateException("Invalid signature", it)
         }
-        val type = jwsSigned.header.type?.lowercase()
+        val type = jwsSigned.jwsHeader.type?.lowercase()
             ?: throw IllegalArgumentException("Invalid type header")
         if (type != MediaTypes.STATUSLIST_JWT.lowercase()) {
             throw IllegalArgumentException("Invalid type header: $type")
         }
-        jwsSigned.payload
-    }
+        jwsSigned
+    }.transform { it.getPayload() }
+
 }
