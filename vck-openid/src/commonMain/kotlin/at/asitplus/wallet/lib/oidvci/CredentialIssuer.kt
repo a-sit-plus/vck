@@ -2,11 +2,19 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.openid.*
+import at.asitplus.openid.BatchCredentialIssuanceMetadata
+import at.asitplus.openid.ClientNonceResponse
+import at.asitplus.openid.CredentialRequestParameters
+import at.asitplus.openid.CredentialResponseParameters
+import at.asitplus.openid.IssuerMetadata
+import at.asitplus.openid.JwtVcIssuerMetadata
+import at.asitplus.openid.OidcUserInfoExtended
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.KeyMaterial
@@ -14,7 +22,6 @@ import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.agent.validation.toTokenStatusResolver
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.jwt.claims.JwtStatusListClaim
@@ -23,14 +30,9 @@ import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
-import at.asitplus.wallet.lib.jws.VerifyJwsSignature
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import io.github.aakira.napier.Napier
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 
@@ -72,27 +74,37 @@ class CredentialIssuer(
     private val proofValidator: ProofValidator = ProofValidator(
         publicContext = publicContext,
         requireKeyAttestation = requireKeyAttestation,
-        verifyAttestationProof = {
-            val tokenStatusValid = runCatching {
-                it.payload.status?.get(JwtStatusListClaim.Specification.CLAIM_NAME)?.let { statusList ->
-                    Json.decodeFromJsonElement<StatusListInfo>(statusList).let { statusListInfo ->
-                        if (statusListTokenResolver?.toTokenStatusResolver()?.invoke(statusListInfo as RevocationListInfo)
-                            ?.getOrThrow() == TokenStatus.Invalid) throw Throwable("TokenStatus invalid")
+        verifyAttestationProof = { jws ->
+
+            val payload = jws.getPayload<KeyAttestationJwt>()
+            val statusListInfo = payload.mapCatching { keyAttestationJwt ->
+                keyAttestationJwt.status?.get(JwtStatusListClaim.Specification.CLAIM_NAME)?.let { jsonElement ->
+                    jsonElement.let {
+                        Json.decodeFromJsonElement<StatusListInfo>(jsonElement)
                     }
                 }
+            }
+            val tokenStatusValid = statusListInfo.mapCatching {
+                if (statusListTokenResolver?.toTokenStatusResolver()
+                        ?.invoke(it as RevocationListInfo)
+                        ?.getOrThrow() == TokenStatus.Invalid
+                ) throw Throwable("TokenStatus invalid")
             }.isSuccess
-            
+
             val signatureValid = runCatching {
-                VerifyJwsObject().verifyJwsSignature(it, it.header.publicKey!!).isSuccess
+                VerifyJwsObject().verifyJwsSignature(jws, jws.jwsHeader.publicKey!!).isSuccess
             }.getOrDefault(false)
 
             return@ProofValidator (tokenStatusValid && signatureValid)
         }
     ),
     /** Used to provide signed metadata in [signedMetadata]. */
-    private val signMetadata: SignJwtFun<IssuerMetadata> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk()),
+    private val signMetadata: SignJwtFun<IssuerMetadata> =
+        SignJwt(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk()),
+
     /** Handles credential request decryption and credential response encryption. */
     private val encryptionService: IssuerEncryptionService = IssuerEncryptionService(),
+
     /** Maps from/to strings in metadata from/to credential schemes. */
     private val credentialSchemeMapper: CredentialSchemeMapper = DefaultCredentialSchemeMapper(),
 ) {
@@ -235,22 +247,23 @@ class CredentialIssuer(
         authorizationService.validateAccessToken(authorizationHeader, requestInfo).getOrThrow()
         val userInfo = request.introspectTokenLoadUserInfo(authorizationHeader, requestInfo)
         val (scheme, representation) = request.extractCredentialRepresentation()
-        val responseParameters = proofValidator.validateProofExtractSubjectPublicKeys(request).map { subjectPublicKey ->
-            issuer.issueCredential(
-                credentialDataProvider(
-                    CredentialDataProviderInput(
-                        userInfo = userInfo,
-                        subjectPublicKey = subjectPublicKey,
-                        credentialScheme = scheme,
-                        credentialRepresentation = representation,
-                    )
+        val responseParameters =
+            proofValidator.validateProofExtractSubjectPublicKeys(request).map { subjectPublicKey ->
+                issuer.issueCredential(
+                    credentialDataProvider(
+                        CredentialDataProviderInput(
+                            userInfo = userInfo,
+                            subjectPublicKey = subjectPublicKey,
+                            credentialScheme = scheme,
+                            credentialRepresentation = representation,
+                        )
+                    ).getOrElse {
+                        throw CredentialRequestDenied("No credential from provider", it)
+                    }
                 ).getOrElse {
-                    throw CredentialRequestDenied("No credential from provider", it)
+                    throw CredentialRequestDenied("No credential from issuer", it)
                 }
-            ).getOrElse {
-                throw CredentialRequestDenied("No credential from issuer", it)
-            }
-        }.toCredentialResponseParameters()
+            }.toCredentialResponseParameters()
         encryptionService.encryptResponse(responseParameters, request)
             .also { Napier.i("credential returns"); Napier.d("credential returns $it") }
     }
@@ -287,8 +300,9 @@ class CredentialIssuer(
                 throw InvalidCredentialRequest("credential_configuration_id expected to be set")
             if (credentialIdentifier != null)
                 throw InvalidCredentialRequest("credential_identifier must not be set when credential_configuration_id is set")
-            val configurationScope = metadata.supportedCredentialConfigurations?.get(credentialConfigurationId!!)?.scope
-                ?: throw InvalidCredentialRequest("credential_configuration_id $credentialConfigurationId not supported")
+            val configurationScope =
+                metadata.supportedCredentialConfigurations?.get(credentialConfigurationId!!)?.scope
+                    ?: throw InvalidCredentialRequest("credential_configuration_id $credentialConfigurationId not supported")
             if (!it.scope.contains(configurationScope))
                 throw InvalidToken("credential_configuration_id $credentialConfigurationId expected to be in $it")
         } else {

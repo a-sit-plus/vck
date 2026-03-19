@@ -36,7 +36,7 @@ sealed interface VcJwsInputValidationResult {
         val vpValidationSummary: VpJwsValidationSummary?,
     ) : VcJwsInputValidationResult {
         val payload: VerifiableCredentialJws
-            get() = parsed.payload
+            get() = parsed.getPayload<VerifiableCredentialJws>().getOrThrow()
 
         override val isSuccess: Boolean
             get() = listOf(

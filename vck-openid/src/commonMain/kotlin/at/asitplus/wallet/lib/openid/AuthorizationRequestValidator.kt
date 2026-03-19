@@ -8,10 +8,10 @@ import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.leaf
-import at.asitplus.wallet.lib.utils.DefaultMapStore
-import at.asitplus.wallet.lib.utils.MapStore
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
+import at.asitplus.wallet.lib.utils.DefaultMapStore
+import at.asitplus.wallet.lib.utils.MapStore
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.coroutines.cancellation.CancellationException
@@ -107,12 +107,12 @@ internal class AuthorizationRequestValidator(
         val responseModeIsDirectPost = parameters.responseMode.isAnyDirectPost()
         val responseModeIsDcApi = parameters.responseMode.isAnyDcApi()
         if (this !is RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>
-            || jwsSigned.header.certificateChain.isNullOrEmpty()
+            || jwsSigned.jwsHeader.certificateChain.isNullOrEmpty()
         ) {
             throw InvalidRequest("x5c is null, and metadata is not set")
         }
 
-        val leaf = jwsSigned.header.certificateChain!!.leaf
+        val leaf = jwsSigned.jwsHeader.certificateChain!!.leaf
         when (clientIdScheme) {
             ClientIdScheme.X509SanDns -> verifyX509SanDns(leaf, responseModeIsDirectPost, responseModeIsDcApi)
             ClientIdScheme.X509Hash -> verifyX509SanHash(leaf)

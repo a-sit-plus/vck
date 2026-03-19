@@ -29,6 +29,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc3986.toUri
@@ -70,7 +71,8 @@ val AgentRevocationTest by testSuite {
 
         "revocation list should contain indices of revoked credential" {
             val statusList = it.statusListIssuer.issueStatusListJwt()
-                .shouldNotBeNull().payload.revocationList.shouldBeInstanceOf<StatusList>()
+                .shouldNotBeNull().getPayload<StatusListTokenPayload>()
+                .getOrThrow().revocationList.shouldBeInstanceOf<StatusList>()
 
             verifyStatusList(statusList, it.expectedRevokedIndexes)
         }
@@ -111,7 +113,8 @@ val AgentRevocationTest by testSuite {
             )
             providedToken.shouldBeInstanceOf<StatusListJwt>()
             providedToken.shouldBeInstanceOf<StatusListJwt>().apply {
-                value.payload.revocationList.shouldBeInstanceOf<StatusList>() shouldBe issuedToken.payload.revocationList
+                parsedPayload.getOrThrow().revocationList.shouldBeInstanceOf<StatusList>() shouldBe issuedToken.getPayload<StatusListTokenPayload>()
+                    .getOrThrow().revocationList
             }
         }
 
@@ -134,7 +137,8 @@ val AgentRevocationTest by testSuite {
                 time = timestamp,
             )
             providedToken.shouldBeInstanceOf<StatusListCwt>()
-                .parsedPayload.getOrThrow().revocationList shouldBe issuedToken.payload.revocationList
+                .parsedPayload.getOrThrow().revocationList shouldBe issuedToken.getPayload<StatusListTokenPayload>()
+                .getOrThrow().revocationList
         }
 
 

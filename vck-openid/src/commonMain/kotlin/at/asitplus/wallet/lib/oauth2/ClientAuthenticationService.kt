@@ -1,17 +1,12 @@
 package at.asitplus.wallet.lib.oauth2
 
-import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
-import at.asitplus.wallet.lib.jws.VerifyJwsSignature
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnf
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnfFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidClient
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidGrant
-import io.github.aakira.napier.Napier
 import kotlin.coroutines.cancellation.CancellationException
 
 
@@ -49,17 +44,16 @@ class ClientAuthenticationService(
         }
 
         if (httpRequest?.clientAttestation != null && httpRequest.clientAttestationPop != null) {
-            val instanceAttestation = JwsCompact.deserialize<JsonWebToken>(
-                it = httpRequest.clientAttestation,
-                deserializationStrategy = JsonWebToken.Companion.serializer(),
-            ).getOrElse {
-                throw InvalidClient("could not parse instance attestation", it)
-            }
+            val (instanceAttestation, attestationPayload) = JwsCompact.parse<JsonWebToken>(httpRequest.clientAttestation)
+                .getOrElse {
+                    throw InvalidClient("could not parse instance attestation", it)
+                }
+
             verifyJwsObject(instanceAttestation).getOrElse {
                 throw InvalidClient("client attestation JWT not verified", it)
             }
             if (clientId != null) {
-                if (instanceAttestation.payload.subject != clientId) {
+                if (attestationPayload.subject != clientId) {
                     throw InvalidClient("subject not equal to client_id")
                 }
             }
@@ -68,14 +62,12 @@ class ClientAuthenticationService(
                 throw InvalidClient("client attestation not verified")
             }
 
-            val instanceAttestationPopJwt = JwsCompact.deserialize<JsonWebToken>(
-                JsonWebToken.serializer(),
-                httpRequest.clientAttestationPop,
-                vckJsonSerializer
-            ).getOrElse {
-                throw InvalidClient("could not parse client attestation PoP", it)
-            }
-            val cnf = instanceAttestation.payload.confirmationClaim
+            val (instanceAttestationPopJwt, popPayload) = JwsCompact.parse<JsonWebToken>(httpRequest.clientAttestationPop)
+                .getOrElse {
+                    throw InvalidClient("could not parse client attestation PoP", it)
+                }
+
+            val cnf = popPayload.confirmationClaim
                 ?: throw InvalidClient("client attestation has no cnf")
             if (!verifyJwsSignatureWithCnf(instanceAttestationPopJwt, cnf)) {
                 throw InvalidClient("client attestation PoP JWT not verified")
