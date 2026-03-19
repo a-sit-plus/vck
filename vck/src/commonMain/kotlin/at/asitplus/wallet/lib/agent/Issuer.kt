@@ -87,5 +87,5 @@ interface Issuer : ReferencedTokenIssuer<CredentialToBeIssued, KmmResult<Issuer.
 fun Issuer.IssuedCredential.toStoreCredentialInput() = when (this) {
     is Issuer.IssuedCredential.Iso -> Holder.StoreCredentialInput.Iso(issuerSigned, scheme)
     is Issuer.IssuedCredential.VcSdJwt -> Holder.StoreCredentialInput.SdJwt(signedSdJwtVc, signedSdJwtVc.serialize(), scheme)
-    is Issuer.IssuedCredential.VcJwt -> Holder.StoreCredentialInput.Vc(signedVcJws, signedVcJws.serialize(), scheme)
+    is Issuer.IssuedCredential.VcJwt -> Holder.StoreCredentialInput.Vc(signedVcJws, signedVcJws.toString(), scheme)
 }

@@ -70,9 +70,9 @@ class ValidatorVcJws(
     ): KmmResult<VerifyPresentationResult.Success> = catching {
         Napier.d("Verifying VP $input with $challenge and $clientId")
         verifyJwsObject(input).getOrThrow()
-        val vpJws = input.payload.validate(challenge, clientId)
+        val vpJws = input.getPayload<VerifiablePresentationJws>().validate(challenge, clientId)
         val vcValidationResults = vpJws.vp.verifiableCredential
-            .map { it to verifyVcJws(it, input.header.publicKey, input) }
+            .map { it to verifyVcJws(it, input.jwsHeader.publicKey, input) }
 
         val invalidVcList = vcValidationResults.filter {
             it.second.isFailure
@@ -132,7 +132,7 @@ class ValidatorVcJws(
         input: JwsCompact,
         publicKey: CryptoPublicKey,
         vpJws: JwsCompact? = null,
-    ) = verifyVcJws(input.serialize(), publicKey, vpJws)
+    ) = verifyVcJws(input.toString(), publicKey, vpJws)
 
     /**
      * Validates the content of a JWS, expected to contain a Verifiable Credential.

@@ -36,8 +36,6 @@ import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import kotlin.jvm.JvmInline
 
@@ -96,17 +94,14 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
 
                 is SubjectCredentialStore.StoreEntry.SdJwt -> SdJwtSigned.parseCatching(
                     it.vcSerialized
-                ).getOrThrow().jws.header.certificateChain?.flatMap {
+                ).getOrThrow().jws.jwsHeader.certificateChain?.flatMap {
                     it.getAuthorityKeyIdentifier()
                 } ?: listOf()
 
-                is SubjectCredentialStore.StoreEntry.Vc -> JwsCompact.deserialize(
-                    VerifiableCredentialJws.serializer(),
-                    it.vcSerialized,
-                    vckJsonSerializer
-                ).getOrThrow().header.certificateChain?.flatMap {
-                    it.getAuthorityKeyIdentifier()
-                } ?: listOf()
+                is SubjectCredentialStore.StoreEntry.Vc -> JwsCompact(it.vcSerialized)
+                    .jwsHeader.certificateChain?.flatMap {
+                        it.getAuthorityKeyIdentifier()
+                    } ?: listOf()
             }
         }
     )

@@ -4,9 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 
@@ -46,10 +44,10 @@ data class SdJwtSigned(
     }
 
     fun getPayloadAsVerifiableCredentialSdJwt(): KmmResult<VerifiableCredentialSdJwt> =
-        catching { joseCompliantSerializer.decodeFromJsonElement<VerifiableCredentialSdJwt>(jws.payload) }
+        catching { joseCompliantSerializer.decodeFromJsonElement<VerifiableCredentialSdJwt>(jws.getPayload()) }
 
     fun getPayloadAsJsonObject(): KmmResult<JsonObject> =
-        catching { jws.payload as JsonObject }
+        catching { joseCompliantSerializer.decodeFromString<JsonObject>(jws.payload.decodeToString()) }
 
     /**
      * Compact serialization: JWT in JWS compact serialization (Base64-URL with dots),
@@ -57,12 +55,12 @@ data class SdJwtSigned(
      */
     fun serialize() = keyBindingJws?.let {
         serializePresentation(jws, rawDisclosures.toSet(), it)
-    } ?: (listOf(jws.serialize()) + rawDisclosures).joinToString("~", postfix = "~")
+    } ?: (listOf(jws.toString()) + rawDisclosures).joinToString("~", postfix = "~")
 
     override fun toString(): String {
-        return "SdJwtSigned(jws=${jws.serialize()}, " +
+        return "SdJwtSigned(jws=$jws, " +
                 "rawDisclosures=$rawDisclosures, " +
-                "keyBindingJws=${keyBindingJws?.serialize()}, " +
+                "keyBindingJws=$keyBindingJws, " +
                 "hashInput='$hashInput')"
     }
 
@@ -74,7 +72,7 @@ data class SdJwtSigned(
             jws = jws,
             rawDisclosures = disclosures,
             keyBindingJws = null,
-            hashInput = (listOf(jws.serialize()) + disclosures).joinToString("~", postfix = "~")
+            hashInput = (listOf(jws.toString()) + disclosures).joinToString("~", postfix = "~")
         )
 
         fun presented(
@@ -85,29 +83,21 @@ data class SdJwtSigned(
             jws = jws,
             rawDisclosures = disclosures.toList(),
             keyBindingJws = keyBinding,
-            hashInput = (listOf(jws.serialize()) + disclosures).joinToString("~", postfix = "~")
+            hashInput = (listOf(jws.toString()) + disclosures).joinToString("~", postfix = "~")
         )
 
         fun parseCatching(input: String): KmmResult<SdJwtSigned> = catching {
             require(input.contains("~")) { "Could not parse SD-JWT: $input" }
             val stringList = input.replace("[^A-Za-z0-9-_.~]".toRegex(), "").split("~")
             require(stringList.isNotEmpty()) { "Could not parse SD-JWT: $input" }
-            val jws = JwsCompact.deserialize<JsonElement>(
-                deserializationStrategy = JsonElement.serializer(),
-                it = stringList.first(),
-                json = joseCompliantSerializer
-            ).getOrThrow()
+            val jws = JwsCompact(stringList.first())
             val stringListWithoutJws = stringList.drop(1)
             val rawDisclosures = stringListWithoutJws
                 .filterNot { it.contains(".") }
                 .filterNot { it.isEmpty() }
             val keyBindingString = stringList.drop(1 + rawDisclosures.size).firstOrNull()
             val keyBindingJws = keyBindingString?.takeIf { it.isNotEmpty() }?.let {
-                JwsCompact.deserialize<KeyBindingJws>(
-                    deserializationStrategy = KeyBindingJws.serializer(),
-                    it = it,
-                    json = joseCompliantSerializer
-                ).getOrThrow()
+                JwsCompact(it)
             }
             val hashInput = input.substringBeforeLast("~") + "~"
             SdJwtSigned(jws, rawDisclosures, keyBindingJws, hashInput)
@@ -121,7 +111,7 @@ data class SdJwtSigned(
             jwsFromIssuer: JwsCompact,
             filteredDisclosures: Set<String>,
             keyBinding: JwsCompact,
-        ) = (listOf(jwsFromIssuer.serialize()) + filteredDisclosures + keyBinding.serialize()).joinToString("~")
+        ) = (listOf(jwsFromIssuer.toString()) + filteredDisclosures + keyBinding.toString()).joinToString("~")
 
     }
 
