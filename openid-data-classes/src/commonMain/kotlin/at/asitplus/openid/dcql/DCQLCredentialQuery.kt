@@ -277,7 +277,7 @@ sealed interface DCQLCredentialQuery {
         authorityKeyIdentifiers: (Credential) -> Collection<DCQLAuthorityKeyIdentifier>,
     ): KmmResult<DCQLCredentialQueryMatchingResult> = catching {
         match(
-            when(val format = credentialFormatExtractor(credential)) {
+            when (val format = credentialFormatExtractor(credential)) {
                 CredentialFormatEnum.MSO_MDOC -> DCQLIsoMdocCredential(
                     claimStructure = credentialClaimStructureExtractor(credential) as DCQLCredentialClaimStructure.IsoMdocStructure,
                     documentType = mdocCredentialDoctypeExtractor(credential),
@@ -344,18 +344,19 @@ sealed interface DCQLCredentialQuery {
     }
 
     fun isSatisfiedWith(
-        credentialQueryResponse: DCQLCredentialQueryResponse,
+        credentialQueryResponses: List<DCQLCredentialQueryResponse>,
         parseIsoMdocCredential: (DCQLCredentialQueryResponse) -> DCQLIsoMdocCredential,
         parseSdJwtCredential: (DCQLCredentialQueryResponse) -> DCQLSdJwtCredential,
         parseVcJwsCredential: (DCQLCredentialQueryResponse) -> DCQLVcJwsCredential,
     ): Boolean = runCatching {
-        val credential = when (this) {
-            is DCQLIsoMdocCredentialQuery -> parseIsoMdocCredential(credentialQueryResponse)
-            is DCQLSdJwtCredentialQuery -> parseSdJwtCredential(credentialQueryResponse)
-            is DCQLJwtVcCredentialQuery -> parseVcJwsCredential(credentialQueryResponse)
+        credentialQueryResponses.isNotEmpty() && (multiple || credentialQueryResponses.size == 1) && credentialQueryResponses.all {
+            match(
+                credential = when (this) {
+                    is DCQLIsoMdocCredentialQuery -> parseIsoMdocCredential(it)
+                    is DCQLSdJwtCredentialQuery -> parseSdJwtCredential(it)
+                    is DCQLJwtVcCredentialQuery -> parseVcJwsCredential(it)
+                },
+            ).isSuccess
         }
-        match(
-            credential = credential,
-        ).isSuccess
     }.getOrNull() ?: false
 }

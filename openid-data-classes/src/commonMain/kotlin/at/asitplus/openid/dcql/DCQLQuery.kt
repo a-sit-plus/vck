@@ -108,16 +108,14 @@ data class DCQLQuery(
     ) = isCredentialSetQueriesSatisfiedWith(
         credentialSubmissions = dcqlQueryResponse.submissions.keys,
     ) && dcqlQueryResponse.submissions.all { (id, submissions) ->
-        submissions.isNotEmpty() && submissions.all { submission ->
-            credentials.firstOrNull {
-                it.id == id
-            }?.isSatisfiedWith(
-                submission,
-                parseIsoMdocCredential = parseIsoMdocCredential,
-                parseSdJwtCredential = parseSdJwtCredential,
-                parseVcJwsCredential = parseVcJwsCredential,
-            ) ?: false
-        }
+        credentials.firstOrNull {
+            it.id == id
+        }?.isSatisfiedWith(
+            credentialQueryResponses = submissions,
+            parseIsoMdocCredential = parseIsoMdocCredential,
+            parseSdJwtCredential = parseSdJwtCredential,
+            parseVcJwsCredential = parseVcJwsCredential,
+        ) ?: return@all false
     }
 
     fun isCredentialSetQueriesSatisfiedWith(
