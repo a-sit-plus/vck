@@ -15,7 +15,7 @@ sealed interface DCAPIWalletRequest {
 
     /** The credential ID of the credential the user has chosen in the UI provided by the system.
     Not available on iOS. */
-    val credentialId: List<String>?
+    val credentialId: Collection<String>?
 
     /** The package name of the calling (browser) application providing the calling origin. Not available on iOS. */
     val callingPackageName: String?
@@ -26,7 +26,7 @@ sealed interface DCAPIWalletRequest {
         @SerialName("isoMdocRequest")
         val isoMdocRequest: IsoMdocRequest,
         @SerialName("credentialId")
-        override val credentialId: List<String>? = null,
+        override val credentialId: Collection<String>? = null,
         @SerialName("callingPackageName")
         override val callingPackageName: String? = null,
         @SerialName("callingOrigin")
@@ -47,7 +47,7 @@ sealed interface DCAPIWalletRequest {
         @SerialName("request")
         override val request: RequestParameters,
         @SerialName("credentialId")
-        override val credentialId: List<String>,
+        override val credentialId: Collection<String>,
         @SerialName("callingPackageName")
         override val callingPackageName: String,
         @SerialName("callingOrigin")
@@ -63,7 +63,7 @@ sealed interface DCAPIWalletRequest {
         @SerialName("request")
         override val request: RequestParameters,
         @SerialName("credentialId")
-        override val credentialId: List<String>,
+        override val credentialId: Collection<String>,
         @SerialName("callingPackageName")
         override val callingPackageName: String,
         @SerialName("callingOrigin")

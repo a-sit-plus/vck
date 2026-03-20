@@ -112,7 +112,7 @@ class HolderAgent(
         subjectCredentialStore.getCredentials().getOrNull()
 
     /** Gets a list of all valid stored credentials sorted by preference, possibly filtered by [filterByIds]. */
-    private suspend fun getValidCredentialsByPriority(filterByIds: List<String>? = null): List<StoreEntry>? {
+    private suspend fun getValidCredentialsByPriority(filterByIds: Collection<String>? = null): List<StoreEntry>? {
         val availableCredentials = getCredentials() ?: return null
 
         val presortedCredentials = availableCredentials
@@ -265,7 +265,7 @@ class HolderAgent(
         inputDescriptors: Collection<InputDescriptor>,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: PathAuthorizationValidator?,
-        filterByIds: List<String>?,
+        filterByIds: Collection<String>?,
     ) = catching {
         findInputDescriptorMatches(
             inputDescriptors = inputDescriptors,
@@ -328,7 +328,7 @@ class HolderAgent(
 
     override suspend fun matchDCQLQueryAgainstCredentialStoreV2(
         dcqlQuery: DCQLQuery,
-        filterByIds: List<String>?,
+        filterByIds: Collection<String>?,
     ): KmmResult<HolderDCQLQueryMatchingResult<StoreEntry>> = catching {
         val credentials = getValidCredentialsByPriority(filterByIds)
             ?: throw PresentationException("Credentials could not be retrieved from the store")

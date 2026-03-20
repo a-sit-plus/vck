@@ -11,7 +11,7 @@ val DCAPIWalletRequestSerializationTest by testSuite {
     test("openid4vp unsigned request round-trips") {
         val request = DCAPIWalletRequest.OpenId4VpUnsigned(
             request = testUnsignedOpenId4VpRequest.request,
-            credentialId = "044c78be429198ffc2a66d935ff86e4e2bdb8ca2ab0cd1bacc85f3a73d8347b4",
+            credentialId = listOf("044c78be429198ffc2a66d935ff86e4e2bdb8ca2ab0cd1bacc85f3a73d8347b4"),
             callingPackageName = "com.android.chrome",
             callingOrigin = "https://wallet.a-sit.at"
         )
@@ -26,7 +26,7 @@ val DCAPIWalletRequestSerializationTest by testSuite {
         val request = testSignedOpenId4VpRequest.request
         val walletRequest = DCAPIWalletRequest.OpenId4VpSigned(
             request = request,
-            credentialId = "044c78be429198ffc2a66d935ff86e4e2bdb8ca2ab0cd1bacc85f3a73d8347b4",
+            credentialId = listOf("044c78be429198ffc2a66d935ff86e4e2bdb8ca2ab0cd1bacc85f3a73d8347b4"),
             callingPackageName = "com.android.chrome",
             callingOrigin = "https://wallet.a-sit.at"
         )

@@ -92,7 +92,7 @@ interface Holder {
         inputDescriptors: Collection<InputDescriptor>,
         fallbackFormatHolder: FormatHolder? = null,
         pathAuthorizationValidator: PathAuthorizationValidator? = null,
-        filterByIds: List<String>? = null
+        filterByIds: Collection<String>? = null
     ): KmmResult<HolderPresentationExchangeQueryMatchingResult<SubjectCredentialStore.StoreEntry>>
 
     @Deprecated("Deprecated to support matching against multiple IDs", replaceWith = ReplaceWith("matchInputDescriptorsAgainstCredentialStoreV3"))
@@ -142,7 +142,7 @@ interface Holder {
      */
     suspend fun matchDCQLQueryAgainstCredentialStoreV2(
         dcqlQuery: DCQLQuery,
-        filterByIds: List<String>? = null
+        filterByIds: Collection<String>? = null
     ): KmmResult<HolderDCQLQueryMatchingResult<SubjectCredentialStore.StoreEntry>>
 
     @Deprecated("Deprecated to support matching against multiple IDs", replaceWith = ReplaceWith("matchDCQLQueryAgainstCredentialStoreV2"))
