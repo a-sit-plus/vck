@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.ktor.openid
 
+import at.asitplus.KmmResult
+import at.asitplus.catching
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.dcapi.request.DCAPIWalletRequest
 import at.asitplus.iso.IssuerSignedItem
@@ -31,6 +33,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -46,9 +49,6 @@ import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.AuthnResponseResult
-import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessIso
-import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessSdJwt
-import at.asitplus.wallet.lib.openid.AuthnResponseResult.VerifiableDCQLPresentationValidationResults
 import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
 import at.asitplus.wallet.lib.openid.DCQLMatchingResult
@@ -56,6 +56,8 @@ import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.CreationOptions
 import at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions
 import at.asitplus.wallet.lib.openid.PresentationExchangeMatchingResult
+import at.asitplus.wallet.lib.openid.VpTokenValidationResultDCQL
+import at.asitplus.wallet.lib.openid.VpTokenValidationResultPresentationExchange
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
@@ -131,10 +133,10 @@ val OpenId4VpWalletTest by testSuite {
             ).also { this.wallet = it }
 
             fun verifyReceivedAttributes(
-                authnResponseResult: AuthnResponseResult,
+                authnResponseResult: KmmResult<AuthnResponseResult>,
                 expectedAttributes: Map<String, String>
             ) {
-                if (authnResponseResult.containsAllAttributes(expectedAttributes)) {
+                if (authnResponseResult.getOrNull()?.containsAllAttributes(expectedAttributes) ?: false) {
                     countdownLatch.unlock()
                 }
             }
@@ -190,7 +192,7 @@ val OpenId4VpWalletTest by testSuite {
             suspend fun setupRelyingPartyService(
                 clientId: String,
                 requestOptions: OpenId4VpRequestOptions,
-                validate: (AuthnResponseResult) -> Unit,
+                validate: (KmmResult<AuthnResponseResult>) -> Unit,
             ) {
                 val requestEndpointPath = "/request/${uuid4()}"
                 val redirectUri = "http://rp.example.com/cb"
@@ -225,9 +227,11 @@ val OpenId4VpWalletTest by testSuite {
                         request.url.fullPath.startsWith(responseEndpointPath) or request.url.toString()
                             .startsWith(redirectUri) -> {
                             val requestBody = request.body.toByteArray().decodeToString()
-                            val result =
-                                if (requestBody.isNotEmpty()) verifier.validateAuthnResponse(requestBody)
-                                else verifier.validateAuthnResponse(request.url.toString())
+                            val result = if (requestBody.isNotEmpty()) {
+                                verifier.validateAuthnResponse(requestBody)
+                            } else {
+                                verifier.validateAuthnResponse(request.url.toString())
+                            }
                             validate(result)
                             respondOk()
                         }
@@ -472,26 +476,38 @@ private fun Map.Entry<String, Any>.toIssuerSignedItem(): IssuerSignedItem =
     IssuerSignedItem(0U, Random.nextBytes(16), key, value)
 
 
-private fun AuthnResponseResult.containsAllAttributes(expectedAttributes: Map<String, String>): Boolean =
-    when (this) {
-        is VerifiableDCQLPresentationValidationResults -> this.allValidationResults.values
-            .shouldBeSingleton().first().shouldBeSingleton().first().containsAllAttributes(expectedAttributes)
+private fun AuthnResponseResult.containsAllAttributes(expectedAttributes: Map<String, String>): Boolean = catching {
+    when (val vpTokenValidationResult = this.vpTokenValidationResult.shouldNotBeNull().getOrThrow()) {
+        is VpTokenValidationResultDCQL -> vpTokenValidationResult.allValidationResults.values
+            .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
+            .containsAllAttributes(expectedAttributes)
 
-        is SuccessSdJwt -> this.containsAllAttributes(expectedAttributes)
-        is SuccessIso -> this.containsAllAttributes(expectedAttributes)
-        else -> false
+        is VpTokenValidationResultPresentationExchange -> vpTokenValidationResult.inputDescriptorResponseValidations.values
+            .shouldBeSingleton().first().getOrThrow().containsAllAttributes(expectedAttributes)
     }
+}.getOrElse {
+    false
+}
 
-private fun SuccessSdJwt.containsAllAttributes(attributes: Map<String, String>): Boolean =
+private fun Verifier.VerifyPresentationResult.containsAllAttributes(
+    attributes: Map<String, String>
+): Boolean = when (this) {
+    is Verifier.VerifyPresentationResult.SuccessIso -> containsAllAttributes(attributes)
+    is Verifier.VerifyPresentationResult.SuccessSdJwt -> containsAllAttributes(attributes)
+    is Verifier.VerifyPresentationResult.Success -> false
+    is Verifier.VerifyPresentationResult.SuccessUnsignedVcJws -> false
+}
+
+private fun Verifier.VerifyPresentationResult.SuccessSdJwt.containsAllAttributes(attributes: Map<String, String>): Boolean =
     attributes.all { containsAttribute(it) }
 
-private fun SuccessSdJwt.containsAttribute(attribute: Map.Entry<String, String>): Boolean =
+private fun Verifier.VerifyPresentationResult.SuccessSdJwt.containsAttribute(attribute: Map.Entry<String, String>): Boolean =
     disclosures.toList().any { it.matchesAttribute(attribute) }
 
-private fun SuccessIso.containsAllAttributes(attributes: Map<String, String>): Boolean =
+private fun Verifier.VerifyPresentationResult.SuccessIso.containsAllAttributes(attributes: Map<String, String>): Boolean =
     attributes.all { containsAttribute(it) }
 
-private fun SuccessIso.containsAttribute(attribute: Map.Entry<String, String>): Boolean =
+private fun Verifier.VerifyPresentationResult.SuccessIso.containsAttribute(attribute: Map.Entry<String, String>): Boolean =
     documents.any { doc -> doc.validItems.any { it.matchesAttribute(attribute) } }
 
 private fun SelectiveDisclosureItem.matchesAttribute(attribute: Map.Entry<String, String>): Boolean =

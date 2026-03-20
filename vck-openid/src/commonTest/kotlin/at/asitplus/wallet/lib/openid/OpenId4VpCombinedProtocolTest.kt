@@ -15,9 +15,7 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.dcql.DCQLCredentialQueryList
-import at.asitplus.openid.dcql.DCQLIsoMdocCredentialQuery
 import at.asitplus.openid.dcql.DCQLJwtVcCredentialQuery
-import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.eupid.EuPidScheme
@@ -29,10 +27,11 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.agent.Verifier
+import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
@@ -46,7 +45,9 @@ import io.kotest.assertions.AssertionErrorBuilder.Companion.fail
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.matchers.collections.shouldBeSingleton
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
+import io.kotest.matchers.maps.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -115,12 +116,12 @@ val OpenId4VpCombinedProtocolTest by testSuite {
                 it.holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
                     .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-            it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
-                .shouldBeInstanceOf<AuthnResponseResult.VerifiableDCQLPresentationValidationResults>()
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                 .allValidationResults.values
-                .shouldBeSingleton().first()
-                .shouldBeSingleton().first()
-                .shouldBeInstanceOf<AuthnResponseResult.Success>()
+                .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
                 .vp.freshVerifiableCredentials.shouldNotBeEmpty()
                 .map { it.vcJws }.forEach {
                     it.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
@@ -164,10 +165,11 @@ val OpenId4VpCombinedProtocolTest by testSuite {
             val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-            val vcFreshnessSummary = it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
-                .shouldBeInstanceOf<AuthnResponseResult.VerifiableDCQLPresentationValidationResults>()
-                .allValidationResults.entries.shouldBeSingleton().first().value.shouldBeSingleton().first()
-                .shouldBeInstanceOf<AuthnResponseResult.SuccessUnsigned>()
+            val vcFreshnessSummary = it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
+                .allValidationResults.values.shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessUnsignedVcJws>()
                 .vc
             vcFreshnessSummary.vcJws.vc.credentialSubject.shouldBeInstanceOf<JsonObject>()
             vcFreshnessSummary.freshnessSummary.isFresh.shouldBeTrue()
@@ -210,8 +212,11 @@ val OpenId4VpCombinedProtocolTest by testSuite {
             val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-            it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
-                .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
+                .inputDescriptorResponseValidations.values.shouldBeSingleton().first().getOrThrow()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
                 .verifiableCredentialSdJwt.verifiableCredentialType shouldBe ConstantIndex.AtomicAttribute2023.sdJwtType
         }
 
@@ -255,10 +260,11 @@ val OpenId4VpCombinedProtocolTest by testSuite {
                 it.holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
                     .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-            it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
-                .shouldBeInstanceOf<AuthnResponseResult.VerifiableDCQLPresentationValidationResults>()
-                .allValidationResults.values.shouldBeSingleton().first().shouldBeSingleton().first()
-                .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
+                .allValidationResults.values.shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
                 .verifiableCredentialSdJwt.verifiableCredentialType shouldBe ConstantIndex.AtomicAttribute2023.sdJwtType
         }
 
@@ -299,8 +305,11 @@ val OpenId4VpCombinedProtocolTest by testSuite {
             val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-            it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
-                .shouldBeInstanceOf<AuthnResponseResult.SuccessIso>()
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
+                .inputDescriptorResponseValidations.values.shouldBeSingleton().first().getOrThrow()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessIso>()
         }
 
         "mdoc dcql: if not available despite others with correct format or correct attribute, but not both" { it ->
@@ -343,8 +352,9 @@ val OpenId4VpCombinedProtocolTest by testSuite {
                 it.holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
                     .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-            it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
-                .shouldBeInstanceOf<AuthnResponseResult.VerifiableDCQLPresentationValidationResults>()
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
         }
 
         "presentation of multiple credentials with different formats in one request/response" { it ->
@@ -364,9 +374,10 @@ val OpenId4VpCombinedProtocolTest by testSuite {
             val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-            val validationResults = it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
-                .shouldBeInstanceOf<AuthnResponseResult.VerifiablePresentationValidationResults>()
-            validationResults.validationResults.size shouldBe 2
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
+                .inputDescriptorResponseValidations.values.shouldHaveSize(2)
         }
 
         "presentation of multiple SD-JWT credentials in one request/response" { it ->
@@ -397,20 +408,24 @@ val OpenId4VpCombinedProtocolTest by testSuite {
             val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-            val groupedResult = it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
-                .shouldBeInstanceOf<AuthnResponseResult.VerifiablePresentationValidationResults>()
-            groupedResult.validationResults.size shouldBe 2
-            groupedResult.validationResults.forEach { result ->
-                result.shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
-                result.reconstructed.entries.shouldNotBeEmpty()
+            val groupedResult = it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
+                .inputDescriptorResponseValidations.values.map {
+                    it.getOrThrow()
+                }
+            groupedResult.size shouldBe 2
+            groupedResult.forEach { result ->
+                result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+                result.reconstructedJsonObject.entries.shouldNotBeEmpty()
                 when (result.verifiableCredentialSdJwt.verifiableCredentialType) {
                     EuPidScheme.sdJwtType -> {
-                        result.reconstructed[EuPidScheme.Attributes.FAMILY_NAME].shouldNotBeNull()
-                        result.reconstructed[EuPidScheme.Attributes.GIVEN_NAME].shouldNotBeNull()
+                        result.reconstructedJsonObject[EuPidScheme.Attributes.FAMILY_NAME].shouldNotBeNull()
+                        result.reconstructedJsonObject[EuPidScheme.Attributes.GIVEN_NAME].shouldNotBeNull()
                     }
 
                     ConstantIndex.AtomicAttribute2023.sdJwtType -> {
-                        result.reconstructed[ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH].shouldNotBeNull()
+                        result.reconstructedJsonObject[ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH].shouldNotBeNull()
                     }
 
                     else -> {

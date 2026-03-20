@@ -15,10 +15,11 @@ Release 5.12.0 (unreleased):
  - OpenID for Verifiable Presentations:
    - Change: Executing unsatisfiable DCQL queries no longer throws on matching, only on submission.
    - Change: `Holder.matchInputDescriptorsAgainstCredentialStoreV2` now accepts `filterByIds: Collection<String>?` for multi-credential DC API selections.
-   - Change: Update DCQLClaimsQuery to OpenID4VP 1.0
+   - Change: Update DCQLClaimsQuery and DCQLCredentialQuery to OpenID4VP 1.0
    - Change: Do not fail when only matching credentials without submitting a presentation
    - Allow issuance and verification of `IdentifierList` Revocation Mechanism
    - Change: Don't send response on user initiated signature cancellation
+   - BREAKING CHANGE: The result class from `verifyAuthnResponse`, `AuthnResponseResult` has been reworked
  - OpenID for Verifiable Credential Issuance:
    - Moved the class `RefreshTokenInfo` from `OpenId4VciClient` to `SubjectCredentialStore.kt` and renamed it to `CredentialRenewalInfo` to better describe its role in the renewal process.
      Kept `RefreshTokenInfo` in the original package for backward compatibility

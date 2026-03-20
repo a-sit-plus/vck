@@ -8,6 +8,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
@@ -83,13 +84,14 @@ val OpenId4VpSdJwtProtocolTest by testSuite {
             val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-            it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
-                .shouldBeInstanceOf<AuthnResponseResult.VerifiableDCQLPresentationValidationResults>()
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                 .allValidationResults.values
-                .shouldBeSingleton().first()
-                .shouldBeSingleton().first().shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>().apply {
+                .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     verifiableCredentialSdJwt.shouldNotBeNull()
-                    reconstructed[requestedClaim].shouldNotBeNull()
+                    reconstructedJsonObject[requestedClaim].shouldNotBeNull()
                 }
         }
 
@@ -114,11 +116,12 @@ val OpenId4VpSdJwtProtocolTest by testSuite {
             val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-            it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
-                .shouldBeInstanceOf<AuthnResponseResult.VerifiableDCQLPresentationValidationResults>()
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                 .allValidationResults.values
                 .shouldBeSingleton().first()
-                .shouldBeSingleton().first().shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>().apply {
+                .shouldBeSingleton().first().getOrThrow().shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     verifiableCredentialSdJwt.shouldNotBeNull()
                     requestedClaims.forEach {
                         it.shouldBeIn(reconstructed.keys)

@@ -1,7 +1,5 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.dif.FormatContainerJwt
-import at.asitplus.dif.FormatContainerSdJwt
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.RequestOptionsCredential
@@ -11,6 +9,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
@@ -107,11 +106,12 @@ val OpenId4VpComplexSdJwtProtocolTest by testSuite {
             val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-            it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
-                .shouldBeInstanceOf<AuthnResponseResult.VerifiableDCQLPresentationValidationResults>()
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                 .allValidationResults.values
-                .shouldBeSingleton().first()
-                .shouldBeSingleton().first().shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>().apply {
+                .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     verifiableCredentialSdJwt.shouldNotBeNull()
                     CLAIM_ADDRESS shouldBeIn reconstructed.keys
                     reconstructed[CLAIM_ADDRESS].shouldNotBeNull().jsonObject.apply {
@@ -150,19 +150,20 @@ val OpenId4VpComplexSdJwtProtocolTest by testSuite {
             val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-            it.verifierOid4vp.validateAuthnResponse(authnResponse.url).apply {
-                shouldBeInstanceOf<AuthnResponseResult.VerifiableDCQLPresentationValidationResults>()
-                allValidationResults.values.shouldBeSingleton().first().shouldBeSingleton().first().apply {
-                    shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
-                    verifiableCredentialSdJwt.shouldNotBeNull()
-                    CLAIM_ADDRESS shouldBeIn reconstructed.keys
-                    reconstructed[CLAIM_ADDRESS].shouldNotBeNull().jsonObject.apply {
-                        CLAIM_ADDRESS_REGION shouldBeIn this.keys
-                        this[CLAIM_ADDRESS_COUNTRY].shouldNotBeNull().jsonPrimitive.content shouldBe it.randomCountry
-                        this[CLAIM_ADDRESS_REGION].shouldNotBeNull().jsonPrimitive.content shouldBe it.randomRegion
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow().apply {
+                    shouldBeInstanceOf<VpTokenValidationResultDCQL>()
+                    allValidationResults.values.shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow().apply {
+                        shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+                        verifiableCredentialSdJwt.shouldNotBeNull()
+                        CLAIM_ADDRESS shouldBeIn reconstructed.keys
+                        reconstructed[CLAIM_ADDRESS].shouldNotBeNull().jsonObject.apply {
+                            CLAIM_ADDRESS_REGION shouldBeIn this.keys
+                            this[CLAIM_ADDRESS_COUNTRY].shouldNotBeNull().jsonPrimitive.content shouldBe it.randomCountry
+                            this[CLAIM_ADDRESS_REGION].shouldNotBeNull().jsonPrimitive.content shouldBe it.randomRegion
+                        }
                     }
                 }
-            }
         }
     }
 }

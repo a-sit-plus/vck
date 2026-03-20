@@ -77,7 +77,11 @@ interface Verifier {
             val reconstructedJsonObject: JsonObject,
             val disclosures: Collection<SelectiveDisclosureItem>,
             val freshnessSummary: CredentialFreshnessSummary.SdJwt,
-        ) : VerifyPresentationResult()
+        ) : VerifyPresentationResult() {
+            @Deprecated("Helper for replacing AuthnResponseResult with VerifyPresentationResult", ReplaceWith("reconstructedJsonObject"))
+            val reconstructed
+                get() = reconstructedJsonObject
+        }
 
         data class SuccessIso(
             val documents: List<IsoDocumentParsed>,

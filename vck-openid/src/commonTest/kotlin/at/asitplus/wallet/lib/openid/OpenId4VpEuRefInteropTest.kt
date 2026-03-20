@@ -22,6 +22,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
@@ -36,6 +37,7 @@ import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -379,8 +381,11 @@ val OpenId4VpEuRefInteropTest by testSuite {
             val state = it.holderOid4vp.startAuthorizationResponsePreparation(walletUrl).getOrThrow()
             val response = it.holderOid4vp.finalizeAuthorizationResponse(state).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
-            verifierOid4vp.validateAuthnResponse(response.params.formUrlEncode())
-                .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
+            verifierOid4vp.validateAuthnResponse(response.params.formUrlEncode()).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
+                .inputDescriptorResponseValidations.values.shouldBeSingleton().first().getOrThrow()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
         }
     }
 }
