@@ -19,13 +19,12 @@ import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.CredentialRequestParameters
 import at.asitplus.openid.CredentialRequestProofContainer
 import at.asitplus.openid.CredentialResponseSingleCredential
+import at.asitplus.openid.JwsCompactTyped
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtScheme
@@ -187,21 +186,16 @@ val OidvciCodeFlowTest by testSuite {
             val serializedCredential = credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
 
-            JwsSigned.deserialize<VerifiableCredentialJws>(
-                VerifiableCredentialJws.serializer(),
-                serializedCredential,
-                joseCompliantSerializer
-            ).getOrThrow()
-                .payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
-                .also { credentialSubject ->
-                    shouldNotThrowAny {
-                        Json.decodeFromJsonElement(
-                            at.asitplus.wallet.lib.data.AtomicAttribute2023.serializer(),
-                            credentialSubject
-                        )
-                    }
+            JwsCompactTyped<VerifiableCredentialJws>(
+                serializedCredential
+            ).payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
+                shouldNotThrowAny {
+                    Json.decodeFromJsonElement(
+                        at.asitplus.wallet.lib.data.AtomicAttribute2023.serializer(),
+                        credentialSubject
+                    )
                 }
-
+            }
         }
 
         test("request multiple credentials, using scope") {
@@ -263,11 +257,9 @@ val OidvciCodeFlowTest by testSuite {
                 .credentials.shouldNotBeEmpty().shouldHaveSize(2)
             // subject identifies the key of the client, here the keys of different proofs, so they should be unique
             credentials.map {
-                JwsSigned.deserialize<VerifiableCredentialJws>(
-                    VerifiableCredentialJws.serializer(),
-                    it.credentialString.shouldNotBeNull(),
-                    joseCompliantSerializer
-                ).getOrThrow().payload.subject
+                JwsCompactTyped<VerifiableCredentialJws>(
+                    it.credentialString.shouldNotBeNull()
+                ).payload.subject
             }.toSet().shouldHaveSize(2)
         }
 
@@ -614,10 +606,9 @@ val OidvciCodeFlowTest by testSuite {
     }
 }
 
-private fun String.assertSdJwtReceived(): Int = JwsSigned.deserialize(
-    VerifiableCredentialSdJwt.serializer(),
+private fun String.assertSdJwtReceived(): Int = JwsCompactTyped<VerifiableCredentialSdJwt>(
     substringBefore("~")
-).getOrThrow().payload.disclosureDigests
+).payload.disclosureDigests
     .shouldNotBeNull()
     .size shouldBeGreaterThan 1
 

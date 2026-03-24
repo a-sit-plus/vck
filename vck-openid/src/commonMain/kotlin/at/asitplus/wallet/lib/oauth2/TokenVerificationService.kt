@@ -129,8 +129,7 @@ class JwtTokenVerificationService(
     override suspend fun extractValidatedClientKey(
         httpRequest: RequestInfo?,
     ): KmmResult<JsonWebKey?> = catching {
-        require(httpRequest != null)
-        val dpopProof = parseDpopProof(httpRequest)
+        val dpopProof = parseDpopProof(httpRequest ?: throw InvalidDpopProof("no dpop proof in header"))
         val nonce = dpopProof.payload.nonce
             ?: throw UseDpopNonce(dpopNonceService.provideNonce(), "DPoP JWT nonce is null")
         if (!dpopNonceService.verifyAndRemoveNonce(nonce)) {
@@ -168,11 +167,10 @@ class JwtTokenVerificationService(
         dpopNonceService: NonceService,
         validatedClientKey: JsonWebKey?,
     ) {
-        require(httpRequest != null)
-        val dpopProof = parseDpopProof(httpRequest)
+        val dpopProof = parseDpopProof(httpRequest ?: throw InvalidDpopProof("no dpop proof in header"))
 
-        val jwkThumbprintFromToken = tokenJwt.payload.confirmationClaim!!.jsonWebKeyThumbprint
-        if (tokenJwt.payload.confirmationClaim == null ||
+        val jwkThumbprintFromToken = tokenJwt.payload.confirmationClaim?.jsonWebKeyThumbprint
+        if (jwkThumbprintFromToken == null ||
             dpopProof.jws.jwsHeader.jsonWebKey == null ||
             dpopProof.jws.jwsHeader.jsonWebKey!!.jwkThumbprintPlain != jwkThumbprintFromToken
         ) {

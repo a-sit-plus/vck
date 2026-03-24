@@ -306,7 +306,7 @@ val OpenId4VpEuRefInteropTest by testSuite {
                     responseType = "vp_token",
                 ),
                 AuthenticationRequestParameters.serializer(),
-            ).getOrThrow().serialize()
+            ).getOrThrow().toString()
 
             val wallet = OpenId4VpHolder(
                 remoteResourceRetriever = {

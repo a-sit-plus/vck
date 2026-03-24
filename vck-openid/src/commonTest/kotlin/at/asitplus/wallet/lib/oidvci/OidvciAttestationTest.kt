@@ -13,12 +13,12 @@ package at.asitplus.wallet.lib.oidvci
  */
 
 import at.asitplus.catching
+import at.asitplus.openid.JwsCompactTyped
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.withFixtureGenerator
@@ -108,7 +108,7 @@ val OidvciAttestationTest by testSuite {
                                         this
                                     ) { it, keyMaterial ->
                                         it.copy(
-                                            keyAttestation = unitAttestation.serialize(),
+                                            keyAttestation = unitAttestation.jws,
                                             jsonWebKey = keyMaterial.jsonWebKey
                                         )
                                     }.invoke(
@@ -151,21 +151,16 @@ val OidvciAttestationTest by testSuite {
                     .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
                     .response
 
-                JwsSigned.deserialize(
-                    VerifiableCredentialJws.serializer(),
-                    credential.credentials.shouldNotBeEmpty()
-                        .first().credentialString.shouldNotBeNull(),
-                    joseCompliantSerializer
-                ).getOrThrow()
-                    .payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
-                    .also { credentialSubject ->
-                        shouldNotThrowAny {
-                            Json.decodeFromJsonElement(
-                                AtomicAttribute2023.serializer(),
-                                credentialSubject
-                            )
-                        }
+                JwsCompactTyped<VerifiableCredentialJws>(
+                    credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
+                ).payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
+                    shouldNotThrowAny {
+                        Json.decodeFromJsonElement(
+                            AtomicAttribute2023.serializer(),
+                            credentialSubject
+                        )
                     }
+                }
             }
         }
 

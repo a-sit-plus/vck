@@ -14,10 +14,9 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
+import at.asitplus.openid.JwsCompactTyped
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenResponseParameters
-import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
@@ -110,12 +109,9 @@ val OidvciSameScopeTest by testSuite {
             val serializedCredential = credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
 
-            JwsSigned.deserialize<VerifiableCredentialJws>(
-                VerifiableCredentialJws.serializer(),
-                serializedCredential,
-                joseCompliantSerializer
-            ).getOrThrow()
-                .payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
+            JwsCompactTyped<VerifiableCredentialJws>(
+                serializedCredential
+            ).payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
         }
 
         test("request multiple credentials, using scope") {
@@ -151,9 +147,8 @@ val OidvciSameScopeTest by testSuite {
 }
 
 private fun String.assertSdJwtReceived(): Int =
-    JwsSigned.deserialize(
-        VerifiableCredentialSdJwt.serializer(),
+    JwsCompactTyped<VerifiableCredentialSdJwt>(
         substringBefore("~")
-    ).getOrThrow().payload.disclosureDigests
+    ).payload.disclosureDigests
         .shouldNotBeNull()
         .size shouldBeGreaterThan 1
