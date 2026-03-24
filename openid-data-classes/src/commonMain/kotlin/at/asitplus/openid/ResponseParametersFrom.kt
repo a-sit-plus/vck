@@ -1,10 +1,7 @@
 package at.asitplus.openid
 
 import at.asitplus.dcapi.OpenId4VpResponse
-import at.asitplus.dcapi.request.ExchangeProtocolIdentifier
 import io.ktor.http.*
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 
 /**
  * Intermediate class to transport the source of parsed [AuthenticationResponseParameters]
@@ -16,7 +13,7 @@ sealed class ResponseParametersFrom {
     abstract val hasBeenEncrypted: Boolean
 
     data class JwsSigned(
-        val jwsSigned: at.asitplus.signum.indispensable.josef.JwsSigned<AuthenticationResponseParameters>,
+        val jwsSigned: JwsCompactTyped<AuthenticationResponseParameters>,
         val parent: ResponseParametersFrom,
         override val parameters: AuthenticationResponseParameters,
         override val clientIdRequired: Boolean,
@@ -29,7 +26,7 @@ sealed class ResponseParametersFrom {
         val parent: ResponseParametersFrom,
         override val parameters: AuthenticationResponseParameters,
         override val clientIdRequired: Boolean,
-        ) : ResponseParametersFrom() {
+    ) : ResponseParametersFrom() {
         override val hasBeenEncrypted: Boolean = true
     }
 
