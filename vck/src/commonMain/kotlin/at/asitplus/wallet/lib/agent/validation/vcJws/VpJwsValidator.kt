@@ -14,8 +14,8 @@ package at.asitplus.wallet.lib.agent.validation.vcJws
  * see the "LICENSE" file for more details
  */
 
+import at.asitplus.openid.JwsCompactTyped
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.matchesIdentifier
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import io.github.aakira.napier.Napier
@@ -23,7 +23,7 @@ import io.github.aakira.napier.Napier
 class VpJwsValidator {
     operator fun invoke(
         publicKey: CryptoPublicKey?,
-        vpJws: JwsSigned<VerifiablePresentationJws>,
+        vpJws: JwsCompactTyped<VerifiablePresentationJws>,
     ) = VpJwsValidationSummary(
         inconsistentIssuerError =
             if (!(publicKey?.matchesIdentifier(vpJws.payload.issuer) ?: false)) {

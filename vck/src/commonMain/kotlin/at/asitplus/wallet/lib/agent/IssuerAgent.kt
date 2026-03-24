@@ -20,6 +20,7 @@ import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.ValidityInfo
 import at.asitplus.iso.ValueDigest
 import at.asitplus.iso.ValueDigestList
+import at.asitplus.openid.JwsCompactTyped
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.toCoseKey
@@ -188,7 +189,7 @@ class IssuerAgent(
         Napier.i("issueVc: $vcInJws")
         return Issuer.IssuedCredential.VcJwt(
             vc = vc,
-            signedVcJws = vcInJws,
+            signedVcJws = JwsCompactTyped<VerifiableCredentialJws>(vcInJws),
             scheme = credential.scheme,
             subjectPublicKey = credential.subjectPublicKey,
             userInfo = credential.userInfo,
