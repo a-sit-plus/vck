@@ -13,7 +13,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
@@ -220,11 +219,9 @@ val OidvciPreAuthTest by testSuite {
                 .shouldHaveSize(2)
             // subject identifies the key of the client, here the keys of different proofs, so they should be unique
             credentials.map {
-                JwsCompact.deserialize<VerifiableCredentialJws>(
-                    VerifiableCredentialJws.serializer(),
+                JwsCompact.parse<VerifiableCredentialJws>(
                     it.credentialString.shouldNotBeNull(),
-                    vckJsonSerializer
-                ).getOrThrow().payload.subject
+                ).getOrThrow().second.subject
             }.toSet().shouldHaveSize(2)
         }
 

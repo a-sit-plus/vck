@@ -62,12 +62,12 @@ class ClientAuthenticationService(
                 throw InvalidClient("client attestation not verified")
             }
 
-            val (instanceAttestationPopJwt, popPayload) = JwsCompact.parse<JsonWebToken>(httpRequest.clientAttestationPop)
+            val (instanceAttestationPopJwt, _) = JwsCompact.parse<JsonWebToken>(httpRequest.clientAttestationPop)
                 .getOrElse {
                     throw InvalidClient("could not parse client attestation PoP", it)
                 }
 
-            val cnf = popPayload.confirmationClaim
+            val cnf = attestationPayload.confirmationClaim
                 ?: throw InvalidClient("client attestation has no cnf")
             if (!verifyJwsSignatureWithCnf(instanceAttestationPopJwt, cnf)) {
                 throw InvalidClient("client attestation PoP JWT not verified")

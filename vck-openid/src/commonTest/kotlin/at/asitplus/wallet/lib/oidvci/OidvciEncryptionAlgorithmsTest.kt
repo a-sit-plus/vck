@@ -24,6 +24,7 @@ import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
@@ -119,7 +120,8 @@ val OidvciEncryptionAlgorithmsTest by testSuite {
                 }
                 it.client.parseCredentialResponse(this, PLAIN_JWT, ConstantIndex.AtomicAttribute2023)
                     .getOrThrow().first().shouldBeInstanceOf<Holder.StoreCredentialInput.Vc>().apply {
-                        signedVcJws.payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
+                        signedVcJws.getPayload<VerifiableCredentialJws>()
+                            .getOrThrow().vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
                             .also { credentialSubject ->
                                 shouldNotThrowAny {
                                     Json.decodeFromJsonElement(AtomicAttribute2023.serializer(), credentialSubject)
@@ -157,7 +159,8 @@ val OidvciEncryptionAlgorithmsTest by testSuite {
                 }
                 it.client.parseCredentialResponse(this, PLAIN_JWT, ConstantIndex.AtomicAttribute2023)
                     .getOrThrow().first().shouldBeInstanceOf<Holder.StoreCredentialInput.Vc>().apply {
-                        signedVcJws.payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
+                        signedVcJws.getPayload<VerifiableCredentialJws>()
+                            .getOrThrow().vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
                             .also { credentialSubject ->
                                 shouldNotThrowAny {
                                     Json.decodeFromJsonElement(AtomicAttribute2023.serializer(), credentialSubject)
