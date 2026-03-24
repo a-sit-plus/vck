@@ -1,13 +1,14 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.openid.JwsCompactTyped
+
 
 /**
  * Intermediate class used by [at.asitplus.wallet.lib.agent.ValidatorVcJws.verifyVpJws] when parsing a verifiable
  * presentation, and also by [at.asitplus.wallet.lib.agent.VerifierAgent.verifyPresentationVcJwt].
  */
 data class VerifiablePresentationParsed(
-    val jws: JwsSigned<VerifiablePresentationJws>,
+    val jws: JwsCompactTyped<VerifiablePresentationJws>,
     val id: String,
     val type: String,
     val freshVerifiableCredentials: Collection<VcJwsVerificationResultWrapper> = listOf(),

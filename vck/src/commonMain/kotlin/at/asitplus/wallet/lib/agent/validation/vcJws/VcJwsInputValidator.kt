@@ -13,13 +13,13 @@ package at.asitplus.wallet.lib.agent.validation.vcJws
  * see the "LICENSE" file for more details
  */
 
+import at.asitplus.catching
+import at.asitplus.openid.JwsCompactTyped
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.matchesIdentifier
 import at.asitplus.wallet.lib.agent.validation.common.SubjectMatchingResult
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 
@@ -31,21 +31,16 @@ data class VcJwsInputValidator(
     suspend operator fun invoke(
         input: String,
         publicKey: CryptoPublicKey?,
-        vpJws: JwsSigned<VerifiablePresentationJws>?,
+        vpJws: JwsCompactTyped<VerifiablePresentationJws>?,
     ): VcJwsInputValidationResult {
-        val jws = JwsSigned.deserialize<VerifiableCredentialJws>(
-            VerifiableCredentialJws.serializer(),
-            input,
-            vckJsonSerializer
-        ).getOrElse {
-            return VcJwsInputValidationResult.ParsingError(input, it)
-        }
+        val jws = catching { JwsCompactTyped<VerifiableCredentialJws>(input) }
+            .getOrElse { return VcJwsInputValidationResult.ParsingError(input, it) }
         val vcJws = jws.payload
 
         return VcJwsInputValidationResult.ContentValidationSummary(
             input = input,
             parsed = jws,
-            isIntegrityGood = verifyJwsObject(jws).isSuccess,
+            isIntegrityGood = verifyJwsObject(jws.jws).isSuccess,
             subjectMatchingResult =
                 vcJws.subject?.let { subject ->
                     publicKey?.let {
