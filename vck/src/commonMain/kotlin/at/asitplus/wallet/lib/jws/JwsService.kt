@@ -6,7 +6,6 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.KeyAgreementPrivateValue
 import at.asitplus.signum.indispensable.asn1.encoding.encodeTo4Bytes
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
@@ -16,10 +15,9 @@ import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsExtensions.prependWith4BytesSize
 import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.signum.indispensable.josef.JwsSigned.Companion.prepareJwsSignatureInput
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.jsonWebKeyBytes
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
@@ -56,7 +54,6 @@ import at.asitplus.wallet.lib.agent.PublishedKeyMaterial
 import at.asitplus.wallet.lib.agent.VerifySignature
 import at.asitplus.wallet.lib.agent.VerifySignatureFun
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
 import kotlinx.serialization.SerializationStrategy
 import kotlin.io.encoding.Base64
 
@@ -96,26 +93,26 @@ class JwsHeaderNone : JwsHeaderIdentifierFun {
     ) = it
 }
 
-/** Create a [JwsSigned], setting [JwsHeader.type] to the specified value */
+/** Create a [JwsCompact], setting [JwsHeader.type] to the specified value */
 fun interface SignJwtFun<P : Any> {
     suspend operator fun invoke(
         type: String?,
         payload: P,
         serializer: SerializationStrategy<P>,
-    ): KmmResult<JwsSigned<P>>
+    ): KmmResult<JwsCompact>
 }
 
-/** Create a [JwsSigned], setting [JwsHeader.type] to the specified value, applying the header modifier. */
+/** Create a [JwsCompact], setting [JwsHeader.type] to the specified value, applying the header modifier. */
 fun interface SignJwtExtFun<P : Any> {
     suspend operator fun invoke(
         type: String?,
         payload: P,
         serializer: SerializationStrategy<P>,
         additionalHeaderModifier: JwsHeaderModifierFun,
-    ): KmmResult<JwsSigned<P>>
+    ): KmmResult<JwsCompact>
 }
 
-/** Create a [JwsSigned], setting [JwsHeader.type] to the specified value and applying [JwsHeaderIdentifierFun]. */
+/** Create a [JwsCompact], setting [JwsHeader.type] to the specified value and applying [JwsHeaderIdentifierFun]. */
 class SignJwt<P : Any>(
     val keyMaterial: KeyMaterial,
     val headerModifier: JwsHeaderIdentifierFun,
@@ -124,20 +121,22 @@ class SignJwt<P : Any>(
         type: String?,
         payload: P,
         serializer: SerializationStrategy<P>,
-    ): KmmResult<JwsSigned<P>> = catching {
+    ): KmmResult<JwsCompact> = catching {
         val header = JwsHeader(
             algorithm = keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
             type = type,
         ).let {
             headerModifier(it, keyMaterial)
         }
-        val plainSignatureInput = prepareJwsSignatureInput(header, payload, serializer, vckJsonSerializer)
-        val signature = keyMaterial.sign(plainSignatureInput).asKmmResult().getOrThrow()
-        JwsSigned(header, payload, signature, plainSignatureInput)
+        JwsCompact(
+            protectedHeader = header,
+            payload = vckJsonSerializer.encodeToString(serializer, payload).encodeToByteArray(),
+            signer = { keyMaterial.sign(it).asKmmResult().getOrThrow().rawByteArray }
+        )
     }
 }
 
-/** Create a [JwsSigned], setting [JwsHeader.type] to the specified value and applying [JwsHeaderIdentifierFun]. */
+/** Create a [JwsCompact], setting [JwsHeader.type] to the specified value and applying [JwsHeaderIdentifierFun]. */
 class SignJwtExt<P : Any>(
     val keyMaterial: KeyMaterial,
     val headerModifier: JwsHeaderIdentifierFun,
@@ -147,7 +146,7 @@ class SignJwtExt<P : Any>(
         payload: P,
         serializer: SerializationStrategy<P>,
         additionalHeaderModifier: JwsHeaderModifierFun,
-    ): KmmResult<JwsSigned<P>> = catching {
+    ): KmmResult<JwsCompact> = catching {
         val header = JwsHeader(
             algorithm = keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
             type = type,
@@ -156,9 +155,11 @@ class SignJwtExt<P : Any>(
         }.let {
             additionalHeaderModifier(it)
         }
-        val plainSignatureInput = prepareJwsSignatureInput(header, payload, serializer, vckJsonSerializer)
-        val signature = keyMaterial.sign(plainSignatureInput).asKmmResult().getOrThrow()
-        JwsSigned(header, payload, signature, plainSignatureInput)
+        JwsCompact(
+            protectedHeader = header,
+            payload = vckJsonSerializer.encodeToString(serializer, payload).encodeToByteArray(),
+            signer = { keyMaterial.sign(it).asKmmResult().getOrThrow().rawByteArray }
+        )
     }
 }
 
@@ -466,11 +467,11 @@ fun interface JwkSetRetrieverFunction {
 }
 
 /**
- * Clients get the parsed [JwsSigned] and need to provide a set of keys, which will be used for verification one-by-one.
+ * Clients get the parsed [JwsCompact] and need to provide a set of keys, which will be used for verification one-by-one.
  */
 fun interface PublicJsonWebKeyLookup {
     suspend operator fun invoke(
-        jwsObject: JwsSigned<*>,
+        jwsObject: JwsCompact,
     ): Set<JsonWebKey>?
 }
 
@@ -479,13 +480,13 @@ fun interface PublicJsonWebKeyLookup {
  */
 fun interface TrustStoreLookup {
     suspend operator fun invoke(
-        jwsObject: JwsSigned<*>,
+        jwsObject: JwsCompact,
     ): Set<X509Certificate>?
 }
 
 fun interface VerifyJwsSignatureFun {
     suspend operator fun invoke(
-        jwsObject: JwsSigned<*>,
+        jwsObject: JwsCompact,
         publicKey: CryptoPublicKey,
     ): KmmResult<Verifier.Success>
 }
@@ -498,13 +499,13 @@ class VerifyJwsSignature(
     val verifySignature: VerifySignatureFun = VerifySignature(),
 ) : VerifyJwsSignatureFun {
     override suspend operator fun invoke(
-        jwsObject: JwsSigned<*>,
+        jwsObject: JwsCompact,
         publicKey: CryptoPublicKey,
     ) = catching {
-        val jwsAlgorithm = jwsObject.header.algorithm
+        val jwsAlgorithm = jwsObject.jwsHeader.algorithm
         require(jwsAlgorithm is JwsAlgorithm.Signature) { "Algorithm not supported: $jwsAlgorithm" }
         verifySignature(
-            jwsObject.plainSignatureInput,
+            jwsObject.signatureInput,
             jwsObject.signature,
             jwsAlgorithm.algorithm,
             publicKey,
@@ -514,7 +515,7 @@ class VerifyJwsSignature(
 
 fun interface VerifyJwsSignatureWithKeyFun {
     suspend operator fun invoke(
-        jwsObject: JwsSigned<*>,
+        jwsObject: JwsCompact,
         signer: JsonWebKey,
     ): KmmResult<Verifier.Success>
 }
@@ -527,14 +528,14 @@ class VerifyJwsSignatureWithKey(
     val verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(),
 ) : VerifyJwsSignatureWithKeyFun {
     override suspend operator fun invoke(
-        jwsObject: JwsSigned<*>,
+        jwsObject: JwsCompact,
         signer: JsonWebKey,
     ) = verifyJwsSignature(jwsObject, signer.toCryptoPublicKey().getOrThrow())
 }
 
 fun interface VerifyJwsSignatureWithCnfFun {
     suspend operator fun invoke(
-        jwsObject: JwsSigned<*>,
+        jwsObject: JwsCompact,
         cnf: ConfirmationClaim,
     ): Boolean
 }
@@ -552,7 +553,7 @@ class VerifyJwsSignatureWithCnf(
     val jwkSetRetriever: JwkSetRetrieverFunction = JwkSetRetrieverFunction { null },
 ) : VerifyJwsSignatureWithCnfFun {
     override suspend operator fun invoke(
-        jwsObject: JwsSigned<*>,
+        jwsObject: JwsCompact,
         cnf: ConfirmationClaim,
     ) = cnf.loadPublicKeys().any { verifyJwsSignature(jwsObject, it).isSuccess }
 
@@ -590,9 +591,9 @@ class VerifyStatusListTokenHAIP(
     val trustStoreLookup: TrustStoreLookup = TrustStoreLookup { null },
 ) : VerifyJwsObjectFun {
 
-    override suspend operator fun invoke(jwsObject: JwsSigned<*>) = catching {
+    override suspend operator fun invoke(jwsObject: JwsCompact) = catching {
         val trustStore: Set<X509Certificate>? = trustStoreLookup(jwsObject)
-        val certChain: CertificateChain? = jwsObject.header.certificateChain
+        val certChain: CertificateChain? = jwsObject.jwsHeader.certificateChain
         val signingCert: X509Certificate = certChain?.first() ?: throw Exception("Certificate Chain MUST not be empty")
         signingCert.decodedPublicKey.getOrThrow().let { key ->
             require(verifyJwsSignature(jwsObject, key).isSuccess) { "Invalid Signature" }
@@ -629,7 +630,7 @@ class VerifyStatusListTokenHAIP(
 
 fun interface VerifyJwsObjectFun {
     suspend operator fun invoke(
-        jwsObject: JwsSigned<*>,
+        jwsObject: JwsCompact,
     ): KmmResult<Verifier.Success>
 }
 
@@ -647,7 +648,7 @@ class VerifyJwsObject(
     /** Need to implement if valid keys for JWS are transported somehow out-of-band, e.g. provided by a trust store */
     val publicKeyLookup: PublicJsonWebKeyLookup = PublicJsonWebKeyLookup { null },
 ) : VerifyJwsObjectFun {
-    override suspend operator fun invoke(jwsObject: JwsSigned<*>) = catching {
+    override suspend operator fun invoke(jwsObject: JwsCompact) = catching {
         require(jwsObject.loadPublicKeys().any { verifyJwsSignature(jwsObject, it).isSuccess }) {
             "Invalid Signature"
         }
@@ -655,14 +656,14 @@ class VerifyJwsObject(
     }
 
     /**
-     * Returns a list of public keys that may have been used to sign this [JwsSigned]
+     * Returns a list of public keys that may have been used to sign this [JwsCompact]
      * by evaluating its header values (see [JwsHeader.jsonWebKey], [JwsHeader.jsonWebKeySetUrl])
      * as well as out-of-band transmitted keys from [publicKeyLookup].
      */
-    private suspend fun JwsSigned<*>.loadPublicKeys(): Set<CryptoPublicKey> =
-        header.publicKey?.let { setOf(it) }
-            ?: header.jsonWebKeySetUrl?.let {
-                retrieveJwkFromKeySetUrl(it, header.keyId)?.let { setOf(it) }
+    private suspend fun JwsCompact.loadPublicKeys(): Set<CryptoPublicKey> =
+        jwsHeader.publicKey?.let { setOf(it) }
+            ?: jwsHeader.jsonWebKeySetUrl?.let {
+                retrieveJwkFromKeySetUrl(it, jwsHeader.keyId)?.let { setOf(it) }
             } ?: publicKeyLookup(this)?.mapNotNull { jwk -> jwk.toCryptoPublicKey().getOrNull() }?.toSet()
             ?: setOf()
 
