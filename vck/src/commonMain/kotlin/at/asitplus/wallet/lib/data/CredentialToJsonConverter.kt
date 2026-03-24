@@ -10,6 +10,7 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -24,9 +25,6 @@ private const val SD_JWT_VC_TYPE = "vct"
  */
 object CredentialToJsonConverter {
 
-    /**
-     * The result is used in [at.asitplus.wallet.lib.data.dif.PresentationExchangeInputEvaluator.evaluateConstraintFieldMatches]
-     */
     fun toJsonElement(credential: SubjectCredentialStore.StoreEntry): JsonElement = when (credential) {
         is SubjectCredentialStore.StoreEntry.Vc -> buildJsonObject {
             put("type", JsonPrimitive(credential.scheme?.vcType))
@@ -43,7 +41,7 @@ object CredentialToJsonConverter {
 
         is SubjectCredentialStore.StoreEntry.SdJwt -> {
             val sdJwtSigned = SdJwtSigned.parseCatching(credential.vcSerialized).getOrNull()
-            val payloadVc = sdJwtSigned?.getPayloadAsJsonObject()?.getOrNull()
+            val payloadVc = sdJwtSigned?.jws?.getPayload<JsonObject>()?.getOrNull()
             val reconstructed = sdJwtSigned?.let { SdJwtDecoded(it).reconstructedJsonObject }
             val simpleDisclosureMap = credential.disclosures.map { entry ->
                 entry.value?.let { it.claimName to it.claimValue }
