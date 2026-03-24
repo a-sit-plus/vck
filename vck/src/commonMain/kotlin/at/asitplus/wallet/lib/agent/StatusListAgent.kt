@@ -75,8 +75,6 @@ class StatusListAgent(
                 payload = buildStatusListTokenPayload(time.toTimePeriod(), RevocationList.Kind.STATUS_LIST),
                 serializer = StatusListTokenPayload.serializer(),
             )
-        }.mapCatching {
-            JwsCompactTyped<StatusListTokenPayload>(it)
         }.getOrElse {
             throw IllegalStateException("Status token could not be created.", it)
         }
