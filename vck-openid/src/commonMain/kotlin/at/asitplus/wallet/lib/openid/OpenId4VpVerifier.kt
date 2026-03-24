@@ -24,6 +24,7 @@ import at.asitplus.openid.IdTokenType
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.JarRequestParameters.RequestUriMethod
 import at.asitplus.openid.JarRequestParameters.RequestUriMethod.GET
+import at.asitplus.openid.JwsCompactTyped
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestObjectParameters
@@ -46,8 +47,6 @@ import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.AbstractMdocVerifier
@@ -268,7 +267,7 @@ class OpenId4VpVerifier(
                 URLBuilder(creationOptions.walletUrl).apply {
                     JarRequestParameters(
                         clientId = clientIdScheme.clientId,
-                        request = createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow().serialize(),
+                        request = createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow().toString(),
                     ).encodeToParameters()
                         .forEach { parameters.append(it.key, it.value) }
                 }.buildString().toCreatedRequest()
@@ -286,7 +285,7 @@ class OpenId4VpVerifier(
                 }.buildString()
                     .toCreatedRequest {
                         catching {
-                            createAuthnRequestAsSignedRequestObject(requestOptions, it).getOrThrow().serialize()
+                            createAuthnRequestAsSignedRequestObject(requestOptions, it).getOrThrow().toString()
                         }
                     }
             }
@@ -315,7 +314,7 @@ class OpenId4VpVerifier(
     suspend fun createAuthnRequestAsSignedRequestObject(
         requestOptions: OpenId4VpRequestOptions,
         requestObjectParameters: RequestObjectParameters? = null,
-    ): KmmResult<JwsSigned<AuthenticationRequestParameters>> = catching {
+    ): KmmResult<JwsCompactTyped<AuthenticationRequestParameters>> = catching {
         val requestObject = createAuthnRequest(requestOptions, requestObjectParameters)
         val siopClientId = "https://self-issued.me/v2"
         val issuer = when (clientIdScheme) {
@@ -550,9 +549,9 @@ class OpenId4VpVerifier(
     ): KmmResult<IdToken> = catching {
         val idTokenJws = input.parameters.idToken
             ?: throw IllegalArgumentException("idToken")
-        val jwsSigned = JwsSigned.deserialize(IdToken.serializer(), idTokenJws, joseCompliantSerializer)
+        val jwsSigned = catching { JwsCompactTyped<IdToken>(idTokenJws) }
             .getOrElse { throw IllegalArgumentException("idToken", it) }
-        verifyJwsObject(jwsSigned).getOrElse {
+        verifyJwsObject(jwsSigned.jws).getOrElse {
             throw IllegalArgumentException("idToken.", it)
                 .also { Napier.w { "JWS of idToken not verified: $idTokenJws" } }
         }
@@ -713,11 +712,9 @@ class OpenId4VpVerifier(
 
             ClaimFormat.JWT_VP -> if (requireCryptographicHolderBinding != false) {
                 verifier.verifyPresentationVcJwt(
-                    input = JwsSigned.deserialize(
-                        VerifiablePresentationJws.serializer(),
-                        relatedPresentation.extractContent(),
-                        joseCompliantSerializer
-                    ).getOrThrow(),
+                    input = JwsCompactTyped<VerifiablePresentationJws>(
+                        relatedPresentation.extractContent()
+                ),
                     challenge = expectedNonce
                 )
             } else {
@@ -848,7 +845,7 @@ class JwsHeaderClientIdScheme(val clientIdScheme: ClientIdScheme) : JwsHeaderIde
         is ClientIdScheme.CertificateSanDns -> it.copy(certificateChain = clientIdScheme.chain)
         is ClientIdScheme.VerifierAttestation -> it.copy(
             jsonWebKey = keyMaterial.jsonWebKey,
-            attestationJwt = clientIdScheme.attestationJwt.serialize()
+            attestationJwt = clientIdScheme.attestationJwt.jws
         )
 
         else -> it.copy(jsonWebKey = keyMaterial.jsonWebKey)
