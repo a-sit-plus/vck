@@ -16,6 +16,7 @@ package at.asitplus.wallet.lib.procedures.dcql
  * see the "LICENSE" file for more details
  */
 
+import at.asitplus.openid.JwsCompactTyped
 import at.asitplus.openid.dcql.DCQLAuthorityKeyIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialClaimStructure
 import at.asitplus.openid.dcql.DCQLIsoMdocCredential
@@ -36,8 +37,6 @@ import at.asitplus.signum.indispensable.asn1.authorityKeyIdentifier_2_5_29_35
 import at.asitplus.signum.indispensable.asn1.decodeRethrowing
 import at.asitplus.signum.indispensable.asn1.encoding.Asn1
 import at.asitplus.signum.indispensable.asn1.encoding.decode
-import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.agent.Verifier
@@ -192,7 +191,7 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
         satisfiesCryptographicHolderBinding = sdJwt.confirmationClaim != null,
         authorityKeyIdentifiers = SdJwtSigned.parseCatching(
             vcSerialized
-        ).getOrThrow().jws.header.certificateChain?.flatMap {
+        ).getOrThrow().jws.jwsHeader.certificateChain?.flatMap {
             it.getAuthorityKeyIdentifier()
         } ?: listOf(),
         type = scheme!!.sdJwtType!!
@@ -203,11 +202,9 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
             CredentialToJsonConverter.toJsonElement(this.vc)
         ),
         satisfiesCryptographicHolderBinding = !vc.subject.isNullOrEmpty(),
-        authorityKeyIdentifiers = JwsSigned.deserialize(
-            VerifiableCredentialJws.serializer(),
-            vcSerialized,
-            joseCompliantSerializer
-        ).getOrThrow().header.certificateChain?.flatMap {
+        authorityKeyIdentifiers = JwsCompactTyped<VerifiableCredentialJws>(
+            vcSerialized
+        ).jws.jwsHeader.certificateChain?.flatMap {
             it.getAuthorityKeyIdentifier()
         } ?: listOf(),
         types = vc.vc.type,

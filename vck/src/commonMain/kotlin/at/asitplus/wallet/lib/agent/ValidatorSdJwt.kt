@@ -62,11 +62,11 @@ class ValidatorSdJwt(
         }
         sdJwtResult.sdJwtSigned.keyBindingJws?.also { keyBindingSigned ->
             vcSdJwt.confirmationClaim?.let {
-                if (!verifyJwsSignatureWithCnf(keyBindingSigned, it)) {
+                if (!verifyJwsSignatureWithCnf(keyBindingSigned.jws, it)) {
                     throw Throwable("Key binding JWT not verified (from cnf)")
                 }
             } ?: run {
-                verifyJwsObject(keyBindingSigned).getOrElse {
+                verifyJwsObject(keyBindingSigned.jws).getOrElse {
                     throw Throwable("Key binding JWT not verified. $it")
                 }
             }
