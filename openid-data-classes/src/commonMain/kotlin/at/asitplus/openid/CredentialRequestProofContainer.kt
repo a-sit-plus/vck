@@ -1,9 +1,9 @@
 package at.asitplus.openid
 
 import at.asitplus.signum.indispensable.josef.JsonWebToken
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.signum.indispensable.josef.JwsCompactStringSerializer
 import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -16,7 +16,7 @@ data class CredentialRequestProofContainer(
      * See [jwtParsed].
      */
     @SerialName("jwt")
-    val jwt: Set<String>? = null,
+    val jwt: Set<@Serializable(JwsCompactStringSerializer::class) JwsCompact>? = null,
 
     /**
      * A JWT [RFC7519](https://datatracker.ietf.org/doc/html/rfc7519) representing a key attestation without using a
@@ -26,18 +26,18 @@ data class CredentialRequestProofContainer(
      * See [attestationParsed].
      */
     @SerialName("attestation")
-    val attestation: Set<String>? = null,
+    val attestation: Set<@Serializable(JwsCompactStringSerializer::class) JwsCompact>? = null,
 ) {
 
-    val jwtParsed: Collection<JwsSigned<JsonWebToken>>? by lazy {
+    val jwtParsed: Collection<JwsCompactTyped<JsonWebToken>>? by lazy {
         jwt?.mapNotNull {
-            JwsSigned.deserialize<JsonWebToken>(JsonWebToken.serializer(), it, joseCompliantSerializer).getOrNull()
+            runCatching { JwsCompactTyped<JsonWebToken>(it) }.getOrNull()
         }
     }
 
-    val attestationParsed: Collection<JwsSigned<KeyAttestationJwt>>? by lazy {
+    val attestationParsed: Collection<JwsCompactTyped<KeyAttestationJwt>>? by lazy {
         attestation?.mapNotNull {
-            JwsSigned.deserialize<KeyAttestationJwt>(KeyAttestationJwt.serializer(), it, joseCompliantSerializer).getOrNull()
+            runCatching { JwsCompactTyped<KeyAttestationJwt>(it) }.getOrNull()
         }
     }
 }
