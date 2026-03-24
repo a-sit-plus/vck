@@ -15,6 +15,8 @@ data class JwsCompactTyped<P>(
     val jws: JwsCompact,
     val payload: P,
 ) {
+    override fun toString(): String = jws.toString()
+
     companion object {
         inline operator fun <reified P> invoke(jws: JwsCompact) =
             JwsCompactTyped(jws, jws.getPayload<P>().getOrThrow())
