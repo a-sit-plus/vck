@@ -6,6 +6,7 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.lib.agent.SdJwtDecoded
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
@@ -23,7 +24,7 @@ data class SdJwtInputValidator(
         sdJwtSigned: SdJwtSigned,
         publicKey: CryptoPublicKey?,
     ): SdJwtInputValidationResult {
-        val payloadCredentialValidationSummary = sdJwtSigned.getPayloadAsVerifiableCredentialSdJwt().map { sdJwt ->
+        val payloadCredentialValidationSummary = sdJwtSigned.jws.getPayload<VerifiableCredentialSdJwt>().map { sdJwt ->
             SdJwtCredentialPayloadValidationSummary(
                 verifiableCredentialSdJwt = sdJwt,
                 confirmationClaimMatchingResult = publicKey?.let {
