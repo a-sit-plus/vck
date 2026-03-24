@@ -5,7 +5,6 @@ import at.asitplus.catching
 import at.asitplus.openid.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.wallet.lib.data.KeyBindingJws
-import kotlinx.serialization.json.JsonElement
 
 /**
  * Representation of a signed SD-JWT,
