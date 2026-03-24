@@ -25,7 +25,6 @@ data class JwsCompactTyped<P>(
             JwsCompact.parse<P>(base64UrlString).getOrThrow()
                 .let { (jws, payload) -> JwsCompactTyped(jws, payload) }
 
-        //TODO test if this needs to be changed to vckJsonSerializer or serializersModule works just fine
         suspend inline operator fun <reified P> invoke(
             protectedHeader: JwsHeader,
             payload: P,

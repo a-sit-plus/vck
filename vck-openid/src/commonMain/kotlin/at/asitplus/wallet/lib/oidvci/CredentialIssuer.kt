@@ -7,13 +7,13 @@ import at.asitplus.openid.ClientNonceResponse
 import at.asitplus.openid.CredentialRequestParameters
 import at.asitplus.openid.CredentialResponseParameters
 import at.asitplus.openid.IssuerMetadata
+import at.asitplus.openid.JwsCompactTyped
 import at.asitplus.openid.JwtVcIssuerMetadata
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweEncrypted
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.KeyMaterial
@@ -85,7 +85,7 @@ class CredentialIssuer(
             }.isSuccess
 
             val signatureValid = runCatching {
-                VerifyJwsObject().verifyJwsSignature(it, it.header.publicKey!!).isSuccess
+                VerifyJwsObject().verifyJwsSignature(it.jws, it.jws.jwsHeader.publicKey!!).isSuccess
             }.getOrDefault(false)
 
             return@ProofValidator (tokenStatusValid && signatureValid)
@@ -159,7 +159,7 @@ class CredentialIssuer(
      * Use this only when the client accepts (see `Accept` header [io.ktor.http.HttpHeaders.Accept]) the media type
      * `application/jwt` (see [at.asitplus.wallet.lib.data.MediaTypes.Application.JWT]), otherwise serve [metadata].
      */
-    suspend fun signedMetadata(): KmmResult<JwsSigned<IssuerMetadata>> =
+    suspend fun signedMetadata(): KmmResult<JwsCompactTyped<IssuerMetadata>> =
         signMetadata(null, metadata, IssuerMetadata.serializer())
 
     /**
