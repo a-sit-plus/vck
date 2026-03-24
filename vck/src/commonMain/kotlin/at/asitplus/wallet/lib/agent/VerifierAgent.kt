@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.catching
 import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.Document
 import at.asitplus.iso.MobileSecurityObject
@@ -50,12 +49,12 @@ class VerifierAgent(
 
     override suspend fun verifyUnsignedVcJws(
         input: String
-    ): KmmResult<VerifyPresentationResult.SuccessUnsignedVcJws> = validatorVcJws.verifyVcJws(
+    ): KmmResult<VerifyPresentationResult.SuccessUnsigned> = validatorVcJws.verifyVcJws(
         input = input,
         publicKey = null,
         vpJws = null
     ).map { jws ->
-        VerifyPresentationResult.SuccessUnsignedVcJws(
+        VerifyPresentationResult.SuccessUnsigned(
             VcJwsVerificationResultWrapper(
                 vcJws = jws.jws,
                 freshnessSummary = validatorVcJws.checkCredentialFreshness(jws.jws),

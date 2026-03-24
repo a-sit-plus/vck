@@ -695,7 +695,7 @@ class OpenId4VpVerifier(
                 verifier.verifyUnsignedVcJws(
                     input = relatedPresentation.extractContent()
                 ).map {
-                    VerifyPresentationResult.SuccessUnsignedVcJws(it.vc)
+                    VerifyPresentationResult.SuccessUnsigned(it.vc)
                 }
             }
 

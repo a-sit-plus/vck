@@ -495,7 +495,7 @@ private fun Verifier.VerifyPresentationResult.containsAllAttributes(
     is Verifier.VerifyPresentationResult.SuccessIso -> containsAllAttributes(attributes)
     is Verifier.VerifyPresentationResult.SuccessSdJwt -> containsAllAttributes(attributes)
     is Verifier.VerifyPresentationResult.Success -> false
-    is Verifier.VerifyPresentationResult.SuccessUnsignedVcJws -> false
+    is Verifier.VerifyPresentationResult.SuccessUnsigned -> false
 }
 
 private fun Verifier.VerifyPresentationResult.SuccessSdJwt.containsAllAttributes(attributes: Map<String, String>): Boolean =
