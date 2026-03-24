@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.oauth2
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 
@@ -26,14 +25,11 @@ class JwtTokenService(
         request: RequestInfo?,
     ): ValidatedAccessToken = if (authorizationHeader.startsWith(OpenIdConstants.TOKEN_TYPE_DPOP, ignoreCase = true)) {
         val accessToken = authorizationHeader.removePrefix(OpenIdConstants.TOKEN_PREFIX_DPOP).split(" ").last()
-        val tokenJwt = JwsCompact
-            .deserialize<OpenId4VciAccessToken>(OpenId4VciAccessToken.serializer(), accessToken, vckJsonSerializer)
+        val (_, vciAccessToken) = JwsCompact.parse<OpenId4VciAccessToken>(accessToken)
             .getOrElse { throw InvalidToken("could not parse DPoP Token", it) }
-        val jwtId = tokenJwt.payload.jwtId
+        val jwtId = vciAccessToken.jwtId
             ?: throw InvalidToken("access token not valid: $accessToken")
-        with(tokenJwt.payload) {
-            toValidatedAccessToken(accessToken, jwtId)
-        }
+        vciAccessToken.toValidatedAccessToken(accessToken, jwtId)
     } else {
         throw InvalidToken("authorization header not valid: $authorizationHeader")
     }
@@ -46,13 +42,11 @@ class JwtTokenService(
     override suspend fun validateTokenForTokenExchange(
         subjectToken: String,
     ): ValidatedAccessToken = run {
-        val tokenJwt = verification.validateToken(subjectToken, JwsContentTypeConstants.OID4VCI_AT_JWT)
-        val jwtId = tokenJwt.payload.jwtId
+        val (_, vciAccessToken) = verification.validateToken(subjectToken, JwsContentTypeConstants.OID4VCI_AT_JWT)
+        val jwtId = vciAccessToken.jwtId
             ?: throw InvalidToken("access token not valid: $subjectToken")
         // can't validate DPoP JWT, as the third party can't forward this
-        with(tokenJwt.payload) {
-            toValidatedAccessToken(subjectToken, jwtId)
-        }
+        vciAccessToken.toValidatedAccessToken(subjectToken, jwtId)
     }
 
     private suspend fun OpenId4VciAccessToken.toValidatedAccessToken(

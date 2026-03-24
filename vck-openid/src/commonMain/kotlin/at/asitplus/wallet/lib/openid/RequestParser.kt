@@ -64,7 +64,7 @@ class RequestParser(
     }
 
     private suspend fun String.parseParameters(): RequestParametersFrom<out RequestParameters> =
-            parseAsJwsRequest(null)
+        parseAsJwsRequest(null)
             ?: parseFromParameters()
             ?: parseFromJson(null)
             ?: throw InvalidRequest("parse error: $this")
@@ -96,9 +96,10 @@ class RequestParser(
             is DCAPIWalletRequest.OpenId4VpSigned -> {
                 val requestStr = (this.request as? JarRequestParameters)?.request
                     ?: throw InvalidRequest("Did not find jar request parameters: $this")
-                val jwsSigned = JwsCompact.deserialize(RequestParameters.serializer(), requestStr, vckJsonSerializer).getOrThrow()
-                RequestParametersFrom.DcApiSigned(this, jwsSigned.payload, jwsSigned)
+                val (jwsSigned, payload) = JwsCompact.parse<RequestParameters>(requestStr).getOrThrow()
+                RequestParametersFrom.DcApiSigned(this, payload, jwsSigned)
             }
+
             is DCAPIWalletRequest.OpenId4VpUnsigned -> {
                 val jsonString = vckJsonSerializer.encodeToString(this.request)
                 RequestParametersFrom.DcApiUnsigned(this, this.request, jsonString)
@@ -132,11 +133,11 @@ class RequestParser(
     private suspend fun String.parseAsJwsRequest(
         parent: RequestParametersFrom<out RequestParameters>?,
     ): RequestParametersFrom<*>? =
-        JwsCompact.deserialize(RequestParameters.serializer(), this, vckJsonSerializer)
-            .getOrNull()?.let { jws ->
+        JwsCompact.parse<RequestParameters>(this)
+            .getOrNull()?.let { (jws, payload) ->
                 RequestParametersFrom.JwsSigned(
                     jwsSigned = jws,
-                    parameters = jws.payload,
+                    parameters = payload,
                     verified = requestObjectJwsVerifier.invoke(jws),
                     parent = (parent as? RequestParametersFrom.Uri)?.url
                 )

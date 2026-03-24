@@ -12,6 +12,7 @@ import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.agent.validation.sdJwt.SdJwtInputValidator
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
@@ -66,7 +67,7 @@ class ValidatorSdJwt(
                 throw Throwable("Key binding JWT not verified. $it")
             }
         }
-        val keyBinding = keyBindingSigned.getPayload<KeyBindingJws>().getOrThrow()
+        val keyBinding = keyBindingSigned.getPayload<KeyBindingJws>(vckJsonSerializer).getOrThrow()
         require(keyBinding.challenge == challenge) {
             "Challenge not correct: ${keyBinding.challenge}"
         }

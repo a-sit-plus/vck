@@ -4,9 +4,10 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.decodeFromJsonElement
 
 /**
  * Representation of a signed SD-JWT,
@@ -16,11 +17,22 @@ import kotlinx.serialization.json.decodeFromJsonElement
  * possibly ending with a [keyBindingJws], that is a JWS with payload [at.asitplus.wallet.lib.data.KeyBindingJws].
  */
 data class SdJwtSigned(
+    /**
+     * Holds signed JWS in compact representation. To access the payload use [jwsPayload]
+     */
     val jws: JwsCompact,
     val rawDisclosures: List<String>,
+
+    /**
+     * Holds signed JWS in compact representation. To access the payload use [keyBindingJwsPayload]
+     */
     val keyBindingJws: JwsCompact? = null,
     val hashInput: String,
 ) {
+
+    val jwsPayload = jws.getPayload<JsonElement>().getOrThrow()
+    val keyBindingJwsPayload = keyBindingJws?.getPayload<KeyBindingJws>()?.getOrThrow()
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
@@ -47,7 +59,7 @@ data class SdJwtSigned(
         jws.getPayload<VerifiableCredentialSdJwt>()
 
     fun getPayloadAsJsonObject(): KmmResult<JsonObject> =
-        catching { joseCompliantSerializer.decodeFromString<JsonObject>(jws.payload.decodeToString()) }
+        catching { joseCompliantSerializer.decodeFromString<JsonObject>(jws.plainPayload.decodeToString()) }
 
     /**
      * Compact serialization: JWT in JWS compact serialization (Base64-URL with dots),

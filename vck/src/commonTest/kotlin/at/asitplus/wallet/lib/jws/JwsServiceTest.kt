@@ -8,7 +8,6 @@ import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
@@ -45,11 +44,11 @@ val JwsServiceTest by testSuite {
         test("Object can be reconstructed") {
             val payload = it.randomPayload.encodeToByteArray()
             val signed =
-                it.signJwt(JwsContentTypeConstants.JWT, payload, ByteArraySerializer()).getOrThrow().serialize()
+                it.signJwt(JwsContentTypeConstants.JWT, payload, ByteArraySerializer()).getOrThrow().toString()
 
-            val parsed = JwsCompact.deserialize<ByteArray>(ByteArraySerializer(), signed).getOrThrow()
-            parsed.serialize() shouldBe signed
-            parsed.payload shouldBe payload
+            val (parsed, payloadParsed) = JwsCompact.parse<ByteArray>(signed).getOrThrow()
+            parsed.toString() shouldBe signed
+            payloadParsed shouldBe payload
             it.verifierJwsService(parsed).getOrThrow()
         }
 
@@ -87,8 +86,8 @@ val JwsServiceTest by testSuite {
             val signer = SignJwt<String>(it.keyMaterial, JwsHeaderNone())
             val signed = signer(null, it.randomPayload, String.serializer()).getOrThrow()
 
-        shouldThrowAny { VerifyJwsObject()(signed).getOrThrow() }
-    }
+            shouldThrowAny { VerifyJwsObject()(signed).getOrThrow() }
+        }
 
         test("signed object without public key in header, but retrieved out-of-band can be verified") {
             val signer = SignJwt<String>(it.keyMaterial, JwsHeaderNone())

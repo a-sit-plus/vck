@@ -53,8 +53,10 @@ import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.PublishedKeyMaterial
 import at.asitplus.wallet.lib.agent.VerifySignature
 import at.asitplus.wallet.lib.agent.VerifySignatureFun
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.ktor.utils.io.core.*
 import kotlinx.serialization.SerializationStrategy
+import kotlinx.serialization.encodeToString
 import kotlin.io.encoding.Base64
 
 
@@ -130,7 +132,7 @@ class SignJwt<P : Any>(
         }
         JwsCompact(
             protectedHeader = header,
-            payload = payload.toString().toByteArray(),
+            payload = vckJsonSerializer.encodeToString(serializer, payload).encodeToByteArray(),
             signer = { keyMaterial.sign(it).asKmmResult().getOrThrow().rawByteArray }
         )
     }
@@ -157,7 +159,7 @@ class SignJwtExt<P : Any>(
         }
         JwsCompact(
             protectedHeader = header,
-            payload = payload.toString().toByteArray(),
+            payload = vckJsonSerializer.encodeToString(serializer, payload).encodeToByteArray(),
             signer = { keyMaterial.sign(it).asKmmResult().getOrThrow().rawByteArray }
         )
     }

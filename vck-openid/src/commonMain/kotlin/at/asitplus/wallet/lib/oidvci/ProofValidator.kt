@@ -90,8 +90,9 @@ class ProofValidator(
     }
 
     private suspend fun JwsCompact.validateJwtProof(): Collection<CryptoPublicKey> {
-        if (header.type != OpenIdConstants.PROOF_JWT_TYPE) {
-            throw InvalidProof("invalid typ: ${header.type}")
+        val payload = getPayload<JsonWebToken>().mapFailure { InvalidProof(it.message, it.cause) }.getOrThrow()
+        if (jwsHeader.type != OpenIdConstants.PROOF_JWT_TYPE) {
+            throw InvalidProof("invalid typ: ${jwsHeader.type}")
         }
         if (payload.nonce == null || !clientNonceService.verifyNonce(payload.nonce!!)) {
             throw InvalidNonce("invalid nonce: ${payload.nonce}")
@@ -107,12 +108,12 @@ class ProofValidator(
         }
         // OID4VCI F.1.: The Credential Issuer SHOULD issue a Credential for each cryptographic public key specified
         // in the attested_keys claim within the key_attestation parameter.
-        val additionalKeys = header.keyAttestationParsed?.validateAttestationProof() ?: listOf()
+        val additionalKeys = jwsHeader.keyAttestation?.validateAttestationProof() ?: listOf()
 
-        val headerPublicKey = header.publicKey
-            ?: throw InvalidProof("could not extract public key from $header")
+        val jwsHeaderPublicKey = jwsHeader.publicKey
+            ?: throw InvalidProof("could not extract public key from $jwsHeader")
 
-        return (additionalKeys + headerPublicKey).distinct()
+        return (additionalKeys + jwsHeaderPublicKey).distinct()
     }
 
     /**
@@ -120,8 +121,9 @@ class ProofValidator(
      * in the `attested_keys` claim.
      */
     private suspend fun JwsCompact.validateAttestationProof(): Collection<CryptoPublicKey> {
-        if (header.type != OpenIdConstants.KEY_ATTESTATION_JWT_TYPE) {
-            throw InvalidProof("invalid typ: ${header.type}")
+        val payload = getPayload<KeyAttestationJwt>().mapFailure { InvalidProof(it.message, it.cause) }.getOrThrow()
+        if (jwsHeader.type != OpenIdConstants.KEY_ATTESTATION_JWT_TYPE) {
+            throw InvalidProof("invalid typ: ${jwsHeader.type}")
         }
 
         if (payload.issuedAt > (clock.now() + timeLeeway)) {

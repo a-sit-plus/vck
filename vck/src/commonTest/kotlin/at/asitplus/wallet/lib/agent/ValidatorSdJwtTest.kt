@@ -4,7 +4,6 @@ import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -21,7 +20,6 @@ import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.assertions.throwables.shouldThrowAny
-import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.comparables.shouldBeLessThan
 import io.kotest.matchers.comparables.shouldNotBeGreaterThan
@@ -99,7 +97,7 @@ val ValidatorSdJwtTest by testSuite {
                     throw RuntimeException("Signing failed", it)
                 }
                 val sdJwtSigned = SdJwtSigned.issued(jws, disclosures.toList())
-                val vcInSdJwt = (listOf(jws.serialize()) + disclosures).joinToString("~", postfix = "~")
+                val vcInSdJwt = (listOf(jws.toString()) + disclosures).joinToString("~", postfix = "~")
                 vcInSdJwt shouldBe sdJwtSigned.serialize()
                 return Issuer.IssuedCredential.VcSdJwt(
                     sdJwtVc = vcSdJwt,
@@ -169,7 +167,7 @@ val ValidatorSdJwtTest by testSuite {
             }
             val credential = it.issuer.issueCredential(credentialDataWithVctm).getOrThrow()
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>().also {
-                    it.signedSdJwtVc.jws.header.vcTypeMetadata.shouldNotBeNull().shouldBeSingleton().first().let {
+                    it.signedSdJwtVc.jws.jwsHeader.vcTypeMetadata.shouldNotBeNull().shouldBeSingleton().first().let {
                         it.decodeToByteArray(Base64UrlStrict).decodeToString().let {
                             joseCompliantSerializer.decodeFromString<SdJwtTypeMetadata>(it)
                         }
@@ -177,7 +175,7 @@ val ValidatorSdJwtTest by testSuite {
                 }
 
             it.validator.verifySdJwt(credential.signedSdJwtVc, it.holderKeyMaterial.publicKey).getOrThrow().apply {
-                sdJwtSigned.jws.header.vcTypeMetadata.shouldNotBeNull().shouldBeSingleton().first().let {
+                sdJwtSigned.jws.jwsHeader.vcTypeMetadata.shouldNotBeNull().shouldBeSingleton().first().let {
                     it.decodeToByteArray(Base64UrlStrict).decodeToString().let {
                         joseCompliantSerializer.decodeFromString<SdJwtTypeMetadata>(it)
                     }

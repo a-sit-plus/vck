@@ -59,7 +59,6 @@ import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
-import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.toBase64UrlJsonString
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.extensions.sessionTranscriptThumbprint
@@ -76,7 +75,7 @@ import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
 import io.github.aakira.napier.Napier
-import io.ktor.http.URLBuilder
+import io.ktor.http.*
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
@@ -266,7 +265,7 @@ class OpenId4VpVerifier(
                 URLBuilder(creationOptions.walletUrl).apply {
                     JarRequestParameters(
                         clientId = clientIdScheme.clientId,
-                        request = createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow().serialize(),
+                        request = createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow().toString(),
                     ).encodeToParameters()
                         .forEach { parameters.append(it.key, it.value) }
                 }.buildString().toCreatedRequest()
@@ -284,7 +283,7 @@ class OpenId4VpVerifier(
                 }.buildString()
                     .toCreatedRequest {
                         catching {
-                            createAuthnRequestAsSignedRequestObject(requestOptions, it).getOrThrow().serialize()
+                            createAuthnRequestAsSignedRequestObject(requestOptions, it).getOrThrow().toString()
                         }
                     }
             }
@@ -549,13 +548,12 @@ class OpenId4VpVerifier(
     ): AuthnResponseResult {
         val idTokenJws = input.parameters.idToken
             ?: throw IllegalArgumentException("idToken")
-        val jwsSigned = JwsCompact.deserialize(IdToken.serializer(), idTokenJws, vckJsonSerializer)
+        val (jwsSigned, idToken) = JwsCompact.parse<IdToken>(idTokenJws)
             .getOrElse { throw IllegalArgumentException("idToken", it) }
         verifyJwsObject(jwsSigned).getOrElse {
             throw IllegalArgumentException("idToken.", it)
                 .also { Napier.w { "JWS of idToken not verified: $idTokenJws" } }
         }
-        val idToken = jwsSigned.payload
         if (idToken.issuer != idToken.subject)
             throw IllegalArgumentException("idToken.iss")
                 .also { Napier.d("Wrong issuer: ${idToken.issuer}, expected: ${idToken.subject}") }
@@ -708,11 +706,7 @@ class OpenId4VpVerifier(
 
         ClaimFormat.JWT_VP -> if (requireCryptographicHolderBinding != false) {
             verifier.verifyPresentationVcJwt(
-                input = JwsCompact.deserialize(
-                    VerifiablePresentationJws.serializer(),
-                    relatedPresentation.extractContent(),
-                    vckJsonSerializer
-                ).getOrThrow(),
+                input = JwsCompact(relatedPresentation.extractContent()),
                 challenge = expectedNonce
             )
         } else {
@@ -868,7 +862,7 @@ class JwsHeaderClientIdScheme(val clientIdScheme: ClientIdScheme) : JwsHeaderIde
         is ClientIdScheme.CertificateSanDns -> it.copy(certificateChain = clientIdScheme.chain)
         is ClientIdScheme.VerifierAttestation -> it.copy(
             jsonWebKey = keyMaterial.jsonWebKey,
-            attestationJwt = clientIdScheme.attestationJwt.serialize()
+            attestationJwt = clientIdScheme.attestationJwt
         )
 
         else -> it.copy(jsonWebKey = keyMaterial.jsonWebKey)

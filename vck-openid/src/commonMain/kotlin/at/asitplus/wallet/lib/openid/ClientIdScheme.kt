@@ -44,7 +44,7 @@ sealed class ClientIdScheme(
         redirectUri: String,
     ) : ClientIdScheme(
         scheme = OpenIdConstants.ClientIdScheme.VerifierAttestation,
-        clientIdWithoutPrefix = attestationJwt.payload.subject!!,
+        clientIdWithoutPrefix = attestationJwt.getPayload<JsonWebToken>().getOrThrow().subject!!,
         redirectUri = redirectUri,
     ) {
 

@@ -25,7 +25,6 @@ import at.asitplus.wallet.lib.data.digest
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.toBase64UrlJsonString
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
@@ -34,6 +33,7 @@ import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.OpenId4VpHolder
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.rqes.helper.DummyCredentialDataProvider
+import at.asitplus.wallet.lib.utils.DefaultMapStore
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
@@ -209,7 +209,7 @@ val KeyBindingTests by testSuite {
 
             verifierOid4Vp.validateAuthnResponse(authnResponse.url)
                 .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
-                .sdJwtSigned.keyBindingJws.shouldNotBeNull().payload.apply {
+                .sdJwtSigned.keyBindingJwsPayload.shouldNotBeNull().apply {
                     transactionDataHashes.shouldNotBeNull()
                     transactionDataHashes.contentEquals(requestOptions.transactionData!!.map { it.digest(Digest.SHA256) })
                     transactionDataHashesAlgorithmString.shouldBeNull()
@@ -240,7 +240,7 @@ val KeyBindingTests by testSuite {
             val result = verifierOid4Vp.validateAuthnResponse(authnResponse.url)
                 .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
 
-            with(result.sdJwtSigned.keyBindingJws.shouldNotBeNull().payload) {
+            with(result.sdJwtSigned.keyBindingJwsPayload.shouldNotBeNull()) {
                 transactionDataHashes.shouldNotBeNull()
                 transactionDataHashes.contentEquals(requestOptions.transactionData!!.map { it.digest(Digest.SHA384) })
                 transactionDataHashesAlgorithmString.shouldBe(SdJwtConstants.SHA_384)
@@ -322,7 +322,7 @@ val KeyBindingTests by testSuite {
 
             verifierOid4Vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
                 .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
-                .sdJwtSigned.keyBindingJws.shouldNotBeNull().payload.transactionDataHashes!!.first()
+                .sdJwtSigned.keyBindingJwsPayload.shouldNotBeNull().transactionDataHashes!!.first()
                 .shouldBe(referenceHash)
         }
     }

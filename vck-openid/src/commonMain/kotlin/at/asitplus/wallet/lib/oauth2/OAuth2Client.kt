@@ -120,14 +120,14 @@ class OAuth2Client(
         createAuthRequest(state, authorizationDetails, scope, resource, issuerState).let {
             JarRequestParameters(
                 clientId = clientId,
-                request = signPushedAuthorizationRequest(
+                request = signJwtFun(
                     JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST,
                     it.copy(
                         audience = audience,
                         issuer = it.clientId,
                     ),
                     AuthenticationRequestParameters.serializer(),
-                ).getOrThrow().serialize()
+                ).getOrThrow().toString()
             )
         }
     } ?: throw Exception("SignPushedAuthorizationRequest is null.")

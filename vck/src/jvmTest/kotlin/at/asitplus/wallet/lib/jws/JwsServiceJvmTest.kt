@@ -136,9 +136,9 @@ val JwsServiceJvmTest by testSuite {
 
                     // Parsing to our structure verifying payload
                     val signedLibObject = libObject.serialize()
-                    val parsedJwsSigned =
-                        JwsCompact.deserialize<JsonElement>(JsonElement.serializer(), signedLibObject).getOrThrow()
-                    parsedJwsSigned.payload.jsonPrimitive.content shouldBe randomPayload.content
+                    val (parsedJwsSigned, payload) =
+                        JwsCompact.parse<JsonElement>(signedLibObject).getOrThrow()
+                    payload.jsonPrimitive.content shouldBe randomPayload.content
                     val parsedSig = parsedJwsSigned.signature.rawByteArray.encodeToString(Base64UrlStrict)
 
                     withClue(
@@ -160,7 +160,7 @@ val JwsServiceJvmTest by testSuite {
                     val signed = jwsSigner(
                         JwsContentTypeConstants.JWT, randomPayload, JsonPrimitive.serializer()
                     ).getOrThrow()
-                    val parsed = JWSObject.parse(signed.serialize())
+                    val parsed = JWSObject.parse(signed.toString())
                         .shouldNotBeNull()
                     parsed.payload.toBytes().decodeToString() shouldBe "\"${randomPayload.content}\""
                     val result = parsed.verify(jvmVerifier)

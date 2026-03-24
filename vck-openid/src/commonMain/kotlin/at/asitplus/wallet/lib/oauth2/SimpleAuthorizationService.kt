@@ -640,7 +640,7 @@ class SimpleAuthorizationService(
                     JwsContentTypeConstants.TOKEN_INTROSPECTION_JWT,
                     response,
                     TokenIntrospectionResponse.serializer()
-                ).getOrThrow().serialize()
+                ).getOrThrow().toString()
             )
 
             else -> response

@@ -21,13 +21,10 @@ import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oidvci.WalletService.RequestOptions
@@ -112,12 +109,10 @@ val OidvciSameScopeTest by testSuite {
             val serializedCredential = credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
 
-            JwsCompact.deserialize<VerifiableCredentialJws>(
-                VerifiableCredentialJws.serializer(),
-                serializedCredential,
-                vckJsonSerializer
+            JwsCompact.parse<VerifiableCredentialJws>(
+                serializedCredential
             ).getOrThrow()
-                .payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
+                .second.vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
         }
 
         test("request multiple credentials, using scope") {
@@ -153,9 +148,8 @@ val OidvciSameScopeTest by testSuite {
 }
 
 private fun String.assertSdJwtReceived(): Int =
-    JwsCompact.deserialize(
-        VerifiableCredentialSdJwt.serializer(),
+    JwsCompact.parse<VerifiableCredentialSdJwt>(
         substringBefore("~")
-    ).getOrThrow().payload.disclosureDigests
+    ).getOrThrow().second.disclosureDigests
         .shouldNotBeNull()
         .size shouldBeGreaterThan 1

@@ -21,6 +21,8 @@ import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.wallet.lib.NonceService
+import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
@@ -29,15 +31,12 @@ import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
-import at.asitplus.wallet.lib.utils.MapStore
-import at.asitplus.wallet.lib.NonceService
-import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
+import at.asitplus.wallet.lib.utils.MapStore
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.assertions.throwables.shouldNotThrowAny
@@ -51,7 +50,7 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.http.Url
+import io.ktor.http.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 
@@ -219,8 +218,7 @@ val PreRegisteredClientTest by testSuite {
             authnRequest.clientId shouldBe it.clientId
             val jar = authnRequest.request
                 .shouldNotBeNull()
-            val jwsObject = JwsCompact.deserialize(AuthenticationRequestParameters.serializer(), jar, vckJsonSerializer)
-                .getOrThrow()
+            val jwsObject = JwsCompact(jar)
             VerifyJwsObject().invoke(jwsObject).getOrThrow()
 
             val authnResponse = it.holderOid4vp.createAuthnResponse(jar).getOrThrow()

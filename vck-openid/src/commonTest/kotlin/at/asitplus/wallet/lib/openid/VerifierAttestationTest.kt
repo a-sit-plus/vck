@@ -12,7 +12,6 @@ package at.asitplus.wallet.lib.openid
  * see the "LICENSE" file for more details
  */
 
-import at.asitplus.openid.RequestParameters
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
@@ -160,13 +159,12 @@ private suspend fun buildAttestationJwt(
 
 private fun attestationJwtVerifier(trustedKey: JsonWebKey) =
     RequestObjectJwsVerifier { jws: JwsCompact ->
-        val attestationJwt = jws.header.attestationJwt?.let {
-            JwsCompact.deserialize(JsonWebToken.serializer(), it).getOrThrow()
-        } ?: return@RequestObjectJwsVerifier false
+        val attestationJwt = jws.jwsHeader.attestationJwt ?: return@RequestObjectJwsVerifier false
+        val payload = attestationJwt.getPayload<JsonWebToken>().getOrNull() ?: return@RequestObjectJwsVerifier false
         val verifyJwsSignatureWithKey = VerifyJwsSignatureWithKey()
         if (!verifyJwsSignatureWithKey(attestationJwt, trustedKey).isSuccess)
             return@RequestObjectJwsVerifier false
-        val verifierPublicKey = attestationJwt.payload.confirmationClaim?.jsonWebKey
+        val verifierPublicKey = payload.confirmationClaim?.jsonWebKey
             ?: return@RequestObjectJwsVerifier false
         verifyJwsSignatureWithKey(jws, verifierPublicKey).isSuccess
     }

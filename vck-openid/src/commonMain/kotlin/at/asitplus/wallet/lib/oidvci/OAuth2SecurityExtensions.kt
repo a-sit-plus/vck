@@ -40,7 +40,7 @@ object BuildDPoPHeader {
             Napier.d("Building DPoP JWT: $it")
         },
         JsonWebToken.serializer(),
-    ).getOrThrow().serialize()
+    ).getOrThrow().toString()
 }
 
 object BuildClientAttestationJwt {

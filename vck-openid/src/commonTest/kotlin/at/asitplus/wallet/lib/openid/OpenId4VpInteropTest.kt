@@ -25,6 +25,7 @@ import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
+import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -149,21 +150,24 @@ val OpenId4VpInteropTest by testSuite {
                 .shouldBeInstanceOf<RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>>()
 
             val jar = parameters.jwsSigned
-            jar.header.algorithm shouldBe JwsAlgorithm.Signature.ES256
-            jar.header.type shouldBe "oauth-authz-req+jwt"
+            val jarParameters = jar.getPayload<AuthenticationRequestParameters>().getOrThrow().apply {
+                it shouldBe parameters.parameters
+            }
+            jar.jwsHeader.algorithm shouldBe JwsAlgorithm.Signature.ES256
+            jar.jwsHeader.type shouldBe "oauth-authz-req+jwt"
 
-            jar.payload.issuer shouldBe it.verifierIssuerUrl
-            jar.payload.audience shouldBe "https://self-issued.me/v2"
-            jar.payload.clientId shouldBe it.verifierClientId
-            jar.payload.clientIdWithoutPrefix shouldBe it.verifierClientId
-            jar.payload.presentationDefinition.shouldNotBeNull()
-            jar.payload.nonce.shouldNotBeNull()
-            jar.payload.state.shouldNotBeNull()
-            jar.payload.responseType shouldBe "vp_token"
-            jar.payload.responseMode shouldBe OpenIdConstants.ResponseMode.DirectPost
-            jar.payload.responseUrl.shouldNotBeNull()
+            jarParameters.issuer shouldBe it.verifierIssuerUrl
+            jarParameters.audience shouldBe "https://self-issued.me/v2"
+            jarParameters.clientId shouldBe it.verifierClientId
+            jarParameters.clientIdWithoutPrefix shouldBe it.verifierClientId
+            jarParameters.presentationDefinition.shouldNotBeNull()
+            jarParameters.nonce.shouldNotBeNull()
+            jarParameters.state.shouldNotBeNull()
+            jarParameters.responseType shouldBe "vp_token"
+            jarParameters.responseMode shouldBe OpenIdConstants.ResponseMode.DirectPost
+            jarParameters.responseUrl.shouldNotBeNull()
 
-            if (jar.header.keyId != null) { // web-based key lookup is optional in profile 2.0
+            if (jar.jwsHeader.keyId != null) { // web-based key lookup is optional in profile 2.0
                 val verifierRequestSigningKey = it.verifierKeyMaterial.jsonWebKey.shouldNotBeNull()
                 VerifyJwsSignatureWithKey()(jar, verifierRequestSigningKey).isSuccess shouldBe true
             } else {
@@ -176,18 +180,18 @@ val OpenId4VpInteropTest by testSuite {
             response.params.entries.firstOrNull { it.key == "vp_token" }.shouldNotBeNull().value.let { vpToken ->
                 val sdJwt = SdJwtSigned.parseCatching(vpToken).getOrThrow()
                 sdJwt.keyBindingJws.shouldNotBeNull().apply {
-                    header.apply {
+                    jwsHeader.apply {
                         algorithm shouldBe JwsAlgorithm.Signature.ES256
                         type shouldBe "kb+jwt"
                     }
-                    payload.apply {
+                    getPayload<KeyBindingJws>().getOrThrow().apply {
                         issuedAt.shouldNotBeNull()
-                        audience shouldBe jar.payload.clientId
-                        challenge shouldBe jar.payload.nonce
+                        audience shouldBe jarParameters.clientId
+                        challenge shouldBe jarParameters.nonce
                         sdHash.shouldNotBeNull()
                     }
                 }
-                sdJwt.jws.header.apply {
+                sdJwt.jws.jwsHeader.apply {
                     if (keyId != null)
                         keyId shouldBe it.issuerKeyId
                     else
@@ -234,22 +238,20 @@ val OpenId4VpInteropTest by testSuite {
             .i7Kli1T5RZzo2-TvWsw9-JpxjYPBUae8Lrc_ORfTdabHlXmuPucGVrE5lkBu7vLss2RKKEmdFFy57-ZvRFn4Tg
         """.trimIndent()
 
-            val jar = JwsCompact.deserialize<AuthenticationRequestParameters>(
-                AuthenticationRequestParameters.serializer(),
-                input,
-                vckJsonSerializer
+            val (jar, payload) = JwsCompact.parse<AuthenticationRequestParameters>(
+                input
             ).getOrThrow()
 
-            jar.header.algorithm shouldBe JwsAlgorithm.Signature.ES256
-            jar.header.type shouldBe " oauth-authz-req+jwt " // that's a typo in the document ...
+            jar.jwsHeader.algorithm shouldBe JwsAlgorithm.Signature.ES256
+            jar.jwsHeader.type shouldBe " oauth-authz-req+jwt " // that's a typo in the document ...
 
-            jar.payload.issuer shouldBe "https://bdr.de/jwk"
-            jar.payload.audience shouldBe " https://self-issued.me/v2" // that's a typo in the document ...
-            jar.payload.clientId shouldBe "https://bdr.de"
-            jar.payload.nonce shouldBe "n-0S6_WzA2Mj"
-            jar.payload.state shouldBe "af0ifjsldkj"
-            jar.payload.responseUrl shouldBe "https://nwr-be.de/response"
-            val pres = jar.payload.presentationDefinition.shouldNotBeNull()
+            payload.issuer shouldBe "https://bdr.de/jwk"
+            payload.audience shouldBe " https://self-issued.me/v2" // that's a typo in the document ...
+            payload.clientId shouldBe "https://bdr.de"
+            payload.nonce shouldBe "n-0S6_WzA2Mj"
+            payload.state shouldBe "af0ifjsldkj"
+            payload.responseUrl shouldBe "https://nwr-be.de/response"
+            val pres = payload.presentationDefinition.shouldNotBeNull()
             pres.id.shouldNotBeNull()
             val inputdesc = pres.inputDescriptors.first()
             inputdesc.purpose shouldBe "Request presentation holding Power of Representation attestation"

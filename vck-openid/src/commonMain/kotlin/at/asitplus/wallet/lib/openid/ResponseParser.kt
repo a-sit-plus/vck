@@ -75,11 +75,11 @@ class ResponseParser(
      */
     @Throws(IllegalArgumentException::class, CancellationException::class)
     internal suspend fun ResponseParametersFrom.extractFromJar() = parameters.response?.let { encodedResponse ->
-        encodedResponse.fromJws()?.let { jws ->
+        JwsCompact.parse<AuthenticationResponseParameters>(encodedResponse).getOrNull()?.let { (jws, payload) ->
             verifyJwsObject(jws).getOrElse {
                 throw IllegalArgumentException("JWS not verified: $encodedResponse", it)
             }
-            ResponseParametersFrom.JwsSigned(jws, this, jws.payload, this.clientIdRequired)
+            ResponseParametersFrom.JwsSigned(jws, this, payload, this.clientIdRequired)
         } ?: encodedResponse.fromJwe()?.let { jwe ->
             ResponseParametersFrom.JweDecrypted(jwe, this, jwe.payload, this.clientIdRequired)
         } ?: throw IllegalArgumentException("Got encoded response, but could not deserialize it from $this")
@@ -94,8 +94,4 @@ class ResponseParser(
 
     private fun JweDecrypted<String>.parseResponseParams(): AuthenticationResponseParameters =
         vckJsonSerializer.decodeFromString<AuthenticationResponseParameters>(payload)
-
-    private fun String.fromJws(): JwsCompact? =
-        JwsCompact.deserialize(AuthenticationResponseParameters.serializer(), this, vckJsonSerializer).getOrNull()
-
 }

@@ -35,7 +35,7 @@ fun Collection<Issuer.IssuedCredential>.toCredentialResponseParameters() =
 fun Issuer.IssuedCredential.toCredentialResponseSingleCredential() = CredentialResponseSingleCredential(
     when (this) {
         is Issuer.IssuedCredential.Iso -> JsonPrimitive(toBase64UrlStrict())
-        is Issuer.IssuedCredential.VcJwt -> JsonPrimitive(signedVcJws.serialize())
+        is Issuer.IssuedCredential.VcJwt -> JsonPrimitive(signedVcJws.toString())
         is Issuer.IssuedCredential.VcSdJwt -> JsonPrimitive(signedSdJwtVc.serialize())
     }
 )

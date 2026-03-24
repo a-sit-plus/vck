@@ -9,7 +9,6 @@ import at.asitplus.openid.TokenIntrospectionRequest.ResponseFormat
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.testballoon.withFixtureGenerator
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.randomString
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
@@ -101,12 +100,10 @@ val OAuth2ClientTest by testSuite {
                 null
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionJwtResponse>()
-            val parsed = JwsCompact.deserialize(
-                TokenIntrospectionResponse.serializer(),
+            val (_, parsed) = JwsCompact.parse<TokenIntrospectionResponse>(
                 jwtResponse.jwt,
-                vckJsonSerializer
             ).getOrThrow()
-            parsed.payload.active shouldBe true
+            parsed.active shouldBe true
         }
         test("process with pushed authorization request and JAR") {
             val state = uuid4().toString()

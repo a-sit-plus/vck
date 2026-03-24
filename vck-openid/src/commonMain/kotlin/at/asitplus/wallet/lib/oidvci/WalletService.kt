@@ -25,7 +25,6 @@ import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
@@ -36,8 +35,6 @@ import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
@@ -276,7 +273,7 @@ class WalletService(
      * Parses [response] received from the credential issuer, mapping to [Holder.StoreCredentialInput],
      * decrypting the response if required.
      */
-    public suspend fun parseCredentialResponse(
+    suspend fun parseCredentialResponse(
         response: String,
         isEncrypted: Boolean,
         representation: CredentialRepresentation,
@@ -296,7 +293,7 @@ class WalletService(
      * Parses [response] received from the credential issuer, mapping to [Holder.StoreCredentialInput],
      * decrypting the response if required.
      */
-    public suspend fun parseCredentialResponse(
+    suspend fun parseCredentialResponse(
         response: CredentialResponse,
         representation: CredentialRepresentation,
         scheme: ConstantIndex.CredentialScheme,
@@ -355,7 +352,8 @@ class WalletService(
                         issuedAt = clock.now().truncateToSeconds(),
                         nonce = clientNonce,
                     )
-                ))?.getOrElse { err -> throw IllegalArgumentException("Key attestation required, none provided $err") }.let {
+                )
+            )?.getOrElse { err -> throw IllegalArgumentException("Key attestation required, none provided $err") }.let {
                 createCredentialRequestProofJwt(
                     clientNonce,
                     metadata.credentialIssuer,
@@ -374,10 +372,12 @@ class WalletService(
                         issuedAt = clock.now().truncateToSeconds(),
                         nonce = clientNonce,
                     )
-                ))?.getOrElse { err -> throw IllegalArgumentException("Key attestation required, none provided $err") }.let {
+                )
+            )?.getOrElse { err -> throw IllegalArgumentException("Key attestation required, none provided $err") }.let {
                 createCredentialRequestProofAttestation(clientNonce, type.supportedSigningAlgorithms, it)
             }
         } ?: createCredentialRequestProofJwt(clientNonce, metadata.credentialIssuer, clock)
+
     private fun CredentialRequestProofSupported.keyAttestationRequired(): Boolean =
         keyAttestationRequired != null
 
@@ -389,7 +389,7 @@ class WalletService(
         attestation = when (unitAttestationPop != null) {
             true -> {
                 setOf(
-                    unitAttestationPop.header.keyAttestation
+                    unitAttestationPop.jwsHeader.keyAttestation?.toString()
                         ?: throw IllegalArgumentException("Key attestation required, none provided")
                 )
             }
@@ -397,7 +397,7 @@ class WalletService(
             else -> {
                 setOf(
                     this.loadKeyAttestation?.invoke(KeyAttestationInput(clientNonce, supportedSigningAlgorithms))
-                        ?.getOrThrow()?.serialize()
+                        ?.getOrThrow()?.toString()
                         ?: throw IllegalArgumentException("Key attestation required, none provided")
                 )
             }
@@ -417,7 +417,7 @@ class WalletService(
         return CredentialRequestProofContainer(
             jwt = when (unitAttestationPop != null) {
                 true ->
-                    setOf(unitAttestationPop.serialize())
+                    setOf(unitAttestationPop.toString())
 
                 else -> setOf(
                     SignJwt<JsonWebToken>(
@@ -433,7 +433,7 @@ class WalletService(
                             nonce = clientNonce,
                         ),
                         JsonWebToken.serializer(),
-                    ).getOrThrow().serialize()
+                    ).getOrThrow().toString()
                 )
             }
         )
@@ -444,7 +444,7 @@ class WalletService(
         addKeyAttestation: Boolean = false,
     ): suspend (JwsHeader, KeyMaterial) -> JwsHeader = { header: JwsHeader, key: KeyMaterial ->
         val keyAttestation = if (addKeyAttestation) {
-            this.loadKeyAttestation?.invoke(KeyAttestationInput(clientNonce, null))?.getOrThrow()?.serialize()
+            this.loadKeyAttestation?.invoke(KeyAttestationInput(clientNonce, null))?.getOrThrow()
                 ?: throw IllegalArgumentException("Key attestation required, none provided")
         } else null
         header.copy(jsonWebKey = key.jsonWebKey, keyAttestation = keyAttestation)
@@ -456,8 +456,7 @@ class WalletService(
         credentialScheme: ConstantIndex.CredentialScheme,
     ): Holder.StoreCredentialInput = when (credentialRepresentation) {
         PLAIN_JWT -> Vc(
-            signedVcJws = JwsCompact.deserialize(VerifiableCredentialJws.serializer(), this, vckJsonSerializer)
-                .getOrThrow(),
+            signedVcJws = JwsCompact(this),
             vcJws = this,
             scheme = credentialScheme
         )

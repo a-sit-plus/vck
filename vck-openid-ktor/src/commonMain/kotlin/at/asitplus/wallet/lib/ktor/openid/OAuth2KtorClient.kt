@@ -502,8 +502,8 @@ class OAuth2KtorClient(
         val (clientAttJwt, clientAttPop) = when (loadInstanceAttestation != null && loadInstanceAttestationPop != null) {
             true -> {
                 loadInstanceAttestation.let {
-                    it().getOrNull()?.serialize()
-                } to loadInstanceAttestationPop.let { it().getOrNull()?.serialize() }
+                    it().getOrNull()?.toString()
+                } to loadInstanceAttestationPop.let { it().getOrNull()?.toString() }
             }
 
             else -> {
@@ -514,7 +514,7 @@ class OAuth2KtorClient(
                             clientId = oAuth2Client.clientId,
                             audience = popAudience,
                             lifetime = 10.minutes,
-                        ).serialize()
+                        ).toString()
                     }
                 } ?: (null to null)
             }
@@ -607,9 +607,9 @@ private suspend fun parseJwt(
     verifyTokenIntrospectionJwt: suspend (JwsCompact) -> Boolean
 ): TokenIntrospectionResponse =
     vckJsonSerializer.decodeFromString(TokenIntrospectionJwtResponse.serializer(), body).let { jwtResponse ->
-        JwsCompact.deserialize(TokenIntrospectionResponse.serializer(), jwtResponse.jwt, vckJsonSerializer)
+        JwsCompact.parse<TokenIntrospectionResponse>(jwtResponse.jwt)
             .getOrThrow().run {
-                require(verifyTokenIntrospectionJwt(this)) { "Token introspection JWT validation failed" }
-                payload
+                require(verifyTokenIntrospectionJwt(this.first)) { "Token introspection JWT validation failed" }
+                this.second
             }
     }
