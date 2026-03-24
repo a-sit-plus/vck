@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.jws
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.openid.JwsCompactTyped
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.KeyAgreementPrivateValue
@@ -99,7 +100,7 @@ fun interface SignJwtFun<P : Any> {
         type: String?,
         payload: P,
         serializer: SerializationStrategy<P>,
-    ): KmmResult<JwsCompact>
+    ): KmmResult<JwsCompactTyped<P>>
 }
 
 /** Create a [JwsCompact], setting [JwsHeader.type] to the specified value, applying the header modifier. */
@@ -109,7 +110,7 @@ fun interface SignJwtExtFun<P : Any> {
         payload: P,
         serializer: SerializationStrategy<P>,
         additionalHeaderModifier: JwsHeaderModifierFun,
-    ): KmmResult<JwsCompact>
+    ): KmmResult<JwsCompactTyped<P>>
 }
 
 /** Create a [JwsCompact], setting [JwsHeader.type] to the specified value and applying [JwsHeaderIdentifierFun]. */
@@ -121,17 +122,20 @@ class SignJwt<P : Any>(
         type: String?,
         payload: P,
         serializer: SerializationStrategy<P>,
-    ): KmmResult<JwsCompact> = catching {
+    ): KmmResult<JwsCompactTyped<P>> = catching {
         val header = JwsHeader(
             algorithm = keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
             type = type,
         ).let {
             headerModifier(it, keyMaterial)
         }
-        JwsCompact(
-            protectedHeader = header,
-            payload = vckJsonSerializer.encodeToString(serializer, payload).encodeToByteArray(),
-            signer = { keyMaterial.sign(it).asKmmResult().getOrThrow().rawByteArray }
+        JwsCompactTyped(
+            JwsCompact(
+                protectedHeader = header,
+                payload = vckJsonSerializer.encodeToString(serializer, payload).encodeToByteArray(),
+                signer = { keyMaterial.sign(it).asKmmResult().getOrThrow().rawByteArray }
+            ),
+            payload
         )
     }
 }
@@ -146,7 +150,7 @@ class SignJwtExt<P : Any>(
         payload: P,
         serializer: SerializationStrategy<P>,
         additionalHeaderModifier: JwsHeaderModifierFun,
-    ): KmmResult<JwsCompact> = catching {
+    ): KmmResult<JwsCompactTyped<P>> = catching {
         val header = JwsHeader(
             algorithm = keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
             type = type,
@@ -155,10 +159,13 @@ class SignJwtExt<P : Any>(
         }.let {
             additionalHeaderModifier(it)
         }
-        JwsCompact(
-            protectedHeader = header,
-            payload = vckJsonSerializer.encodeToString(serializer, payload).encodeToByteArray(),
-            signer = { keyMaterial.sign(it).asKmmResult().getOrThrow().rawByteArray }
+        JwsCompactTyped(
+            JwsCompact(
+                protectedHeader = header,
+                payload = vckJsonSerializer.encodeToString(serializer, payload).encodeToByteArray(),
+                signer = { keyMaterial.sign(it).asKmmResult().getOrThrow().rawByteArray }
+            ),
+            payload
         )
     }
 }
