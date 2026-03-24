@@ -1,10 +1,11 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.catching
+import at.asitplus.openid.JwsCompactTyped
+import at.asitplus.openid.JwsCompactTyped.Companion.invoke
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.cbor.CoseHeaderCertificate
@@ -65,7 +66,7 @@ class StatusListAgent(
     override suspend fun issueStatusListJwt(
         time: Instant?,
         kind: RevocationList.Kind
-    ): JwsSigned<StatusListTokenPayload> =
+    ): JwsCompactTyped<StatusListTokenPayload> =
         catching {
             require(kind == RevocationList.Kind.STATUS_LIST) { "JWT only supports revocation list kind StatusList" }
         }.transform {
@@ -74,6 +75,8 @@ class StatusListAgent(
                 payload = buildStatusListTokenPayload(time.toTimePeriod(), RevocationList.Kind.STATUS_LIST),
                 serializer = StatusListTokenPayload.serializer(),
             )
+        }.mapCatching {
+            JwsCompactTyped<StatusListTokenPayload>(it)
         }.getOrElse {
             throw IllegalStateException("Status token could not be created.", it)
         }
