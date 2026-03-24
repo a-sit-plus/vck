@@ -45,7 +45,7 @@ Release 5.12.0 (unreleased):
  - OAuth 2.0:
    - In `SimpleAuthorizationService` implement [JWT Response for OAuth Token Introspection](https://datatracker.ietf.org/doc/html/rfc9701/)
 - ISO MDOC:
-   - Change: Return type of `Iso180137AnnexCVerifier.validateResponse` from `Iso180137AnnexCResponseResult` to `KmmResult<Iso180137AnnexCResponseResult.SuccessIso>`
+   - BREAKING Change: Return type of `Iso180137AnnexCVerifier.validateResponse` from `Iso180137AnnexCResponseResult` to reworked `KmmResult<Iso180137AnnexCVerifiedPresentationResult>`
 - DCQL:
    - Add: custom credential types 
    - Add: proper satisfaction evaluation
