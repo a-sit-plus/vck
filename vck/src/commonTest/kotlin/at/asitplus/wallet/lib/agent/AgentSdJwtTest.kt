@@ -1,10 +1,12 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.catching
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.iso.sha256
 import at.asitplus.openid.CredentialFormatEnum
+import at.asitplus.openid.JwsCompactTyped
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLClaimsQueryList
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
@@ -13,7 +15,7 @@ import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
@@ -442,7 +444,7 @@ private suspend fun createSdJwtPresentation(
     val issuerJwtPlusDisclosures = SdJwtSigned.sdHashInput(validSdJwtCredential, filteredDisclosures)
     val keyBinding = createKeyBindingJws(signKeyBindingJws, audienceId, challenge, issuerJwtPlusDisclosures)
     val sdJwtSerialized = validSdJwtCredential.vcSerialized.substringBefore("~")
-    val jwsFromIssuer = JwsSigned.deserialize(JsonObject.serializer(), sdJwtSerialized).getOrElse {
+    val jwsFromIssuer = catching { JwsCompact(sdJwtSerialized) }.getOrElse {
         throw PresentationException(it)
     }
     val sdJwt = SdJwtSigned.presented(jwsFromIssuer, filteredDisclosures, keyBinding)
@@ -454,7 +456,7 @@ private suspend fun createKeyBindingJws(
     audienceId: String,
     challenge: String,
     issuerJwtPlusDisclosures: String,
-): JwsSigned<KeyBindingJws> = signKeyBindingJws(
+): JwsCompactTyped<KeyBindingJws> = signKeyBindingJws(
     JwsContentTypeConstants.KB_JWT,
     KeyBindingJws(
         issuedAt = Clock.System.now(),

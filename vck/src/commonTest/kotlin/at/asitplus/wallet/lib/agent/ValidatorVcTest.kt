@@ -127,7 +127,7 @@ val ValidatorVcTest by testSuite {
                     JwsContentTypeConstants.JWT,
                     vcJws,
                     VerifiableCredentialJws.serializer()
-                ).getOrThrow().serialize()
+                ).getOrThrow().toString()
 
             suspend fun wrapVcInJwsWrongKey(vcJws: VerifiableCredentialJws) =
                 SignJwt<VerifiableCredentialJws>(
@@ -139,7 +139,7 @@ val ValidatorVcTest by testSuite {
                     JwsContentTypeConstants.JWT,
                     vcJws,
                     VerifiableCredentialJws.serializer()
-                ).getOrThrow().serialize()
+                ).getOrThrow().toString()
 
         }
     } - {
@@ -215,7 +215,7 @@ val ValidatorVcTest by testSuite {
 
             shouldThrowAny {
                 it.validator.verifyVcJws(
-                    credential.signedVcJws.serialize().replaceFirstChar { "f" },
+                    credential.signedVcJws.toString().replaceFirstChar { "f" },
                     it.verifierKeyMaterial.publicKey
                 ).getOrThrow()
             }

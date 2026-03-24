@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.data
 
 import at.asitplus.KmmResult
 import at.asitplus.signum.supreme.sign.Verifier
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.minus
 import at.asitplus.wallet.lib.agent.StatusListAgent
@@ -27,7 +28,11 @@ val StatusListTokenTypeValidationTest by testSuite {
             val issued = StatusListAgent().issueStatusListJwt()
             val statusListToken = StatusListJwt(
                 value = issued.copy(
-                    header = issued.header.copy(type = MediaTypes.Application.STATUSLIST_JWT)
+                    jws = JwsCompact(
+                        protectedHeader = issued.jws.jwsHeader.copy(type = MediaTypes.Application.STATUSLIST_JWT),
+                        payload = issued.jws.plainPayload,
+                        signer = { issued.jws.plainSignature },
+                    )
                 ),
                 resolvedAt = null,
             )

@@ -95,8 +95,8 @@ val ValidatorSdJwtTest by testSuite {
                 ).getOrElse {
                     throw RuntimeException("Signing failed", it)
                 }
-                val sdJwtSigned = SdJwtSigned.issued(jws, disclosures.toList())
-                val vcInSdJwt = (listOf(jws.serialize()) + disclosures).joinToString("~", postfix = "~")
+                val sdJwtSigned = SdJwtSigned.issued(jws.jws, disclosures.toList())
+                val vcInSdJwt = (listOf(jws.toString()) + disclosures).joinToString("~", postfix = "~")
                 vcInSdJwt shouldBe sdJwtSigned.serialize()
                 return Issuer.IssuedCredential.VcSdJwt(
                     sdJwtVc = vcSdJwt,
@@ -166,7 +166,7 @@ val ValidatorSdJwtTest by testSuite {
             }
             val credential = it.issuer.issueCredential(credentialDataWithVctm).getOrThrow()
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>().also {
-                    it.signedSdJwtVc.jws.header.vcTypeMetadata.shouldNotBeNull().shouldBeSingleton().first().let {
+                    it.signedSdJwtVc.jws.jwsHeader.vcTypeMetadata.shouldNotBeNull().shouldBeSingleton().first().let {
                         it.decodeToByteArray(Base64UrlStrict).decodeToString().let {
                             joseCompliantSerializer.decodeFromString<SdJwtTypeMetadata>(it)
                         }
@@ -174,7 +174,7 @@ val ValidatorSdJwtTest by testSuite {
                 }
 
             it.validator.verifySdJwt(credential.signedSdJwtVc, it.holderKeyMaterial.publicKey).getOrThrow().apply {
-                sdJwtSigned.jws.header.vcTypeMetadata.shouldNotBeNull().shouldBeSingleton().first().let {
+                sdJwtSigned.jws.jwsHeader.vcTypeMetadata.shouldNotBeNull().shouldBeSingleton().first().let {
                     it.decodeToByteArray(Base64UrlStrict).decodeToString().let {
                         joseCompliantSerializer.decodeFromString<SdJwtTypeMetadata>(it)
                     }

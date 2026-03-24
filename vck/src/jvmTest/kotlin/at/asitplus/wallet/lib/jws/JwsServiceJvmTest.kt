@@ -4,7 +4,7 @@ import at.asitplus.signum.HazardousMaterials
 import at.asitplus.signum.indispensable.ECCurve
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
@@ -118,8 +118,8 @@ val JwsServiceJvmTest by testSuite {
                     val signed = jwsSigner(
                         JwsContentTypeConstants.JWT, randomPayload, JsonPrimitive.serializer()
                     ).getOrThrow()
-                    val selfVerify = verifyJwsSignatureObject(signed)
-                    withClue("$algo: Signature: ${signed.signature.encodeToTlv().toDerHexString()}") {
+                    val selfVerify = verifyJwsSignatureObject(signed.jws)
+                    withClue("$algo: Signature: ${signed.jws.signature.encodeToTlv().toDerHexString()}") {
                         selfVerify.getOrThrow()
                     }
                 }
@@ -136,9 +136,9 @@ val JwsServiceJvmTest by testSuite {
 
                     // Parsing to our structure verifying payload
                     val signedLibObject = libObject.serialize()
-                    val parsedJwsSigned =
-                        JwsSigned.deserialize<JsonElement>(JsonElement.serializer(), signedLibObject).getOrThrow()
-                    parsedJwsSigned.payload.jsonPrimitive.content shouldBe randomPayload.content
+                    val parsedJwsSigned = JwsCompact(signedLibObject)
+                    parsedJwsSigned.getPayload<JsonElement>()
+                        .getOrThrow().jsonPrimitive.content shouldBe randomPayload.content
                     val parsedSig = parsedJwsSigned.signature.rawByteArray.encodeToString(Base64UrlStrict)
 
                     withClue(
@@ -160,7 +160,7 @@ val JwsServiceJvmTest by testSuite {
                     val signed = jwsSigner(
                         JwsContentTypeConstants.JWT, randomPayload, JsonPrimitive.serializer()
                     ).getOrThrow()
-                    val parsed = JWSObject.parse(signed.serialize())
+                    val parsed = JWSObject.parse(signed.toString())
                         .shouldNotBeNull()
                     parsed.payload.toBytes().decodeToString() shouldBe "\"${randomPayload.content}\""
                     val result = parsed.verify(jvmVerifier)
