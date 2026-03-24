@@ -3,9 +3,8 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.dcapi.request.DCAPIWalletRequest
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
-import at.asitplus.openid.RequestParameters
+import at.asitplus.openid.JwsCompactTyped
 import at.asitplus.openid.RequestParametersFrom
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -89,7 +88,7 @@ val OpenIdRequestParserTests by testSuite {
             m0LQZeO-00GBYNI0PQ
         """.trimIndent().replace("\n", "")
 
-    val authnRequest = JwsSigned.deserialize(JsonObject.serializer(), jws).getOrThrow().payload
+    val authnRequest = JwsCompactTyped<JsonObject>(jws).payload
 
     val authnRequestSerialized = vckJsonSerializer.encodeToString(authnRequest)
 
@@ -133,7 +132,7 @@ val OpenIdRequestParserTests by testSuite {
             requestParser.parseRequestParameters(jws).getOrThrow().apply {
                 shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
                 shouldBeInstanceOf<RequestParametersFrom.JwsSigned<*>>()
-                jwsSigned.serialize() shouldBe jws
+                jwsSigned.toString() shouldBe jws
                 parameters.assertParams()
 
                 vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
@@ -149,7 +148,7 @@ val OpenIdRequestParserTests by testSuite {
             requestParser.parseRequestParameters(input).getOrThrow().apply {
                 shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
                 shouldBeInstanceOf<RequestParametersFrom.JwsSigned<*>>()
-                jwsSigned.serialize() shouldBe jws
+                jwsSigned.toString() shouldBe jws
                 parent.toString() shouldBe input
                 parameters.assertParams()
 
@@ -170,7 +169,7 @@ val OpenIdRequestParserTests by testSuite {
             requestParser.parseRequestParameters(input).getOrThrow().apply {
                 shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
                 shouldBeInstanceOf<RequestParametersFrom.DcApiSigned<*>>()
-                jwsSigned.serialize() shouldBe jws
+                jwsSigned.toString() shouldBe jws
                 parameters.assertParams()
 
                 vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
@@ -238,7 +237,7 @@ val OpenIdRequestParserTests by testSuite {
             requestParser.parseRequestParameters(input).getOrThrow().apply {
                 shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
                 shouldBeInstanceOf<RequestParametersFrom.JwsSigned<*>>()
-                jwsSigned.serialize() shouldBe jws
+                jwsSigned.toString() shouldBe jws
                 parent.toString() shouldBe input
                 parameters.assertParams()
 

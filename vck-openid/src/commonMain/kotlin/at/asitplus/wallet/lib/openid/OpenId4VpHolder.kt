@@ -350,7 +350,7 @@ class OpenId4VpHolder(
 
             val parameters = AuthenticationResponseParameters(
                 state = request.parameters.state,
-                idToken = idToken.toString(),
+                idToken = idToken?.toString(),
                 vpToken = resultContainer?.vpToken,
                 presentationSubmission = resultContainer?.presentationSubmission,
             )

@@ -3,11 +3,11 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.dif.ClaimFormat
 import at.asitplus.dif.PresentationSubmission
 import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.JwsCompactTyped
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
@@ -26,6 +26,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.SdJwtConstants
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.SdJwtSigned
@@ -149,21 +150,22 @@ val OpenId4VpInteropTest by testSuite {
                 .shouldBeInstanceOf<RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>>()
 
             val jar = parameters.jwsSigned
-            jar.header.algorithm shouldBe JwsAlgorithm.Signature.ES256
-            jar.header.type shouldBe "oauth-authz-req+jwt"
+            jar.jwsHeader.algorithm shouldBe JwsAlgorithm.Signature.ES256
+            jar.jwsHeader.type shouldBe "oauth-authz-req+jwt"
 
-            jar.payload.issuer shouldBe it.verifierIssuerUrl
-            jar.payload.audience shouldBe "https://self-issued.me/v2"
-            jar.payload.clientId shouldBe it.verifierClientId
-            jar.payload.clientIdWithoutPrefix shouldBe it.verifierClientId
-            jar.payload.presentationDefinition.shouldNotBeNull()
-            jar.payload.nonce.shouldNotBeNull()
-            jar.payload.state.shouldNotBeNull()
-            jar.payload.responseType shouldBe "vp_token"
-            jar.payload.responseMode shouldBe OpenIdConstants.ResponseMode.DirectPost
-            jar.payload.responseUrl.shouldNotBeNull()
+            val jarPayload = jar.getPayload<AuthenticationRequestParameters>().getOrThrow()
+            jarPayload.issuer shouldBe it.verifierIssuerUrl
+            jarPayload.audience shouldBe "https://self-issued.me/v2"
+            jarPayload.clientId shouldBe it.verifierClientId
+            jarPayload.clientIdWithoutPrefix shouldBe it.verifierClientId
+            jarPayload.presentationDefinition.shouldNotBeNull()
+            jarPayload.nonce.shouldNotBeNull()
+            jarPayload.state.shouldNotBeNull()
+            jarPayload.responseType shouldBe "vp_token"
+            jarPayload.responseMode shouldBe OpenIdConstants.ResponseMode.DirectPost
+            jarPayload.responseUrl.shouldNotBeNull()
 
-            if (jar.header.keyId != null) { // web-based key lookup is optional in profile 2.0
+            if (jar.jwsHeader.keyId != null) { // web-based key lookup is optional in profile 2.0
                 val verifierRequestSigningKey = it.verifierKeyMaterial.jsonWebKey.shouldNotBeNull()
                 VerifyJwsSignatureWithKey()(jar, verifierRequestSigningKey).isSuccess shouldBe true
             } else {
@@ -176,18 +178,18 @@ val OpenId4VpInteropTest by testSuite {
             response.params.entries.firstOrNull { it.key == "vp_token" }.shouldNotBeNull().value.let { vpToken ->
                 val sdJwt = SdJwtSigned.parseCatching(vpToken).getOrThrow()
                 sdJwt.keyBindingJws.shouldNotBeNull().apply {
-                    header.apply {
+                    jws.jwsHeader.apply {
                         algorithm shouldBe JwsAlgorithm.Signature.ES256
                         type shouldBe "kb+jwt"
                     }
                     payload.apply {
                         issuedAt.shouldNotBeNull()
-                        audience shouldBe jar.payload.clientId
-                        challenge shouldBe jar.payload.nonce
+                        audience shouldBe jarPayload.clientId
+                        challenge shouldBe jarPayload.nonce
                         sdHash.shouldNotBeNull()
                     }
                 }
-                sdJwt.jws.header.apply {
+                sdJwt.jws.jwsHeader.apply {
                     if (keyId != null)
                         keyId shouldBe it.issuerKeyId
                     else
@@ -195,7 +197,7 @@ val OpenId4VpInteropTest by testSuite {
                     algorithm shouldBe JwsAlgorithm.Signature.ES256
                     type shouldBe "dc+sd-jwt"
                 }
-                sdJwt.getPayloadAsVerifiableCredentialSdJwt().getOrThrow().apply {
+                sdJwt.jws.getPayload<VerifiableCredentialSdJwt>().getOrThrow().apply {
                     issuer shouldBe it.issuerIdentifier
                     issuedAt.shouldNotBeNull()
                     expiration.shouldNotBeNull()
@@ -234,14 +236,11 @@ val OpenId4VpInteropTest by testSuite {
             .i7Kli1T5RZzo2-TvWsw9-JpxjYPBUae8Lrc_ORfTdabHlXmuPucGVrE5lkBu7vLss2RKKEmdFFy57-ZvRFn4Tg
         """.trimIndent()
 
-            val jar = JwsSigned.deserialize<AuthenticationRequestParameters>(
-                AuthenticationRequestParameters.serializer(),
-                input,
-                vckJsonSerializer
-            ).getOrThrow()
+            val jar = JwsCompactTyped<AuthenticationRequestParameters>(input)
 
-            jar.header.algorithm shouldBe JwsAlgorithm.Signature.ES256
-            jar.header.type shouldBe " oauth-authz-req+jwt " // that's a typo in the document ...
+            jar.jws.jwsHeader.algorithm shouldBe JwsAlgorithm.Signature.ES256
+            jar.jws.jwsHeader.type shouldBe " oauth-authz-req+jwt " // that's a typo in the document ...
+
 
             jar.payload.issuer shouldBe "https://bdr.de/jwk"
             jar.payload.audience shouldBe " https://self-issued.me/v2" // that's a typo in the document ...
@@ -277,7 +276,7 @@ val OpenId4VpInteropTest by testSuite {
 
             val sdJwt = SdJwtSigned.parseCatching(input).getOrThrow().apply {
                 keyBindingJws.shouldBeNull()
-                getPayloadAsVerifiableCredentialSdJwt().getOrThrow().apply {
+                jws.getPayload<VerifiableCredentialSdJwt>().getOrThrow().apply {
                     issuer shouldBe "https://rvig.nl/jwk"
                     verifiableCredentialType shouldBe "urn:eu.europa.ec.eudi:pid:1"
                     selectiveDisclosureAlgorithm shouldBe SdJwtConstants.SHA_256
