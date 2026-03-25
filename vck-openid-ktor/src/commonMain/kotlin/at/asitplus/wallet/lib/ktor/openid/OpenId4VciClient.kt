@@ -101,18 +101,16 @@ class OpenId4VciClient(
         }
 
     private fun SupportedCredentialFormat.resolveCredentialScheme(): ConstantIndex.CredentialScheme? =
-        (credentialDefinition?.types?.firstNotNullOfOrNull {
+        sdJwtVcType?.let {
+            AttributeIndex.resolveSdJwtAttributeType(it)
+                ?: SdJwtFallbackCredentialScheme(sdJwtType = it)
+        } ?: docType?.let {
+            AttributeIndex.resolveIsoDoctype(it)
+                ?: IsoMdocFallbackCredentialScheme(isoDocType = it)
+        } ?: credentialDefinition?.types?.firstNotNullOfOrNull {
             AttributeIndex.resolveAttributeType(it)
                 ?: VcFallbackCredentialScheme(vcType = it)
         }
-            ?: sdJwtVcType?.let {
-                AttributeIndex.resolveSdJwtAttributeType(it)
-                    ?: SdJwtFallbackCredentialScheme(sdJwtType = it)
-            }
-            ?: docType?.let {
-                AttributeIndex.resolveIsoDoctype(it)
-                    ?: IsoMdocFallbackCredentialScheme(isoDocType = it)
-            })
 
     /**
      * Starts the issuing process at [credentialIssuerUrl].
@@ -220,7 +218,8 @@ class OpenId4VciClient(
             val tokenResponse = oauth2Client.requestTokenWithRefreshToken(
                 oauthMetadata = oauthMetadata,
                 credentialIssuer = issuerMetadata.credentialIssuer,
-                refreshToken = refreshToken ?: throw IllegalArgumentException("Refresh token is missing in RefreshTokenInfo"),
+                refreshToken = refreshToken
+                    ?: throw IllegalArgumentException("Refresh token is missing in RefreshTokenInfo"),
                 scope = credentialFormat.scope,
                 authorizationDetails = oid4vciService.buildAuthorizationDetails(
                     credentialIdentifier,
@@ -305,13 +304,13 @@ class OpenId4VciClient(
         return CredentialIssuanceResult.Success(
             storeCredentialInputs,
             CredentialRenewalInfo(
-                    refreshToken = tokenResponse.params.refreshToken,
-                    issuerMetadata = issuerMetadata,
-                    oauthMetadata = oauthMetadata,
-                    credentialFormat = credentialFormat,
-                    credentialIdentifier = credentialIdentifier,
-                )
+                refreshToken = tokenResponse.params.refreshToken,
+                issuerMetadata = issuerMetadata,
+                oauthMetadata = oauthMetadata,
+                credentialFormat = credentialFormat,
+                credentialIdentifier = credentialIdentifier,
             )
+        )
     }
 
     private suspend fun fetchCredential(
@@ -406,7 +405,8 @@ class OpenId4VciClient(
         } else {
             oauth2Client.startAuthorization(
                 oauthMetadata = oauthMetadata,
-                authorizationServer = credentialOffer.grants?.authorizationCode?.authorizationServer ?: authorizationServer,
+                authorizationServer = credentialOffer.grants?.authorizationCode?.authorizationServer
+                    ?: authorizationServer,
                 state = state,
                 issuerState = credentialOffer.grants?.authorizationCode?.issuerState,
                 authorizationDetails = oid4vciService.buildAuthorizationDetails(
