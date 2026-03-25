@@ -19,9 +19,13 @@ data class DCQLIsoMdocCredentialMetadataAndValidityConstraints(
         const val DOCTYPE_VALUE = "doctype_value"
     }
 
+    fun validateCredentialConformance(credential: DCQLIsoMdocCredential): KmmResult<Unit> = validate(
+        actualDoctypeValue = credential.documentType,
+    )
+
     fun validate(actualDoctypeValue: String?): KmmResult<Unit> = catching {
-        if (actualDoctypeValue != doctypeValue) {
-            throw IllegalArgumentException("Incompatible MDOC document type.")
+        require(actualDoctypeValue == doctypeValue) {
+            "Incompatible MDOC document type."
         }
     }
 }

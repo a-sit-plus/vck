@@ -18,8 +18,11 @@ package at.asitplus.wallet.lib.procedures.dcql
 
 import at.asitplus.openid.dcql.DCQLAuthorityKeyIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialClaimStructure
+import at.asitplus.openid.dcql.DCQLIsoMdocCredential
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLQueryMatchingResult
+import at.asitplus.openid.dcql.DCQLSdJwtCredential
+import at.asitplus.openid.dcql.DCQLVcJwsCredential
 import at.asitplus.signum.indispensable.asn1.Asn1Decodable
 import at.asitplus.signum.indispensable.asn1.Asn1Element
 import at.asitplus.signum.indispensable.asn1.Asn1Encodable
@@ -45,70 +48,59 @@ import kotlin.jvm.JvmInline
 value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
     fun select(
         credentials: List<SubjectCredentialStore.StoreEntry>
-    ): DCQLQueryMatchingResult = dcqlQuery.execute(
-        availableCredentials = credentials,
-        credentialFormatExtractor = { it.credentialFormat },
-        mdocCredentialDoctypeExtractor = {
-            if (it !is SubjectCredentialStore.StoreEntry.Iso) {
-                throw IllegalArgumentException("Value is not an MDOC credential")
-            }
-            it.scheme!!.isoDocType!!
-        },
-        sdJwtCredentialTypeExtractor = {
-            if (it !is SubjectCredentialStore.StoreEntry.SdJwt) {
-                throw IllegalArgumentException("Value is not an SD-JWT credential")
-            }
-            it.scheme!!.sdJwtType!!
-        },
-        jwtVcCredentialTypeExtractor = {
-            if (it !is SubjectCredentialStore.StoreEntry.Vc) {
-                throw IllegalArgumentException("Value is not an JWT-VC credential")
-            }
-            it.vc.vc.type.toList()
-        },
-        credentialClaimStructureExtractor = { storeEntry ->
-            when (storeEntry) {
-                is SubjectCredentialStore.StoreEntry.Iso -> DCQLCredentialClaimStructure.IsoMdocStructure(
-                    storeEntry.issuerSigned.namespaces?.mapValues { entry ->
-                        entry.value.entries.associate {
-                            it.value.elementIdentifier to it.value.elementValue
-                        }
-                    } ?: mapOf()
-                )
-
-                else -> DCQLCredentialClaimStructure.JsonBasedStructure(
-                    CredentialToJsonConverter.toJsonElement(storeEntry)
-                )
-            }
-        },
-        satisfiesCryptographicHolderBinding = {
-            when (it) {
-                is SubjectCredentialStore.StoreEntry.Iso -> it.issuerSigned.issuerAuth.payload?.deviceKeyInfo != null
-                is SubjectCredentialStore.StoreEntry.SdJwt -> it.sdJwt.confirmationClaim != null
-                is SubjectCredentialStore.StoreEntry.Vc -> !it.vc.subject.isNullOrEmpty()
-            }
-        },
-        authorityKeyIdentifiers = {
-            when (it) {
-                is SubjectCredentialStore.StoreEntry.Iso -> it.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.flatMap {
-                    X509Certificate.decodeFromByteArray(it)?.getAuthorityKeyIdentifier() ?: listOf()
-                } ?: listOf()
-
-                is SubjectCredentialStore.StoreEntry.SdJwt -> SdJwtSigned.parseCatching(
-                    it.vcSerialized
-                ).getOrThrow().jws.header.certificateChain?.flatMap {
-                    it.getAuthorityKeyIdentifier()
-                } ?: listOf()
-
-                is SubjectCredentialStore.StoreEntry.Vc -> JwsSigned.deserialize(
-                    VerifiableCredentialJws.serializer(),
-                    it.vcSerialized,
-                    vckJsonSerializer
-                ).getOrThrow().header.certificateChain?.flatMap {
-                    it.getAuthorityKeyIdentifier()
-                } ?: listOf()
-            }
+    ): DCQLQueryMatchingResult = dcqlQuery.findCredentialQueryMatches(
+        availableCredentials = credentials.map {
+            it.toDCQLCredential()
         }
+    )
+
+    private fun SubjectCredentialStore.StoreEntry.toDCQLCredential() = when (this) {
+        is SubjectCredentialStore.StoreEntry.Iso -> toDCQLCredential()
+        is SubjectCredentialStore.StoreEntry.SdJwt -> toDCQLCredential()
+        is SubjectCredentialStore.StoreEntry.Vc -> toDCQLCredential()
+    }
+
+    private fun SubjectCredentialStore.StoreEntry.Iso.toDCQLCredential() = DCQLIsoMdocCredential(
+        claimStructure = DCQLCredentialClaimStructure.IsoMdocStructure(
+            issuerSigned.namespaces?.mapValues { entry ->
+                entry.value.entries.associate {
+                    it.value.elementIdentifier to it.value.elementValue
+                }
+            } ?: mapOf()
+        ),
+        satisfiesCryptographicHolderBinding = issuerSigned.issuerAuth.payload?.deviceKeyInfo != null,
+        authorityKeyIdentifiers = issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.flatMap {
+            X509Certificate.decodeFromByteArray(it)?.getAuthorityKeyIdentifier() ?: listOf()
+        } ?: listOf(),
+        documentType = scheme!!.isoDocType!!
+    )
+
+    private fun SubjectCredentialStore.StoreEntry.SdJwt.toDCQLCredential() = DCQLSdJwtCredential(
+        claimStructure = DCQLCredentialClaimStructure.JsonBasedStructure(
+            CredentialToJsonConverter.toJsonElement(this)
+        ),
+        satisfiesCryptographicHolderBinding = sdJwt.confirmationClaim != null,
+        authorityKeyIdentifiers = SdJwtSigned.parseCatching(
+            vcSerialized
+        ).getOrThrow().jws.header.certificateChain?.flatMap {
+            it.getAuthorityKeyIdentifier()
+        } ?: listOf(),
+        type = scheme!!.sdJwtType!!
+    )
+
+    private fun SubjectCredentialStore.StoreEntry.Vc.toDCQLCredential() = DCQLVcJwsCredential(
+        claimStructure = DCQLCredentialClaimStructure.JsonBasedStructure(
+            CredentialToJsonConverter.toJsonElement(this)
+        ),
+        satisfiesCryptographicHolderBinding = !vc.subject.isNullOrEmpty(),
+        authorityKeyIdentifiers = JwsSigned.deserialize(
+            VerifiableCredentialJws.serializer(),
+            vcSerialized,
+            vckJsonSerializer
+        ).getOrThrow().header.certificateChain?.flatMap {
+            it.getAuthorityKeyIdentifier()
+        } ?: listOf(),
+        types = vc.vc.type.toList(),
     )
 
     // take all authority key identifiers from chain, assuming chain is validated elsewhere

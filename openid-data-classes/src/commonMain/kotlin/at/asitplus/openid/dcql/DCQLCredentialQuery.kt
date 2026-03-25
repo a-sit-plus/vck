@@ -109,7 +109,8 @@ sealed interface DCQLCredentialQuery {
                 claimSets = claimSets,
                 multiple = multiple ?: Defaults.MULTIPLE,
                 trustedAuthorities = trustedAuthorities,
-                requireCryptographicHolderBinding = requireCryptographicHolderBinding ?: Defaults.REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING,
+                requireCryptographicHolderBinding = requireCryptographicHolderBinding
+                    ?: Defaults.REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING,
             )
 
             CredentialFormatEnum.DC_SD_JWT -> DCQLSdJwtCredentialQuery(
@@ -122,7 +123,8 @@ sealed interface DCQLCredentialQuery {
                 claimSets = claimSets,
                 multiple = multiple ?: Defaults.MULTIPLE,
                 trustedAuthorities = trustedAuthorities,
-                requireCryptographicHolderBinding = requireCryptographicHolderBinding ?: Defaults.REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING,
+                requireCryptographicHolderBinding = requireCryptographicHolderBinding
+                    ?: Defaults.REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING,
             )
 
             CredentialFormatEnum.MSO_MDOC -> DCQLIsoMdocCredentialQuery(
@@ -135,7 +137,8 @@ sealed interface DCQLCredentialQuery {
                 claimSets = claimSets,
                 multiple = multiple ?: Defaults.MULTIPLE,
                 trustedAuthorities = trustedAuthorities,
-                requireCryptographicHolderBinding = requireCryptographicHolderBinding ?: Defaults.REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING,
+                requireCryptographicHolderBinding = requireCryptographicHolderBinding
+                    ?: Defaults.REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING,
             )
 
             else -> throw IllegalArgumentException("Unsupported credential format: ${format}")
@@ -162,54 +165,64 @@ sealed interface DCQLCredentialQuery {
     fun validate() {
         if (claimSets != null) {
             claims?.forEach {
-                if (it.id == null) {
-                    throw IllegalArgumentException("Value of `id` in claims is REQUIRED if claim_sets is present in the Credential Query.")
+                require(it.id != null) {
+                    "Value of `id` in claims is REQUIRED if claim_sets is present in the Credential Query."
                 }
+            }
+        }
+        if (claims == null) {
+            require(claimSets == null) {
+                "claim_sets MUST NOT be present if claims is absent."
             }
         }
     }
 
-
     /**
-     *  6.3.1.1. Selecting Claims
+     *  6.4.1. Selecting Claims
      *
      * The following rules apply for selecting claims via claims and claim_sets:
-     * If claims is absent, the Verifier requests all claims existing in the Credential.
-     * If claims is present, but claim_sets is absent, the Verifier requests all claims listed in
-     * claims. If both claims and claim_sets are present, the Verifier requests one combination of
-     * the claims listed in claim_sets. The order of the options conveyed in the claim_sets array
-     * expresses the Verifier's preference for what is returned; the Wallet MUST return the first
-     * option that it can satisfy. If the Wallet cannot satisfy any of the options, it MUST NOT
-     * return any claims.When a Claims Query contains a restriction on the values of a claim, the
-     * Wallet SHOULD NOT return the claim if its value does not match at least one of the elements
-     * in values i.e., the claim should be treated the same as if it did not exist in the
-     * Credential. Implementing this restriction may not be possible in all cases, for example,
-     * if the Wallet does not have access to the claim value before presentation or user consent or
-     * if another component routing the request to the Wallet does not have access to the claim
-     * value. Therefore, Verifiers must treat restrictions expressed using values as a best-effort
-     * way to improve user privacy, but MUST NOT rely on it for security checks.The purpose of the
-     * claim_sets syntax is to provide a way for a verifier to describe alternative ways a given
-     * credential can satisfy the request. The array ordering expresses the Verifier's preference
-     * for how to fulfill the request. The first element in the array is the most preferred and the
-     * last element in the array is the least preferred. Verifiers SHOULD use the principle of
-     * least information disclosure to influence how they order these options. For example, a proof
-     * of age request should prioritize requesting an attribute like age_over_18 over an attribute
-     * like birth_date. The claim_sets syntax is not intended to define options the user can choose
-     * from, see Section 6.3.1.3 for more information.If the Wallet cannot deliver all claims
-     * requested by the Verifier according to these rules, it MUST NOT return the respective
-     * Credential.
+     *
+     *     If claims is absent, the Verifier is requesting no claims that are selectively disclosable; the Wallet MUST
+     *     return only the claims that are mandatory to present (e.g., SD-JWT and Key Binding JWT for a Credential of
+     *     format IETF SD-JWT VC).
+     *     If claims is present, but claim_sets is absent, the Verifier requests all claims listed in claims.
+     *     If both claims and claim_sets are present, the Verifier requests one combination of the claims listed in
+     *     claim_sets. The order of the options conveyed in the claim_sets array expresses the Verifier's preference
+     *     for what is returned; the Wallet SHOULD return the first option that it can satisfy. If the Wallet cannot
+     *     satisfy any of the options, it MUST NOT return any claims.
+     *     claim_sets MUST NOT be present if claims is absent.
+     *
+     * When a Claims Query contains a restriction on the values of a claim, the Wallet SHOULD NOT return the claim if
+     * its value does not match according to the rules for values defined in Section 6.3, i.e., the claim should be
+     * treated the same as if it did not exist in the Credential. Implementing this restriction may not be possible in
+     * all cases, for example, if the Wallet does not have access to the claim value before presentation or user consent
+     * or if another component routing the request to the Wallet does not have access to the claim value. It is
+     * ultimately up to the Wallet and/or the End-User if the value matching request is followed. Therefore, Verifiers
+     * MUST treat restrictions expressed using values as a best-effort way to improve user privacy, but MUST NOT rely
+     * on it for security checks.
+     *
+     * The purpose of the claim_sets syntax is to provide a way for a Verifier to describe alternative ways a given
+     * Credential can satisfy the request. The array ordering expresses the Verifier's preference for how to fulfill
+     * the request. The first element in the array is the most preferred and the last element in the array is the least
+     * preferred. Verifiers SHOULD use the principle of least information disclosure to influence how they order these
+     * options. For example, a proof of age request should prioritize requesting an attribute like age_over_18 over an
+     * attribute like birth_date. The claim_sets syntax is not intended to define options the End-User can choose from,
+     * see Section 6.4.3 for more information. The Wallet is recommended to return the first option it can satisfy since
+     * that is the preferred option from the Verifier. However, there can be reasons to deviate. Non-exhaustive examples
+     * of such reasons are:
+     *
+     *     scenarios where the Verifier did not order the options to minimize information disclosure
+     *     operational reasons why returning a different option than the first option has UX benefits for the Wallet.
+     *
+     * If the Wallet cannot deliver all claims requested by the Verifier according to these rules, it MUST NOT return
+     * the respective Credential.
+     *
+     * For Credential Formats that do not support selective disclosure, the case of both claims and claim_sets being
+     * absent is interpreted as requesting a presentation of the "full credential" since all claims are mandatory to
+     * present.
      */
-    fun <Credential : Any> executeCredentialQueryAgainstCredential(
-        credential: Credential,
-        credentialFormatExtractor: (Credential) -> CredentialFormatEnum,
-        mdocCredentialDoctypeExtractor: (Credential) -> String,
-        sdJwtCredentialTypeExtractor: (Credential) -> String,
-        jwtVcCredentialTypeExtractor: (Credential) -> List<String>,
-        credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
-        satisfiesCryptographicHolderBinding: (Credential) -> Boolean,
-        authorityKeyIdentifiers: (Credential) -> Collection<DCQLAuthorityKeyIdentifier>,
-    ): KmmResult<DCQLCredentialQueryMatchingResult> = catching {
-        if (credentialFormatExtractor(credential) != format) {
+    fun match(credential: DCQLCredential): KmmResult<DCQLCredentialQueryMatchingResult> = catching {
+        if (credential.format != format) {
             throw IllegalArgumentException("Incompatible credential format")
         }
 
@@ -219,7 +232,7 @@ sealed interface DCQLCredentialQuery {
                     val supportedAuthorityKeyIdentifiers = trustedAuthority.values.map {
                         DCQLAuthorityKeyIdentifier(it)
                     }
-                    authorityKeyIdentifiers(credential).any {
+                    credential.authorityKeyIdentifiers.any {
                         it in supportedAuthorityKeyIdentifiers
                     }
                 }
@@ -235,24 +248,73 @@ sealed interface DCQLCredentialQuery {
         } ?: true
 
         if (!isTrustedAuthorityMatching) {
-            throw IllegalArgumentException("Credential matches to none of the trusted authorities.")
+            throw IllegalArgumentException("Credential is not provided by a trusted authority.")
         }
 
-        if (requireCryptographicHolderBinding != false && !satisfiesCryptographicHolderBinding(credential)) {
+        if (requireCryptographicHolderBinding && !credential.satisfiesCryptographicHolderBinding) {
             throw IllegalArgumentException("Credential does not satisfy constraint `require_cryptographic_holder_binding`.")
         }
 
-
-        Procedures.validateCredentialMetadataAndValidityConstraints(
+        meta.validateCredentialConformance(
             credential = credential,
-            credentialMetadataAndValidityConstraints = meta,
-            mdocCredentialDoctypeExtractor = mdocCredentialDoctypeExtractor,
-            sdJwtCredentialTypeExtractor = sdJwtCredentialTypeExtractor,
-            jwtVcCredentialTypeExtractor = jwtVcCredentialTypeExtractor
         ).getOrThrow()
 
-        val claimQueries = claims
-            ?: return KmmResult.success(DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult)
+        return matchClaimsQueriesAgainstClaimStructure(
+            credential.claimStructure,
+            satisfiesSelectiveDisclosure = credential.isSelectivelyDisclosable,
+        )
+    }
+
+    @Deprecated("Replace in favor of match(DCQLCredential).")
+    fun <Credential : Any> executeCredentialQueryAgainstCredential(
+        credential: Credential,
+        credentialFormatExtractor: (Credential) -> CredentialFormatEnum,
+        mdocCredentialDoctypeExtractor: (Credential) -> String,
+        sdJwtCredentialTypeExtractor: (Credential) -> String,
+        jwtVcCredentialTypeExtractor: (Credential) -> List<String>,
+        credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
+        satisfiesCryptographicHolderBinding: (Credential) -> Boolean,
+        authorityKeyIdentifiers: (Credential) -> Collection<DCQLAuthorityKeyIdentifier>,
+    ): KmmResult<DCQLCredentialQueryMatchingResult> = catching {
+        match(
+            when (val format = credentialFormatExtractor(credential)) {
+                CredentialFormatEnum.MSO_MDOC -> DCQLIsoMdocCredential(
+                    claimStructure = credentialClaimStructureExtractor(credential) as DCQLCredentialClaimStructure.IsoMdocStructure,
+                    documentType = mdocCredentialDoctypeExtractor(credential),
+                    satisfiesCryptographicHolderBinding = true,
+                    authorityKeyIdentifiers = authorityKeyIdentifiers(credential)
+                )
+
+                CredentialFormatEnum.DC_SD_JWT -> DCQLSdJwtCredential(
+                    claimStructure = credentialClaimStructureExtractor(credential) as DCQLCredentialClaimStructure.JsonBasedStructure,
+                    type = sdJwtCredentialTypeExtractor(credential),
+                    satisfiesCryptographicHolderBinding = true,
+                    authorityKeyIdentifiers = authorityKeyIdentifiers(credential)
+                )
+
+                CredentialFormatEnum.JWT_VC -> DCQLVcJwsCredential(
+                    claimStructure = credentialClaimStructureExtractor(credential) as DCQLCredentialClaimStructure.JsonBasedStructure,
+                    types = jwtVcCredentialTypeExtractor(credential),
+                    satisfiesCryptographicHolderBinding = true,
+                    authorityKeyIdentifiers = authorityKeyIdentifiers(credential)
+                )
+
+                CredentialFormatEnum.NONE,
+                CredentialFormatEnum.JWT_VC_JSON_LD,
+                CredentialFormatEnum.JSON_LD -> throw UnsupportedOperationException("Unsupported format $format")
+            }
+        ).getOrThrow()
+    }
+
+    fun matchClaimsQueriesAgainstClaimStructure(
+        credentialStructure: DCQLCredentialClaimStructure,
+        satisfiesSelectiveDisclosure: Boolean,
+    ): KmmResult<DCQLCredentialQueryMatchingResult> = catching {
+        val claimQueries = claims ?: if (satisfiesSelectiveDisclosure) {
+            return KmmResult.success(DCQLCredentialQueryMatchingResult.ClaimsQueryResults(listOf()))
+        } else {
+            return KmmResult.success(DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult)
+        }
 
         val requestedClaimsQueryCombinations = claimSets?.let {
             val claimQueryLookup = claimQueries.associateBy {
@@ -267,26 +329,9 @@ sealed interface DCQLCredentialQuery {
             }.toNonEmptyList()
         } ?: nonEmptyListOf(claimQueries)
 
-        val result = requestedClaimsQueryCombinations.firstNotNullOf { claimQueryCombination ->
+        val successCombination = requestedClaimsQueryCombinations.firstNotNullOf { claimQueryCombination ->
             catching {
                 claimQueryCombination.map { claimQuery ->
-                    val credentialStructure = credentialClaimStructureExtractor(credential)
-
-                    val acceptedFormats = when (credentialStructure) {
-                        is DCQLCredentialClaimStructure.IsoMdocStructure -> listOf(
-                            CredentialFormatEnum.MSO_MDOC
-                        )
-
-                        is DCQLCredentialClaimStructure.JsonBasedStructure -> listOf(
-                            CredentialFormatEnum.DC_SD_JWT,
-                            CredentialFormatEnum.JWT_VC,
-                        )
-                    }
-
-                    require(format in acceptedFormats) {
-                        "Inconsistent credential format and claim query"
-                    }
-
                     claimQuery.executeClaimsQueryAgainstCredential(
                         credentialStructure = credentialStructure,
                     ).getOrThrow()
@@ -295,30 +340,23 @@ sealed interface DCQLCredentialQuery {
                 Napier.w("Failed to execute claims query", it)
             }.getOrNull()
         }
-        DCQLCredentialQueryMatchingResult.ClaimsQueryResults(result)
+        DCQLCredentialQueryMatchingResult.ClaimsQueryResults(successCombination)
     }
 
-    object Procedures {
-        fun <Credential : Any> validateCredentialMetadataAndValidityConstraints(
-            credential: Credential,
-            credentialMetadataAndValidityConstraints: DCQLCredentialMetadataAndValidityConstraints,
-            mdocCredentialDoctypeExtractor: (Credential) -> String,
-            sdJwtCredentialTypeExtractor: (Credential) -> String,
-            jwtVcCredentialTypeExtractor: (Credential) -> List<String>,
-        ): KmmResult<Unit> = when (credentialMetadataAndValidityConstraints) {
-            DCQLEmptyCredentialMetadataAndValidityConstraints -> KmmResult.success(Unit)
-
-            is DCQLIsoMdocCredentialMetadataAndValidityConstraints -> credentialMetadataAndValidityConstraints.validate(
-                mdocCredentialDoctypeExtractor(credential)
-            )
-
-            is DCQLSdJwtCredentialMetadataAndValidityConstraints -> credentialMetadataAndValidityConstraints.validate(
-                sdJwtCredentialTypeExtractor(credential)
-            )
-
-            is DCQLJwtVcCredentialMetadataAndValidityConstraints -> credentialMetadataAndValidityConstraints.validate(
-                jwtVcCredentialTypeExtractor(credential)
-            )
+    fun isSatisfiedWith(
+        credentialQueryResponses: List<DCQLCredentialQueryResponse>,
+        parseIsoMdocCredential: (DCQLCredentialQueryResponse) -> DCQLIsoMdocCredential,
+        parseSdJwtCredential: (DCQLCredentialQueryResponse) -> DCQLSdJwtCredential,
+        parseVcJwsCredential: (DCQLCredentialQueryResponse) -> DCQLVcJwsCredential,
+    ): Boolean = runCatching {
+        credentialQueryResponses.isNotEmpty() && (multiple || credentialQueryResponses.size == 1) && credentialQueryResponses.all {
+            match(
+                credential = when (this) {
+                    is DCQLIsoMdocCredentialQuery -> parseIsoMdocCredential(it)
+                    is DCQLSdJwtCredentialQuery -> parseSdJwtCredential(it)
+                    is DCQLJwtVcCredentialQuery -> parseVcJwsCredential(it)
+                },
+            ).isSuccess
         }
-    }
+    }.getOrNull() ?: false
 }

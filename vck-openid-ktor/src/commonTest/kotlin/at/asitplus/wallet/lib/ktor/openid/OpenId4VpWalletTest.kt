@@ -21,7 +21,6 @@ import at.asitplus.openid.dcql.DCQLIsoMdocClaimsQuery
 import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLIsoMdocCredentialQuery
 import at.asitplus.openid.dcql.DCQLQuery
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.RequestOptionsCredential
@@ -38,15 +37,12 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.CredentialPresentation.DCQLPresentation
-import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
-import at.asitplus.wallet.lib.data.CredentialSubject
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.toJsonElement
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.AuthnResponseResult
@@ -64,7 +60,6 @@ import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
 import io.github.aakira.napier.Napier
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -88,6 +83,7 @@ import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
 
+@Suppress("unused")
 val OpenId4VpWalletTest by testSuite {
 
     withFixtureGenerator {
@@ -456,7 +452,7 @@ val OpenId4VpWalletTest by testSuite {
 
             val preparationState = it.wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
             when (val matchingResult = it.wallet.getMatchingCredentials(preparationState).getOrThrow()) {
-                is DCQLMatchingResult -> matchingResult.presentationRequest.dcqlQuery.isSatisfiedWith(
+                is DCQLMatchingResult -> matchingResult.presentationRequest.dcqlQuery.isCredentialSetQueriesSatisfiedWith(
                     matchingResult.matchingResult.toDefaultSubmission(
                         matchingResult.presentationRequest.dcqlQuery
                     ).getOrThrow().keys
