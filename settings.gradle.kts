@@ -1,6 +1,7 @@
 import org.tomlj.Toml
 import org.tomlj.TomlParseResult
 import java.io.FileInputStream
+
 pluginManagement {
     includeBuild("conventions-vclib")
     repositories {
@@ -19,11 +20,6 @@ plugins {
 }
 
 
-if (System.getProperty("publishing.excludeIncludedBuilds") != "true") {
-    includeBuild("signum")
-} else logger.lifecycle("Excluding Signum from this build")
-
-
 rootProject.name = "vc-k"
 include(":dif-data-classes")
 include(":openid-data-classes")
@@ -32,6 +28,13 @@ include(":vck")
 include(":vck-openid")
 include(":vck-openid-ktor")
 
+
+val signumFile = file("../signum/build.gradle.kts")
+if (signumFile.exists()) {
+    logger.warn("Detected signum in ${signumFile.absolutePath}.")
+    logger.warn("Including signum as composite build.")
+    includeBuild("../signum")
+}
 
 buildscript {
     repositories {

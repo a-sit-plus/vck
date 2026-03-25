@@ -18,7 +18,7 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
       - name: Publish to Sonatype
-        run: ./gradlew -Dpublishing.excludeIncludedBuilds=true clean publishToSonatype closeSonatypeStagingRepository
+        run: ./gradlew clean publishToSonatype closeSonatypeStagingRepository
         env:
           ORG_GRADLE_PROJECT_signingKeyId: ${{ secrets.PUBLISH_SIGNING_KEYID }}
           ORG_GRADLE_PROJECT_signingKey: ${{ secrets.PUBLISH_SIGNING_KEY }}
@@ -41,7 +41,7 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
       - name: Build Dokka HTML
-        run: ./gradlew -Dpublishing.excludeIncludedBuilds=true dokkaGenerate
+        run: ./gradlew dokkaGenerate
       - name: Setup Pages
         uses: actions/configure-pages@v3
       - name: Upload artifact

@@ -2,7 +2,8 @@
 
 * Clone recursively or at least init and update the `conventions-vclib/gradle-conventions-plugin` submodule manually
 * Make sure you have the path to an Android SDK path properly set up in `local.properties`! Otherwise this project will fail to load.
-* If you are using a composite build, be sure to also setup an Android SDK path in `signum/local.properties`! Otherwise this project will also fail to load.
+
+To use a composite build with [Signum](https://github.com/a-sit-plus/signum) clone that repository in a directory called `signum` beside this repository. See [settings.gradle.kts](./settings.gradle.kts) for details.
 
 ## Publishing
 
@@ -19,9 +20,6 @@ signing.secretKeyRingFile=<path-of-your-secring>
 sonatypeUsername=<user-token-name>
 sonatypePassword=<user-token-password>
 ```
-
-In addition, it is highly recommended to set the System property `publishing.excludeIncludedBuilds` to `true`, to
-build artefacts for publishing, which **do no** depend on included builds.
 
 To run the pipeline from GitHub, export your GPG key with `gpg --export-secret-keys --armor <keyid> | tee <keyid>.asc` and set the following environment variables:
 

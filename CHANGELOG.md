@@ -43,6 +43,8 @@ Release 5.12.0 (unreleased):
    - In `SimpleAuthorizationService` implement [JWT Response for OAuth Token Introspection](https://datatracker.ietf.org/doc/html/rfc9701/)
 - ISO MDOC:
     - Change: Return type of `Iso180137AnnexCVerifier.validateResponse` from `Iso180137AnnexCResponseResult` to `KmmResult<Iso180137AnnexCResponseResult.SuccessIso>`
+ - Dependencies:
+   - Update to [Signum 3.20.0](https://github.com/a-sit-plus/signum/releases/tag/3.20.0)
 
 Release 5.11.1:
  - OAuth 2.0:

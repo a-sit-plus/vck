@@ -1,9 +1,6 @@
 [submodule "conventions-vclib/gradle-conventions-plugin"]
 	path = conventions-vclib/gradle-conventions-plugin
 	url = https://github.com/a-sit-plus/gradle-conventions-plugin.git	
-[submodule "kmp-crypto"]
-	path = signum
-	url = https://github.com/a-sit-plus/signum.git	
 [submodule "mobile-driving-licence-credential"]
 	path = mobile-driving-licence-credential
 	url = https://github.com/a-sit-plus/mobile-driving-licence-credential.git

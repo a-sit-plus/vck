@@ -38,7 +38,7 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
       - name: Publish to Maven Local
-        run: ./gradlew -Dpublishing.excludeIncludedBuilds=true clean publishAllPublicationsToLocalRepository
+        run: ./gradlew clean publishAllPublicationsToLocalRepository
         env:
           ORG_GRADLE_PROJECT_signingKeyId: ${{ secrets.PUBLISH_SIGNING_KEYID }}
           ORG_GRADLE_PROJECT_signingKey: ${{ secrets.PUBLISH_SIGNING_KEY }}
@@ -79,4 +79,4 @@ jobs:
         with:
           submodules: recursive
       - name: Build Dokka HTML
-        run: ./gradlew -Dpublishing.excludeIncludedBuilds=true  dokkaGenerate
+        run: ./gradlew dokkaGenerate
