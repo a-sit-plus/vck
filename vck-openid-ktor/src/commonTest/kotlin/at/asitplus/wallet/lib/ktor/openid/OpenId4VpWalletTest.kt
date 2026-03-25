@@ -478,7 +478,7 @@ private fun Map.Entry<String, Any>.toIssuerSignedItem(): IssuerSignedItem =
 
 private fun AuthnResponseResult.containsAllAttributes(expectedAttributes: Map<String, String>): Boolean = catching {
     when (val vpTokenValidationResult = this.vpTokenValidationResult.shouldNotBeNull().getOrThrow()) {
-        is VpTokenValidationResultDCQL -> vpTokenValidationResult.allValidationResults.values
+        is VpTokenValidationResultDCQL -> vpTokenValidationResult.credentialQueryResponseValidations.values
             .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
             .containsAllAttributes(expectedAttributes)
 

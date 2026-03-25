@@ -52,6 +52,7 @@ import io.ktor.http.Url
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 
+@Suppress("unused")
 val RedirectUriClientTest by testSuite {
 
     withFixtureGenerator(suspend {
@@ -135,7 +136,7 @@ val RedirectUriClientTest by testSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .idToken.shouldNotBeNull().isFailure shouldBe true
+                .idTokenValidationResult.shouldNotBeNull().isFailure shouldBe true
         }
 
         "wrong client nonce in vp_token should lead to error" {

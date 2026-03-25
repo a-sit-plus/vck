@@ -1,13 +1,17 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.KmmResult
+import at.asitplus.openid.AuthenticationRequestParameters
 
 /**
- * Result of validating an OpenID authentication response, covering success and error cases.
+ * Result of validating an OpenID authentication response.
  * Use to inspect how a wallet response was parsed and whether presentation validation succeeded.
  */
 data class AuthnResponseResult(
-    val idToken: KmmResult<at.asitplus.openid.IdToken>?,
+    val idTokenValidationResult: KmmResult<at.asitplus.openid.IdToken>?,
     val vpTokenValidationResult: KmmResult<VpTokenValidationResult>?,
-    val state: String?,
-)
+    val request: AuthenticationRequestParameters?,
+) {
+    val state
+        get() = request?.state
+}

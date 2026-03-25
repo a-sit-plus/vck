@@ -21,6 +21,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 
+@Suppress("unused")
 val OpenId4VpSdJwtProtocolTest by testSuite {
 
     withFixtureGenerator(suspend {
@@ -87,7 +88,7 @@ val OpenId4VpSdJwtProtocolTest by testSuite {
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .allValidationResults.values
+                .credentialQueryResponseValidations.values
                 .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     verifiableCredentialSdJwt.shouldNotBeNull()
@@ -119,13 +120,13 @@ val OpenId4VpSdJwtProtocolTest by testSuite {
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .allValidationResults.values
+                .credentialQueryResponseValidations.values
                 .shouldBeSingleton().first()
                 .shouldBeSingleton().first().getOrThrow().shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     verifiableCredentialSdJwt.shouldNotBeNull()
                     requestedClaims.forEach {
-                        it.shouldBeIn(reconstructed.keys)
-                        reconstructed[it].shouldNotBeNull()
+                        it.shouldBeIn(reconstructedJsonObject.keys)
+                        reconstructedJsonObject[it].shouldNotBeNull()
                     }
                 }
 

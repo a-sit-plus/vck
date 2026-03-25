@@ -1,0 +1,5 @@
+package at.asitplus.wallet.lib.iso.Iso180137AnnexCResponseResult
+
+import at.asitplus.wallet.lib.iso.Iso180137AnnexCVerifiedPresentationResult
+
+typealias SuccessIso = Iso180137AnnexCVerifiedPresentationResult

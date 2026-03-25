@@ -8,4 +8,3 @@ import at.asitplus.wallet.lib.data.IsoDocumentParsed
 data class Iso180137AnnexCVerifiedPresentationResult(
     val documents: Collection<IsoDocumentParsed>,
 )
-

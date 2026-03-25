@@ -29,6 +29,7 @@ import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 
+@Suppress("unused")
 val OpenId4VpX509SanDnsTest by testSuite {
 
     withFixtureGenerator(suspend {
@@ -114,10 +115,10 @@ val OpenId4VpX509SanDnsTest by testSuite {
             it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
-                    allValidationResults.values
+                    credentialQueryResponseValidations.values
                         .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
                         .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-                        .reconstructed[CLAIM_GIVEN_NAME].shouldNotBeNull()
+                        .reconstructedJsonObject[CLAIM_GIVEN_NAME].shouldNotBeNull()
                 }
 
         }
@@ -153,10 +154,10 @@ val OpenId4VpX509SanDnsTest by testSuite {
             it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
-                    allValidationResults.values
+                    credentialQueryResponseValidations.values
                         .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
                         .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-                        .reconstructed[CLAIM_GIVEN_NAME].shouldNotBeNull()
+                        .reconstructedJsonObject[CLAIM_GIVEN_NAME].shouldNotBeNull()
                 }
         }
     }

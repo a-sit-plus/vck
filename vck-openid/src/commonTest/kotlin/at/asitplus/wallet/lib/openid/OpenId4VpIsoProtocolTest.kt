@@ -36,6 +36,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 
+@Suppress("unused")
 val OpenId4VpIsoProtocolTest by testSuite {
 
     withFixtureGenerator(suspend {
@@ -103,7 +104,7 @@ val OpenId4VpIsoProtocolTest by testSuite {
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
-                    allValidationResults.values
+                    credentialQueryResponseValidations.values
                         .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
                         .shouldBeInstanceOf<SuccessIso>()
                         .documents.first().apply {
@@ -129,7 +130,7 @@ val OpenId4VpIsoProtocolTest by testSuite {
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
-                    allValidationResults.values
+                    credentialQueryResponseValidations.values
                         .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
                         .shouldBeInstanceOf<SuccessIso>()
                         .documents.first().apply {
@@ -155,7 +156,7 @@ val OpenId4VpIsoProtocolTest by testSuite {
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
-                    allValidationResults.values
+                    credentialQueryResponseValidations.values
                         .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
                         .shouldBeInstanceOf<SuccessIso>()
                         .documents.first().apply {
@@ -190,7 +191,7 @@ val OpenId4VpIsoProtocolTest by testSuite {
             it.verifierOid4vp.validateAuthnResponse(input).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
-                    allValidationResults.values
+                    credentialQueryResponseValidations.values
                         .shouldBeSingleton().first()
                         .shouldBeSingleton().first().getOrThrow()
                         .shouldBeInstanceOf<SuccessIso>()
@@ -227,7 +228,7 @@ val OpenId4VpIsoProtocolTest by testSuite {
             it.verifierOid4vp.validateAuthnResponse(input).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
-                    allValidationResults.values
+                    credentialQueryResponseValidations.values
                         .shouldBeSingleton().first()
                         .shouldBeSingleton().first().getOrThrow().shouldBeInstanceOf<SuccessIso>()
                         .documents.first().apply {
@@ -306,7 +307,7 @@ val OpenId4VpIsoProtocolTest by testSuite {
             it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .allValidationResults.shouldHaveSize(2).apply {
+                .credentialQueryResponseValidations.shouldHaveSize(2).apply {
                     values.first { it.first().getOrThrow().hasDocType(AtomicAttribute2023.isoDocType) }.first()
                         .getOrThrow().shouldBeInstanceOf<SuccessIso>().documents.first()
                         .validItems.shouldHaveSingleElement { it.elementIdentifier == atomicGivenName }
@@ -331,7 +332,7 @@ val OpenId4VpIsoProtocolTest by testSuite {
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
-                    allValidationResults.values
+                    credentialQueryResponseValidations.values
                         .shouldBeSingleton().first()
                         .shouldBeSingleton().first().getOrThrow().shouldBeInstanceOf<SuccessIso>()
                         .documents.first().apply {

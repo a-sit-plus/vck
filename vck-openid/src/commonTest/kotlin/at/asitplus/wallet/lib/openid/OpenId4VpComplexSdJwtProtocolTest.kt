@@ -29,6 +29,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
+@Suppress("unused")
 val OpenId4VpComplexSdJwtProtocolTest by testSuite {
 
     withFixtureGenerator(suspend {
@@ -109,12 +110,12 @@ val OpenId4VpComplexSdJwtProtocolTest by testSuite {
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .allValidationResults.values
+                .credentialQueryResponseValidations.values
                 .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     verifiableCredentialSdJwt.shouldNotBeNull()
-                    CLAIM_ADDRESS shouldBeIn reconstructed.keys
-                    reconstructed[CLAIM_ADDRESS].shouldNotBeNull().jsonObject.apply {
+                    CLAIM_ADDRESS shouldBeIn reconstructedJsonObject.keys
+                    reconstructedJsonObject[CLAIM_ADDRESS].shouldNotBeNull().jsonObject.apply {
                         CLAIM_ADDRESS_REGION shouldBeIn this.keys
                         this[CLAIM_ADDRESS_COUNTRY].shouldNotBeNull().jsonPrimitive.content shouldBe it.randomCountry
                         this[CLAIM_ADDRESS_REGION].shouldNotBeNull().jsonPrimitive.content shouldBe it.randomRegion
@@ -153,11 +154,11 @@ val OpenId4VpComplexSdJwtProtocolTest by testSuite {
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow().apply {
                     shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                    allValidationResults.values.shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow().apply {
+                    credentialQueryResponseValidations.values.shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow().apply {
                         shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
                         verifiableCredentialSdJwt.shouldNotBeNull()
-                        CLAIM_ADDRESS shouldBeIn reconstructed.keys
-                        reconstructed[CLAIM_ADDRESS].shouldNotBeNull().jsonObject.apply {
+                        CLAIM_ADDRESS shouldBeIn reconstructedJsonObject.keys
+                        reconstructedJsonObject[CLAIM_ADDRESS].shouldNotBeNull().jsonObject.apply {
                             CLAIM_ADDRESS_REGION shouldBeIn this.keys
                             this[CLAIM_ADDRESS_COUNTRY].shouldNotBeNull().jsonPrimitive.content shouldBe it.randomCountry
                             this[CLAIM_ADDRESS_REGION].shouldNotBeNull().jsonPrimitive.content shouldBe it.randomRegion

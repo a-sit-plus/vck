@@ -19,7 +19,7 @@ Release 5.12.0 (unreleased):
    - Change: Do not fail when only matching credentials without submitting a presentation
    - Allow issuance and verification of `IdentifierList` Revocation Mechanism
    - Change: Don't send response on user initiated signature cancellation
-   - BREAKING CHANGE: The result class from `verifyAuthnResponse`, `AuthnResponseResult` has been reworked
+   - BREAKING CHANGE: The result type from `verifyAuthnResponse`, `AuthnResponseResult` has been reworked to a data class
  - OpenID for Verifiable Credential Issuance:
    - Moved the class `RefreshTokenInfo` from `OpenId4VciClient` to `SubjectCredentialStore.kt` and renamed it to `CredentialRenewalInfo` to better describe its role in the renewal process.
      Kept `RefreshTokenInfo` in the original package for backward compatibility

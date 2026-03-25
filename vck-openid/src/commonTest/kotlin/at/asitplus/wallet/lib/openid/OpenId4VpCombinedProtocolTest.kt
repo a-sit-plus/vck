@@ -55,6 +55,7 @@ import kotlinx.serialization.json.JsonObject
 
 private fun AuthenticationRequestParameters.serialize(): String = vckJsonSerializer.encodeToString(this)
 
+@Suppress("unused")
 val OpenId4VpCombinedProtocolTest by testSuite {
 
     withFixtureGenerator {
@@ -117,7 +118,7 @@ val OpenId4VpCombinedProtocolTest by testSuite {
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .allValidationResults.values
+                .credentialQueryResponseValidations.values
                 .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
                 .vp.freshVerifiableCredentials.shouldNotBeEmpty()
@@ -166,7 +167,7 @@ val OpenId4VpCombinedProtocolTest by testSuite {
             val vcFreshnessSummary = it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .allValidationResults.values.shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
+                .credentialQueryResponseValidations.values.shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessUnsigned>()
                 .vc
             vcFreshnessSummary.vcJws.vc.credentialSubject.shouldBeInstanceOf<JsonObject>()
@@ -261,7 +262,7 @@ val OpenId4VpCombinedProtocolTest by testSuite {
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .allValidationResults.values.shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
+                .credentialQueryResponseValidations.values.shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
                 .verifiableCredentialSdJwt.verifiableCredentialType shouldBe ConstantIndex.AtomicAttribute2023.sdJwtType
         }

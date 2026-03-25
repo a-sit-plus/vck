@@ -494,19 +494,34 @@ class OpenId4VpVerifier(
         Napier.d("validateAuthnResponse: $input")
         val authnRequest = loadAuthnRequest(input, externalId)
 
-        AuthnResponseResult(
-            idToken = if (authnRequest.responseType?.contains(OpenIdConstants.ID_TOKEN) == true) {
-                extractValidatedIdToken(input)
-            } else {
-                null
-            },
-            vpTokenValidationResult = if (authnRequest.responseType?.contains(OpenIdConstants.VP_TOKEN) == true) {
-                validateVpToken(authnRequest, input)
-            } else {
-                null
-            },
-            state = authnRequest.state
-        )
+        val idTokenValidationResult = extractValidatedIdToken(input)
+        val vpTokenValidationResult = validateVpToken(authnRequest, input)
+
+        when (authnRequest.responseType) {
+            "${OpenIdConstants.VP_TOKEN} ${OpenIdConstants.ID_TOKEN}" -> AuthnResponseResult(
+                idTokenValidationResult = idTokenValidationResult,
+                vpTokenValidationResult = vpTokenValidationResult,
+                request = authnRequest,
+            )
+
+            OpenIdConstants.VP_TOKEN -> AuthnResponseResult(
+                idTokenValidationResult = null,
+                vpTokenValidationResult = vpTokenValidationResult,
+                request = authnRequest,
+            )
+
+            OpenIdConstants.ID_TOKEN -> AuthnResponseResult(
+                idTokenValidationResult = idTokenValidationResult,
+                vpTokenValidationResult = null,
+                request = authnRequest,
+            )
+
+            else -> AuthnResponseResult(
+                idTokenValidationResult = null,
+                vpTokenValidationResult = null,
+                request = authnRequest,
+            )
+        }
     }
 
     @Throws(IllegalArgumentException::class, CancellationException::class)
@@ -634,7 +649,7 @@ class OpenId4VpVerifier(
             // TODO: Validation errors are (sometimes) put into a VerifiableDCQLPresentationValidationResults which means that the success page is shown
             // However, if we return a ValidationError, a BadRequest is sent, which is not shown to the user in the UI
             VpTokenValidationResultDCQL(
-                allValidationResults = presentation
+                credentialQueryResponseValidations = presentation
             )
         } ?: throw IllegalArgumentException("Unsupported presentation mechanism")
     }
@@ -671,7 +686,7 @@ class OpenId4VpVerifier(
         clientIdRequired: Boolean,
         origin: String?,
         requireCryptographicHolderBinding: Boolean? = null,
-    ) = catching {
+    ): KmmResult<VerifyPresentationResult> = catching {
         when (claimFormat) {
             ClaimFormat.SD_JWT -> verifier.verifyPresentationSdJwt(
                 input = SdJwtSigned.parseCatching(relatedPresentation.extractContent()).getOrElse {
