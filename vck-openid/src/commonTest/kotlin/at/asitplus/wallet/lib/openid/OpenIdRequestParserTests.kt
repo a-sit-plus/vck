@@ -162,7 +162,7 @@ val OpenIdRequestParserTests by testSuite {
         "signed request from DCAPI" { requestParser ->
             val input = DCAPIWalletRequest.OpenId4VpSigned(
                 request = JarRequestParameters(request = jws),
-                credentialId = listOf("1"),
+                credentialIds = listOf("1"),
                 callingPackageName = "com.example.app",
                 callingOrigin = "https://example.com"
             )
@@ -182,7 +182,7 @@ val OpenIdRequestParserTests by testSuite {
         "unsigned request from DCAPI" { requestParser ->
             val input = DCAPIWalletRequest.OpenId4VpUnsigned(
                     request = vckJsonSerializer.decodeFromString(authnRequestSerialized),
-                    credentialId = listOf("1"),
+                    credentialIds = listOf("1"),
                     callingPackageName = "com.example.app",
                     callingOrigin = "https://example.com"
                 )

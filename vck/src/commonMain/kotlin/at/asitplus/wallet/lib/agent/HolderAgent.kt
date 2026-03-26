@@ -166,7 +166,7 @@ class HolderAgent(
         val presentationDefinition = credentialPresentation.presentationRequest.presentationDefinition
 
         val presentationCredentialSelection = credentialPresentation.inputDescriptorSubmissions
-            ?: matchInputDescriptorsAgainstCredentialStoreV3(
+            ?: matchInputDescriptorsAgainstCredentialStoreV2(
                 inputDescriptors = presentationDefinition.inputDescriptors,
                 fallbackFormatHolder = credentialPresentation.presentationRequest.fallbackFormatHolder,
             ).getOrThrow().toDefaultSubmission()
@@ -261,7 +261,7 @@ class HolderAgent(
         PresentationResponseParameters.DCQLParameters(verifiablePresentations)
     }
 
-    override suspend fun matchInputDescriptorsAgainstCredentialStoreV3(
+    override suspend fun matchInputDescriptorsAgainstCredentialStoreV2(
         inputDescriptors: Collection<InputDescriptor>,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: PathAuthorizationValidator?,
