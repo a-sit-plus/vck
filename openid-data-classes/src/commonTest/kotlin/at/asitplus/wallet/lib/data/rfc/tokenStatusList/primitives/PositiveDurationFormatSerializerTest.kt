@@ -1,48 +1,20 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives
 
+import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.testballoon.minus
 import at.asitplus.testballoon.withData
-import at.asitplus.testballoon.withDataSuites
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
-import kotlin.time.Duration
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
+import kotlinx.serialization.SerializationException
 
 val PositiveDurationFormatSerializerTest by testSuite {
-    "validation" - {
-        withDataSuites(
-            mapOf<String, Pair<List<Duration>, Boolean>>(
-                "negative duration" to Pair(
-                    listOf(
-                        (-1).toDuration(DurationUnit.HOURS),
-                        (-1).toDuration(DurationUnit.MINUTES),
-                        (-1).toDuration(DurationUnit.SECONDS),
-                    ),
-                    false,
-                ),
-                "zero duration" to Pair(
-                    listOf(Duration.ZERO),
-                    false,
-                ),
-                "positive duration" to Pair(
-                    listOf(
-                        1.toDuration(DurationUnit.SECONDS),
-                        1.toDuration(DurationUnit.MINUTES),
-                        1.toDuration(DurationUnit.HOURS),
-                    ),
-                    true,
-                ),
-            ),
-        ) { (durations, isValid) ->
-            withData(durations) { duration ->
-                runCatching { PositiveDuration(duration) }.isSuccess shouldBe isValid
-            }
-        }
-    }
-
     "JSON serialization keeps ttl as a number" - {
         withData(
             mapOf(
@@ -60,17 +32,49 @@ val PositiveDurationFormatSerializerTest by testSuite {
         }
     }
 
-    "CBOR serialization round-trips whole-second ttl values" - {
+    "JSON deserialization rejects non-positive ttl values" - {
         withData(
             mapOf(
-                "1 second" to PositiveDuration(1.toDuration(DurationUnit.SECONDS)),
-                "1 minute" to PositiveDuration(1.toDuration(DurationUnit.MINUTES)),
-                "1 hour" to PositiveDuration(1.toDuration(DurationUnit.HOURS)),
+                "zero" to "0",
+                "negative whole seconds" to "-1",
+                "negative fractional seconds" to "-1.5",
             )
-        ) { value ->
+        ) { encoded ->
+            shouldThrow<SerializationException> {
+                vckJsonSerializer.decodeFromString(PositiveDurationFormatSerializer, encoded)
+            }
+        }
+    }
+
+    "CBOR serialization uses unsigned integer values for whole-second ttl" - {
+        withData(
+            mapOf(
+                "1 second" to Pair(PositiveDuration(1.toDuration(DurationUnit.SECONDS)), "01"),
+                "1 minute" to Pair(PositiveDuration(1.toDuration(DurationUnit.MINUTES)), "183C"),
+                "1 hour" to Pair(PositiveDuration(1.toDuration(DurationUnit.HOURS)), "190E10"),
+            )
+        ) { (value, expectedHex) ->
             val encoded = coseCompliantSerializer.encodeToByteArray(PositiveDurationFormatSerializer, value)
 
+            encoded.encodeToString(Base16Strict).uppercase() shouldBe expectedHex
             coseCompliantSerializer.decodeFromByteArray(PositiveDurationFormatSerializer, encoded) shouldBe value
+        }
+    }
+
+    "CBOR deserialization rejects unsupported ttl values" - {
+        withData(
+            mapOf(
+                "zero" to "00",
+                "negative one" to "20",
+                "above Long.MAX_VALUE" to "1B8000000000000000",
+            )
+        ) { encodedHex ->
+            shouldThrow<SerializationException> {
+                coseCompliantSerializer.decodeFromByteArray(
+                    PositiveDurationFormatSerializer,
+                    encodedHex.decodeToByteArray(Base16Strict),
+                )
+            }
         }
     }
 }
