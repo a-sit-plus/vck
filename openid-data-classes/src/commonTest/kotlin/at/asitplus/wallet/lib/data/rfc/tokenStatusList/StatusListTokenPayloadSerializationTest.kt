@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
+import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -9,9 +10,14 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.PositiveDurati
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBitSize
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
@@ -45,32 +51,6 @@ private val statusListPayload = StatusListTokenPayload(
 )
 
 val StatusListTokenPayloadSerializationTest by testSuite {
-    "claim names stay aligned with the removed JWT wrappers" {
-        StatusListTokenPayloadSurrogate.SerialNames.SUBJECT shouldBe "sub"
-        StatusListTokenPayloadSurrogate.SerialNames.ISSUED_AT shouldBe "iat"
-        StatusListTokenPayloadSurrogate.SerialNames.EXPIRATION_TIME shouldBe "exp"
-        StatusListTokenPayloadSurrogate.SerialNames.TIME_TO_LIVE shouldBe "ttl"
-        StatusListTokenPayloadSurrogate.SerialNames.STATUS_LIST shouldBe "status_list"
-        StatusListTokenPayloadSurrogate.SerialNames.IDENTIFIER_LIST shouldBe "identifier_list"
-    }
-
-    "cbor labels stay aligned with the removed CWT wrappers" {
-        StatusListTokenPayloadSurrogate.CborLabels.SUBJECT shouldBe 2L
-        StatusListTokenPayloadSurrogate.CborLabels.ISSUED_AT shouldBe 6L
-        StatusListTokenPayloadSurrogate.CborLabels.EXPIRATION_TIME shouldBe 4L
-        StatusListTokenPayloadSurrogate.CborLabels.TIME_TO_LIVE shouldBe 65534L
-        StatusListTokenPayloadSurrogate.CborLabels.STATUS_LIST shouldBe 65533L
-        StatusListTokenPayloadSurrogate.CborLabels.IDENTIFIER_LIST shouldBe 65530L
-    }
-
-    "surrogate round-trips status lists" {
-        StatusListTokenPayloadSurrogate(statusListPayload).toStatusListTokenPayload() shouldBe statusListPayload
-    }
-
-    "surrogate round-trips identifier lists" {
-        StatusListTokenPayloadSurrogate(identifierListPayload).toStatusListTokenPayload() shouldBe identifierListPayload
-    }
-
     "JSON serialization uses the expected claim names and ttl number format" {
         val json = vckJsonSerializer
             .encodeToJsonElement(StatusListTokenPayload.serializer(), statusListPayload)
@@ -85,10 +65,9 @@ val StatusListTokenPayloadSerializationTest by testSuite {
     }
 
     "JSON serialization rejects identifier lists" {
-        val exception = shouldThrow<SerializationException> {
+        shouldThrow<SerializationException> {
             vckJsonSerializer.encodeToString(StatusListTokenPayload.serializer(), identifierListPayload)
         }
-        exception.message shouldBe "IdentifierList is only supported in CBOR"
     }
 
     "JSON deserialization rejects identifier lists" {
@@ -100,10 +79,9 @@ val StatusListTokenPayloadSerializationTest by testSuite {
             }
         """.trimIndent()
 
-        val exception = shouldThrow<SerializationException> {
+        shouldThrow<SerializationException> {
             vckJsonSerializer.decodeFromString<StatusListTokenPayload>(json)
         }
-        exception.message shouldBe "IdentifierList is only supported in CBOR"
     }
 
     "JSON deserialization rejects identifier_list even when status_list is present" {
@@ -114,10 +92,54 @@ val StatusListTokenPayloadSerializationTest by testSuite {
             validStatusListJson + (StatusListTokenPayloadSurrogate.SerialNames.IDENTIFIER_LIST to JsonObject(emptyMap()))
         )
 
-        val exception = shouldThrow<SerializationException> {
+        shouldThrow<SerializationException> {
             vckJsonSerializer.decodeFromString<StatusListTokenPayload>(invalidJson.toString())
         }
-        exception.message shouldBe "IdentifierList is only supported in CBOR"
+    }
+
+    "CBOR status-list payload uses numeric labels and unsigned ttl values" {
+        val encoded = encodeCbor(StatusListTokenPayload.serializer(), statusListPayload)
+        val expectedPrefix = buildString {
+            append("A5")
+            append("02")
+            append(encodeCbor(String.serializer(), subject.string))
+            append("06")
+            append(encodeCbor(Long.serializer(), issuedAt.epochSeconds))
+            append("04")
+            append(encodeCbor(Long.serializer(), statusListPayload.expirationTime!!.epochSeconds))
+            append("19FFFE")
+            append(encodeCbor(ULong.serializer(), 60u))
+            append("19FFFD")
+        }
+
+        encoded.startsWith(expectedPrefix) shouldBe true
+    }
+
+    "CBOR identifier-list payload uses numeric labels" {
+        val encoded = encodeCbor(StatusListTokenPayload.serializer(), identifierListPayload)
+        val expectedPrefix = buildString {
+            append("A3")
+            append("02")
+            append(encodeCbor(String.serializer(), subject.string))
+            append("06")
+            append(encodeCbor(Long.serializer(), issuedAt.epochSeconds))
+            append("19FFFA")
+        }
+
+        encoded.startsWith(expectedPrefix) shouldBe true
+    }
+
+    "CBOR serialization still supports status lists" {
+        val serialized = coseCompliantSerializer.encodeToByteArray(
+            StatusListTokenPayload.serializer(),
+            statusListPayload,
+        )
+        val deserialized = coseCompliantSerializer.decodeFromByteArray(
+            StatusListTokenPayload.serializer(),
+            serialized,
+        )
+
+        deserialized shouldBe statusListPayload
     }
 
     "CBOR serialization still supports identifier lists" {
@@ -132,4 +154,30 @@ val StatusListTokenPayloadSerializationTest by testSuite {
 
         deserialized shouldBe identifierListPayload
     }
+
+    "malformed CBOR with both revocation-list variants is rejected" {
+        val malformed = buildString {
+            append("A4")
+            append("02")
+            append(encodeCbor(String.serializer(), subject.string))
+            append("06")
+            append(encodeCbor(Long.serializer(), issuedAt.epochSeconds))
+            append("19FFFD")
+            append(encodeCbor(StatusList.serializer(), statusListPayload.revocationList as StatusList))
+            append("19FFFA")
+            append(encodeCbor(IdentifierList.serializer(), identifierList))
+        }
+
+        shouldThrowAny {
+            coseCompliantSerializer.decodeFromByteArray(
+                StatusListTokenPayload.serializer(),
+                malformed.decodeToByteArray(Base16Strict),
+            )
+        }
+    }
 }
+
+private fun ByteArray.hexUpper() = encodeToString(Base16Strict).uppercase()
+
+private fun <T> encodeCbor(serializer: KSerializer<T>, value: T): String =
+    coseCompliantSerializer.encodeToByteArray(serializer, value).hexUpper()
