@@ -386,7 +386,7 @@ data class AuthenticationRequestParameters(
     val verifierInfo: List<VerifierInfo>? = null
 ) : RequestParameters() {
     init {
-        responseType!!.let {
+        responseType?.let {
             ResponseType(it) // syntax validation
         }
     }
