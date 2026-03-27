@@ -1,12 +1,6 @@
 package at.asitplus.rfc6749OAuth2AuthorizationFramework
 
-import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.descriptors.PrimitiveKind
-import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 
 /**
  * grammar token `response-type` of https://datatracker.ietf.org/doc/html/rfc6749#appendix-A.3
@@ -15,7 +9,7 @@ import kotlinx.serialization.encoding.Encoder
  * Response Type contains one of more space characters (%20), it is compared as a space-delimited list of values in
  * which the order of values does not matter.
  */
-@Serializable(with = ResponseType.SpaceSeparatedSerializer::class)
+@Serializable(with = ResponseTypeSpaceSeparatedSerializer::class)
 data class ResponseType(
     val responseTypeNames: List<ResponseTypeName>,
 ) {
@@ -40,23 +34,6 @@ data class ResponseType(
 
     operator fun contains(string: String) = responseTypeNames.any {
         it.toString() == string
-    }
-
-    class SpaceSeparatedSerializer : KSerializer<ResponseType> {
-        override val descriptor: SerialDescriptor
-            get() = PrimitiveSerialDescriptor(
-                serialName = ResponseType::class.qualifiedName!! + "SpaceSeparatedSerializer",
-                kind = PrimitiveKind.STRING
-            )
-
-        override fun serialize(
-            encoder: Encoder,
-            value: ResponseType
-        ) {
-            encoder.encodeString(value.toString())
-        }
-
-        override fun deserialize(decoder: Decoder): ResponseType = ResponseType(decoder.decodeString())
     }
 
     /**
@@ -87,3 +64,5 @@ data class ResponseType(
         it.toString()
     }
 }
+
+

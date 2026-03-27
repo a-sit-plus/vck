@@ -69,14 +69,20 @@ val ResponseTypeTest by testSuite {
     "serialization works as expected" - {
         withData(commonTypeCombinations) {
             val type = ResponseType(it)
-            Json.encodeToString(type) shouldBe Json.encodeToString(it.joinToString(" "))
+            Json.encodeToString(
+                ResponseType.serializer(), // TODO: for some reason this is necessary for iOs?
+                type,
+            ) shouldBe Json.encodeToString(it.joinToString(" "))
         }
     }
     "deserialization works as expected" - {
         withData(commonTypeCombinations) {
             val value = it.joinToString(" ")
             val serialized = Json.encodeToString(value)
-            val deserialized = Json.decodeFromString<ResponseType>(serialized)
+            val deserialized = Json.decodeFromString(
+                ResponseType.serializer(), // TODO: for some reason this is necessary for iOs?
+                serialized
+            )
             ResponseType(it).toString() shouldBe value
         }
     }
