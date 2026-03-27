@@ -7,12 +7,14 @@ Release 5.12.0 (unreleased):
  - Digital Credentials API:
    - Add issuance data classes: `CredentialCreationOptions`, `DigitalCredentialCreationOptions`, `DigitalCredentialCreateRequest`, `DigitalCredentialOfferReturn`, and `DigitalCredentialOfferReturnData`. These classes are based on a preliminary specification and are subject to change.
    - Add `CredentialRequestOptions.create()` method which automatically sets `mediation` to required and takes the list of requests, make the default constructor private.
+   - Change: `DCAPIWalletRequest` now exposes and serializes `credentialIds`; deprecated single-ID constructors keep the old call shape available.
  - Remove code elements deprecated in 5.11.0
  - ISO mdoc:
    - Preserve `Document.errors` in parsed ISO document results instead of failing validation
    - Add data classes from ISO/IEC 18013-5 from 2026
  - OpenID for Verifiable Presentations:
    - Change: Executing unsatisfiable DCQL queries no longer throws on matching, only on submission.
+   - Change: `Holder.matchInputDescriptorsAgainstCredentialStoreV2` now accepts `filterByIds: Collection<String>?` for multi-credential DC API selections.
    - Change: Update DCQLClaimsQuery to OpenID4VP 1.0
    - Change: Do not fail when only matching credentials without submitting a presentation
    - Allow issuance and verification of `IdentifierList` Revocation Mechanism

@@ -369,9 +369,9 @@ class OpenId4VpHolder(
         preparationState: AuthorizationResponsePreparationState,
     ) = catchingUnwrapped {
         when (val presentationRequest = preparationState.credentialPresentationRequest) {
-            is CredentialPresentationRequest.DCQLRequest -> holder.matchDCQLQueryAgainstCredentialStore(
+            is CredentialPresentationRequest.DCQLRequest -> holder.matchDCQLQueryAgainstCredentialStoreV2(
                 dcqlQuery = presentationRequest.dcqlQuery,
-                filterById = preparationState.request.credentialId()
+                filterByIds = preparationState.request.credentialIds()
             ).getOrThrow().let {
                 DCQLMatchingResult(
                     presentationRequest = presentationRequest,
@@ -383,7 +383,7 @@ class OpenId4VpHolder(
                 holder.matchInputDescriptorsAgainstCredentialStoreV2(
                     inputDescriptors = presentationRequest.presentationDefinition.inputDescriptors,
                     fallbackFormatHolder = presentationRequest.fallbackFormatHolder,
-                    filterById = preparationState.request.credentialId()
+                    filterByIds = preparationState.request.credentialIds()
                 ).getOrThrow().let { matchInputDescriptors ->
                     PresentationExchangeMatchingResult(
                         presentationRequest = presentationRequest,
@@ -428,9 +428,9 @@ class OpenId4VpHolder(
         else -> null
     }
 
-    private fun RequestParametersFrom<AuthenticationRequestParameters>.credentialId() = when (this) {
-        is RequestParametersFrom.DcApiSigned -> dcApiRequest.credentialId
-        is RequestParametersFrom.DcApiUnsigned -> dcApiRequest.credentialId
+    private fun RequestParametersFrom<AuthenticationRequestParameters>.credentialIds() = when (this) {
+        is RequestParametersFrom.DcApiSigned -> dcApiRequest.credentialIds
+        is RequestParametersFrom.DcApiUnsigned -> dcApiRequest.credentialIds
         else -> null
     }
 

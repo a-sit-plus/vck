@@ -6,17 +6,21 @@ import at.asitplus.dcapi.request.verifier.testUnsignedOpenId4VpRequest
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldNotContain
 
 val DCAPIWalletRequestSerializationTest by testSuite {
     test("openid4vp unsigned request round-trips") {
         val request = DCAPIWalletRequest.OpenId4VpUnsigned(
             request = testUnsignedOpenId4VpRequest.request,
-            credentialId = "044c78be429198ffc2a66d935ff86e4e2bdb8ca2ab0cd1bacc85f3a73d8347b4",
+            credentialIds = listOf("044c78be429198ffc2a66d935ff86e4e2bdb8ca2ab0cd1bacc85f3a73d8347b4"),
             callingPackageName = "com.android.chrome",
             callingOrigin = "https://wallet.a-sit.at"
         )
 
         val encoded = joseCompliantSerializer.encodeToString<DCAPIWalletRequest>(request)
+        encoded.shouldContain("\"credentialIds\"")
+        encoded.shouldNotContain("\"credentialId\"")
         val decoded = joseCompliantSerializer.decodeFromString<DCAPIWalletRequest>(encoded)
 
         decoded shouldBe request
@@ -26,12 +30,14 @@ val DCAPIWalletRequestSerializationTest by testSuite {
         val request = testSignedOpenId4VpRequest.request
         val walletRequest = DCAPIWalletRequest.OpenId4VpSigned(
             request = request,
-            credentialId = "044c78be429198ffc2a66d935ff86e4e2bdb8ca2ab0cd1bacc85f3a73d8347b4",
+            credentialIds = listOf("044c78be429198ffc2a66d935ff86e4e2bdb8ca2ab0cd1bacc85f3a73d8347b4"),
             callingPackageName = "com.android.chrome",
             callingOrigin = "https://wallet.a-sit.at"
         )
 
         val encoded = joseCompliantSerializer.encodeToString<DCAPIWalletRequest>(walletRequest)
+        encoded.shouldContain("\"credentialIds\"")
+        encoded.shouldNotContain("\"credentialId\"")
         val decoded = joseCompliantSerializer.decodeFromString<DCAPIWalletRequest>(encoded)
 
         decoded shouldBe walletRequest
@@ -40,10 +46,13 @@ val DCAPIWalletRequestSerializationTest by testSuite {
     test("iso mdoc request round-trips") {
         val request = DCAPIWalletRequest.IsoMdoc(
             isoMdocRequest = testIsoMdocRequest.request,
+            credentialIds = listOf("044c78be429198ffc2a66d935ff86e4e2bdb8ca2ab0cd1bacc85f3a73d8347b4"),
             callingOrigin = "https://wallet.a-sit.at"
         )
 
         val encoded = joseCompliantSerializer.encodeToString<DCAPIWalletRequest>(request)
+        encoded.shouldContain("\"credentialIds\"")
+        encoded.shouldNotContain("\"credentialId\"")
         val decoded = joseCompliantSerializer.decodeFromString<DCAPIWalletRequest>(encoded)
 
         decoded shouldBe request

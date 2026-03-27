@@ -104,7 +104,7 @@ class Iso180137AnnexCVerifier(
         externalId: String,
         decryptHpke: suspend (ByteArray, ByteArray, CryptoPrivateKey.EC.WithPublicKey, ByteArray) -> ByteArray,
         expectedOrigin: String
-    ): KmmResult<Iso180137AnnexCResponseResult.SuccessIso> = catching {
+    ): KmmResult<SuccessIso> = catching {
         val isoMdocRequest = stateToIsoMdocRequestStore.get(externalId)!!
         val privateKey = decryptionKeyMaterial.exportPrivateKey().getOrThrow()
                 as? CryptoPrivateKey.EC.WithPublicKey ?: throw IllegalStateException("Expected EC private key")

@@ -418,7 +418,7 @@ val OpenId4VpWalletTest by testSuite {
                     """.trimIndent()
             val dcApiRequest = DCAPIWalletRequest.OpenId4VpUnsigned(
                 request = vckJsonSerializer.decodeFromString(request),
-                credentialId = "c72a2a8a6e94564cd8dea6ef0c7eb47b31a31947620ebcc0f07177bb71078def",
+                credentialIds = listOf("c72a2a8a6e94564cd8dea6ef0c7eb47b31a31947620ebcc0f07177bb71078def"),
                 callingPackageName = "com.android.chrome",
                 callingOrigin = "https://apps.egiz.gv.at/customverifier"
             )
