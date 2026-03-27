@@ -35,6 +35,7 @@ import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.VpFormatsSupported
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.rfc6749OAuth2AuthorizationFramework.ResponseType
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
@@ -494,34 +495,27 @@ class OpenId4VpVerifier(
         Napier.d("validateAuthnResponse: $input")
         val authnRequest = loadAuthnRequest(input, externalId)
 
-        val idTokenValidationResult = extractValidatedIdToken(input)
-        val vpTokenValidationResult = validateVpToken(authnRequest, input)
-
-        when (authnRequest.responseType) {
-            "${OpenIdConstants.VP_TOKEN} ${OpenIdConstants.ID_TOKEN}" -> AuthnResponseResult(
-                idTokenValidationResult = idTokenValidationResult,
-                vpTokenValidationResult = vpTokenValidationResult,
-                request = authnRequest,
-            )
-
-            OpenIdConstants.VP_TOKEN -> AuthnResponseResult(
-                idTokenValidationResult = null,
-                vpTokenValidationResult = vpTokenValidationResult,
-                request = authnRequest,
-            )
-
-            OpenIdConstants.ID_TOKEN -> AuthnResponseResult(
-                idTokenValidationResult = idTokenValidationResult,
-                vpTokenValidationResult = null,
-                request = authnRequest,
-            )
-
-            else -> AuthnResponseResult(
-                idTokenValidationResult = null,
-                vpTokenValidationResult = null,
-                request = authnRequest,
-            )
+        val responseType = authnRequest.responseType?.let {
+            ResponseType(it)
+        } ?: throw IllegalStateException(
+            "No response type was specified in the original authentication request."
+        )
+        val idTokenValidationResult = if (OpenIdConstants.ID_TOKEN in responseType) {
+            extractValidatedIdToken(input)
+        } else {
+            null
         }
+        val vpTokenValidationResult = if (OpenIdConstants.VP_TOKEN in responseType) {
+            validateVpToken(authnRequest, input)
+        } else {
+            null
+        }
+
+        AuthnResponseResult(
+            idTokenValidationResult = idTokenValidationResult,
+            vpTokenValidationResult = vpTokenValidationResult,
+            request = authnRequest,
+        )
     }
 
     @Throws(IllegalArgumentException::class, CancellationException::class)

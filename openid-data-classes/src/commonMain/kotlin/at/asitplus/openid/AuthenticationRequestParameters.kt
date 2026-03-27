@@ -6,6 +6,7 @@ import at.asitplus.csc.serializers.HashesSerializer
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.iso.serializeOrigin
 import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.rfc6749OAuth2AuthorizationFramework.ResponseType
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
@@ -27,6 +28,10 @@ data class AuthenticationRequestParameters(
      * OIDC: REQUIRED. OAuth 2.0 Response Type value that determines the authorization processing flow to be used,
      * including what parameters are returned from the endpoints used. When using the Authorization Code Flow, this
      * value is `code`.
+     *
+     * The OAuth 2.0 specification allows for registration of space-separated response_type parameter values. If a
+     * Response Type contains one of more space characters (%20), it is compared as a space-delimited list of values in
+     * which the order of values does not matter.
      *
      * For OIDC SIOPv2, this is typically `id_token`. For OID4VP, this is typically `vp_token`.
      *
@@ -380,6 +385,11 @@ data class AuthenticationRequestParameters(
     @SerialName("verifier_info")
     val verifierInfo: List<VerifierInfo>? = null
 ) : RequestParameters() {
+    init {
+        responseType!!.let {
+            ResponseType(it) // syntax validation
+        }
+    }
 
     /**
      * Reads the [OpenIdConstants.ClientIdScheme] by extracting the prefix from [clientId]
@@ -499,7 +509,5 @@ data class AuthenticationRequestParameters(
         result = 31 * result + (verifierInfo?.hashCode() ?: 0)
         return result
     }
-
-
 }
 
