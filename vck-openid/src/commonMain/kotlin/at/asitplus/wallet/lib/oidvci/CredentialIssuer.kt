@@ -74,7 +74,7 @@ class CredentialIssuer(
         requireKeyAttestation = requireKeyAttestation,
         verifyAttestationProof = {
             val tokenStatusValid = runCatching {
-                it.payload.status?.get("status_list")?.let { statusList ->
+                it.payload.status?.get(StatusListInfo.SerialNames.STATUS_LIST_INFO)?.let { statusList ->
                     Json.decodeFromJsonElement<StatusListInfo>(statusList).let { statusListInfo ->
                         if (statusListTokenResolver?.toTokenStatusResolver()
                                 ?.invoke(statusListInfo as RevocationListInfo)

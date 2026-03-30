@@ -10,6 +10,7 @@ import kotlinx.serialization.Serializable
  * token.
  */
 @Serializable
+@SerialName(StatusListInfo.SerialNames.STATUS_LIST_INFO)
 data class StatusListInfo(
     /**
      * JOSE:
@@ -23,7 +24,7 @@ data class StatusListInfo(
      * the index to check for status information in the Status List for the current Referenced
      * Token. The value of idx MUST be a non-negative number, containing a value of zero or greater.
      */
-    @SerialName("idx")
+    @SerialName(SerialNames.INDEX)
     val index: ULong,
     /**
      * JOSE:
@@ -36,7 +37,7 @@ data class StatusListInfo(
      * that identifies the Status List or Status List Token containing the status information for
      * the Referenced Token. The value of uri MUST be a URI conforming to RFC3986.
      */
-    @SerialName("uri")
+    @SerialName(SerialNames.URI)
     override val uri: UniformResourceIdentifier,
 
     override val certificate: ByteArray? = null,
@@ -59,6 +60,12 @@ data class StatusListInfo(
         result = 31 * result + uri.hashCode()
         result = 31 * result + (certificate?.contentHashCode() ?: 0)
         return result
+    }
+
+    object SerialNames {
+        const val INDEX = "idx"
+        const val URI = "uri"
+        const val STATUS_LIST_INFO = "status_list"
     }
 }
 
