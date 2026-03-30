@@ -50,6 +50,36 @@ private val statusListPayload = StatusListTokenPayload(
     ),
 )
 
+/**
+ * Decoded values (line by line)
+ * Prefix is not a valid CBOR string!
+ *
+ * # map(5)
+ * # unsigned(2)
+ * # text(33)
+ * # "https://example.com/statuslists/1"
+ * # unsigned(6)
+ * # unsigned(1700000000)
+ * # unsigned(4)
+ * # unsigned(1700000600)
+ * # unsigned(65534)
+ * # unsigned(60)
+ * # unsigned(65533)
+ */
+private val expectedPrefix = """
+    A5                                      
+       02                                   
+       78 21                               
+          68747470733A2F2F6578616D706C652E636F6D2F7374617475736C697374732F31 
+       06                                   
+       1A 6553F100                          
+       04                                  
+       1A 6553F358                          
+       19 FFFE                              
+       18 3C                                
+       19 FFFD                              
+""".trimIndent().replace("\n", "").replace(" ", "")
+
 val StatusListTokenPayloadSerializationTest by testSuite {
     "JSON serialization uses the expected claim names and ttl number format" {
         val json = vckJsonSerializer
@@ -99,19 +129,6 @@ val StatusListTokenPayloadSerializationTest by testSuite {
 
     "CBOR status-list payload uses numeric labels and unsigned ttl values" {
         val encoded = encodeCbor(StatusListTokenPayload.serializer(), statusListPayload)
-        val expectedPrefix = buildString {
-            append("A5")
-            append("02")
-            append(encodeCbor(String.serializer(), subject.string))
-            append("06")
-            append(encodeCbor(Long.serializer(), issuedAt.epochSeconds))
-            append("04")
-            append(encodeCbor(Long.serializer(), statusListPayload.expirationTime!!.epochSeconds))
-            append("19FFFE")
-            append(encodeCbor(ULong.serializer(), 60u))
-            append("19FFFD")
-        }
-
         encoded.startsWith(expectedPrefix) shouldBe true
     }
 
