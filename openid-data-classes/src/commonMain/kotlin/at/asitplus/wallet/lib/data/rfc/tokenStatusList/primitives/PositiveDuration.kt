@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 import kotlin.time.Duration
 
-@Serializable
+@Serializable(with = PositiveDurationFormatSerializer::class)
 @JvmInline
 value class PositiveDuration(val duration: Duration) {
     init {

@@ -10,9 +10,11 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.decodeFromByteArray
+import kotlinx.serialization.encodeToByteArray
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
-import kotlinx.serialization.SerializationException
 
 val PositiveDurationFormatSerializerTest by testSuite {
     "JSON serialization keeps ttl as a number" - {
@@ -25,10 +27,10 @@ val PositiveDurationFormatSerializerTest by testSuite {
             )
         ) { (duration, expectedJson) ->
             val value = PositiveDuration(duration)
-            val encoded = vckJsonSerializer.encodeToString(PositiveDurationFormatSerializer, value)
+            val encoded = vckJsonSerializer.encodeToString(value)
 
             encoded shouldBe expectedJson
-            vckJsonSerializer.decodeFromString(PositiveDurationFormatSerializer, encoded) shouldBe value
+            vckJsonSerializer.decodeFromString<PositiveDuration>(encoded) shouldBe value
         }
     }
 
@@ -41,7 +43,7 @@ val PositiveDurationFormatSerializerTest by testSuite {
             )
         ) { encoded ->
             shouldThrow<SerializationException> {
-                vckJsonSerializer.decodeFromString(PositiveDurationFormatSerializer, encoded)
+                vckJsonSerializer.decodeFromString<PositiveDuration>(encoded)
             }
         }
     }
@@ -54,10 +56,10 @@ val PositiveDurationFormatSerializerTest by testSuite {
                 "1 hour" to Pair(PositiveDuration(1.toDuration(DurationUnit.HOURS)), "190E10"),
             )
         ) { (value, expectedHex) ->
-            val encoded = coseCompliantSerializer.encodeToByteArray(PositiveDurationFormatSerializer, value)
+            val encoded = coseCompliantSerializer.encodeToByteArray<PositiveDuration>(value)
 
             encoded.encodeToString(Base16Strict).uppercase() shouldBe expectedHex
-            coseCompliantSerializer.decodeFromByteArray(PositiveDurationFormatSerializer, encoded) shouldBe value
+            coseCompliantSerializer.decodeFromByteArray<PositiveDuration>(encoded) shouldBe value
         }
     }
 
@@ -70,8 +72,7 @@ val PositiveDurationFormatSerializerTest by testSuite {
             )
         ) { encodedHex ->
             shouldThrow<SerializationException> {
-                coseCompliantSerializer.decodeFromByteArray(
-                    PositiveDurationFormatSerializer,
+                coseCompliantSerializer.decodeFromByteArray<PositiveDuration>(
                     encodedHex.decodeToByteArray(Base16Strict),
                 )
             }

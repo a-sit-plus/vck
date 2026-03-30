@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.PositiveDuration
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.PositiveDurationFormatSerializer
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
@@ -32,6 +31,7 @@ data class StatusListTokenPayloadSurrogate(
     @CborLabel(CborLabels.ISSUED_AT)
     @Serializable(with = InstantLongSerializer::class)
     val issuedAt: Instant,
+
     @SerialName(SerialNames.EXPIRATION_TIME)
     @CborLabel(CborLabels.EXPIRATION_TIME)
     @Serializable(with = InstantLongSerializer::class)
@@ -43,7 +43,6 @@ data class StatusListTokenPayloadSurrogate(
      */
     @SerialName(SerialNames.TIME_TO_LIVE)
     @CborLabel(CborLabels.TIME_TO_LIVE)
-    @Serializable(with = PositiveDurationFormatSerializer::class)
     val timeToLive: PositiveDuration? = null,
 
     /**
