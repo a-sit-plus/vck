@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.dif.ClaimFormat
 import at.asitplus.dif.PresentationSubmission
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.Digest

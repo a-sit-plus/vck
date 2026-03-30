@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.openid.CredentialOffer
 import at.asitplus.openid.CredentialRequestParameters
 import at.asitplus.openid.CredentialRequestProofContainer
-import at.asitplus.openid.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.testballoon.withFixtureGenerator

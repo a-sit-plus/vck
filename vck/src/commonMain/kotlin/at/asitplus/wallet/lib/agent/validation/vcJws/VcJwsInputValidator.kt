@@ -14,7 +14,7 @@ package at.asitplus.wallet.lib.agent.validation.vcJws
  */
 
 import at.asitplus.catching
-import at.asitplus.openid.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.lib.agent.matchesIdentifier
 import at.asitplus.wallet.lib.agent.validation.common.SubjectMatchingResult

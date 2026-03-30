@@ -7,8 +7,8 @@ import at.asitplus.dif.InputDescriptor
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
-import at.asitplus.openid.JwsCompactTyped
 import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest

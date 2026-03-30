@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.catching
-import at.asitplus.openid.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenIntrospectionJwtResponse

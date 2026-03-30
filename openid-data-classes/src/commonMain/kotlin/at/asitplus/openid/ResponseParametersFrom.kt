@@ -1,6 +1,7 @@
 package at.asitplus.openid
 
 import at.asitplus.dcapi.OpenId4VpResponse
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import io.ktor.http.*
 
 /**

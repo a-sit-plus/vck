@@ -4,7 +4,7 @@ import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.dcapi.OpenId4VpResponse
 import at.asitplus.openid.AuthenticationResponseParameters
-import at.asitplus.openid.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.openid.ResponseParametersFrom
 import at.asitplus.signum.indispensable.josef.JweDecrypted
 import at.asitplus.signum.indispensable.josef.JweEncrypted

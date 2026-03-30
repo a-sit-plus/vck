@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.oauth2
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.iso.sha256
-import at.asitplus.openid.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.OpenIdConstants.TOKEN_PREFIX_BEARER
 import at.asitplus.openid.OpenIdConstants.TOKEN_PREFIX_DPOP

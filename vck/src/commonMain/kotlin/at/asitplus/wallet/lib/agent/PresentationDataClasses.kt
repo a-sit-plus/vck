@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.dif.PresentationSubmission
 import at.asitplus.iso.DeviceNameSpaces
 import at.asitplus.jsonpath.core.NormalizedJsonPath
-import at.asitplus.openid.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.signum.indispensable.Digest
