@@ -1,8 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.catching
-import at.asitplus.openid.JwsCompactTyped
-import at.asitplus.openid.JwsCompactTyped.Companion.invoke
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer

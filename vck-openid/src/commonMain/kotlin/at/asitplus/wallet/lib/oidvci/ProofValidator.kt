@@ -5,7 +5,7 @@ import at.asitplus.openid.CredentialRequestParameters
 import at.asitplus.openid.CredentialRequestProofContainer
 import at.asitplus.openid.CredentialRequestProofSupported
 import at.asitplus.openid.IssuerMetadata
-import at.asitplus.openid.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.openid.KeyAttestationRequired
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.SupportedCredentialFormat
@@ -13,6 +13,7 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
+import at.asitplus.signum.indispensable.josef.typed
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
@@ -107,7 +108,7 @@ class ProofValidator(
         }
         // OID4VCI F.1.: The Credential Issuer SHOULD issue a Credential for each cryptographic public key specified
         // in the attested_keys claim within the key_attestation parameter.
-        val keyAttJws = jws.jwsHeader.keyAttestation?.let { JwsCompactTyped<KeyAttestationJwt>(it) }
+        val keyAttJws: JwsCompactTyped<KeyAttestationJwt>? = jws.jwsHeader.keyAttestation?.typed()
         val additionalKeys = keyAttJws?.validateAttestationProof() ?: listOf()
 
         val headerPublicKey = jws.jwsHeader.publicKey
