@@ -511,6 +511,10 @@ class OpenId4VpVerifier(
             null
         }
 
+        if (listOfNotNull(idTokenValidationResult, vpTokenValidationResult).isEmpty()) {
+            throw IllegalStateException("Unsupported response type: $responseType")
+        }
+
         AuthnResponseResult(
             idTokenValidationResult = idTokenValidationResult,
             vpTokenValidationResult = vpTokenValidationResult,

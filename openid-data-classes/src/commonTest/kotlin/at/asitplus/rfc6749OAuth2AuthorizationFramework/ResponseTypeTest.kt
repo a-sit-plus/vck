@@ -86,4 +86,18 @@ val ResponseTypeTest by testSuite {
             ResponseType(it).toString() shouldBe value
         }
     }
+    "leading spaces are not ignored" - {
+        withData(" vp_token", " vp_token id_token") {
+            shouldThrow<IllegalArgumentException> {
+                ResponseType(it).toString()
+            }
+        }
+    }
+    "trailing spaces are not ignored" - {
+        withData("vp_token ", "vp_token id_token ") {
+            shouldThrow<IllegalArgumentException> {
+                ResponseType(it).toString()
+            }
+        }
+    }
 }
