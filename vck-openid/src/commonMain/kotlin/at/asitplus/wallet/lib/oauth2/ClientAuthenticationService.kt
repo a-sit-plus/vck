@@ -44,27 +44,23 @@ class ClientAuthenticationService(
         }
 
         if (httpRequest?.clientAttestation != null && httpRequest.clientAttestationPop != null) {
-            val instanceAttestation = httpRequest.clientAttestation
-
-            verifyJwsObject(instanceAttestation.jws).getOrElse {
-                throw InvalidClient("client attestation JWT not verified", it)
-            }
-            if (clientId != null) {
-                if (instanceAttestation.payload.subject != clientId) {
-                    throw InvalidClient("subject not equal to client_id")
+            with(httpRequest.clientAttestation) {
+                verifyJwsObject(this.jws).getOrElse {
+                    throw InvalidClient("client attestation JWT not verified", it)
                 }
-            }
-
-            if (!verifyClientAttestationJwt.invoke(instanceAttestation)) {
-                throw InvalidClient("client attestation not verified")
-            }
-
-            val instanceAttestationPopJwt = httpRequest.clientAttestationPop
-
-            val cnf = instanceAttestation.payload.confirmationClaim
-                ?: throw InvalidClient("client attestation has no cnf")
-            if (!verifyJwsSignatureWithCnf(instanceAttestationPopJwt.jws, cnf)) {
-                throw InvalidClient("client attestation PoP JWT not verified")
+                if (clientId != null) {
+                    if (this.payload.subject != clientId) {
+                        throw InvalidClient("subject not equal to client_id")
+                    }
+                }
+                if (!verifyClientAttestationJwt.invoke(this)) {
+                    throw InvalidClient("client attestation not verified")
+                }
+                val cnf = this.payload.confirmationClaim
+                    ?: throw InvalidClient("client attestation has no cnf")
+                if (!verifyJwsSignatureWithCnf(httpRequest.clientAttestationPop.jws, cnf)) {
+                    throw InvalidClient("client attestation PoP JWT not verified")
+                }
             }
         }
     }
