@@ -99,7 +99,7 @@ class JwtTokenGenerationService(
                     authorizationDetails = authorizationDetails,
                 ),
                 OpenId4VciAccessToken.serializer(),
-            ).getOrThrow().serialize() else null,
+            ).getOrThrow().toString() else null,
             accessToken = signToken(
                 JwsContentTypeConstants.OID4VCI_AT_JWT,
                 OpenId4VciAccessToken(
@@ -118,7 +118,7 @@ class JwtTokenGenerationService(
                     authorizationDetails = authorizationDetails,
                 ),
                 OpenId4VciAccessToken.serializer(),
-            ).getOrThrow().serialize(),
+            ).getOrThrow().toString(),
             authorizationDetails = authorizationDetails,
             scope = scope,
         )

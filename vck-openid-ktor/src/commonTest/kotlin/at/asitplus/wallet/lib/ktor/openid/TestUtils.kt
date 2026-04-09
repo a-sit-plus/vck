@@ -8,16 +8,17 @@ import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.TokenIntrospectionJwtResponse
-import at.asitplus.openid.TokenIntrospectionResult
 import at.asitplus.openid.TokenIntrospectionResponse
+import at.asitplus.openid.TokenIntrospectionResult
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.ValidatorSdJwt
-import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
@@ -58,9 +59,15 @@ object TestUtils {
     fun HttpRequestData.toRequestInfo(): RequestInfo = RequestInfo(
         url = url.toString(),
         method = method,
-        dpop = headers["DPoP"],
-        clientAttestation = headers["OAuth-Client-Attestation"],
-        clientAttestationPop = headers["OAuth-Client-Attestation-PoP"],
+        dpop = headers["DPoP"]
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { JwsCompactTyped<JsonWebToken>(it) },
+        clientAttestation = headers["OAuth-Client-Attestation"]
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { JwsCompactTyped<JsonWebToken>(it) },
+        clientAttestationPop = headers["OAuth-Client-Attestation-PoP"]
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { JwsCompactTyped<JsonWebToken>(it) }
     )
 
     fun dummyUser(): OidcUserInfoExtended = OidcUserInfoExtended.deserialize("{\"sub\": \"foo\"}").getOrThrow()

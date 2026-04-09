@@ -3,9 +3,9 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.openid.CredentialOffer
 import at.asitplus.openid.CredentialRequestParameters
 import at.asitplus.openid.CredentialRequestProofContainer
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.TokenResponseParameters
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
@@ -13,7 +13,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
@@ -220,11 +219,9 @@ val OidvciPreAuthTest by testSuite {
                 .shouldHaveSize(2)
             // subject identifies the key of the client, here the keys of different proofs, so they should be unique
             credentials.map {
-                JwsSigned.deserialize<VerifiableCredentialJws>(
-                    VerifiableCredentialJws.serializer(),
-                    it.credentialString.shouldNotBeNull(),
-                    vckJsonSerializer
-                ).getOrThrow().payload.subject
+                JwsCompactTyped<VerifiableCredentialJws>(
+                    it.credentialString.shouldNotBeNull()
+                ).payload.subject
             }.toSet().shouldHaveSize(2)
         }
 

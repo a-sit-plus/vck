@@ -24,9 +24,9 @@ import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
+import at.asitplus.wallet.lib.oidvci.WalletService
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
-import at.asitplus.wallet.lib.oidvci.WalletService
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 
 /**
@@ -127,7 +127,7 @@ class OAuth2Client(
                         issuer = it.clientId,
                     ),
                     AuthenticationRequestParameters.serializer(),
-                ).getOrThrow().serialize()
+                ).getOrThrow().toString()
             )
         }
     } ?: throw Exception("SignPushedAuthorizationRequest is null.")

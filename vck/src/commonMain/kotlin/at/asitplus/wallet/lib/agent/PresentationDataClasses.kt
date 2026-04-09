@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.dif.PresentationSubmission
 import at.asitplus.iso.DeviceNameSpaces
 import at.asitplus.jsonpath.core.NormalizedJsonPath
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.signum.indispensable.Digest
@@ -10,7 +11,6 @@ import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -123,13 +123,13 @@ sealed interface CreatePresentationResult {
 
     data class VpJws(
         val serialized: String,
-        val jwsSigned: JwsSigned<VerifiablePresentationJws>,
+        val jwsSigned: JwsCompactTyped<VerifiablePresentationJws>,
     ) : VcJwsPresentationData
 
     @Deprecated("Replaced with class using more expressive name `VpJws`.", ReplaceWith("VpJws"))
     data class Signed(
         val serialized: String,
-        val jwsSigned: JwsSigned<VerifiablePresentationJws>,
+        val jwsSigned: JwsCompactTyped<VerifiablePresentationJws>,
     ) : VcJwsPresentationData
 
     data class SdJwt(
@@ -143,7 +143,7 @@ sealed interface CreatePresentationResult {
 }
 
 @Serializable
-data class PresentationExchangeCredentialDisclosure<Credential: Any>(
+data class PresentationExchangeCredentialDisclosure<Credential : Any>(
     val credential: Credential,
     val disclosedAttributes: Collection<NormalizedJsonPath>,
 )

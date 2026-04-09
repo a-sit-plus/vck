@@ -197,7 +197,7 @@ private suspend fun Pair<JsonObject, Collection<String>>.signDecodeReconstruct()
             JwsContentTypeConstants.SD_JWT,
             payload = first,
             serializer = JsonObject.serializer()
-        ).getOrThrow(), second.toList()
+        ).getOrThrow().jws, second.toList()
     )
 ).reconstructedJsonObject.shouldNotBeNull()
 

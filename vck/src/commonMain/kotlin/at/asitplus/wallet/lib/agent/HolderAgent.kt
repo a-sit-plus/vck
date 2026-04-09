@@ -87,7 +87,8 @@ class HolderAgent(
             }
 
             is Holder.StoreCredentialInput.Iso -> {
-                val validated = validatorMdoc.verifyIsoCred(credential.issuerSigned, credential.extractIssuerKey()).getOrThrow()
+                val validated =
+                    validatorMdoc.verifyIsoCred(credential.issuerSigned, credential.extractIssuerKey()).getOrThrow()
                 subjectCredentialStore.storeCredential(
                     issuerSigned = validated.issuerSigned,
                     scheme = credential.scheme,
@@ -238,13 +239,13 @@ class HolderAgent(
             val query = credentialPresentation.presentationRequest.dcqlQuery.credentials.first {
                 it.id == queryId
             }
-            if(query.multiple != true && submissions.size != 1) {
+            if (query.multiple != true && submissions.size != 1) {
                 throw IllegalArgumentException("Credential query ${query.id} does not allow multiple submission, but ${submissions.size} were provided.")
             }
             submissions.map {
                 val credential = it.credential
-                if(credential is StoreEntry.Vc && !query.requireCryptographicHolderBinding) {
-                    if(it.matchingResult !is DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult) {
+                if (credential is StoreEntry.Vc && !query.requireCryptographicHolderBinding) {
+                    if (it.matchingResult !is DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult) {
                         throw IllegalArgumentException("Credential type only allows disclosure of all attributes.")
                     }
                     CreatePresentationResult.VcJws(credential.vcSerialized)

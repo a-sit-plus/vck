@@ -14,20 +14,17 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenResponseParameters
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oidvci.WalletService.RequestOptions
@@ -112,12 +109,9 @@ val OidvciSameScopeTest by testSuite {
             val serializedCredential = credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
 
-            JwsSigned.deserialize<VerifiableCredentialJws>(
-                VerifiableCredentialJws.serializer(),
-                serializedCredential,
-                vckJsonSerializer
-            ).getOrThrow()
-                .payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
+            JwsCompactTyped<VerifiableCredentialJws>(
+                serializedCredential
+            ).payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
         }
 
         test("request multiple credentials, using scope") {
@@ -153,9 +147,8 @@ val OidvciSameScopeTest by testSuite {
 }
 
 private fun String.assertSdJwtReceived(): Int =
-    JwsSigned.deserialize(
-        VerifiableCredentialSdJwt.serializer(),
+    JwsCompactTyped<VerifiableCredentialSdJwt>(
         substringBefore("~")
-    ).getOrThrow().payload.disclosureDigests
+    ).payload.disclosureDigests
         .shouldNotBeNull()
         .size shouldBeGreaterThan 1

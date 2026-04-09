@@ -1,9 +1,9 @@
 package at.asitplus.wallet.lib.oauth2
 
+import at.asitplus.catching
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.OpenIdConstants
-import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 
@@ -26,8 +26,7 @@ class JwtTokenService(
         request: RequestInfo?,
     ): ValidatedAccessToken = if (authorizationHeader.startsWith(OpenIdConstants.TOKEN_TYPE_DPOP, ignoreCase = true)) {
         val accessToken = authorizationHeader.removePrefix(OpenIdConstants.TOKEN_PREFIX_DPOP).split(" ").last()
-        val tokenJwt = JwsSigned
-            .deserialize<OpenId4VciAccessToken>(OpenId4VciAccessToken.serializer(), accessToken, vckJsonSerializer)
+        val tokenJwt = catching { JwsCompactTyped<OpenId4VciAccessToken>(accessToken) }
             .getOrElse { throw InvalidToken("could not parse DPoP Token", it) }
         val jwtId = tokenJwt.payload.jwtId
             ?: throw InvalidToken("access token not valid: $accessToken")

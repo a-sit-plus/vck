@@ -5,6 +5,7 @@ import at.asitplus.catching
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.JarRequestParameters
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.OpenIdConstants
@@ -19,7 +20,6 @@ import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -97,12 +97,12 @@ class OAuth2KtorClient(
     /**
      * Verifies signed token introspection responses (RFC 9701). By default, every syntactically valid JWS is accepted.
      */
-    private val verifyTokenIntrospectionJwt: suspend (JwsSigned<TokenIntrospectionResponse>) -> Boolean = { true },
+    private val verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponse>) -> Boolean = { true },
 
     /** Returns a new instance attestation to validate the app against an authorization server. */
-    val loadInstanceAttestation: (suspend () -> KmmResult<JwsSigned<JsonWebToken>>)? = null,
+    val loadInstanceAttestation: (suspend () -> KmmResult<JwsCompactTyped<JsonWebToken>>)? = null,
     /** Returns a proof of possession for an instance attestation */
-    val loadInstanceAttestationPop: (suspend () -> KmmResult<JwsSigned<JsonWebToken>>)? = null,
+    val loadInstanceAttestationPop: (suspend () -> KmmResult<JwsCompactTyped<JsonWebToken>>)? = null,
 ) {
     /**
      * Stores the latest DPoP nonce per origin. RFC 9449 requires using only the most recent nonce
@@ -480,7 +480,7 @@ class OAuth2KtorClient(
         return {
             headers {
                 append(HttpHeaders.Authorization, tokenResponse.toHttpHeaderValue())
-                dpopHeader?.let { append(HttpHeaders.DPoP, it) }
+                dpopHeader?.let { append(HttpHeaders.DPoP, it.jws.toString()) }
             }
         }
     }
@@ -501,9 +501,8 @@ class OAuth2KtorClient(
     ): HttpRequestBuilder.() -> Unit {
         val (clientAttJwt, clientAttPop) = when (loadInstanceAttestation != null && loadInstanceAttestationPop != null) {
             true -> {
-                loadInstanceAttestation.let {
-                    it().getOrNull()?.serialize()
-                } to loadInstanceAttestationPop.let { it().getOrNull()?.serialize() }
+                loadInstanceAttestation.invoke().getOrNull()?.jws?.toString() to
+                        loadInstanceAttestationPop.invoke().getOrNull()?.jws?.toString()
             }
 
             else -> {
@@ -514,7 +513,7 @@ class OAuth2KtorClient(
                             clientId = oAuth2Client.clientId,
                             audience = popAudience,
                             lifetime = 10.minutes,
-                        ).serialize()
+                        ).jws.toString()
                     }
                 } ?: (null to null)
             }
@@ -534,7 +533,7 @@ class OAuth2KtorClient(
             headers {
                 clientAttJwt?.let { append(HttpHeaders.OAuthClientAttestation, it) }
                 clientAttPop?.let { append(HttpHeaders.OAuthClientAttestationPop, it) }
-                dpopHeader?.let { append(HttpHeaders.DPoP, it) }
+                dpopHeader?.let { append(HttpHeaders.DPoP, it.jws.toString()) }
             }
         }
     }
@@ -570,7 +569,7 @@ private suspend inline fun <R> IntermediateResult<R>.onSuccessToken(
 ) = onSuccess<TokenResponseParameters, R>(block)
 
 private suspend inline fun <R> IntermediateResult<R>.onSuccessTokenIntrospection(
-    noinline verifyTokenIntrospectionJwt: suspend (JwsSigned<TokenIntrospectionResponse>) -> Boolean,
+    noinline verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponse>) -> Boolean,
     requestedResponseFormat: TokenIntrospectionRequest.ResponseFormat?,
     block: TokenIntrospectionResponse.(httpResponse: HttpResponse) -> R,
 ) = when (this) {
@@ -586,7 +585,7 @@ private suspend inline fun <R> IntermediateResult<R>.onSuccessTokenIntrospection
 
 private suspend fun parseTokenIntrospectionResponse(
     body: String,
-    verifyTokenIntrospectionJwt: suspend (JwsSigned<TokenIntrospectionResponse>) -> Boolean,
+    verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponse>) -> Boolean,
     requestedResponseFormat: TokenIntrospectionRequest.ResponseFormat?,
 ): TokenIntrospectionResponse = runCatching {
     if (requestedResponseFormat == TokenIntrospectionRequest.ResponseFormat.JWT) {
@@ -604,12 +603,11 @@ private suspend fun parseTokenIntrospectionResponse(
 
 private suspend fun parseJwt(
     body: String,
-    verifyTokenIntrospectionJwt: suspend (JwsSigned<TokenIntrospectionResponse>) -> Boolean
+    verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponse>) -> Boolean
 ): TokenIntrospectionResponse =
     vckJsonSerializer.decodeFromString(TokenIntrospectionJwtResponse.serializer(), body).let { jwtResponse ->
-        JwsSigned.deserialize(TokenIntrospectionResponse.serializer(), jwtResponse.jwt, vckJsonSerializer)
-            .getOrThrow().run {
-                require(verifyTokenIntrospectionJwt(this)) { "Token introspection JWT validation failed" }
-                payload
-            }
+        JwsCompactTyped<TokenIntrospectionResponse>(jwtResponse.jwt).run {
+            require(verifyTokenIntrospectionJwt(this)) { "Token introspection JWT validation failed" }
+            payload
+        }
     }

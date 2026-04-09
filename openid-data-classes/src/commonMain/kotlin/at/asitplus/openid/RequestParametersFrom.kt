@@ -1,6 +1,8 @@
 package at.asitplus.openid
 
 import at.asitplus.dcapi.request.DCAPIWalletRequest
+import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.signum.indispensable.josef.JwsCompactStringSerializer
 import io.ktor.http.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -16,15 +18,15 @@ sealed class RequestParametersFrom<S : RequestParameters> {
      */
     @Serializable
     sealed class RequestParametersSigned<T : RequestParameters> : RequestParametersFrom<T>() {
-        abstract val jwsSigned: at.asitplus.signum.indispensable.josef.JwsSigned<T>
+        abstract val jwsSigned: JwsCompact
     }
 
     @Serializable
     @SerialName(SerialNames.TYPE_JWS_SIGNED)
     data class JwsSigned<T : RequestParameters>(
-        @Serializable(JwsSignedSerializer::class)
+        @Serializable(JwsCompactStringSerializer::class)
         @SerialName(SerialNames.JWS_SIGNED)
-        override val jwsSigned: at.asitplus.signum.indispensable.josef.JwsSigned<T>,
+        override val jwsSigned: JwsCompact,
         @SerialName(SerialNames.PARAMETERS)
         override val parameters: T,
         @SerialName(SerialNames.VERIFIED)
@@ -33,7 +35,7 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         val parent: Url?,
     ) : RequestParametersSigned<T>() {
         override fun toString(): String {
-            return "JwsSigned(parent='$parent', jwsSigned=${jwsSigned.serialize()}, parameters=$parameters, verified=$verified)"
+            return "JwsSigned(parent='$parent', jwsSigned=$jwsSigned, parameters=$parameters, verified=$verified)"
         }
     }
 
@@ -44,12 +46,12 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         val dcApiRequest: DCAPIWalletRequest.OpenId4VpSigned,
         @SerialName(SerialNames.PARAMETERS)
         override val parameters: T,
-        @Serializable(JwsSignedSerializer::class)
+        @Serializable(JwsCompactStringSerializer::class)
         @SerialName(SerialNames.JWS_SIGNED)
-        override val jwsSigned: at.asitplus.signum.indispensable.josef.JwsSigned<T>,
+        override val jwsSigned: JwsCompact,
     ) : RequestParametersSigned<T>() {
         override fun toString(): String {
-            return "DcApiSigned(dcApiRequest=$dcApiRequest, parameters=$parameters, jwsSigned=${jwsSigned.serialize()})"
+            return "DcApiSigned(dcApiRequest=$dcApiRequest, parameters=$parameters, jwsSigned=$jwsSigned)"
         }
     }
 

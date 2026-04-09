@@ -12,11 +12,12 @@ package at.asitplus.wallet.lib.openid
  * see the "LICENSE" file for more details
  */
 
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.openid.RequestParameters
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.typed
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.RequestOptionsCredential
@@ -145,7 +146,7 @@ private suspend fun buildAttestationJwt(
     sprsKeyMaterial: KeyMaterial,
     clientId: String,
     verifierKeyMaterial: KeyMaterial,
-): JwsSigned<JsonWebToken> = SignJwt<JsonWebToken>(sprsKeyMaterial, JwsHeaderNone())(
+): JwsCompactTyped<JsonWebToken> = SignJwt<JsonWebToken>(sprsKeyMaterial, JwsHeaderNone())(
     null,
     JsonWebToken(
         issuer = "sprs", // allows Wallet to determine the issuer's key
@@ -159,16 +160,14 @@ private suspend fun buildAttestationJwt(
 ).getOrThrow()
 
 private fun attestationJwtVerifier(trustedKey: JsonWebKey) =
-    RequestObjectJwsVerifier { jws: JwsSigned<RequestParameters> ->
-        val attestationJwt = jws.header.attestationJwt?.let {
-            JwsSigned.deserialize(JsonWebToken.serializer(), it).getOrThrow()
-        } ?: return@RequestObjectJwsVerifier false
+    RequestObjectJwsVerifier { jws: JwsCompactTyped<RequestParameters> ->
+        val attestationJwt: JwsCompactTyped<JsonWebToken> = jws.jws.jwsHeader.attestationJwt?.typed()
+            ?: return@RequestObjectJwsVerifier false
         val verifyJwsSignatureWithKey = VerifyJwsSignatureWithKey()
-        if (!verifyJwsSignatureWithKey(attestationJwt, trustedKey).isSuccess)
+        if (!verifyJwsSignatureWithKey(attestationJwt.jws, trustedKey).isSuccess)
             return@RequestObjectJwsVerifier false
         val verifierPublicKey = attestationJwt.payload.confirmationClaim?.jsonWebKey
             ?: return@RequestObjectJwsVerifier false
-        verifyJwsSignatureWithKey(jws, verifierPublicKey).isSuccess
+        verifyJwsSignatureWithKey(jws.jws, verifierPublicKey).isSuccess
     }
-
 

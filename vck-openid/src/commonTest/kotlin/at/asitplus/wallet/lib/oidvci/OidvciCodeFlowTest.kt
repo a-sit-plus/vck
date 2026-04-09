@@ -19,25 +19,22 @@ import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.CredentialRequestParameters
 import at.asitplus.openid.CredentialRequestProofContainer
 import at.asitplus.openid.CredentialResponseSingleCredential
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.ClientAuthRequest
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
@@ -189,21 +186,16 @@ val OidvciCodeFlowTest by testSuite {
             val serializedCredential = credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
 
-            JwsSigned.deserialize<VerifiableCredentialJws>(
-                VerifiableCredentialJws.serializer(),
-                serializedCredential,
-                vckJsonSerializer
-            ).getOrThrow()
-                .payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
-                .also { credentialSubject ->
-                    shouldNotThrowAny {
-                        Json.decodeFromJsonElement(
-                            at.asitplus.wallet.lib.data.AtomicAttribute2023.serializer(),
-                            credentialSubject
-                        )
-                    }
+            JwsCompactTyped<VerifiableCredentialJws>(
+                serializedCredential
+            ).payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
+                shouldNotThrowAny {
+                    Json.decodeFromJsonElement(
+                        at.asitplus.wallet.lib.data.AtomicAttribute2023.serializer(),
+                        credentialSubject
+                    )
                 }
-
+            }
         }
 
         test("request multiple credentials, using scope") {
@@ -265,11 +257,9 @@ val OidvciCodeFlowTest by testSuite {
                 .credentials.shouldNotBeEmpty().shouldHaveSize(2)
             // subject identifies the key of the client, here the keys of different proofs, so they should be unique
             credentials.map {
-                JwsSigned.deserialize<VerifiableCredentialJws>(
-                    VerifiableCredentialJws.serializer(),
-                    it.credentialString.shouldNotBeNull(),
-                    vckJsonSerializer
-                ).getOrThrow().payload.subject
+                JwsCompactTyped<VerifiableCredentialJws>(
+                    it.credentialString.shouldNotBeNull()
+                ).payload.subject
             }.toSet().shouldHaveSize(2)
         }
 
@@ -615,10 +605,9 @@ val OidvciCodeFlowTest by testSuite {
     }
 }
 
-private fun String.assertSdJwtReceived(): Int = JwsSigned.deserialize(
-    VerifiableCredentialSdJwt.serializer(),
+private fun String.assertSdJwtReceived(): Int = JwsCompactTyped<VerifiableCredentialSdJwt>(
     substringBefore("~")
-).getOrThrow().payload.disclosureDigests
+).payload.disclosureDigests
     .shouldNotBeNull()
     .size shouldBeGreaterThan 1
 

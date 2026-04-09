@@ -54,11 +54,12 @@ import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
-import at.asitplus.wallet.lib.utils.DefaultMapStore
-import at.asitplus.wallet.lib.utils.MapStore
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
+import at.asitplus.wallet.lib.openid.OpenId4VpHolder.JsonWebKeyLookupInput
+import at.asitplus.wallet.lib.utils.DefaultMapStore
+import at.asitplus.wallet.lib.utils.MapStore
 import com.benasher44.uuid.uuid4
 import kotlin.time.Clock
 
@@ -242,8 +243,8 @@ class OpenId4VpHolder(
 
     private fun Throwable.getUserSignatureCancellationException(): UserInitiatedCancellationReason? {
         var current: Throwable? = this
-        while(current != null) {
-            if(current is UserInitiatedCancellationReason) {
+        while (current != null) {
+            if (current is UserInitiatedCancellationReason) {
                 return current // DON'T send error response for user cancellation
             }
             current = current.cause
@@ -332,7 +333,7 @@ class OpenId4VpHolder(
             val jsonWebKeys = jsonWebKeys?.combine(request.extractLeafCertKey())
                 ?: lookupJsonWebKeysForClient(JsonWebKeyLookupInput(request.parameters.clientId))?.keys
             val idToken = presentationFactory.createSignedIdToken(clock, keyMaterial.publicKey, request)
-                .getOrNull()?.serialize()
+                .getOrNull()
             val presentation = credentialPresentation ?: credentialPresentationRequest?.toCredentialPresentation()
             val resultContainer = presentation?.let {
                 presentationFactory.createPresentation(
@@ -349,7 +350,7 @@ class OpenId4VpHolder(
 
             val parameters = AuthenticationResponseParameters(
                 state = request.parameters.state,
-                idToken = idToken,
+                idToken = idToken?.toString(),
                 vpToken = resultContainer?.vpToken,
                 presentationSubmission = resultContainer?.presentationSubmission,
             )
@@ -363,7 +364,7 @@ class OpenId4VpHolder(
 
     private fun RequestParametersFrom<AuthenticationRequestParameters>.extractLeafCertKey(): JsonWebKey? =
         (this as? RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>)
-            ?.jwsSigned?.header?.certificateChain?.firstOrNull()?.decodedPublicKey?.getOrNull()?.toJsonWebKey()
+            ?.jwsSigned?.jwsHeader?.certificateChain?.firstOrNull()?.decodedPublicKey?.getOrNull()?.toJsonWebKey()
 
     suspend fun getMatchingCredentials(
         preparationState: AuthorizationResponsePreparationState,
