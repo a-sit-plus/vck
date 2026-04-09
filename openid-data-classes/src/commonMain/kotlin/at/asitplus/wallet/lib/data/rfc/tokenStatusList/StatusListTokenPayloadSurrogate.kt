@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
+import at.asitplus.csc.xor
 import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.PositiveDuration
@@ -78,7 +79,7 @@ data class StatusListTokenPayloadSurrogate(
     )
 
     init {
-        require(statusList == null || identifierList == null) { "Either StatusList or IdentifierList must be present" }
+        require(statusList xor identifierList) { "Either StatusList or IdentifierList must be present" }
     }
 
     fun toStatusListTokenPayload() = StatusListTokenPayload(
