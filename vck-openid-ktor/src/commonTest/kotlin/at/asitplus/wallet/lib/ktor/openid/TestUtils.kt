@@ -12,7 +12,8 @@ import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenIntrospectionResult
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtScheme
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
@@ -58,9 +59,15 @@ object TestUtils {
     fun HttpRequestData.toRequestInfo(): RequestInfo = RequestInfo(
         url = url.toString(),
         method = method,
-        dpop = headers["DPoP"],
-        clientAttestation = headers["OAuth-Client-Attestation"],
-        clientAttestationPop = headers["OAuth-Client-Attestation-PoP"],
+        dpop = headers["DPoP"]
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { JwsCompactTyped<JsonWebToken>(it) },
+        clientAttestation = headers["OAuth-Client-Attestation"]
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { JwsCompactTyped<JsonWebToken>(it) },
+        clientAttestationPop = headers["OAuth-Client-Attestation-PoP"]
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { JwsCompactTyped<JsonWebToken>(it) }
     )
 
     fun dummyUser(): OidcUserInfoExtended = OidcUserInfoExtended.deserialize("{\"sub\": \"foo\"}").getOrThrow()

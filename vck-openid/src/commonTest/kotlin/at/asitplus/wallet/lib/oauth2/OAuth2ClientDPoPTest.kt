@@ -75,7 +75,7 @@ val OAuth2ClientDPoPTest by testSuite {
                         url = it.tokenUrl,
                         nonce = it.server.getDpopNonce(),
                         randomSource = RandomSource.Default,
-                    ).toString()
+                    )
                 )
             ).getOrThrow().also {
                 it.tokenType shouldBe TOKEN_TYPE_DPOP
@@ -102,7 +102,7 @@ val OAuth2ClientDPoPTest by testSuite {
                 RequestInfo(
                     url = it.resourceUrl,
                     method = HttpMethod.Post,
-                    dpop = dpopForResource.toString()
+                    dpop = dpopForResource
                 )
             ).getOrThrow()
 
@@ -125,7 +125,7 @@ val OAuth2ClientDPoPTest by testSuite {
                         url = it.tokenUrl,
                         nonce = it.server.getDpopNonce(),
                         randomSource = RandomSource.Default,
-                    ).toString()
+                    )
                 )
             ).getOrThrow().also {
                 it.tokenType shouldBe TOKEN_TYPE_DPOP
@@ -154,7 +154,7 @@ val OAuth2ClientDPoPTest by testSuite {
                         accessToken = token.refreshToken,
                         nonce = it.server.getDpopNonce(),
                         randomSource = RandomSource.Default,
-                    ).toString()
+                    )
                 )
             ).getOrThrow()
             refreshedAccessToken.accessToken shouldNotBe token.accessToken
@@ -180,7 +180,7 @@ val OAuth2ClientDPoPTest by testSuite {
                 RequestInfo(
                     url = it.resourceUrl,
                     method = HttpMethod.Post,
-                    dpop = dpopForResource.toString()
+                    dpop = dpopForResource
                 )
             ).getOrThrow()
         }
@@ -202,7 +202,7 @@ val OAuth2ClientDPoPTest by testSuite {
                         url = it.tokenUrl,
                         nonce = it.server.getDpopNonce(),
                         randomSource = RandomSource.Default,
-                    ).toString()
+                    )
                 )
             ).getOrThrow().also {
                 it.tokenType shouldBe TOKEN_TYPE_DPOP
@@ -233,7 +233,7 @@ val OAuth2ClientDPoPTest by testSuite {
                             accessToken = token.refreshToken,
                             nonce = it.server.getDpopNonce(),
                             randomSource = RandomSource.Default,
-                        ).toString()
+                        )
                     )
                 ).getOrThrow()
             }
@@ -257,7 +257,7 @@ val OAuth2ClientDPoPTest by testSuite {
                             url = "https://somethingelse.com/",
                             nonce = it.server.getDpopNonce(),
                             randomSource = RandomSource.Default,
-                        ).toString()
+                        )
                     )
                 ).getOrThrow()
             }
@@ -281,7 +281,7 @@ val OAuth2ClientDPoPTest by testSuite {
                             url = it.tokenUrl,
                             nonce = it.server.getDpopNonce()!!.reversed(),
                             randomSource = RandomSource.Default,
-                        ).toString()
+                        )
                     )
                 ).getOrThrow()
             }
@@ -319,7 +319,7 @@ val OAuth2ClientDPoPTest by testSuite {
                         url = it.tokenUrl,
                         nonce = it.server.getDpopNonce(),
                         randomSource = RandomSource.Default,
-                    ).toString()
+                    )
                 )
             ).getOrThrow().also {
                 it.tokenType shouldBe TOKEN_TYPE_DPOP
@@ -358,7 +358,7 @@ val OAuth2ClientDPoPTest by testSuite {
                         url = it.tokenUrl,
                         nonce = it.server.getDpopNonce(),
                         randomSource = RandomSource.Default,
-                    ).toString()
+                    )
                 )
             ).getOrThrow()
 
@@ -385,7 +385,7 @@ val OAuth2ClientDPoPTest by testSuite {
                     RequestInfo(
                         url = it.resourceUrl,
                         method = HttpMethod.Post,
-                        dpop = dpopForResource.toString()
+                        dpop = dpopForResource
                     )
                 ).getOrThrow()
             }
