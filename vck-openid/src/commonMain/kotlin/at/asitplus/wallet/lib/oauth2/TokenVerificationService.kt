@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.oauth2
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.iso.sha256
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.OpenIdConstants.TOKEN_PREFIX_BEARER
 import at.asitplus.openid.OpenIdConstants.TOKEN_PREFIX_DPOP
@@ -12,6 +11,7 @@ import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
@@ -129,7 +129,7 @@ class JwtTokenVerificationService(
     override suspend fun extractValidatedClientKey(
         httpRequest: RequestInfo?,
     ): KmmResult<JsonWebKey?> = catching {
-        val dpopProof = parseDpopProof(httpRequest ?: throw InvalidDpopProof("no dpop proof in header"))
+        val dpopProof = verifyDpopProof(httpRequest ?: throw InvalidDpopProof("Missing RequestInfo"))
         val nonce = dpopProof.payload.nonce
             ?: throw UseDpopNonce(dpopNonceService.provideNonce(), "DPoP JWT nonce is null")
         if (!dpopNonceService.verifyAndRemoveNonce(nonce)) {
@@ -146,18 +146,14 @@ class JwtTokenVerificationService(
 
     }
 
-    private suspend fun parseDpopProof(
+    private suspend fun verifyDpopProof(
         httpRequest: RequestInfo,
-    ): JwsCompactTyped<JsonWebToken> {
-        if (httpRequest.dpop.isNullOrEmpty()) {
-            throw InvalidDpopProof("no dpop proof in header")
+    ): JwsCompactTyped<JsonWebToken> = httpRequest.dpop?.also {
+        verifyJwsObject(it.jws).getOrElse { throw InvalidDpopProof("DPoP JWT not verified.", it) }
+        if (it.jws.jwsHeader.type != JwsContentTypeConstants.DPOP_JWT) {
+            throw InvalidDpopProof("invalid type: ${it.jws.jwsHeader.type}")
         }
-        val dpopProof = httpRequest.dpop.parseDpopProof()
-        if (dpopProof.jws.jwsHeader.type != JwsContentTypeConstants.DPOP_JWT) {
-            throw InvalidDpopProof("invalid type: ${dpopProof.jws.jwsHeader.type}")
-        }
-        return dpopProof
-    }
+    } ?: throw InvalidDpopProof("no dpop proof in header")
 
     /** @param validatedClientKey the key from the extracted DPoP proof */
     internal suspend fun validateDpopProof(
@@ -167,8 +163,7 @@ class JwtTokenVerificationService(
         dpopNonceService: NonceService,
         validatedClientKey: JsonWebKey?,
     ) {
-        val dpopProof = parseDpopProof(httpRequest ?: throw InvalidDpopProof("no dpop proof in header"))
-
+        val dpopProof = verifyDpopProof(httpRequest ?: throw InvalidDpopProof("Missing RequestInfo"))
         val jwkThumbprintFromToken = tokenJwt.payload.confirmationClaim?.jsonWebKeyThumbprint
         if (jwkThumbprintFromToken == null ||
             dpopProof.jws.jwsHeader.jsonWebKey == null ||
@@ -204,15 +199,6 @@ class JwtTokenVerificationService(
             }
         }
     }
-
-    private suspend fun String.parseDpopProof(): JwsCompactTyped<JsonWebToken> =
-        catching { JwsCompactTyped<JsonWebToken>(this) }.getOrElse {
-            throw InvalidDpopProof("could not parse DPoP JWT", it)
-        }.also {
-            verifyJwsObject(it.jws).getOrElse {
-                throw InvalidDpopProof("DPoP JWT not verified.", it)
-            }
-        }
 
     internal suspend fun validateToken(
         accessToken: String,

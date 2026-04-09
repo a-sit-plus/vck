@@ -1,8 +1,7 @@
 package at.asitplus.wallet.lib.oauth2
 
-import at.asitplus.catching
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnf
@@ -45,8 +44,7 @@ class ClientAuthenticationService(
         }
 
         if (httpRequest?.clientAttestation != null && httpRequest.clientAttestationPop != null) {
-            val instanceAttestation = catching { JwsCompactTyped<JsonWebToken>(httpRequest.clientAttestation) }
-                .getOrElse { throw InvalidClient("could not parse instance attestation", it) }
+            val instanceAttestation = httpRequest.clientAttestation
 
             verifyJwsObject(instanceAttestation.jws).getOrElse {
                 throw InvalidClient("client attestation JWT not verified", it)
@@ -61,11 +59,8 @@ class ClientAuthenticationService(
                 throw InvalidClient("client attestation not verified")
             }
 
-            val instanceAttestationPopJwt = catching {
-                JwsCompactTyped<JsonWebToken>(httpRequest.clientAttestationPop)
-            }.getOrElse {
-                throw InvalidClient("could not parse client attestation PoP", it)
-            }
+            val instanceAttestationPopJwt = httpRequest.clientAttestationPop
+
             val cnf = instanceAttestation.payload.confirmationClaim
                 ?: throw InvalidClient("client attestation has no cnf")
             if (!verifyJwsSignatureWithCnf(instanceAttestationPopJwt.jws, cnf)) {
