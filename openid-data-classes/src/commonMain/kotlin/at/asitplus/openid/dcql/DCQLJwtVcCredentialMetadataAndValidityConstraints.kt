@@ -44,7 +44,7 @@ data class DCQLJwtVcCredentialMetadataAndValidityConstraints(
         actualCredentialTypes = credential.types,
     )
 
-    fun validate(actualCredentialTypes: List<String>?): KmmResult<Unit> = catching {
+    fun validate(actualCredentialTypes: Collection<String>?): KmmResult<Unit> = catching {
         var valid = false
         if (!actualCredentialTypes.isNullOrEmpty()) {
             for (typeValue in typeValues) {

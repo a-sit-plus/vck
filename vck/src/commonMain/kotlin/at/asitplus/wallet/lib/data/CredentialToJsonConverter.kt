@@ -74,6 +74,18 @@ object CredentialToJsonConverter {
         }
     }
 
+    fun toJsonElement(verifiableCredentialJws: VerifiableCredentialJws) = buildJsonObject {
+        val vcAsJsonElement = vckJsonSerializer.encodeToJsonElement(verifiableCredentialJws.vc.credentialSubject)
+        vcAsJsonElement.jsonObject.entries.forEach {
+            put(it.key, it.value)
+        }
+        // TODO: Remove the rest here when there is a clear specification on how to encode vc credentials
+        //  This may actually depend on the presentation context, so more information may be required
+        put("vc", buildJsonArray {
+            add(vcAsJsonElement)
+        })
+    }
+
     /**
      * Converts any value to a [JsonElement], to be used when serializing values into JSON structures.
      */

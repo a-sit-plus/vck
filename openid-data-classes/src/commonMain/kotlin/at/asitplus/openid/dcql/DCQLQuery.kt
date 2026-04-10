@@ -12,6 +12,8 @@ package at.asitplus.openid.dcql
  * see the "LICENSE" file for more details
  */
 
+import at.asitplus.KmmResult
+import at.asitplus.catching
 import at.asitplus.data.NonEmptyList
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.openid.CredentialFormatEnum
@@ -100,38 +102,44 @@ data class DCQLQuery(
     )
 
     // TODO: use in verifier
-    fun isSatisfiedWith(
-        dcqlQueryResponse: DCQLQueryResponse,
+    fun <DCQLCredentialQueryResponse: Any> checkSubmissionRequirements(
+        dcqlQueryResponse: DCQLQueryResponse<DCQLCredentialQueryResponse>,
         parseIsoMdocCredential: (DCQLCredentialQueryResponse) -> DCQLIsoMdocCredential,
         parseSdJwtCredential: (DCQLCredentialQueryResponse) -> DCQLSdJwtCredential,
         parseVcJwsCredential: (DCQLCredentialQueryResponse) -> DCQLVcJwsCredential,
-    ) = isCredentialSetQueriesSatisfiedWith(
-        credentialSubmissions = dcqlQueryResponse.submissions.keys,
-    ) && dcqlQueryResponse.submissions.all { (id, submissions) ->
-        credentials.firstOrNull {
-            it.id == id
-        }?.isSatisfiedWith(
-            credentialQueryResponses = submissions,
-            parseIsoMdocCredential = parseIsoMdocCredential,
-            parseSdJwtCredential = parseSdJwtCredential,
-            parseVcJwsCredential = parseVcJwsCredential,
-        ) ?: return@all false
+    ): KmmResult<Unit> = catching {
+        checkCredentialSetQueryRequirements(
+            credentialSubmissions = dcqlQueryResponse.submissions.keys,
+        ).getOrThrow()
+
+        dcqlQueryResponse.submissions.forEach { (id, submissions) ->
+            val credentialQuery = credentials.firstOrNull {
+                it.id == id
+            } ?: throw IllegalArgumentException("Credential has been submitted for non-existing credential query: $id")
+
+            credentialQuery.checkSubmissionRequirements(
+                credentialQueryResponses = submissions,
+                parseIsoMdocCredential = parseIsoMdocCredential,
+                parseSdJwtCredential = parseSdJwtCredential,
+                parseVcJwsCredential = parseVcJwsCredential,
+            )
+        }
     }
 
-    fun isCredentialSetQueriesSatisfiedWith(
+    fun checkCredentialSetQueryRequirements(
         credentialSubmissions: Set<DCQLCredentialQueryIdentifier>,
-    ) = Procedures.isCredentialSetQueriesSatisfied(
+    ) = Procedures.checkCredentialSetQueryRequirements(
         credentialSubmissions = credentialSubmissions,
         requestedCredentialSetQueries = requestedCredentialSetQueries,
     )
 
     object Procedures {
-        fun isCredentialSetQueriesSatisfied(
+        fun checkCredentialSetQueryRequirements(
             credentialSubmissions: Set<DCQLCredentialQueryIdentifier>,
             requestedCredentialSetQueries: Collection<DCQLCredentialSetQuery>,
-        ): Boolean = requestedCredentialSetQueries.all {
-            !it.required || it.options.any {
-                credentialSubmissions.containsAll(it)
+        ): KmmResult<Unit> = catching {
+            requestedCredentialSetQueries.forEach {
+                it.checkSubmissionRequirements(credentialSubmissions).getOrThrow()
             }
         }
     }

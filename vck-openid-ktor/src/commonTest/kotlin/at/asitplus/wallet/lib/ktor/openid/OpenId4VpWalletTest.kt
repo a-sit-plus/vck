@@ -456,11 +456,11 @@ val OpenId4VpWalletTest by testSuite {
 
             val preparationState = it.wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
             when (val matchingResult = it.wallet.getMatchingCredentials(preparationState).getOrThrow()) {
-                is DCQLMatchingResult -> matchingResult.presentationRequest.dcqlQuery.isCredentialSetQueriesSatisfiedWith(
+                is DCQLMatchingResult -> matchingResult.presentationRequest.dcqlQuery.checkCredentialSetQueryRequirements(
                     matchingResult.matchingResult.toDefaultSubmission(
                         matchingResult.presentationRequest.dcqlQuery
                     ).getOrThrow().keys
-                )
+                ).isSuccess
 
                 is PresentationExchangeMatchingResult -> matchingResult.presentationRequest.presentationDefinition.inputDescriptors.map {
                     it.id

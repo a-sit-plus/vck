@@ -343,20 +343,26 @@ sealed interface DCQLCredentialQuery {
         DCQLCredentialQueryMatchingResult.ClaimsQueryResults(successCombination)
     }
 
-    fun isSatisfiedWith(
+    fun <DCQLCredentialQueryResponse: Any> checkSubmissionRequirements(
         credentialQueryResponses: List<DCQLCredentialQueryResponse>,
         parseIsoMdocCredential: (DCQLCredentialQueryResponse) -> DCQLIsoMdocCredential,
         parseSdJwtCredential: (DCQLCredentialQueryResponse) -> DCQLSdJwtCredential,
         parseVcJwsCredential: (DCQLCredentialQueryResponse) -> DCQLVcJwsCredential,
-    ): Boolean = runCatching {
-        credentialQueryResponses.isNotEmpty() && (multiple || credentialQueryResponses.size == 1) && credentialQueryResponses.all {
+    ): KmmResult<Unit> = catching {
+        require(credentialQueryResponses.isNotEmpty()) {
+            "No credential are available for credential query ${this.id}"
+        }
+        require(multiple || credentialQueryResponses.size == 1) {
+            "Credential query ${this.id} does not allow for multiple submissions, but received ${credentialQueryResponses.size}: $credentialQueryResponses"
+        }
+        credentialQueryResponses.forEach {
             match(
                 credential = when (this) {
                     is DCQLIsoMdocCredentialQuery -> parseIsoMdocCredential(it)
                     is DCQLSdJwtCredentialQuery -> parseSdJwtCredential(it)
                     is DCQLJwtVcCredentialQuery -> parseVcJwsCredential(it)
                 },
-            ).isSuccess
+            ).getOrThrow()
         }
-    }.getOrNull() ?: false
+    }
 }
