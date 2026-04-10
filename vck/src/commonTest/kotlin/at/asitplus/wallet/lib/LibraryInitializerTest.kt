@@ -34,7 +34,18 @@ private data class TestCredentialScheme(
 
 @Suppress("DEPRECATION")
 val LibraryInitializerTest by testSuite {
-    "registerExtensionLibrary registers schemes and serializers" {
+    "registerExtensionLibrary registers schemes without serializer modules" {
+        val scheme = TestCredentialScheme(
+            schemaUri = "urn:test:${uuid4()}",
+            vcType = "TestCredential-${uuid4()}",
+        )
+
+        LibraryInitializer.registerExtensionLibrary(scheme)
+
+        AttributeIndex.resolveAttributeType(scheme.vcType!!) shouldBe scheme
+    }
+
+    "deprecated registerExtensionLibrary overload still registers serializers modules" {
         @Serializable
         @SerialName("TestCredentialSubject")
         data class TestCredentialSubject(
@@ -52,9 +63,11 @@ val LibraryInitializerTest by testSuite {
             }
         }
 
+        @Suppress("DEPRECATION")
         LibraryInitializer.registerExtensionLibrary(scheme, serializersModule)
 
         AttributeIndex.resolveAttributeType(scheme.vcType!!) shouldBe scheme
+        JsonCredentialSerializer.serializersModules[scheme] shouldBe serializersModule
     }
 
     "registerExtensionLibrary registers ISO encoders and serializers" {
@@ -83,7 +96,6 @@ val LibraryInitializerTest by testSuite {
 
         LibraryInitializer.registerExtensionLibrary(
             scheme,
-            serializersModule = null,
             jsonValueEncoder = jsonValueEncoder,
             itemValueSerializerMap = itemValueSerializerMap,
         )
