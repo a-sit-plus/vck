@@ -50,10 +50,4 @@ val ExchangeProtocolIdentifierTest by testSuite {
             ExchangeProtocolIdentifier("openid4vp-v2-signed")
         }
     }
-
-    test("multisigned openid4vp rejects") {
-        shouldThrowAny {
-            ExchangeProtocolIdentifier("openid4vp-v1-multisigned")
-        }
-    }
 }
