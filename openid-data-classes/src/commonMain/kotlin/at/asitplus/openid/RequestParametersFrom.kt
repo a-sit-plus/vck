@@ -47,7 +47,7 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         val dcApiRequest: DCAPIWalletRequest.OpenId4VpMultiSigned,
         @SerialName(SerialNames.PARAMETERS)
         override val parameters: T,
-        @SerialName(SerialNames.JWS_MULTISIGNED)
+        @SerialName(SerialNames.JWS_GENERAL)
         override val jws: JwsGeneral,
     ) : RequestParametersSigned<T>() {
         override fun toString(): String {
@@ -123,8 +123,8 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         const val TYPE_URI = "Uri"
 
         const val JWS_COMPACT = "jwsCompact"
+        const val JWS_GENERAL = "jwsGeneral"
         const val JSON_STRING = "jsonString"
-        const val JWS_MULTISIGNED = "JwsMultiSigned"
         const val URL = "url"
         const val PARENT = "parent"
         const val PARAMETERS = "parameters"
@@ -133,5 +133,3 @@ sealed class RequestParametersFrom<S : RequestParameters> {
     }
 
 }
-
-

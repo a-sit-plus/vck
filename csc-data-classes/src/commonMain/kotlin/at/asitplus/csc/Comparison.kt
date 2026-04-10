@@ -1,6 +1,12 @@
 package at.asitplus.csc
 
 /**
+ * Checks if both Elements are present
+ */
+infix fun Any?.and(other: Any?): Boolean =
+    (this != null && other != null)
+
+/**
  * Checks if at least one Element is present
  */
 infix fun Any?.or(other: Any?): Boolean =

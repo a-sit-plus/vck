@@ -131,8 +131,8 @@ val OpenIdRequestParserTests by testSuite {
         "signed request directly" { requestParser ->
             requestParser.parseRequestParameters(jws).getOrThrow().apply {
                 shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
-                shouldBeInstanceOf<RequestParametersFrom.JwsSigned<*>>()
-                jws.toString() shouldBe jws
+                shouldBeInstanceOf<RequestParametersFrom.JwsCompact<*>>()
+                this.jws.toString() shouldBe jws
                 parameters.assertParams()
 
                 vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
@@ -147,8 +147,8 @@ val OpenIdRequestParserTests by testSuite {
 
             requestParser.parseRequestParameters(input).getOrThrow().apply {
                 shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
-                shouldBeInstanceOf<RequestParametersFrom.JwsSigned<*>>()
-                jws.toString() shouldBe jws
+                shouldBeInstanceOf<RequestParametersFrom.JwsCompact<*>>()
+                this.jws.toString() shouldBe jws
                 parent.toString() shouldBe input
                 parameters.assertParams()
 
@@ -169,7 +169,7 @@ val OpenIdRequestParserTests by testSuite {
             requestParser.parseRequestParameters(input).getOrThrow().apply {
                 shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
                 shouldBeInstanceOf<RequestParametersFrom.DcApiSigned<*>>()
-                jws.toString() shouldBe jws
+                this.jws.toString() shouldBe jws
                 parameters.assertParams()
 
                 vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
@@ -236,8 +236,8 @@ val OpenIdRequestParserTests by testSuite {
 
             requestParser.parseRequestParameters(input).getOrThrow().apply {
                 shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
-                shouldBeInstanceOf<RequestParametersFrom.JwsSigned<*>>()
-                jws.toString() shouldBe jws
+                shouldBeInstanceOf<RequestParametersFrom.JwsCompact<*>>()
+                this.jws.toString() shouldBe jws
                 parent.toString() shouldBe input
                 parameters.assertParams()
 

@@ -147,7 +147,7 @@ val OpenId4VpInteropTest by testSuite {
 
             val state = it.holderOid4vp.startAuthorizationResponsePreparation(requestUrlForWallet).getOrThrow()
             val parameters = state.request
-                .shouldBeInstanceOf<RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>>()
+                .shouldBeInstanceOf<RequestParametersFrom.JwsCompact<AuthenticationRequestParameters>>()
 
             val jar = parameters.jws
             jar.jwsHeader.algorithm shouldBe JwsAlgorithm.Signature.ES256

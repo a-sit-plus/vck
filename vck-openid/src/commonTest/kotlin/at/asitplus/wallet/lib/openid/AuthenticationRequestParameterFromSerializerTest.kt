@@ -5,6 +5,10 @@ import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.signum.indispensable.josef.JwsGeneral
+import at.asitplus.signum.indispensable.josef.toJwsFlattened
+import at.asitplus.signum.indispensable.josef.toJwsGeneral
 import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -100,7 +104,7 @@ val AuthenticationRequestParameterFromSerializerTest by testSuite {
             jarRequest.clientId shouldBe clientId
             val serializedRequest = jarRequest.request.shouldNotBeNull()
             val params = holderOid4vp.startAuthorizationResponsePreparation(serializedRequest).getOrThrow().request
-                .shouldBeInstanceOf<RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>>()
+                .shouldBeInstanceOf<RequestParametersFrom.JwsCompact<AuthenticationRequestParameters>>()
 
             val serialized = vckJsonSerializer.encodeToString(params)
             vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
@@ -124,6 +128,33 @@ val AuthenticationRequestParameterFromSerializerTest by testSuite {
 
             val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow().request
                 .shouldBeInstanceOf<RequestParametersFrom.DcApiSigned<AuthenticationRequestParameters>>()
+
+            val serialized = vckJsonSerializer.encodeToString(params)
+            vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
+                .shouldBe(params)
+        }
+
+        "DcApiMultiSigned test $representation" {
+            val authnRequestUrl = verifierOid4vp.createAuthnRequest(
+                reqOptions, OpenId4VpVerifier.CreationOptions.SignedRequestByValue(walletUrl)
+            ).getOrThrow().url
+
+            val jarRequest: JarRequestParameters = Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
+            jarRequest.clientId shouldBe clientId
+            val compactRequest = jarRequest.request.shouldNotBeNull()
+            val generalRequest = vckJsonSerializer.encodeToString(
+                JwsGeneral.serializer(),
+                listOf(JwsCompact(compactRequest).toJwsFlattened()).toJwsGeneral(),
+            )
+            val authnRequest = DCAPIWalletRequest.OpenId4VpMultiSigned(
+                request = JarRequestParameters(request = generalRequest),
+                credentialIds = listOf("1"),
+                callingPackageName = "com.example.app",
+                callingOrigin = "https://example.com"
+            )
+
+            val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow().request
+                .shouldBeInstanceOf<RequestParametersFrom.DcApiMultiSigned<AuthenticationRequestParameters>>()
 
             val serialized = vckJsonSerializer.encodeToString(params)
             vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
