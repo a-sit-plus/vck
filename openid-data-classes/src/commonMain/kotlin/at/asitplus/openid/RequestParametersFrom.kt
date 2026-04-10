@@ -14,7 +14,6 @@ sealed class RequestParametersFrom<S : RequestParameters> {
      * Common ancestor for request parameters that are represented with a JWS signature
      * (e.g., classic OpenID requests or DC-API signed requests).
      */
-    @Serializable
     sealed class RequestParametersSigned<T : RequestParameters> : RequestParametersFrom<T>() {
         abstract val jwsSigned: at.asitplus.signum.indispensable.josef.JwsSigned<T>
     }
@@ -22,7 +21,7 @@ sealed class RequestParametersFrom<S : RequestParameters> {
     /**
      * Common ancestor for request parameters that are [DCAPIWalletRequest.OpenId4Vp] subtypes
      */
-    sealed interface DcApiRequest<T : RequestParameters> {
+    sealed interface DcApiRequest {
         val dcApiRequest: DCAPIWalletRequest.OpenId4Vp
     }
 
@@ -54,7 +53,7 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         @Serializable(JwsSignedSerializer::class)
         @SerialName(SerialNames.JWS_SIGNED)
         override val jwsSigned: at.asitplus.signum.indispensable.josef.JwsSigned<T>,
-    ) : RequestParametersSigned<T>(),  DcApiRequest<T> {
+    ) : RequestParametersSigned<T>(),  DcApiRequest {
         override fun toString(): String {
             return "DcApiSigned(dcApiRequest=$dcApiRequest, parameters=$parameters, jwsSigned=${jwsSigned.serialize()})"
         }
@@ -69,7 +68,7 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         override val parameters: T,
         @SerialName(SerialNames.JSON_STRING)
         val jsonString: String,
-    ) : DcApiRequest<T>, RequestParametersFrom<T>() {
+    ) : DcApiRequest, RequestParametersFrom<T>() {
         override fun toString(): String {
             return "DcApiUnsigned(dcApiRequest=$dcApiRequest, parameters=$parameters, jsonString='$jsonString')"
         }
@@ -120,6 +119,3 @@ sealed class RequestParametersFrom<S : RequestParameters> {
     }
 
 }
-
-
-
