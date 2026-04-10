@@ -15,10 +15,11 @@ Release 5.12.0 (unreleased):
  - OpenID for Verifiable Presentations:
    - Change: Executing unsatisfiable DCQL queries no longer throws on matching, only on submission.
    - Change: `Holder.matchInputDescriptorsAgainstCredentialStoreV2` now accepts `filterByIds: Collection<String>?` for multi-credential DC API selections.
-   - Change: Update DCQLClaimsQuery to OpenID4VP 1.0
+   - Change: Update DCQLClaimsQuery and DCQLCredentialQuery to OpenID4VP 1.0
    - Change: Do not fail when only matching credentials without submitting a presentation
    - Allow issuance and verification of `IdentifierList` Revocation Mechanism
    - Change: Don't send response on user initiated signature cancellation
+   - BREAKING CHANGE: The result type from `verifyAuthnResponse`, `AuthnResponseResult` has been reworked to a data class
  - OpenID for Verifiable Credential Issuance:
    - Moved the class `RefreshTokenInfo` from `OpenId4VciClient` to `SubjectCredentialStore.kt` and renamed it to `CredentialRenewalInfo` to better describe its role in the renewal process.
      Kept `RefreshTokenInfo` in the original package for backward compatibility
@@ -44,7 +45,7 @@ Release 5.12.0 (unreleased):
  - OAuth 2.0:
    - In `SimpleAuthorizationService` implement [JWT Response for OAuth Token Introspection](https://datatracker.ietf.org/doc/html/rfc9701/)
 - ISO MDOC:
-   - Change: Return type of `Iso180137AnnexCVerifier.validateResponse` from `Iso180137AnnexCResponseResult` to `KmmResult<Iso180137AnnexCResponseResult.SuccessIso>`
+   - BREAKING Change: Return type of `Iso180137AnnexCVerifier.validateResponse` from `Iso180137AnnexCResponseResult` to reworked `KmmResult<Iso180137AnnexCVerifiedPresentationResult>`
 - DCQL:
    - Add: custom credential types 
    - Add: proper satisfaction evaluation

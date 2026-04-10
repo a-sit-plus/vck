@@ -51,7 +51,7 @@ interface Verifier {
 
     suspend fun verifyUnsignedVcJws(
         input: String
-    ): KmmResult<VerifyPresentationResult.SuccessUnsignedVcJws>
+    ): KmmResult<VerifyPresentationResult.SuccessUnsigned>
 
     /**
      * Verifies a presentation of some credentials in [ConstantIndex.CredentialRepresentation.ISO_MDOC] from a holder,
@@ -63,7 +63,7 @@ interface Verifier {
     ): KmmResult<VerifyPresentationResult.SuccessIso>
 
     sealed class VerifyPresentationResult {
-        data class SuccessUnsignedVcJws(
+        data class SuccessUnsigned(
             val vc: VcJwsVerificationResultWrapper,
         ) : VerifyPresentationResult()
 
@@ -77,7 +77,11 @@ interface Verifier {
             val reconstructedJsonObject: JsonObject,
             val disclosures: Collection<SelectiveDisclosureItem>,
             val freshnessSummary: CredentialFreshnessSummary.SdJwt,
-        ) : VerifyPresentationResult()
+        ) : VerifyPresentationResult() {
+            @Deprecated("Helper for replacing AuthnResponseResult with VerifyPresentationResult", ReplaceWith("reconstructedJsonObject"))
+            val reconstructed
+                get() = reconstructedJsonObject
+        }
 
         data class SuccessIso(
             val documents: List<IsoDocumentParsed>,

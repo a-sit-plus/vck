@@ -25,6 +25,7 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -38,8 +39,10 @@ import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.maps.shouldHaveSize
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
@@ -49,6 +52,7 @@ import io.ktor.http.Url
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 
+@Suppress("unused")
 val RedirectUriClientTest by testSuite {
 
     withFixtureGenerator(suspend {
@@ -96,8 +100,13 @@ val RedirectUriClientTest by testSuite {
             authnResponse.url.shouldContain("#")
             authnResponse.url.shouldStartWith(it.clientId)
 
-            it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
-                .shouldBeInstanceOf<AuthnResponseResult.Success>()
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
+                .inputDescriptorResponseValidations.values.map {
+                    it.getOrThrow()
+                }.shouldBeSingleton().first()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
                 .vp.freshVerifiableCredentials.shouldNotBeEmpty()
 
             verifySecondProtocolRun(it.verifierOid4vp, it.walletUrl, it.holderOid4vp)
@@ -126,9 +135,8 @@ val RedirectUriClientTest by testSuite {
             val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-            verifierOid4vp.validateAuthnResponse(authnResponse.url)
-                .shouldBeInstanceOf<AuthnResponseResult.ValidationError>()
-                .field shouldBe "idToken"
+            verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
+                .idTokenValidationResult.shouldNotBeNull().isFailure shouldBe true
         }
 
         "wrong client nonce in vp_token should lead to error" {
@@ -148,9 +156,7 @@ val RedirectUriClientTest by testSuite {
             val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-            verifierOid4vp.validateAuthnResponse(authnResponse.url)
-                .shouldBeInstanceOf<AuthnResponseResult.ValidationError>()
-                .field shouldBe "input"
+            verifierOid4vp.validateAuthnResponse(authnResponse.url).isFailure shouldBe true
         }
 
         "signed requests not allowed for redirect-uri" {
@@ -186,8 +192,13 @@ val RedirectUriClientTest by testSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
             authnResponse.url.shouldBe(it.clientId)
 
-            it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
-                .shouldBeInstanceOf<AuthnResponseResult.Success>()
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
+                .inputDescriptorResponseValidations.values.map {
+                    it.getOrThrow()
+                }.shouldBeSingleton().first()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
                 .vp.freshVerifiableCredentials.shouldNotBeEmpty()
         }
 
@@ -209,8 +220,13 @@ val RedirectUriClientTest by testSuite {
                     params.shouldHaveSize(1) // only the "response" object
                 }
 
-            it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
-                .shouldBeInstanceOf<AuthnResponseResult.Success>()
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
+                .inputDescriptorResponseValidations.values.map {
+                    it.getOrThrow()
+                }.shouldBeSingleton().first()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
                 .vp.freshVerifiableCredentials.shouldNotBeEmpty()
         }
 
@@ -234,8 +250,13 @@ val RedirectUriClientTest by testSuite {
             authnResponse.url.shouldNotContain("#")
             authnResponse.url.shouldStartWith(it.clientId)
 
-            it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
-                .shouldBeInstanceOf<AuthnResponseResult.Success>().apply {
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
+                .inputDescriptorResponseValidations.values.map {
+                    it.getOrThrow()
+                }.shouldBeSingleton().first()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>().apply {
                     vp.freshVerifiableCredentials.shouldNotBeEmpty()
                 }
         }
@@ -256,8 +277,13 @@ val RedirectUriClientTest by testSuite {
                 .params
             val authnResponseParams = authnResponse.encodeToParameters().formUrlEncode()
 
-            it.verifierOid4vp.validateAuthnResponse(authnResponseParams)
-                .shouldBeInstanceOf<AuthnResponseResult.Success>()
+            it.verifierOid4vp.validateAuthnResponse(authnResponseParams).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
+                .inputDescriptorResponseValidations.values.map {
+                    it.getOrThrow()
+                }.shouldBeSingleton().first()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
                 .vp.freshVerifiableCredentials.shouldNotBeEmpty()
         }
 
@@ -270,8 +296,13 @@ val RedirectUriClientTest by testSuite {
             val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-            it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
-                .shouldBeInstanceOf<AuthnResponseResult.Success>()
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
+                .inputDescriptorResponseValidations.values.map {
+                    it.getOrThrow()
+                }.shouldBeSingleton().first()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
                 .vp.freshVerifiableCredentials.shouldNotBeEmpty()
                 .map { it.vcJws }.forEach {
                     it.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
@@ -301,8 +332,13 @@ private suspend fun verifySecondProtocolRun(
         defaultRequestOptions, CreationOptions.Query(walletUrl)
     ).getOrThrow().url
     val authnResponse = holderOid4vp.createAuthnResponse(authnRequestUrl)
-    verifierOid4vp.validateAuthnResponse((authnResponse.getOrThrow() as AuthenticationResponseResult.Redirect).url)
-        .shouldBeInstanceOf<AuthnResponseResult.Success>()
+    verifierOid4vp.validateAuthnResponse((authnResponse.getOrThrow() as AuthenticationResponseResult.Redirect).url).getOrThrow()
+        .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+        .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
+        .inputDescriptorResponseValidations.values.map {
+            it.getOrThrow()
+        }.shouldBeSingleton().first()
+        .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
 }
 
 private val defaultRequestOptions = OpenId4VpRequestOptions(
