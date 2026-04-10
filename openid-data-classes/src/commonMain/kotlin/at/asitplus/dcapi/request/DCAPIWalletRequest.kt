@@ -61,6 +61,22 @@ sealed interface DCAPIWalletRequest {
     }
 
     @Serializable
+    data class OpenId4VpMultiSigned(
+        @SerialName("request")
+        override val request: RequestParameters,
+        @SerialName("credentialIds")
+        override val credentialIds: Collection<String>,
+        @SerialName("callingPackageName")
+        override val callingPackageName: String,
+        @SerialName("callingOrigin")
+        override val callingOrigin: String,
+    ) : DCAPIWalletRequest, OpenId4Vp() {
+
+        override val protocol: ExchangeProtocolIdentifier
+            get() = ExchangeProtocolIdentifier.OPENID4VP_V1_MULTISIGNED
+    }
+
+    @Serializable
     data class OpenId4VpSigned(
         @SerialName("request")
         override val request: RequestParameters,

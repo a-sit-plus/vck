@@ -3,18 +3,21 @@ package at.asitplus.openid
 import at.asitplus.dcapi.request.DCAPIWalletRequest
 import at.asitplus.openid.RequestParametersFrom.SerialNames.DC_API_REQUEST
 import at.asitplus.openid.RequestParametersFrom.SerialNames.JSON_STRING
-import at.asitplus.openid.RequestParametersFrom.SerialNames.JWS_SIGNED
+import at.asitplus.openid.RequestParametersFrom.SerialNames.JWS_COMPACT
+import at.asitplus.openid.RequestParametersFrom.SerialNames.JWS_MULTISIGNED
 import at.asitplus.openid.RequestParametersFrom.SerialNames.PARAMETERS
 import at.asitplus.openid.RequestParametersFrom.SerialNames.PARENT
+import at.asitplus.openid.RequestParametersFrom.SerialNames.TYPE_DCAPI_MULTISIGNED
 import at.asitplus.openid.RequestParametersFrom.SerialNames.TYPE_DCAPI_SIGNED
 import at.asitplus.openid.RequestParametersFrom.SerialNames.TYPE_DCAPI_UNSIGNED
 import at.asitplus.openid.RequestParametersFrom.SerialNames.TYPE_JSON
-import at.asitplus.openid.RequestParametersFrom.SerialNames.TYPE_JWS_SIGNED
+import at.asitplus.openid.RequestParametersFrom.SerialNames.TYPE_JWS_COMPACT
 import at.asitplus.openid.RequestParametersFrom.SerialNames.TYPE_URI
 import at.asitplus.openid.RequestParametersFrom.SerialNames.URL
 import at.asitplus.openid.RequestParametersFrom.SerialNames.VERIFIED
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactStringSerializer
+import at.asitplus.signum.indispensable.josef.JwsGeneral
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
@@ -39,10 +42,11 @@ class RequestParametersFromSerializer<T : RequestParameters>(
     private val parameterSerializer: KSerializer<T>,
 ) : KSerializer<RequestParametersFrom<T>> {
     val signedDcApiRequestSerializer = DCAPIWalletRequest.OpenId4VpSigned.serializer()
+    val multisignedDcApiRequestSerializer = DCAPIWalletRequest.OpenId4VpMultiSigned.serializer()
     val unsignedDcApiRequestSerializer = DCAPIWalletRequest.OpenId4VpUnsigned.serializer()
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor("RequestParametersFrom") {
-        element(TYPE_JWS_SIGNED, buildClassSerialDescriptor(TYPE_JWS_SIGNED) {
-            element(JWS_SIGNED, JwsCompactStringSerializer.descriptor)
+        element(TYPE_JWS_COMPACT, buildClassSerialDescriptor(TYPE_JWS_COMPACT) {
+            element(JWS_COMPACT, JwsCompactStringSerializer.descriptor)
             element(PARAMETERS, parameterSerializer.descriptor)
             element<Boolean>(VERIFIED)
             element(PARENT, UrlSerializer.descriptor)
@@ -50,7 +54,12 @@ class RequestParametersFromSerializer<T : RequestParameters>(
         element(TYPE_DCAPI_SIGNED, buildClassSerialDescriptor(TYPE_DCAPI_SIGNED) {
             element(DC_API_REQUEST, signedDcApiRequestSerializer.descriptor)
             element(PARAMETERS, parameterSerializer.descriptor)
-            element(JWS_SIGNED, JwsCompactStringSerializer.descriptor)
+            element(JWS_COMPACT, JwsCompactStringSerializer.descriptor)
+        })
+        element(TYPE_DCAPI_MULTISIGNED, buildClassSerialDescriptor(TYPE_DCAPI_MULTISIGNED) {
+            element(DC_API_REQUEST, multisignedDcApiRequestSerializer.descriptor)
+            element(PARAMETERS, parameterSerializer.descriptor)
+            element(JWS_MULTISIGNED, JwsGeneral.serializer().descriptor)
         })
         element(TYPE_DCAPI_UNSIGNED, buildClassSerialDescriptor(TYPE_DCAPI_UNSIGNED) {
             element(DC_API_REQUEST, unsignedDcApiRequestSerializer.descriptor)
@@ -73,7 +82,7 @@ class RequestParametersFromSerializer<T : RequestParameters>(
 
         val element = decoder.decodeJsonElement()
         return when {
-            JWS_SIGNED in element.jsonObject && DC_API_REQUEST in element.jsonObject -> run {
+            JWS_COMPACT in element.jsonObject && DC_API_REQUEST in element.jsonObject -> run {
                 val dcApiRequest =
                     decoder.json.decodeFromJsonElement(
                         signedDcApiRequestSerializer,
@@ -81,11 +90,11 @@ class RequestParametersFromSerializer<T : RequestParameters>(
                     )
                 val parameters =
                     decoder.json.decodeFromJsonElement(parameterSerializer, element.jsonObject[PARAMETERS]!!)
-                val jwsString = decoder.json.decodeFromJsonElement<String>(element.jsonObject[JWS_SIGNED]!!)
+                val jwsString = decoder.json.decodeFromJsonElement<String>(element.jsonObject[JWS_COMPACT]!!)
                 RequestParametersFrom.DcApiSigned(
                     dcApiRequest = dcApiRequest,
                     parameters = parameters,
-                    jwsSigned = JwsCompact(jwsString)
+                    jws = JwsCompact(jwsString)
                 )
             }
 
@@ -114,18 +123,18 @@ class RequestParametersFromSerializer<T : RequestParameters>(
                     },
                 )
 
-            JWS_SIGNED in element.jsonObject && DC_API_REQUEST !in element.jsonObject -> run {
+            JWS_COMPACT in element.jsonObject && DC_API_REQUEST !in element.jsonObject -> run {
                 val parameters =
                     decoder.json.decodeFromJsonElement(parameterSerializer, element.jsonObject[PARAMETERS]!!)
-                val jwsString = decoder.json.decodeFromJsonElement<String>(element.jsonObject[JWS_SIGNED]!!)
+                val jwsString = decoder.json.decodeFromJsonElement<String>(element.jsonObject[JWS_COMPACT]!!)
                 val verified = element.jsonObject[VERIFIED]?.let { decoder.json.decodeFromJsonElement<Boolean>(it) }
                     ?: false
                 val parent = element.jsonObject[PARENT]?.takeIf { it !is JsonNull }?.let {
                     decoder.json.decodeFromJsonElement(UrlSerializer, it)
                 }
 
-                RequestParametersFrom.JwsSigned(
-                    jwsSigned = JwsCompact(jwsString),
+                RequestParametersFrom.JwsCompact(
+                    jws = JwsCompact(jwsString),
                     parameters = parameters,
                     verified = verified,
                     parent = parent,
@@ -145,17 +154,23 @@ class RequestParametersFromSerializer<T : RequestParameters>(
     override fun serialize(encoder: Encoder, value: RequestParametersFrom<T>) {
         require(encoder is JsonEncoder) // this class can be decoded only by Json
         val element = when (value) {
-            is RequestParametersFrom.JwsSigned -> buildJsonObject {
-                put(JWS_SIGNED, encoder.json.encodeToJsonElement(JwsCompactStringSerializer, value.jwsSigned))
+            is RequestParametersFrom.JwsCompact -> buildJsonObject {
+                put(JWS_COMPACT, encoder.json.encodeToJsonElement(JwsCompactStringSerializer, value.jws))
                 put(PARAMETERS, encoder.json.encodeToJsonElement(parameterSerializer, value.parameters))
                 put(VERIFIED, encoder.json.encodeToJsonElement(value.verified))
                 value.parent?.let { put(PARENT, encoder.json.encodeToJsonElement(it)) }
             }
 
+            is RequestParametersFrom.DcApiMultiSigned<*> -> buildJsonObject {
+                put(DC_API_REQUEST, encoder.json.encodeToJsonElement(multisignedDcApiRequestSerializer, value.dcApiRequest))
+                put(PARAMETERS, encoder.json.encodeToJsonElement(parameterSerializer, value.parameters))
+                put(JWS_COMPACT, encoder.json.encodeToJsonElement(value.jws))
+            }
+
             is RequestParametersFrom.DcApiSigned<*> -> buildJsonObject {
                 put(DC_API_REQUEST, encoder.json.encodeToJsonElement(signedDcApiRequestSerializer, value.dcApiRequest))
                 put(PARAMETERS, encoder.json.encodeToJsonElement(parameterSerializer, value.parameters))
-                put(JWS_SIGNED, encoder.json.encodeToJsonElement(JwsCompactStringSerializer, value.jwsSigned))
+                put(JWS_COMPACT, encoder.json.encodeToJsonElement(JwsCompactStringSerializer, value.jws))
             }
 
             is RequestParametersFrom.DcApiUnsigned<*> -> buildJsonObject {

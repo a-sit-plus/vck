@@ -73,7 +73,7 @@ internal class AuthorizationRequestValidator(
     }
 
     private fun RequestParametersFrom<AuthenticationRequestParameters>.isFromRequestObject(): Boolean =
-        this is RequestParametersFrom.Json || this is RequestParametersFrom.JwsSigned
+        this is RequestParametersFrom.Json || this is RequestParametersFrom.JwsCompact
 
     @Throws(OAuth2Exception::class)
     private fun AuthenticationRequestParameters.verifyRedirectUrl() {
@@ -107,12 +107,12 @@ internal class AuthorizationRequestValidator(
         val responseModeIsDirectPost = parameters.responseMode.isAnyDirectPost()
         val responseModeIsDcApi = parameters.responseMode.isAnyDcApi()
         if (this !is RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>
-            || jwsSigned.jwsHeader.certificateChain.isNullOrEmpty()
+            || jws.jwsHeader.certificateChain.isNullOrEmpty()
         ) {
             throw InvalidRequest("x5c is null, and metadata is not set")
         }
 
-        val leaf = jwsSigned.jwsHeader.certificateChain!!.leaf
+        val leaf = jws.jwsHeader.certificateChain!!.leaf
         when (clientIdScheme) {
             ClientIdScheme.X509SanDns -> verifyX509SanDns(leaf, responseModeIsDirectPost, responseModeIsDcApi)
             ClientIdScheme.X509Hash -> verifyX509SanHash(leaf)

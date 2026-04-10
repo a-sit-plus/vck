@@ -149,7 +149,7 @@ val OpenId4VpInteropTest by testSuite {
             val parameters = state.request
                 .shouldBeInstanceOf<RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>>()
 
-            val jar = parameters.jwsSigned
+            val jar = parameters.jws
             jar.jwsHeader.algorithm shouldBe JwsAlgorithm.Signature.ES256
             jar.jwsHeader.type shouldBe "oauth-authz-req+jwt"
 

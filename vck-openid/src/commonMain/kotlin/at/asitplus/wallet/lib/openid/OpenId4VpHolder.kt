@@ -57,7 +57,6 @@ import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
-import at.asitplus.wallet.lib.openid.OpenId4VpHolder.JsonWebKeyLookupInput
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
 import com.benasher44.uuid.uuid4
@@ -137,7 +136,7 @@ class OpenId4VpHolder(
         OAuth2AuthorizationServerMetadata(
             issuer = clientId,
             authorizationEndpoint = authorizationEndpoint,
-            responseTypesSupported = setOf(OpenIdConstants.ID_TOKEN, OpenIdConstants.VP_TOKEN),
+            responseTypesSupported = setOf(OpenIdConstants.ID_TOKEN, VP_TOKEN),
             scopesSupported = setOf(OpenIdConstants.SCOPE_OPENID),
             idTokenSigningAlgorithmsSupportedStrings = supportedJwsAlgorithms.toSet(),
             requestObjectSigningAlgorithmsSupportedStrings = supportedJwsAlgorithms.toSet(),
@@ -292,7 +291,7 @@ class OpenId4VpHolder(
             clientMetadata = params.parameters.clientMetadata,
             jsonWebKeys = params.parameters.clientMetadata?.loadJsonWebKeySet()?.keys
                 ?: lookupJsonWebKeysForClient(JsonWebKeyLookupInput(params.parameters.clientId))?.keys,
-            requestObjectVerified = (params as? RequestParametersFrom.JwsSigned)?.verified,
+            requestObjectVerified = (params as? RequestParametersFrom.JwsCompact)?.verified,
             verifierInfo = params.parameters.verifierInfo
         )
     }
@@ -363,8 +362,8 @@ class OpenId4VpHolder(
     }
 
     private fun RequestParametersFrom<AuthenticationRequestParameters>.extractLeafCertKey(): JsonWebKey? =
-        (this as? RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>)
-            ?.jwsSigned?.jwsHeader?.certificateChain?.firstOrNull()?.decodedPublicKey?.getOrNull()?.toJsonWebKey()
+        (this as? RequestParametersFrom.JwsCompact<AuthenticationRequestParameters>)
+            ?.jws?.jwsHeader?.certificateChain?.firstOrNull()?.decodedPublicKey?.getOrNull()?.toJsonWebKey()
 
     suspend fun getMatchingCredentials(
         preparationState: AuthorizationResponsePreparationState,
@@ -409,8 +408,9 @@ class OpenId4VpHolder(
     ) = when (this) {
         is RequestParametersFrom.DcApiSigned<*> -> "origin:${dcApiRequest.callingOrigin}"
         is RequestParametersFrom.DcApiUnsigned<*> -> "origin:${dcApiRequest.callingOrigin}"
+        is RequestParametersFrom.DcApiMultiSigned<*> -> "origin:${dcApiRequest.callingOrigin}"
         is RequestParametersFrom.Json<*> -> parameters.extractAudience(clientJsonWebKeySet)
-        is RequestParametersFrom.JwsSigned<*> -> parameters.extractAudience(clientJsonWebKeySet)
+        is RequestParametersFrom.JwsCompact<*> -> parameters.extractAudience(clientJsonWebKeySet)
         is RequestParametersFrom.Uri<*> -> parameters.extractAudience(clientJsonWebKeySet)
     }
 

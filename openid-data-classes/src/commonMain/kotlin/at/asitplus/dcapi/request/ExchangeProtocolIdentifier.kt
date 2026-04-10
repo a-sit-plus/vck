@@ -74,6 +74,9 @@ value class ExchangeProtocolIdentifier(
         /** `openid4vp-v1-signed` */
         val OPENID4VP_V1_SIGNED = ExchangeProtocolIdentifier("$PART_OPENID4VP$DELIMITER$PART_V1$DELIMITER$PART_SIGNED")
 
+        /** `openid4vp-v1-multisigned` */
+        val OPENID4VP_V1_MULTISIGNED = ExchangeProtocolIdentifier("$PART_OPENID4VP$DELIMITER$PART_V1$DELIMITER$PART_MULTISIGNED")
+
         /** `org-iso-mdoc` */
         val ISO_MDOC_ANNEX_C = ExchangeProtocolIdentifier(ORG_ISO_MDOC)
     }

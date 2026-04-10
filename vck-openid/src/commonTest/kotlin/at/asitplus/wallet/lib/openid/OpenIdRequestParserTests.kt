@@ -132,7 +132,7 @@ val OpenIdRequestParserTests by testSuite {
             requestParser.parseRequestParameters(jws).getOrThrow().apply {
                 shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
                 shouldBeInstanceOf<RequestParametersFrom.JwsSigned<*>>()
-                jwsSigned.toString() shouldBe jws
+                jws.toString() shouldBe jws
                 parameters.assertParams()
 
                 vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
@@ -148,7 +148,7 @@ val OpenIdRequestParserTests by testSuite {
             requestParser.parseRequestParameters(input).getOrThrow().apply {
                 shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
                 shouldBeInstanceOf<RequestParametersFrom.JwsSigned<*>>()
-                jwsSigned.toString() shouldBe jws
+                jws.toString() shouldBe jws
                 parent.toString() shouldBe input
                 parameters.assertParams()
 
@@ -169,7 +169,7 @@ val OpenIdRequestParserTests by testSuite {
             requestParser.parseRequestParameters(input).getOrThrow().apply {
                 shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
                 shouldBeInstanceOf<RequestParametersFrom.DcApiSigned<*>>()
-                jwsSigned.toString() shouldBe jws
+                jws.toString() shouldBe jws
                 parameters.assertParams()
 
                 vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
@@ -237,7 +237,7 @@ val OpenIdRequestParserTests by testSuite {
             requestParser.parseRequestParameters(input).getOrThrow().apply {
                 shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
                 shouldBeInstanceOf<RequestParametersFrom.JwsSigned<*>>()
-                jwsSigned.toString() shouldBe jws
+                jws.toString() shouldBe jws
                 parent.toString() shouldBe input
                 parameters.assertParams()
 
