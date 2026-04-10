@@ -49,9 +49,9 @@ VC-K implements multiple credential formats to ensure maximum interoperability:
 - **SD-JWT (Selective Disclosure JWT)**: Privacy-preserving credential format with selective disclosure capabilities, see [SD-JWT VC](https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/) (including key binding JWT, JWT VC issuer metadata). We're also following [Selective Disclosure for JSON Web Tokens](https://www.rfc-editor.org/rfc/rfc9901.html), including features like key binding JWT and nested structures.
 - **ISO 18013-5 and 18013-7**: ISO standard defining Mobile Driving Licence and its generalization mDoc credentials as a CBOR-based credential format
 
-When using the plain JWT representation, the single credential itself is an instance of `CredentialSubject`. For ISO mDoc claims see `IssuerSignedItems` and related classes like `Document` and `MobileSecurityObject`. For SD-JWT claims see `SelectiveDisclosureItem` and `SdJwtSigned`.
+When using the plain JWT representation, the W3C VC `credentialSubject` is handled as `JsonElement`; legacy `CredentialSubject` subclasses remain available only as a deprecated compatibility layer. For ISO mDoc claims see `IssuerSignedItems` and related classes like `Document` and `MobileSecurityObject`. For SD-JWT claims see `SelectiveDisclosureItem` and `SdJwtSigned`.
 
-Other libraries implementing credential schemes may call `LibraryInitializer.registerExtensionLibrary()` to register with this library. See our implementation of the [EU PID credential](https://github.com/a-sit-plus/eu-pid-credential) and our implementation of the [Mobile Driving Licence](https://github.com/a-sit-plus/mobile-driving-licence-credential/) for examples. We also maintain a comprehensive list of [all credentials powered by this library](https://github.com/a-sit-plus/credentials-collection).
+Other libraries implementing credential schemes may call `LibraryInitializer.registerExtensionLibrary()` to register with this library. Custom `SerializersModule` registration is only needed for the deprecated `CredentialSubject` compatibility path. See our implementation of the [EU PID credential](https://github.com/a-sit-plus/eu-pid-credential) and our implementation of the [Mobile Driving Licence](https://github.com/a-sit-plus/mobile-driving-licence-credential/) for examples. We also maintain a comprehensive list of [all credentials powered by this library](https://github.com/a-sit-plus/credentials-collection).
 
 ## OpenID Protocol Implementations
 
@@ -153,4 +153,3 @@ In particular, external contributions to this project are subject to the A-SIT P
 The Apache License does not apply to the logos, (including the A-SIT logo) and the project/module name(s), as these are the sole property of
 A-SIT/A-SIT Plus GmbH and may not be used in derivative works without explicit permission!
 </p>
-

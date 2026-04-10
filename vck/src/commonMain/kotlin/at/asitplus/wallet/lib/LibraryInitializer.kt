@@ -11,15 +11,24 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.modules.SerializersModule
 
 /**
- * Called by other libraries to extend credentials by subclassing [at.asitplus.wallet.lib.data.CredentialSubject].
+ * Called by other libraries to register credential schemes with this library.
  */
 object LibraryInitializer {
 
     /**
      * Register [credentialScheme] to be used with this library, e.g. in OpenID protocol implementations.
+     */
+    fun registerExtensionLibrary(
+        credentialScheme: ConstantIndex.CredentialScheme,
+    ) {
+        AttributeIndex.registerAttributeType(credentialScheme)
+    }
+
+    /**
+     * Register [credentialScheme] to be used with this library, e.g. in OpenID protocol implementations.
      *
-     * Specify [serializersModule] if the credential scheme supports [ConstantIndex.CredentialRepresentation.PLAIN_JWT],
-     * i.e. it implements a subclass of [at.asitplus.wallet.lib.data.CredentialSubject] that needs to be de/serialized.
+     * Deprecated compatibility overload for credentials that still register a custom
+     * [at.asitplus.wallet.lib.data.CredentialSubject] serializer.
      *
      * Implement `serializersModule` in this form:
      * ```
@@ -32,11 +41,16 @@ object LibraryInitializer {
      *
      * @param serializersModule Definition of a polymorphic serializers module, see example in function doc.
      */
+    @Deprecated(
+        message = "Custom SerializersModule registration is no longer needed for VC JWT credentials. " +
+            "Use registerExtensionLibrary(credentialScheme) instead.",
+        replaceWith = ReplaceWith("registerExtensionLibrary(credentialScheme)"),
+    )
     fun registerExtensionLibrary(
         credentialScheme: ConstantIndex.CredentialScheme,
         serializersModule: SerializersModule? = null
     ) {
-        AttributeIndex.registerAttributeType(credentialScheme)
+        registerExtensionLibrary(credentialScheme)
         serializersModule?.let { JsonCredentialSerializer.registerSerializersModule(credentialScheme, it) }
     }
 
@@ -47,17 +61,6 @@ object LibraryInitializer {
      * in [at.asitplus.iso.IssuerSignedItem].
      * See the function typealiases in [JsonValueEncoder] and [ElementIdentifierToItemValueSerializerMap]
      * for implementation notes.
-     *
-     *
-     * Example for [serializersModule]:
-     * ```
-     * kotlinx.serialization.modules.SerializersModule {
-     *     kotlinx.serialization.modules.polymorphic(CredentialSubject::class) {
-     *         kotlinx.serialization.modules.subclass(YourCredential::class)
-     *     }
-     * }
-     * ```
-     *
      * Example for [jsonValueEncoder]:
      * ```
      * when (it) {
@@ -76,8 +79,6 @@ object LibraryInitializer {
      * )
      * ```
      *
-     * @param serializersModule needed if supporting [ConstantIndex.CredentialRepresentation.PLAIN_JWT],
-     * i.e. it implements a subclass of [at.asitplus.wallet.lib.data.CredentialSubject] that needs to be de/serialized.
      * @param jsonValueEncoder used to describe the credential in input descriptors used in verifiable presentations,
      * e.g. when used in SIOPv2
      * @param itemValueSerializerMap used to actually serialize and deserialize `Any` object in
@@ -85,13 +86,35 @@ object LibraryInitializer {
      */
     fun registerExtensionLibrary(
         credentialScheme: ConstantIndex.CredentialScheme,
+        jsonValueEncoder: JsonValueEncoder,
+        itemValueSerializerMap: ElementIdentifierToItemValueSerializerMap = emptyMap(),
+    ) {
+        registerExtensionLibrary(credentialScheme)
+        JsonCredentialSerializer.register(jsonValueEncoder)
+        credentialScheme.isoNamespace?.let { CborCredentialSerializer.register(itemValueSerializerMap, it) }
+    }
+
+    /**
+     * Register [credentialScheme] to be used with this library, e.g. in OpenID protocol implementations.
+     *
+     * Deprecated compatibility overload for credentials that still register a custom
+     * [at.asitplus.wallet.lib.data.CredentialSubject] serializer for VC JWT usage.
+     */
+    @Deprecated(
+        message = "Custom SerializersModule registration is no longer needed for VC JWT credentials. " +
+            "Use registerExtensionLibrary(credentialScheme, jsonValueEncoder, itemValueSerializerMap) instead.",
+        replaceWith = ReplaceWith(
+            "registerExtensionLibrary(credentialScheme, jsonValueEncoder, itemValueSerializerMap)"
+        ),
+    )
+    fun registerExtensionLibrary(
+        credentialScheme: ConstantIndex.CredentialScheme,
         serializersModule: SerializersModule? = null,
         jsonValueEncoder: JsonValueEncoder,
         itemValueSerializerMap: ElementIdentifierToItemValueSerializerMap = emptyMap(),
     ) {
-        registerExtensionLibrary(credentialScheme, serializersModule)
-        JsonCredentialSerializer.register(jsonValueEncoder)
-        credentialScheme.isoNamespace?.let { CborCredentialSerializer.register(itemValueSerializerMap, it) }
+        registerExtensionLibrary(credentialScheme, jsonValueEncoder, itemValueSerializerMap)
+        serializersModule?.let { JsonCredentialSerializer.registerSerializersModule(credentialScheme, it) }
     }
 
 }
