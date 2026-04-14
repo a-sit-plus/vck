@@ -44,7 +44,7 @@ Release 5.12.0 (unreleased):
 - ISO MDOC:
     - Change: Return type of `Iso180137AnnexCVerifier.validateResponse` from `Iso180137AnnexCResponseResult` to `KmmResult<Iso180137AnnexCResponseResult.SuccessIso>`
  - Dependencies:
-   - Update to [Signum 3.20.1](https://github.com/a-sit-plus/signum/releases/tag/3.20.1)
+   - Update to [Signum 3.21.0](https://github.com/a-sit-plus/signum/releases/tag/3.21.0) fixing CBOR parsing and tolerating cursd X.509 certificaste encodings
 
 Release 5.11.1:
  - OAuth 2.0:
