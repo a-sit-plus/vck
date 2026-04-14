@@ -2,15 +2,15 @@ package at.asitplus.openid
 
 import at.asitplus.openid.RequestParametersFrom.SerialNames.DC_API_REQUEST
 import at.asitplus.openid.RequestParametersFrom.SerialNames.JSON_STRING
-import at.asitplus.openid.RequestParametersFrom.SerialNames.JWS_COMPACT
-import at.asitplus.openid.RequestParametersFrom.SerialNames.JWS_GENERAL
+import at.asitplus.openid.RequestParametersFrom.SerialNames.JWS
 import at.asitplus.openid.RequestParametersFrom.SerialNames.PARAMETERS
 import at.asitplus.openid.RequestParametersFrom.SerialNames.PARENT
 import at.asitplus.openid.RequestParametersFrom.SerialNames.URL
 import at.asitplus.openid.RequestParametersFrom.SerialNames.VERIFIED
 import at.asitplus.signum.indispensable.io.TransformingSerializerTemplate
+import at.asitplus.signum.indispensable.josef.JWS
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.signum.indispensable.josef.JwsCompactStringSerializer
+import at.asitplus.signum.indispensable.josef.JwsFlattened
 import at.asitplus.signum.indispensable.josef.JwsGeneral
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import io.ktor.http.*
@@ -40,11 +40,8 @@ class RequestParametersFromSerializer<T : RequestParameters>(
 private data class RequestParametersFromSurrogate<T : RequestParameters>(
     @SerialName(PARAMETERS)
     val parameters: T,
-    @Serializable(JwsCompactStringSerializer::class)
-    @SerialName(JWS_COMPACT)
-    val jwsCompact: JwsCompact? = null,
-    @SerialName(JWS_GENERAL)
-    val jwsGeneral: JwsGeneral? = null,
+    @SerialName(JWS)
+    val jws: JWS? = null,
     @SerialName(JSON_STRING)
     val jsonString: String? = null,
     @Serializable(UrlSerializer::class)
@@ -60,12 +57,10 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
 ) {
     constructor(value: RequestParametersFrom<T>) : this(
         parameters = value.parameters,
-        jwsCompact = when (value) {
-            is RequestParametersFrom.JwsCompact -> value.jws
-            is RequestParametersFrom.DcApiSigned<*> -> value.jws
+        jws = when (value) {
+            is RequestParametersFrom.RequestParametersSigned -> value.jws
             else -> null
         },
-        jwsGeneral = (value as? RequestParametersFrom.DcApiMultiSigned<*>)?.jws,
         jsonString = when (value) {
             is RequestParametersFrom.DcApiUnsigned<*> -> value.jsonString
             is RequestParametersFrom.Json -> value.jsonString
@@ -73,33 +68,37 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
         },
         url = (value as? RequestParametersFrom.Uri<*>)?.url,
         parent = when (value) {
-            is RequestParametersFrom.JwsCompact -> value.parent
+            is RequestParametersFrom.Jws -> value.parent
             is RequestParametersFrom.Json -> value.parent
             else -> null
         },
         dcApiRequest = when (value) {
-            is RequestParametersFrom.DcApiSigned<*> -> joseCompliantSerializer.encodeToJsonElement(value.dcApiRequest) as? JsonObject
-            is RequestParametersFrom.DcApiUnsigned<*> -> joseCompliantSerializer.encodeToJsonElement(value.dcApiRequest) as? JsonObject
-            is RequestParametersFrom.DcApiMultiSigned<*> -> joseCompliantSerializer.encodeToJsonElement(value.dcApiRequest) as? JsonObject
+            is RequestParametersFrom.DcApiSigned<*> -> joseCompliantSerializer.encodeToJsonElement(value.dcApiRequest) as JsonObject
+            is RequestParametersFrom.DcApiUnsigned<*> -> joseCompliantSerializer.encodeToJsonElement(value.dcApiRequest) as JsonObject
+            is RequestParametersFrom.DcApiMultiSigned<*> -> joseCompliantSerializer.encodeToJsonElement(value.dcApiRequest) as JsonObject
             else -> null
         },
-        verified = (value as? RequestParametersFrom.JwsCompact<*>)?.verified,
+        verified = (value as? RequestParametersFrom.RequestParametersSigned<*>)?.verified,
     )
 
     fun toRequestParametersFrom(): RequestParametersFrom<T> = when {
-        jwsGeneral != null && dcApiRequest != null ->
+        jws is JwsGeneral && dcApiRequest != null ->
             RequestParametersFrom.DcApiMultiSigned(
                 dcApiRequest = joseCompliantSerializer.decodeFromJsonElement(dcApiRequest),
                 parameters = parameters,
-                jws = jwsGeneral,
+                jws = jws,
+                verified = verified ?: false
             )
 
-        jwsCompact != null && dcApiRequest != null ->
+        jws is JwsCompact && dcApiRequest != null ->
             RequestParametersFrom.DcApiSigned(
                 dcApiRequest = joseCompliantSerializer.decodeFromJsonElement(dcApiRequest),
                 parameters = parameters,
-                jws = jwsCompact,
+                jws = jws,
+                verified = verified ?: false
             )
+
+        jws is JwsFlattened -> throw UnsupportedOperationException("Not implemented yet")
 
         jsonString != null && dcApiRequest != null ->
             RequestParametersFrom.DcApiUnsigned(
@@ -115,9 +114,9 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
                 parent = parent,
             )
 
-        jwsCompact != null ->
-            RequestParametersFrom.JwsCompact(
-                jws = jwsCompact,
+        jws != null ->
+            RequestParametersFrom.Jws(
+                jws = jws,
                 parameters = parameters,
                 verified = verified ?: false,
                 parent = parent,
