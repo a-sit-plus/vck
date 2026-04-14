@@ -17,9 +17,15 @@ sealed class RequestParametersFrom<S : RequestParameters> {
      * Common ancestor for request parameters that are represented with a JWS signature
      * (e.g., classic OpenID requests or DC-API signed requests).
      */
-    @Serializable
     sealed class RequestParametersSigned<T : RequestParameters> : RequestParametersFrom<T>() {
         abstract val jws: JWS
+    }
+
+    /**
+     * Common ancestor for request parameters that are [DCAPIWalletRequest.OpenId4Vp] subtypes
+     */
+    sealed interface DcApiRequest {
+        val dcApiRequest: DCAPIWalletRequest.OpenId4Vp
     }
 
     @Serializable
@@ -31,9 +37,9 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         @SerialName(SerialNames.PARAMETERS)
         override val parameters: T,
         @SerialName(SerialNames.VERIFIED)
-        val verified: Boolean,
+        val verified: Boolean = false,
         @SerialName(SerialNames.PARENT)
-        val parent: Url?,
+        val parent: Url? = null,
     ) : RequestParametersSigned<T>() {
         override fun toString(): String {
             return "jws(parent='$parent', jws=$jws, parameters=$parameters, verified=$verified)"
@@ -44,14 +50,14 @@ sealed class RequestParametersFrom<S : RequestParameters> {
     @SerialName(SerialNames.TYPE_DCAPI_MULTISIGNED)
     data class DcApiMultiSigned<T : RequestParameters>(
         @SerialName(SerialNames.DC_API_REQUEST)
-        val dcApiRequest: DCAPIWalletRequest.OpenId4VpMultiSigned,
+        override val dcApiRequest: DCAPIWalletRequest.OpenId4VpMultiSigned,
         @SerialName(SerialNames.PARAMETERS)
         override val parameters: T,
         @SerialName(SerialNames.JWS_GENERAL)
         override val jws: JwsGeneral,
-    ) : RequestParametersSigned<T>() {
+    ) : RequestParametersSigned<T>(), DcApiRequest {
         override fun toString(): String {
-            return "DcApiSigned(dcApiRequest=$dcApiRequest, parameters=$parameters, jws=$jws)"
+            return "DcApiMultiSigned(dcApiRequest=$dcApiRequest, parameters=$parameters, jws=$jws)"
         }
     }
 
@@ -59,13 +65,13 @@ sealed class RequestParametersFrom<S : RequestParameters> {
     @SerialName(SerialNames.TYPE_DCAPI_SIGNED)
     data class DcApiSigned<T : RequestParameters>(
         @SerialName(SerialNames.DC_API_REQUEST)
-        val dcApiRequest: DCAPIWalletRequest.OpenId4VpSigned,
+        override val dcApiRequest: DCAPIWalletRequest.OpenId4VpSigned,
         @SerialName(SerialNames.PARAMETERS)
         override val parameters: T,
         @Serializable(JwsCompactStringSerializer::class)
         @SerialName(SerialNames.JWS_COMPACT)
         override val jws: at.asitplus.signum.indispensable.josef.JwsCompact,
-    ) : RequestParametersSigned<T>() {
+    ) : RequestParametersSigned<T>(), DcApiRequest {
         override fun toString(): String {
             return "DcApiSigned(dcApiRequest=$dcApiRequest, parameters=$parameters, jws=$jws)"
         }
@@ -75,12 +81,12 @@ sealed class RequestParametersFrom<S : RequestParameters> {
     @SerialName(SerialNames.TYPE_DCAPI_UNSIGNED)
     data class DcApiUnsigned<T : RequestParameters>(
         @SerialName(SerialNames.DC_API_REQUEST)
-        val dcApiRequest: DCAPIWalletRequest.OpenId4VpUnsigned,
+        override val dcApiRequest: DCAPIWalletRequest.OpenId4VpUnsigned,
         @SerialName(SerialNames.PARAMETERS)
         override val parameters: T,
         @SerialName(SerialNames.JSON_STRING)
         val jsonString: String,
-    ) : RequestParametersFrom<T>() {
+    ) : DcApiRequest, RequestParametersFrom<T>() {
         override fun toString(): String {
             return "DcApiUnsigned(dcApiRequest=$dcApiRequest, parameters=$parameters, jsonString='$jsonString')"
         }
@@ -107,7 +113,7 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         @SerialName(SerialNames.PARAMETERS)
         override val parameters: T,
         @SerialName(SerialNames.PARENT)
-        val parent: Url?,
+        val parent: Url? = null,
     ) : RequestParametersFrom<T>() {
         override fun toString(): String {
             return "Json(parent='$parent', jsonString='$jsonString', parameters=$parameters)"
