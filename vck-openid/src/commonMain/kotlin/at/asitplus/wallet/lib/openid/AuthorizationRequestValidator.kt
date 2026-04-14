@@ -58,15 +58,14 @@ internal class AuthorizationRequestValidator(
 
     private fun RequestParametersFrom<AuthenticationRequestParameters>.validateDcApi() {
         when (this) {
-            is RequestParametersFrom.DcApiSigned<*> -> {
-                if (this.parameters.clientId == null)
-                    throw InvalidRequest("client_id must be set for DC API signed request")
-                this.parameters.verifyExpectedOrigin(this.dcApiRequest.callingOrigin)
+            is RequestParametersFrom.DcApiUnsigned<*> -> {
+                if (parameters.clientId != null)
+                    throw InvalidRequest("client_id not allowed for DC API unsigned request")
             }
 
-            is RequestParametersFrom.DcApiUnsigned<*> -> {
-                if (this.parameters.clientId != null)
-                    throw InvalidRequest("client_id not allowed for DC API unsigned request")
+            is RequestParametersFrom.DcApiRequest -> {
+                parameters.verifyClientIdPresent()
+                parameters.verifyExpectedOrigin(this.dcApiRequest.callingOrigin)
             }
 
             else -> throw InvalidRequest("DC API request not set even though response mode is ${parameters.responseMode}")

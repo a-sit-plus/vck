@@ -55,8 +55,7 @@ sealed interface DCAPIWalletRequest {
     }
 
 
-    sealed class OpenId4Vp {
-        abstract val protocol: ExchangeProtocolIdentifier
+    sealed class OpenId4Vp : DCAPIWalletRequest {
         abstract val request: RequestParameters
     }
 
@@ -70,7 +69,7 @@ sealed interface DCAPIWalletRequest {
         override val callingPackageName: String,
         @SerialName("callingOrigin")
         override val callingOrigin: String,
-    ) : DCAPIWalletRequest, OpenId4Vp() {
+    ) : OpenId4Vp() {
 
         override val protocol: ExchangeProtocolIdentifier
             get() = ExchangeProtocolIdentifier.OPENID4VP_V1_MULTISIGNED
@@ -86,7 +85,7 @@ sealed interface DCAPIWalletRequest {
         override val callingPackageName: String,
         @SerialName("callingOrigin")
         override val callingOrigin: String,
-    ) : DCAPIWalletRequest, OpenId4Vp() {
+    ) : OpenId4Vp() {
         @Deprecated(
             "Renamed to credentialIds to support multiple selected credentials",
             replaceWith = ReplaceWith(
@@ -120,7 +119,7 @@ sealed interface DCAPIWalletRequest {
         override val callingPackageName: String,
         @SerialName("callingOrigin")
         override val callingOrigin: String,
-    ) : DCAPIWalletRequest, OpenId4Vp() {
+    ) : OpenId4Vp() {
         @Deprecated(
             "Renamed to credentialIds to support multiple selected credentials",
             replaceWith = ReplaceWith(
