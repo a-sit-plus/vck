@@ -73,7 +73,7 @@ internal class AuthorizationRequestValidator(
     }
 
     private fun RequestParametersFrom<AuthenticationRequestParameters>.isFromRequestObject(): Boolean =
-        this is RequestParametersFrom.Json || this is RequestParametersFrom.JwsCompact
+        this is RequestParametersFrom.Json || this is RequestParametersFrom.Jws
 
     @Throws(OAuth2Exception::class)
     private fun AuthenticationRequestParameters.verifyRedirectUrl() {
