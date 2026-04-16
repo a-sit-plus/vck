@@ -33,9 +33,6 @@ internal class AuthorizationRequestValidator(
             request.validateDcApi()
         }
         val clientIdScheme = request.parameters.clientIdSchemeExtracted
-        if (clientIdScheme == ClientIdScheme.RedirectUri) {
-            request.parameters.verifyClientMetadata()
-        }
         if (request.parameters.responseMode.isAnyDirectPost()) {
             request.parameters.verifyResponseModeDirectPost()
         }
@@ -88,20 +85,6 @@ internal class AuthorizationRequestValidator(
         (this == ClientIdScheme.X509SanDns) || (this == ClientIdScheme.X509Hash)
 
     @Throws(OAuth2Exception::class)
-    private fun AuthenticationRequestParameters.verifyClientMetadata() {
-        if (clientMetadata == null) {
-            throw InvalidRequest("client_metadata is null, but client_id_prefix is redirect_uri")
-        }
-    }
-
-    @Throws(OAuth2Exception::class)
-    private fun AuthenticationRequestParameters.verifyClientIdPresent() {
-        if (clientId == null) {
-            throw InvalidRequest("client_id is null")
-        }
-    }
-
-    @Throws(OAuth2Exception::class)
     private fun RequestParametersFrom<AuthenticationRequestParameters>.verifyClientIdSchemeX509() {
         val clientIdScheme = parameters.clientIdSchemeExtracted
         val responseModeIsDirectPost = parameters.responseMode.isAnyDirectPost()
@@ -143,22 +126,6 @@ internal class AuthorizationRequestValidator(
             if (parsedUrl.host != parameters.clientIdWithoutPrefix) {
                 throw InvalidRequest("client_id not in redirect_uri $parsedUrl")
             }
-        }
-    }
-
-    private fun RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>.verifyX509SanUri(
-        leaf: X509Certificate,
-    ) {
-        if (leaf.tbsCertificate.extensions == null || leaf.tbsCertificate.extensions!!.isEmpty()) {
-            throw InvalidRequest("no extensions in x5c")
-        }
-        val uris = leaf.tbsCertificate.subjectAlternativeNames?.uris
-            ?: throw InvalidRequest("no SAN in x5c")
-        if (!uris.contains(parameters.clientIdWithoutPrefix)) {
-            throw InvalidRequest("client_id not in SAN in x5c $uris")
-        }
-        if (parameters.clientIdWithoutPrefix != parameters.redirectUrl) {
-            throw InvalidRequest("client_id not in redirect_uri ${parameters.redirectUrl}")
         }
     }
 
