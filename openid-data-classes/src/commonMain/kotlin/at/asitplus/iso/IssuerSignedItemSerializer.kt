@@ -171,7 +171,7 @@ open class IssuerSignedItemSerializer(
 
     private fun CborMap.toIssuerSignedItem(): IssuerSignedItem {
         val digestId = coseCompliantSerializer.decodeFromByteArray(
-            Long.serializer(),
+            ULong.serializer(),
             first { (it.key as CborText).value == PROP_DIGEST_ID }.value.cbor
         ).toUInt()
         val random = coseCompliantSerializer.decodeFromByteArray(

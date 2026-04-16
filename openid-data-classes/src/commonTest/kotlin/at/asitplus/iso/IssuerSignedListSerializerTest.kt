@@ -14,7 +14,6 @@ import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
-import kotlin.random.Random
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.builtins.serializer
@@ -29,6 +28,7 @@ import net.orandja.obor.data.CborMap
 import net.orandja.obor.data.CborObject
 import net.orandja.obor.data.CborPositive
 import net.orandja.obor.data.CborText
+import kotlin.random.Random
 import kotlin.random.nextULong
 import kotlin.time.Clock
 
@@ -56,14 +56,15 @@ val IssuerSignedListSerializerTest by testSuite {
 
     "can deserialize any some data types in elementValue even when no custom deserializer is given" - {
         withData(
-            nameFn = { it::class.simpleName ?: it.toString() },
+            nameFn = { "${it::class.simpleName ?: it.toString()} ($it)" },
             listOf(
                 Clock.System.now(),
                 Random.nextLong(),
                 uuid4().toString(),
-                // needs custom registered deserializer, see below Random.nextBoolean(),
-                // needs custom registered deserializer, see below Random.nextInt(),
-                // needs custom registered deserializer, see below Random.nextBytes(16),
+                true,
+                false,
+                Random.nextBytes(16),
+                // Ints are not working, see test case below: Random.nextInt(),
             )
         ) {
             val namespace = uuid4().toString()
@@ -78,7 +79,9 @@ val IssuerSignedListSerializerTest by testSuite {
 
             val list = IssuerSignedList(listOf(ByteStringWrapper(item)))
             val serialized = coseCompliantSerializer.encodeToByteArray(IssuerSignedListSerializer(namespace), list)
-            coseCompliantSerializer.decodeFromByteArray(IssuerSignedListSerializer(namespace), serialized) shouldBe list
+            val deserialized =
+                coseCompliantSerializer.decodeFromByteArray(IssuerSignedListSerializer(namespace), serialized)
+            deserialized shouldBe list
         }
     }
 
@@ -86,9 +89,7 @@ val IssuerSignedListSerializerTest by testSuite {
         withData(
             nameFn = { it::class.simpleName ?: it.toString() },
             listOf(
-                Random.nextBoolean(),
                 Random.nextInt(),
-                Random.nextBytes(16),
             )
         ) {
             val namespace = uuid4().toString()
