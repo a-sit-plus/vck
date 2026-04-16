@@ -104,7 +104,7 @@ val AuthenticationRequestParameterFromSerializerTest by testSuite {
             jarRequest.clientId shouldBe clientId
             val serializedRequest = jarRequest.request.shouldNotBeNull()
             val params = holderOid4vp.startAuthorizationResponsePreparation(serializedRequest).getOrThrow().request
-                .shouldBeInstanceOf<RequestParametersFrom.JwsCompact<AuthenticationRequestParameters>>()
+                .shouldBeInstanceOf<RequestParametersFrom.Jws<AuthenticationRequestParameters>>()
 
             val serialized = vckJsonSerializer.encodeToString(params)
             vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)

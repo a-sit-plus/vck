@@ -31,7 +31,7 @@ val SignatureRequestParsingTests by testSuite {
     "can parse SignatureRequestParameter from signed JWT" {
 
         parser.parseRequestParameters(jwt).getOrThrow().apply {
-            shouldBeInstanceOf<RequestParametersFrom.JwsCompact<SignatureRequestParameters>>()
+            shouldBeInstanceOf<RequestParametersFrom.Jws<SignatureRequestParameters>>()
             parameters.apply {
                 documentDigests.shouldNotBeEmpty()
                 documentLocations.shouldNotBeEmpty()

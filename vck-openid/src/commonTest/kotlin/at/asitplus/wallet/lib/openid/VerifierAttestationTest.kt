@@ -12,11 +12,12 @@ package at.asitplus.wallet.lib.openid
  * see the "LICENSE" file for more details
  */
 
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.openid.RequestParameters
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
+import at.asitplus.signum.indispensable.josef.JWS
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.typed
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
@@ -160,14 +161,15 @@ private suspend fun buildAttestationJwt(
 ).getOrThrow()
 
 private fun attestationJwtVerifier(trustedKey: JsonWebKey) =
-    RequestObjectJwsVerifier { jws: JwsCompactTyped<RequestParameters> ->
-        val attestationJwt: JwsCompactTyped<JsonWebToken> = jws.jws.jwsHeader.attestationJwt?.typed()
+    RequestObjectJwsVerifier { jws: JWS ->
+        jws.shouldBeInstanceOf<JwsCompact>()
+        val attestationJwt: JwsCompactTyped<JsonWebToken> = jws.jwsHeader.attestationJwt?.typed()
             ?: return@RequestObjectJwsVerifier false
         val verifyJwsSignatureWithKey = VerifyJwsSignatureWithKey()
         if (!verifyJwsSignatureWithKey(attestationJwt.jws, trustedKey).isSuccess)
             return@RequestObjectJwsVerifier false
         val verifierPublicKey = attestationJwt.payload.confirmationClaim?.jsonWebKey
             ?: return@RequestObjectJwsVerifier false
-        verifyJwsSignatureWithKey(jws.jws, verifierPublicKey).isSuccess
+        verifyJwsSignatureWithKey(jws, verifierPublicKey).isSuccess
     }
 

@@ -8,6 +8,7 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
@@ -147,9 +148,9 @@ val OpenId4VpInteropTest by testSuite {
 
             val state = it.holderOid4vp.startAuthorizationResponsePreparation(requestUrlForWallet).getOrThrow()
             val parameters = state.request
-                .shouldBeInstanceOf<RequestParametersFrom.JwsCompact<AuthenticationRequestParameters>>()
+                .shouldBeInstanceOf<RequestParametersFrom.Jws<AuthenticationRequestParameters>>()
 
-            val jar = parameters.jws
+            val jar = parameters.jws.shouldBeInstanceOf<JwsCompact>()
             jar.jwsHeader.algorithm shouldBe JwsAlgorithm.Signature.ES256
             jar.jwsHeader.type shouldBe "oauth-authz-req+jwt"
 

@@ -131,7 +131,7 @@ val OpenIdRequestParserTests by testSuite {
         "signed request directly" { requestParser ->
             requestParser.parseRequestParameters(jws).getOrThrow().apply {
                 shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
-                shouldBeInstanceOf<RequestParametersFrom.JwsCompact<*>>()
+                shouldBeInstanceOf<RequestParametersFrom.Jws<*>>()
                 this.jws.toString() shouldBe jws
                 parameters.assertParams()
 
@@ -147,7 +147,7 @@ val OpenIdRequestParserTests by testSuite {
 
             requestParser.parseRequestParameters(input).getOrThrow().apply {
                 shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
-                shouldBeInstanceOf<RequestParametersFrom.JwsCompact<*>>()
+                shouldBeInstanceOf<RequestParametersFrom.Jws<*>>()
                 this.jws.toString() shouldBe jws
                 parent.toString() shouldBe input
                 parameters.assertParams()
@@ -236,7 +236,7 @@ val OpenIdRequestParserTests by testSuite {
 
             requestParser.parseRequestParameters(input).getOrThrow().apply {
                 shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
-                shouldBeInstanceOf<RequestParametersFrom.JwsCompact<*>>()
+                shouldBeInstanceOf<RequestParametersFrom.Jws<*>>()
                 this.jws.toString() shouldBe jws
                 parent.toString() shouldBe input
                 parameters.assertParams()
