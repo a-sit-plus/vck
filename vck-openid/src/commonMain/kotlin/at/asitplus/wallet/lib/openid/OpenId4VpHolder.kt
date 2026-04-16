@@ -31,6 +31,9 @@ import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
+import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.signum.indispensable.josef.JwsFlattened
+import at.asitplus.signum.indispensable.josef.JwsGeneral
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
@@ -291,7 +294,7 @@ class OpenId4VpHolder(
             clientMetadata = params.parameters.clientMetadata,
             jsonWebKeys = params.parameters.clientMetadata?.loadJsonWebKeySet()?.keys
                 ?: lookupJsonWebKeysForClient(JsonWebKeyLookupInput(params.parameters.clientId))?.keys,
-            requestObjectVerified = (params as? RequestParametersFrom.JwsCompact)?.verified,
+            requestObjectVerified = (params as? RequestParametersFrom.RequestParametersSigned)?.verified,
             verifierInfo = params.parameters.verifierInfo
         )
     }
@@ -329,7 +332,8 @@ class OpenId4VpHolder(
     ): KmmResult<AuthenticationResponse> = catching {
         with(state) {
             val audience = request.extractAudience(jsonWebKeys)
-            val jsonWebKeys = jsonWebKeys?.combine(request.extractLeafCertKey())
+            val certKeys = (request as? RequestParametersFrom.RequestParametersSigned)?.extractLeafCertKeys()
+            val jsonWebKeys: Collection<JsonWebKey>? = jsonWebKeys?.combine(certKeys)
                 ?: lookupJsonWebKeysForClient(JsonWebKeyLookupInput(request.parameters.clientId))?.keys
             val idToken = presentationFactory.createSignedIdToken(clock, keyMaterial.publicKey, request)
                 .getOrNull()
@@ -361,9 +365,18 @@ class OpenId4VpHolder(
         }
     }
 
-    private fun RequestParametersFrom<AuthenticationRequestParameters>.extractLeafCertKey(): JsonWebKey? =
-        (this as? RequestParametersFrom.JwsCompact<AuthenticationRequestParameters>)
-            ?.jws?.jwsHeader?.certificateChain?.firstOrNull()?.decodedPublicKey?.getOrNull()?.toJsonWebKey()
+    private fun RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>.extractLeafCertKeys(): List<JsonWebKey>? =
+        when (jws) {
+            is JwsCompact -> (jws as JwsCompact).jwsHeader.certificateChain?.firstOrNull()?.decodedPublicKey?.getOrNull()
+                ?.toJsonWebKey()?.let { listOf(it) }
+
+            is JwsFlattened -> (jws as JwsFlattened).jwsHeader.certificateChain?.firstOrNull()?.decodedPublicKey?.getOrNull()
+                ?.toJsonWebKey()?.let { listOf(it) }
+
+            is JwsGeneral -> (jws as JwsGeneral).jwsHeaders.mapNotNull {
+                it.certificateChain?.firstOrNull()?.decodedPublicKey?.getOrNull()?.toJsonWebKey()
+            }
+        }
 
     suspend fun getMatchingCredentials(
         preparationState: AuthorizationResponsePreparationState,
@@ -405,14 +418,8 @@ class OpenId4VpHolder(
     @Throws(OAuth2Exception::class)
     private fun RequestParametersFrom<AuthenticationRequestParameters>.extractAudience(
         clientJsonWebKeySet: Collection<JsonWebKey>?,
-    ) = when (this) {
-        is RequestParametersFrom.DcApiSigned<*> -> "origin:${dcApiRequest.callingOrigin}"
-        is RequestParametersFrom.DcApiUnsigned<*> -> "origin:${dcApiRequest.callingOrigin}"
-        is RequestParametersFrom.DcApiMultiSigned<*> -> "origin:${dcApiRequest.callingOrigin}"
-        is RequestParametersFrom.Json<*> -> parameters.extractAudience(clientJsonWebKeySet)
-        is RequestParametersFrom.JwsCompact<*> -> parameters.extractAudience(clientJsonWebKeySet)
-        is RequestParametersFrom.Uri<*> -> parameters.extractAudience(clientJsonWebKeySet)
-    }
+    ) = if (this is RequestParametersFrom.DcApiRequest) "origin:${dcApiRequest.callingOrigin}"
+    else parameters.extractAudience(clientJsonWebKeySet)
 
     @Throws(OAuth2Exception::class)
     private fun AuthenticationRequestParameters.extractAudience(
@@ -453,8 +460,8 @@ class OpenId4VpHolder(
 
 }
 
-private fun Collection<JsonWebKey>?.combine(certKey: JsonWebKey?): Collection<JsonWebKey> =
-    certKey?.let { (this ?: listOf()) + certKey } ?: this ?: listOf()
+private fun Collection<JsonWebKey>?.combine(certKeys: List<JsonWebKey>?): Collection<JsonWebKey> =
+    certKeys?.let { (this ?: listOf()) + certKeys } ?: this ?: listOf()
 
 fun Throwable.toOAuth2Error(
     request: RequestParametersFrom<*>,
