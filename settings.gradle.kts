@@ -47,9 +47,7 @@ buildscript {
 
 
 val versionCatalogSource: TomlParseResult by lazy {
-
-        Toml.parse(FileInputStream(rootProject.projectDir.absolutePath + ("/gradle/libs.versions.toml")))
-
+    Toml.parse(FileInputStream(rootProject.projectDir.absolutePath + ("/gradle/libs.versions.toml")))
 }
 
 /**
@@ -57,8 +55,6 @@ val versionCatalogSource: TomlParseResult by lazy {
  */
 internal fun versionOf(dependency: String) =
     versionCatalogSource.getTable("versions")?.getString(dependency) as String
-
-
 
 
 dependencyResolutionManagement {
