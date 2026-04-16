@@ -9,6 +9,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
@@ -21,6 +22,7 @@ import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 
+@Suppress("unused")
 val OpenId4VpX509HashTest by testSuite {
 
     withFixtureGenerator(suspend {
@@ -90,12 +92,13 @@ val OpenId4VpX509HashTest by testSuite {
             val authnResponse = it.holderOid4vp.createAuthnResponse(walletUrl).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
-            it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
-                .shouldBeInstanceOf<AuthnResponseResult.VerifiableDCQLPresentationValidationResults>().apply {
-                    allValidationResults.values
-                        .shouldBeSingleton().first()
-                        .shouldBeSingleton().first().shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
-                        .reconstructed[CLAIM_GIVEN_NAME].shouldNotBeNull()
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
+                    credentialQueryResponseValidations.values
+                        .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
+                        .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+                        .reconstructedJsonObject[CLAIM_GIVEN_NAME].shouldNotBeNull()
                 }
 
         }
@@ -128,12 +131,14 @@ val OpenId4VpX509HashTest by testSuite {
             val authnResponse = it.holderOid4vp.createAuthnResponse(walletUrl).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
-            it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
-                .shouldBeInstanceOf<AuthnResponseResult.VerifiableDCQLPresentationValidationResults>().apply {
-                    allValidationResults.values
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
+                    credentialQueryResponseValidations.values
                         .shouldBeSingleton().first()
-                        .shouldBeSingleton().first().shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
-                        .reconstructed[CLAIM_GIVEN_NAME].shouldNotBeNull()
+                        .shouldBeSingleton().first().getOrThrow()
+                        .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+                        .reconstructedJsonObject[CLAIM_GIVEN_NAME].shouldNotBeNull()
                 }
 
         }

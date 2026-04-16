@@ -111,12 +111,12 @@ class HolderAgent(
     override suspend fun getCredentials(): Collection<StoreEntry>? =
         subjectCredentialStore.getCredentials().getOrNull()
 
-    /** Gets a list of all valid stored credentials sorted by preference, possibly filtered by [filterById]. */
-    private suspend fun getValidCredentialsByPriority(filterById: String? = null): List<StoreEntry>? {
+    /** Gets a list of all valid stored credentials sorted by preference, possibly filtered by [filterByIds]. */
+    private suspend fun getValidCredentialsByPriority(filterByIds: Collection<String>? = null): List<StoreEntry>? {
         val availableCredentials = getCredentials() ?: return null
 
         val presortedCredentials = availableCredentials
-            .filter { filterById == null || it.getDcApiId() == filterById }
+            .filter { filterByIds == null || filterByIds.contains(it.getDcApiId()) }
             .sortedBy { it.sortKey() }
 
         val withRevocationStatusQueryIssued = presortedCredentials.map {
@@ -222,10 +222,10 @@ class HolderAgent(
         val requestedCredentialSetQueries =
             credentialPresentation.presentationRequest.dcqlQuery.requestedCredentialSetQueries
         val credentialSubmissions = credentialPresentation.credentialQuerySubmissions
-            ?: matchDCQLQueryAgainstCredentialStore(dcqlQuery).getOrThrow()
+            ?: matchDCQLQueryAgainstCredentialStoreV2(dcqlQuery).getOrThrow()
                 .toDefaultSubmission(dcqlQuery).getOrThrow()
 
-        DCQLQuery.Procedures.isSatisfactoryCredentialSubmission(
+        DCQLQuery.Procedures.isCredentialSetQueriesSatisfied(
             credentialSubmissions = credentialSubmissions.keys,
             requestedCredentialSetQueries = requestedCredentialSetQueries,
         ).let {
@@ -265,11 +265,11 @@ class HolderAgent(
         inputDescriptors: Collection<InputDescriptor>,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: PathAuthorizationValidator?,
-        filterById: String?,
+        filterByIds: Collection<String>?,
     ) = catching {
         findInputDescriptorMatches(
             inputDescriptors = inputDescriptors,
-            credentials = getValidCredentialsByPriority(filterById = filterById)
+            credentials = getValidCredentialsByPriority(filterByIds = filterByIds)
                 ?: throw PresentationException("Credentials could not be retrieved from the store"),
             fallbackFormatHolder = fallbackFormatHolder,
             pathAuthorizationValidator = pathAuthorizationValidator,
@@ -326,11 +326,11 @@ class HolderAgent(
         is StoreEntry.Iso -> scheme?.isoDocType
     }
 
-    override suspend fun matchDCQLQueryAgainstCredentialStore(
+    override suspend fun matchDCQLQueryAgainstCredentialStoreV2(
         dcqlQuery: DCQLQuery,
-        filterById: String?,
+        filterByIds: Collection<String>?,
     ): KmmResult<HolderDCQLQueryMatchingResult<StoreEntry>> = catching {
-        val credentials = getValidCredentialsByPriority(filterById)
+        val credentials = getValidCredentialsByPriority(filterByIds)
             ?: throw PresentationException("Credentials could not be retrieved from the store")
         HolderDCQLQueryMatchingResult(
             dcqlQueryMatchingResult = DCQLQueryAdapter(dcqlQuery).select(

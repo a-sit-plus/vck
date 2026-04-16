@@ -10,16 +10,14 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.agent.Verifier
+import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult.SuccessIso
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
-import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
-import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
-import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessIso
-import at.asitplus.wallet.lib.openid.AuthnResponseResult.VerifiableDCQLPresentationValidationResults
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.CreationOptions.Query
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.FAMILY_NAME
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.GIVEN_NAME
@@ -38,6 +36,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 
+@Suppress("unused")
 val OpenId4VpIsoProtocolTest by testSuite {
 
     withFixtureGenerator(suspend {
@@ -102,11 +101,12 @@ val OpenId4VpIsoProtocolTest by testSuite {
             val authnResponse = it.holderOid4vp
                 .createAuthnResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-            it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
-                .shouldBeInstanceOf<VerifiableDCQLPresentationValidationResults>().apply {
-                    allValidationResults.values
-                        .shouldBeSingleton().first()
-                        .shouldBeSingleton().first().shouldBeInstanceOf<SuccessIso>()
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
+                    credentialQueryResponseValidations.values
+                        .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
+                        .shouldBeInstanceOf<SuccessIso>()
                         .documents.first().apply {
                             validItems.shouldNotBeEmpty()
                             invalidItems.shouldBeEmpty()
@@ -127,11 +127,12 @@ val OpenId4VpIsoProtocolTest by testSuite {
             val authnResponse = it.holderOid4vp
                 .createAuthnResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-            it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
-                .shouldBeInstanceOf<VerifiableDCQLPresentationValidationResults>().apply {
-                    allValidationResults.values
-                        .shouldBeSingleton().first()
-                        .shouldBeSingleton().first().shouldBeInstanceOf<SuccessIso>()
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
+                    credentialQueryResponseValidations.values
+                        .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
+                        .shouldBeInstanceOf<SuccessIso>()
                         .documents.first().apply {
                             validItems.shouldNotBeEmpty()
                             invalidItems.shouldBeEmpty()
@@ -152,11 +153,12 @@ val OpenId4VpIsoProtocolTest by testSuite {
                 .getOrThrow().url
             val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-            it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
-                .shouldBeInstanceOf<VerifiableDCQLPresentationValidationResults>().apply {
-                    allValidationResults.values
-                        .shouldBeSingleton().first()
-                        .shouldBeSingleton().first().shouldBeInstanceOf<SuccessIso>()
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
+                    credentialQueryResponseValidations.values
+                        .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
+                        .shouldBeInstanceOf<SuccessIso>()
                         .documents.first().apply {
                             validItems.shouldBeSingleton()
                             validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
@@ -186,11 +188,13 @@ val OpenId4VpIsoProtocolTest by testSuite {
             val input = authnResponse.params.formUrlEncode()
             //println("this is the response:\n$input")
 
-            it.verifierOid4vp.validateAuthnResponse(input)
-                .shouldBeInstanceOf<VerifiableDCQLPresentationValidationResults>().apply {
-                    allValidationResults.values
+            it.verifierOid4vp.validateAuthnResponse(input).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
+                    credentialQueryResponseValidations.values
                         .shouldBeSingleton().first()
-                        .shouldBeSingleton().first().shouldBeInstanceOf<SuccessIso>()
+                        .shouldBeSingleton().first().getOrThrow()
+                        .shouldBeInstanceOf<SuccessIso>()
                         .documents.first().apply {
                             validItems.shouldBeSingleton()
                             validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
@@ -221,11 +225,12 @@ val OpenId4VpIsoProtocolTest by testSuite {
             val input = authnResponse.params.formUrlEncode()
             //println("this is the response:\n$input")
 
-            it.verifierOid4vp.validateAuthnResponse(input)
-                .shouldBeInstanceOf<VerifiableDCQLPresentationValidationResults>().apply {
-                    allValidationResults.values
+            it.verifierOid4vp.validateAuthnResponse(input).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
+                    credentialQueryResponseValidations.values
                         .shouldBeSingleton().first()
-                        .shouldBeSingleton().first().shouldBeInstanceOf<SuccessIso>()
+                        .shouldBeSingleton().first().getOrThrow().shouldBeInstanceOf<SuccessIso>()
                         .documents.first().apply {
                             validItems.shouldBeSingleton()
                             validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
@@ -260,9 +265,12 @@ val OpenId4VpIsoProtocolTest by testSuite {
                     }
                 }
 
-            it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
-                .shouldBeInstanceOf<AuthnResponseResult.VerifiablePresentationValidationResults>()
-                .validationResults.flatMap { it.shouldBeInstanceOf<SuccessIso>().documents }.apply {
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
+                .inputDescriptorResponseValidations.values.flatMap {
+                    it.getOrThrow().shouldBeInstanceOf<SuccessIso>().documents
+                }.apply {
                     first { it.mso.docType == AtomicAttribute2023.isoDocType }
                         .validItems.shouldHaveSingleElement { it.elementIdentifier == atomicGivenName }
                     first { it.mso.docType == MobileDrivingLicenceScheme.isoDocType }
@@ -296,14 +304,15 @@ val OpenId4VpIsoProtocolTest by testSuite {
                     }
                 }
 
-            it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
-                .shouldBeInstanceOf<VerifiableDCQLPresentationValidationResults>()
-                .allValidationResults.shouldHaveSize(2).apply {
-                    values.first { it.first().hasDocType(AtomicAttribute2023.isoDocType) }.first()
-                        .shouldBeInstanceOf<SuccessIso>().documents.first()
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
+                .credentialQueryResponseValidations.shouldHaveSize(2).apply {
+                    values.first { it.first().getOrThrow().hasDocType(AtomicAttribute2023.isoDocType) }.first()
+                        .getOrThrow().shouldBeInstanceOf<SuccessIso>().documents.first()
                         .validItems.shouldHaveSingleElement { it.elementIdentifier == atomicGivenName }
-                    values.first { it.first().hasDocType(MobileDrivingLicenceScheme.isoDocType) }.first()
-                        .shouldBeInstanceOf<SuccessIso>().documents.first()
+                    values.first { it.first().getOrThrow().hasDocType(MobileDrivingLicenceScheme.isoDocType) }.first()
+                        .getOrThrow().shouldBeInstanceOf<SuccessIso>().documents.first()
                         .validItems.shouldHaveSingleElement { it.elementIdentifier == mdlFamilyName }
                 }
         }
@@ -320,11 +329,12 @@ val OpenId4VpIsoProtocolTest by testSuite {
                 .getOrThrow().url
             val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-            it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
-                .shouldBeInstanceOf<VerifiableDCQLPresentationValidationResults>().apply {
-                    allValidationResults.values
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
+                    credentialQueryResponseValidations.values
                         .shouldBeSingleton().first()
-                        .shouldBeSingleton().first().shouldBeInstanceOf<SuccessIso>()
+                        .shouldBeSingleton().first().getOrThrow().shouldBeInstanceOf<SuccessIso>()
                         .documents.first().apply {
                             validItems.shouldBeSingleton()
                             validItems.shouldHaveSingleElement { it.elementIdentifier == FAMILY_NAME }
@@ -335,7 +345,7 @@ val OpenId4VpIsoProtocolTest by testSuite {
     }
 }
 
-private fun AuthnResponseResult.hasDocType(docType: String): Boolean =
+private fun Verifier.VerifyPresentationResult.hasDocType(docType: String): Boolean =
     this.shouldBeInstanceOf<SuccessIso>().documents
         .shouldBeSingleton().first().mso.docType == docType
 

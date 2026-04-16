@@ -1,15 +1,7 @@
 package at.asitplus.wallet.openid.dcql
 
 import at.asitplus.openid.dcql.DCQLQuery
-import at.asitplus.signum.indispensable.asn1.Asn1Element.Tag.Template.Companion.without
 import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
-import at.asitplus.signum.indispensable.asn1.Asn1OctetString
-import at.asitplus.signum.indispensable.asn1.CONSTRUCTED
-import at.asitplus.signum.indispensable.asn1.KnownOIDs
-import at.asitplus.signum.indispensable.asn1.authorityKeyIdentifier_2_5_29_35
-import at.asitplus.signum.indispensable.asn1.encoding.Asn1.OctetString
-import at.asitplus.signum.indispensable.asn1.encoding.Asn1.Sequence
-import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.testballoon.invoke
@@ -32,6 +24,7 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.json.Json
 import kotlin.random.Random
 
+@Suppress("unused")
 val DCQLQueryProcedureAdapterTest by testSuite {
 
     "Match issuer path" {
@@ -124,7 +117,7 @@ val DCQLQueryProcedureAdapterTest by testSuite {
         DCQLQueryAdapter(dcqlQuery).select(
             credentials = listOf(credential)
         ).let {
-            dcqlQuery.isSatisfiedWith(it.credentialQueryMatches.filter {
+            dcqlQuery.isCredentialSetQueriesSatisfiedWith(it.credentialQueryMatches.filter {
                 it.value.isNotEmpty()
             }.keys) shouldBe false
         }
@@ -233,7 +226,7 @@ val DCQLQueryProcedureAdapterTest by testSuite {
         DCQLQueryAdapter(dcqlQuery).select(
             credentials = listOf(credential)
         ).let {
-            dcqlQuery.isSatisfiedWith(it.credentialQueryMatches.filter {
+            dcqlQuery.isCredentialSetQueriesSatisfiedWith(it.credentialQueryMatches.filter {
                 it.value.isNotEmpty()
             }.keys) shouldBe false
         }

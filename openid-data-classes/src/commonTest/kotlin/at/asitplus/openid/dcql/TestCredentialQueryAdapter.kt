@@ -16,51 +16,38 @@ import kotlin.jvm.JvmInline
 
 @JvmInline
 value class TestCredentialQueryAdapter(val dcqlQuery: DCQLQuery) {
-    fun execute(availableCredentials: List<TestCredential>) = dcqlQuery.execute(
-        availableCredentials = availableCredentials,
-        credentialClaimStructureExtractor = {
-            when (it) {
-                is TestCredential.JsonCredential -> {
-                    DCQLCredentialClaimStructure.JsonBasedStructure(it.claimStructure)
-                }
-
-                is TestCredential.MdocCredential -> {
-                    DCQLCredentialClaimStructure.IsoMdocStructure(it.namespaces)
-                }
-            }
-        },
-        credentialFormatExtractor = {
-            it.format
-        },
-        mdocCredentialDoctypeExtractor = {
-            when (it) {
-                is TestCredential.JsonCredential -> throw IllegalArgumentException("Json Credentials do not have an MDOC document type.")
-                is TestCredential.MdocCredential -> it.documentType
-            }
-        },
-        sdJwtCredentialTypeExtractor = {
-            when (it) {
-                is TestCredential.SdJwtCredential -> it.type
-                else -> throw IllegalArgumentException("Json Credentials do not have an SD-JWT document type.")
-            }
-        },
-        jwtVcCredentialTypeExtractor = {
-            when (it) {
-                is TestCredential.JwtVcCredential -> it.types
-                else -> throw IllegalArgumentException("Json Credentials do not have an JWT-VC document type.")
-            }
-        },
-        satisfiesCryptographicHolderBinding = {
-            it.satisfiesCryptographicHolderBinding
-        },
-        authorityKeyIdentifiers = {
-            it.authorityKeyIdentifiers
+    fun execute(availableCredentials: List<TestCredential>) = dcqlQuery.findCredentialQueryMatches(
+        availableCredentials = availableCredentials.map {
+            it.toDCQLCredential()
         }
     )
 
+    private fun TestCredential.toDCQLCredential() = when(this) {
+        is TestCredential.SdJwtCredential -> DCQLSdJwtCredential(
+            type = type,
+            satisfiesCryptographicHolderBinding = satisfiesCryptographicHolderBinding,
+            authorityKeyIdentifiers = authorityKeyIdentifiers,
+            claimStructure = DCQLCredentialClaimStructure.JsonBasedStructure(claimStructure)
+        )
+
+        is TestCredential.JwtVcCredential -> DCQLVcJwsCredential(
+            types = types,
+            satisfiesCryptographicHolderBinding = satisfiesCryptographicHolderBinding,
+            authorityKeyIdentifiers = authorityKeyIdentifiers,
+            claimStructure = DCQLCredentialClaimStructure.JsonBasedStructure(claimStructure)
+        )
+
+        is TestCredential.MdocCredential -> DCQLIsoMdocCredential(
+            documentType = documentType,
+            satisfiesCryptographicHolderBinding = satisfiesCryptographicHolderBinding,
+            authorityKeyIdentifiers = authorityKeyIdentifiers,
+            claimStructure = DCQLCredentialClaimStructure.IsoMdocStructure(namespaces)
+        )
+    }
+
     fun isSatisfiable(availableCredentials: List<TestCredential>): Boolean {
         val matching = execute(availableCredentials)
-        return dcqlQuery.isSatisfiedWith(
+        return dcqlQuery.isCredentialSetQueriesSatisfiedWith(
             matching.credentialQueryMatches.filter {
                 it.value.isNotEmpty()
             }.keys

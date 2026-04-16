@@ -17,6 +17,7 @@ import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.ValidatorSdJwt
+import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
@@ -29,14 +30,15 @@ import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
-import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.OpenId4VpHolder
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
+import at.asitplus.wallet.lib.openid.VpTokenValidationResultPresentationExchange
 import at.asitplus.wallet.lib.rqes.helper.DummyCredentialDataProvider
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -207,8 +209,13 @@ val KeyBindingTests by testSuite {
             val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequestUrl).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-            verifierOid4Vp.validateAuthnResponse(authnResponse.url)
-                .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
+            verifierOid4Vp.validateAuthnResponse(authnResponse.url).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
+                .inputDescriptorResponseValidations.values.map {
+                    it.getOrThrow()
+                }.shouldBeSingleton().first()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
                 .sdJwtSigned.keyBindingJws.shouldNotBeNull().payload.apply {
                     transactionDataHashes.shouldNotBeNull()
                     transactionDataHashes.contentEquals(requestOptions.transactionData!!.map { it.digest(Digest.SHA256) })
@@ -237,8 +244,13 @@ val KeyBindingTests by testSuite {
             val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequestUrl).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-            val result = verifierOid4Vp.validateAuthnResponse(authnResponse.url)
-                .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
+            val result = verifierOid4Vp.validateAuthnResponse(authnResponse.url).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
+                .inputDescriptorResponseValidations.values.map {
+                    it.getOrThrow()
+                }.shouldBeSingleton().first()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
 
             with(result.sdJwtSigned.keyBindingJws.shouldNotBeNull().payload) {
                 transactionDataHashes.shouldNotBeNull()
@@ -266,8 +278,10 @@ val KeyBindingTests by testSuite {
             ).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
-            verifierOid4Vp.validateAuthnResponse(malignResponse.params.formUrlEncode())
-                .shouldBeInstanceOf<AuthnResponseResult.ValidationError>()
+            verifierOid4Vp.validateAuthnResponse(malignResponse.params.formUrlEncode()).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
+                .inputDescriptorResponseValidations.values.shouldBeSingleton().first().isFailure shouldBe true
         }
 
         "Transaction Data validation can be turned off" {
@@ -294,8 +308,13 @@ val KeyBindingTests by testSuite {
             ).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
-            lenientVerifier.validateAuthnResponse(malignResponse.params.formUrlEncode())
-                .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
+            lenientVerifier.validateAuthnResponse(malignResponse.params.formUrlEncode()).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
+                .inputDescriptorResponseValidations.values.map {
+                    it.getOrThrow()
+                }.shouldBeSingleton().first()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
         }
 
         "Hash of transaction data is not changed during processing" {
@@ -320,8 +339,13 @@ val KeyBindingTests by testSuite {
             val authnResponse = it.holderOid4vp.createAuthnResponse(state.request).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
-            verifierOid4Vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
-                .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
+            verifierOid4Vp.validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
+                .inputDescriptorResponseValidations.values.map {
+                    it.getOrThrow()
+                }.shouldBeSingleton().first()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
                 .sdJwtSigned.keyBindingJws.shouldNotBeNull().payload.transactionDataHashes!!.first()
                 .shouldBe(referenceHash)
         }

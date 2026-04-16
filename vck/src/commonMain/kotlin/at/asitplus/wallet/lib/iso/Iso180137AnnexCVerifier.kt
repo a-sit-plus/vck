@@ -28,9 +28,6 @@ import at.asitplus.wallet.lib.agent.ValidatorMdoc
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
-import at.asitplus.wallet.lib.iso.Iso180137AnnexCResponseResult.Success
-import at.asitplus.wallet.lib.iso.Iso180137AnnexCResponseResult.SuccessIso
-import at.asitplus.wallet.lib.iso.Iso180137AnnexCResponseResult.SuccessUnsigned
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
 import io.github.aakira.napier.Napier
@@ -95,7 +92,7 @@ class Iso180137AnnexCVerifier(
     )
 
     private fun KmmResult<VerifyPresentationResult.SuccessIso>.mapToResponseResult() = map {
-        SuccessIso(it.documents)
+        Iso180137AnnexCVerifiedPresentationResult(it.documents)
     }
 
     @OptIn(SecretExposure::class)
@@ -104,7 +101,7 @@ class Iso180137AnnexCVerifier(
         externalId: String,
         decryptHpke: suspend (ByteArray, ByteArray, CryptoPrivateKey.EC.WithPublicKey, ByteArray) -> ByteArray,
         expectedOrigin: String
-    ): KmmResult<Iso180137AnnexCResponseResult.SuccessIso> = catching {
+    ): KmmResult<Iso180137AnnexCVerifiedPresentationResult> = catching {
         val isoMdocRequest = stateToIsoMdocRequestStore.get(externalId)!!
         val privateKey = decryptionKeyMaterial.exportPrivateKey().getOrThrow()
                 as? CryptoPrivateKey.EC.WithPublicKey ?: throw IllegalStateException("Expected EC private key")

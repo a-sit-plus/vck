@@ -27,12 +27,12 @@ val DCQLIsoMdocClaimsQueryTest by testSuite {
         }
     }
     "instance serialization" {
-        val id = DCQLClaimsQueryIdentifier(Random.Default.nextBytes(32).encodeToString(Base64UrlStrict))
+        val id = DCQLClaimsQueryIdentifier(Random.nextBytes(32).encodeToString(Base64UrlStrict))
         val values = listOf<DCQLExpectedClaimValue>(
             DCQLExpectedClaimValue.StringValue("test")
         )
-        val namespace = Random.Default.nextBytes(32).encodeBase64()
-        val claimName = Random.Default.nextBytes(32).encodeBase64()
+        val namespace = Random.nextBytes(32).encodeBase64()
+        val claimName = Random.nextBytes(32).encodeBase64()
 
         val value = DCQLIsoMdocClaimsQuery(
             id = id,
@@ -83,7 +83,7 @@ val DCQLIsoMdocClaimsQueryTest by testSuite {
                 DCQLExpectedClaimValue.IntegerValue(0),
                 DCQLExpectedClaimValue.BooleanValue(true),
             )
-        ).executeIsoMdocClaimsQueryAgainstCredential(
+        ).executeClaimsQueryAgainstCredential(
             credentialStructure = DCQLCredentialClaimStructure.IsoMdocStructure(credential)
         ).getOrThrow().shouldBeInstanceOf<DCQLClaimsQueryResult.IsoMdocResult>().let {
             it.claimValue shouldBe 0
@@ -100,7 +100,7 @@ val DCQLIsoMdocClaimsQueryTest by testSuite {
                 DCQLExpectedClaimValue.IntegerValue(-1),
                 DCQLExpectedClaimValue.BooleanValue(true),
             ),
-        ).executeIsoMdocClaimsQueryAgainstCredential(
+        ).executeClaimsQueryAgainstCredential(
             credentialStructure = DCQLCredentialClaimStructure.IsoMdocStructure(credential)
         ).isSuccess shouldBe false
     }

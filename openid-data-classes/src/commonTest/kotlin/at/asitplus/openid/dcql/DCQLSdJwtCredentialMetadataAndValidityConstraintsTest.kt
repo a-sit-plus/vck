@@ -12,7 +12,6 @@ package at.asitplus.openid.dcql
  * see the "LICENSE" file for more details
  */
 
-import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.minus
 import de.infix.testBalloon.framework.core.testSuite
@@ -21,9 +20,11 @@ import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 
+@Suppress("unused")
 val DCQLSdJwtCredentialMetadataAndValidityConstraintsTest by testSuite {
     "specification" - {
         "serial names" {
@@ -44,18 +45,15 @@ val DCQLSdJwtCredentialMetadataAndValidityConstraintsTest by testSuite {
                 vctValues = listOf("dummy document type"),
             ).validate("dummy document type").getOrThrow()
 
-            DCQLCredentialQuery.Procedures.validateCredentialMetadataAndValidityConstraints(
-                credential = "",
-                credentialMetadataAndValidityConstraints = DCQLSdJwtCredentialMetadataAndValidityConstraints(
-                    vctValues = listOf("dummy document type"),
-                ),
-                mdocCredentialDoctypeExtractor = {
-                    throw IllegalArgumentException("MDOC credential type cannot be extracted")
-                },
-                sdJwtCredentialTypeExtractor = { "dummy document type" },
-                jwtVcCredentialTypeExtractor = {
-                    throw IllegalArgumentException("JWT-VC credential type cannot be extracted")
-                }
+            DCQLSdJwtCredentialMetadataAndValidityConstraints(
+                vctValues = listOf("dummy document type"),
+            ).validateCredentialConformance(
+                DCQLSdJwtCredential(
+                    claimStructure = DCQLCredentialClaimStructure.JsonBasedStructure(buildJsonObject {  }),
+                    type = "dummy document type",
+                    satisfiesCryptographicHolderBinding = false,
+                    authorityKeyIdentifiers = listOf()
+                )
             ).getOrThrow()
         }
         shouldThrowAny {
@@ -64,18 +62,15 @@ val DCQLSdJwtCredentialMetadataAndValidityConstraintsTest by testSuite {
             ).validate("DIFFERENT dummy document type").getOrThrow()
         }
         shouldThrowAny {
-            DCQLCredentialQuery.Procedures.validateCredentialMetadataAndValidityConstraints(
-                credential = "",
-                credentialMetadataAndValidityConstraints = DCQLSdJwtCredentialMetadataAndValidityConstraints(
-                    vctValues = listOf("dummy document type"),
-                ),
-                mdocCredentialDoctypeExtractor = {
-                    throw IllegalArgumentException("MDOC credential type cannot be extracted")
-                },
-                sdJwtCredentialTypeExtractor = { "DIFFERENT dummy document type" },
-                jwtVcCredentialTypeExtractor = {
-                    throw IllegalArgumentException("JWT-VC credential type cannot be extracted")
-                }
+            DCQLSdJwtCredentialMetadataAndValidityConstraints(
+                vctValues = listOf("dummy document type"),
+            ).validateCredentialConformance(
+                DCQLSdJwtCredential(
+                    claimStructure = DCQLCredentialClaimStructure.JsonBasedStructure(buildJsonObject {  }),
+                    type = "DIFFERENT dummy document type",
+                    satisfiesCryptographicHolderBinding = false,
+                    authorityKeyIdentifiers = listOf()
+                )
             ).getOrThrow()
         }
     }
