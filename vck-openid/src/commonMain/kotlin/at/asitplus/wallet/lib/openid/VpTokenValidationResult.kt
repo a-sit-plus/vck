@@ -10,6 +10,7 @@ sealed interface VpTokenValidationResult {
 
 data class VpTokenValidationResultDCQL(
     val credentialQueryResponseValidations: Map<DCQLCredentialQueryIdentifier, List<KmmResult<VerifyPresentationResult>>>,
+    val submissionRequirementsValidationResult: KmmResult<Unit>,
 ) : VpTokenValidationResult {
     @Deprecated("Replaced in favour of more descriptive name", ReplaceWith("credentialQueryResponseValidations"))
     @Suppress("unused")

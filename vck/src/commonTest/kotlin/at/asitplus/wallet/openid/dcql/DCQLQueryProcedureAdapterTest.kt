@@ -117,9 +117,9 @@ val DCQLQueryProcedureAdapterTest by testSuite {
         DCQLQueryAdapter(dcqlQuery).select(
             credentials = listOf(credential)
         ).let {
-            dcqlQuery.isCredentialSetQueriesSatisfiedWith(it.credentialQueryMatches.filter {
+            dcqlQuery.checkCredentialSetQueryRequirements(it.credentialQueryMatches.filter {
                 it.value.isNotEmpty()
-            }.keys) shouldBe false
+            }.keys).isSuccess shouldBe false
         }
     }
 
@@ -226,9 +226,9 @@ val DCQLQueryProcedureAdapterTest by testSuite {
         DCQLQueryAdapter(dcqlQuery).select(
             credentials = listOf(credential)
         ).let {
-            dcqlQuery.isCredentialSetQueriesSatisfiedWith(it.credentialQueryMatches.filter {
+            dcqlQuery.checkCredentialSetQueryRequirements(it.credentialQueryMatches.filter {
                 it.value.isNotEmpty()
-            }.keys) shouldBe false
+            }.keys).isSuccess shouldBe false
         }
     }
 }

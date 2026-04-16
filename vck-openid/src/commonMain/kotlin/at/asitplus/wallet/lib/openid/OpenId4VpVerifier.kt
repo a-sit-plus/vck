@@ -35,6 +35,7 @@ import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.VpFormatsSupported
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.openid.dcql.DCQLQueryResponse
 import at.asitplus.rfc6749OAuth2AuthorizationFramework.ResponseType
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
@@ -73,6 +74,7 @@ import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
+import at.asitplus.wallet.lib.procedures.dcql.DCQLQueryAdapter
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
 import io.github.aakira.napier.Napier
@@ -599,7 +601,7 @@ class OpenId4VpVerifier(
             authnRequest.verifyExpectedOrigin(it.origin)
         }
 
-        authnRequest.presentationDefinition?.let { _ ->
+        authnRequest.presentationDefinition?.let { presentationDefinition ->
             val presentationSubmission = responseParameters.parameters.presentationSubmission?.descriptorMap
                 ?: throw IllegalArgumentException("Presentation Exchange need to present a presentation submission.")
 
@@ -616,8 +618,9 @@ class OpenId4VpVerifier(
                     origin = (originalResponseParameters as? ResponseParametersFrom.DcApi)?.origin,
                 )
             }
+
             VpTokenValidationResultPresentationExchange(
-                inputDescriptorResponseValidations = presentation
+                inputDescriptorResponseValidations = presentation,
             )
         } ?: authnRequest.dcqlQuery?.let { query ->
             val presentation = vpToken.jsonObject.mapKeys {
@@ -642,12 +645,22 @@ class OpenId4VpVerifier(
                     )
                 }
             }
-            // TODO: check whether presentation satisfies original query (in separate pull request)
+            val submissionRequirementsValidationResult = catching {
+                val queryResponse = presentation.mapValues {
+                    it.value.map {
+                        it.getOrThrow()
+                    }
+                }
+                DCQLQueryAdapter(query).checkSubmissionRequirements(
+                    DCQLQueryResponse(queryResponse)
+                ).getOrThrow()
+            }
 
             // TODO: Validation errors are (sometimes) put into a VerifiableDCQLPresentationValidationResults which means that the success page is shown
             // However, if we return a ValidationError, a BadRequest is sent, which is not shown to the user in the UI
             VpTokenValidationResultDCQL(
-                credentialQueryResponseValidations = presentation
+                credentialQueryResponseValidations = presentation,
+                submissionRequirementsValidationResult = submissionRequirementsValidationResult,
             )
         } ?: throw IllegalArgumentException("Unsupported presentation mechanism")
     }

@@ -225,14 +225,10 @@ class HolderAgent(
             ?: matchDCQLQueryAgainstCredentialStoreV2(dcqlQuery).getOrThrow()
                 .toDefaultSubmission(dcqlQuery).getOrThrow()
 
-        DCQLQuery.Procedures.isCredentialSetQueriesSatisfied(
+        DCQLQuery.Procedures.checkCredentialSetQueryRequirements(
             credentialSubmissions = credentialSubmissions.keys,
             requestedCredentialSetQueries = requestedCredentialSetQueries,
-        ).let {
-            if (!it) {
-                throw IllegalArgumentException("Submission does not satisfy requested credential set queries.")
-            }
-        }
+        ).getOrThrow()
 
         val verifiablePresentations = credentialSubmissions.mapValues { (queryId, submissions) ->
             val query = credentialPresentation.presentationRequest.dcqlQuery.credentials.first {

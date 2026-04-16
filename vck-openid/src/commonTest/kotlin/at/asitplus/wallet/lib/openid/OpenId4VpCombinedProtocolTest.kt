@@ -14,8 +14,11 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialQueryList
+import at.asitplus.openid.dcql.DCQLIsoMdocCredentialQuery
 import at.asitplus.openid.dcql.DCQLJwtVcCredentialQuery
+import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.eupid.EuPidScheme
@@ -27,6 +30,7 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
@@ -35,14 +39,17 @@ import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
+import io.github.aakira.napier.Napier
 import io.kotest.assertions.AssertionErrorBuilder.Companion.fail
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.assertions.throwables.shouldNotThrowAny
+import io.kotest.matchers.booleans.shouldBeFalse
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
@@ -167,7 +174,8 @@ val OpenId4VpCombinedProtocolTest by testSuite {
             val vcFreshnessSummary = it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
+                .credentialQueryResponseValidations.values.shouldBeSingleton().first().shouldBeSingleton().first()
+                .getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessUnsigned>()
                 .vc
             vcFreshnessSummary.vcJws.vc.credentialSubject.shouldBeInstanceOf<JsonObject>()
@@ -262,7 +270,8 @@ val OpenId4VpCombinedProtocolTest by testSuite {
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
+                .credentialQueryResponseValidations.values.shouldBeSingleton().first().shouldBeSingleton().first()
+                .getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
                 .verifiableCredentialSdJwt.verifiableCredentialType shouldBe ConstantIndex.AtomicAttribute2023.sdJwtType
         }
@@ -354,6 +363,161 @@ val OpenId4VpCombinedProtocolTest by testSuite {
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
+                .submissionRequirementsValidationResult.isSuccess.shouldBeTrue()
+        }
+
+        "mdoc dcql: presenting for incorrect query identifiers is invalid" { it ->
+            it.holderAgent.storeJwtCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+            it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+            it.holderAgent.storeIsoCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+            it.holderAgent.storeIsoCredential(it.holderKeyMaterial, MobileDrivingLicenceScheme)
+
+            val dcqlRequest = CredentialPresentationRequestBuilder(
+                credentials = setOf(
+                    RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, ISO_MDOC)
+                ),
+            ).toDCQLRequest().shouldNotBeNull()
+
+            val authnRequest = it.verifierOid4vp.createAuthnRequest(
+                requestOptions = OpenId4VpRequestOptions(
+                    presentationRequest = dcqlRequest,
+                ),
+            )
+
+            val preparationState =
+                it.holderOid4vp.startAuthorizationResponsePreparation(authnRequest.serialize()).getOrThrow()
+
+            val matchesWithBadQueryIdentifiers = it.holderAgent.matchDCQLQueryAgainstCredentialStoreV2(
+                dcqlRequest.dcqlQuery
+            ).getOrThrow().credentialQueryMatches.mapKeys {
+                DCQLCredentialQueryIdentifier(it.key.string + "1")
+            }
+
+            val authnResponse = it.holderOid4vp.finalizeAuthorizationResponse(
+                preparationState = preparationState,
+                credentialPresentation = CredentialPresentation.DCQLPresentation(
+                    presentationRequest = dcqlRequest,
+                    credentialQuerySubmissions = matchesWithBadQueryIdentifiers
+                ),
+            ).getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+
+            // creation should fail because submission requirements are not satisfied
+            authnResponse.error.shouldNotBeNull()
+        }
+
+        "mdoc dcql: presenting incorrect credentials yields invalid submission validation result" { it ->
+            it.holderAgent.storeJwtCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+            it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+            it.holderAgent.storeIsoCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+            it.holderAgent.storeIsoCredential(it.holderKeyMaterial, MobileDrivingLicenceScheme)
+
+            val originalDcqlRequest = CredentialPresentationRequestBuilder(
+                credentials = setOf(
+                    RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, ISO_MDOC)
+                ),
+            ).toDCQLRequest().shouldNotBeNull()
+
+            val authnRequest = it.verifierOid4vp.createAuthnRequest(
+                requestOptions = OpenId4VpRequestOptions(
+                    presentationRequest = originalDcqlRequest,
+                ),
+            )
+
+            val preparationState =
+                it.holderOid4vp.startAuthorizationResponsePreparation(authnRequest.serialize()).getOrThrow()
+
+            val otherDcqlQuery = CredentialPresentationRequestBuilder(
+                credentials = setOf(
+                    RequestOptionsCredential(
+                        ConstantIndex.AtomicAttribute2023,
+                        ConstantIndex.CredentialRepresentation.SD_JWT
+                    )
+                ),
+            ).toDCQLRequest().shouldNotBeNull().dcqlQuery
+
+            val otherQueryWithOriginalIds = originalDcqlRequest.dcqlQuery.copy(
+                credentials = DCQLCredentialQueryList(
+                    originalDcqlRequest.dcqlQuery.credentials.zip(otherDcqlQuery.credentials) { good, bad ->
+                        when (bad) {
+                            is DCQLIsoMdocCredentialQuery -> bad.copy(
+                                id = good.id
+                            )
+
+                            is DCQLJwtVcCredentialQuery -> bad.copy(
+                                id = good.id
+                            )
+
+                            is DCQLSdJwtCredentialQuery -> bad.copy(
+                                id = good.id
+                            )
+                        }
+                    }.toNonEmptyList()
+                )
+            )
+
+            val badMatches = it.holderAgent.matchDCQLQueryAgainstCredentialStoreV2(
+                otherQueryWithOriginalIds
+            ).getOrThrow().credentialQueryMatches
+
+            badMatches.values.flatten().forEach {
+                it.credential.shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.SdJwt>()
+            }
+
+            val authnResponse = it.holderOid4vp.finalizeAuthorizationResponse(
+                preparationState = preparationState,
+                credentialPresentation = CredentialPresentation.DCQLPresentation(
+                    presentationRequest = originalDcqlRequest,
+                    credentialQuerySubmissions = badMatches
+                ),
+            ).getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
+                .submissionRequirementsValidationResult.isSuccess.shouldBeFalse()
+        }
+
+
+        "mdoc dcql: presenting correct credentials yields valid submission validation result" { it ->
+            it.holderAgent.storeJwtCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+            it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+            it.holderAgent.storeIsoCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+            it.holderAgent.storeIsoCredential(it.holderKeyMaterial, MobileDrivingLicenceScheme)
+
+            val dcqlRequest = CredentialPresentationRequestBuilder(
+                credentials = setOf(
+                    RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, ISO_MDOC)
+                ),
+            ).toDCQLRequest().shouldNotBeNull()
+
+            val authnRequest = it.verifierOid4vp.createAuthnRequest(
+                requestOptions = OpenId4VpRequestOptions(
+                    presentationRequest = dcqlRequest,
+                ),
+            )
+
+            val preparationState =
+                it.holderOid4vp.startAuthorizationResponsePreparation(authnRequest.serialize()).getOrThrow()
+
+            val goodMatches = it.holderAgent.matchDCQLQueryAgainstCredentialStoreV2(
+                dcqlRequest.dcqlQuery
+            ).getOrThrow().credentialQueryMatches
+
+            val authnResponse = it.holderOid4vp.finalizeAuthorizationResponse(
+                preparationState = preparationState,
+                credentialPresentation = CredentialPresentation.DCQLPresentation(
+                    presentationRequest = dcqlRequest,
+                    credentialQuerySubmissions = goodMatches
+                ),
+            ).getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
+                .submissionRequirementsValidationResult.isSuccess.shouldBeTrue()
         }
 
         "presentation of multiple credentials with different formats in one request/response" { it ->

@@ -47,10 +47,10 @@ value class TestCredentialQueryAdapter(val dcqlQuery: DCQLQuery) {
 
     fun isSatisfiable(availableCredentials: List<TestCredential>): Boolean {
         val matching = execute(availableCredentials)
-        return dcqlQuery.isCredentialSetQueriesSatisfiedWith(
+        return dcqlQuery.checkCredentialSetQueryRequirements(
             matching.credentialQueryMatches.filter {
                 it.value.isNotEmpty()
             }.keys
-        )
+        ).isSuccess
     }
 }

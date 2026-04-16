@@ -6,7 +6,7 @@ data class DCQLVcJwsCredential(
     override val claimStructure: DCQLCredentialClaimStructure.JsonBasedStructure,
     override val satisfiesCryptographicHolderBinding: Boolean,
     override val authorityKeyIdentifiers: Collection<DCQLAuthorityKeyIdentifier>,
-    val types: List<String>,
+    val types: Collection<String>,
 ) : DCQLCredential {
     override val format: CredentialFormatEnum
         get() = CredentialFormatEnum.JWT_VC

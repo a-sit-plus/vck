@@ -1,8 +1,11 @@
 package at.asitplus.openid.dcql
 
+import at.asitplus.KmmResult
+import at.asitplus.catching
 import at.asitplus.data.NonEmptyList
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.collections.containsAll
 
 /**
  *  6.2. Credential Set Query
@@ -26,5 +29,14 @@ data class DCQLCredentialSetQuery(
      */
     @SerialName("required")
     val required: Boolean = true,
-
-    )
+) {
+    fun checkSubmissionRequirements(
+        credentialSubmissions: Set<DCQLCredentialQueryIdentifier>,
+    ): KmmResult<Unit> = catching {
+        require(!required || options.any {
+            credentialSubmissions.containsAll(it)
+        }) {
+            "Submissions do not satisfy credential set query: $this"
+        }
+    }
+}
