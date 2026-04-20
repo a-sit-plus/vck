@@ -23,6 +23,7 @@ Release 5.12.0 (unreleased):
    - BREAKING CHANGE: The result type from `verifyAuthnResponse`, `AuthnResponseResult` has been reworked to a data class
    - DCQL: Add custom credential types and proper satisfaction evaluation
    - Add: DCQL submission requirements validation
+   - Add `VerifierMetadataMode` for `OpenId4VpRequestOptions` to provide them out-of-band when necessary, e.g. for Age Verification
  - OpenID for Verifiable Credential Issuance:
    - Moved the class `RefreshTokenInfo` from `OpenId4VciClient` to `SubjectCredentialStore.kt` and renamed it to `CredentialRenewalInfo` to better describe its role in the renewal process.
      Kept `RefreshTokenInfo` in the original package for backward compatibility

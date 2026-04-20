@@ -11,6 +11,11 @@ import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import com.benasher44.uuid.uuid4
 
+enum class VerifierMetadataMode {
+    AUTO,
+    OMIT_IF_OUT_OF_BAND,
+}
+
 data class OpenId4VpRequestOptions(
     /**
      * Presentation mechanism to be used for requesting credentials.
@@ -66,6 +71,14 @@ data class OpenId4VpRequestOptions(
      * verification of the request signature or retrieving client metadata.
      */
     val populateClientId: Boolean = true,
+
+    /**
+     * Controls whether verifier metadata should be embedded in the authentication request.
+     *
+     * [VerifierMetadataMode.OMIT_IF_OUT_OF_BAND] may be used when the Wallet already knows the verifier metadata
+     * through another mechanism, e.g., a profile-specific static configuration.
+     */
+    val verifierMetadataMode: VerifierMetadataMode = VerifierMetadataMode.AUTO,
 ) : RequestOptions {
     @Deprecated("Replace with primary constructor, building a presentation request using [CredentialPresentationRequestBuilder]")
     constructor(
@@ -78,6 +91,7 @@ data class OpenId4VpRequestOptions(
         transactionData: List<TransactionData>? = null,
         expectedOrigins: List<String>? = null,
         populateClientId: Boolean = true,
+        verifierMetadataMode: VerifierMetadataMode = VerifierMetadataMode.AUTO,
     ) : this(
         presentationRequest = CredentialPresentationRequestBuilder(
             credentials = credentials
@@ -95,6 +109,7 @@ data class OpenId4VpRequestOptions(
         transactionData = transactionData,
         expectedOrigins = expectedOrigins,
         populateClientId = populateClientId,
+        verifierMetadataMode = verifierMetadataMode,
     )
 
     init {
@@ -118,6 +133,11 @@ data class OpenId4VpRequestOptions(
         } else {
             require(populateClientId) { "client_id should be set for anything but (unsigned) DC API requests" }
         }
+        if (verifierMetadataMode == VerifierMetadataMode.OMIT_IF_OUT_OF_BAND) {
+            require(!responseMode.requiresEncryption) {
+                "verifier metadata cannot be omitted for encrypted response modes without another key distribution mechanism"
+            }
+        }
     }
 
     val isDcql: Boolean
@@ -135,4 +155,3 @@ data class OpenId4VpRequestOptions(
 
     fun buildScope(): String = listOf(SCOPE_OPENID, SCOPE_PROFILE).joinToString(" ")
 }
-

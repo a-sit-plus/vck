@@ -419,14 +419,17 @@ class OpenId4VpVerifier(
     )
 
     @Suppress("DEPRECATION")
-    private fun OpenId4VpRequestOptions.clientMetadata(): RelyingPartyMetadata? = when (clientIdScheme) {
-        is ClientIdScheme.RedirectUri,
-        is ClientIdScheme.VerifierAttestation,
-        is ClientIdScheme.CertificateSanDns,
-        is ClientIdScheme.CertificateHash,
-            -> if (responseMode.requiresEncryption) metadataWithEncryption else metadata
+    private fun OpenId4VpRequestOptions.clientMetadata(): RelyingPartyMetadata? = when (verifierMetadataMode) {
+        VerifierMetadataMode.OMIT_IF_OUT_OF_BAND -> null
+        VerifierMetadataMode.AUTO -> when (clientIdScheme) {
+            is ClientIdScheme.RedirectUri,
+            is ClientIdScheme.VerifierAttestation,
+            is ClientIdScheme.CertificateSanDns,
+            is ClientIdScheme.CertificateHash,
+                -> if (responseMode.requiresEncryption) metadataWithEncryption else metadata
 
-        else -> null
+            else -> null
+        }
     }
 
     /**

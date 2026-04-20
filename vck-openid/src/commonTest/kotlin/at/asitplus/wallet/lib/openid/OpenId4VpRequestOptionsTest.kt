@@ -83,4 +83,17 @@ val OpenId4VpRequestOptionsTest by testSuite {
             )
         }
     }
+
+    test("omitting verifier metadata is rejected for encrypted response modes") {
+        shouldThrowAny {
+            OpenId4VpRequestOptions(
+                presentationRequest = CredentialPresentationRequestBuilder(
+                    setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023))
+                ).toDCQLRequest(),
+                responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
+                responseUrl = "https://example.com/response",
+                verifierMetadataMode = VerifierMetadataMode.OMIT_IF_OUT_OF_BAND,
+            )
+        }
+    }
 }

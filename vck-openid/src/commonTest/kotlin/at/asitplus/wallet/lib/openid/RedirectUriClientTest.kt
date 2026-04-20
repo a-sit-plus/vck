@@ -202,6 +202,35 @@ val RedirectUriClientTest by testSuite {
                 .vp.freshVerifiableCredentials.shouldNotBeEmpty()
         }
 
+        "test with direct_post and omitted verifier metadata" {
+            val authnRequest = it.verifierOid4vp.createAuthnRequest(
+                OpenId4VpRequestOptions(
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                    ).toPresentationExchangeRequest(),
+                    responseMode = OpenIdConstants.ResponseMode.DirectPost,
+                    responseUrl = it.clientId,
+                    verifierMetadataMode = VerifierMetadataMode.OMIT_IF_OUT_OF_BAND,
+                ),
+                CreationOptions.Query(it.walletUrl)
+            ).getOrThrow().url
+
+            authnRequest.shouldNotContain("client_metadata=")
+
+            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
+            authnResponse.url.shouldBe(it.clientId)
+
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
+                .inputDescriptorResponseValidations.values.map {
+                    it.getOrThrow()
+                }.shouldBeSingleton().first()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
+                .vp.freshVerifiableCredentials.shouldNotBeEmpty()
+        }
+
         "test with direct_post.jwt" {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
