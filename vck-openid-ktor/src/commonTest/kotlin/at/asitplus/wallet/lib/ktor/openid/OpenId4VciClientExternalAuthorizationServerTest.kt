@@ -384,8 +384,9 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
                 .first { it.supportedCredentialFormat.format == CredentialFormatEnum.MSO_MDOC }
 
             val offer = externalAuthorizationServer.credentialOfferWithPreAuthnForUser(
-                dummyUser(),
-                credentialIssuer.metadata.credentialIssuer
+                user = dummyUser(),
+                credentialIssuer = credentialIssuer.metadata.credentialIssuer,
+                credentials = setOf(EuPidScheme to ISO_MDOC),
             )
             client.loadCredentialWithOfferReturningResult(offer, selectedCredential, null).getOrThrow().also {
                 it.shouldBeInstanceOf<CredentialIssuanceResult.Success>().also {

@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.oauth2.AuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidAuthorizationDetails
 import kotlin.contracts.ExperimentalContracts
@@ -27,9 +28,18 @@ class CredentialAuthorizationServiceStrategy(
 
     override fun allCredentialIdentifier(): Set<String> = supportedCredentialSchemes.keys
 
+    override fun toCredentialConfigurationIds(
+        credentials: Set<Pair<ConstantIndex.CredentialScheme, CredentialRepresentation>>,
+    ): Set<String> = if (credentials.isEmpty())
+        allCredentialIdentifier()
+    else
+        credentials.map { (scheme, representation) ->
+            mapper.toCredentialIdentifier(scheme, representation)
+        }.toSet()
+
     override fun validateAuthorizationDetails(
         authorizationDetails: Collection<AuthorizationDetails>,
-        configurationIds: Set<String>
+        configurationIds: Set<String>,
     ): Boolean = authorizationDetails.all { it.validate() && it.credentialConfigurationId in configurationIds }
 
     override fun validAuthorizationDetails(location: String): Collection<OpenIdAuthorizationDetails> =
@@ -39,7 +49,7 @@ class CredentialAuthorizationServiceStrategy(
 
     override fun validateScope(
         scope: String,
-        configurationIds: Set<String>
+        configurationIds: Set<String>,
     ): Boolean = scope.trim().split(" ")
         .all { supportedCredentialSchemes.filter { it.key in configurationIds }.map { it.value.scope }.contains(it) }
 
@@ -64,7 +74,7 @@ class CredentialAuthorizationServiceStrategy(
      * Filters the authorization details received in the authorization request to include in the token response.
      */
     override fun filterAuthorizationDetailsForTokenResponse(
-        authorizationDetails: Collection<AuthorizationDetails>
+        authorizationDetails: Collection<AuthorizationDetails>,
     ): Set<AuthorizationDetails> = authorizationDetails
         .filterIsInstance<OpenIdAuthorizationDetails>()
         .filter { it.validate() }
@@ -118,7 +128,7 @@ class CredentialAuthorizationServiceStrategy(
 }
 
 private fun Collection<OpenIdAuthorizationDetails>.matchesAuthnRequest(
-    authnDetailsFromAuthRequest: Collection<AuthorizationDetails>?
+    authnDetailsFromAuthRequest: Collection<AuthorizationDetails>?,
 ) = filter { tokenAuthnDetail ->
     authnDetailsFromAuthRequest
         ?.filterIsInstance<OpenIdAuthorizationDetails>()
@@ -142,4 +152,3 @@ fun OpenIdAuthorizationDetails.matches(other: AuthorizationDetails): Boolean = w
     credentialConfigurationId != null -> other.credentialConfigurationId == credentialConfigurationId
     else -> false
 }
-

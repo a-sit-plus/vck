@@ -306,8 +306,9 @@ val OpenId4VciClientTest by testSuite {
                 .first { it.supportedCredentialFormat.format == CredentialFormatEnum.MSO_MDOC }
 
             val offer = authorizationService.credentialOfferWithPreAuthnForUser(
-                dummyUser(),
-                credentialIssuer.metadata.credentialIssuer
+                user = dummyUser(),
+                credentialIssuer = credentialIssuer.metadata.credentialIssuer,
+                credentials = setOf(EuPidScheme to ISO_MDOC),
             )
             val issuedCredential = client.loadCredentialWithOfferReturningResult(offer, selectedCredential, null)
                 .getOrThrow()
@@ -348,8 +349,9 @@ val OpenId4VciClientTest by testSuite {
                 .first { it.supportedCredentialFormat.format == CredentialFormatEnum.MSO_MDOC }
 
             val offer = authorizationService.credentialOfferWithPreAuthnForUser(
-                dummyUser(),
-                credentialIssuer.metadata.credentialIssuer
+                user = dummyUser(),
+                credentialIssuer = credentialIssuer.metadata.credentialIssuer,
+                credentials = setOf(EuPidScheme to ISO_MDOC),
             )
             client.loadCredentialWithOfferReturningResult(offer, selectedCredential, null).getOrThrow().also {
                 it.shouldBeInstanceOf<CredentialIssuanceResult.Success>().also {

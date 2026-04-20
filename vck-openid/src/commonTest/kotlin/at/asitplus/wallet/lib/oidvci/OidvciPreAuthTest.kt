@@ -73,7 +73,7 @@ val OidvciPreAuthTest by testSuite {
             val credentialOffer = it.authorizationService.credentialOfferWithPreAuthnForUser(
                 user = DummyUserProvider.user,
                 credentialIssuer = it.issuer.publicContext,
-                configurationIds = setOf(credentialIdToRequest)
+                credentials = setOf(AtomicAttribute2023 to PLAIN_JWT)
             )
             val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations!![credentialIdToRequest]
                 .shouldNotBeNull()
@@ -104,7 +104,8 @@ val OidvciPreAuthTest by testSuite {
         test("process with pre-authorized code, credential offer, and authorization details for all credentials") {
             val credentialOffer = it.authorizationService.credentialOfferWithPreAuthnForUser(
                 user = DummyUserProvider.user,
-                credentialIssuer = it.issuer.publicContext
+                credentialIssuer = it.issuer.publicContext,
+                credentials = emptySet(),
             )
             val credentialIdsToRequest = credentialOffer.configurationIds
                 .shouldHaveSize(4) // Atomic Attribute in 3 representations (JWT, ISO, dc+sd-jwt), mDL in ISO
@@ -141,7 +142,8 @@ val OidvciPreAuthTest by testSuite {
         test("process with pre-authorized code, credential offer, and scope") {
             val credentialOffer = it.authorizationService.credentialOfferWithPreAuthnForUser(
                 user = DummyUserProvider.user,
-                credentialIssuer = it.issuer.publicContext
+                credentialIssuer = it.issuer.publicContext,
+                credentials = emptySet(),
             )
             val credentialIdToRequest = it.mapper.toCredentialIdentifier(AtomicAttribute2023, PLAIN_JWT)
             // OID4VCI 5.1.2 Using scope Parameter to Request Issuance of a Credential
@@ -183,7 +185,8 @@ val OidvciPreAuthTest by testSuite {
         test("two proofs over different keys lead to two credentials") {
             val credentialOffer = it.authorizationService.credentialOfferWithPreAuthnForUser(
                 user = DummyUserProvider.user,
-                credentialIssuer = it.issuer.publicContext
+                credentialIssuer = it.issuer.publicContext,
+                credentials = emptySet(),
             )
             val credentialIdToRequest = it.mapper.toCredentialIdentifier(AtomicAttribute2023, PLAIN_JWT)
 

@@ -47,6 +47,7 @@ Release 5.12.0 (unreleased):
    - Add member `preferredTtl` to `KeyAttestationRequired`
  - OAuth 2.0:
    - In `SimpleAuthorizationService` implement [JWT Response for OAuth Token Introspection](https://datatracker.ietf.org/doc/html/rfc9701/)
+   - In `SimpleAuthorizationService` change `credenitalOffer` methods to take pairs of credential schemes and representations to prevent configuration identifier mismatches
  - Dependencies:
    - Update to [Signum 3.21.0](https://github.com/a-sit-plus/signum/releases/tag/3.21.0) fixing CBOR parsing and tolerating cursed X.509 certificate encodings
    - Remove code elements deprecated in 5.11.0

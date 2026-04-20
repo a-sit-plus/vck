@@ -29,6 +29,8 @@ import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
 import at.asitplus.wallet.lib.oidvci.CodeService
 import at.asitplus.wallet.lib.oidvci.CredentialIssuer
 import at.asitplus.wallet.lib.oidvci.DefaultCodeService
@@ -53,6 +55,7 @@ import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.json.JsonObject
+import kotlin.jvm.JvmName
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
@@ -194,13 +197,36 @@ class SimpleAuthorizationService(
      *
      * @param credentialIssuer the public context of an [CredentialIssuer]
      */
+    @JvmName("credentialOfferWithAuthorizationCodeForCredentials")
+    suspend fun credentialOfferWithAuthorizationCode(
+        credentialIssuer: String,
+        credentials: Set<Pair<CredentialScheme, CredentialRepresentation>> = emptySet(),
+    ): CredentialOffer = buildCredentialOfferWithAuthorizationCode(
+        credentialIssuer = credentialIssuer,
+        configurationIds = strategy.toCredentialConfigurationIds(credentials),
+    )
+
+    /**
+     * Offer some credential identifiers from [strategy] to clients with auth-code flow.
+     *
+     * @deprecated Pass credential schemes with representations instead of raw configuration ids.
+     */
+    @Deprecated("Pass credential schemes with representations instead of raw configuration ids.")
     suspend fun credentialOfferWithAuthorizationCode(
         credentialIssuer: String,
         configurationIds: Collection<String> = this.strategy.allCredentialIdentifier(),
+    ): CredentialOffer = buildCredentialOfferWithAuthorizationCode(
+        credentialIssuer = credentialIssuer,
+        configurationIds = configurationIds,
+    )
+
+    private suspend fun buildCredentialOfferWithAuthorizationCode(
+        credentialIssuer: String,
+        configurationIds: Collection<String>,
     ): CredentialOffer = codeService.provideCode().let { issuerState ->
         CredentialOffer(
             credentialIssuer = credentialIssuer,
-            configurationIds = configurationIds.ifEmpty { strategy.allCredentialIdentifier() }.toSet(),
+            configurationIds = configurationIds.toCredentialConfigurationIds(),
             grants = CredentialOfferGrants(
                 authorizationCode = CredentialOfferGrantsAuthCode(
                     issuerState = issuerState,
@@ -221,13 +247,40 @@ class SimpleAuthorizationService(
      * @param user used to create the credential when the wallet app requests the credential
      * @param credentialIssuer the public context of an [CredentialIssuer]
      */
+    @JvmName("credentialOfferWithPreAuthnForUserForCredentials")
+    suspend fun credentialOfferWithPreAuthnForUser(
+        user: OidcUserInfoExtended,
+        credentialIssuer: String,
+        credentials: Set<Pair<CredentialScheme, CredentialRepresentation>> = emptySet(),
+    ): CredentialOffer = buildCredentialOfferWithPreAuthnForUser(
+        user = user,
+        credentialIssuer = credentialIssuer,
+        configurationIds = strategy.toCredentialConfigurationIds(credentials),
+    )
+
+    /**
+     * Offer all available schemes from [strategy] to clients.
+     *
+     * @deprecated Pass credential schemes with representations instead of raw configuration ids.
+     */
+    @Deprecated("Pass credential schemes with representations instead of raw configuration ids.")
     suspend fun credentialOfferWithPreAuthnForUser(
         user: OidcUserInfoExtended,
         credentialIssuer: String,
         configurationIds: Collection<String> = this.strategy.allCredentialIdentifier(),
+    ): CredentialOffer = buildCredentialOfferWithPreAuthnForUser(
+        user = user,
+        credentialIssuer = credentialIssuer,
+        configurationIds = configurationIds,
+    )
+
+    private suspend fun buildCredentialOfferWithPreAuthnForUser(
+        user: OidcUserInfoExtended,
+        credentialIssuer: String,
+        configurationIds: Collection<String>,
     ): CredentialOffer = CredentialOffer(
         credentialIssuer = credentialIssuer,
-        configurationIds = configurationIds.ifEmpty { strategy.allCredentialIdentifier() }.toSet(),
+        configurationIds = configurationIds.toCredentialConfigurationIds(),
         grants = CredentialOfferGrants(
             preAuthorizedCode = CredentialOfferGrantsPreAuthCode(
                 preAuthorizedCode = providePreAuthorizedCode(user),
@@ -235,6 +288,9 @@ class SimpleAuthorizationService(
             )
         )
     )
+
+    private fun Collection<String>.toCredentialConfigurationIds() =
+        ifEmpty { strategy.allCredentialIdentifier() }.toSet()
 
     /**
      * Pushed authorization request endpoint as defined in [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html).

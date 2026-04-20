@@ -2,6 +2,8 @@ package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OpenIdAuthorizationDetails
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 
 /**
@@ -63,4 +65,9 @@ interface AuthorizationServiceStrategy {
 
     /** Return all valid credential identifiers for all schemes. */
     fun allCredentialIdentifier(): Set<String>
+
+    /** Encode credential scheme and representation pairs to credential configuration ids. */
+    fun toCredentialConfigurationIds(
+        credentials: Set<Pair<CredentialScheme, CredentialRepresentation>>
+    ): Set<String>
 }
