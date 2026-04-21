@@ -1,13 +1,9 @@
-@file:Suppress("unused")
-
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.jsonpath.core.NodeListEntry
 import at.asitplus.jsonpath.core.NormalizedJsonPath
-import at.asitplus.openid.dcql.DCQLClaimsQueryResult
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult.IsoMdocResult
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult.JsonResult
-import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.ClaimsQueryResults
 import at.asitplus.signum.indispensable.CryptoSignature
@@ -41,15 +37,12 @@ val VerifiablePresentationFactoryTest by testSuite {
     withFixtureGenerator(suspend {
         val issuer = IssuerAgent(
             keyMaterial = EphemeralKeyWithSelfSignedCert(),
-            issuerCredentialStore = InMemoryIssuerCredentialStore(),
             identifier = "https://issuer.example.com/".toUri(),
             randomSource = RandomSource.Default,
         )
-        val holderCredentialStore = InMemorySubjectCredentialStore()
         val holderKeyMaterial = EphemeralKeyWithoutCert()
         val holder = HolderAgent(
             keyMaterial = holderKeyMaterial,
-            subjectCredentialStore = holderCredentialStore,
         )
 
         val sdJwtCredential = holder.storeCredential(
@@ -73,8 +66,6 @@ val VerifiablePresentationFactoryTest by testSuite {
         ).getOrThrow()
 
         object {
-            val issuer = issuer
-            val holderCredentialStore = holderCredentialStore
             val verifiablePresentationFactory = VerifiablePresentationFactory(holderKeyMaterial)
             val sdJwtCredential = sdJwtCredential
             val isoCredential = isoCredential

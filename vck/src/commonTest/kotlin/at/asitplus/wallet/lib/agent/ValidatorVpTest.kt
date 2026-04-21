@@ -73,8 +73,8 @@ val ValidatorVpTest by testSuite {
             )
         )
         val holder = HolderAgent(
-            holderKeyMaterial,
-            holderCredentialStore,
+            keyMaterial = holderKeyMaterial,
+            subjectCredentialStore = holderCredentialStore,
             validatorVcJws = validator,
         ).also {
             it.storeCredential(

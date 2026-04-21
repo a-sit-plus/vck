@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.iso.CborCredentialSerializer
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
@@ -24,7 +23,6 @@ val StoreEntrySerializationTest by testSuite {
     withFixtureGenerator {
         object {
             val issuerCredentialStore = InMemoryIssuerCredentialStore()
-            val holderCredentialStore = InMemorySubjectCredentialStore()
             val issuer = IssuerAgent(
                 keyMaterial = EphemeralKeyWithSelfSignedCert(),
                 issuerCredentialStore = issuerCredentialStore,
@@ -32,7 +30,7 @@ val StoreEntrySerializationTest by testSuite {
                 randomSource = RandomSource.Default
             )
             val holderKeyMaterial = EphemeralKeyWithoutCert()
-            val holder = HolderAgent(holderKeyMaterial, holderCredentialStore)
+            val holder = HolderAgent(holderKeyMaterial)
         }
     }- {
 

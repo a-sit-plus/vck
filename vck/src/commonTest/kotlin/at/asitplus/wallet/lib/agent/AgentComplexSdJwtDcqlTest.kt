@@ -12,7 +12,6 @@ import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
-import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
@@ -31,15 +30,12 @@ val AgentComplexSdJwtDcqlTest by testSuite {
 
     withFixtureGenerator {
         object {
-            val issuerCredentialStore = InMemoryIssuerCredentialStore()
-            val holderCredentialStore = InMemorySubjectCredentialStore()
             val issuer = IssuerAgent(
-                issuerCredentialStore = issuerCredentialStore,
                 identifier = "https://issuer.example.com/".toUri(),
                 randomSource = RandomSource.Default
             )
             val holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
-            val holder = HolderAgent(holderKeyMaterial, holderCredentialStore)
+            val holder = HolderAgent(holderKeyMaterial)
             val verifierId = "urn:${uuid4()}"
             val verifier = VerifierAgent(identifier = verifierId)
             val challenge = uuid4().toString()

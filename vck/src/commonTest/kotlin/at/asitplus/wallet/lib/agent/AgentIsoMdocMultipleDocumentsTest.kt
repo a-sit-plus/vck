@@ -36,7 +36,6 @@ val AgentIsoMdocMultipleDocumentsTest by testSuite {
     withFixtureGenerator {
         object {
             val issuerCredentialStore = InMemoryIssuerCredentialStore()
-            val holderCredentialStore = InMemorySubjectCredentialStore()
             val issuer = IssuerAgent(
                 keyMaterial = EphemeralKeyWithSelfSignedCert(),
                 issuerCredentialStore = issuerCredentialStore,
@@ -49,8 +48,7 @@ val AgentIsoMdocMultipleDocumentsTest by testSuite {
             )
             val holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
             val holder = HolderAgent(
-                holderKeyMaterial,
-                holderCredentialStore,
+                keyMaterial = holderKeyMaterial,
                 validatorMdoc = validator,
             ).also {
                 runBlocking {

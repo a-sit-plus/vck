@@ -63,7 +63,8 @@ val AgentTest by testSuite {
             val holderKeyMaterial = EphemeralKeyWithoutCert()
             val verifierId = "urn:${uuid4()}"
             val holder = HolderAgent(
-                holderKeyMaterial, holderCredentialStore,
+                keyMaterial = holderKeyMaterial,
+                subjectCredentialStore = holderCredentialStore,
                 validator = validator,
             )
             val verifier = VerifierAgent(
