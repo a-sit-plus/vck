@@ -283,10 +283,10 @@ val OpenId4VciClientWithEncryptionTest by testSuite {
             val selectedCredential = credentialIdentifierInfos
                 .first { it.supportedCredentialFormat.format == CredentialFormatEnum.MSO_MDOC }
 
-            val offer = authorizationService.credentialOfferWithPreAuthnForUser(
+            val offer = authorizationService.offerWithPreAuthnForUserForSchemes(
                 user = dummyUser(),
                 credentialIssuer = credentialIssuer.metadata.credentialIssuer,
-                credentials = setOf(EuPidScheme to ISO_MDOC),
+                schemes = setOf(EuPidScheme to ISO_MDOC),
             )
             client.loadCredentialWithOfferReturningResult(offer, selectedCredential, null).getOrThrow().also {
                 it.shouldBeInstanceOf<CredentialIssuanceResult.Success>().also {

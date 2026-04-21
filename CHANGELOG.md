@@ -48,7 +48,8 @@ Release 5.12.0 (unreleased):
    - Add member `preferredTtl` to `KeyAttestationRequired`
  - OAuth 2.0:
    - In `SimpleAuthorizationService` implement [JWT Response for OAuth Token Introspection](https://datatracker.ietf.org/doc/html/rfc9701/)
-   - In `SimpleAuthorizationService` change `credenitalOffer` methods to take pairs of credential schemes and representations to prevent configuration identifier mismatches
+   - In `SimpleAuthorizationService` deprecate `credentialOffer*` methods to prevent configuration identifier mismatches
+   - In `SimpleAuthorizationService` add `offer*` methods to take pairs of credential schemes and representations
  - SD-JWT:
    - Fix presentation of nested claims with the last name segment being present in structures with different names (e.g. `country` in `place_of_birth` and `address`)
  - Dependencies:

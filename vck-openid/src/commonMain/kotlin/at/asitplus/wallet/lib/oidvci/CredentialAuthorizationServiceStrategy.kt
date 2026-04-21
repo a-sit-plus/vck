@@ -15,7 +15,7 @@ import kotlin.contracts.contract
  */
 class CredentialAuthorizationServiceStrategy(
     /** List of supported schemes. */
-    credentialSchemes: Set<ConstantIndex.CredentialScheme>,
+    private val credentialSchemes: Set<ConstantIndex.CredentialScheme>,
     /** Maps from/to strings in metadata from/to credential schemes. */
     private val mapper: CredentialSchemeMapper = DefaultCredentialSchemeMapper(),
 ) : AuthorizationServiceStrategy {
@@ -30,12 +30,15 @@ class CredentialAuthorizationServiceStrategy(
 
     override fun toCredentialConfigurationIds(
         credentials: Set<Pair<ConstantIndex.CredentialScheme, CredentialRepresentation>>,
-    ): Set<String> = if (credentials.isEmpty())
+    ): Set<String> = if (credentials.isEmpty()) {
         allCredentialIdentifier()
-    else
-        credentials.map { (scheme, representation) ->
-            mapper.toCredentialIdentifier(scheme, representation)
+    } else {
+        credentials.mapNotNull { (scheme, representation) ->
+            if (credentialSchemes.contains(scheme)) {
+                runCatching { mapper.toCredentialIdentifier(scheme, representation) }.getOrNull()
+            } else null
         }.toSet()
+    }
 
     override fun validateAuthorizationDetails(
         authorizationDetails: Collection<AuthorizationDetails>,

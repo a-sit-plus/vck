@@ -20,8 +20,8 @@ import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.SignatureRequestParameters
-import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionJwtResponse
+import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenIntrospectionResult
 import at.asitplus.openid.TokenRequestParameters
@@ -29,13 +29,16 @@ import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
+import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidvci.CodeService
 import at.asitplus.wallet.lib.oidvci.CredentialIssuer
 import at.asitplus.wallet.lib.oidvci.DefaultCodeService
-import at.asitplus.wallet.lib.utils.DefaultMapStore
-import at.asitplus.wallet.lib.utils.MapStore
 import at.asitplus.wallet.lib.oidvci.OAuth2AuthorizationServerAdapter
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
@@ -44,18 +47,14 @@ import at.asitplus.wallet.lib.oidvci.OAuth2LoadUserFunInput
 import at.asitplus.wallet.lib.oidvci.TokenInfo
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
-import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
-import at.asitplus.wallet.lib.jws.SignJwt
-import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.openid.RequestParser
+import at.asitplus.wallet.lib.utils.DefaultMapStore
+import at.asitplus.wallet.lib.utils.MapStore
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.json.JsonObject
-import kotlin.jvm.JvmName
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
@@ -196,14 +195,15 @@ class SimpleAuthorizationService(
      * i.e. by displaying a QR Code that can be scanned with wallet apps.
      *
      * @param credentialIssuer the public context of an [CredentialIssuer]
+     * @param schemes which credential configuration IDs to use in the offer.
+     * Pass an empty set to offer all known schemes.
      */
-    @JvmName("credentialOfferWithAuthorizationCodeForCredentials")
-    suspend fun credentialOfferWithAuthorizationCode(
+    suspend fun offerWithAuthorizationCodeForSchemes(
         credentialIssuer: String,
-        credentials: Set<Pair<CredentialScheme, CredentialRepresentation>> = emptySet(),
-    ): CredentialOffer = buildCredentialOfferWithAuthorizationCode(
+        schemes: Set<Pair<CredentialScheme, CredentialRepresentation>> = emptySet(),
+    ): CredentialOffer = buildOfferWithAuthorizationCode(
         credentialIssuer = credentialIssuer,
-        configurationIds = strategy.toCredentialConfigurationIds(credentials),
+        configurationIds = strategy.toCredentialConfigurationIds(schemes),
     )
 
     /**
@@ -211,22 +211,25 @@ class SimpleAuthorizationService(
      *
      * @deprecated Pass credential schemes with representations instead of raw configuration ids.
      */
-    @Deprecated("Pass credential schemes with representations instead of raw configuration ids.")
+    @Deprecated(
+        "Pass credential schemes with representations instead of raw configuration ids.",
+        ReplaceWith("offerWithAuthorizationCodeForSchemes")
+    )
     suspend fun credentialOfferWithAuthorizationCode(
         credentialIssuer: String,
         configurationIds: Collection<String> = this.strategy.allCredentialIdentifier(),
-    ): CredentialOffer = buildCredentialOfferWithAuthorizationCode(
+    ): CredentialOffer = buildOfferWithAuthorizationCode(
         credentialIssuer = credentialIssuer,
         configurationIds = configurationIds,
     )
 
-    private suspend fun buildCredentialOfferWithAuthorizationCode(
+    private suspend fun buildOfferWithAuthorizationCode(
         credentialIssuer: String,
         configurationIds: Collection<String>,
     ): CredentialOffer = codeService.provideCode().let { issuerState ->
         CredentialOffer(
             credentialIssuer = credentialIssuer,
-            configurationIds = configurationIds.toCredentialConfigurationIds(),
+            configurationIds = configurationIds.toSet(),
             grants = CredentialOfferGrants(
                 authorizationCode = CredentialOfferGrantsAuthCode(
                     issuerState = issuerState,
@@ -246,16 +249,17 @@ class SimpleAuthorizationService(
      *
      * @param user used to create the credential when the wallet app requests the credential
      * @param credentialIssuer the public context of an [CredentialIssuer]
+     * @param schemes which credential configuration IDs to use in the offer.
+     * Pass an empty set to offer all known schemes.
      */
-    @JvmName("credentialOfferWithPreAuthnForUserForCredentials")
-    suspend fun credentialOfferWithPreAuthnForUser(
+    suspend fun offerWithPreAuthnForUserForSchemes(
         user: OidcUserInfoExtended,
         credentialIssuer: String,
-        credentials: Set<Pair<CredentialScheme, CredentialRepresentation>> = emptySet(),
-    ): CredentialOffer = buildCredentialOfferWithPreAuthnForUser(
+        schemes: Set<Pair<CredentialScheme, CredentialRepresentation>> = emptySet(),
+    ): CredentialOffer = buildOfferWithPreAuthnForUser(
         user = user,
         credentialIssuer = credentialIssuer,
-        configurationIds = strategy.toCredentialConfigurationIds(credentials),
+        configurationIds = strategy.toCredentialConfigurationIds(schemes),
     )
 
     /**
@@ -263,24 +267,27 @@ class SimpleAuthorizationService(
      *
      * @deprecated Pass credential schemes with representations instead of raw configuration ids.
      */
-    @Deprecated("Pass credential schemes with representations instead of raw configuration ids.")
+    @Deprecated(
+        "Pass credential schemes with representations instead of raw configuration ids.",
+        ReplaceWith("offerWithPreAuthnForUserForSchemes")
+    )
     suspend fun credentialOfferWithPreAuthnForUser(
         user: OidcUserInfoExtended,
         credentialIssuer: String,
         configurationIds: Collection<String> = this.strategy.allCredentialIdentifier(),
-    ): CredentialOffer = buildCredentialOfferWithPreAuthnForUser(
+    ): CredentialOffer = buildOfferWithPreAuthnForUser(
         user = user,
         credentialIssuer = credentialIssuer,
         configurationIds = configurationIds,
     )
 
-    private suspend fun buildCredentialOfferWithPreAuthnForUser(
+    private suspend fun buildOfferWithPreAuthnForUser(
         user: OidcUserInfoExtended,
         credentialIssuer: String,
         configurationIds: Collection<String>,
     ): CredentialOffer = CredentialOffer(
         credentialIssuer = credentialIssuer,
-        configurationIds = configurationIds.toCredentialConfigurationIds(),
+        configurationIds = configurationIds.toSet(),
         grants = CredentialOfferGrants(
             preAuthorizedCode = CredentialOfferGrantsPreAuthCode(
                 preAuthorizedCode = providePreAuthorizedCode(user),
@@ -288,9 +295,6 @@ class SimpleAuthorizationService(
             )
         )
     )
-
-    private fun Collection<String>.toCredentialConfigurationIds() =
-        ifEmpty { strategy.allCredentialIdentifier() }.toSet()
 
     /**
      * Pushed authorization request endpoint as defined in [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html).

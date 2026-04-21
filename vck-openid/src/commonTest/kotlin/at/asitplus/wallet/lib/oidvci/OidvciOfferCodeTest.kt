@@ -25,7 +25,6 @@ import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlin.collections.listOf
 
 val OidvciOfferCodeTest by testSuite {
 
@@ -104,9 +103,9 @@ val OidvciOfferCodeTest by testSuite {
 
         test("process with code after credential offer, and scope for one credential") {
             val credentialIdToRequest = it.mapper.toCredentialIdentifier(AtomicAttribute2023, PLAIN_JWT)
-            val credentialOffer = it.authorizationService.credentialOfferWithAuthorizationCode(
+            val credentialOffer = it.authorizationService.offerWithAuthorizationCodeForSchemes(
                 credentialIssuer = it.issuer.publicContext,
-                credentials = setOf(AtomicAttribute2023 to PLAIN_JWT)
+                schemes = setOf(AtomicAttribute2023 to PLAIN_JWT)
             )
             val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations!![credentialIdToRequest]
                 .shouldNotBeNull()
@@ -132,9 +131,9 @@ val OidvciOfferCodeTest by testSuite {
         }
 
         test("process with code after credential offer, and scope for all credentials") {
-            val credentialOffer = it.authorizationService.credentialOfferWithAuthorizationCode(
+            val credentialOffer = it.authorizationService.offerWithAuthorizationCodeForSchemes(
                 credentialIssuer = it.issuer.publicContext,
-                credentials = emptySet(),
+                schemes = emptySet(),
             )
             val credentialIdToRequest = credentialOffer.configurationIds.first()
             val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations!![credentialIdToRequest]
@@ -161,9 +160,9 @@ val OidvciOfferCodeTest by testSuite {
         }
 
         test("process with code after credential offer, wrong issuer_state") {
-            val credentialOffer = it.authorizationService.credentialOfferWithAuthorizationCode(
+            val credentialOffer = it.authorizationService.offerWithAuthorizationCodeForSchemes(
                 credentialIssuer = it.issuer.publicContext,
-                credentials = emptySet(),
+                schemes = emptySet(),
             )
             val credentialIdToRequest = credentialOffer.configurationIds.first()
             val credentialFormat =
@@ -182,9 +181,9 @@ val OidvciOfferCodeTest by testSuite {
         }
 
         test("process with code after credential offer over par and request_uri") {
-            val credentialOffer = it.authorizationService.credentialOfferWithAuthorizationCode(
+            val credentialOffer = it.authorizationService.offerWithAuthorizationCodeForSchemes(
                 credentialIssuer = it.issuer.publicContext,
-                credentials = emptySet(),
+                schemes = emptySet(),
             )
             val credentialIdToRequest = credentialOffer.configurationIds.first()
             val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations
@@ -208,9 +207,9 @@ val OidvciOfferCodeTest by testSuite {
         }
 
         test("process with code after credential offer, and authorization details for one credential") {
-            val credentialOffer = it.authorizationService.credentialOfferWithAuthorizationCode(
+            val credentialOffer = it.authorizationService.offerWithAuthorizationCodeForSchemes(
                 credentialIssuer = it.issuer.publicContext,
-                credentials = emptySet(),
+                schemes = emptySet(),
             )
             val credentialIdToRequest = credentialOffer.configurationIds.first()
             val authorizationDetails = it.client.buildAuthorizationDetails(
@@ -244,9 +243,9 @@ val OidvciOfferCodeTest by testSuite {
 
         test("process with code after credential offer, but wrong issuer state fails") {
             val credentialIdToRequest = it.mapper.toCredentialIdentifier(AtomicAttribute2023, PLAIN_JWT)
-            val credentialOffer = it.authorizationService.credentialOfferWithAuthorizationCode(
+            val credentialOffer = it.authorizationService.offerWithAuthorizationCodeForSchemes(
                 credentialIssuer = it.issuer.publicContext,
-                credentials = setOf(AtomicAttribute2023 to PLAIN_JWT)
+                schemes = setOf(AtomicAttribute2023 to PLAIN_JWT)
             )
             val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations!![credentialIdToRequest]
                 .shouldNotBeNull()
@@ -263,9 +262,9 @@ val OidvciOfferCodeTest by testSuite {
 
         test("process with code after credential offer, but scope not covered offer fails") {
             val credentialIdToRequest = it.mapper.toCredentialIdentifier(AtomicAttribute2023, PLAIN_JWT)
-            val credentialOffer = it.authorizationService.credentialOfferWithAuthorizationCode(
+            val credentialOffer = it.authorizationService.offerWithAuthorizationCodeForSchemes(
                 credentialIssuer = it.issuer.publicContext,
-                credentials = setOf(AtomicAttribute2023 to PLAIN_JWT)
+                schemes = setOf(AtomicAttribute2023 to PLAIN_JWT)
             )
             val otherCredentialIdToRequest = it.mapper.toCredentialIdentifier(AtomicAttribute2023, ISO_MDOC)
             // important step: mess with the scope value
@@ -278,9 +277,9 @@ val OidvciOfferCodeTest by testSuite {
 
         test("process with code after credential offer, but wrong authorization details should fail") {
             val credentialIdToRequest = it.mapper.toCredentialIdentifier(AtomicAttribute2023, PLAIN_JWT)
-            val credentialOffer = it.authorizationService.credentialOfferWithAuthorizationCode(
+            val credentialOffer = it.authorizationService.offerWithAuthorizationCodeForSchemes(
                 credentialIssuer = it.issuer.publicContext,
-                credentials = setOf(AtomicAttribute2023 to PLAIN_JWT)
+                schemes = setOf(AtomicAttribute2023 to PLAIN_JWT)
             )
             val otherCredentialIdToRequest = it.mapper.toCredentialIdentifier(AtomicAttribute2023, ISO_MDOC)
             // important step: mess with the authorization details

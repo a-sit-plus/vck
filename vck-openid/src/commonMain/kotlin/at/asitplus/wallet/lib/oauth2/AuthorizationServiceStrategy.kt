@@ -30,7 +30,7 @@ interface AuthorizationServiceStrategy {
      * Filters the authorization details received in the authorization request to include in the token response.
      */
     fun filterAuthorizationDetailsForTokenResponse(
-        authorizationDetails: Collection<AuthorizationDetails>
+        authorizationDetails: Collection<AuthorizationDetails>,
     ): Set<AuthorizationDetails>
 
     /**
@@ -57,7 +57,7 @@ interface AuthorizationServiceStrategy {
     /** Validates that the requested authorization details are valid for the given credential configuration ids. */
     fun validateAuthorizationDetails(
         authorizationDetails: Collection<AuthorizationDetails>,
-        configurationIds: Set<String>
+        configurationIds: Set<String>,
     ): Boolean
 
     /** Return all valid authorization details for pre-authorized codes, that the client may use in token requests */
@@ -66,8 +66,10 @@ interface AuthorizationServiceStrategy {
     /** Return all valid credential identifiers for all schemes. */
     fun allCredentialIdentifier(): Set<String>
 
-    /** Encode credential scheme and representation pairs to credential configuration ids. */
+    /**
+     * Encode credential scheme and representation pairs to credential configuration ids.
+     * Pass an empty set to encode all known credential schemes and representations. */
     fun toCredentialConfigurationIds(
-        credentials: Set<Pair<CredentialScheme, CredentialRepresentation>>
+        credentials: Set<Pair<CredentialScheme, CredentialRepresentation>>,
     ): Set<String>
 }
