@@ -76,7 +76,7 @@ val VerifiablePresentationFactoryTest by testSuite {
             val disclosedAttributes = listOf(
                 NormalizedJsonPath() + CLAIM_GIVEN_NAME,
                 NormalizedJsonPath() + CLAIM_FAMILY_NAME,
-                NormalizedJsonPath() + "ignored" + CLAIM_DATE_OF_BIRTH,
+                NormalizedJsonPath() + CLAIM_DATE_OF_BIRTH,
             )
 
             it.verifiablePresentationFactory.createVerifiablePresentation(

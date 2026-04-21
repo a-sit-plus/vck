@@ -88,7 +88,7 @@ class VerifiablePresentationFactory(
             is StoreEntry.SdJwt -> createSdJwtPresentation(
                 request = request,
                 validSdJwtCredential = credential,
-                requestedClaims = disclosedAttributes,
+                disclosures = credential.loadDisclosures(disclosedAttributes),
             )
 
             is StoreEntry.Iso -> createIsoPresentation(
@@ -114,7 +114,7 @@ class VerifiablePresentationFactory(
             is StoreEntry.SdJwt -> createSdJwtPresentation(
                 request = request,
                 validSdJwtCredential = credential,
-                requestedClaims = disclosedAttributes.toRequestedSdJwtClaims(credential),
+                disclosures = credential.loadDisclosures(disclosedAttributes),
             )
 
             is StoreEntry.Iso -> createIsoPresentation(
@@ -234,9 +234,8 @@ class VerifiablePresentationFactory(
     private suspend fun createSdJwtPresentation(
         request: PresentationRequestParameters,
         validSdJwtCredential: StoreEntry.SdJwt,
-        requestedClaims: Collection<NormalizedJsonPath>,
+        disclosures: Set<String>,
     ): CreatePresentationResult.SdJwt {
-        val disclosures = validSdJwtCredential.loadDisclosures(requestedClaims)
         val keyBinding = createKeyBindingJws(request, SdJwtSigned.sdHashInput(validSdJwtCredential, disclosures))
         val issuerSignedJwsSerialized = validSdJwtCredential.vcSerialized.substringBefore("~")
         val issuerSignedJws =
@@ -247,34 +246,121 @@ class VerifiablePresentationFactory(
     }
 
     private fun StoreEntry.SdJwt.loadDisclosures(
+        disclosedAttributes: DCQLCredentialQueryMatchingResult
+    ): Set<String> = when (disclosedAttributes) {
+        AllClaimsMatchingResult -> disclosures.keys
+        is ClaimsQueryResults -> loadDisclosures(disclosedAttributes.toRequestedSdJwtClaims(this))
+    }
+
+    private fun StoreEntry.SdJwt.loadDisclosures(
         requestedClaims: Collection<NormalizedJsonPath>
     ): Set<String> {
-        val nameSegments = requestedClaims.flatMap { it.segments }
-            .filterIsInstance<NormalizedJsonPathSegment.NameSegment>()
+        val digest = sdJwt.selectiveDisclosureAlgorithm?.toDigest() ?: Digest.SHA256
+        val disclosuresByDigest = disclosures.entries.mapNotNull { disclosure ->
+            disclosure.asHashedDisclosure(digest)?.let { it to disclosure }
+        }.toMap()
+        val issuerSignedJwsSerialized = vcSerialized.substringBefore("~")
+        val payload = JwsSigned.deserialize(JsonElement.serializer(), issuerSignedJwsSerialized, vckJsonSerializer)
+            .getOrElse { throw PresentationException(it) }
+            .payload as? JsonObject
+            ?: throw PresentationException("SD-JWT payload is not a JSON object")
 
-        val disclosuresByName = nameSegments.mapNotNull { claim ->
-            disclosures.entries.firstOrNull { it.value?.claimName == claim.memberName }
-        }.toSet()
-
-        // Inner disclosures when an object has been requested by name (above), but contains more _sd entries
-        val innerDisclosures = disclosures.entries.filter { claim ->
-            val digest = sdJwt.selectiveDisclosureAlgorithm?.toDigest() ?: Digest.SHA256
-            claim.asHashedDisclosure(digest)?.let { hashedDisclosure ->
-                disclosuresByName.any { it.containsHashedDisclosure(hashedDisclosure) }
-            } == true
-        }.toSet()
-
-        return (disclosuresByName.map { it.key } + innerDisclosures.map { it.key }).toSet()
+        return requestedClaims.flatMapTo(mutableSetOf()) { claim ->
+            payload.loadDisclosuresForPath(claim.segments, disclosuresByDigest)
+        }
     }
+
+    private fun JsonElement.loadDisclosuresForPath(
+        segments: List<NormalizedJsonPathSegment>,
+        disclosuresByDigest: Map<String, Map.Entry<String, SelectiveDisclosureItem?>>,
+    ): Set<String> = when {
+        segments.isEmpty() -> collectNestedDisclosures(disclosuresByDigest)
+        this is JsonObject -> loadObjectDisclosuresForPath(segments, disclosuresByDigest)
+        this is JsonArray -> loadArrayDisclosuresForPath(segments, disclosuresByDigest)
+        else -> emptySet()
+    }
+
+    private fun JsonObject.loadObjectDisclosuresForPath(
+        segments: List<NormalizedJsonPathSegment>,
+        disclosuresByDigest: Map<String, Map.Entry<String, SelectiveDisclosureItem?>>,
+    ): Set<String> = when (val firstSegment = segments.first()) {
+        is NormalizedJsonPathSegment.NameSegment -> {
+            get(firstSegment.memberName)?.loadDisclosuresForPath(segments.drop(1), disclosuresByDigest)
+                ?: referencedDisclosures(disclosuresByDigest)
+                    .firstOrNull { it.value?.claimName == firstSegment.memberName }
+                    ?.let { disclosure ->
+                        setOf(disclosure.key) + disclosure.nested(segments, disclosuresByDigest)
+                    }
+                ?: emptySet()
+        }
+
+        is NormalizedJsonPathSegment.IndexSegment -> emptySet()
+    }
+
+    private fun JsonArray.loadArrayDisclosuresForPath(
+        segments: List<NormalizedJsonPathSegment>,
+        disclosuresByDigest: Map<String, Map.Entry<String, SelectiveDisclosureItem?>>,
+    ): Set<String> = when (val firstSegment = segments.first()) {
+        is NormalizedJsonPathSegment.IndexSegment ->
+            getOrNull(firstSegment.index.toInt())?.let { element ->
+                element.asArrayDisclosureDigest()
+                    ?.let(disclosuresByDigest::get)
+                    ?.let { disclosure ->
+                        setOf(disclosure.key) + disclosure.nested(segments, disclosuresByDigest)
+                    }
+                    ?: element.loadDisclosuresForPath(segments.drop(1), disclosuresByDigest)
+            } ?: emptySet()
+
+        is NormalizedJsonPathSegment.NameSegment -> emptySet()
+    }
+
+    private fun Map.Entry<String, SelectiveDisclosureItem?>.nested(
+        segments: List<NormalizedJsonPathSegment>,
+        disclosuresByDigest: Map<String, Map.Entry<String, SelectiveDisclosureItem?>>
+    ): Iterable<String> = value?.claimValue?.loadDisclosuresForPath(
+        segments.drop(1),
+        disclosuresByDigest,
+    ) ?: emptySet()
+
+    private fun JsonElement.collectNestedDisclosures(
+        disclosuresByDigest: Map<String, Map.Entry<String, SelectiveDisclosureItem?>>,
+    ): Set<String> = when (this) {
+        is JsonObject -> {
+            val referencedDisclosures = referencedDisclosures(disclosuresByDigest)
+            val nestedCleartextDisclosures = entries
+                .filterNot { it.key == NAME_SD }
+                .flatMapTo(mutableSetOf()) { it.value.collectNestedDisclosures(disclosuresByDigest) }
+            val nestedReferencedDisclosures = referencedDisclosures.flatMapTo(mutableSetOf()) { disclosure ->
+                setOf(disclosure.key) + (
+                        disclosure.value?.claimValue?.collectNestedDisclosures(disclosuresByDigest) ?: emptySet()
+                        )
+            }
+            nestedCleartextDisclosures + nestedReferencedDisclosures
+        }
+
+        is JsonArray -> flatMapTo(mutableSetOf()) { element ->
+            element.asArrayDisclosureDigest()
+                ?.let(disclosuresByDigest::get)
+                ?.let { disclosure ->
+                    setOf(disclosure.key) + (
+                            disclosure.value?.claimValue?.collectNestedDisclosures(disclosuresByDigest) ?: emptySet()
+                            )
+                }
+                ?: element.collectNestedDisclosures(disclosuresByDigest)
+        }
+
+        else -> emptySet()
+    }
+
+    private fun JsonObject.referencedDisclosures(
+        disclosuresByDigest: Map<String, Map.Entry<String, SelectiveDisclosureItem?>>,
+    ) = sdElements()?.strings()?.mapNotNull(disclosuresByDigest::get).orEmpty()
+
+    private fun JsonElement.asArrayDisclosureDigest(): String? =
+        (this as? JsonObject)?.get("...")?.let { it as? JsonPrimitive }?.content
 
     private fun Map.Entry<String, SelectiveDisclosureItem?>.asHashedDisclosure(digest: Digest): String? =
         value?.toDisclosure()?.hashDisclosure(digest)
-
-    private fun Map.Entry<String, SelectiveDisclosureItem?>.containsHashedDisclosure(hashDisclosure: String): Boolean =
-        asJsonObject()?.sdElements()?.strings()?.any { it == hashDisclosure } == true
-
-    private fun Map.Entry<String, SelectiveDisclosureItem?>.asJsonObject(): JsonObject? =
-        (value?.claimValue as? JsonObject?)
 
     private fun JsonObject.sdElements(): JsonArray? = (get(NAME_SD) as? JsonArray?)
 

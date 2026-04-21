@@ -187,7 +187,7 @@ val AgentComplexSdJwtTest by testSuite {
 
             it.verifier.verifyPresentationSdJwt(vp.sdJwt, it.challenge).getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
-                    disclosures.size shouldBe 3 // for address, region, country
+                    disclosures.size shouldBe 2 // for region, country
                     reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
                         ?.jsonPrimitive?.content shouldBe "Vienna"
                     reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
