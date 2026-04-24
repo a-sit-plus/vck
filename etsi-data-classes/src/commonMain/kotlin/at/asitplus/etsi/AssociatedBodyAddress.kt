@@ -11,7 +11,7 @@ data class AssociatedBodyAddress(
     val assosciatedBodyElectronicAddress: ElectronicAddress,
 ) {
     object SerialNames {
-        const val ASSOCIATED_BODY_POSTAL_ADDRESS = "AssosciatedBodyPostalAddress"
-        const val ASSOCIATED_BODY_ELECTRONIC_ADDRESS = "AssosciatedBodyElectronicAddress"
+        const val ASSOCIATED_BODY_POSTAL_ADDRESS = "AssociatedBodyPostalAddress"
+        const val ASSOCIATED_BODY_ELECTRONIC_ADDRESS = "AssociatedBodyElectronicAddress"
     }
 }

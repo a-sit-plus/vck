@@ -52,7 +52,7 @@ data class ServiceDigitalIdentity(
 
     object SerialNames {
         const val SUBJECT_KEY_IDENTIFIER = "SubjectKeyIdentifier"
-        const val X509_CERTIFICATE = "X509Certificate"
+        const val X509_CERTIFICATE = "X509Certificates"
         const val PUBLIC_KEY_VALUE = "PublicKeyValue"
         const val X509_SUBJECT_NAMES = "X509SubjectName"
         const val OTHER_ID = "OtherId"

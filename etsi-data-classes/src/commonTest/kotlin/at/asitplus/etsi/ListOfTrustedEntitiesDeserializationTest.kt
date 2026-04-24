@@ -3728,6 +3728,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       },
                       {
                         "lang": "en",
+                        "uriValue": "https://test.fr"
+                      },
+                      {
+                        "lang": "en",
                         "uriValue": "tel:+337848346754"
                       }
                     ]
@@ -3832,6 +3836,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       },
                       {
                         "lang": "en",
+                        "uriValue": "https://test.no"
+                      },
+                      {
+                        "lang": "en",
                         "uriValue": "tel:+4734869323"
                       }
                     ]
@@ -3897,6 +3905,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       {
                         "lang": "en",
                         "uriValue": "mailto:test@test.no"
+                      },
+                      {
+                        "lang": "en",
+                        "uriValue": "https://test.no"
                       },
                       {
                         "lang": "en",
@@ -3968,6 +3980,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       },
                       {
                         "lang": "en",
+                        "uriValue": "https://test.fi"
+                      },
+                      {
+                        "lang": "en",
                         "uriValue": "tel:+358348346754"
                       }
                     ]
@@ -4033,6 +4049,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       {
                         "lang": "en",
                         "uriValue": "mailto:test@test.no"
+                      },
+                      {
+                        "lang": "en",
+                        "uriValue": "https://test.no"
                       },
                       {
                         "lang": "en",
@@ -4104,6 +4124,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       },
                       {
                         "lang": "en",
+                        "uriValue": "https://test.no"
+                      },
+                      {
+                        "lang": "en",
                         "uriValue": "tel:+4734869323"
                       }
                     ]
@@ -4169,6 +4193,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       {
                         "lang": "en",
                         "uriValue": "mailto:test@domain.pt"
+                      },
+                      {
+                        "lang": "en",
+                        "uriValue": "https://domain.pt"
                       },
                       {
                         "lang": "en",
@@ -4240,6 +4268,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       },
                       {
                         "lang": "en",
+                        "uriValue": "https://domain.at"
+                      },
+                      {
+                        "lang": "en",
                         "uriValue": "tel:+4378901"
                       }
                     ]
@@ -4305,6 +4337,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       {
                         "lang": "en",
                         "uriValue": "mailto:test@domain.fr"
+                      },
+                      {
+                        "lang": "en",
+                        "uriValue": "https://domain.fr"
                       },
                       {
                         "lang": "en",
@@ -4376,6 +4412,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       },
                       {
                         "lang": "en",
+                        "uriValue": "https://domain2.at"
+                      },
+                      {
+                        "lang": "en",
                         "uriValue": "tel:+3320390"
                       }
                     ]
@@ -4441,6 +4481,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       {
                         "lang": "en",
                         "uriValue": "mailto:test@domain.de"
+                      },
+                      {
+                        "lang": "en",
+                        "uriValue": "https://domain.de"
                       },
                       {
                         "lang": "en",
@@ -4512,6 +4556,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       },
                       {
                         "lang": "en",
+                        "uriValue": "https://domain.hu"
+                      },
+                      {
+                        "lang": "en",
                         "uriValue": "tel:+3698709"
                       }
                     ]
@@ -4580,6 +4628,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       },
                       {
                         "lang": "en",
+                        "uriValue": "https://domain.ee"
+                      },
+                      {
+                        "lang": "en",
                         "uriValue": "tel:+37298709"
                       }
                     ]
@@ -4645,6 +4697,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       {
                         "lang": "en",
                         "uriValue": "mailto:test2@domain.el"
+                      },
+                      {
+                        "lang": "en",
+                        "uriValue": "https://domain.el"
                       },
                       {
                         "lang": "en",
@@ -4717,6 +4773,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       {
                         "lang": "en",
                         "uriValue": "mailto:test@test.se"
+                      },
+                      {
+                        "lang": "en",
+                        "uriValue": "https://domain.se"
                       },
                       {
                         "lang": "en",
@@ -4988,6 +5048,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       },
                       {
                         "lang": "en",
+                        "uriValue": "https://test.it"
+                      },
+                      {
+                        "lang": "en",
                         "uriValue": "tel:+39123456789"
                       }
                     ]
@@ -5058,6 +5122,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       {
                         "lang": "en",
                         "uriValue": "mailto:test@test.hu"
+                      },
+                      {
+                        "lang": "en",
+                        "uriValue": "https://test.hu"
                       },
                       {
                         "lang": "en",
@@ -5457,6 +5525,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       },
                       {
                         "lang": "en",
+                        "uriValue": "https://domain.no"
+                      },
+                      {
+                        "lang": "en",
                         "uriValue": "tel:+47987654"
                       }
                     ]
@@ -5522,6 +5594,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       {
                         "lang": "en",
                         "uriValue": "mailto:test@domain.fr"
+                      },
+                      {
+                        "lang": "en",
+                        "uriValue": "https://domain.fr"
                       },
                       {
                         "lang": "en",
@@ -5593,6 +5669,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       },
                       {
                         "lang": "en",
+                        "uriValue": "https://domain.hu"
+                      },
+                      {
+                        "lang": "en",
                         "uriValue": "tel:+36567890"
                       }
                     ]
@@ -5658,6 +5738,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       {
                         "lang": "en",
                         "uriValue": "mailto:test@domain.at"
+                      },
+                      {
+                        "lang": "en",
+                        "uriValue": "https://domain.at"
                       },
                       {
                         "lang": "en",
@@ -5991,6 +6075,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       },
                       {
                         "lang": "en",
+                        "uriValue": "https://test.fr"
+                      },
+                      {
+                        "lang": "en",
                         "uriValue": "tel:+337848346754"
                       }
                     ]
@@ -6095,6 +6183,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       },
                       {
                         "lang": "en",
+                        "uriValue": "https://test.no"
+                      },
+                      {
+                        "lang": "en",
                         "uriValue": "tel:+4734869323"
                       }
                     ]
@@ -6160,6 +6252,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       {
                         "lang": "en",
                         "uriValue": "mailto:test@test.no"
+                      },
+                      {
+                        "lang": "en",
+                        "uriValue": "https://test.no"
                       },
                       {
                         "lang": "en",
@@ -6231,6 +6327,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       },
                       {
                         "lang": "en",
+                        "uriValue": "https://test.fi"
+                      },
+                      {
+                        "lang": "en",
                         "uriValue": "tel:+358348346754"
                       }
                     ]
@@ -6296,6 +6396,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       {
                         "lang": "en",
                         "uriValue": "mailto:test@test.no"
+                      },
+                      {
+                        "lang": "en",
+                        "uriValue": "https://test.no"
                       },
                       {
                         "lang": "en",
@@ -6367,6 +6471,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       },
                       {
                         "lang": "en",
+                        "uriValue": "https://test.no"
+                      },
+                      {
+                        "lang": "en",
                         "uriValue": "tel:+4734869323"
                       }
                     ]
@@ -6432,6 +6540,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       {
                         "lang": "en",
                         "uriValue": "mailto:test@domain.pt"
+                      },
+                      {
+                        "lang": "en",
+                        "uriValue": "https://domain.pt"
                       },
                       {
                         "lang": "en",
@@ -6503,6 +6615,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       },
                       {
                         "lang": "en",
+                        "uriValue": "https://domain.at"
+                      },
+                      {
+                        "lang": "en",
                         "uriValue": "tel:+4398279"
                       }
                     ]
@@ -6568,6 +6684,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       {
                         "lang": "en",
                         "uriValue": "mailto:test@domain.fr"
+                      },
+                      {
+                        "lang": "en",
+                        "uriValue": "https://domain.fr"
                       },
                       {
                         "lang": "en",
@@ -6639,6 +6759,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       },
                       {
                         "lang": "en",
+                        "uriValue": "https://domain.at"
+                      },
+                      {
+                        "lang": "en",
                         "uriValue": "tel:+33848209"
                       }
                     ]
@@ -6704,6 +6828,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       {
                         "lang": "en",
                         "uriValue": "mailto:test2@domain.de"
+                      },
+                      {
+                        "lang": "en",
+                        "uriValue": "https://domain.de"
                       },
                       {
                         "lang": "en",
@@ -6775,6 +6903,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       },
                       {
                         "lang": "en",
+                        "uriValue": "https://domain.hu"
+                      },
+                      {
+                        "lang": "en",
                         "uriValue": "tel:+36019283"
                       }
                     ]
@@ -6843,6 +6975,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       },
                       {
                         "lang": "en",
+                        "uriValue": "https://domain.ee"
+                      },
+                      {
+                        "lang": "en",
                         "uriValue": "tel:+372932394"
                       }
                     ]
@@ -6908,6 +7044,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
                       {
                         "lang": "en",
                         "uriValue": "mailto:test2@domain.el"
+                      },
+                      {
+                        "lang": "en",
+                        "uriValue": "https://domain.el"
                       },
                       {
                         "lang": "en",
@@ -7045,10 +7185,10 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
 
     testSuite("decode 1") {
         withData(
-            "pidProviders" to pidProviders,
-            "walletProviders" to walletProviders,
-            "wrpacProviders" to wrpacProviders,
-            "mdlProviders" to mdlProviders,
+            "pidProviders" to pidProvidersWithAllMandatoryFields,
+            "walletProviders" to walletProvidersWithAllMandatoryFields,
+            "wrpacProviders" to wrpacProvidersWithAllMandatoryFields,
+            "mdlProviders" to mdlProvidersWithAllMandatoryFields,
         ) {
             Json.decodeFromString<ListOfTrustedEntities>(it)
         }

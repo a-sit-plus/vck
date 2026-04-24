@@ -5,6 +5,19 @@ import kotlinx.serialization.Serializable
 import kotlin.time.Instant
 
 @Serializable
+data class ServiceSupplyPoint(
+    @SerialName(SerialNames.URI_VALUE)
+    val uriValue: Rfc3986UniformResourceIdentifier,
+    @SerialName(SerialNames.SERVICE_TYPE)
+    val serviceType: String,
+) {
+    object SerialNames {
+        const val URI_VALUE = "uriValue"
+        const val SERVICE_TYPE = "ServiceType"
+    }
+}
+
+@Serializable
 data class ServiceInformation(
     @SerialName(SerialNames.SERVICE_NAME)
     val serviceName: List<MultilingualCharacterString>,
@@ -19,15 +32,15 @@ data class ServiceInformation(
     val statusStartingTime: Instant? = null,
     @SerialName(SerialNames.SCHEME_SERVICE_DEFINITION_URI)
     val schemeServiceDefinitionURI: List<MultilingualPointer>? = null,
-    @SerialName(SerialNames.SERVICE_SUPPLY_POINT)
-    val serviceSupplyPoint: List<Rfc3986UniformResourceIdentifier>? = null,
+    @SerialName(SerialNames.SERVICE_SUPPLY_POINTS)
+    val serviceSupplyPoints: List<ServiceSupplyPoint>? = null,
     @SerialName(SerialNames.SERVICE_DEFINITION_URI)
     val serviceDefinitionURI: List<MultilingualPointer>? = null,
     @SerialName(SerialNames.SERVICE_INFORMATION_EXTENSIONS)
     val serviceInformationExtensions: ServiceInformationExtensions? = null,
 ) {
     init {
-        serviceSupplyPoint?.let {
+        serviceSupplyPoints?.let {
             require(it.isNotEmpty()) {
                 "Expected a non-empty list of service supply points or null, but got an empty list instead."
             }
@@ -41,7 +54,7 @@ data class ServiceInformation(
         const val SERVICE_STATUS = "ServiceStatus"
         const val STATUS_STARTING_TIME = "StatusStartingTime"
         const val SCHEME_SERVICE_DEFINITION_URI = "SchemeServiceDefinitionURI"
-        const val SERVICE_SUPPLY_POINT = "ServiceSupplyPoint"
+        const val SERVICE_SUPPLY_POINTS = "ServiceSupplyPoints"
         const val SERVICE_DEFINITION_URI = "ServiceDefinitionURI"
         const val SERVICE_INFORMATION_EXTENSIONS = "ServiceInformationExtensions"
     }
