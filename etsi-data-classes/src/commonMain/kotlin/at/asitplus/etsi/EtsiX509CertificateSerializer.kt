@@ -8,7 +8,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.json.JsonDecoder
 
 class EtsiX509CertificateSerializer : KSerializer<X509Certificate> {
     private val delegate = EtsiX509CertificateSerializationSurrogate.serializer()
@@ -30,16 +29,9 @@ class EtsiX509CertificateSerializer : KSerializer<X509Certificate> {
         )
     }
 
-    override fun deserialize(decoder: Decoder): X509Certificate {
-        decoder as JsonDecoder
-        val element = decoder.decodeJsonElement()
-        println("element: $element")
-
-        return decoder.json.decodeFromJsonElement(
-            EtsiX509CertificateSerializationSurrogate.serializer(),
-            element
-        ).value
-    }
+    override fun deserialize(decoder: Decoder) = decoder.decodeSerializableValue(
+        EtsiX509CertificateSerializationSurrogate.serializer(),
+    ).value
 
     @Serializable
     private data class EtsiX509CertificateSerializationSurrogate(

@@ -8,9 +8,6 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
-/**
- * TODO: proper equality logic
- */
 @Serializable(with = Rfc6838MimeType.InlineSerializer::class)
 data class Rfc6838MimeType(
     val string: String,
