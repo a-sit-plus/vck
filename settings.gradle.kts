@@ -24,6 +24,7 @@ rootProject.name = "vc-k"
 include(":dif-data-classes")
 include(":openid-data-classes")
 include(":csc-data-classes")
+include(":etsi-data-classes")
 include(":vck")
 include(":vck-openid")
 include(":vck-openid-ktor")
