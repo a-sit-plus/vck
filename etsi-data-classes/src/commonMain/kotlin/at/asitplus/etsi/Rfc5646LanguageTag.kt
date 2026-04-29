@@ -34,7 +34,7 @@ data class Rfc5646LanguageTag(
         return string.equals(other.string, ignoreCase = true)
     }
 
-    override fun hashCode() = string.lowercase().hashCode()
+    override fun hashCode() = string.uppercase().lowercase().hashCode()
 
     class InlineSerializer : KSerializer<Rfc5646LanguageTag> {
         override val descriptor: SerialDescriptor
