@@ -64,7 +64,9 @@ class DummyValueProvider {
         status = keyStatus,
         algo = setOf(oid),
         len = digest.outputLength.bits,
-        curve = if (isEc) (algorithm.toJwsAlgorithm().getOrThrow() as JwsAlgorithm.Signature.EC).ecCurve.oid else null
+        curve = if (this is X509SignatureAlgorithm.ECDSA)
+            (algorithm.toJwsAlgorithm().getOrThrow() as JwsAlgorithm.Signature.EC).ecCurve.oid
+        else null
     )
 
     fun buildDocumentDigests(): List<OAuthDocumentDigest> = (1..Random.nextInt(10)).map {
