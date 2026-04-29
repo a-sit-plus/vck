@@ -32,6 +32,9 @@ class EtsiInstantSerializer : KSerializer<Instant> {
         require('.' !in it) {
             "Expected no second fractions, but got ${it}."
         }
+        require(it.endsWith("Z")) {
+            "Expected a datetime in UTC, but got $it"
+        }
     }.let{
         Instant.parse(it)
     }

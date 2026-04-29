@@ -101,7 +101,6 @@ data class DCQLQuery(
         }
     )
 
-    // TODO: use in verifier
     fun <DCQLCredentialQueryResponse: Any> checkSubmissionRequirements(
         dcqlQueryResponse: DCQLQueryResponse<DCQLCredentialQueryResponse>,
         parseIsoMdocCredential: (DCQLCredentialQueryResponse) -> DCQLIsoMdocCredential,

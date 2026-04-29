@@ -21,7 +21,10 @@ data class Rfc6838MimeType(
         return string.compareTo(other.string, ignoreCase = true) == 0
     }
 
-    override fun hashCode() = string.hashCode()
+    /**
+     * If ignoreCase is true, the result of Char.uppercaseChar().lowercaseChar() on each character is compared.
+     */
+    override fun hashCode() = string.uppercase().lowercase().hashCode()
 
     class InlineSerializer : KSerializer<Rfc6838MimeType> {
         override val descriptor: SerialDescriptor
