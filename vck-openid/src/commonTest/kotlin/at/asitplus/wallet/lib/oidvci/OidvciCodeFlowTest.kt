@@ -28,7 +28,7 @@ import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
-import at.asitplus.wallet.eupid.EuPidScheme
+import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtScheme
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
@@ -492,19 +492,20 @@ val OidvciCodeFlowTest by testSuite {
 
         "request credential with unknown configuration_id" { it ->
             // that credential format (from which credential_configuration_id will be derived) is not known to our issuer
+            val scheme = EuPidSdJwtScheme
             val credentialFormat = with(
                 CredentialIssuer(
                     authorizationService = SimpleAuthorizationService(
-                        strategy = CredentialAuthorizationServiceStrategy(setOf(EuPidScheme)),
+                        strategy = CredentialAuthorizationServiceStrategy(setOf(scheme)),
                     ),
                     issuer = IssuerAgent(
                         identifier = "https://secondissuer.example.com".toUri(),
                         randomSource = RandomSource.Default
                     ),
-                    credentialSchemes = setOf(EuPidScheme),
+                    credentialSchemes = setOf(scheme),
                 )
             ) {
-                it.client.selectSupportedCredentialFormat(RequestOptions(EuPidScheme, SD_JWT), metadata)
+                it.client.selectSupportedCredentialFormat(RequestOptions(scheme, SD_JWT), metadata)
             }
 
             val scope = credentialFormat?.scope.shouldNotBeNull()

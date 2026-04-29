@@ -18,14 +18,13 @@ import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.eupid.EuPidCredential
 import at.asitplus.wallet.eupid.EuPidScheme
+import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtScheme
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.LocalDateOrInstant
 import at.asitplus.wallet.lib.data.toJsonElement
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
@@ -133,53 +132,7 @@ object DummyCredentialDataProvider {
             val nationality = "FR"
             val issuanceDate = LocalDateOrInstant.LocalDate(LocalDate.parse("2023-01-01"))
             val expirationDate = LocalDateOrInstant.LocalDate(LocalDate.parse("2027-01-01"))
-            val claims = when (representation) {
-
-                SD_JWT -> with(EuPidScheme.SdJwtAttributes) {
-                    listOfNotNull(
-                        ClaimToBeIssued(FAMILY_NAME, familyName),
-                        ClaimToBeIssued(FAMILY_NAME_BIRTH, familyName),
-                        ClaimToBeIssued(GIVEN_NAME, givenName),
-                        ClaimToBeIssued(GIVEN_NAME_BIRTH, givenName),
-                        ClaimToBeIssued(BIRTH_DATE, birthDate),
-                        ClaimToBeIssued(AGE_EQUAL_OR_OVER_18, true),
-                        ClaimToBeIssued(NATIONALITIES, listOf(nationality)),
-                        ClaimToBeIssued(ISSUANCE_DATE, issuanceDate),
-                        ClaimToBeIssued(EXPIRY_DATE, expirationDate),
-                        ClaimToBeIssued(ISSUING_COUNTRY, issuingCountry),
-                        ClaimToBeIssued(ISSUING_AUTHORITY, issuingCountry),
-                    )
-                }
-
-                ISO_MDOC -> with(EuPidScheme.Attributes) {
-                    listOfNotNull(
-                        ClaimToBeIssued(FAMILY_NAME, familyName),
-                        ClaimToBeIssued(FAMILY_NAME_BIRTH, familyName),
-                        ClaimToBeIssued(GIVEN_NAME, givenName),
-                        ClaimToBeIssued(GIVEN_NAME_BIRTH, givenName),
-                        ClaimToBeIssued(BIRTH_DATE, birthDate),
-                        ClaimToBeIssued(AGE_OVER_18, true),
-                        ClaimToBeIssued(NATIONALITY, nationality),
-                        ClaimToBeIssued(ISSUANCE_DATE, issuanceDate),
-                        ClaimToBeIssued(EXPIRY_DATE, expirationDate),
-                        ClaimToBeIssued(ISSUING_COUNTRY, issuingCountry),
-                        ClaimToBeIssued(ISSUING_AUTHORITY, issuingCountry),
-                    )
-                }
-
-                else -> null
-            }
             when (representation) {
-                SD_JWT ->
-                    CredentialToBeIssued.VcSd(
-                        claims = claims!!,
-                        expiration = expiration,
-                        scheme = credentialScheme,
-                        subjectPublicKey = subjectPublicKey,
-                        userInfo = DummyUserProvider.user,
-                        sdAlgorithm = supportedSdAlgorithms.random()
-                    )
-
                 PLAIN_JWT -> CredentialToBeIssued.VcJwt(
                     subject = Json.encodeToJsonElement(
                         EuPidCredential.serializer(), EuPidCredential(
@@ -187,7 +140,6 @@ object DummyCredentialDataProvider {
                             familyName = familyName,
                             givenName = givenName,
                             birthDate = birthDate,
-                            ageOver18 = true,
                             issuanceDate = issuanceDate,
                             expiryDate = expirationDate,
                             issuingCountry = issuingCountry,
@@ -201,7 +153,20 @@ object DummyCredentialDataProvider {
                 )
 
                 ISO_MDOC -> CredentialToBeIssued.Iso(
-                    issuerSignedItems = claims!!.mapIndexed { index, claim ->
+                    issuerSignedItems = with(EuPidScheme.Attributes) {
+                        listOfNotNull(
+                            ClaimToBeIssued(FAMILY_NAME, familyName),
+                            ClaimToBeIssued(FAMILY_NAME_BIRTH, familyName),
+                            ClaimToBeIssued(GIVEN_NAME, givenName),
+                            ClaimToBeIssued(GIVEN_NAME_BIRTH, givenName),
+                            ClaimToBeIssued(BIRTH_DATE, birthDate),
+                            ClaimToBeIssued(NATIONALITY, nationality),
+                            ClaimToBeIssued(ISSUANCE_DATE, issuanceDate),
+                            ClaimToBeIssued(EXPIRY_DATE, expirationDate),
+                            ClaimToBeIssued(ISSUING_COUNTRY, issuingCountry),
+                            ClaimToBeIssued(ISSUING_AUTHORITY, issuingCountry),
+                        )
+                    }.mapIndexed { index, claim ->
                         issuerSignedItem(claim.name, claim.value, index.toUInt())
                     },
                     expiration = expiration,
@@ -209,6 +174,42 @@ object DummyCredentialDataProvider {
                     subjectPublicKey = subjectPublicKey,
                     userInfo = DummyUserProvider.user,
                 )
+
+                else -> throw NotImplementedError()
+            }
+        } else if (credentialScheme == EuPidSdJwtScheme) {
+            val subjectId = subjectPublicKey.didEncoded
+            val familyName = "Musterfrau"
+            val givenName = "Maria"
+            val birthDate = LocalDate.parse("1970-01-01")
+            val issuingCountry = "AT"
+            val nationality = "FR"
+            val issuanceDate = LocalDateOrInstant.LocalDate(LocalDate.parse("2023-01-01"))
+            val expirationDate = LocalDateOrInstant.LocalDate(LocalDate.parse("2027-01-01"))
+            when (representation) {
+                SD_JWT -> CredentialToBeIssued.VcSd(
+                    claims = with(EuPidSdJwtScheme.SdJwtAttributes) {
+                        listOfNotNull(
+                            ClaimToBeIssued(FAMILY_NAME, familyName),
+                            ClaimToBeIssued(FAMILY_NAME_BIRTH, familyName),
+                            ClaimToBeIssued(GIVEN_NAME, givenName),
+                            ClaimToBeIssued(GIVEN_NAME_BIRTH, givenName),
+                            ClaimToBeIssued(BIRTH_DATE, birthDate),
+                            ClaimToBeIssued(NATIONALITIES, listOf(nationality)),
+                            ClaimToBeIssued(ISSUANCE_DATE, issuanceDate),
+                            ClaimToBeIssued(EXPIRY_DATE, expirationDate),
+                            ClaimToBeIssued(ISSUING_COUNTRY, issuingCountry),
+                            ClaimToBeIssued(ISSUING_AUTHORITY, issuingCountry),
+                        )
+                    },
+                    expiration = expiration,
+                    scheme = credentialScheme,
+                    subjectPublicKey = subjectPublicKey,
+                    userInfo = DummyUserProvider.user,
+                    sdAlgorithm = supportedSdAlgorithms.random()
+                )
+
+                else -> throw NotImplementedError()
             }
         } else {
             throw NotImplementedError()
@@ -218,7 +219,7 @@ object DummyCredentialDataProvider {
     private fun issuerSignedItem(name: String, value: Any, digestId: UInt) =
         IssuerSignedItem(
             digestId = digestId,
-            random = Random.Default.nextBytes(16),
+            random = Random.nextBytes(16),
             elementIdentifier = name,
             elementValue = value
         )

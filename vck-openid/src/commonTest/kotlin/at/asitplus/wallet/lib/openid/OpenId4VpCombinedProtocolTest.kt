@@ -22,7 +22,8 @@ import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
-import at.asitplus.wallet.eupid.EuPidScheme
+import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtScheme
+import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtScheme.SdJwtAttributes
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -541,7 +542,7 @@ val OpenId4VpCombinedProtocolTest by testSuite {
         }
 
         "presentation of multiple SD-JWT credentials in one request/response" { it ->
-            it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, EuPidScheme)
+            it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, EuPidSdJwtScheme)
             it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
             val requestOptions = OpenId4VpRequestOptions(
@@ -553,11 +554,11 @@ val OpenId4VpCombinedProtocolTest by testSuite {
                             requestedAttributes = setOf(ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH),
                         ),
                         RequestOptionsCredential(
-                            credentialScheme = EuPidScheme,
+                            credentialScheme = EuPidSdJwtScheme,
                             representation = SD_JWT,
                             requestedAttributes = setOf(
-                                EuPidScheme.Attributes.FAMILY_NAME,
-                                EuPidScheme.Attributes.GIVEN_NAME
+                                SdJwtAttributes.FAMILY_NAME,
+                                SdJwtAttributes.GIVEN_NAME
                             ),
                         )
                     )
@@ -579,9 +580,9 @@ val OpenId4VpCombinedProtocolTest by testSuite {
                 result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
                 result.reconstructedJsonObject.entries.shouldNotBeEmpty()
                 when (result.verifiableCredentialSdJwt.verifiableCredentialType) {
-                    EuPidScheme.sdJwtType -> {
-                        result.reconstructedJsonObject[EuPidScheme.Attributes.FAMILY_NAME].shouldNotBeNull()
-                        result.reconstructedJsonObject[EuPidScheme.Attributes.GIVEN_NAME].shouldNotBeNull()
+                    EuPidSdJwtScheme.sdJwtType -> {
+                        result.reconstructedJsonObject[SdJwtAttributes.FAMILY_NAME].shouldNotBeNull()
+                        result.reconstructedJsonObject[SdJwtAttributes.GIVEN_NAME].shouldNotBeNull()
                     }
 
                     ConstantIndex.AtomicAttribute2023.sdJwtType -> {

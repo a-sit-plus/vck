@@ -16,7 +16,7 @@ import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
-import at.asitplus.wallet.eupid.EuPidScheme
+import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtScheme
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -59,7 +59,7 @@ val OpenId4VpEuRefInteropTest by testSuite {
                 issuerAgent.issueCredential(
                     DummyCredentialDataProvider.getCredential(
                         holderKeyMaterial.publicKey,
-                        EuPidScheme,
+                        EuPidSdJwtScheme,
                         ConstantIndex.CredentialRepresentation.SD_JWT,
                     ).getOrThrow()
                 ).getOrThrow().toStoreCredentialInput()

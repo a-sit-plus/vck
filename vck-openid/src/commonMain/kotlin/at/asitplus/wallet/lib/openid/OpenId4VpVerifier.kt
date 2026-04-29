@@ -593,9 +593,9 @@ class OpenId4VpVerifier(
         responseParameters: ResponseParametersFrom,
     ): KmmResult<VpTokenValidationResult> = catching {
         val expectedNonce = authnRequest.nonce
-            ?: throw IllegalArgumentException("nonce")
+            ?: throw IllegalArgumentException("nonce not present in $authnRequest")
         val vpToken = responseParameters.parameters.vpToken
-            ?: throw IllegalArgumentException("vp_token")
+            ?: throw IllegalArgumentException("vp_token not present in ${responseParameters.parameters}")
         val clientIdRequired = responseParameters.clientIdRequired
 
         val originalResponseParameters = responseParameters.originalResponseParameters

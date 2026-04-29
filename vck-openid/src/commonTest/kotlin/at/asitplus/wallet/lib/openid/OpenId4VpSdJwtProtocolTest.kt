@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
-import at.asitplus.wallet.eupid.EuPidScheme
+import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtScheme
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
@@ -45,7 +45,7 @@ val OpenId4VpSdJwtProtocolTest by testSuite {
                     identifier = "https://issuer.example.com/".toUri(),
                     randomSource = RandomSource.Default
                 ).issueCredential(
-                    DummyCredentialDataProvider.getCredential(holderKeyMaterial.publicKey, EuPidScheme, SD_JWT)
+                    DummyCredentialDataProvider.getCredential(holderKeyMaterial.publicKey, EuPidSdJwtScheme, SD_JWT)
                         .getOrThrow()
                 ).getOrThrow().toStoreCredentialInput()
             )
@@ -98,16 +98,16 @@ val OpenId4VpSdJwtProtocolTest by testSuite {
 
         "Selective Disclosure with EU PID credential with mapped claim names" {
             val requestedClaims = setOf(
-                EuPidScheme.SdJwtAttributes.FAMILY_NAME,
-                EuPidScheme.SdJwtAttributes.GIVEN_NAME,
-                EuPidScheme.SdJwtAttributes.FAMILY_NAME_BIRTH, // "birth_family_name" instead of "family_name_birth"
-                EuPidScheme.SdJwtAttributes.GIVEN_NAME_BIRTH, // "birth_given_name" instead of "given_name_birth"
+                EuPidSdJwtScheme.SdJwtAttributes.FAMILY_NAME,
+                EuPidSdJwtScheme.SdJwtAttributes.GIVEN_NAME,
+                EuPidSdJwtScheme.SdJwtAttributes.FAMILY_NAME_BIRTH,
+                EuPidSdJwtScheme.SdJwtAttributes.GIVEN_NAME_BIRTH,
             )
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
                         credentials = setOf(
-                            RequestOptionsCredential(EuPidScheme, SD_JWT, requestedClaims)
+                            RequestOptionsCredential(EuPidSdJwtScheme, SD_JWT, requestedClaims)
                         )
                     ).toDCQLRequest(),
                 ),
@@ -122,7 +122,8 @@ val OpenId4VpSdJwtProtocolTest by testSuite {
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                 .credentialQueryResponseValidations.values
                 .shouldBeSingleton().first()
-                .shouldBeSingleton().first().getOrThrow().shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
+                .shouldBeSingleton().first().getOrThrow()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
                     verifiableCredentialSdJwt.shouldNotBeNull()
                     requestedClaims.forEach {
                         it.shouldBeIn(reconstructedJsonObject.keys)

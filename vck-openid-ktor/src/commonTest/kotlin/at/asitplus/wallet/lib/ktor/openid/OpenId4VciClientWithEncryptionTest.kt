@@ -10,6 +10,7 @@ import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.eupid.EuPidScheme
+import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtScheme
 import at.asitplus.wallet.lib.agent.CredentialRenewalInfo
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -239,8 +240,8 @@ val OpenId4VciClientWithEncryptionTest by testSuite {
 
     test("loadEuPidCredentialSdJwt") {
         val expectedFamilyName = uuid4().toString()
-        val expectedAttributeName = EuPidScheme.Attributes.FAMILY_NAME
-        with(setup(EuPidScheme, SD_JWT, mapOf(expectedAttributeName to expectedFamilyName))) {
+        val expectedAttributeName = EuPidSdJwtScheme.SdJwtAttributes.FAMILY_NAME
+        with(setup(EuPidSdJwtScheme, SD_JWT, mapOf(expectedAttributeName to expectedFamilyName))) {
             var refreshTokenStore: CredentialRenewalInfo? = null
 
             // Load credential identifier infos from Issuing service

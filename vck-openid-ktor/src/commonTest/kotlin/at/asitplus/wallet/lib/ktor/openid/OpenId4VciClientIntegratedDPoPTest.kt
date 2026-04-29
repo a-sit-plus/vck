@@ -8,6 +8,7 @@ import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.eupid.EuPidScheme
+import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtScheme
 import at.asitplus.wallet.lib.agent.CredentialRenewalInfo
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -65,13 +66,13 @@ val OpenId4VciClientIntegratedDPoPTest by testSuite {
     )
 
     withFixtureGenerator {
-        val scheme = EuPidScheme
+        val scheme = EuPidSdJwtScheme
         val representation = SD_JWT
-        val attributes = mapOf(EuPidScheme.Attributes.FAMILY_NAME to uuid4().toString())
+        val attributes = mapOf(EuPidSdJwtScheme.SdJwtAttributes.FAMILY_NAME to uuid4().toString())
         val credentialKeyMaterial = EphemeralKeyWithoutCert()
         val dpopKeyMaterial = EphemeralKeyWithoutCert()
         val clientAuthKeyMaterial = EphemeralKeyWithoutCert()
-        val credentialSchemes = setOf<at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme>(scheme)
+        val credentialSchemes = setOf(scheme)
         val authorizationEndpointPath = "/authorize"
         val tokenEndpointPath = "/token"
         val credentialEndpointPath = "/credential"

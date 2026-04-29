@@ -9,8 +9,9 @@ import at.asitplus.openid.TransactionData
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.eupid.EuPidScheme
-import at.asitplus.wallet.eupid.EuPidScheme.SdJwtAttributes.FAMILY_NAME
-import at.asitplus.wallet.eupid.EuPidScheme.SdJwtAttributes.GIVEN_NAME
+import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtScheme
+import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtScheme.SdJwtAttributes.FAMILY_NAME
+import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtScheme.SdJwtAttributes.GIVEN_NAME
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -64,7 +65,7 @@ internal fun buildRequestOptions(
         presentationRequest = CredentialPresentationRequestBuilder(
             credentials = setOf(
                 RequestOptionsCredential(
-                    credentialScheme = EuPidScheme,
+                    credentialScheme = EuPidSdJwtScheme,
                     representation = SD_JWT,
                     requestedAttributes = setOf(FAMILY_NAME, GIVEN_NAME),
                     id = credentialId

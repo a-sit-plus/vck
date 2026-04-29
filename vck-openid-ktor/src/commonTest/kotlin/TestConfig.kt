@@ -1,5 +1,4 @@
 import at.asitplus.testballoon.FreeSpec
-import at.asitplus.wallet.eupid.Initializer
 
 import de.infix.testBalloon.framework.core.TestSession
 import de.infix.testBalloon.framework.core.invocation
@@ -14,7 +13,8 @@ class TestConfig : TestSession(
     init {
         Napier.takeLogarithm()
         Napier.base(DebugAntilog())
-        Initializer.initWithVCK()
+        at.asitplus.wallet.eupid.Initializer.initWithVCK()
+        at.asitplus.wallet.eupidsdjwt.Initializer.initWithVCK()
         at.asitplus.wallet.mdl.Initializer.initWithVCK()
         FreeSpec.defaultTestNameMaxLength = 10 //work around Android test name length limit
         FreeSpec.defaultDisplayNameMaxLength = 32 //work around Android test name length limit

@@ -6,7 +6,10 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.eupid.EuPidScheme
+import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtScheme
+import at.asitplus.wallet.lib.agent.CredentialRenewalInfo
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.FixedTimePeriodProvider
@@ -58,8 +61,6 @@ import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.util.*
-import at.asitplus.testballoon.invoke
-import at.asitplus.wallet.lib.agent.CredentialRenewalInfo
 import kotlin.time.Duration.Companion.minutes
 
 /**
@@ -250,8 +251,8 @@ val OpenId4VciClientTest by testSuite {
 
     "loadEuPidCredentialSdJwt" {
         val expectedFamilyName = uuid4().toString()
-        val expectedAttributeName = EuPidScheme.Attributes.FAMILY_NAME
-        with(setup(EuPidScheme, SD_JWT, mapOf(expectedAttributeName to expectedFamilyName))) {
+        val expectedAttributeName = EuPidSdJwtScheme.SdJwtAttributes.FAMILY_NAME
+        with(setup(EuPidSdJwtScheme, SD_JWT, mapOf(expectedAttributeName to expectedFamilyName))) {
             var refreshTokenStore: CredentialRenewalInfo? = null
 
             // Load credential identifier infos from Issuing service

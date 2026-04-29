@@ -26,6 +26,7 @@ import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.eupid.EuPidScheme
+import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtScheme
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
@@ -247,10 +248,10 @@ val OpenId4VpWalletTest by testSuite {
     } - {
         test("presentEuPidCredentialSdJwtDirectPost") {
             it.setup(
-                scheme = EuPidScheme,
+                scheme = EuPidSdJwtScheme,
                 representation = SD_JWT,
                 attributes = mapOf(
-                    EuPidScheme.Attributes.FAMILY_NAME to randomString()
+                    EuPidSdJwtScheme.SdJwtAttributes.FAMILY_NAME to randomString()
                 ),
                 responseMode = ResponseMode.DirectPost,
                 clientId = uuid4().toString()

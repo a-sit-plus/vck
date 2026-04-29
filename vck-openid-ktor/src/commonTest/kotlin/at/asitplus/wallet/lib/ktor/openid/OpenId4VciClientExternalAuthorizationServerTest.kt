@@ -13,6 +13,7 @@ import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.eupid.EuPidScheme
+import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtScheme
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialRenewalInfo
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued.Iso
@@ -118,7 +119,7 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
                 }
             }
         }
-        val credentialSchemes = setOf(EuPidScheme)
+        val credentialSchemes = setOf(EuPidScheme, EuPidSdJwtScheme)
         val authorizationEndpointPath = "/authorize"
         val tokenEndpointPath = "/token"
         val credentialEndpointPath = "/credential"
@@ -332,8 +333,8 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
 
     test("loadEuPidCredentialSdJwt") {
         val expectedAttributeValue = uuid4().toString()
-        val expectedAttributeName = EuPidScheme.Attributes.FAMILY_NAME
-        with(setup(EuPidScheme, SD_JWT, mapOf(expectedAttributeName to expectedAttributeValue))) {
+        val expectedAttributeName = EuPidSdJwtScheme.SdJwtAttributes.FAMILY_NAME
+        with(setup(EuPidSdJwtScheme, SD_JWT, mapOf(expectedAttributeName to expectedAttributeValue))) {
             var refreshTokenStore: CredentialRenewalInfo? = null
             // Load credential identifier infos from Issuing service
             val credentialIdentifierInfos = client.loadCredentialMetadata(issuerPublicContext).getOrThrow()

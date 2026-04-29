@@ -10,7 +10,7 @@ import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
-import at.asitplus.wallet.eupid.EuPidScheme
+import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtScheme
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
@@ -68,7 +68,7 @@ val KeyBindingTests by testSuite {
                     identifier = "https://issuer.example.com/".toUri(),
                     randomSource = RandomSource.Default
                 ).issueCredential(
-                    DummyCredentialDataProvider.getCredential(holderKeyMaterial.publicKey, EuPidScheme, SD_JWT)
+                    DummyCredentialDataProvider.getCredential(holderKeyMaterial.publicKey, EuPidSdJwtScheme, SD_JWT)
                         .getOrThrow()
                 ).getOrThrow().toStoreCredentialInput()
             )
@@ -169,7 +169,7 @@ val KeyBindingTests by testSuite {
                                             "filter": {
                                                 "type": "string",
                                                 "enum": [
-                                                    "urn:eu.europa.ec.eudi:pid:1"
+                                                    "urn:eudi:pid:1"
                                                 ]
                                             }
                                         }
