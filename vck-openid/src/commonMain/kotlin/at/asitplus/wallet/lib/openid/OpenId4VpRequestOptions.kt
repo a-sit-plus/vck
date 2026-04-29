@@ -7,8 +7,9 @@ import at.asitplus.openid.OpenIdConstants.SCOPE_PROFILE
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.TransactionData
 import at.asitplus.wallet.lib.RequestOptions
-import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest.PresentationExchangeRequest
 import com.benasher44.uuid.uuid4
 
 enum class VerifierMetadataMode {
@@ -80,52 +81,22 @@ data class OpenId4VpRequestOptions(
      */
     val verifierMetadataMode: VerifierMetadataMode = VerifierMetadataMode.AUTO,
 ) : RequestOptions {
-    @Deprecated("Replace with primary constructor, building a presentation request using [CredentialPresentationRequestBuilder]")
-    constructor(
-        credentials: Set<RequestOptionsCredential>,
-        presentationMechanism: PresentationMechanismEnum = PresentationMechanismEnum.PresentationExchange,
-        responseMode: ResponseMode = ResponseMode.Fragment,
-        responseUrl: String? = null,
-        responseType: String = VP_TOKEN,
-        state: String = uuid4().toString(),
-        transactionData: List<TransactionData>? = null,
-        expectedOrigins: List<String>? = null,
-        populateClientId: Boolean = true,
-        verifierMetadataMode: VerifierMetadataMode = VerifierMetadataMode.AUTO,
-    ) : this(
-        presentationRequest = CredentialPresentationRequestBuilder(
-            credentials = credentials
-        ).let {
-            when(presentationMechanism) {
-                PresentationMechanismEnum.PresentationExchange -> it.toPresentationExchangeRequest()
-                PresentationMechanismEnum.DCQL -> it.toDCQLRequest()
-                PresentationMechanismEnum.DeviceRequest -> throw IllegalArgumentException("Invalid presentation mechanism for OpenId4VP: $presentationMechanism")
-            }
-        },
-        responseMode = responseMode,
-        responseUrl = responseUrl,
-        responseType = responseType,
-        state = state,
-        transactionData = transactionData,
-        expectedOrigins = expectedOrigins,
-        populateClientId = populateClientId,
-        verifierMetadataMode = verifierMetadataMode,
-    )
 
     init {
         if (!transactionData.isNullOrEmpty()) {
             val transactionIds = transactionData.map { it.credentialIds.toList() }.flatten().toSet()
-            val credentialIds = when(presentationRequest) {
-                is CredentialPresentationRequest.DCQLRequest -> presentationRequest.dcqlQuery.credentials.map {
-                    it.id.string
-                }
-                is CredentialPresentationRequest.PresentationExchangeRequest -> presentationRequest.presentationDefinition.inputDescriptors.map {
-                    it.id
-                }
+            val credentialIds = when (presentationRequest) {
+                is DCQLRequest -> presentationRequest.dcqlQuery
+                    .credentials.map { it.id.string }
+
+                is PresentationExchangeRequest -> presentationRequest.presentationDefinition
+                    .inputDescriptors.map { it.id }
 
                 null -> setOf()
             }.toSet()
-            require(transactionIds == credentialIds) { "OpenId4VP defines that the credential_ids that must be part of a transaction_data element have to be an ID from InputDescriptor" }
+            require(transactionIds == credentialIds) {
+                "OpenId4VP defines that the credential_ids that must be part of a transaction_data element have to be an ID from InputDescriptor"
+            }
         }
         if (isAnyDcApi) {
             require(isDcql) { "DC API only supports DCQL" }
@@ -141,7 +112,7 @@ data class OpenId4VpRequestOptions(
     }
 
     val isDcql: Boolean
-        get() = presentationRequest is CredentialPresentationRequest.DCQLRequest
+        get() = presentationRequest is DCQLRequest
 
     val isAnyDirectPost: Boolean
         get() = (responseMode == ResponseMode.DirectPost) ||

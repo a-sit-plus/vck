@@ -40,11 +40,6 @@ data class DCQLIsoMdocClaimsQuery(
     @Transient
     val claimName = (path.last() as NameSegment).name
 
-    @Deprecated("Renamed", ReplaceWith("executeClaimsQueryAgainstCredential(credentialStructure)"))
-    fun executeIsoMdocClaimsQueryAgainstCredential(
-        credentialStructure: DCQLCredentialClaimStructure.IsoMdocStructure,
-    ) = executeClaimsQueryAgainstCredential(credentialStructure)
-
     fun executeClaimsQueryAgainstCredential(
         credentialStructure: DCQLCredentialClaimStructure.IsoMdocStructure,
     ): KmmResult<DCQLClaimsQueryResult.IsoMdocResult> = catching {

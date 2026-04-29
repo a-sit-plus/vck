@@ -265,47 +265,6 @@ sealed interface DCQLCredentialQuery {
         )
     }
 
-    @Deprecated("Replace in favor of match(DCQLCredential).")
-    fun <Credential : Any> executeCredentialQueryAgainstCredential(
-        credential: Credential,
-        credentialFormatExtractor: (Credential) -> CredentialFormatEnum,
-        mdocCredentialDoctypeExtractor: (Credential) -> String,
-        sdJwtCredentialTypeExtractor: (Credential) -> String,
-        jwtVcCredentialTypeExtractor: (Credential) -> List<String>,
-        credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
-        satisfiesCryptographicHolderBinding: (Credential) -> Boolean,
-        authorityKeyIdentifiers: (Credential) -> Collection<DCQLAuthorityKeyIdentifier>,
-    ): KmmResult<DCQLCredentialQueryMatchingResult> = catching {
-        match(
-            when (val format = credentialFormatExtractor(credential)) {
-                CredentialFormatEnum.MSO_MDOC -> DCQLIsoMdocCredential(
-                    claimStructure = credentialClaimStructureExtractor(credential) as DCQLCredentialClaimStructure.IsoMdocStructure,
-                    documentType = mdocCredentialDoctypeExtractor(credential),
-                    satisfiesCryptographicHolderBinding = true,
-                    authorityKeyIdentifiers = authorityKeyIdentifiers(credential)
-                )
-
-                CredentialFormatEnum.DC_SD_JWT -> DCQLSdJwtCredential(
-                    claimStructure = credentialClaimStructureExtractor(credential) as DCQLCredentialClaimStructure.JsonBasedStructure,
-                    type = sdJwtCredentialTypeExtractor(credential),
-                    satisfiesCryptographicHolderBinding = true,
-                    authorityKeyIdentifiers = authorityKeyIdentifiers(credential)
-                )
-
-                CredentialFormatEnum.JWT_VC -> DCQLVcJwsCredential(
-                    claimStructure = credentialClaimStructureExtractor(credential) as DCQLCredentialClaimStructure.JsonBasedStructure,
-                    types = jwtVcCredentialTypeExtractor(credential),
-                    satisfiesCryptographicHolderBinding = true,
-                    authorityKeyIdentifiers = authorityKeyIdentifiers(credential)
-                )
-
-                CredentialFormatEnum.NONE,
-                CredentialFormatEnum.JWT_VC_JSON_LD,
-                CredentialFormatEnum.JSON_LD -> throw UnsupportedOperationException("Unsupported format $format")
-            }
-        ).getOrThrow()
-    }
-
     fun matchClaimsQueriesAgainstClaimStructure(
         credentialStructure: DCQLCredentialClaimStructure,
         satisfiesSelectiveDisclosure: Boolean,

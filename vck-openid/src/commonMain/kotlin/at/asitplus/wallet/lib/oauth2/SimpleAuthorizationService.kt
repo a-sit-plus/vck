@@ -206,23 +206,6 @@ class SimpleAuthorizationService(
         configurationIds = strategy.toCredentialConfigurationIds(schemes),
     )
 
-    /**
-     * Offer some credential identifiers from [strategy] to clients with auth-code flow.
-     *
-     * @deprecated Pass credential schemes with representations instead of raw configuration ids.
-     */
-    @Deprecated(
-        "Pass credential schemes with representations instead of raw configuration ids.",
-        ReplaceWith("offerWithAuthorizationCodeForSchemes")
-    )
-    suspend fun credentialOfferWithAuthorizationCode(
-        credentialIssuer: String,
-        configurationIds: Collection<String> = this.strategy.allCredentialIdentifier(),
-    ): CredentialOffer = buildOfferWithAuthorizationCode(
-        credentialIssuer = credentialIssuer,
-        configurationIds = configurationIds,
-    )
-
     private suspend fun buildOfferWithAuthorizationCode(
         credentialIssuer: String,
         configurationIds: Collection<String>,
@@ -260,25 +243,6 @@ class SimpleAuthorizationService(
         user = user,
         credentialIssuer = credentialIssuer,
         configurationIds = strategy.toCredentialConfigurationIds(schemes),
-    )
-
-    /**
-     * Offer all available schemes from [strategy] to clients.
-     *
-     * @deprecated Pass credential schemes with representations instead of raw configuration ids.
-     */
-    @Deprecated(
-        "Pass credential schemes with representations instead of raw configuration ids.",
-        ReplaceWith("offerWithPreAuthnForUserForSchemes")
-    )
-    suspend fun credentialOfferWithPreAuthnForUser(
-        user: OidcUserInfoExtended,
-        credentialIssuer: String,
-        configurationIds: Collection<String> = this.strategy.allCredentialIdentifier(),
-    ): CredentialOffer = buildOfferWithPreAuthnForUser(
-        user = user,
-        credentialIssuer = credentialIssuer,
-        configurationIds = configurationIds,
     )
 
     private suspend fun buildOfferWithPreAuthnForUser(

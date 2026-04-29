@@ -77,6 +77,7 @@ class WalletService(
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
     /** Load key attestation to create [CredentialRequestProofContainer], if required by the credential issuer. */
     @Deprecated("Removed, use new loadUnitAttestation function instead")
+    // TODO but the PoP for JWT proofs?
     private val loadKeyAttestation: (suspend (KeyAttestationInput) -> KmmResult<JwsSigned<KeyAttestationJwt>>)? = null,
     /** Handles credential request encryption and credential response decryption. */
     private val encryptionService: WalletEncryptionService = WalletEncryptionService(),

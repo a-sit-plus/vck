@@ -6,7 +6,6 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
-import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.CredentialRenewalInfo
@@ -24,7 +23,6 @@ import at.asitplus.wallet.lib.ktor.openid.TestUtils.respond
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondIncludingDpopNonce
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.toRequestInfo
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.verifySdJwtCredential
-import at.asitplus.wallet.lib.ktor.openid.toCredentialRenewalInfo
 import at.asitplus.wallet.lib.oauth2.ClientAuthenticationService
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
@@ -221,7 +219,6 @@ val OpenId4VciClientIntegratedDPoPTest by testSuite {
                         }
                     },
                     signDpop = SignJwt(dpopKeyMaterial, JwsHeaderCertOrJwk()),
-                    dpopAlgorithm = dpopKeyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
                     oAuth2Client = OAuth2Client(clientId = clientId),
                     randomSource = RandomSource.Default,
                 )

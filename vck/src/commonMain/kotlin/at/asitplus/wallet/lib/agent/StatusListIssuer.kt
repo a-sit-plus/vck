@@ -26,13 +26,6 @@ interface StatusListIssuer : StatusIssuer, StatusProvider {
      * Sets the status of one specific credential to [at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus.Invalid].
      * Returns true if this credential has been revoked.
      */
-    @Deprecated("Renamed", replaceWith = ReplaceWith("revokeCredentialByIndex"))
-    fun revokeCredential(timePeriod: Int, statusListIndex: ULong): Boolean
-
-    /**
-     * Sets the status of one specific credential to [at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus.Invalid].
-     * Returns true if this credential has been revoked.
-     */
     fun revokeCredentialByIndex(timePeriod: Int, statusListIndex: ULong): Boolean
 
     /**

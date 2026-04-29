@@ -33,14 +33,6 @@ class InMemoryIssuerCredentialStore(
     /** Tracks revoked identifiers for timePeriod to build [IdentifierList]; Sets to remove duplicates */
     private val identifierRevocationList = mutableMapOf<Int, MutableSet<String>>()
 
-    @Deprecated("Renamed", replaceWith = ReplaceWith("createStoredCredentialReference"))
-    override suspend fun createStatusListIndex(
-        credential: CredentialToBeIssued,
-        timePeriod: Int
-    ): KmmResult<IssuerCredentialStore.StoredCredentialReference> =
-        createStoredCredentialReference(credential, timePeriod)
-
-
     override suspend fun createStoredCredentialReference(
         credential: CredentialToBeIssued,
         timePeriod: Int,

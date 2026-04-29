@@ -24,12 +24,10 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
-import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.OAuth2Client.AuthorizationForToken
-import at.asitplus.wallet.lib.oidvci.BuildClientAttestationPoPJwt
 import at.asitplus.wallet.lib.oidvci.BuildDPoPHeader
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
@@ -50,7 +48,6 @@ import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.util.*
 import io.ktor.utils.io.*
-import kotlin.time.Duration.Companion.minutes
 
 /**
  * Implements the client side of OAuth2
@@ -71,22 +68,8 @@ class OAuth2KtorClient(
     cookiesStorage: CookiesStorage? = null,
     /** Additional configuration for building the HTTP client, e.g. callers may enable logging. */
     httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
-    /**
-     * Callback to load the client attestation JWT, which may be needed as authentication at the AS, where the
-     * `clientId` must match [OAuth2Client.clientId] in [oAuth2Client] and the key attested in `cnf` must match
-     * the key behind [signClientAttestationPop], see
-     * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-04.html)
-     */
-    @Deprecated("Removed, use new loadInstanceAttestation function instead")
-    private val loadClientAttestationJwt: (suspend () -> String)? = null,
-    /** Used for authenticating the client at the authorization server with client attestation. */
-    @Deprecated("Removed, use new loadInstanceAttestationPop function instead")
-    private val signClientAttestationPop: SignJwtFun<JsonWebToken>? =
-        SignJwt(EphemeralKeyWithoutCert(), JwsHeaderNone()),
     /** Used to calculate DPoP, i.e. the key the access token and refresh token gets bound to. */
     private val signDpop: SignJwtFun<JsonWebToken> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk()),
-    /** Used for calculating DPoP with [signDpop]. */
-    private val dpopAlgorithm: JwsAlgorithm = JwsAlgorithm.Signature.ES256,
     /**
      * Implements OAuth2 protocol, `redirectUrl` needs to be registered by the OS for this application, so redirection
      * back from browser works
@@ -287,7 +270,7 @@ class OAuth2KtorClient(
             setBody(FormDataContent(parameters {
                 tokenRequest.encodeToParameters().forEach { append(it.key, it.value) }
             }))
-            applyAuthnForToken(oauthMetadata, popAudience, tokenEndpointUrl, HttpMethod.Post, true)()
+            applyAuthnForToken(tokenEndpointUrl, HttpMethod.Post, true)()
         }.onFailure { response ->
             updateDpopNonceAndRetry(response, tokenEndpointUrl, retryCount) {
                 postToken(oauthMetadata, tokenRequest, popAudience, retryCount + 1)
@@ -391,7 +374,7 @@ class OAuth2KtorClient(
                 authRequest.encodeToParameters().forEach { append(it.key, it.value) }
                 append(OpenIdConstants.PARAMETER_PROMPT, OpenIdConstants.PARAMETER_PROMPT_LOGIN)
             }))
-            applyAuthnForToken(oauthMetadata, popAudience, parEndpointUrl, HttpMethod.Post, true)()
+            applyAuthnForToken(parEndpointUrl, HttpMethod.Post, true)()
         }.onFailure { response ->
             updateDpopNonceAndRetry(response, parEndpointUrl, retryCount) {
                 pushAuthorizationRequest(oauthMetadata, authRequest, state, popAudience, retryCount + 1)
@@ -423,8 +406,6 @@ class OAuth2KtorClient(
                 request.encodeToParameters().forEach { append(it.key, it.value) }
             }))
             applyAuthnForToken(
-                oauthMetadata = oauthMetadata,
-                popAudience = popAudience,
                 resourceUrl = introspectionUrl,
                 httpMethod = HttpMethod.Post,
                 useDpop = true,
@@ -487,38 +468,21 @@ class OAuth2KtorClient(
 
     /**
      * Sets the appropriate headers when accessing a token endpoint:
-     * - loads client attestation when [loadClientAttestationJwt] is set
+     * - loads client attestation when [loadInstanceAttestation] and [loadInstanceAttestationPop] is set
      * - sends a DPoP proof when [useDpop] is set
-     * Previously, this method evaluated [oauthMetadata], but authorization servers are not required
-     * to set the corresponding fields in the metadata, so we set the headers anyway.
      */
     suspend fun applyAuthnForToken(
-        oauthMetadata: OAuth2AuthorizationServerMetadata,
-        popAudience: String,
         resourceUrl: String,
         httpMethod: HttpMethod,
         useDpop: Boolean,
     ): HttpRequestBuilder.() -> Unit {
-        val (clientAttJwt, clientAttPop) = when (loadInstanceAttestation != null && loadInstanceAttestationPop != null) {
-            true -> {
-                loadInstanceAttestation.let {
-                    it().getOrNull()?.serialize()
-                } to loadInstanceAttestationPop.let { it().getOrNull()?.serialize() }
+        val (clientAttJwt, clientAttPop) = if (loadInstanceAttestation != null && loadInstanceAttestationPop != null) {
+            loadInstanceAttestation.let {
+                it().getOrNull()?.serialize()
+            } to loadInstanceAttestationPop.let {
+                it().getOrNull()?.serialize()
             }
-
-            else -> {
-                loadClientAttestationJwt?.invoke()?.let { jwt ->
-                    jwt to signClientAttestationPop?.let {
-                        BuildClientAttestationPoPJwt(
-                            signClientAttestationPop,
-                            clientId = oAuth2Client.clientId,
-                            audience = popAudience,
-                            lifetime = 10.minutes,
-                        ).serialize()
-                    }
-                } ?: (null to null)
-            }
-        }
+        } else (null to null)
 
         val dpopHeader = useDpop.takeIf { it }?.let {
             BuildDPoPHeader(

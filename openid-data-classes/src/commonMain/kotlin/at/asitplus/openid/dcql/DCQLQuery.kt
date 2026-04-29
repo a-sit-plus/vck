@@ -16,7 +16,6 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.data.NonEmptyList
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
-import at.asitplus.openid.CredentialFormatEnum
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -73,33 +72,6 @@ data class DCQLQuery(
             credentialQuery.match(credential)
         }
     })
-
-    @Deprecated("Replace in favor of findCredentialQueryMatches(DCQLCredential).")
-    fun <Credential : Any> execute(
-        availableCredentials: List<Credential>,
-        credentialFormatExtractor: (Credential) -> CredentialFormatEnum,
-        mdocCredentialDoctypeExtractor: (Credential) -> String,
-        sdJwtCredentialTypeExtractor: (Credential) -> String,
-        jwtVcCredentialTypeExtractor: (Credential) -> List<String>,
-        credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
-        satisfiesCryptographicHolderBinding: (Credential) -> Boolean,
-        authorityKeyIdentifiers: (Credential) -> Collection<DCQLAuthorityKeyIdentifier>,
-    ) = DCQLQueryMatchingResult(
-        credentialMatchingResults = credentials.associate { query ->
-            query.id to availableCredentials.map {
-                query.executeCredentialQueryAgainstCredential(
-                    credential = it,
-                    credentialFormatExtractor = credentialFormatExtractor,
-                    mdocCredentialDoctypeExtractor = mdocCredentialDoctypeExtractor,
-                    sdJwtCredentialTypeExtractor = sdJwtCredentialTypeExtractor,
-                    jwtVcCredentialTypeExtractor = jwtVcCredentialTypeExtractor,
-                    credentialClaimStructureExtractor = credentialClaimStructureExtractor,
-                    satisfiesCryptographicHolderBinding = satisfiesCryptographicHolderBinding,
-                    authorityKeyIdentifiers = authorityKeyIdentifiers,
-                )
-            }
-        }
-    )
 
     // TODO: use in verifier
     fun <DCQLCredentialQueryResponse: Any> checkSubmissionRequirements(

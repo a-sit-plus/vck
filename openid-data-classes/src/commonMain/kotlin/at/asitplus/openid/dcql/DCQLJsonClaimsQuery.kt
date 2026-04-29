@@ -23,10 +23,6 @@ data class DCQLJsonClaimsQuery(
     @SerialName(DCQLClaimsQuery.SerialNames.PATH)
     override val path: DCQLClaimsPathPointer
 ) : DCQLClaimsQuery {
-    @Deprecated("Renamed", ReplaceWith("executeClaimsQueryAgainstCredential(credentialStructure)"))
-    fun executeJsonClaimsQueryAgainstCredential(
-        credentialStructure: DCQLCredentialClaimStructure.JsonBasedStructure,
-    ) = executeClaimsQueryAgainstCredential(credentialStructure)
 
     fun executeClaimsQueryAgainstCredential(
         credentialStructure: DCQLCredentialClaimStructure.JsonBasedStructure,

@@ -5,7 +5,6 @@ import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
-import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -152,7 +151,6 @@ val OAuth2KtorClientTest by testSuite {
                     }
                 },
                 signDpop = SignJwt(dpopKeyMaterial, JwsHeaderCertOrJwk()),
-                dpopAlgorithm = dpopKeyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
                 oAuth2Client = OAuth2Client(clientId = clientId),
                 randomSource = RandomSource.Default,
             )

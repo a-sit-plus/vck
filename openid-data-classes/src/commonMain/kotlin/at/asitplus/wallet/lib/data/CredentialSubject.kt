@@ -12,6 +12,7 @@ import kotlinx.serialization.Serializable
     replaceWith = ReplaceWith("JsonElement", "kotlinx.serialization.json.JsonElement"),
     level = DeprecationLevel.WARNING
 )
+// TODO CK
 @Serializable
 abstract class CredentialSubject {
     /**

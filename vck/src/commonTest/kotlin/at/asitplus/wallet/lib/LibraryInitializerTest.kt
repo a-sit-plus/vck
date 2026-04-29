@@ -47,31 +47,6 @@ val LibraryInitializerTest by testSuite {
         AttributeIndex.resolveAttributeType(scheme.vcType!!) shouldBe scheme
     }
 
-    "deprecated registerExtensionLibrary overload still registers serializers modules" {
-        @Serializable
-        @SerialName("TestCredentialSubject")
-        data class TestCredentialSubject(
-            override val id: String,
-            val subjectName: String,
-        ) : CredentialSubject()
-
-        val scheme = TestCredentialScheme(
-            schemaUri = "urn:test:${uuid4()}",
-            vcType = "TestCredential-${uuid4()}",
-        )
-        val serializersModule = SerializersModule {
-            polymorphic(CredentialSubject::class) {
-                subclass(TestCredentialSubject::class)
-            }
-        }
-
-        @Suppress("DEPRECATION")
-        LibraryInitializer.registerExtensionLibrary(scheme, serializersModule)
-
-        AttributeIndex.resolveAttributeType(scheme.vcType!!) shouldBe scheme
-        JsonCredentialSerializer.serializersModules[scheme] shouldBe serializersModule
-    }
-
     "registerExtensionLibrary registers ISO encoders and serializers" {
         @Serializable
         data class MockIssuerSignedValue(val value: String)

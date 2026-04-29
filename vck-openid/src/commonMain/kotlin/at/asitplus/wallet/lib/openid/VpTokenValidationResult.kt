@@ -12,10 +12,6 @@ data class VpTokenValidationResultDCQL(
     val credentialQueryResponseValidations: Map<DCQLCredentialQueryIdentifier, List<KmmResult<VerifyPresentationResult>>>,
     val submissionRequirementsValidationResult: KmmResult<Unit>,
 ) : VpTokenValidationResult {
-    @Deprecated("Replaced in favour of more descriptive name", ReplaceWith("credentialQueryResponseValidations"))
-    @Suppress("unused")
-    val allValidationResults
-        get() = credentialQueryResponseValidations
 
     override val presentationResults: Collection<KmmResult<VerifyPresentationResult>>
         get() = credentialQueryResponseValidations.flatMap {

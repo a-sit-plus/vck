@@ -11,7 +11,6 @@ import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
-import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialRenewalInfo
@@ -262,7 +261,6 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
                         }
                     },
                     signDpop = SignJwt(issuerDpopKeyMaterial, JwsHeaderCertOrJwk()),
-                    dpopAlgorithm = issuerDpopKeyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
                     oAuth2Client = OAuth2Client(clientId = issuerPublicContext),
                     randomSource = RandomSource.Default,
                 ),
@@ -325,7 +323,6 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
                         }
                     },
                     signDpop = SignJwt(walletDpopKeyMaterial, JwsHeaderCertOrJwk()),
-                    dpopAlgorithm = walletDpopKeyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
                     oAuth2Client = OAuth2Client(clientId = walletClientId),
                     randomSource = RandomSource.Default,
                 )

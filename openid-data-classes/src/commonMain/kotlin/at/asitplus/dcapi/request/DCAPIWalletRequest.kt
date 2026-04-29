@@ -32,23 +32,6 @@ sealed interface DCAPIWalletRequest {
         @SerialName("callingOrigin")
         override val callingOrigin: String,
     ) : DCAPIWalletRequest {
-        @Deprecated(
-            "Renamed to credentialIds to support multiple selected credentials",
-            replaceWith = ReplaceWith(
-                "IsoMdoc(isoMdocRequest = isoMdocRequest, credentialIds = credentialId?.let { listOf(it) }, callingPackageName = callingPackageName, callingOrigin = callingOrigin)"
-            )
-        )
-        constructor(
-            isoMdocRequest: IsoMdocRequest,
-            credentialId: String? = null,
-            callingPackageName: String? = null,
-            callingOrigin: String,
-        ) : this(
-            isoMdocRequest = isoMdocRequest,
-            credentialIds = credentialId?.let(::listOf),
-            callingPackageName = callingPackageName,
-            callingOrigin = callingOrigin,
-        )
 
         override val protocol: ExchangeProtocolIdentifier
             get() = ExchangeProtocolIdentifier.ISO_MDOC_ANNEX_C
@@ -71,23 +54,6 @@ sealed interface DCAPIWalletRequest {
         @SerialName("callingOrigin")
         override val callingOrigin: String,
     ) : DCAPIWalletRequest, OpenId4Vp() {
-        @Deprecated(
-            "Renamed to credentialIds to support multiple selected credentials",
-            replaceWith = ReplaceWith(
-                "OpenId4VpSigned(request = request, credentialIds = listOf(credentialId), callingPackageName = callingPackageName, callingOrigin = callingOrigin)"
-            )
-        )
-        constructor(
-            request: RequestParameters,
-            credentialId: String,
-            callingPackageName: String,
-            callingOrigin: String,
-        ) : this(
-            request = request,
-            credentialIds = listOf(credentialId),
-            callingPackageName = callingPackageName,
-            callingOrigin = callingOrigin,
-        )
 
         override val protocol: ExchangeProtocolIdentifier
             get() = ExchangeProtocolIdentifier.OPENID4VP_V1_SIGNED
@@ -105,23 +71,6 @@ sealed interface DCAPIWalletRequest {
         @SerialName("callingOrigin")
         override val callingOrigin: String,
     ) : DCAPIWalletRequest, OpenId4Vp() {
-        @Deprecated(
-            "Renamed to credentialIds to support multiple selected credentials",
-            replaceWith = ReplaceWith(
-                "OpenId4VpUnsigned(request = request, credentialIds = listOf(credentialId), callingPackageName = callingPackageName, callingOrigin = callingOrigin)"
-            )
-        )
-        constructor(
-            request: RequestParameters,
-            credentialId: String,
-            callingPackageName: String,
-            callingOrigin: String,
-        ) : this(
-            request = request,
-            credentialIds = listOf(credentialId),
-            callingPackageName = callingPackageName,
-            callingOrigin = callingOrigin,
-        )
 
         override val protocol: ExchangeProtocolIdentifier
             get() = ExchangeProtocolIdentifier.OPENID4VP_V1_UNSIGNED

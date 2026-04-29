@@ -1,7 +1,7 @@
 # Changelog
 
 Release 6.0.0 (unreleased):
- - tbd
+ - Remove code deprecated in 5.12.0
 
 Release 5.12.0:
  - W3C JWT VC:

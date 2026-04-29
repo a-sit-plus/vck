@@ -8,7 +8,6 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
-import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.CredentialRenewalInfo
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
@@ -231,7 +230,6 @@ val OpenId4VciClientWithEncryptionTest by testSuite {
                         }
                     },
                     signDpop = SignJwt(dpopKeyMaterial, JwsHeaderCertOrJwk()),
-                    dpopAlgorithm = dpopKeyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
                     oAuth2Client = OAuth2Client(clientId = clientId),
                     randomSource = RandomSource.Default,
                 )

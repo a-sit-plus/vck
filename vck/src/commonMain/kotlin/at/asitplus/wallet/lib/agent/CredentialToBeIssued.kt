@@ -19,9 +19,7 @@ import at.asitplus.signum.indispensable.Digest
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
 import at.asitplus.wallet.lib.jws.JwsHeaderModifierFun
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.encodeToJsonElement
 import kotlin.time.Instant
 
 sealed class CredentialToBeIssued {
@@ -36,27 +34,7 @@ sealed class CredentialToBeIssued {
         override val scheme: ConstantIndex.CredentialScheme,
         override val subjectPublicKey: CryptoPublicKey,
         override val userInfo: OidcUserInfoExtended,
-    ) : CredentialToBeIssued() {
-        @Deprecated(
-            message = "Use constructor with JsonElement subject instead",
-            replaceWith = ReplaceWith("VcJwt(subject as JsonElement, expiration, scheme, subjectPublicKey, userInfo)"),
-            level = DeprecationLevel.ERROR
-        )
-        @Suppress("DEPRECATION")
-        constructor(
-            subject: at.asitplus.wallet.lib.data.CredentialSubject,
-            expiration: Instant,
-            scheme: ConstantIndex.CredentialScheme,
-            subjectPublicKey: CryptoPublicKey,
-            userInfo: OidcUserInfoExtended,
-        ) : this(
-            subject = Json.encodeToJsonElement(subject),
-            expiration = expiration,
-            scheme = scheme,
-            subjectPublicKey = subjectPublicKey,
-            userInfo = userInfo
-        )
-    }
+    ) : CredentialToBeIssued()
 
     data class VcSd(
         val claims: Collection<ClaimToBeIssued>,
