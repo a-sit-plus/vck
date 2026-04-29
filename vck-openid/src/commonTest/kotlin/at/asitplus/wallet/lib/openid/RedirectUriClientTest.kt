@@ -48,8 +48,7 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.http.Url
-import kotlinx.serialization.json.Json
+import io.ktor.http.*
 import kotlinx.serialization.json.JsonElement
 
 @Suppress("unused")
@@ -336,7 +335,7 @@ val RedirectUriClientTest by testSuite {
                 .map { it.vcJws }.forEach {
                     it.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
                         shouldNotThrowAny {
-                            Json.decodeFromJsonElement(AtomicAttribute2023.serializer(), credentialSubject)
+                            AtomicAttribute2023.fromJsonElement(credentialSubject)
                         }
                     }
                 }

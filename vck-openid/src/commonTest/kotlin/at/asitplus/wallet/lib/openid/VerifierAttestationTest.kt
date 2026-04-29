@@ -44,7 +44,6 @@ import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
@@ -110,7 +109,7 @@ val VerifierAttestationTest by testSuite {
                     vp.freshVerifiableCredentials.shouldNotBeEmpty().map { it.vcJws }.forEach {
                         it.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
                             shouldNotThrowAny {
-                                Json.decodeFromJsonElement(AtomicAttribute2023.serializer(), credentialSubject)
+                                AtomicAttribute2023.fromJsonElement(credentialSubject)
                             }
                         }
                     }

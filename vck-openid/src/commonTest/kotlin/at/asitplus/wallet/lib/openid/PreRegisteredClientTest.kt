@@ -53,7 +53,6 @@ import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 
 @Suppress("unused")
@@ -226,7 +225,8 @@ val PreRegisteredClientTest by testSuite {
             authnRequest.clientId shouldBe it.clientId
             val jar = authnRequest.request
                 .shouldNotBeNull()
-            val jwsObject = JwsSigned.deserialize(AuthenticationRequestParameters.serializer(), jar,
+            val jwsObject = JwsSigned.deserialize(
+                AuthenticationRequestParameters.serializer(), jar,
                 joseCompliantSerializer
             )
                 .getOrThrow()
@@ -361,7 +361,7 @@ val PreRegisteredClientTest by testSuite {
                 .map { it.vcJws }.forEach {
                     it.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
                         shouldNotThrowAny {
-                            Json.decodeFromJsonElement(AtomicAttribute2023.serializer(), credentialSubject)
+                            AtomicAttribute2023.fromJsonElement(credentialSubject)
                         }
                     }
                 }
@@ -386,7 +386,7 @@ val PreRegisteredClientTest by testSuite {
                 .map { it.vcJws }.forEach {
                     it.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
                         shouldNotThrowAny {
-                            Json.decodeFromJsonElement(AtomicAttribute2023.serializer(), credentialSubject)
+                            AtomicAttribute2023.fromJsonElement(credentialSubject)
                         }
                     }
                 }
@@ -422,7 +422,7 @@ val PreRegisteredClientTest by testSuite {
                 .map { it.vcJws }.forEach {
                     it.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
                         shouldNotThrowAny {
-                            Json.decodeFromJsonElement(AtomicAttribute2023.serializer(), credentialSubject)
+                            AtomicAttribute2023.fromJsonElement(credentialSubject)
                         }
                     }
                 }

@@ -54,7 +54,6 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
@@ -130,7 +129,7 @@ val OpenId4VpCombinedProtocolTest by testSuite {
                 .map { it.vcJws }.forEach {
                     it.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
                         shouldNotThrowAny {
-                            Json.decodeFromJsonElement(AtomicAttribute2023.serializer(), credentialSubject)
+                            AtomicAttribute2023.fromJsonElement(credentialSubject)
                         }
                     }
                 }

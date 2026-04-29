@@ -37,7 +37,6 @@ import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 
 val OidvciEncryptionAlgorithmsTest by testSuite {
@@ -122,7 +121,7 @@ val OidvciEncryptionAlgorithmsTest by testSuite {
                         signedVcJws.payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
                             .also { credentialSubject ->
                                 shouldNotThrowAny {
-                                    Json.decodeFromJsonElement(AtomicAttribute2023.serializer(), credentialSubject)
+                                    AtomicAttribute2023.fromJsonElement(credentialSubject)
                                 }
                             }
                     }
@@ -160,7 +159,7 @@ val OidvciEncryptionAlgorithmsTest by testSuite {
                         signedVcJws.payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
                             .also { credentialSubject ->
                                 shouldNotThrowAny {
-                                    Json.decodeFromJsonElement(AtomicAttribute2023.serializer(), credentialSubject)
+                                    AtomicAttribute2023.fromJsonElement(credentialSubject)
                                 }
                             }
                     }
