@@ -16,11 +16,13 @@ import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.OidcUserInfoExtended
+import at.asitplus.openid.KeyAttestationRequired
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
+import at.asitplus.signum.indispensable.josef.KeyStorageStatus
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.IssuerAgent
@@ -47,6 +49,10 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Clock.System
 
 val OidvciAttestationTest by testSuite {
@@ -101,13 +107,27 @@ val OidvciAttestationTest by testSuite {
                             type = OpenIdConstants.KEY_ATTESTATION_JWT_TYPE,
                             payload = KeyAttestationJwt(
                                 issuedAt = System.now(),
+                                expiration = System.now() + 1.days,
                                 attestedKeys = setOf(clientKeyMaterial.jsonWebKey),
                                 nonce = input.clientNonce,
+                                keyStorage = setOf("iso_18045_high"),
+                                userAuthentication = setOf("iso_18045_high"),
+                                certification = "https://example.org/certification/wscd",
+                                keyStorageStatus = KeyStorageStatus(
+                                    status = buildJsonObject {
+                                        putJsonObject("status_list") {
+                                            put("idx", 7)
+                                            put("uri", "https://example.org/status/key-storage")
+                                        }
+                                    },
+                                    expiration = System.now() + 31.days,
+                                ),
                             ),
                             serializer = KeyAttestationJwt.serializer(),
                         ).getOrThrow()
                     }
-                }
+                },
+                keyMaterial = clientKeyMaterial,
             )
 
         }
@@ -203,6 +223,32 @@ val OidvciAttestationTest by testSuite {
             }
         }
 
+        test("reject key attestation if jwt proof signing key is not attested at index zero") {
+            it.client = WalletService(
+                loadKeyAttestation = it.client::loadTestKeyAttestation,
+                keyMaterial = EphemeralKeyWithoutCert(),
+            )
+
+            shouldThrow<IllegalArgumentException> {
+                it.client.createCredentialRequestProofJwt(
+                    clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
+                    credentialIssuer = it.issuer.metadata.credentialIssuer,
+                    keyAttestationRequired = KeyAttestationRequired(),
+                )
+            }
+        }
+
+        test("attestation proof contains the serialized key attestation") {
+            val proof = it.client.createCredentialRequestProofAttestation(
+                clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
+                credentialIssuer = it.issuer.metadata.credentialIssuer,
+                keyAttestationRequired = KeyAttestationRequired(),
+            )
+
+            proof.attestation.shouldNotBeNull().shouldNotBeEmpty()
+            proof.attestationParsed.shouldNotBeNull().first().payload.keyStorageStatus.shouldNotBeNull()
+        }
+
         test("do not require key attestation for proof, so local error shouldn't matter") {
             it.issuer = CredentialIssuer(
                 authorizationService = it.authorizationService,
@@ -250,6 +296,35 @@ val OidvciAttestationTest by testSuite {
             }
         }
     }
+}
+
+private suspend fun WalletService.loadTestKeyAttestation(
+    input: WalletService.KeyAttestationInput,
+) = catching {
+    val walletProviderKeyMaterial = EphemeralKeyWithoutCert()
+    val clientKeyMaterial = EphemeralKeyWithoutCert()
+    SignJwt<KeyAttestationJwt>(walletProviderKeyMaterial, JwsHeaderCertOrJwk())(
+        type = OpenIdConstants.KEY_ATTESTATION_JWT_TYPE,
+        payload = KeyAttestationJwt(
+            issuedAt = System.now(),
+            expiration = System.now() + 1.days,
+            attestedKeys = setOf(clientKeyMaterial.jsonWebKey),
+            nonce = input.clientNonce,
+            keyStorage = setOf("iso_18045_high"),
+            userAuthentication = setOf("iso_18045_high"),
+            certification = "https://example.org/certification/wscd",
+            keyStorageStatus = KeyStorageStatus(
+                status = buildJsonObject {
+                    putJsonObject("status_list") {
+                        put("idx", 7)
+                        put("uri", "https://example.org/status/key-storage")
+                    }
+                },
+                expiration = System.now() + 31.days,
+            ),
+        ),
+        serializer = KeyAttestationJwt.serializer(),
+    ).getOrThrow()
 }
 
 private fun dummyUser(): OidcUserInfoExtended = OidcUserInfoExtended.deserialize("{\"sub\": \"foo\"}").getOrThrow()

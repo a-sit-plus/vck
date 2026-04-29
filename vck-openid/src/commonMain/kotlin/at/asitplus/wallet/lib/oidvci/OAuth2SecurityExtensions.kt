@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.iso.sha256
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.josef.ClientStatus
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
@@ -11,8 +12,14 @@ import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
 import kotlin.time.Clock
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 
 object BuildDPoPHeader {
@@ -50,31 +57,44 @@ object BuildClientAttestationJwt {
      * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-04.html)
      *
      * @param clientId OAuth 2.0 client ID of the wallet
-     * @param issuer a unique identifier for the entity that issued the JWT
+     * @param issuer deprecated and ignored. TS3 WUA 1.5 removes `iss`; Wallet Provider identity comes from `x5c`.
      * @param clientKey key to be attested, i.e. included in a [at.asitplus.signum.indispensable.josef.ConfirmationClaim]
-     * @param walletName human-readable name of the Wallet
-     * @param walletLink URL for further information about the Wallet Provider
+     * @param walletName identifier of the Wallet Solution.
+     * @param walletVersion version of the Wallet Solution.
+     * @param walletSolutionCertificationInformation certification information for the Wallet Solution.
+     * @param clientStatus status information for the Wallet Instance.
+     * @param walletLink URL for further information about the Wallet Solution.
      * @param lifetime validity period of the assertion (minus the [clockSkew])
      * @param clockSkew duration to subtract from [Clock.System.now] when setting the creation timestamp
      */
     suspend operator fun invoke(
         signJwt: SignJwtFun<JsonWebToken>,
         clientId: String,
-        issuer: String,
+        @Suppress("UNUSED_PARAMETER")
+        issuer: String? = null,
         clientKey: JsonWebKey,
-        walletName: String? = null,
+        walletName: String = clientId,
+        walletVersion: String = "unspecified",
+        walletSolutionCertificationInformation: String = "unspecified",
+        clientStatus: ClientStatus = ClientStatus(
+            status = defaultClientStatus(),
+            expiration = Clock.System.now().truncateToSeconds() + 31.days,
+        ),
         walletLink: String? = null,
         lifetime: Duration = 60.minutes,
         clockSkew: Duration = 3.minutes,
     ) = signJwt(
         JwsContentTypeConstants.CLIENT_ATTESTATION_JWT,
         JsonWebToken(
-            issuer = issuer,
             subject = clientId,
             issuedAt = Clock.System.now().truncateToSeconds() - clockSkew.absoluteValue,
-            expiration = Clock.System.now().truncateToSeconds() - clockSkew.absoluteValue + lifetime,
+            expiration = Clock.System.now().truncateToSeconds() - clockSkew.absoluteValue +
+                    lifetime.coerceAtMost(24.hours - 1.minutes),
             walletName = walletName,
             walletLink = walletLink,
+            walletVersion = walletVersion,
+            walletSolutionCertificationInformation = walletSolutionCertificationInformation,
+            clientStatus = clientStatus,
             confirmationClaim = ConfirmationClaim(
                 jsonWebKey = clientKey,
             )
@@ -83,6 +103,13 @@ object BuildClientAttestationJwt {
         },
         JsonWebToken.serializer(),
     ).getOrThrow()
+
+    private fun defaultClientStatus(): JsonObject = buildJsonObject {
+        putJsonObject("status_list") {
+            put("idx", 0)
+            put("uri", "https://example.org/status/wallet-instance")
+        }
+    }
 }
 
 object BuildClientAttestationPoPJwt {

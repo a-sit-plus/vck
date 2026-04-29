@@ -7,13 +7,13 @@ import at.asitplus.openid.ClientNonceResponse
 import at.asitplus.openid.CredentialRequestParameters
 import at.asitplus.openid.CredentialResponseParameters
 import at.asitplus.openid.IssuerMetadata
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.openid.JwtVcIssuerMetadata
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweEncrypted
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.KeyMaterial
@@ -74,7 +74,7 @@ class CredentialIssuer(
         requireKeyAttestation = requireKeyAttestation,
         verifyAttestationProof = {
             val tokenStatusValid = runCatching {
-                it.payload.status?.get(StatusListInfo.SerialNames.STATUS_LIST_INFO)?.let { statusList ->
+                it.payload.keyStorageStatus?.status?.get(StatusListInfo.SerialNames.STATUS_LIST_INFO)?.let { statusList ->
                     Json.decodeFromJsonElement<StatusListInfo>(statusList).let { statusListInfo ->
                         if (statusListTokenResolver?.toTokenStatusResolver()
                                 ?.invoke(statusListInfo as RevocationListInfo)
@@ -317,4 +317,3 @@ class CredentialIssuer(
         }
 
 }
-

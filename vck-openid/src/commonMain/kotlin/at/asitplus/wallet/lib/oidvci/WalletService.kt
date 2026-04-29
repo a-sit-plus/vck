@@ -20,6 +20,7 @@ import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JweEncrypted
@@ -353,7 +354,9 @@ class WalletService(
         )
     } ?: credentialFormat.supportedProofTypes?.get(ProofTypes.ATTESTATION)?.let { type ->
         createCredentialRequestProofAttestation(
-            clientNonce = clientNonce
+            clientNonce = clientNonce,
+            credentialIssuer = metadata.credentialIssuer,
+            keyAttestationRequired = type.keyAttestationRequired
         )
     } ?: CredentialRequestProofContainer()
 
@@ -372,6 +375,7 @@ class WalletService(
                 supportedAlgorithms = listOf() // TODO
             )
         )?.getOrNull()
+        keyAttestation?.requireKeyMaterialAtAttestedKeyIndex0()
 
         return CredentialRequestProofContainer(
             jwt = setOf(
@@ -399,7 +403,9 @@ class WalletService(
     }
 
     internal suspend fun createCredentialRequestProofAttestation(
-        clientNonce: String?
+        clientNonce: String?,
+        credentialIssuer: String,
+        keyAttestationRequired: KeyAttestationRequired?
     ): CredentialRequestProofContainer = CredentialRequestProofContainer(
         attestation = setOf(
             loadKeyAttestation?.invoke(
@@ -408,9 +414,20 @@ class WalletService(
                     supportedAlgorithms = listOf() // TODO
                 )
             )?.getOrElse { throw IllegalArgumentException("Key attestation required, none provided", it) }
-                ?.jws?.jwsHeader?.keyAttestation
+?.jws
                 ?: throw IllegalArgumentException("Key attestation required, none provided"))
     )
+
+    private fun JwsCompactTyped<KeyAttestationJwt>.requireKeyMaterialAtAttestedKeyIndex0() {
+        val attestedKey = payload.attestedKeys.firstOrNull()
+            ?: throw IllegalArgumentException("Key attestation required, none provided")
+        if (attestedKey.jwkThumbprintPlain != keyMaterial.jsonWebKey.jwkThumbprintPlain) {
+            throw IllegalArgumentException("Key attestation attested_keys[0] must match credential proof signing key")
+        }
+    }
+
+    private val JsonWebKey.jwkThumbprintPlain: String
+        get() = jwkThumbprint.removePrefix("urn:ietf:params:oauth:jwk-thumbprint:sha256:")
 
     @Throws(Exception::class)
     private fun String.toStoreCredentialInput(
