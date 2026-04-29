@@ -24,7 +24,7 @@ data class KeyAttestationRequired(
      * A Wallet Provider SHALL ensure that a Wallet Unit can always present a WUA with a remaining validity period of at least 31 days for their WSCD.
      * See: https://github.com/eu-digital-identity-wallet/eudi-doc-standards-and-technical-specifications/blob/main/docs/technical-specifications/ts3-wallet-unit-attestation.md
      */
-    @SerialName("preferred_ttl")
+    @SerialName("preferred_key_storage_status_period")
     @Serializable(with = DurationSecondsIntSerializer::class)
     val preferredTtl: Duration? = 31.days
 )

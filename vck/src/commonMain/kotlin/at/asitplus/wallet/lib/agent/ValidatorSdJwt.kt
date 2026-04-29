@@ -118,7 +118,10 @@ class ValidatorSdJwt(
             !validationResult.isIntegrityGood -> throw Throwable("Signature not verified")
 
             validationResult.payloadCredentialValidationSummary.getOrNull()?.isSuccess == false
-                -> throw IllegalArgumentException("cnf claim invalid")
+                -> throw IllegalArgumentException(
+                "cnf claim invalid",
+                validationResult.payloadCredentialValidationSummary.exceptionOrNull()
+            )
 
             else -> validationResult.payload
         }
