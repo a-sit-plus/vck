@@ -3,12 +3,17 @@ package at.asitplus.wallet.lib.oauth2
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnf
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnfFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidClient
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Clock
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
 
 
 /**
@@ -26,6 +31,10 @@ class ClientAuthenticationService(
     private val verifyJwsSignatureWithCnf: VerifyJwsSignatureWithCnfFun = VerifyJwsSignatureWithCnf(),
     /** Callback to verify the client attestation JWT against a set of trusted roots */
     private val verifyClientAttestationJwt: (suspend (JwsSigned<JsonWebToken>) -> Boolean) = { true },
+    /** Clock used to verify WIA and WIA PoP timestamps. */
+    private val clock: Clock = Clock.System,
+    /** Time leeway for verification of WIA and WIA PoP timestamps. */
+    private val timeLeeway: Duration = 5.minutes,
 ) {
 
     /**
@@ -51,13 +60,9 @@ class ClientAuthenticationService(
             ).getOrElse {
                 throw InvalidClient("could not parse instance attestation", it)
             }
+            instanceAttestation.validateWalletInstanceAttestation(clientId)
             verifyJwsObject(instanceAttestation).getOrElse {
                 throw InvalidClient("client attestation JWT not verified", it)
-            }
-            if (clientId != null) {
-                if (instanceAttestation.payload.subject != clientId) {
-                    throw InvalidClient("subject not equal to client_id")
-                }
             }
 
             if (!verifyClientAttestationJwt.invoke(instanceAttestation)) {
@@ -71,11 +76,72 @@ class ClientAuthenticationService(
             ).getOrElse {
                 throw InvalidClient("could not parse client attestation PoP", it)
             }
+            instanceAttestationPopJwt.validateWalletInstanceAttestationPop(instanceAttestation.payload.subject)
             val cnf = instanceAttestation.payload.confirmationClaim
                 ?: throw InvalidClient("client attestation has no cnf")
             if (!verifyJwsSignatureWithCnf(instanceAttestationPopJwt, cnf)) {
                 throw InvalidClient("client attestation PoP JWT not verified")
             }
+        }
+    }
+
+    private fun JwsSigned<JsonWebToken>.validateWalletInstanceAttestation(clientId: String?) {
+        if (header.type != JwsContentTypeConstants.CLIENT_ATTESTATION_JWT) {
+            throw InvalidClient("invalid client attestation typ: ${header.type}")
+        }
+        if (header.certificateChain.isNullOrEmpty()) {
+            throw InvalidClient("client attestation has no x5c")
+        }
+        if (payload.issuer != null) {
+            throw InvalidClient("client attestation must not contain iss")
+        }
+        if (payload.subject == null) {
+            throw InvalidClient("client attestation has no sub")
+        }
+        if (clientId != null && payload.subject != clientId) {
+            throw InvalidClient("subject not equal to client_id")
+        }
+        val issuedAt = payload.issuedAt ?: throw InvalidClient("client attestation has no iat")
+        val expiration = payload.expiration ?: throw InvalidClient("client attestation has no exp")
+        if (issuedAt > (clock.now() + timeLeeway)) {
+            throw InvalidClient("client attestation iat in future: $issuedAt")
+        }
+        if (expiration < (clock.now() - timeLeeway)) {
+            throw InvalidClient("client attestation expired: $expiration")
+        }
+        if (expiration - issuedAt >= 24.hours) {
+            throw InvalidClient("client attestation lifetime must be less than 24 hours")
+        }
+        if (payload.walletName.isNullOrBlank()) {
+            throw InvalidClient("client attestation has no wallet_name")
+        }
+        if (payload.walletVersion.isNullOrBlank()) {
+            throw InvalidClient("client attestation has no wallet_version")
+        }
+        if (payload.walletSolutionCertificationInformation.isNullOrBlank()) {
+            throw InvalidClient("client attestation has no wallet_solution_certification_information")
+        }
+        val clientStatus = payload.clientStatus ?: throw InvalidClient("client attestation has no client_status")
+        if (clientStatus.expiration < (clock.now() - timeLeeway)) {
+            throw InvalidClient("client_status expiration in past: ${clientStatus.expiration}")
+        }
+        if (payload.confirmationClaim == null) {
+            throw InvalidClient("client attestation has no cnf")
+        }
+    }
+
+    private fun JwsSigned<JsonWebToken>.validateWalletInstanceAttestationPop(clientId: String?) {
+        if (header.type != JwsContentTypeConstants.CLIENT_ATTESTATION_POP_JWT) {
+            throw InvalidClient("invalid client attestation PoP typ: ${header.type}")
+        }
+        if (payload.issuer == null || payload.issuer != clientId) {
+            throw InvalidClient("client attestation PoP iss not equal to client_id")
+        }
+        if (payload.issuedAt == null || payload.issuedAt!! > (clock.now() + timeLeeway)) {
+            throw InvalidClient("client attestation PoP iat in future: ${payload.issuedAt}")
+        }
+        if (payload.expiration == null || payload.expiration!! < (clock.now() - timeLeeway)) {
+            throw InvalidClient("client attestation PoP expired: ${payload.expiration}")
         }
     }
 

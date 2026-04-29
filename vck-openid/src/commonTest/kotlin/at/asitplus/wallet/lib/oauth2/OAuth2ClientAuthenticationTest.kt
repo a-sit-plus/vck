@@ -81,6 +81,11 @@ val OAuth2ClientAuthenticationTest by testSuite {
     }) - {
 
         test("pushed authorization request") {
+            it.clientAttestation.payload.issuer.shouldBeNull()
+            it.clientAttestation.payload.walletVersion.shouldNotBeNull()
+            it.clientAttestation.payload.walletSolutionCertificationInformation.shouldNotBeNull()
+            it.clientAttestation.payload.clientStatus.shouldNotBeNull()
+
             val state = uuid4().toString()
             val authnRequest = it.client.createAuthRequestJar(
                 state = state,
