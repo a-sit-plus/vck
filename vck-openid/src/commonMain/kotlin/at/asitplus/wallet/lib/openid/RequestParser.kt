@@ -11,10 +11,10 @@ import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
 import at.asitplus.wallet.lib.data.MediaTypes
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
@@ -87,7 +87,7 @@ class RequestParser(
     private fun String.parseFromJson(
         parent: RequestParametersFrom<out RequestParameters>?,
     ): RequestParametersFrom<*>? = catchingUnwrapped {
-        val params = vckJsonSerializer.decodeFromString(RequestParameters.serializer(), this)
+        val params = joseCompliantSerializer.decodeFromString(RequestParameters.serializer(), this)
         RequestParametersFrom.Json(this, params, (parent as? RequestParametersFrom.Uri)?.url)
     }.getOrNull()
 
@@ -96,11 +96,13 @@ class RequestParser(
             is DCAPIWalletRequest.OpenId4VpSigned -> {
                 val requestStr = (this.request as? JarRequestParameters)?.request
                     ?: throw InvalidRequest("Did not find jar request parameters: $this")
-                val jwsSigned = JwsSigned.deserialize(RequestParameters.serializer(), requestStr, vckJsonSerializer).getOrThrow()
+                val jwsSigned = JwsSigned.deserialize(RequestParameters.serializer(), requestStr,
+                    joseCompliantSerializer
+                ).getOrThrow()
                 RequestParametersFrom.DcApiSigned(this, jwsSigned.payload, jwsSigned)
             }
             is DCAPIWalletRequest.OpenId4VpUnsigned -> {
-                val jsonString = vckJsonSerializer.encodeToString(this.request)
+                val jsonString = joseCompliantSerializer.encodeToString(this.request)
                 RequestParametersFrom.DcApiUnsigned(this, this.request, jsonString)
             }
         }
@@ -132,7 +134,7 @@ class RequestParser(
     private suspend fun String.parseAsJwsRequest(
         parent: RequestParametersFrom<out RequestParameters>?,
     ): RequestParametersFrom<*>? =
-        JwsSigned.deserialize(RequestParameters.serializer(), this, vckJsonSerializer)
+        JwsSigned.deserialize(RequestParameters.serializer(), this, joseCompliantSerializer)
             .getOrNull()?.let { jws ->
                 RequestParametersFrom.JwsSigned(
                     jwsSigned = jws,

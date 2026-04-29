@@ -7,8 +7,8 @@ import at.asitplus.csc.collection_entries.AuthParameters
 import at.asitplus.csc.collection_entries.CertificateParameters
 import at.asitplus.csc.collection_entries.KeyParameters
 import at.asitplus.csc.enums.CertificateOptions
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.invoke
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -121,13 +121,13 @@ val CredentialInfoParsingTests by testSuite {
 
 
     "credential/list request can be parsed" {
-        val decoded = vckJsonSerializer.decodeFromString<CredentialListRequest>(credentialListRequestJson)
+        val decoded = joseCompliantSerializer.decodeFromString<CredentialListRequest>(credentialListRequestJson)
         decoded.credentialInfo shouldBe true
         decoded.certificates shouldBe CertificateOptions.CHAIN
 
     }
     "credential/list response can be parsed" {
-        val decoded = vckJsonSerializer.decodeFromString<CredentialListResponse>(credentialListResponseJson)
+        val decoded = joseCompliantSerializer.decodeFromString<CredentialListResponse>(credentialListResponseJson)
 
         decoded.credentialIDs.size shouldBe 1
         decoded.credentialInfos shouldNotBe null
@@ -144,12 +144,12 @@ val CredentialInfoParsingTests by testSuite {
         val request = CredentialInfoRequest(
             credentialID = uuid4().toString(),
         )
-        val encoded = vckJsonSerializer.encodeToString(CredentialInfoRequest.serializer(), request)
+        val encoded = joseCompliantSerializer.encodeToString(CredentialInfoRequest.serializer(), request)
         encoded.shouldNotContain("certificates")
         encoded.shouldNotContain("certInfo")
         encoded.shouldNotContain("authInfo")
 
-        val decoded = vckJsonSerializer.decodeFromString<CredentialInfoRequest>(encoded)
+        val decoded = joseCompliantSerializer.decodeFromString<CredentialInfoRequest>(encoded)
         decoded.certificates shouldBe CertificateOptions.SINGLE
         decoded.authInfo shouldBe false
         decoded.certInfo shouldBe false
@@ -157,12 +157,12 @@ val CredentialInfoParsingTests by testSuite {
 
     "CredentialListRequest default values are correctly encoded/decoded" {
         val request = CredentialListRequest()
-        val encoded = vckJsonSerializer.encodeToString(CredentialListRequest.serializer(), request)
+        val encoded = joseCompliantSerializer.encodeToString(CredentialListRequest.serializer(), request)
         encoded.shouldNotContain("certificates")
         encoded.shouldNotContain("certInfo")
         encoded.shouldNotContain("authInfo")
 
-        val decoded = vckJsonSerializer.decodeFromString<CredentialListRequest>(encoded)
+        val decoded = joseCompliantSerializer.decodeFromString<CredentialListRequest>(encoded)
         decoded.certificates shouldBe CertificateOptions.SINGLE
         decoded.authInfo shouldBe false
         decoded.certInfo shouldBe false

@@ -1,17 +1,13 @@
 package at.asitplus.wallet.lib.oauth2
 
-import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
-import at.asitplus.wallet.lib.jws.VerifyJwsSignature
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnf
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnfFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidClient
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidGrant
-import io.github.aakira.napier.Napier
 import kotlin.coroutines.cancellation.CancellationException
 
 
@@ -71,7 +67,7 @@ class ClientAuthenticationService(
             val instanceAttestationPopJwt = JwsSigned.deserialize<JsonWebToken>(
                 JsonWebToken.serializer(),
                 httpRequest.clientAttestationPop,
-                vckJsonSerializer
+                joseCompliantSerializer
             ).getOrElse {
                 throw InvalidClient("could not parse client attestation PoP", it)
             }

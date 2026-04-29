@@ -6,7 +6,6 @@ import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import at.asitplus.wallet.lib.data.fromAnyValue
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
@@ -30,7 +29,7 @@ val SdJwtSerializationTest by testSuite {
         val value = Random.nextBytes(16).encodeToString(Base64())
         val item = SelectiveDisclosureItem.fromAnyValue(salt, name, value)
 
-        val serialized = vckJsonSerializer.encodeToString<SelectiveDisclosureItem>(item)
+        val serialized = joseCompliantSerializer.encodeToString<SelectiveDisclosureItem>(item)
 
         serialized shouldContain "["
         serialized shouldContain """"${salt.encodeToString(Base64UrlStrict)}""""
@@ -48,7 +47,7 @@ val SdJwtSerializationTest by testSuite {
         val value = Random.nextBytes(16)
         val item = SelectiveDisclosureItem.fromAnyValue(salt, name, value)
 
-        val serialized = vckJsonSerializer.encodeToString<SelectiveDisclosureItem>(item)
+        val serialized = joseCompliantSerializer.encodeToString<SelectiveDisclosureItem>(item)
 
         serialized shouldContain "["
         serialized shouldContain """"${salt.encodeToString(Base64UrlStrict)}""""
@@ -66,7 +65,7 @@ val SdJwtSerializationTest by testSuite {
         val value = true
         val item = SelectiveDisclosureItem.fromAnyValue(salt, name, value)
 
-        val serialized = vckJsonSerializer.encodeToString<SelectiveDisclosureItem>(item)
+        val serialized = joseCompliantSerializer.encodeToString<SelectiveDisclosureItem>(item)
 
         serialized shouldContain "["
         serialized shouldContain """$value"""
@@ -83,7 +82,7 @@ val SdJwtSerializationTest by testSuite {
         val value = Random.nextLong()
         val item = SelectiveDisclosureItem.fromAnyValue(salt, name, value)
 
-        val serialized = vckJsonSerializer.encodeToString<SelectiveDisclosureItem>(item)
+        val serialized = joseCompliantSerializer.encodeToString<SelectiveDisclosureItem>(item)
 
         serialized shouldContain "["
         serialized shouldContain """$value"""
@@ -100,7 +99,7 @@ val SdJwtSerializationTest by testSuite {
         val value = Random.nextUInt()
         val item = SelectiveDisclosureItem.fromAnyValue(salt, name, value)
 
-        val serialized = vckJsonSerializer.encodeToString<SelectiveDisclosureItem>(item)
+        val serialized = joseCompliantSerializer.encodeToString<SelectiveDisclosureItem>(item)
 
         serialized shouldContain "["
         serialized shouldContain """$value"""
@@ -131,7 +130,7 @@ val SdJwtSerializationTest by testSuite {
         val value = listOf(Random.nextBytes(16))
         val item = SelectiveDisclosureItem.fromAnyValue(salt, name, value)
 
-        val serialized = vckJsonSerializer.encodeToString<SelectiveDisclosureItem>(item)
+        val serialized = joseCompliantSerializer.encodeToString<SelectiveDisclosureItem>(item)
 
         serialized shouldContain "["
         serialized shouldContain """"${salt.encodeToString(Base64UrlStrict)}""""
@@ -149,7 +148,7 @@ val SdJwtSerializationTest by testSuite {
         val value = Random.nextBytes(16).encodeToString(Base64())
         val item = SelectiveDisclosureItem.fromAnyValue(salt, name, value)
 
-        val serialized = vckJsonSerializer.encodeToString<SelectiveDisclosureItem>(item)
+        val serialized = joseCompliantSerializer.encodeToString<SelectiveDisclosureItem>(item)
 
         serialized shouldContain "["
         serialized shouldContain """"${salt.encodeToString(Base64UrlStrict)}""""

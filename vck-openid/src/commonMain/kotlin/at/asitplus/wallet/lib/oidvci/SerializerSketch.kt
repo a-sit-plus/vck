@@ -1,11 +1,16 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import io.ktor.http.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.JsonUnquotedLiteral
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.encodeToJsonElement
 
 typealias Parameters = Map<String, String>
 
@@ -65,6 +70,6 @@ val json by lazy {
         explicitNulls = false
         ignoreUnknownKeys = true
         isLenient = true
-        serializersModule = vckJsonSerializer.serializersModule
+        serializersModule = joseCompliantSerializer.serializersModule
     }
 }

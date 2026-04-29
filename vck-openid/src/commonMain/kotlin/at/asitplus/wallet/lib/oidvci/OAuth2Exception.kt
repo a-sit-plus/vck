@@ -19,7 +19,7 @@ import at.asitplus.openid.OpenIdConstants.Errors.UNKNOWN_CREDENTIAL_CONFIGURATIO
 import at.asitplus.openid.OpenIdConstants.Errors.UNKNOWN_CREDENTIAL_IDENTIFIER
 import at.asitplus.openid.OpenIdConstants.Errors.USER_CANCELLED
 import at.asitplus.openid.OpenIdConstants.Errors.USE_DPOP_NONCE
-import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
@@ -36,7 +36,7 @@ sealed class OAuth2Exception(
     @Transient val errorDescription: String? = null,
 ) : Throwable("$error${errorDescription?.let { ": $it" }}") {
 
-    fun serialize() = vckJsonSerializer.encodeToString(OAuth2ExceptionSerializer, this)
+    fun serialize() = joseCompliantSerializer.encodeToString(OAuth2ExceptionSerializer, this)
 
     /**
      * [RFC6750](https://datatracker.ietf.org/doc/html/rfc6750#section-3.1): The request is missing a required

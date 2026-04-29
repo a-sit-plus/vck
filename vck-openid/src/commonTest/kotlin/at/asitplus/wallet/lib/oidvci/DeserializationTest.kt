@@ -5,7 +5,6 @@ import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldContain
@@ -483,7 +482,7 @@ val DeserializationTest by testSuite {
             }    
         """.trimIndent()
 
-        vckJsonSerializer.decodeFromString<AuthenticationRequestParameters>(input)
+        joseCompliantSerializer.decodeFromString<AuthenticationRequestParameters>(input)
             .shouldNotBeNull()
     }
 }

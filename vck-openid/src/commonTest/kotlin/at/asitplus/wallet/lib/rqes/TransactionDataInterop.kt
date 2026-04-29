@@ -10,10 +10,10 @@ import at.asitplus.signum.indispensable.asn1.KnownOIDs
 import at.asitplus.signum.indispensable.asn1.sha_256
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.minus
 import at.asitplus.wallet.lib.data.Base64URLTransactionDataSerializer
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.randomString
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
@@ -45,11 +45,11 @@ val TransactionDataInterop by testSuite {
             qcHash = Random.nextBytes(32),
             qcHashAlgorithmOid = KnownOIDs.sha_256
         )
-        val serialized = vckJsonSerializer.encodeToString(TransactionData.serializer(), input).also {
+        val serialized = joseCompliantSerializer.encodeToString(TransactionData.serializer(), input).also {
             it shouldContain "type"
         }
 
-        vckJsonSerializer.decodeFromString(TransactionData.serializer(), serialized)
+        joseCompliantSerializer.decodeFromString(TransactionData.serializer(), serialized)
             .shouldBe(input)
     }
 
@@ -60,19 +60,19 @@ val TransactionDataInterop by testSuite {
             qcHash = Random.nextBytes(32),
             qcHashAlgorithmOid = KnownOIDs.sha_256
         )
-        val serialized = vckJsonSerializer.encodeToString(Base64URLTransactionDataSerializer, input)
+        val serialized = joseCompliantSerializer.encodeToString(Base64URLTransactionDataSerializer, input)
 
-        vckJsonSerializer.decodeFromString(Base64URLTransactionDataSerializer, serialized)
+        joseCompliantSerializer.decodeFromString(Base64URLTransactionDataSerializer, serialized)
             .shouldBe(input)
     }
 
     "DifInputDescriptor Sanity Check" {
         val input = DifInputDescriptor(id = uuid4().toString())
-        val serialized = vckJsonSerializer.encodeToString(input).also {
+        val serialized = joseCompliantSerializer.encodeToString(input).also {
             it shouldNotContain "type"
         }
 
-        vckJsonSerializer.decodeFromString(InputDescriptor.serializer(), serialized)
+        joseCompliantSerializer.decodeFromString(InputDescriptor.serializer(), serialized)
             .shouldBe(input)
     }
 
@@ -90,8 +90,8 @@ val TransactionDataInterop by testSuite {
             ImVPWjZVd1h5ZUZMSzk4RG81MXgzM2ZtdXY0T3FBejVaYzRsc2hLTnRFZ1E9Igp9
         """.trimIndent()
 
-        val transactionData = vckJsonSerializer.decodeFromString(
-            Base64URLTransactionDataSerializer, vckJsonSerializer.encodeToString(input)
+        val transactionData = joseCompliantSerializer.decodeFromString(
+            Base64URLTransactionDataSerializer, joseCompliantSerializer.encodeToString(input)
         )
 
         "Data classes are deserialized correctly" {
@@ -107,11 +107,11 @@ val TransactionDataInterop by testSuite {
 
 
         "Encoding-Decoding is correct" {
-            val expected = vckJsonSerializer.decodeFromString<JsonElement>(
+            val expected = joseCompliantSerializer.decodeFromString<JsonElement>(
                 input.decodeToByteArray(Base64UrlStrict).decodeToString()
             ).canonicalize() as JsonObject
 
-            val actual = vckJsonSerializer.encodeToJsonElement(TransactionData.serializer(), transactionData)
+            val actual = joseCompliantSerializer.encodeToJsonElement(TransactionData.serializer(), transactionData)
                 .canonicalize() as JsonObject
 
             actual["credentialID"] shouldBe expected["credentialID"]
@@ -127,16 +127,16 @@ val TransactionDataInterop by testSuite {
 
             //In order to deal with padding we deserialize and compare the bytearrays
             actualDocumentDigest["dtbsr"]?.let {
-                vckJsonSerializer.decodeFromJsonElement(ByteArrayBase64Serializer, it)
+                joseCompliantSerializer.decodeFromJsonElement(ByteArrayBase64Serializer, it)
             } shouldBe expectedDocumentDigest["dtbsr"]?.let {
-                vckJsonSerializer.decodeFromJsonElement(ByteArrayBase64Serializer, it)
+                joseCompliantSerializer.decodeFromJsonElement(ByteArrayBase64Serializer, it)
             }
             actualDocumentDigest["dtbsrHashAlgorithmOID"] shouldBe expectedDocumentDigest["dtbsrHashAlgorithmOID"]
             //In order to deal with padding we deserialize and compare the bytearrays
             actualDocumentDigest["hash"]?.let {
-                vckJsonSerializer.decodeFromJsonElement(ByteArrayBase64Serializer, it)
+                joseCompliantSerializer.decodeFromJsonElement(ByteArrayBase64Serializer, it)
             } shouldBe expectedDocumentDigest["hash"]?.let {
-                vckJsonSerializer.decodeFromJsonElement(ByteArrayBase64Serializer, it)
+                joseCompliantSerializer.decodeFromJsonElement(ByteArrayBase64Serializer, it)
             }
             actualDocumentDigest["hashHashAlgorithmOID"] shouldBe expectedDocumentDigest["hashHashAlgorithmOID"]
         }
@@ -149,8 +149,8 @@ val TransactionDataInterop by testSuite {
             T0NyRG84SU9HWmpTWDgvTT0iLAogICJRQ19oYXNoQWxnb3JpdGhtT0lEIjogIjIuMTYuODQwLjEuMTAxLjMuNC4yLjEiCn0
         """.trimIndent()
 
-        val parsed = vckJsonSerializer.decodeFromString(
-            Base64URLTransactionDataSerializer, vckJsonSerializer.encodeToString(input)
+        val parsed = joseCompliantSerializer.decodeFromString(
+            Base64URLTransactionDataSerializer, joseCompliantSerializer.encodeToString(input)
         )
 
         "Data classes are deserialized correctly" {
@@ -158,11 +158,11 @@ val TransactionDataInterop by testSuite {
         }
 
         "Encoding-Decoding is correct" {
-            val expected = vckJsonSerializer.decodeFromString<JsonElement>(
+            val expected = joseCompliantSerializer.decodeFromString<JsonElement>(
                 input.decodeToByteArray(Base64UrlStrict).decodeToString()
             ).canonicalize()
 
-            vckJsonSerializer.encodeToJsonElement(TransactionData.serializer(), parsed)
+            joseCompliantSerializer.encodeToJsonElement(TransactionData.serializer(), parsed)
                 .canonicalize().shouldBe(expected)
         }
     }
@@ -171,7 +171,7 @@ val TransactionDataInterop by testSuite {
 /**
  * Sorts all entries of the JsonElement which is necessary in case we want to compare two objects
  */
-fun JsonElement.canonicalize(serializer: Json = vckJsonSerializer): JsonElement = when (this) {
+fun JsonElement.canonicalize(serializer: Json = joseCompliantSerializer): JsonElement = when (this) {
     is JsonObject -> JsonObject(this.entries.sortedBy { it.key }.sortedBy { serializer.encodeToString(it.value) }
         .associate { it.key to it.value.canonicalize(serializer) })
 

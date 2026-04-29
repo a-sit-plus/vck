@@ -37,7 +37,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
@@ -457,7 +456,7 @@ class WalletService(
         credentialScheme: ConstantIndex.CredentialScheme,
     ): Holder.StoreCredentialInput = when (credentialRepresentation) {
         PLAIN_JWT -> Vc(
-            signedVcJws = JwsSigned.deserialize(VerifiableCredentialJws.serializer(), this, vckJsonSerializer)
+            signedVcJws = JwsSigned.deserialize(VerifiableCredentialJws.serializer(), this, joseCompliantSerializer)
                 .getOrThrow(),
             vcJws = this,
             scheme = credentialScheme

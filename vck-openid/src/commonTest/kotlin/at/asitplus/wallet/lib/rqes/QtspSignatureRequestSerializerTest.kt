@@ -11,9 +11,9 @@ import at.asitplus.csc.enums.SignedEnvelopeProperty
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.io.Base64Strict
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.minus
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import de.infix.testBalloon.framework.core.testSuite
 import io.github.aakira.napier.Napier
 import io.kotest.matchers.shouldBe
@@ -199,10 +199,10 @@ val QtspSignatureRequestSerializerTest by testSuite {
             )
         dummyEntries.forEachIndexed { i, dummyEntry ->
             "Entry ${i + 1}" {
-                val serialized = vckJsonSerializer.encodeToString(QtspSignatureRequest.serializer(), dummyEntry)
+                val serialized = joseCompliantSerializer.encodeToString(QtspSignatureRequest.serializer(), dummyEntry)
                     .also { Napier.d("serialized ${dummyEntry::class}: $it") }
                 val deserialized =
-                    vckJsonSerializer.decodeFromString(QtspSignatureRequest.serializer(), serialized)
+                    joseCompliantSerializer.decodeFromString(QtspSignatureRequest.serializer(), serialized)
 
                 deserialized shouldBe dummyEntry
             }
@@ -219,9 +219,9 @@ val QtspSignatureRequestSerializerTest by testSuite {
             adaptedCscTestVectorSignDoc3
         ).forEachIndexed { i, vec ->
             "Testvector ${i + 1}" {
-                val expected = vckJsonSerializer.decodeFromString<JsonObject>(vec).canonicalize()
-                val actual = vckJsonSerializer.encodeToJsonElement(
-                    vckJsonSerializer.decodeFromString(QtspSignatureRequest.serializer(), vec)
+                val expected = joseCompliantSerializer.decodeFromString<JsonObject>(vec).canonicalize()
+                val actual = joseCompliantSerializer.encodeToJsonElement(
+                    joseCompliantSerializer.decodeFromString(QtspSignatureRequest.serializer(), vec)
                 ).canonicalize()
 
                 actual shouldBe expected

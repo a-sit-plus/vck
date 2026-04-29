@@ -47,6 +47,7 @@ import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.AbstractMdocVerifier
@@ -62,7 +63,6 @@ import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.toBase64UrlJsonString
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.extensions.sessionTranscriptThumbprint
 import at.asitplus.wallet.lib.jws.DecryptJwe
 import at.asitplus.wallet.lib.jws.DecryptJweFun
@@ -78,7 +78,7 @@ import at.asitplus.wallet.lib.procedures.dcql.DCQLQueryAdapter
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
 import io.github.aakira.napier.Napier
-import io.ktor.http.URLBuilder
+import io.ktor.http.*
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
@@ -258,7 +258,7 @@ class OpenId4VpVerifier(
                         .forEach { parameters.append(it.key, it.value) }
                 }.buildString().toCreatedRequest {
                     catching {
-                        vckJsonSerializer.encodeToString(createAuthnRequest(requestOptions, it))
+                        joseCompliantSerializer.encodeToString(createAuthnRequest(requestOptions, it))
                     }
                 }
             }
@@ -550,7 +550,7 @@ class OpenId4VpVerifier(
     ): KmmResult<IdToken> = catching {
         val idTokenJws = input.parameters.idToken
             ?: throw IllegalArgumentException("idToken")
-        val jwsSigned = JwsSigned.deserialize(IdToken.serializer(), idTokenJws, vckJsonSerializer)
+        val jwsSigned = JwsSigned.deserialize(IdToken.serializer(), idTokenJws, joseCompliantSerializer)
             .getOrElse { throw IllegalArgumentException("idToken", it) }
         verifyJwsObject(jwsSigned).getOrElse {
             throw IllegalArgumentException("idToken.", it)
@@ -716,7 +716,7 @@ class OpenId4VpVerifier(
                     input = JwsSigned.deserialize(
                         VerifiablePresentationJws.serializer(),
                         relatedPresentation.extractContent(),
-                        vckJsonSerializer
+                        joseCompliantSerializer
                     ).getOrThrow(),
                     challenge = expectedNonce
                 )

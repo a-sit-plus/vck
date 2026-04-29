@@ -3,11 +3,11 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.catchingUnwrapped
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.SdJwtConstants.NAME_SD
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.json.JsonArray
@@ -133,7 +133,7 @@ class SdJwtDecoded(sdJwtSigned: SdJwtSigned) {
     }
 
     private fun String.toSdItem() = catchingUnwrapped {
-        vckJsonSerializer.decodeFromString<SelectiveDisclosureItem>(
+        joseCompliantSerializer.decodeFromString<SelectiveDisclosureItem>(
             decodeToByteArray(Base64UrlStrict).decodeToString()
         )
     }.getOrNull()

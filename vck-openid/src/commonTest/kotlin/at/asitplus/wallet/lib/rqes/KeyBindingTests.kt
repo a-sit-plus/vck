@@ -7,6 +7,7 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.QCertCreationAcceptance
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.eupid.EuPidScheme
@@ -25,8 +26,6 @@ import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.digest
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.toBase64UrlJsonString
-import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
@@ -35,6 +34,7 @@ import at.asitplus.wallet.lib.openid.OpenId4VpHolder
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.VpTokenValidationResultPresentationExchange
 import at.asitplus.wallet.lib.rqes.helper.DummyCredentialDataProvider
+import at.asitplus.wallet.lib.utils.DefaultMapStore
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
@@ -270,7 +270,7 @@ val KeyBindingTests by testSuite {
             val authnRequest = verifierOid4Vp.createAuthnRequest(requestOptions)
 
             val malignResponse = it.holderOid4vp.createAuthnResponse(
-                vckJsonSerializer.encodeToString(
+                joseCompliantSerializer.encodeToString(
                     authnRequest.copy(
                         transactionData = malignTransactionData()
                     )
@@ -300,7 +300,7 @@ val KeyBindingTests by testSuite {
             val authnRequest = lenientVerifier.createAuthnRequest(requestOptions)
 
             val malignResponse = it.holderOid4vp.createAuthnResponse(
-                vckJsonSerializer.encodeToString(
+                joseCompliantSerializer.encodeToString(
                     authnRequest.copy(
                         transactionData = malignTransactionData()
                     )

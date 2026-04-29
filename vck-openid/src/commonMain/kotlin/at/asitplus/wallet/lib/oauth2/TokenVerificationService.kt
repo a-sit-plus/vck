@@ -12,8 +12,8 @@ import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.NonceService
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
@@ -206,7 +206,7 @@ class JwtTokenVerificationService(
     }
 
     private suspend fun String.parseDpopProof(): JwsSigned<JsonWebToken> =
-        JwsSigned.deserialize(JsonWebToken.serializer(), this, vckJsonSerializer).getOrElse {
+        JwsSigned.deserialize(JsonWebToken.serializer(), this, joseCompliantSerializer).getOrElse {
             throw InvalidDpopProof("could not parse DPoP JWT", it)
         }.also {
             verifyJwsObject(it).getOrElse {
@@ -219,7 +219,7 @@ class JwtTokenVerificationService(
         expectedType: String,
         nonceService: NonceService = this.nonceService,
     ): JwsSigned<OpenId4VciAccessToken> {
-        val jwt = JwsSigned.deserialize(OpenId4VciAccessToken.serializer(), accessToken, vckJsonSerializer)
+        val jwt = JwsSigned.deserialize(OpenId4VciAccessToken.serializer(), accessToken, joseCompliantSerializer)
             .getOrElse { throw InvalidToken("could not parse DPoP Token", it) }
         verifyJwsSignatureWithKey(jwt, issuerKey).getOrElse {
             throw InvalidToken("DPoP Token not verified")

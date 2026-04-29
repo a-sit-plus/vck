@@ -1,22 +1,13 @@
 package at.asitplus.wallet.lib.data
 
 import at.asitplus.wallet.lib.JsonValueEncoder
-import at.asitplus.wallet.lib.data.JsonCredentialSerializer.serializersModules
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.modules.SerializersModule
-import kotlinx.serialization.modules.polymorphic
-import kotlinx.serialization.modules.subclass
 
 
 internal object JsonCredentialSerializer {
 
-    val serializersModules = mutableMapOf<ConstantIndex.CredentialScheme, SerializersModule>()
     val jsonElementEncoder = mutableSetOf<JsonValueEncoder>()
-
-    fun registerSerializersModule(scheme: ConstantIndex.CredentialScheme, module: SerializersModule) {
-        serializersModules[scheme] = module
-    }
 
     fun register(function: JsonValueEncoder) {
         jsonElementEncoder += function
@@ -27,23 +18,15 @@ internal object JsonCredentialSerializer {
 
 }
 
-var serializerModuleCollection = SerializersModule {}
-
-@Suppress("DEPRECATION")
+@Deprecated(
+    "Use joseCompliantSerializer instead",
+    ReplaceWith("joseCompliantSerializer", "at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer")
+)
 val vckJsonSerializer by lazy {
     Json {
         prettyPrint = false
         encodeDefaults = false
         classDiscriminator = "type"
         ignoreUnknownKeys = true
-        serializersModule = SerializersModule {
-            polymorphic(CredentialSubject::class) {
-                subclass(AtomicAttribute2023::class)
-            }
-            serializersModules.forEach {
-                include(it.value)
-            }
-            include(serializerModuleCollection)
-        }
     }
 }

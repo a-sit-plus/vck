@@ -8,8 +8,8 @@ import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionRequest.ResponseFormat
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.withFixtureGenerator
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.randomString
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
@@ -104,7 +104,7 @@ val OAuth2ClientTest by testSuite {
             val parsed = JwsSigned.deserialize(
                 TokenIntrospectionResponse.serializer(),
                 jwtResponse.jwt,
-                vckJsonSerializer
+                joseCompliantSerializer
             ).getOrThrow()
             parsed.payload.active shouldBe true
         }

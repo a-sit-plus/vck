@@ -15,7 +15,7 @@ import at.asitplus.openid.dcql.DCQLCredentialQueryList
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
-import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe
@@ -119,20 +119,20 @@ val SerializationTest by testSuite {
     test("createTokenResponse as JSON") {
         val params = createTokenResponse()
 
-        val json = vckJsonSerializer.encodeToString(params).apply {
+        val json = joseCompliantSerializer.encodeToString(params).apply {
             this shouldContain "\"access_token\":"
             this shouldContain "\"token_type\":"
             this shouldContain "\"expires_in\":"
         }
-        vckJsonSerializer.decodeFromString<TokenResponseParameters>(json) shouldBe params
+        joseCompliantSerializer.decodeFromString<TokenResponseParameters>(json) shouldBe params
     }
 
     test("createCredentialResponse as JSON") {
         val params = createCredentialResponse()
 
-        val json = vckJsonSerializer.encodeToString(params)
+        val json = joseCompliantSerializer.encodeToString(params)
 
-        vckJsonSerializer.decodeFromString<CredentialResponseParameters>(json) shouldBe params
+        joseCompliantSerializer.decodeFromString<CredentialResponseParameters>(json) shouldBe params
     }
 }
 val charPool = ('A'..'Z') + ('a'..'z') + ('0'..'9')

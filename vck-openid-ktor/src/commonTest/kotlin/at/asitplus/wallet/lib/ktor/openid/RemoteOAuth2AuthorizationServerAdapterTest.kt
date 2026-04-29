@@ -7,9 +7,9 @@ import at.asitplus.openid.OpenIdConstants.WellKnownPaths
 import at.asitplus.openid.TokenIntrospectionJwtResponse
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -76,7 +76,10 @@ val RemoteOAuth2AuthorizationServerAdapterTest by testSuite {
                 }
 
                 request.url.rawSegments.drop(1) == WellKnownPaths.OpenidConfiguration -> respond(
-                    vckJsonSerializer.encodeToString(OAuth2AuthorizationServerMetadata.serializer(), oauthMetadata()),
+                    joseCompliantSerializer.encodeToString(
+                        OAuth2AuthorizationServerMetadata.serializer(),
+                        oauthMetadata()
+                    ),
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
 
@@ -101,12 +104,15 @@ val RemoteOAuth2AuthorizationServerAdapterTest by testSuite {
         val mockEngine = MockEngine { request ->
             when {
                 request.url.rawSegments.drop(1) == WellKnownPaths.OauthAuthorizationServer -> respond(
-                    vckJsonSerializer.encodeToString(OAuth2AuthorizationServerMetadata.serializer(), oauthMetadata()),
+                    joseCompliantSerializer.encodeToString(
+                        OAuth2AuthorizationServerMetadata.serializer(),
+                        oauthMetadata()
+                    ),
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
 
                 request.url.toString() == introspectionEndpoint -> respond(
-                    vckJsonSerializer.encodeToString(InvalidToken().toOAuth2Error()),
+                    joseCompliantSerializer.encodeToString(InvalidToken().toOAuth2Error()),
                     status = HttpStatusCode.BadRequest,
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
@@ -130,12 +136,15 @@ val RemoteOAuth2AuthorizationServerAdapterTest by testSuite {
         val mockEngine = MockEngine { request ->
             when {
                 request.url.rawSegments.drop(1) == WellKnownPaths.OauthAuthorizationServer -> respond(
-                    vckJsonSerializer.encodeToString(OAuth2AuthorizationServerMetadata.serializer(), oauthMetadata()),
+                    joseCompliantSerializer.encodeToString(
+                        OAuth2AuthorizationServerMetadata.serializer(),
+                        oauthMetadata()
+                    ),
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
 
                 request.url.toString() == introspectionEndpoint -> respond(
-                    vckJsonSerializer.encodeToString(TokenIntrospectionResponse(active = false)),
+                    joseCompliantSerializer.encodeToString(TokenIntrospectionResponse(active = false)),
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
 
@@ -167,12 +176,15 @@ val RemoteOAuth2AuthorizationServerAdapterTest by testSuite {
         val mockEngine = MockEngine { request ->
             when {
                 request.url.rawSegments.drop(1) == WellKnownPaths.OauthAuthorizationServer -> respond(
-                    vckJsonSerializer.encodeToString(OAuth2AuthorizationServerMetadata.serializer(), oauthMetadata()),
+                    joseCompliantSerializer.encodeToString(
+                        OAuth2AuthorizationServerMetadata.serializer(),
+                        oauthMetadata()
+                    ),
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
 
                 request.url.toString() == introspectionEndpoint -> respond(
-                    vckJsonSerializer.encodeToString(TokenIntrospectionJwtResponse(jwt = signedJwt)),
+                    joseCompliantSerializer.encodeToString(TokenIntrospectionJwtResponse(jwt = signedJwt)),
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
 
@@ -196,12 +208,15 @@ val RemoteOAuth2AuthorizationServerAdapterTest by testSuite {
         val mockEngine = MockEngine { request ->
             when {
                 request.url.rawSegments.drop(1) == WellKnownPaths.OauthAuthorizationServer -> respond(
-                    vckJsonSerializer.encodeToString(OAuth2AuthorizationServerMetadata.serializer(), oauthMetadata()),
+                    joseCompliantSerializer.encodeToString(
+                        OAuth2AuthorizationServerMetadata.serializer(),
+                        oauthMetadata()
+                    ),
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
 
                 request.url.toString() == tokenEndpoint -> respond(
-                    vckJsonSerializer.encodeToString(
+                    joseCompliantSerializer.encodeToString(
                         TokenResponseParameters(
                             accessToken = "access-token",
                             tokenType = "DPoP",
@@ -215,7 +230,7 @@ val RemoteOAuth2AuthorizationServerAdapterTest by testSuite {
                     userInfoCalls += 1
                     if (userInfoCalls == 1) {
                         respond(
-                            vckJsonSerializer.encodeToString(OAuth2Error(error = USE_DPOP_NONCE)),
+                            joseCompliantSerializer.encodeToString(OAuth2Error(error = USE_DPOP_NONCE)),
                             status = HttpStatusCode.BadRequest,
                             headers = headers {
                                 append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
@@ -224,7 +239,7 @@ val RemoteOAuth2AuthorizationServerAdapterTest by testSuite {
                         )
                     } else {
                         respond(
-                            vckJsonSerializer.encodeToString(userInfoResponse),
+                            joseCompliantSerializer.encodeToString(userInfoResponse),
                             headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                         )
                     }

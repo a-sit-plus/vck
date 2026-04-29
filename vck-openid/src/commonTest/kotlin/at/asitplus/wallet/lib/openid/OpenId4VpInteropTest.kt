@@ -8,6 +8,7 @@ import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
@@ -28,7 +29,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMIL
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
@@ -210,7 +210,7 @@ val OpenId4VpInteropTest by testSuite {
             }
             response.params.entries.firstOrNull { it.key == "state" }.shouldNotBeNull()
             response.params.entries.first { it.key == "presentation_submission" }.value.let { presentationSubmission ->
-                val presSub = vckJsonSerializer.decodeFromString<PresentationSubmission>(presentationSubmission)
+                val presSub = joseCompliantSerializer.decodeFromString<PresentationSubmission>(presentationSubmission)
                 presSub.definitionId.shouldNotBeNull()
                 presSub.descriptorMap.shouldNotBeNull().first().apply {
                     path shouldBe "$"
@@ -242,7 +242,7 @@ val OpenId4VpInteropTest by testSuite {
             val jar = JwsSigned.deserialize<AuthenticationRequestParameters>(
                 AuthenticationRequestParameters.serializer(),
                 input,
-                vckJsonSerializer
+                joseCompliantSerializer
             ).getOrThrow()
 
             jar.header.algorithm shouldBe JwsAlgorithm.Signature.ES256

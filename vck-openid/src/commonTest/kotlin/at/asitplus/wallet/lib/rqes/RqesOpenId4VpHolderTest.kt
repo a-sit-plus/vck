@@ -14,10 +14,9 @@ import at.asitplus.openid.CscAuthorizationDetails
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
-import at.asitplus.testballoon.invoke
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.rqes.helper.DummyValueProvider
 import com.benasher44.uuid.bytes
@@ -125,8 +124,8 @@ val RqesOpenId4VpHolderTest by testSuite {
                 this.documentDigests.size shouldBe digests.size
                 this.hashAlgorithmOid shouldBe validSigningAlgo.digest.oid
             }
-            val serialized = vckJsonSerializer.encodeToString(authDetails)
-            vckJsonSerializer.decodeFromString<CscAuthorizationDetails>(serialized)
+            val serialized = joseCompliantSerializer.encodeToString(authDetails)
+            joseCompliantSerializer.decodeFromString<CscAuthorizationDetails>(serialized)
                 .shouldBe(authDetails)
         }
 
@@ -150,8 +149,8 @@ val RqesOpenId4VpHolderTest by testSuite {
                 this.conformanceLevel shouldBe signatureProperties.conformanceLevel
                 this.signedEnvelopeProperty shouldBe signatureProperties.signedEnvelopeProperty
             }
-            val serialized = vckJsonSerializer.encodeToString(DocumentDigest.serializer(), testDocumentDigests)
-            val deserialized = vckJsonSerializer.decodeFromString(DocumentDigest.serializer(), serialized)
+            val serialized = joseCompliantSerializer.encodeToString(DocumentDigest.serializer(), testDocumentDigests)
+            val deserialized = joseCompliantSerializer.decodeFromString(DocumentDigest.serializer(), serialized)
             deserialized shouldNotBe null
             deserialized shouldBe testDocumentDigests
         }
@@ -162,8 +161,8 @@ val RqesOpenId4VpHolderTest by testSuite {
             request.signatureQualifier shouldBe null
             request.numSignatures shouldBe null
 
-            val serialized = vckJsonSerializer.encodeToString(request)
-            vckJsonSerializer.decodeFromString<AuthenticationRequestParameters>(serialized)
+            val serialized = joseCompliantSerializer.encodeToString(request)
+            joseCompliantSerializer.decodeFromString<AuthenticationRequestParameters>(serialized)
                 .shouldBe(request)
         }
 
@@ -188,8 +187,8 @@ val RqesOpenId4VpHolderTest by testSuite {
                 it.documentDigests shouldBe documentDigests
             }
 
-            val serialized = vckJsonSerializer.encodeToString(request)
-            vckJsonSerializer.decodeFromString<AuthenticationRequestParameters>(serialized)
+            val serialized = joseCompliantSerializer.encodeToString(request)
+            joseCompliantSerializer.decodeFromString<AuthenticationRequestParameters>(serialized)
                 .shouldBe(request)
         }
 
@@ -213,8 +212,8 @@ val RqesOpenId4VpHolderTest by testSuite {
             )
             request.authorizationDetails shouldNotBe null
 
-            val serialized = vckJsonSerializer.encodeToString(request)
-            vckJsonSerializer.decodeFromString<TokenRequestParameters>(serialized)
+            val serialized = joseCompliantSerializer.encodeToString(request)
+            joseCompliantSerializer.decodeFromString<TokenRequestParameters>(serialized)
                 .shouldBe(request)
         }
 
@@ -234,8 +233,8 @@ val RqesOpenId4VpHolderTest by testSuite {
             request.credentialId shouldBe validCert.credentialID
             request.signAlgoOid shouldBe validSigningAlgo.oid
 
-            val serialized = vckJsonSerializer.encodeToString(request)
-            vckJsonSerializer.decodeFromString<QtspSignatureRequest>(serialized)
+            val serialized = joseCompliantSerializer.encodeToString(request)
+            joseCompliantSerializer.decodeFromString<QtspSignatureRequest>(serialized)
                 .shouldBe(request)
         }
     }

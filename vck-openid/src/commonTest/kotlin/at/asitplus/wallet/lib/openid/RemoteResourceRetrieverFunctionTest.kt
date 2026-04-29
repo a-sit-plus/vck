@@ -7,12 +7,11 @@ import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.WalletService
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.http.URLBuilder
+import io.ktor.http.*
 
 private data class FakeHttpResponse(
     val body: String? = null,
@@ -36,7 +35,7 @@ val RemoteResourceRetrieverFunctionTest by testSuite {
         redirectUrl = "https://client.example.org/callback",
         scope = "openid",
     )
-    val authnRequestSerialized = vckJsonSerializer.encodeToString(RequestParameters.serializer(), authnRequest)
+    val authnRequestSerialized = joseCompliantSerializer.encodeToString(RequestParameters.serializer(), authnRequest)
 
     "body response is used when present" {
         val retriever = FakeRemoteResourceRetriever(

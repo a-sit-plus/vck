@@ -5,13 +5,13 @@ import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
@@ -57,21 +57,21 @@ val AuthenticationRequestParameterFromSerializerTest by testSuite {
             val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow().request
                 .shouldBeInstanceOf<RequestParametersFrom.Uri<AuthenticationRequestParameters>>()
 
-            val serialized = vckJsonSerializer.encodeToString(params)
-            vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
+            val serialized = joseCompliantSerializer.encodeToString(params)
+            joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
                 .shouldBe(params)
         }
 
         "Json test $representation" {
-            val authnRequest = vckJsonSerializer.encodeToString(
+            val authnRequest = joseCompliantSerializer.encodeToString(
                 verifierOid4vp.createAuthnRequest(requestOptions = reqOptions)
             )
             authnRequest.shouldNotContain(DifInputDescriptor::class.simpleName!!)
             val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow().request
                 .shouldBeInstanceOf<RequestParametersFrom.Json<AuthenticationRequestParameters>>()
 
-            val serialized = vckJsonSerializer.encodeToString(params)
-            vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
+            val serialized = joseCompliantSerializer.encodeToString(params)
+            joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
                 .shouldBe(params)
         }
 
@@ -86,8 +86,8 @@ val AuthenticationRequestParameterFromSerializerTest by testSuite {
             val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow().request
                 .shouldBeInstanceOf<RequestParametersFrom.DcApiUnsigned<AuthenticationRequestParameters>>()
 
-            val serialized = vckJsonSerializer.encodeToString(params)
-            vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
+            val serialized = joseCompliantSerializer.encodeToString(params)
+            joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
                 .shouldBe(params)
         }
 
@@ -102,8 +102,8 @@ val AuthenticationRequestParameterFromSerializerTest by testSuite {
             val params = holderOid4vp.startAuthorizationResponsePreparation(serializedRequest).getOrThrow().request
                 .shouldBeInstanceOf<RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>>()
 
-            val serialized = vckJsonSerializer.encodeToString(params)
-            vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
+            val serialized = joseCompliantSerializer.encodeToString(params)
+            joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
                 .shouldBe(params)
         }
 
@@ -125,8 +125,8 @@ val AuthenticationRequestParameterFromSerializerTest by testSuite {
             val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow().request
                 .shouldBeInstanceOf<RequestParametersFrom.DcApiSigned<AuthenticationRequestParameters>>()
 
-            val serialized = vckJsonSerializer.encodeToString(params)
-            vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
+            val serialized = joseCompliantSerializer.encodeToString(params)
+            joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
                 .shouldBe(params)
         }
     }

@@ -5,21 +5,16 @@ import at.asitplus.iso.IssuerSignedList
 import at.asitplus.iso.IssuerSignedListSerializer
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.invoke
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.CredentialSubject
 import at.asitplus.wallet.lib.data.JsonCredentialSerializer
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.encodeToJsonElement
-import kotlinx.serialization.modules.SerializersModule
-import kotlinx.serialization.modules.polymorphic
-import kotlinx.serialization.modules.subclass
 import kotlin.random.Random
 
 private data class TestCredentialScheme(
@@ -63,7 +58,7 @@ val LibraryInitializerTest by testSuite {
 
         val jsonValueEncoder: JsonValueEncoder = { value ->
             when (value) {
-                is MockIssuerSignedValue -> vckJsonSerializer.encodeToJsonElement(value)
+                is MockIssuerSignedValue -> joseCompliantSerializer.encodeToJsonElement(value)
                 else -> null
             }
         }
@@ -78,7 +73,7 @@ val LibraryInitializerTest by testSuite {
         )
 
         JsonCredentialSerializer.encode(MockIssuerSignedValue("encoded")) shouldBe
-                vckJsonSerializer.encodeToJsonElement(MockIssuerSignedValue("encoded"))
+                joseCompliantSerializer.encodeToJsonElement(MockIssuerSignedValue("encoded"))
 
         val list = IssuerSignedList(
             listOf(

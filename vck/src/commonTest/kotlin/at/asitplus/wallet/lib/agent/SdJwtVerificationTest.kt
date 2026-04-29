@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.invoke
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.maps.shouldNotBeEmpty
@@ -58,7 +58,7 @@ val SdJwtVerificationTest by testSuite {
               }
             }
         """.trimIndent()
-        reconstructed shouldBe vckJsonSerializer.parseToJsonElement(expected)
+        reconstructed shouldBe joseCompliantSerializer.parseToJsonElement(expected)
     }
 
     "A.2. Complex Structured SD-JWT" {
@@ -133,7 +133,7 @@ val SdJwtVerificationTest by testSuite {
             }
         """.trimIndent()
 
-        reconstructed shouldBe vckJsonSerializer.parseToJsonElement(expected)
+        reconstructed shouldBe joseCompliantSerializer.parseToJsonElement(expected)
     }
 
     "A.3. SD-JWT-based Verifiable Credentials (SD-JWT VC)" {
@@ -249,7 +249,7 @@ val SdJwtVerificationTest by testSuite {
               }
             }
         """.trimIndent()
-        reconstructed shouldBe vckJsonSerializer.parseToJsonElement(expected)
+        reconstructed shouldBe joseCompliantSerializer.parseToJsonElement(expected)
     }
 
     "A.4. W3C Verifiable Credentials Data Model v2.0" {
@@ -341,7 +341,7 @@ val SdJwtVerificationTest by testSuite {
               }
             }
         """.trimIndent()
-        reconstructed shouldBe vckJsonSerializer.parseToJsonElement(expected)
+        reconstructed shouldBe joseCompliantSerializer.parseToJsonElement(expected)
     }
 
 }

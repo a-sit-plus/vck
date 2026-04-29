@@ -1,12 +1,11 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.testballoon.invoke
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import de.infix.testBalloon.framework.core.testSuite
@@ -40,7 +39,7 @@ val OidvciMetadataTest by testSuite {
         }
     } - {
         test("metadata for ISO_MDOC") {
-            vckJsonSerializer.encodeToJsonElement(it.issuer.metadata).jsonObject.apply {
+            joseCompliantSerializer.encodeToJsonElement(it.issuer.metadata).jsonObject.apply {
                 get("credential_configurations_supported").shouldNotBeNull().jsonObject.apply {
                     get("org.iso.18013.5.1").shouldNotBeNull().jsonObject.apply {
                         get("credential_signing_alg_values_supported").shouldNotBeNull().jsonArray.apply {

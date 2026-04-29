@@ -13,7 +13,6 @@ import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.agent.RandomSource
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.extensions.getEncryptionTargetKey
 import at.asitplus.wallet.lib.jws.EncryptJweFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
@@ -190,10 +189,10 @@ internal class AuthenticationResponseFactory(
         )
         return when (response) {
             is AuthenticationResponse.Error ->
-                encryptResponse(header, vckJsonSerializer.encodeToString(response.error), recipientKey)
+                encryptResponse(header, joseCompliantSerializer.encodeToString(response.error), recipientKey)
 
             is AuthenticationResponse.Success ->
-                encryptResponse(header, vckJsonSerializer.encodeToString(response.params), recipientKey)
+                encryptResponse(header, joseCompliantSerializer.encodeToString(response.params), recipientKey)
         }.map { it.serialize() }
             .getOrElse { throw InvalidRequest("encrypt error", it) }
     }

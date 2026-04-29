@@ -2,6 +2,8 @@
 
 Release 6.0.0 (unreleased):
  - Remove code deprecated in 5.12.0
+ - Deprecations:
+   - Deprecate `vckJsonSerializer`, should be replaced with `joseCompliantSerializer` (Signum)
 
 Release 5.12.0:
  - W3C JWT VC:

@@ -3,11 +3,11 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.iso.CborCredentialSerializer
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -47,9 +47,9 @@ val StoreEntrySerializationTest by testSuite {
             val entry = it.holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
                 .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Vc>()
 
-            val serialized = vckJsonSerializer.encodeToString(entry)
+            val serialized = joseCompliantSerializer.encodeToString(entry)
 
-            vckJsonSerializer.decodeFromString<SubjectCredentialStore.StoreEntry.Vc>(serialized) shouldBe entry
+            joseCompliantSerializer.decodeFromString<SubjectCredentialStore.StoreEntry.Vc>(serialized) shouldBe entry
 
         }
 
@@ -66,9 +66,9 @@ val StoreEntrySerializationTest by testSuite {
             val entry = it.holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
                 .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.SdJwt>()
 
-            val serialized = vckJsonSerializer.encodeToString(entry)
+            val serialized = joseCompliantSerializer.encodeToString(entry)
 
-            vckJsonSerializer.decodeFromString<SubjectCredentialStore.StoreEntry.SdJwt>(serialized) shouldBe entry
+            joseCompliantSerializer.decodeFromString<SubjectCredentialStore.StoreEntry.SdJwt>(serialized) shouldBe entry
         }
 
         test("serialize stored ISO mDoc") {
@@ -91,9 +91,9 @@ val StoreEntrySerializationTest by testSuite {
             val entry = it.holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
                 .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Iso>()
 
-            val serialized = vckJsonSerializer.encodeToString(entry)
+            val serialized = joseCompliantSerializer.encodeToString(entry)
 
-            vckJsonSerializer.decodeFromString<SubjectCredentialStore.StoreEntry.Iso>(serialized) shouldBe entry
+            joseCompliantSerializer.decodeFromString<SubjectCredentialStore.StoreEntry.Iso>(serialized) shouldBe entry
         }
 
         test("from OID4VCI credential response") {
@@ -368,9 +368,9 @@ val StoreEntrySerializationTest by testSuite {
             val entry = it.holder.storeCredential(credentialsInput).getOrThrow()
                 .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Iso>()
 
-            val serialized = vckJsonSerializer.encodeToString(entry)
+            val serialized = joseCompliantSerializer.encodeToString(entry)
 
-            vckJsonSerializer.decodeFromString<SubjectCredentialStore.StoreEntry.Iso>(serialized) shouldBe entry
+            joseCompliantSerializer.decodeFromString<SubjectCredentialStore.StoreEntry.Iso>(serialized) shouldBe entry
         }
 
     }

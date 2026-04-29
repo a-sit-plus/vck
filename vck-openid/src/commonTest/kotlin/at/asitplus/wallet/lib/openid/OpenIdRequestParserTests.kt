@@ -3,12 +3,11 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.dcapi.request.DCAPIWalletRequest
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
-import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.collections.shouldContain
@@ -91,7 +90,7 @@ val OpenIdRequestParserTests by testSuite {
 
     val authnRequest = JwsSigned.deserialize(JsonObject.serializer(), jws).getOrThrow().payload
 
-    val authnRequestSerialized = vckJsonSerializer.encodeToString(authnRequest)
+    val authnRequestSerialized = joseCompliantSerializer.encodeToString(authnRequest)
 
     withFixtureGenerator {
         RequestParser()
@@ -110,8 +109,8 @@ val OpenIdRequestParserTests by testSuite {
                 this.url.toString() shouldBe input
                 parameters.assertParams()
 
-                vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
-                    vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
+                joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
+                    joseCompliantSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
                 ).shouldBe(this)
             }
         }
@@ -123,8 +122,8 @@ val OpenIdRequestParserTests by testSuite {
                 jsonString shouldBe authnRequestSerialized
                 parameters.assertParams()
 
-                vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
-                    vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
+                joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
+                    joseCompliantSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
                 ).shouldBe(this)
             }
         }
@@ -136,8 +135,8 @@ val OpenIdRequestParserTests by testSuite {
                 jwsSigned.serialize() shouldBe jws
                 parameters.assertParams()
 
-                vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
-                    vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
+                joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
+                    joseCompliantSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
                 ).shouldBe(this)
             }
         }
@@ -153,8 +152,8 @@ val OpenIdRequestParserTests by testSuite {
                 parent.toString() shouldBe input
                 parameters.assertParams()
 
-                vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
-                    vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
+                joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
+                    joseCompliantSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
                 ).shouldBe(this)
             }
         }
@@ -173,15 +172,15 @@ val OpenIdRequestParserTests by testSuite {
                 jwsSigned.serialize() shouldBe jws
                 parameters.assertParams()
 
-                vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
-                    vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
+                joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
+                    joseCompliantSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
                 ).shouldBe(this)
             }
         }
 
         "unsigned request from DCAPI" { requestParser ->
             val input = DCAPIWalletRequest.OpenId4VpUnsigned(
-                    request = vckJsonSerializer.decodeFromString(authnRequestSerialized),
+                    request = joseCompliantSerializer.decodeFromString(authnRequestSerialized),
                     credentialIds = listOf("1"),
                     callingPackageName = "com.example.app",
                     callingOrigin = "https://example.com"
@@ -193,8 +192,8 @@ val OpenIdRequestParserTests by testSuite {
                 //jsonString shouldBe authnRequestSerialized // TODO Don't know why this is not the same
                 parameters.assertParams()
 
-                vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
-                    vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
+                joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
+                    joseCompliantSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
                 ).shouldBe(this)
             }
         }
@@ -218,8 +217,8 @@ val OpenIdRequestParserTests by testSuite {
                 parent.toString() shouldBe input
                 parameters.assertParams()
 
-                vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
-                    vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
+                joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
+                    joseCompliantSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
                 ).shouldBe(this)
             }
         }
@@ -242,8 +241,8 @@ val OpenIdRequestParserTests by testSuite {
                 parent.toString() shouldBe input
                 parameters.assertParams()
 
-                vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
-                    vckJsonSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
+                joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
+                    joseCompliantSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
                 ).shouldBe(this)
             }
         }

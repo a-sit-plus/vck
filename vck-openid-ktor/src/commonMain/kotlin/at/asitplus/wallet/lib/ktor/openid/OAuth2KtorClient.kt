@@ -20,9 +20,9 @@ import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.RandomSource
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
@@ -105,7 +105,7 @@ class OAuth2KtorClient(
     val client: HttpClient = HttpClient(engine) {
         followRedirects = false
         install(ContentNegotiation) {
-            json(vckJsonSerializer)
+            json(joseCompliantSerializer)
         }
         install(DefaultRequest.Plugin) {
             header(HttpHeaders.ContentType, ContentType.Application.Json)
@@ -557,7 +557,7 @@ private suspend fun parseTokenIntrospectionResponse(
         parseJwt(body, verifyTokenIntrospectionJwt)
     } else {
         runCatching {
-            vckJsonSerializer.decodeFromString(TokenIntrospectionResponse.serializer(), body)
+            joseCompliantSerializer.decodeFromString(TokenIntrospectionResponse.serializer(), body)
         }.getOrElse {
             parseJwt(body, verifyTokenIntrospectionJwt)
         }
@@ -570,8 +570,8 @@ private suspend fun parseJwt(
     body: String,
     verifyTokenIntrospectionJwt: suspend (JwsSigned<TokenIntrospectionResponse>) -> Boolean
 ): TokenIntrospectionResponse =
-    vckJsonSerializer.decodeFromString(TokenIntrospectionJwtResponse.serializer(), body).let { jwtResponse ->
-        JwsSigned.deserialize(TokenIntrospectionResponse.serializer(), jwtResponse.jwt, vckJsonSerializer)
+    joseCompliantSerializer.decodeFromString(TokenIntrospectionJwtResponse.serializer(), body).let { jwtResponse ->
+        JwsSigned.deserialize(TokenIntrospectionResponse.serializer(), jwtResponse.jwt, joseCompliantSerializer)
             .getOrThrow().run {
                 require(verifyTokenIntrospectionJwt(this)) { "Token introspection JWT validation failed" }
                 payload

@@ -25,19 +25,17 @@ import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.ClientAuthRequest
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
@@ -192,7 +190,7 @@ val OidvciCodeFlowTest by testSuite {
             JwsSigned.deserialize<VerifiableCredentialJws>(
                 VerifiableCredentialJws.serializer(),
                 serializedCredential,
-                vckJsonSerializer
+                joseCompliantSerializer
             ).getOrThrow()
                 .payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
                 .also { credentialSubject ->
@@ -268,7 +266,7 @@ val OidvciCodeFlowTest by testSuite {
                 JwsSigned.deserialize<VerifiableCredentialJws>(
                     VerifiableCredentialJws.serializer(),
                     it.credentialString.shouldNotBeNull(),
-                    vckJsonSerializer
+                    joseCompliantSerializer
                 ).getOrThrow().payload.subject
             }.toSet().shouldHaveSize(2)
         }

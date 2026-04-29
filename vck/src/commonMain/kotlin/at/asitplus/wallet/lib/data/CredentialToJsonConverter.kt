@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.data
 
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.agent.SdJwtDecoded
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
@@ -29,7 +30,7 @@ object CredentialToJsonConverter {
     fun toJsonElement(credential: SubjectCredentialStore.StoreEntry): JsonElement = when (credential) {
         is SubjectCredentialStore.StoreEntry.Vc -> buildJsonObject {
             put("type", JsonPrimitive(credential.scheme?.vcType))
-            val vcAsJsonElement = vckJsonSerializer.encodeToJsonElement(credential.vc.vc.credentialSubject)
+            val vcAsJsonElement = joseCompliantSerializer.encodeToJsonElement(credential.vc.vc.credentialSubject)
             vcAsJsonElement.jsonObject.entries.forEach {
                 put(it.key, it.value)
             }
@@ -75,7 +76,7 @@ object CredentialToJsonConverter {
     }
 
     fun toJsonElement(verifiableCredentialJws: VerifiableCredentialJws) = buildJsonObject {
-        val vcAsJsonElement = vckJsonSerializer.encodeToJsonElement(verifiableCredentialJws.vc.credentialSubject)
+        val vcAsJsonElement = joseCompliantSerializer.encodeToJsonElement(verifiableCredentialJws.vc.credentialSubject)
         vcAsJsonElement.jsonObject.entries.forEach {
             put(it.key, it.value)
         }

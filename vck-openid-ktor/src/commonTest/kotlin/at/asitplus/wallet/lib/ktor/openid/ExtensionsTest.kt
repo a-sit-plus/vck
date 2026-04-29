@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.openid.OpenIdConstants.Errors.USE_DPOP_NONCE
-import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import com.benasher44.uuid.uuid4
 import de.infix.testBalloon.framework.core.testSuite
@@ -23,7 +23,7 @@ val ExtensionsTest by testSuite {
     ): io.ktor.client.statement.HttpResponse {
         val client = HttpClient(MockEngine { respond(body, status = status, headers = headers) }) {
             install(ContentNegotiation) {
-                json(vckJsonSerializer)
+                json(joseCompliantSerializer)
             }
         }
         return try {
@@ -38,7 +38,7 @@ val ExtensionsTest by testSuite {
 
         buildResponse(
             status = HttpStatusCode.BadRequest,
-            body = vckJsonSerializer.encodeToString(OAuth2Error.serializer(), expectedError),
+            body = joseCompliantSerializer.encodeToString(OAuth2Error.serializer(), expectedError),
             headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
         ).onFailure<OAuth2Error?> { _ -> this }
             .shouldBeInstanceOf<IntermediateResult.Failure<OAuth2Error?>>().apply {
@@ -63,7 +63,7 @@ val ExtensionsTest by testSuite {
         val authServerNonce = uuid4().toString()
         val authServerResponse = buildResponse(
             status = HttpStatusCode.BadRequest,
-            body = vckJsonSerializer.encodeToString(OAuth2Error.serializer(), OAuth2Error(error = USE_DPOP_NONCE)),
+            body = joseCompliantSerializer.encodeToString(OAuth2Error.serializer(), OAuth2Error(error = USE_DPOP_NONCE)),
             headers = headers {
                 append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 append(HttpHeaders.DPoPNonce, authServerNonce)

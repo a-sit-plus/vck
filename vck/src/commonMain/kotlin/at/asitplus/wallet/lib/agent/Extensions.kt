@@ -3,9 +3,9 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.digest
 import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.data.Base64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.SdJwtConstants
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.ktor.util.*
 
 internal fun List<TransactionDataBase64Url>.hash(digest: Digest?): List<ByteArray> =
@@ -13,7 +13,7 @@ internal fun List<TransactionDataBase64Url>.hash(digest: Digest?): List<ByteArra
 
 internal fun getCommonHashesAlgorithms(transactionData: List<TransactionDataBase64Url>?): Set<String>? {
     val listOfSets = transactionData?.map {
-        vckJsonSerializer.decodeFromJsonElement(Base64URLTransactionDataSerializer, it).transactionDataHashAlgorithms
+        joseCompliantSerializer.decodeFromJsonElement(Base64URLTransactionDataSerializer, it).transactionDataHashAlgorithms
     }
     return if (listOfSets == null || listOfSets.any { it == null }) {
         null

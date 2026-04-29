@@ -11,6 +11,7 @@ import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialRenewalInfo
@@ -24,7 +25,6 @@ import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
@@ -217,7 +217,7 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
                 request.url.toString() == "$issuerPublicContext$credentialEndpointPath" -> {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val authn = request.headers[HttpHeaders.Authorization].shouldNotBeNull()
-                    val params = vckJsonSerializer.decodeFromString<CredentialRequestParameters>(requestBody)
+                    val params = joseCompliantSerializer.decodeFromString<CredentialRequestParameters>(requestBody)
                     credentialIssuer.credential(
                         authorizationHeader = authn,
                         params = WalletService.CredentialRequest.Plain(params),
