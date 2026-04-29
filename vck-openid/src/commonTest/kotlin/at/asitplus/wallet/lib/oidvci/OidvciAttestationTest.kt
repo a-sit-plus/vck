@@ -12,7 +12,9 @@ package at.asitplus.wallet.lib.oidvci
  * see the "LICENSE" file for more details
  */
 
+import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
@@ -27,13 +29,14 @@ import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
+import at.asitplus.wallet.lib.oidvci.WalletService.RequestOptions
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
@@ -45,7 +48,6 @@ import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlin.time.Clock.System
 
@@ -71,7 +73,7 @@ val OidvciAttestationTest by testSuite {
                 )
             )
             val state = uuid4().toString()
-            lateinit var client: WalletService
+
             suspend fun getToken(scope: String): TokenResponseParameters {
                 val authnRequest = oauth2Client.createAuthRequestJar(
                     state = state,
@@ -91,51 +93,35 @@ val OidvciAttestationTest by testSuite {
                 return authorizationService.token(tokenRequest, null).getOrThrow()
             }
 
-            fun buildClientWithKeyAttestation() =
-                with(EphemeralKeyWithoutCert()) {
-                    client = WalletService(
-                        loadUnitAttestationPop = { input ->
-                            catching {
-                                SignJwt<KeyAttestationJwt>(this, JwsHeaderCertOrJwk())(
-                                    OpenIdConstants.KEY_ATTESTATION_JWT_TYPE,
-                                    KeyAttestationJwt(
-                                        issuedAt = System.now(),
-                                        attestedKeys = setOf(this.jsonWebKey)
-                                    ),
-                                    KeyAttestationJwt.serializer(),
-                                ).getOrThrow().let { unitAttestation ->
-                                    SignJwt<JsonWebToken>(
-                                        this
-                                    ) { it, keyMaterial ->
-                                        it.copy(
-                                            keyAttestation = unitAttestation.serialize(),
-                                            jsonWebKey = keyMaterial.jsonWebKey
-                                        )
-                                    }.invoke(
-                                        input.type,
-                                        input.payload,
-                                        JsonWebToken.serializer(),
-                                    ).getOrThrow()
-                                }
-                            }
-                        }
-                    )
+            val walletProviderKeyMaterial = EphemeralKeyWithoutCert()
+            val clientKeyMaterial = EphemeralKeyWithoutCert()
+
+            var client = WalletService(
+                loadKeyAttestation = { input ->
+                    catching {
+                        SignJwt<KeyAttestationJwt>(walletProviderKeyMaterial, JwsHeaderCertOrJwk())(
+                            type = OpenIdConstants.KEY_ATTESTATION_JWT_TYPE,
+                            payload = KeyAttestationJwt(
+                                issuedAt = System.now(),
+                                attestedKeys = setOf(clientKeyMaterial.jsonWebKey),
+                                nonce = input.clientNonce,
+                            ),
+                            serializer = KeyAttestationJwt.serializer(),
+                        ).getOrThrow()
+                    }
                 }
+            )
+
         }
     } - {
         test("use key attestation for proof") {
-            it.buildClientWithKeyAttestation()
-
-            val requestOptions = WalletService.RequestOptions(
-                ConstantIndex.AtomicAttribute2023,
-                CredentialRepresentation.PLAIN_JWT
-            )
-            val credentialFormat =
-                it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
-                    .shouldNotBeNull()
+            val requestOptions = RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
+            val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
+                .shouldNotBeNull()
             val scope = credentialFormat.scope.shouldNotBeNull()
             val token = it.getToken(scope)
             val clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce
+
             it.client.createCredential(
                 tokenResponse = token,
                 metadata = it.issuer.metadata,
@@ -160,10 +146,7 @@ val OidvciAttestationTest by testSuite {
                     .payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
                     .also { credentialSubject ->
                         shouldNotThrowAny {
-                            Json.decodeFromJsonElement(
-                                AtomicAttribute2023.serializer(),
-                                credentialSubject
-                            )
+                            AtomicAttribute2023.fromJsonElement(credentialSubject)
                         }
                     }
             }
@@ -182,18 +165,14 @@ val OidvciAttestationTest by testSuite {
                     requireKeyAttestation = true, // this is important, to require key attestation
                 )
             )
-            it.buildClientWithKeyAttestation()
 
-            val requestOptions = WalletService.RequestOptions(
-                ConstantIndex.AtomicAttribute2023,
-                CredentialRepresentation.PLAIN_JWT
-            )
-            val credentialFormat =
-                it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
-                    .shouldNotBeNull()
+            val requestOptions = RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
+            val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
+                .shouldNotBeNull()
             val scope = credentialFormat.scope.shouldNotBeNull()
             val token = it.getToken(scope)
             val clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce
+
             it.client.createCredential(
                 tokenResponse = token,
                 metadata = it.issuer.metadata,
@@ -214,13 +193,9 @@ val OidvciAttestationTest by testSuite {
         test("require key attestation for proof, but do not provide one") {
             it.client = WalletService(loadKeyAttestation = null)
 
-            val requestOptions = WalletService.RequestOptions(
-                ConstantIndex.AtomicAttribute2023,
-                CredentialRepresentation.PLAIN_JWT
-            )
-            val credentialFormat =
-                it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
-                    .shouldNotBeNull()
+            val requestOptions = RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
+            val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
+                .shouldNotBeNull()
             val scope = credentialFormat.scope.shouldNotBeNull()
             val token = it.getToken(scope)
             val clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce
@@ -232,6 +207,58 @@ val OidvciAttestationTest by testSuite {
                     credentialFormat = credentialFormat,
                     clientNonce = clientNonce
                 ).getOrThrow()
+            }
+        }
+
+        test("do not require key attestation for proof, so local error shouldn't matter") {
+            it.issuer = CredentialIssuer(
+                authorizationService = it.authorizationService,
+                issuer = IssuerAgent(
+                    identifier = "https://issuer.example.com".toUri(),
+                    randomSource = RandomSource.Default
+                ),
+                credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme),
+                proofValidator = ProofValidator(
+                    verifyAttestationProof = { false }, // do not accept key attestation
+                    requireKeyAttestation = false,
+                )
+            )
+            it.client = WalletService(loadKeyAttestation = { catchingUnwrapped { TODO() }.wrap() })
+
+            val requestOptions = RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
+            val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
+                .shouldNotBeNull()
+            val scope = credentialFormat.scope.shouldNotBeNull()
+            val token = it.getToken(scope)
+            val clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce
+
+            it.client.createCredential(
+                tokenResponse = token,
+                metadata = it.issuer.metadata,
+                credentialFormat = credentialFormat,
+                clientNonce = clientNonce
+            ).getOrThrow().forEach { request ->
+                request.shouldBeInstanceOf<WalletService.CredentialRequest.Plain>()
+                val credential = it.issuer.credential(
+                    authorizationHeader = token.toHttpHeaderValue(),
+                    params = request,
+                    credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+                ).getOrThrow()
+                    .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                    .response
+
+                JwsSigned.deserialize(
+                    VerifiableCredentialJws.serializer(),
+                    credential.credentials.shouldNotBeEmpty()
+                        .first().credentialString.shouldNotBeNull(),
+                    joseCompliantSerializer
+                ).getOrThrow()
+                    .payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
+                    .also { credentialSubject ->
+                        shouldNotThrowAny {
+                            AtomicAttribute2023.fromJsonElement(credentialSubject)
+                        }
+                    }
             }
         }
 

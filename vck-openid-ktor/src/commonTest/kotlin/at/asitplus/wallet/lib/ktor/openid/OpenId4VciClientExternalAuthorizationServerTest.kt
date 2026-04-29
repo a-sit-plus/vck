@@ -10,7 +10,6 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenRequestParameters
-import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtScheme
@@ -287,19 +286,7 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
                 engine = mockEngine,
                 oid4vciService = WalletService(
                     clientId = walletClientId,
-                    loadUnitAttestationPop = { input ->
-                        catching {
-                            SignJwt<JsonWebToken>(
-                                credentialKeyMaterial
-                            ) { header, material ->
-                                header.copy(jsonWebKey = material.jsonWebKey)
-                            }.invoke(
-                                input.type,
-                                input.payload,
-                                JsonWebToken.serializer(),
-                            ).getOrThrow()
-                        }
-                    }
+                    keyMaterial = credentialKeyMaterial,
                 ),
                 oauth2Client = OAuth2KtorClient(
                     engine = mockEngine,
