@@ -1,6 +1,5 @@
 package at.asitplus.etsi
 
-
 interface Rfc3986Grammar : Rfc2234Grammar {
     companion object : Rfc3986Grammar
     /**
