@@ -351,14 +351,16 @@ class WalletService(
             clientNonce = clientNonce,
             credentialIssuer = metadata.credentialIssuer,
             clock = clock,
-            keyAttestationRequired = type.keyAttestationRequired
+            keyAttestationRequired = type.keyAttestationRequired,
+            supportedAlgorithms = type.supportedSigningAlgorithms,
         )
     } ?: credentialFormat.supportedProofTypes?.get(ProofTypes.ATTESTATION)?.let { type ->
         createCredentialRequestProofAttestation(
             clientNonce = clientNonce,
             credentialIssuer = metadata.credentialIssuer,
             clock = clock,
-            keyAttestationRequired = type.keyAttestationRequired
+            keyAttestationRequired = type.keyAttestationRequired,
+            supportedAlgorithms = type.supportedSigningAlgorithms,
         )
     } ?: CredentialRequestProofContainer()
 
@@ -366,17 +368,29 @@ class WalletService(
         clientNonce: String?,
         credentialIssuer: String?,
         clock: Clock = Clock.System,
-        keyAttestationRequired: KeyAttestationRequired? = null
+        keyAttestationRequired: KeyAttestationRequired? = null,
+        supportedAlgorithms: Collection<String>? = null,
     ): CredentialRequestProofContainer {
-        if (keyAttestationRequired != null && loadKeyAttestation == null) {
+        if (keyAttestationRequired != null && loadKeyAttestation == null && loadUnitAttestationPop == null) {
             throw IllegalArgumentException("Key attestation required, none provided")
         }
         val keyAttestation: JwsSigned<KeyAttestationJwt>? = loadKeyAttestation?.invoke(
             KeyAttestationInput(
                 clientNonce = clientNonce,
-                supportedAlgorithms = listOf() // TODO
+                supportedAlgorithms = supportedAlgorithms
             )
-        )?.getOrNull()
+        )?.getOrElse { throw IllegalArgumentException("Key attestation required, none provided", it) }
+            ?: loadUnitAttestationPop?.invoke(
+                LoadUnitAttestationPopInput(
+                    ttl = keyAttestationRequired?.preferredTtl ?: 31.days,
+                    payload = JsonWebToken(
+                        nonce = clientNonce,
+                        audience = credentialIssuer,
+                        issuedAt = clock.now(),
+                    ),
+                )
+            )?.getOrElse { throw IllegalArgumentException("Key attestation required, none provided", it) }
+                ?.let { JwsSigned.deserialize(KeyAttestationJwt.serializer(), it.serialize(), joseCompliantSerializer).getOrThrow() }
         keyAttestation?.requireKeyMaterialAtAttestedKeyIndex0()
 
         return CredentialRequestProofContainer(
@@ -408,15 +422,27 @@ class WalletService(
         clientNonce: String?,
         credentialIssuer: String?,
         clock: Clock = Clock.System,
-        keyAttestationRequired: KeyAttestationRequired? = null
+        keyAttestationRequired: KeyAttestationRequired? = null,
+        supportedAlgorithms: Collection<String>? = null,
     ): CredentialRequestProofContainer = CredentialRequestProofContainer(
         attestation = setOf(
-            loadKeyAttestation?.invoke(
+            (loadKeyAttestation?.invoke(
                 KeyAttestationInput(
                     clientNonce = clientNonce,
-                    supportedAlgorithms = listOf() // TODO
+                    supportedAlgorithms = supportedAlgorithms
                 )
             )?.getOrElse { throw IllegalArgumentException("Key attestation required, none provided", it) }
+                ?: loadUnitAttestationPop?.invoke(
+                    LoadUnitAttestationPopInput(
+                        ttl = keyAttestationRequired?.preferredTtl ?: 31.days,
+                        payload = JsonWebToken(
+                            nonce = clientNonce,
+                            audience = credentialIssuer,
+                            issuedAt = clock.now(),
+                        ),
+                    )
+                )?.getOrElse { throw IllegalArgumentException("Key attestation required, none provided", it) }
+            )
                 ?.serialize()
                 ?: throw IllegalArgumentException("Key attestation required, none provided"))
     )
