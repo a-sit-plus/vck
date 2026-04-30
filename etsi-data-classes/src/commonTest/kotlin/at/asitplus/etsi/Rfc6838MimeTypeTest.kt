@@ -9,3 +9,4 @@ val Rfc6838MimeTypeTest by testSuite {
         Rfc6838MimeType("aaAA") shouldBe Rfc6838MimeType("aAaA")
     }
 }
+

@@ -14,19 +14,24 @@ import kotlin.jvm.JvmInline
  */
 @Serializable
 @JvmInline
-value class Rfc5646LanguageTag(
+value class Rfc3986UriSchemeName(
     val caseInsensitiveString: CaseInsensitiveString,
 ) {
     init {
-        // TODO: implement proper grammar validation?
+        val firstLetter = string.first()
+        require(Rfc3986Grammar.isAlpha(firstLetter)) {
+            "Expected scheme name to start with a letter (a-z, A-Z), but got `$firstLetter` in `$string`"
+        }
+        string.forEachIndexed { index, it ->
+            require(Rfc3986Grammar.isAlpha(it) || Rfc3986Grammar.isDigit(it) || it in "+-.") {
+                "Expected scheme name to consist of letters (a-z, A-Z), digits (0-9), `+`, `-` or `.`, but got `$it` at index $index in `$string`"
+            }
+        }
     }
 
     constructor(string: String) : this(CaseInsensitiveString(string))
-
     val string: String
         get() = caseInsensitiveString.string
+
+    override fun toString() = string
 }
-
-
-
-
