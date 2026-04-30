@@ -21,7 +21,7 @@
 
 VC-K is a comprehensive **Kotlin Multiplatform** library for implementing digital identity solutions, with full support for modern credential standards and protocols. It enables developers to build wallet applications, verifier systems, and issuer services using a single, consistent API across multiple platforms.
 
-Designed with developers in mind, VCK provides a flexible, modular architecture that simplifies the implementation of complex identity workflows while maintaining compatibility with the broader digital identity ecosystem, including the EU Digital Identity Wallet (EUDI Wallet).
+Designed with developers in mind, VC-K provides a flexible, modular architecture that simplifies the implementation of complex identity workflows while maintaining compatibility with the broader digital identity ecosystem, including the EU Digital Identity Wallet (EUDI Wallet).
 
 ## Architecture
 
@@ -104,6 +104,7 @@ VC-K uses a modular structure to separate concerns. Hence, depending on the use 
 |  `dif-data-classes`   | [DIF Presentation Exchange v1.0.0](https://identity.foundation/presentation-exchange/spec/v1.0.0/#presentation-definition) data classes. **Does not depend on any other vck artefact** and can hence be used independently of VC-K! |
 | `openid-data-classes` | OpenID data classes. **Only depends on `dif-data-classes` and `csc-data-classes`** and can hence be used independently of VC-K!                                                                                                     |
 |  `csc-data-classes`   | [CSC](https://cloudsignatureconsortium.org/wp-content/uploads/2025/01/csc-api-2.1.0.1.pdf) data classes. **Does not depend on any other vck artefact** and can hence be used independently of VC-K!                                 |
+|  `etsi-data-classes`  | [ETSI TS 119 602](https://www.etsi.org/deliver/etsi_ts/119600_119699/119602/01.01.01_60/ts_119602v010101p.pdf) data classes. **Does not depend on any other vck artefact** and can hence be used independently of VC-K!                                 |
 
 Simply declare the desired dependency to get going. This will usually be one of:
 

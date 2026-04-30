@@ -9,6 +9,10 @@
       "artifactName": "DifDataClasses"
     },
     {
+      "module": "etsi-data-classes",
+      "artifactName": "EtsiDataClasses"
+    },
+    {
       "module": "openid-data-classes",
       "artifactName": "OpenIdDataClasses"
     },

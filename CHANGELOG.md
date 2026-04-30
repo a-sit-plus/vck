@@ -1,7 +1,7 @@
 # Changelog
 
 Release 6.0.0 (unreleased):
- - tbd
+ - Add: ETSI data classes for list of trusted entities, [ETSI TS 119 602](https://www.etsi.org/deliver/etsi_ts/119600_119699/119602/01.01.01_60/ts_119602v010101p.pdf)
 
 Release 5.12.0:
  - W3C JWT VC:
@@ -58,7 +58,6 @@ Release 5.12.0:
  - Dependencies:
    - Update to [Signum 3.21.0](https://github.com/a-sit-plus/signum/releases/tag/3.21.0) fixing CBOR parsing and tolerating cursed X.509 certificate encodings
    - Remove code elements deprecated in 5.11.0
- - Add: ETSI data classes for https://www.etsi.org/deliver/etsi_ts/119600_119699/119602/01.01.01_60/ts_119602v010101p.pdf
 
 Release 5.11.1:
  - OAuth 2.0:
