@@ -123,7 +123,7 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
         return DCQLVcJwsCredential(
             satisfiesCryptographicHolderBinding = !credential.vcJws.subject.isNullOrEmpty(),
             types = credential.vcJws.vc.type,
-            authorityKeyIdentifiers = vp.jws.header.certificateChain?.flatMap {
+            authorityKeyIdentifiers = vp.jws.jws.jwsHeader.certificateChain?.flatMap {
                 it.getAuthorityKeyIdentifier()
             } ?: listOf(),
             claimStructure = DCQLCredentialClaimStructure.JsonBasedStructure(
@@ -156,7 +156,7 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
     private fun Verifier.VerifyPresentationResult.SuccessSdJwt.toDCQLCredential() = DCQLSdJwtCredential(
         claimStructure = DCQLCredentialClaimStructure.JsonBasedStructure(reconstructedJsonObject),
         satisfiesCryptographicHolderBinding = verifiableCredentialSdJwt.confirmationClaim != null,
-        authorityKeyIdentifiers = sdJwtSigned.jws.header.certificateChain?.flatMap {
+        authorityKeyIdentifiers = sdJwtSigned.jws.jwsHeader.certificateChain?.flatMap {
             it.getAuthorityKeyIdentifier()
         } ?: listOf(),
         type = verifiableCredentialSdJwt.verifiableCredentialType,
