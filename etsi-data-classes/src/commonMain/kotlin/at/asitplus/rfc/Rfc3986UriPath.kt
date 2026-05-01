@@ -1,5 +1,4 @@
-package at.asitplus.etsi
-
+package at.asitplus.rfc
 
 sealed interface Rfc3986UriPath : Rfc3986Path {
     companion object {

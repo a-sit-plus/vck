@@ -1,13 +1,10 @@
 package at.asitplus.etsi
 
+import at.asitplus.rfc.Rfc3986UniformResourceIdentifier
 import at.asitplus.testballoon.withData
 import de.infix.testBalloon.framework.core.testSuite
-import io.kotest.assertions.throwables.shouldNotThrow
 import io.kotest.assertions.throwables.shouldNotThrowAny
-import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
-import kotlin.math.exp
 
 @Suppress("unused")
 val Rfc3986UniformResourceIdentifierTest by testSuite {

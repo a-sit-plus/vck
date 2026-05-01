@@ -1,5 +1,6 @@
 package at.asitplus.etsi
 
+import at.asitplus.rfc.Rfc3986UniformResourceIdentifier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

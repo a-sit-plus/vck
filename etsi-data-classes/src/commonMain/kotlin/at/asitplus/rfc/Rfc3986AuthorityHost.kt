@@ -1,4 +1,4 @@
-package at.asitplus.etsi
+package at.asitplus.rfc
 
 /**
  * We don't really want to go further down the rabbit hole.

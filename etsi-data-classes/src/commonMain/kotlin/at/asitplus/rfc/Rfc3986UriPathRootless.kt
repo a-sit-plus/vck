@@ -1,10 +1,9 @@
-package at.asitplus.etsi
+package at.asitplus.rfc
 
 import kotlin.jvm.JvmInline
 
-@JvmInline
-value class Rfc3986UriPathRootless(
-    val percentEncodingAwareString: Rfc3986PercentEncodingAwareString
+data class Rfc3986UriPathRootless(
+    val percentEncodingAwareString: Rfc3986PercentEncodingAwareString,
 ) : Rfc3986UriPath {
     init {
         super.validate()
@@ -19,4 +18,8 @@ value class Rfc3986UriPathRootless(
         get() = percentEncodingAwareString.string
 
     override fun toString() = string
+
+    override fun equals(other: Any?) = equalsPath(other)
+
+    override fun hashCode() = toString().hashCode()
 }

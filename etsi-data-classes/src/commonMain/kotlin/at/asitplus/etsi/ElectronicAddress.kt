@@ -1,5 +1,6 @@
 package at.asitplus.etsi
 
+import at.asitplus.rfc.Rfc3986UriSchemeName
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 

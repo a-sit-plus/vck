@@ -1,9 +1,6 @@
-package at.asitplus.etsi
+package at.asitplus.rfc
 
-import kotlin.jvm.JvmInline
-
-@JvmInline
-value class Rfc3986UriPathNoScheme(
+data class Rfc3986UriPathNoScheme(
     val percentEncodingAwareString: Rfc3986PercentEncodingAwareString
 ) : Rfc3986RelativeReferencePath {
     init {
@@ -28,4 +25,8 @@ value class Rfc3986UriPathNoScheme(
         get() = percentEncodingAwareString.string
 
     override fun toString() = string
+
+    override fun equals(other: Any?) = equalsPath(other)
+
+    override fun hashCode() = toString().hashCode()
 }

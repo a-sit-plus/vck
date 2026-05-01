@@ -1,4 +1,4 @@
-package at.asitplus.etsi
+package at.asitplus.rfc
 
 interface Rfc2234Grammar {
     companion object : Rfc2234Grammar

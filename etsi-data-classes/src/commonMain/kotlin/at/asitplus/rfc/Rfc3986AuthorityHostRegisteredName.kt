@@ -1,4 +1,4 @@
-package at.asitplus.etsi
+package at.asitplus.rfc
 
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
