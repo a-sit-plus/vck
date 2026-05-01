@@ -29,6 +29,12 @@ value class Rfc3986UriSchemeName(
         }
     }
 
+    object Common {
+        val MAILTO = Rfc3986UriSchemeName("mailto")
+        val HTTP = Rfc3986UriSchemeName("http")
+        val HTTPS = Rfc3986UriSchemeName("https")
+    }
+
     constructor(string: String) : this(CaseInsensitiveString(string))
     val string: String
         get() = caseInsensitiveString.string
