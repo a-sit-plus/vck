@@ -1,15 +1,14 @@
 package at.asitplus.etsi
 
-
-sealed interface Rfc3986UriPath : Rfc3986Path {
+sealed interface Rfc3986RelativeReferencePath : Rfc3986Path {
     companion object {
         /**
-         *       URI         = scheme ":" hier-part [ "?" query ] [ "#" fragment ]
+         *      relative-ref  = relative-part [ "?" query ] [ "#" fragment ]
          *
-         *       hier-part   = "//" authority path-abempty
-         *                   / path-absolute
-         *                   / path-rootless
-         *                   / path-empty
+         *      relative-part = "//" authority path-abempty
+         *                     / path-absolute
+         *                     / path-noscheme
+         *                     / path-empty
          */
         operator fun invoke(
             string: String,
@@ -18,8 +17,7 @@ sealed interface Rfc3986UriPath : Rfc3986Path {
             hasAuthority -> Rfc3986UriPathAbsoluteOrEmpty(string)
             string.isEmpty() -> Rfc3986UriPathEmpty
             string.startsWith("/") -> Rfc3986UriPathAbsolute(string)
-            else -> Rfc3986UriPathRootless(string)
+            else -> Rfc3986UriPathNoScheme(string)
         }
     }
 }
-

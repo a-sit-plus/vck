@@ -5,9 +5,10 @@ import kotlin.jvm.JvmInline
 @JvmInline
 value class Rfc3986UriPathAbsolute(
     val percentEncodingAwareString: Rfc3986PercentEncodingAwareString
-) : Rfc3986UriPath {
+) : Rfc3986UriPath, Rfc3986RelativeReferencePath {
     init {
-        super.validate()
+        super<Rfc3986UriPath>.validate()
+        super<Rfc3986RelativeReferencePath>.validate()
         require(string.startsWith("/")) {
             "Expected path to start with `/`, but got `$string`."
         }
