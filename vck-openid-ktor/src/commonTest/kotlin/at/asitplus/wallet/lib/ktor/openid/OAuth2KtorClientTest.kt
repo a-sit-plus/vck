@@ -51,7 +51,9 @@ val OAuth2KtorClientTest by testSuite {
     fun setup(
         strategy: CredentialAuthorizationServiceStrategy,
         requestObjectSigningAlgorithms: Set<JwsAlgorithm.Signature>?,
-        requirePAR: Boolean
+        requirePAR: Boolean,
+        captureAttestationInput: ((OAuth2KtorClient.LoadInstanceAttestationInput) -> Unit)? = null,
+        captureAttestationPopInput: ((OAuth2KtorClient.LoadInstanceAttestationPopInput) -> Unit)? = null,
     ): Context {
         val dpopKeyMaterial = EphemeralKeyWithoutCert()
         val clientAuthKeyMaterial = EphemeralKeyWithoutCert()
@@ -131,6 +133,7 @@ val OAuth2KtorClientTest by testSuite {
             client = OAuth2KtorClient(
                 engine = mockEngine,
                 loadInstanceAttestation = {
+                    captureAttestationInput?.invoke(it)
                     catching {
                         BuildClientAttestationJwt(
                             SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
@@ -141,11 +144,12 @@ val OAuth2KtorClientTest by testSuite {
                     }
                 },
                 loadInstanceAttestationPop = {
+                    captureAttestationPopInput?.invoke(it)
                     catching {
                         BuildClientAttestationPoPJwt(
                             SignJwt(clientAuthKeyMaterial, JwsHeaderNone()),
                             clientId = clientId,
-                            audience = publicContext,
+                            audience = it.authorizationServer,
                             lifetime = 10.minutes,
                         )
                     }
@@ -219,6 +223,37 @@ val OAuth2KtorClientTest by testSuite {
                 token = tokenResponse.params.accessToken,
                 popAudience = authorizationService.publicContext,
             ).active shouldBe true
+        }
+    }
+
+    test("instance attestation callbacks receive authorization server context") {
+        var attestationInput: OAuth2KtorClient.LoadInstanceAttestationInput? = null
+        var attestationPopInput: OAuth2KtorClient.LoadInstanceAttestationPopInput? = null
+
+        with(
+            setup(
+                strategy = strategy,
+                requestObjectSigningAlgorithms = setOf(JwsAlgorithm.Signature.ES256),
+                requirePAR = true,
+                captureAttestationInput = { attestationInput = it },
+                captureAttestationPopInput = { attestationPopInput = it },
+            )
+        ) {
+            client.startAuthorization(
+                oauthMetadata = authorizationService.metadata(),
+                authorizationServer = authorizationService.publicContext,
+                scope = requestedScope,
+            ).getOrThrow()
+
+            attestationInput.shouldNotBeNull().also {
+                it.authorizationServer shouldBe authorizationService.publicContext
+                it.preferredClientStatusPeriod shouldBe authorizationService.metadata().preferredClientStatusPeriod
+            }
+            attestationPopInput.shouldNotBeNull().also {
+                it.authorizationServer shouldBe authorizationService.publicContext
+                it.resourceUrl shouldBe "${authorizationService.publicContext}/par"
+                it.httpMethod shouldBe HttpMethod.Post
+            }
         }
     }
 }

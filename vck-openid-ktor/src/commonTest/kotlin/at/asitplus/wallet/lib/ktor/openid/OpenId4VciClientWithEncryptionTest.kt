@@ -7,7 +7,6 @@ import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenRequestParameters
-import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtScheme
@@ -198,7 +197,7 @@ val OpenId4VciClientWithEncryptionTest by testSuite {
                 ),
                 oauth2Client = OAuth2KtorClient(
                     engine = mockEngine,
-                    loadInstanceAttestation = {
+                    loadInstanceAttestation = { _ ->
                         catching {
                             BuildClientAttestationJwt(
                                 SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
@@ -213,7 +212,7 @@ val OpenId4VciClientWithEncryptionTest by testSuite {
                             BuildClientAttestationPoPJwt(
                                 SignJwt(clientAuthKeyMaterial, JwsHeaderNone()),
                                 clientId = clientId,
-                                audience = publicContext,
+                                audience = it.authorizationServer,
                                 lifetime = 10.minutes,
                             )
                         }

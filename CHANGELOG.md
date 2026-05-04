@@ -28,6 +28,7 @@ Release 6.0.0 (unreleased):
    - Update Wallet Instance Attestation and Key Attestation to [EUDI Wallet TS3](https://github.com/eu-digital-identity-wallet/eudi-doc-standards-and-technical-specifications/blob/main/docs/technical-specifications/ts3-wallet-unit-attestation.md) from 2026-03-15
    - `WalletService.KeyAttestationInput` now includes `credentialIssuer` and `preferredKeyStorageStatusPeriod`; JWT proof creation only loads/attaches a key attestation when issuer metadata requires it
    - Reject Wallet Instance Attestations, attestation proofs, JWT proofs, and Key Attestations that use signing algorithms outside the TS3 ES256/ES384/ES512 set
+   - `OAuth2KtorClient` now passes `authorizationServer` and `preferredClientStatusPeriod` into Wallet Instance Attestation loading, so wallets can satisfy TS3 WIA selection and per-issuer reuse rules
  - Deprecations:
    - Remove code deprecated in 5.12.0, e.g. `CredentialSubject` as base class for JWT VC
    - Deprecate `vckJsonSerializer`, should be replaced with `joseCompliantSerializer` (Signum)

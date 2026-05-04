@@ -48,6 +48,7 @@ import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.util.*
 import io.ktor.utils.io.*
+import kotlin.time.Duration
 
 /**
  * Implements the client side of OAuth2
@@ -83,10 +84,25 @@ class OAuth2KtorClient(
     private val verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponse>) -> Boolean = { true },
 
     /** Returns a new instance attestation to validate the app against an authorization server. */
-    val loadInstanceAttestation: (suspend () -> KmmResult<JwsCompactTyped<JsonWebToken>>)? = null,
+    val loadInstanceAttestation: (suspend (LoadInstanceAttestationInput) -> KmmResult<JwsCompactTyped<JsonWebToken>>)? = null,
     /** Returns a proof of possession for an instance attestation */
-    val loadInstanceAttestationPop: (suspend () -> KmmResult<JwsCompactTyped<JsonWebToken>>)? = null,
+    val loadInstanceAttestationPop: (suspend (LoadInstanceAttestationPopInput) -> KmmResult<JwsCompactTyped<JsonWebToken>>)? = null,
+    @Deprecated("Use `loadInstanceAttestation` with `LoadInstanceAttestationInput`")
+    val loadClientAttestationJwt: (suspend () -> KmmResult<JwsCompactTyped<JsonWebToken>>)? = null,
+    @Deprecated("Use `loadInstanceAttestationPop` with `LoadInstanceAttestationPopInput`")
+    val signClientAttestationPop: (suspend () -> KmmResult<JwsCompactTyped<JsonWebToken>>)? = null,
 ) {
+    data class LoadInstanceAttestationInput(
+        val authorizationServer: String,
+        val preferredClientStatusPeriod: Duration?,
+    )
+
+    data class LoadInstanceAttestationPopInput(
+        val authorizationServer: String,
+        val resourceUrl: String,
+        val httpMethod: HttpMethod,
+    )
+
     /**
      * Stores the latest DPoP nonce per origin. RFC 9449 requires using only the most recent nonce
      * issued by the server that provided it.
@@ -270,7 +286,13 @@ class OAuth2KtorClient(
             setBody(FormDataContent(parameters {
                 tokenRequest.encodeToParameters().forEach { append(it.key, it.value) }
             }))
-            applyAuthnForToken(tokenEndpointUrl, HttpMethod.Post, true)()
+            applyAuthnForToken(
+                resourceUrl = tokenEndpointUrl,
+                httpMethod = HttpMethod.Post,
+                useDpop = true,
+                authorizationServer = popAudience,
+                preferredClientStatusPeriod = oauthMetadata.preferredClientStatusPeriod,
+            )()
         }.onFailure { response ->
             updateDpopNonceAndRetry(response, tokenEndpointUrl, retryCount) {
                 postToken(oauthMetadata, tokenRequest, popAudience, retryCount + 1)
@@ -374,7 +396,13 @@ class OAuth2KtorClient(
                 authRequest.encodeToParameters().forEach { append(it.key, it.value) }
                 append(OpenIdConstants.PARAMETER_PROMPT, OpenIdConstants.PARAMETER_PROMPT_LOGIN)
             }))
-            applyAuthnForToken(parEndpointUrl, HttpMethod.Post, true)()
+            applyAuthnForToken(
+                resourceUrl = parEndpointUrl,
+                httpMethod = HttpMethod.Post,
+                useDpop = true,
+                authorizationServer = popAudience,
+                preferredClientStatusPeriod = oauthMetadata.preferredClientStatusPeriod,
+            )()
         }.onFailure { response ->
             updateDpopNonceAndRetry(response, parEndpointUrl, retryCount) {
                 pushAuthorizationRequest(oauthMetadata, authRequest, state, popAudience, retryCount + 1)
@@ -409,6 +437,8 @@ class OAuth2KtorClient(
                 resourceUrl = introspectionUrl,
                 httpMethod = HttpMethod.Post,
                 useDpop = true,
+                authorizationServer = popAudience,
+                preferredClientStatusPeriod = oauthMetadata.preferredClientStatusPeriod,
             )()
         }.onFailure { response ->
             updateDpopNonceAndRetry(response, introspectionUrl, retryCount) {
@@ -471,14 +501,33 @@ class OAuth2KtorClient(
      * - loads client attestation when [loadInstanceAttestation] and [loadInstanceAttestationPop] is set
      * - sends a DPoP proof when [useDpop] is set
      */
+    @Suppress("DEPRECATION")
     suspend fun applyAuthnForToken(
         resourceUrl: String,
         httpMethod: HttpMethod,
         useDpop: Boolean,
+        authorizationServer: String,
+        preferredClientStatusPeriod: Duration?,
     ): HttpRequestBuilder.() -> Unit {
-        val (clientAttJwt, clientAttPop) = if (loadInstanceAttestation != null && loadInstanceAttestationPop != null) {
-            loadInstanceAttestation.loadJwsString() to loadInstanceAttestationPop.loadJwsString()
-        } else (null to null)
+        val clientAttJwt = if (loadInstanceAttestation != null || loadClientAttestationJwt != null) {
+            loadInstanceAttestation?.invoke(
+                LoadInstanceAttestationInput(
+                    authorizationServer = authorizationServer,
+                    preferredClientStatusPeriod = preferredClientStatusPeriod,
+                )
+            )?.getOrNull()?.jws
+                ?: loadClientAttestationJwt?.invoke()?.getOrNull()?.jws
+        } else null
+        val clientAttPop = if (loadInstanceAttestationPop != null || signClientAttestationPop != null) {
+            loadInstanceAttestationPop?.invoke(
+                LoadInstanceAttestationPopInput(
+                    authorizationServer = authorizationServer,
+                    resourceUrl = resourceUrl,
+                    httpMethod = httpMethod,
+                )
+            )?.getOrNull()?.jws
+                ?: signClientAttestationPop?.invoke()?.getOrNull()?.jws
+        } else null
 
         val dpopHeader = useDpop.takeIf { it }?.let {
             BuildDPoPHeader(
@@ -492,16 +541,12 @@ class OAuth2KtorClient(
 
         return {
             headers {
-                clientAttJwt?.let { append(HttpHeaders.OAuthClientAttestation, it) }
-                clientAttPop?.let { append(HttpHeaders.OAuthClientAttestationPop, it) }
+                clientAttJwt?.let { append(HttpHeaders.OAuthClientAttestation, it.toString()) }
+                clientAttPop?.let { append(HttpHeaders.OAuthClientAttestationPop, it.toString()) }
                 dpopHeader?.let { append(HttpHeaders.DPoP, it.toString()) }
             }
         }
     }
-
-    private suspend fun (suspend () -> KmmResult<JwsCompactTyped<JsonWebToken>>).loadJwsString(): String? =
-        invoke().getOrNull()?.jws?.toString()
-
 }
 
 val HttpHeaders.OAuthClientAttestation: String
