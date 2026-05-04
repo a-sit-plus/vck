@@ -15,11 +15,13 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
-import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.KeyAttestationRequired
+import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
 import at.asitplus.signum.indispensable.josef.KeyStorageStatus
@@ -54,8 +56,8 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
-import kotlin.time.Duration.Companion.days
 import kotlin.time.Clock.System
+import kotlin.time.Duration.Companion.days
 
 val OidvciAttestationTest by testSuite {
     withFixtureGenerator {
@@ -345,6 +347,47 @@ val OidvciAttestationTest by testSuite {
                 }
             }
         }
+
+        test("reject jwt proof with unsupported algorithm") {
+            it.issuer = CredentialIssuer(
+                authorizationService = it.authorizationService,
+                issuer = IssuerAgent(
+                    identifier = "https://issuer.example.com".toUri(),
+                    randomSource = RandomSource.Default
+                ),
+                credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme),
+                proofValidator = ProofValidator(requireKeyAttestation = false)
+            )
+
+            val requestOptions = RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
+            val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
+                .shouldNotBeNull()
+            val scope = credentialFormat.scope.shouldNotBeNull()
+            val token = it.getToken(scope)
+            val clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce
+
+            val request = it.client.createCredential(
+                tokenResponse = token,
+                metadata = it.issuer.metadata,
+                credentialFormat = credentialFormat,
+                clientNonce = clientNonce
+            ).getOrThrow().single().shouldBeInstanceOf<WalletService.CredentialRequest.Plain>()
+
+            val tamperedProof = request.request.proofs.shouldNotBeNull().jwt.shouldNotBeNull().single()
+                .withHeaderAlg(JwsAlgorithm.Signature.RS256)
+            val tamperedRequest = request.request.copy(
+                proofs = request.request.proofs!!.copy(jwt = setOf(tamperedProof))
+            )
+
+            shouldThrow<OAuth2Exception> {
+                it.issuer.credential(
+                    authorizationHeader = token.toHttpHeaderValue(),
+                    params = WalletService.CredentialRequest.Plain(tamperedRequest),
+                    credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+                ).getOrThrow()
+            }
+        }
+
     }
 }
 
@@ -378,3 +421,8 @@ private suspend fun WalletService.loadTestKeyAttestation(
 }
 
 private fun dummyUser(): OidcUserInfoExtended = OidcUserInfoExtended.deserialize("{\"sub\": \"foo\"}").getOrThrow()
+
+private suspend fun JwsCompact.withHeaderAlg(alg: JwsAlgorithm.Signature): JwsCompact =
+    JwsCompact(jwsHeader.copy(algorithm = alg), plainPayload) {
+        signature.rawByteArray
+    }

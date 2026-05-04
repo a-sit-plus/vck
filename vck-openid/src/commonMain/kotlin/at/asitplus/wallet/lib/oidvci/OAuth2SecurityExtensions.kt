@@ -7,6 +7,7 @@ import at.asitplus.signum.indispensable.josef.ClientStatus
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.SignJwtFun
@@ -34,7 +35,7 @@ object BuildDPoPHeader {
         accessToken: String? = null,
         nonce: String? = null,
         randomSource: RandomSource = RandomSource.Secure
-    ) = signDpop(
+    ): JwsCompactTyped<JsonWebToken> = signDpop(
         JwsContentTypeConstants.DPOP_JWT,
         JsonWebToken(
             jwtId = randomSource.nextBytes(12).encodeToString(Base64UrlStrict),
@@ -58,7 +59,7 @@ object BuildClientAttestationJwt {
      *
      * @param clientId OAuth 2.0 client ID of the wallet
      * @param issuer deprecated and ignored. TS3 WUA 1.5 removes `iss`; Wallet Provider identity comes from `x5c`.
-     * @param clientKey key to be attested, i.e. included in a [at.asitplus.signum.indispensable.josef.ConfirmationClaim]
+     * @param clientKey key to be attested, i.e. included in a [ConfirmationClaim]
      * @param walletName identifier of the Wallet Solution.
      * @param walletVersion version of the Wallet Solution.
      * @param walletSolutionCertificationInformation certification information for the Wallet Solution.
@@ -83,7 +84,7 @@ object BuildClientAttestationJwt {
         walletLink: String? = null,
         lifetime: Duration = 60.minutes,
         clockSkew: Duration = 3.minutes,
-    ) = signJwt(
+    ): JwsCompactTyped<JsonWebToken> = signJwt(
         JwsContentTypeConstants.CLIENT_ATTESTATION_JWT,
         JsonWebToken(
             subject = clientId,
@@ -132,7 +133,7 @@ object BuildClientAttestationPoPJwt {
         lifetime: Duration = 10.minutes,
         clockSkew: Duration = 3.minutes,
         randomSource: RandomSource = RandomSource.Secure
-    ) = signJwt(
+    ): JwsCompactTyped<JsonWebToken> = signJwt(
         JwsContentTypeConstants.CLIENT_ATTESTATION_POP_JWT,
         JsonWebToken(
             issuer = clientId,

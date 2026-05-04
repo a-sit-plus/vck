@@ -7,6 +7,8 @@ import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.RandomSource
@@ -180,6 +182,26 @@ val OAuth2ClientAuthenticationTest by testSuite {
             }
         }
 
+        test("pushed authorization request with unsupported client attestation algorithm") {
+            val state = uuid4().toString()
+            val authnRequest = it.client.createAuthRequestJar(
+                state = state,
+                scope = it.scope,
+            )
+
+            shouldThrow<OAuth2Exception> {
+                it.server.par(
+                    authnRequest,
+                    RequestInfo(
+                        url = "https://example.com/",
+                        method = HttpMethod.Post,
+                        clientAttestation = it.clientAttestation.withHeaderAlg(JwsAlgorithm.Signature.RS256),
+                        clientAttestationPop = it.clientAttestationPop
+                    )
+                ).getOrThrow()
+            }
+        }
+
         test("pushed authorization request without client authentication") {
             val state = uuid4().toString()
             val authnRequest = it.client.createAuthRequestJar(
@@ -246,3 +268,8 @@ val OAuth2ClientAuthenticationTest by testSuite {
         }
     }
 }
+
+private suspend fun JwsCompactTyped<JsonWebToken>.withHeaderAlg(alg: JwsAlgorithm.Signature) =
+    JwsCompactTyped<JsonWebToken>(jws.jwsHeader.copy(algorithm = alg), jws.getPayload<JsonWebToken>().getOrThrow()) {
+        jws.signature.rawByteArray
+    }

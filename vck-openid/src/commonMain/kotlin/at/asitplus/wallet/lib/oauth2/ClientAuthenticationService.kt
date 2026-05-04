@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
@@ -80,6 +81,11 @@ class ClientAuthenticationService(
         if (jws.jwsHeader.certificateChain.isNullOrEmpty()) {
             throw InvalidClient("client attestation has no x5c")
         }
+        if (jws.jwsHeader.algorithm !is JwsAlgorithm.Signature ||
+            jws.jwsHeader.algorithm !in SimpleAuthorizationService.DEFAULT_WALLET_ATTESTATION_ALGORITHMS
+        ) {
+            throw InvalidClient("unsupported client attestation alg: ${jws.jwsHeader.algorithm}")
+        }
         if (payload.issuer != null) {
             throw InvalidClient("client attestation must not contain iss")
         }
@@ -121,6 +127,11 @@ class ClientAuthenticationService(
     private fun JwsCompactTyped<JsonWebToken>.validateWalletInstanceAttestationPop(clientId: String?) {
         if (jws.jwsHeader.type != JwsContentTypeConstants.CLIENT_ATTESTATION_POP_JWT) {
             throw InvalidClient("invalid client attestation PoP typ: ${jws.jwsHeader.type}")
+        }
+        if (jws.jwsHeader.algorithm !is JwsAlgorithm.Signature ||
+            jws.jwsHeader.algorithm !in SimpleAuthorizationService.DEFAULT_WALLET_ATTESTATION_ALGORITHMS
+        ) {
+            throw InvalidClient("unsupported client attestation PoP alg: ${jws.jwsHeader.algorithm}")
         }
         if (payload.issuer == null || payload.issuer != clientId) {
             throw InvalidClient("client attestation PoP iss not equal to client_id")
