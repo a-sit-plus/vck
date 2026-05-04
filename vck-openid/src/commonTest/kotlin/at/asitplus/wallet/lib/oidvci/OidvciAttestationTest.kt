@@ -45,8 +45,10 @@ import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.assertions.throwables.shouldThrowAny
+import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.buildJsonObject
@@ -247,6 +249,54 @@ val OidvciAttestationTest by testSuite {
 
             proof.attestation.shouldNotBeNull().shouldNotBeEmpty()
             proof.attestationParsed.shouldNotBeNull().first().payload.keyStorageStatus.shouldNotBeNull()
+        }
+
+        test("key attestation callback receives issuer preference context") {
+            var capturedInput: WalletService.KeyAttestationInput? = null
+            it.client = WalletService(
+                loadKeyAttestation = { input ->
+                    capturedInput = input
+                    catching {
+                        SignJwt<KeyAttestationJwt>(it.walletProviderKeyMaterial, JwsHeaderCertOrJwk())(
+                            type = OpenIdConstants.KEY_ATTESTATION_JWT_TYPE,
+                            payload = KeyAttestationJwt(
+                                issuedAt = System.now(),
+                                expiration = System.now() + 1.days,
+                                attestedKeys = setOf(it.clientKeyMaterial.jsonWebKey),
+                                nonce = input.clientNonce,
+                                keyStorage = setOf("iso_18045_high"),
+                                userAuthentication = setOf("iso_18045_high"),
+                                certification = "https://example.org/certification/wscd",
+                                keyStorageStatus = KeyStorageStatus(
+                                    status = buildJsonObject {
+                                        putJsonObject("status_list") {
+                                            put("idx", 7)
+                                            put("uri", "https://example.org/status/key-storage")
+                                        }
+                                    },
+                                    expiration = System.now() + 31.days,
+                                ),
+                            ),
+                            serializer = KeyAttestationJwt.serializer(),
+                        ).getOrThrow()
+                    }
+                },
+                keyMaterial = it.clientKeyMaterial,
+            )
+
+            it.client.createCredentialRequestProofJwt(
+                clientNonce = "nonce-123",
+                credentialIssuer = "https://issuer.example.com",
+                keyAttestationRequired = KeyAttestationRequired(preferredTtl = 5.days),
+                supportedAlgorithms = listOf("ES256", "ES384"),
+            )
+
+            capturedInput.shouldNotBeNull().also { input ->
+                input.credentialIssuer shouldBe "https://issuer.example.com"
+                input.clientNonce shouldBe "nonce-123"
+                input.supportedAlgorithms.shouldNotBeNull().shouldContainExactly("ES256", "ES384")
+                input.preferredKeyStorageStatusPeriod shouldBe 5.days
+            }
         }
 
         test("do not require key attestation for proof, so local error shouldn't matter") {

@@ -84,8 +84,10 @@ class WalletService(
 ) {
 
     data class KeyAttestationInput(
+        val credentialIssuer: String?,
         val clientNonce: String?,
-        val supportedAlgorithms: Collection<String>?
+        val supportedAlgorithms: Collection<String>?,
+        val preferredKeyStorageStatusPeriod: Duration?,
     )
 
     data class LoadUnitAttestationPopInput(
@@ -374,23 +376,27 @@ class WalletService(
         if (keyAttestationRequired != null && loadKeyAttestation == null && loadUnitAttestationPop == null) {
             throw IllegalArgumentException("Key attestation required, none provided")
         }
-        val keyAttestation: JwsCompactTyped<KeyAttestationJwt>? = loadKeyAttestation?.invoke(
-            KeyAttestationInput(
-                clientNonce = clientNonce,
-                supportedAlgorithms = supportedAlgorithms
-            )
-        )?.getOrElse { throw IllegalArgumentException("Key attestation required, none provided", it) }
-            ?: loadUnitAttestationPop?.invoke(
-                LoadUnitAttestationPopInput(
-                    ttl = keyAttestationRequired?.preferredTtl ?: 31.days,
-                    payload = JsonWebToken(
-                        nonce = clientNonce,
-                        audience = credentialIssuer,
-                        issuedAt = clock.now(),
-                    ),
+        val keyAttestation: JwsCompactTyped<KeyAttestationJwt>? = if (keyAttestationRequired != null) {
+            loadKeyAttestation?.invoke(
+                KeyAttestationInput(
+                    credentialIssuer = credentialIssuer,
+                    clientNonce = clientNonce,
+                    supportedAlgorithms = supportedAlgorithms,
+                    preferredKeyStorageStatusPeriod = keyAttestationRequired.preferredTtl,
                 )
             )?.getOrElse { throw IllegalArgumentException("Key attestation required, none provided", it) }
+                ?: loadUnitAttestationPop?.invoke(
+                    LoadUnitAttestationPopInput(
+                        ttl = keyAttestationRequired.preferredTtl ?: 31.days,
+                        payload = JsonWebToken(
+                            nonce = clientNonce,
+                            audience = credentialIssuer,
+                            issuedAt = clock.now(),
+                        ),
+                    )
+                )?.getOrElse { throw IllegalArgumentException("Key attestation required, none provided", it) }
                 ?.let { JwsCompactTyped<KeyAttestationJwt>(it.jws.toString()) }
+        } else null
         keyAttestation?.requireKeyMaterialAtAttestedKeyIndex0()
 
         return CredentialRequestProofContainer(
@@ -428,8 +434,10 @@ class WalletService(
         attestation = setOf(
             (loadKeyAttestation?.invoke(
                 KeyAttestationInput(
+                    credentialIssuer = credentialIssuer,
                     clientNonce = clientNonce,
-                    supportedAlgorithms = supportedAlgorithms
+                    supportedAlgorithms = supportedAlgorithms,
+                    preferredKeyStorageStatusPeriod = keyAttestationRequired?.preferredTtl,
                 )
             )?.getOrElse { throw IllegalArgumentException("Key attestation required, none provided", it) }
                 ?: loadUnitAttestationPop?.invoke(
