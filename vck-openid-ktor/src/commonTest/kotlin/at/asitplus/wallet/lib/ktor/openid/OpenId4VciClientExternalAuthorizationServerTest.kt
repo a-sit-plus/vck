@@ -240,7 +240,7 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
                 engine = mockEngine,
                 oauth2Client = OAuth2KtorClient(
                     engine = mockEngine,
-                    loadInstanceAttestation = {
+                    loadInstanceAttestation = { _ ->
                         catching {
                             BuildClientAttestationJwt(
                                 SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
@@ -255,7 +255,7 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
                             BuildClientAttestationPoPJwt(
                                 SignJwt(issuerClientAuthKeyMaterial, JwsHeaderNone()),
                                 clientId = issuerPublicContext,
-                                audience = issuerPublicContext,
+                                audience = it.authorizationServer,
                                 lifetime = 10.minutes,
                             )
                         }
@@ -290,7 +290,7 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
                 ),
                 oauth2Client = OAuth2KtorClient(
                     engine = mockEngine,
-                    loadInstanceAttestation = {
+                    loadInstanceAttestation = { _ ->
                         catching {
                             BuildClientAttestationJwt(
                                 SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
@@ -305,7 +305,7 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
                             BuildClientAttestationPoPJwt(
                                 SignJwt(walletClientAuthKeyMaterial, JwsHeaderNone()),
                                 clientId = walletClientId,
-                                audience = issuerPublicContext,
+                                audience = it.authorizationServer,
                                 lifetime = 10.minutes,
                             )
                         }

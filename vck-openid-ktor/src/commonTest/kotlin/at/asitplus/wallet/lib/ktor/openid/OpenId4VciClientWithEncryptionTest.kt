@@ -198,7 +198,7 @@ val OpenId4VciClientWithEncryptionTest by testSuite {
                 ),
                 oauth2Client = OAuth2KtorClient(
                     engine = mockEngine,
-                    loadInstanceAttestation = {
+                    loadInstanceAttestation = { _ ->
                         catching {
                             BuildClientAttestationJwt(
                                 SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
@@ -213,7 +213,7 @@ val OpenId4VciClientWithEncryptionTest by testSuite {
                             BuildClientAttestationPoPJwt(
                                 SignJwt(clientAuthKeyMaterial, JwsHeaderNone()),
                                 clientId = clientId,
-                                audience = publicContext,
+                                audience = it.authorizationServer,
                                 lifetime = 10.minutes,
                             )
                         }
