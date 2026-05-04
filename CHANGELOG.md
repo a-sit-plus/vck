@@ -4,6 +4,7 @@ Release 6.0.0 (unreleased):
  - Add: ETSI data classes for list of trusted entities, [ETSI TS 119 602](https://www.etsi.org/deliver/etsi_ts/119600_119699/119602/01.01.01_60/ts_119602v010101p.pdf)
  - OpenID for Verifiable Credential Issuance:
    - Update Wallet Instance Attestation and Key Attestation to [EUDI Wallet TS3](https://github.com/eu-digital-identity-wallet/eudi-doc-standards-and-technical-specifications/blob/main/docs/technical-specifications/ts3-wallet-unit-attestation.md) from 2026-03-15
+   - `WalletService.KeyAttestationInput` now includes `credentialIssuer` and `preferredKeyStorageStatusPeriod`; JWT proof creation only loads/attaches a key attestation when issuer metadata requires it
  - Deprecations:
    - Remove code deprecated in 5.12.0, e.g. `CredentialSubject` as base class for JWT VC
    - Deprecate `vckJsonSerializer`, should be replaced with `joseCompliantSerializer` (Signum)
