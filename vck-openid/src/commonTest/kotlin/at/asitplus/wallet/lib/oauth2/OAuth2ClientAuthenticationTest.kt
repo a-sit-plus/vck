@@ -6,7 +6,9 @@ import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.RandomSource
@@ -28,6 +30,10 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 
 val OAuth2ClientAuthenticationTest by testSuite {
 
@@ -180,6 +186,26 @@ val OAuth2ClientAuthenticationTest by testSuite {
             }
         }
 
+        test("pushed authorization request with unsupported client attestation algorithm") {
+            val state = uuid4().toString()
+            val authnRequest = it.client.createAuthRequestJar(
+                state = state,
+                scope = it.scope,
+            )
+
+            shouldThrow<OAuth2Exception> {
+                it.server.par(
+                    authnRequest,
+                    RequestInfo(
+                        url = "https://example.com/",
+                        method = HttpMethod.Post,
+                        clientAttestation = it.clientAttestation.serialize().withHeaderAlg("RS256"),
+                        clientAttestationPop = it.clientAttestationPop.serialize()
+                    )
+                ).getOrThrow()
+            }
+        }
+
         test("pushed authorization request without client authentication") {
             val state = uuid4().toString()
             val authnRequest = it.client.createAuthRequestJar(
@@ -245,4 +271,16 @@ val OAuth2ClientAuthenticationTest by testSuite {
             }
         }
     }
+}
+
+private fun String.withHeaderAlg(alg: String): String {
+    val parts = split(".")
+    require(parts.size == 3) { "Expected compact JWS" }
+    val header = joseCompliantSerializer.parseToJsonElement(
+        parts[0].decodeToByteArray(Base64UrlStrict).decodeToString()
+    ).jsonObject
+    val encodedHeader = joseCompliantSerializer.encodeToString(
+        header.toMutableMap().also { it["alg"] = JsonPrimitive(alg) }
+    ).encodeToByteArray().encodeToString(Base64UrlStrict)
+    return listOf(encodedHeader, parts[1], parts[2]).joinToString(".")
 }

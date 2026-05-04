@@ -99,6 +99,9 @@ class ProofValidator(
         if (header.type != OpenIdConstants.PROOF_JWT_TYPE) {
             throw InvalidProof("invalid typ: ${header.type}")
         }
+        if (header.algorithm !is JwsAlgorithm.Signature || header.algorithm !in supportedAlgorithms) {
+            throw InvalidProof("unsupported proof alg: ${header.algorithm}")
+        }
         if (payload.nonce == null || !clientNonceService.verifyNonce(payload.nonce!!)) {
             throw InvalidNonce("invalid nonce: ${payload.nonce}")
         }
@@ -144,6 +147,11 @@ class ProofValidator(
     private suspend fun JwsSigned<KeyAttestationJwt>.validateKeyAttestation(): Collection<CryptoPublicKey> {
         if (header.type != OpenIdConstants.KEY_ATTESTATION_JWT_TYPE) {
             throw InvalidProof("invalid typ: ${header.type}")
+        }
+        if (header.algorithm !is JwsAlgorithm.Signature ||
+            header.algorithm !in SimpleAuthorizationService.DEFAULT_WALLET_ATTESTATION_ALGORITHMS
+        ) {
+            throw InvalidProof("unsupported key attestation alg: ${header.algorithm}")
         }
         if (payload.issuer != null) {
             throw InvalidProof("key attestation must not contain iss")

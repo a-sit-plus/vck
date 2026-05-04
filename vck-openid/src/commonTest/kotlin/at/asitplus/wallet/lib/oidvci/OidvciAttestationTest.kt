@@ -20,6 +20,7 @@ import at.asitplus.openid.KeyAttestationRequired
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
@@ -52,8 +53,12 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import kotlin.time.Duration.Companion.days
@@ -358,6 +363,45 @@ val OidvciAttestationTest by testSuite {
             }
         }
 
+        test("reject jwt proof with unsupported algorithm") {
+            it.issuer = CredentialIssuer(
+                authorizationService = it.authorizationService,
+                issuer = IssuerAgent(
+                    identifier = "https://issuer.example.com".toUri(),
+                    randomSource = RandomSource.Default
+                ),
+                credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme),
+                proofValidator = ProofValidator(requireKeyAttestation = false)
+            )
+
+            val requestOptions = RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
+            val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
+                .shouldNotBeNull()
+            val scope = credentialFormat.scope.shouldNotBeNull()
+            val token = it.getToken(scope)
+            val clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce
+
+            val request = it.client.createCredential(
+                tokenResponse = token,
+                metadata = it.issuer.metadata,
+                credentialFormat = credentialFormat,
+                clientNonce = clientNonce
+            ).getOrThrow().single().shouldBeInstanceOf<WalletService.CredentialRequest.Plain>()
+
+            val tamperedProof = request.request.proofs.shouldNotBeNull().jwt.shouldNotBeNull().single().withHeaderAlg("RS256")
+            val tamperedRequest = request.request.copy(
+                proofs = request.request.proofs!!.copy(jwt = setOf(tamperedProof))
+            )
+
+            shouldThrow<OAuth2Exception> {
+                it.issuer.credential(
+                    authorizationHeader = token.toHttpHeaderValue(),
+                    params = WalletService.CredentialRequest.Plain(tamperedRequest),
+                    credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+                ).getOrThrow()
+            }
+        }
+
     }
 }
 
@@ -391,3 +435,15 @@ private suspend fun WalletService.loadTestKeyAttestation(
 }
 
 private fun dummyUser(): OidcUserInfoExtended = OidcUserInfoExtended.deserialize("{\"sub\": \"foo\"}").getOrThrow()
+
+private fun String.withHeaderAlg(alg: String): String {
+    val parts = split(".")
+    require(parts.size == 3) { "Expected compact JWS" }
+    val header = joseCompliantSerializer.parseToJsonElement(
+        parts[0].decodeToByteArray(Base64UrlStrict).decodeToString()
+    ).jsonObject
+    val encodedHeader = joseCompliantSerializer.encodeToString(
+        header.toMutableMap().also { it["alg"] = JsonPrimitive(alg) }
+    ).encodeToByteArray().encodeToString(Base64UrlStrict)
+    return listOf(encodedHeader, parts[1], parts[2]).joinToString(".")
+}
