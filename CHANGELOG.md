@@ -5,6 +5,8 @@ Release 6.0.0 (unreleased):
  - Deprecations:
    - Remove code deprecated in 5.12.0, e.g. `CredentialSubject` as base class for JWT VC
    - Deprecate `vckJsonSerializer`, should be replaced with `joseCompliantSerializer` (Signum)
+ - Dependencies:
+   - Update to [Signum 3.22.0](https://github.com/a-sit-plus/signum/releases/tag/3.22.0)
 
 Release 5.12.0:
  - W3C JWT VC:
