@@ -147,11 +147,19 @@ class SimpleAuthorizationService(
      */
     private val requestObjectSigningAlgorithms: Set<JwsAlgorithm.Signature>? = setOf(JwsAlgorithm.Signature.ES256),
     /** Used for [OAuth2AuthorizationServerMetadata.clientAttestationSigningAlgValuesSupportedStrings] */
-    private val supportedSigningAlgorithms: Set<JwsAlgorithm.Signature> = setOf(JwsAlgorithm.Signature.ES256),
+    private val supportedSigningAlgorithms: Set<JwsAlgorithm.Signature> = DEFAULT_WALLET_ATTESTATION_ALGORITHMS,
     /** Used to sign JWT introspection responses (RFC 9701). */
     private val signIntrospectionJwt: SignJwtFun<TokenIntrospectionResponse> =
         SignJwt(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk()),
 ) : OAuth2AuthorizationServerAdapter, AuthorizationService {
+
+    companion object {
+        val DEFAULT_WALLET_ATTESTATION_ALGORITHMS: Set<JwsAlgorithm.Signature> = setOf(
+            JwsAlgorithm.Signature.ES256,
+            JwsAlgorithm.Signature.ES384,
+            JwsAlgorithm.Signature.ES512,
+        )
+    }
 
     private val _metadata: OAuth2AuthorizationServerMetadata by lazy {
         OAuth2AuthorizationServerMetadata(
