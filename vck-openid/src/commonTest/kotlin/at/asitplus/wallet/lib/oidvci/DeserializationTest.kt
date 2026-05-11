@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.IssuerMetadata
+import at.asitplus.openid.OpenId4VciClaimsPathPointer
 import at.asitplus.openid.SupportedCredentialFormatMsoMdoc
 import at.asitplus.openid.SupportedCredentialFormatSdJwt
 import at.asitplus.signum.indispensable.SignatureAlgorithm
@@ -225,19 +226,17 @@ val DeserializationTest by testSuite {
                         }
                         claimDescription.shouldNotBeNull().apply {
                             shouldNotBeEmpty()
-                            firstOrNull { it.path == listOf("org.iso.18013.5.1", "given_name") }.shouldNotBeNull()
+                            firstOrNull { it.path == OpenId4VciClaimsPathPointer("org.iso.18013.5.1", "given_name") }.shouldNotBeNull()
                                 .also {
                                     it.display.shouldNotBeNull().firstOrNull { it.locale == "en-US" }.shouldNotBeNull()
                                     it.display.shouldNotBeNull().firstOrNull { it.locale == "ja-JP" }.shouldNotBeNull()
                                 }
-                            firstOrNull { it.path == listOf("org.iso.18013.5.1", "family_name") }.shouldNotBeNull()
+                            firstOrNull { it.path == OpenId4VciClaimsPathPointer("org.iso.18013.5.1", "family_name") }.shouldNotBeNull()
                         }
                     }
                 }
             }
         }
-
-
     }
 
     test("OID4VCI A.3.2. IETF SD-JWT VC") {
@@ -361,12 +360,12 @@ val DeserializationTest by testSuite {
                     }
                     credentialMetadata.shouldNotBeNull().apply {
                         claimDescription.shouldNotBeNull().shouldNotBeEmpty().apply {
-                            firstOrNull { it.path == listOf("given_name") }.shouldNotBeNull()
-                            firstOrNull { it.path == listOf("family_name") }.shouldNotBeNull()
-                            firstOrNull { it.path == listOf("email") }.shouldNotBeNull()
-                            firstOrNull { it.path == listOf("phone_number") }.shouldNotBeNull()
-                            firstOrNull { it.path == listOf("address") }.shouldNotBeNull()
-                            firstOrNull { it.path == listOf("address", "street_address") }.shouldNotBeNull()
+                            firstOrNull { it.path == OpenId4VciClaimsPathPointer("given_name") }.shouldNotBeNull()
+                            firstOrNull { it.path == OpenId4VciClaimsPathPointer("family_name") }.shouldNotBeNull()
+                            firstOrNull { it.path == OpenId4VciClaimsPathPointer("email") }.shouldNotBeNull()
+                            firstOrNull { it.path == OpenId4VciClaimsPathPointer("phone_number") }.shouldNotBeNull()
+                            firstOrNull { it.path == OpenId4VciClaimsPathPointer("address") }.shouldNotBeNull()
+                            firstOrNull { it.path == OpenId4VciClaimsPathPointer("address", "street_address") }.shouldNotBeNull()
                         }
                     }
                 }

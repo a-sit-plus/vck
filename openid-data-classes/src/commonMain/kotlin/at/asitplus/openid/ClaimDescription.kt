@@ -10,7 +10,7 @@ data class ClaimDescription(
      * to a claim within the credential, as defined in Appendix C.
      */
     @SerialName("path")
-    val path: List<String>,
+    val path: OpenId4VciClaimsPathPointer,
 
     /**
      * OID4VCI: Issuer Metadata:

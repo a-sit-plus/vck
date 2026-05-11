@@ -23,6 +23,7 @@ val SupportedCredentialFormatTest by testSuite {
             }
         }
     }
+
     testSuite("sd jwt format deserialization") {
         withDataSuites(
             """{"vct": "eu.pid.1", "format": "dc+sd-jwt"}""",
@@ -38,6 +39,7 @@ val SupportedCredentialFormatTest by testSuite {
             }
         }
     }
+
     testSuite("w3c vc jwt format deserialization") {
         withDataSuites(
             """{ "credential_definition": { "type": ["eu.pid.1"] }, "format": "jwt_vc_json"}""".trimMargin(),
@@ -53,6 +55,7 @@ val SupportedCredentialFormatTest by testSuite {
             }
         }
     }
+
     testSuite("w3c vc json ld format deserialization") {
         withDataSuites(
             """{ "credential_definition": { "@context": ["${W3cVerifiableCredentialsContext.FIRST}"], "type": ["eu.pid.1"] }, "format": "ldp_vc"}""",
@@ -68,6 +71,7 @@ val SupportedCredentialFormatTest by testSuite {
             }
         }
     }
+
     testSuite("w3c vc jwt + json ld format deserialization") {
         withDataSuites(
             """{ "credential_definition": { "@context": ["${W3cVerifiableCredentialsContext.FIRST}"], "type": ["eu.pid.1"] }, "format": "jwt_vc_json-ld"}""",
