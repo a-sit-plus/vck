@@ -2,7 +2,6 @@ package at.asitplus.openid
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonElement
 
 @Serializable
 data class SupportedCredentialFormatW3cVcJsonLdCredentailDefinition(
@@ -17,7 +16,7 @@ data class SupportedCredentialFormatW3cVcJsonLdCredentailDefinition(
      *     dereferenced, results in a document containing machine-readable information about the @context.
      */
     @SerialName(SerialNames.CONTEXT)
-    val context: List<JsonElement>,
+    val context: W3cVerifiableCredentialsContext,
     /**
      * OID4VCI: type: REQUIRED. Array designating the types a certain credential type supports, according to [VC_DATA],
      * Section 4.3.
