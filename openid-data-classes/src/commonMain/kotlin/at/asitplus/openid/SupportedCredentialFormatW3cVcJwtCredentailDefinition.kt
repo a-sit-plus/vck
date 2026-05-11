@@ -8,13 +8,13 @@ import kotlinx.serialization.Serializable
  * It consists of at least the following two parameters: `type, `credentialSubject`.
  */
 @Serializable
-data class SupportedCredentialFormatDefinition(
+data class SupportedCredentialFormatW3cVcJwtCredentailDefinition(
 
     /**
      * OID4VCI: W3C VC: REQUIRED. JSON array designating the types a certain credential type supports
      * according to (VC_DATA), Section 4.3, e.g. `VerifiableCredential`, `UniversityDegreeCredential`
      */
     @SerialName("type")
-    val types: Set<String>? = null,
+    val types: Set<String>,
 
 )

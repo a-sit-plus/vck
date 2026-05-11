@@ -8,7 +8,7 @@ import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_COSE_KEY
 import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_JWK
 import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.openid.SupportedCredentialFormat
-import at.asitplus.openid.SupportedCredentialFormatDefinition
+import at.asitplus.openid.SupportedCredentialFormatW3cVcJwtCredentailDefinition
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
@@ -60,7 +60,6 @@ interface CredentialSchemeMapper {
 
 fun CredentialScheme.toIsoMdocSupportedCredentialFormat(identifier: String): Pair<String, SupportedCredentialFormat> =
     identifier to SupportedCredentialFormat.forIsoMdoc(
-        format = CredentialFormatEnum.MSO_MDOC,
         scope = identifier,
         docType = isoDocType!!,
         supportedBindingMethods = setOf(BINDING_METHOD_JWK, BINDING_METHOD_COSE_KEY),
@@ -71,9 +70,8 @@ fun CredentialScheme.toIsoMdocSupportedCredentialFormat(identifier: String): Pai
 
 fun CredentialScheme.toPlainJwtSupportedCredentialFormat(identifier: String): Pair<String, SupportedCredentialFormat> =
     identifier to SupportedCredentialFormat.forVcJwt(
-        format = JWT_VC,
         scope = identifier,
-        credentialDefinition = SupportedCredentialFormatDefinition(
+        credentialDefinition = SupportedCredentialFormatW3cVcJwtCredentailDefinition(
             types = setOf(VcDataModelConstants.VERIFIABLE_CREDENTIAL, vcType!!),
         ),
         supportedBindingMethods = setOf(BINDING_METHOD_JWK, URN_TYPE_JWK_THUMBPRINT),
@@ -84,7 +82,6 @@ fun CredentialScheme.toPlainJwtSupportedCredentialFormat(identifier: String): Pa
 
 fun CredentialScheme.toSdJwtSupportedCredentialFormat(identifier: String): Pair<String, SupportedCredentialFormat> =
     identifier to SupportedCredentialFormat.forSdJwt(
-        format = DC_SD_JWT,
         scope = identifier,
         sdJwtVcType = sdJwtType!!,
         supportedBindingMethods = setOf(BINDING_METHOD_JWK, URN_TYPE_JWK_THUMBPRINT),

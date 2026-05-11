@@ -3,6 +3,8 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.IssuerMetadata
+import at.asitplus.openid.SupportedCredentialFormatMsoMdoc
+import at.asitplus.openid.SupportedCredentialFormatSdJwt
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import de.infix.testBalloon.framework.core.testSuite
@@ -12,6 +14,7 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.maps.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 
 val DeserializationTest by testSuite {
 
@@ -202,7 +205,7 @@ val DeserializationTest by testSuite {
         joseCompliantSerializer.decodeFromString<IssuerMetadata>(input).apply {
             supportedCredentialConfigurations.shouldNotBeNull().apply {
                 shouldNotBeEmpty()
-                get("org.iso.18013.5.1.mDL").shouldNotBeNull().apply {
+                get("org.iso.18013.5.1.mDL").shouldBeInstanceOf<SupportedCredentialFormatMsoMdoc>().apply {
                     format shouldBe CredentialFormatEnum.MSO_MDOC
                     docType shouldBe "org.iso.18013.5.1.mDL"
                     supportedBindingMethods.shouldNotBeNull().shouldBeSingleton().shouldContain("cose_key")
@@ -337,7 +340,7 @@ val DeserializationTest by testSuite {
         joseCompliantSerializer.decodeFromString<IssuerMetadata>(input).apply {
             supportedCredentialConfigurations.shouldNotBeNull().apply {
                 shouldNotBeEmpty()
-                get("SD_JWT_VC_example_in_OpenID4VCI").shouldNotBeNull().apply {
+                get("SD_JWT_VC_example_in_OpenID4VCI").shouldBeInstanceOf<SupportedCredentialFormatSdJwt>().apply {
                     format shouldBe CredentialFormatEnum.DC_SD_JWT
                     scope shouldBe "SD_JWT_VC_example_in_OpenID4VCI"
                     sdJwtVcType shouldBe "SD_JWT_VC_example_in_OpenID4VCI"

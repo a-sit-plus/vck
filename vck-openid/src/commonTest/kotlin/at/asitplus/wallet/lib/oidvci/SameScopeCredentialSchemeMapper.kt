@@ -8,7 +8,7 @@ import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_COSE_KEY
 import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_JWK
 import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.openid.SupportedCredentialFormat
-import at.asitplus.openid.SupportedCredentialFormatDefinition
+import at.asitplus.openid.SupportedCredentialFormatW3cVcJwtCredentailDefinition
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsIso
@@ -44,7 +44,6 @@ class SameScopeCredentialSchemeMapper(
         val iso = if (supportsIso) {
             with(isoNamespace!!) {
                 this to SupportedCredentialFormat.forIsoMdoc(
-                    format = CredentialFormatEnum.MSO_MDOC,
                     scope = scope,
                     docType = isoDocType!!,
                     supportedBindingMethods = setOf(BINDING_METHOD_JWK, BINDING_METHOD_COSE_KEY),
@@ -57,9 +56,8 @@ class SameScopeCredentialSchemeMapper(
         val jwtVc = if (supportsVcJwt) {
             with(encodeToCredentialIdentifier(vcType!!, JWT_VC)) {
                 this to SupportedCredentialFormat.forVcJwt(
-                    format = JWT_VC,
                     scope = scope,
-                    credentialDefinition = SupportedCredentialFormatDefinition(
+                    credentialDefinition = SupportedCredentialFormatW3cVcJwtCredentailDefinition(
                         types = setOf(VcDataModelConstants.VERIFIABLE_CREDENTIAL, vcType!!),
                     ),
                     supportedBindingMethods = setOf(BINDING_METHOD_JWK, URN_TYPE_JWK_THUMBPRINT),
@@ -72,7 +70,6 @@ class SameScopeCredentialSchemeMapper(
         val sdJwt = if (supportsSdJwt) {
             with(encodeToCredentialIdentifier(sdJwtType!!, DC_SD_JWT)) {
                 this to SupportedCredentialFormat.forSdJwt(
-                    format = DC_SD_JWT,
                     scope = scope,
                     sdJwtVcType = sdJwtType!!,
                     supportedBindingMethods = setOf(BINDING_METHOD_JWK, URN_TYPE_JWK_THUMBPRINT),

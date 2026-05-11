@@ -18,6 +18,11 @@ import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ProofTypes
 import at.asitplus.openid.SupportedCredentialFormat
+import at.asitplus.openid.SupportedCredentialFormatMsoMdoc
+import at.asitplus.openid.SupportedCredentialFormatSdJwt
+import at.asitplus.openid.SupportedCredentialFormatW3cVcJsonLd
+import at.asitplus.openid.SupportedCredentialFormatW3cVcJwt
+import at.asitplus.openid.SupportedCredentialFormatW3cVcJwtJsonLd
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
@@ -31,11 +36,15 @@ import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.Holder.StoreCredentialInput.*
+import at.asitplus.wallet.lib.agent.Holder.StoreCredentialInput.Iso
+import at.asitplus.wallet.lib.agent.Holder.StoreCredentialInput.SdJwt
+import at.asitplus.wallet.lib.agent.Holder.StoreCredentialInput.Vc
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -45,8 +54,8 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
-import io.ktor.http.*
-import io.ktor.util.*
+import io.ktor.http.Url
+import io.ktor.util.flattenEntries
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.decodeFromByteArray
@@ -196,9 +205,22 @@ class WalletService(
         it.format.toRepresentation() == requestOptions.representation
     }?.firstOrNull {
         when (requestOptions.representation) {
-            PLAIN_JWT -> it.credentialDefinition?.types?.contains(requestOptions.credentialScheme.vcType!!) == true
-            SD_JWT -> it.sdJwtVcType == requestOptions.credentialScheme.sdJwtType!!
-            ISO_MDOC -> it.docType == requestOptions.credentialScheme.isoDocType!!
+            PLAIN_JWT -> when(it) {
+                is SupportedCredentialFormatW3cVcJwt -> it.credentialDefinition.types
+                is SupportedCredentialFormatW3cVcJwtJsonLd -> it.credentialDefinition.type
+                is SupportedCredentialFormatW3cVcJsonLd -> it.credentialDefinition.type
+                else -> listOf()
+            }.contains(requestOptions.credentialScheme.vcType!!)
+
+            SD_JWT -> when(it) {
+                is SupportedCredentialFormatSdJwt -> it.sdJwtVcType
+                else -> null
+            } == requestOptions.credentialScheme.sdJwtType!!
+
+            ISO_MDOC ->  when(it) {
+                is SupportedCredentialFormatMsoMdoc -> it.docType
+                else -> null
+            } == requestOptions.credentialScheme.isoDocType!!
         }
     }
 

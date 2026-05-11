@@ -9,6 +9,11 @@ import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants.WellKnownPaths
 import at.asitplus.openid.SupportedCredentialFormat
+import at.asitplus.openid.SupportedCredentialFormatMsoMdoc
+import at.asitplus.openid.SupportedCredentialFormatSdJwt
+import at.asitplus.openid.SupportedCredentialFormatW3cVcJsonLd
+import at.asitplus.openid.SupportedCredentialFormatW3cVcJwt
+import at.asitplus.openid.SupportedCredentialFormatW3cVcJwtJsonLd
 import at.asitplus.wallet.lib.agent.CredentialRenewalInfo
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.data.AttributeIndex
@@ -100,17 +105,28 @@ class OpenId4VciClient(
             }
         }
 
-    private fun SupportedCredentialFormat.resolveCredentialScheme(): ConstantIndex.CredentialScheme? =
-        sdJwtVcType?.let {
-            AttributeIndex.resolveSdJwtAttributeType(it)
-                ?: SdJwtFallbackCredentialScheme(sdJwtType = it)
-        } ?: docType?.let {
-            AttributeIndex.resolveIsoDoctype(it)
-                ?: IsoMdocFallbackCredentialScheme(isoDocType = it)
-        } ?: credentialDefinition?.types?.firstNotNullOfOrNull {
+    private fun SupportedCredentialFormat.resolveCredentialScheme(): ConstantIndex.CredentialScheme? = when(this) {
+        is SupportedCredentialFormatMsoMdoc -> AttributeIndex.resolveIsoDoctype(docType)
+            ?: IsoMdocFallbackCredentialScheme(isoDocType = docType)
+
+        is SupportedCredentialFormatSdJwt -> AttributeIndex.resolveSdJwtAttributeType(sdJwtVcType)
+            ?: SdJwtFallbackCredentialScheme(sdJwtType = sdJwtVcType)
+
+        is SupportedCredentialFormatW3cVcJwt -> credentialDefinition.types.firstNotNullOfOrNull {
             AttributeIndex.resolveAttributeType(it)
                 ?: VcFallbackCredentialScheme(vcType = it)
         }
+
+        // TODO: are these correct?
+        is SupportedCredentialFormatW3cVcJsonLd -> credentialDefinition.type.firstNotNullOfOrNull {
+            AttributeIndex.resolveAttributeType(it)
+                ?: VcFallbackCredentialScheme(vcType = it)
+        }
+        is SupportedCredentialFormatW3cVcJwtJsonLd -> credentialDefinition.type.firstNotNullOfOrNull {
+            AttributeIndex.resolveAttributeType(it)
+                ?: VcFallbackCredentialScheme(vcType = it)
+        }
+    }
 
     /**
      * Starts the issuing process at [credentialIssuerUrl].
