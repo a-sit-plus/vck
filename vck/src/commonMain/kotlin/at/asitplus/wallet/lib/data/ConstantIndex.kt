@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.data
 
+import at.asitplus.openid.ClaimDescription
+
 object ConstantIndex {
 
     enum class CredentialRepresentation {
@@ -58,6 +60,9 @@ object ConstantIndex {
          * or [CredentialRepresentation.ISO_MDOC].
          */
         val claimNames: Collection<String>
+            get() = listOf()
+
+        val claimDescriptions: Collection<ClaimDescription>
             get() = listOf()
 
         /**

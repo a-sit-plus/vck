@@ -259,7 +259,34 @@ data class ClaimDisplay(
      */
     @SerialName("description")
     val description: String? = null,
+
+    /**
+     * OPTIONAL. An object containing rendering information for the type, as described in Section 4.5.1.
+     * https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-16.html#name-display-metadata
+     */
+    @SerialName("description")
+    val rendering: List<RenderingMetadataSimple>? = null,
 )
+
+
+@Serializable
+data class RenderingMetadataSimple(
+    @SerialName(SerialNames.LOGO)
+    val logo: String? = null,
+    @SerialName(SerialNames.BACKGROUND_IMAGE)
+    val backgroundImage: String? = null,
+    @SerialName(SerialNames.BACKGROUND_COLOR)
+    val backgroundColor: W3cCssRgbColor? = null,
+    @SerialName(SerialNames.TEXT_COLOR)
+    val textColor: W3cCssRgbColor? = null,
+) {
+    object SerialNames {
+        const val LOGO = "logo"
+        const val BACKGROUND_IMAGE = "background_image"
+        const val BACKGROUND_COLOR = "background_color"
+        const val TEXT_COLOR = "text_color"
+    }
+}
 
 @Serializable(with = ClaimSelectiveDisclosableSerializer::class)
 enum class ClaimSelectiveDisclosable(
