@@ -1,9 +1,23 @@
 package at.asitplus.wallet.sdjwt
 
-enum class SelectiveDisclosureConstraints {
-    always,
-    allowed,
-    never,
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+
+@Serializable(with = SelectiveDisclosureConstraints.SelectiveDisclosureConstraintsSerializer::class)
+enum class SelectiveDisclosureConstraints(val identifier: String) {
+    /** The Issuer MUST make the claim selectively disclosable. */
+    ALWAYS("always"),
+
+    /** The Issuer MAY make the claim selectively disclosable. */
+    ALLOWED("allowed"),
+
+    /** The Issuer MUST NOT make the claim selectively disclosable. */
+    NEVER("never"),
     ;
 
     /**
@@ -14,11 +28,26 @@ enum class SelectiveDisclosureConstraints {
     fun extendFrom(
         base: SelectiveDisclosureConstraints
     ) = when (base) {
-        allowed -> this // do whatever
+        ALLOWED -> this // do whatever
         else -> base.also { // retain otherwise
             require(this == base) {
                 "Expected child to preserve selective disclosure constraint `$base`, but got `$this`."
             }
+        }
+    }
+
+    class SelectiveDisclosureConstraintsSerializer : KSerializer<SelectiveDisclosureConstraints> {
+
+        override val descriptor: SerialDescriptor =
+            PrimitiveSerialDescriptor("ClaimSelectiveDisclosable", PrimitiveKind.STRING)
+
+        override fun serialize(encoder: Encoder, value: SelectiveDisclosureConstraints) {
+            encoder.encodeString(value.identifier)
+        }
+
+        override fun deserialize(decoder: Decoder): SelectiveDisclosureConstraints {
+            val decoded = decoder.decodeString()
+            return SelectiveDisclosureConstraints.entries.first { it.identifier == decoded }
         }
     }
 }

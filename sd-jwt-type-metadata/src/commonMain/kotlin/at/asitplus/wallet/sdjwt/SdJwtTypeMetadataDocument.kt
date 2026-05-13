@@ -2,6 +2,8 @@ package at.asitplus.wallet.sdjwt
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
@@ -19,15 +21,15 @@ import kotlinx.serialization.json.JsonElement
  * original source bytes if the input had extra whitespace or different key ordering.
  */
 @Serializable(with = SdJwtTypeMetadataDocument.Serializer::class)
-class SdJwtTypeMetadataDocument(
+data class SdJwtTypeMetadataDocument(
     val originalBytes: ByteArray,
     val definition: SdJwtTypeMetadataDefinition,
 ) {
     class Serializer : KSerializer<SdJwtTypeMetadataDocument> {
         override val descriptor: SerialDescriptor
-            get() = SerialDescriptor(
-                original = JsonElement.Companion.serializer().descriptor,
+            get() = PrimitiveSerialDescriptor(
                 serialName = Serializer::class.qualifiedName!!,
+                kind = PrimitiveKind.STRING
             )
 
         override fun serialize(

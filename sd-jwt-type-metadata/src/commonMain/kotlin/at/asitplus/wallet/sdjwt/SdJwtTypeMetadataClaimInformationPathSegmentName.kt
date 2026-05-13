@@ -3,9 +3,8 @@ package at.asitplus.wallet.sdjwt
 import kotlin.jvm.JvmInline
 
 @JvmInline
-value class SdJwtTypeMetadataClaimInformationPathNameSegment(
+value class SdJwtTypeMetadataClaimInformationPathSegmentName(
     val string: String
 ) : SdJwtTypeMetadataClaimInformationPathSegment {
-
     override fun toString() = "\"$string\""
 }

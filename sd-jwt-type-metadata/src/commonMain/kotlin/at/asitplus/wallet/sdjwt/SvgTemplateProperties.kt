@@ -6,11 +6,11 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class SvgTemplateProperties(
     @SerialName(SerialNames.ORIENTATION)
-    val svgTemplatePropertyImageOrientation: SvgTemplatePropertyImageOrientation? = null,
+    val imageOrientation: SvgTemplatePropertyImageOrientation? = null,
     @SerialName(SerialNames.COLOR_SCHEME)
-    val svgTemplatePropertyColorScheme: SvgTemplatePropertyColorScheme? = null,
+    val colorScheme: SvgTemplatePropertyColorScheme? = null,
     @SerialName(SerialNames.CONTRAST)
-    val svgTemplatePropertyContrast: SvgTemplatePropertyContrast? = null,
+    val contrast: SvgTemplatePropertyContrast? = null,
 ) {
     object SerialNames {
         const val ORIENTATION = "orientation"

@@ -1,6 +1,14 @@
 package at.asitplus.wallet.lib.data
 
+import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.openid.ClaimDescription
+import at.asitplus.openid.DisplayProperties
+import at.asitplus.openid.OpenId4VciClaimsPathPointer
+import at.asitplus.openid.OpenId4VciClaimsPathPointerSegmentIndex
+import at.asitplus.openid.OpenId4VciClaimsPathPointerSegmentString
+import at.asitplus.wallet.sdjwt.SdJwtTypeMetadata
+import at.asitplus.wallet.sdjwt.SdJwtTypeMetadataClaimInformationPathSegmentIndex
+import at.asitplus.wallet.sdjwt.SdJwtTypeMetadataClaimInformationPathSegmentName
 
 object ConstantIndex {
 
@@ -104,4 +112,45 @@ object ConstantIndex {
         get() = supportedRepresentations.contains(CredentialRepresentation.ISO_MDOC)
                 && isoNamespace != null && isoDocType != null
 
+}
+
+fun SdJwtTypeMetadata.toCredentialScheme() = object : ConstantIndex.CredentialScheme {
+    override val schemaUri: String
+        get() = "https://schema.example.com"
+
+    override val sdJwtType: String
+        get() = vct.string
+
+    override val claimDescriptions: Collection<ClaimDescription>
+        get() = claims?.map {
+            ClaimDescription(
+                path = OpenId4VciClaimsPathPointer(it.path.map {
+                    when (it) {
+                        is SdJwtTypeMetadataClaimInformationPathSegmentIndex -> OpenId4VciClaimsPathPointerSegmentIndex(
+                            it.ulong.also {
+                                if (it > UInt.MAX_VALUE) {
+                                    throw UnsupportedOperationException("This implementation only supports claims path pointer indices up to ${UInt.MAX_VALUE}, but got $it")
+                                }
+                            }.toUInt()
+                        )
+
+                        is SdJwtTypeMetadataClaimInformationPathSegmentName -> OpenId4VciClaimsPathPointerSegmentString(
+                            it.string
+                        )
+
+                        null -> null
+                    }
+                }.toNonEmptyList()),
+                display = it.display?.map {
+                    DisplayProperties(
+                        locale = it.locale.string,
+                        name = it.label,
+                        description = it.description,
+                    )
+                }?.toSet()
+            )
+        } ?: setOf()
+
+    override val supportedRepresentations: Collection<ConstantIndex.CredentialRepresentation>
+        get() = listOf(ConstantIndex.CredentialRepresentation.SD_JWT)
 }

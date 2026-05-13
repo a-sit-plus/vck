@@ -8,12 +8,14 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
-@Serializable(with = ContentSecurityPolicySourceExpressionHash.InlineSerializer::class)
+@Serializable(with = ContentSecurityPolicySourceExpressionHash.StringSerializer::class)
 data class ContentSecurityPolicySourceExpressionHash(
     val algorithm: ContentSecurityPolicySourceExpressionHashAlgorithm,
     val hashValue: ContentSecurityPolicyBase64String,
 ): ContentSecurityPolicySourceExpression {
-    override fun toString() = """'$algorithm-$hashValue'"""
+    val string
+        get() = """'$algorithm-$hashValue'"""
+    override fun toString() = string
 
     companion object {
         // 1*( ALPHA / DIGIT / "+" / "/" )*2( "=" )
@@ -41,10 +43,10 @@ data class ContentSecurityPolicySourceExpressionHash(
         }
     }
 
-    class InlineSerializer : KSerializer<ContentSecurityPolicySourceExpressionHash> {
+    class StringSerializer : KSerializer<ContentSecurityPolicySourceExpressionHash> {
         override val descriptor: SerialDescriptor
             get() = PrimitiveSerialDescriptor(
-                serialName = InlineSerializer::class.qualifiedName!!,
+                serialName = StringSerializer::class.qualifiedName!!,
                 kind = PrimitiveKind.STRING,
             )
 

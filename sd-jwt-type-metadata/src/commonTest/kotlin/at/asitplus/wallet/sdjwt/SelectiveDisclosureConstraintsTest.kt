@@ -9,9 +9,9 @@ val SelectiveDisclosureConstraintsTest by testSuite {
      * just making sure that the enum names remain consistent with the specification
      */
     test("values") {
-        SelectiveDisclosureConstraints.always.name shouldBe "always"
-        SelectiveDisclosureConstraints.allowed.name shouldBe "allowed"
-        SelectiveDisclosureConstraints.never.name shouldBe "never"
+        SelectiveDisclosureConstraints.ALWAYS.name shouldBe "always"
+        SelectiveDisclosureConstraints.ALLOWED.name shouldBe "allowed"
+        SelectiveDisclosureConstraints.NEVER.name shouldBe "never"
     }
 }
 
