@@ -9,7 +9,6 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonDecoder
-import kotlinx.serialization.json.JsonElement
 
 /**
  * Separation between the originally received bytes and the decoded content allows for integrity
@@ -20,15 +19,15 @@ import kotlinx.serialization.json.JsonElement
  * [originalBytes] are derived from the re-serialized [JsonElement] and may differ from the
  * original source bytes if the input had extra whitespace or different key ordering.
  */
-@Serializable(with = SdJwtTypeMetadataDocument.Serializer::class)
+@Serializable(with = SdJwtTypeMetadataDocument.DefinitionSerializer::class)
 data class SdJwtTypeMetadataDocument(
     val originalBytes: ByteArray,
     val definition: SdJwtTypeMetadataDefinition,
 ) {
-    class Serializer : KSerializer<SdJwtTypeMetadataDocument> {
+    object DefinitionSerializer : KSerializer<SdJwtTypeMetadataDocument> {
         override val descriptor: SerialDescriptor
             get() = PrimitiveSerialDescriptor(
-                serialName = Serializer::class.qualifiedName!!,
+                serialName = DefinitionSerializer::class.qualifiedName!!,
                 kind = PrimitiveKind.STRING
             )
 
