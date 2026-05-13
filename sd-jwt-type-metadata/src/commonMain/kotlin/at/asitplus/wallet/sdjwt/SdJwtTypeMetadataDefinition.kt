@@ -2,6 +2,7 @@ package at.asitplus.wallet.sdjwt
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonIgnoreUnknownKeys
 
 /**
  * Metadata for an SD-JWT VC Type
@@ -9,6 +10,7 @@ import kotlinx.serialization.Serializable
  * https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-16.html#name-display-metadata
  */
 @Serializable
+@JsonIgnoreUnknownKeys
 data class SdJwtTypeMetadataDefinition(
     @SerialName(SerialNames.VCT)
     val vct: SdJwtVcType,
