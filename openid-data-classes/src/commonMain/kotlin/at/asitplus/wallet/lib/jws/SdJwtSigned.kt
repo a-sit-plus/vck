@@ -5,6 +5,8 @@ import at.asitplus.catching
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.data.KeyBindingJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
+import kotlinx.serialization.json.JsonObject
 
 /**
  * Representation of a signed SD-JWT,
@@ -44,6 +46,26 @@ data class SdJwtSigned(
         result = 31 * result + hashInput.hashCode()
         return result
     }
+
+    @Deprecated(
+        message = "Use jws.getPayload<VerifiableCredentialSdJwt>() instead.",
+        replaceWith = ReplaceWith(
+            expression = "jws.getPayload<VerifiableCredentialSdJwt>()",
+            imports = ["at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt"],
+        ),
+    )
+    fun getPayloadAsVerifiableCredentialSdJwt(): KmmResult<VerifiableCredentialSdJwt> =
+        jws.getPayload<VerifiableCredentialSdJwt>()
+
+    @Deprecated(
+        message = "Use jws.getPayload<JsonObject>() instead.",
+        replaceWith = ReplaceWith(
+            expression = "jws.getPayload<JsonObject>()",
+            imports = ["kotlinx.serialization.json.JsonObject"],
+        ),
+    )
+    fun getPayloadAsJsonObject(): KmmResult<JsonObject> =
+        jws.getPayload<JsonObject>()
 
     /**
      * Compact serialization: JWT in JWS compact serialization (Base64-URL with dots),
