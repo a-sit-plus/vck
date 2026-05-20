@@ -23,4 +23,19 @@ data class RequestInfo(
      * A JWT that adheres to the structure and syntax as defined in Section 4.3
      */
     val clientAttestationPop: JwsCompactTyped<JsonWebToken>? = null,
-)
+) {
+    @Deprecated("Please migrate to new constructor")
+    constructor(
+        url: String,
+        method: HttpMethod,
+        dpop: String? = null,
+        clientAttestation: String? = null,
+        clientAttestationPop: String? = null,
+    ) : this(
+        url,
+        method,
+        dpop?.let { JwsCompactTyped(it) },
+        clientAttestation?.let { JwsCompactTyped(it) },
+        clientAttestationPop?.let { JwsCompactTyped(it) },
+    )
+}

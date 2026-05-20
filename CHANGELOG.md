@@ -3,7 +3,6 @@
 Release 6.0.0 (unreleased):
  - Dependencies:
    - Update to [Signum 3.23.0](https://github.com/a-sit-plus/signum/releases/tag/3.23.0)
- - Refactor `ServerResponse.documents` from `Array<String>` to `Array<JwsCompact>`
  - JWS:
    - BREAKING Change: Replace `JwsSigned` with `JwsCompact` and `JwsCompactTyped` in signing, verification, OpenID request/response, OAuth 2.0 DPoP/client attestation, OID4VCI proof, JWT VC, status list JWT, and SD-JWT APIs
    - Remove `JwsSignedSerializer`, use `JwsCompactStringSerializer`
