@@ -4,6 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.*
+import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.OpenIdConstants.WellKnownPaths
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
@@ -179,11 +180,13 @@ class OpenId4VciClient(
             )
         ).getOrThrow()
 
-        JwsSigned.deserialize<OpenId4VciAccessToken>(
-            it = tokenResponse.params.accessToken,
-            deserializationStrategy = OpenId4VciAccessToken.serializer(),
-        ).getOrNull()?.let {
-            if(!it.payload.verifyDpopThumbprint()) throw Exception("Instance attestation key not used for Dpop")
+        if (tokenResponse.params.tokenType == TOKEN_TYPE_DPOP) {
+            JwsSigned.deserialize<OpenId4VciAccessToken>(
+                it = tokenResponse.params.accessToken,
+                deserializationStrategy = OpenId4VciAccessToken.serializer(),
+            ).getOrNull()?.let {
+                if (!it.payload.verifyDpopThumbprint()) throw Exception("Instance attestation key not used for Dpop")
+            }
         }
 
         val credentialScheme = context.credential.supportedCredentialFormat.resolveCredentialScheme()
