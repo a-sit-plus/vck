@@ -22,12 +22,15 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
+import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.OAuth2Client.AuthorizationForToken
+import at.asitplus.wallet.lib.oidvci.BuildClientAttestationPoPJwt
 import at.asitplus.wallet.lib.oidvci.BuildDPoPHeader
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
@@ -36,19 +39,33 @@ import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
-import io.ktor.client.*
-import io.ktor.client.engine.*
-import io.ktor.client.plugins.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.plugins.cookies.*
-import io.ktor.client.request.*
-import io.ktor.client.request.forms.*
-import io.ktor.client.statement.*
-import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
-import io.ktor.util.*
-import io.ktor.utils.io.*
+import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientConfig
+import io.ktor.client.engine.HttpClientEngine
+import io.ktor.client.plugins.DefaultRequest
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.cookies.CookiesStorage
+import io.ktor.client.plugins.cookies.HttpCookies
+import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.forms.FormDataContent
+import io.ktor.client.request.header
+import io.ktor.client.request.headers
+import io.ktor.client.request.request
+import io.ktor.client.request.setBody
+import io.ktor.client.request.url
+import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
+import io.ktor.http.URLBuilder
+import io.ktor.http.Url
+import io.ktor.http.parameters
+import io.ktor.serialization.kotlinx.json.json
+import io.ktor.util.flattenEntries
+import io.ktor.utils.io.CancellationException
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
 
 /**
  * Implements the client side of OAuth2
@@ -69,8 +86,6 @@ class OAuth2KtorClient(
     cookiesStorage: CookiesStorage? = null,
     /** Additional configuration for building the HTTP client, e.g. callers may enable logging. */
     httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
-    /** Used to calculate DPoP, i.e. the key the access token and refresh token gets bound to. */
-    private val signDpop: SignJwtFun<JsonWebToken> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk()),
     /**
      * Implements OAuth2 protocol, `redirectUrl` needs to be registered by the OS for this application, so redirection
      * back from browser works
@@ -85,22 +100,17 @@ class OAuth2KtorClient(
 
     /** Returns a new instance attestation to validate the app against an authorization server. */
     val loadInstanceAttestation: (suspend (LoadInstanceAttestationInput) -> KmmResult<JwsSigned<JsonWebToken>>)? = null,
-    /** Returns a proof of possession for an instance attestation */
-    val loadInstanceAttestationPop: (suspend (LoadInstanceAttestationPopInput) -> KmmResult<JwsSigned<JsonWebToken>>)? = null,
-    @Deprecated("Use `loadInstanceAttestation` with `LoadInstanceAttestationInput`")
-    val loadClientAttestationJwt: (suspend () -> KmmResult<JwsSigned<JsonWebToken>>)? = null,
-    @Deprecated("Use `loadInstanceAttestationPop` with `LoadInstanceAttestationPopInput`")
-    val signClientAttestationPop: (suspend () -> KmmResult<JwsSigned<JsonWebToken>>)? = null,
+
+    /** Used to prove possession of the key material for the instance attestation **/
+    val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+
+    /** Used to calculate DPoP, i.e. the key the access token and refresh token gets bound to. */
+    private val signDpop: SignJwtFun<JsonWebToken> = SignJwt(keyMaterial = keyMaterial, JwsHeaderCertOrJwk()),
+
 ) {
     data class LoadInstanceAttestationInput(
         val authorizationServer: String,
         val preferredClientStatusPeriod: Duration?,
-    )
-
-    data class LoadInstanceAttestationPopInput(
-        val authorizationServer: String,
-        val resourceUrl: String,
-        val httpMethod: HttpMethod,
     )
 
     /**
@@ -498,10 +508,9 @@ class OAuth2KtorClient(
 
     /**
      * Sets the appropriate headers when accessing a token endpoint:
-     * - loads client attestation when [loadInstanceAttestation] and [loadInstanceAttestationPop] is set
+     * - loads client attestation when [loadInstanceAttestation] is set
      * - sends a DPoP proof when [useDpop] is set
      */
-    @Suppress("DEPRECATION")
     suspend fun applyAuthnForToken(
         resourceUrl: String,
         httpMethod: HttpMethod,
@@ -509,25 +518,27 @@ class OAuth2KtorClient(
         authorizationServer: String,
         preferredClientStatusPeriod: Duration?,
     ): HttpRequestBuilder.() -> Unit {
-        val clientAttJwt = if (loadInstanceAttestation != null || loadClientAttestationJwt != null) {
-            loadInstanceAttestation?.invoke(
-                LoadInstanceAttestationInput(
-                    authorizationServer = authorizationServer,
-                    preferredClientStatusPeriod = preferredClientStatusPeriod,
-                )
-            )?.getOrNull()?.serialize()
-                ?: loadClientAttestationJwt?.invoke()?.getOrNull()?.serialize()
-        } else null
-        val clientAttPop = if (loadInstanceAttestationPop != null || signClientAttestationPop != null) {
-            loadInstanceAttestationPop?.invoke(
-                LoadInstanceAttestationPopInput(
-                    authorizationServer = authorizationServer,
-                    resourceUrl = resourceUrl,
-                    httpMethod = httpMethod,
-                )
-            )?.getOrNull()?.serialize()
-                ?: signClientAttestationPop?.invoke()?.getOrNull()?.serialize()
-        } else null
+        val (clientAttJwt, clientAttPop) = when (loadInstanceAttestation != null) {
+            true -> {
+                loadInstanceAttestation.invoke(
+                    LoadInstanceAttestationInput(
+                        authorizationServer = authorizationServer,
+                        preferredClientStatusPeriod = preferredClientStatusPeriod,
+                    )
+                ).getOrElse { throw Exception("Unable to load instance attestation $it") }.serialize() to catching {
+                    BuildClientAttestationPoPJwt.invoke(
+                        signJwt = SignJwt(keyMaterial, JwsHeaderNone()),
+                        clientId = oAuth2Client.clientId,
+                        audience = authorizationServer,
+                        nonce = null // TODO: Add nonce after backend implementation is ready
+                    )
+                }.getOrElse { throw Exception("Unable to build instance attestation pop jwt $it") }.serialize()
+            }
+
+            else -> {
+                null to null
+            }
+        }
 
         val dpopHeader = useDpop.takeIf { it }?.let {
             BuildDPoPHeader(

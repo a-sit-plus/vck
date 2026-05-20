@@ -86,8 +86,8 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
         attributes: Map<String, String>,
     ): Context {
         val credentialKeyMaterial = EphemeralKeyWithoutCert()
-        val walletDpopKeyMaterial = EphemeralKeyWithoutCert()
         val walletClientAuthKeyMaterial = EphemeralKeyWithoutCert()
+        val walletDpopKeyMaterial = walletClientAuthKeyMaterial
         val issuerDpopKeyMaterial = EphemeralKeyWithoutCert()
         val issuerClientAuthKeyMaterial = EphemeralKeyWithoutCert()
         val credentialDataProvider = CredentialDataProviderFun {
@@ -250,16 +250,7 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
                             )
                         }
                     },
-                    loadInstanceAttestationPop = {
-                        catching {
-                            BuildClientAttestationPoPJwt(
-                                SignJwt(issuerClientAuthKeyMaterial, JwsHeaderNone()),
-                                clientId = issuerPublicContext,
-                                audience = it.authorizationServer,
-                                lifetime = 10.minutes,
-                            )
-                        }
-                    },
+                    keyMaterial = issuerClientAuthKeyMaterial,
                     signDpop = SignJwt(issuerDpopKeyMaterial, JwsHeaderCertOrJwk()),
                     oAuth2Client = OAuth2Client(clientId = issuerPublicContext),
                     randomSource = RandomSource.Default,
@@ -300,16 +291,7 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
                             )
                         }
                     },
-                    loadInstanceAttestationPop = {
-                        catching {
-                            BuildClientAttestationPoPJwt(
-                                SignJwt(walletClientAuthKeyMaterial, JwsHeaderNone()),
-                                clientId = walletClientId,
-                                audience = it.authorizationServer,
-                                lifetime = 10.minutes,
-                            )
-                        }
-                    },
+                    keyMaterial = walletClientAuthKeyMaterial,
                     signDpop = SignJwt(walletDpopKeyMaterial, JwsHeaderCertOrJwk()),
                     oAuth2Client = OAuth2Client(clientId = walletClientId),
                     randomSource = RandomSource.Default,

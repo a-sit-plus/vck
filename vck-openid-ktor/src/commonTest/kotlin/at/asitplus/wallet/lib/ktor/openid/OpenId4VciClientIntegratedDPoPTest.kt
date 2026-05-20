@@ -70,8 +70,8 @@ val OpenId4VciClientIntegratedDPoPTest by testSuite {
         val representation = SD_JWT
         val attributes = mapOf(EuPidSdJwtScheme.SdJwtAttributes.FAMILY_NAME to uuid4().toString())
         val credentialKeyMaterial = EphemeralKeyWithoutCert()
-        val dpopKeyMaterial = EphemeralKeyWithoutCert()
         val clientAuthKeyMaterial = EphemeralKeyWithoutCert()
+        val dpopKeyMaterial = clientAuthKeyMaterial
         val credentialSchemes = setOf(scheme)
         val authorizationEndpointPath = "/authorize"
         val tokenEndpointPath = "/token"
@@ -197,16 +197,7 @@ val OpenId4VciClientIntegratedDPoPTest by testSuite {
                             )
                         }
                     },
-                    loadInstanceAttestationPop = {
-                        catching {
-                            BuildClientAttestationPoPJwt(
-                                SignJwt(clientAuthKeyMaterial, JwsHeaderNone()),
-                                clientId = clientId,
-                                audience = it.authorizationServer,
-                                lifetime = 10.minutes,
-                            )
-                        }
-                    },
+                    keyMaterial = clientAuthKeyMaterial,
                     signDpop = SignJwt(dpopKeyMaterial, JwsHeaderCertOrJwk()),
                     oAuth2Client = OAuth2Client(clientId = clientId),
                     randomSource = RandomSource.Default,
