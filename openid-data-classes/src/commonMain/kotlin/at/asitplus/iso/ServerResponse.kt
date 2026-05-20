@@ -1,5 +1,7 @@
 package at.asitplus.iso
 
+import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.signum.indispensable.josef.JwsCompactStringSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -10,9 +12,8 @@ import kotlinx.serialization.Serializable
 data class ServerResponse(
     @SerialName("version")
     val version: String,
-    /** A single document is a [at.asitplus.signum.indispensable.josef.JwsSigned]. */
     @SerialName("documents")
-    val documents: Array<String>,
+    val documents: Array<@Serializable(JwsCompactStringSerializer::class) JwsCompact>,
     @SerialName("documentErrors")
     val documentErrors: Map<String, Int>? = null,
 ) {

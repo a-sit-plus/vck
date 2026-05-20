@@ -26,7 +26,6 @@ import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.iso.sha256
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult
@@ -35,7 +34,7 @@ import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.SdJwtConstants.NAME_SD
@@ -43,7 +42,6 @@ import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import at.asitplus.wallet.lib.data.VerifiablePresentation
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.extensions.sdHashInput
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
@@ -262,13 +260,8 @@ class VerifiablePresentationFactory(
             disclosure.asHashedDisclosure(digest)?.let { it to disclosure }
         }.toMap()
         val issuerSignedJwsSerialized = vcSerialized.substringBefore("~")
-        val payload = JwsSigned.deserialize(JsonElement.serializer(), issuerSignedJwsSerialized,
-            joseCompliantSerializer
-        )
+        val payload = JwsCompact(issuerSignedJwsSerialized).getPayload<JsonObject>()
             .getOrElse { throw PresentationException(it) }
-            .payload as? JsonObject
-            ?: throw PresentationException("SD-JWT payload is not a JSON object")
-
         return requestedClaims.flatMapTo(mutableSetOf()) { claim ->
             payload.loadDisclosuresForPath(claim.segments, disclosuresByDigest)
         }
