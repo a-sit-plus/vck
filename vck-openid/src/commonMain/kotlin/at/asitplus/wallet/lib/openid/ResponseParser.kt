@@ -4,10 +4,11 @@ import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.dcapi.OpenId4VpResponse
 import at.asitplus.openid.AuthenticationResponseParameters
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.openid.ResponseParametersFrom
 import at.asitplus.signum.indispensable.josef.JweDecrypted
 import at.asitplus.signum.indispensable.josef.JweEncrypted
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.jws.DecryptJwe
 import at.asitplus.wallet.lib.jws.DecryptJweFun
@@ -42,7 +43,7 @@ class ResponseParser(
     suspend fun parseAuthnResponse(input: OpenId4VpResponse) =
         ResponseParametersFrom.DcApi.createFromOpenId4VpResponse(input).extractFromJar()
 
-    private fun String.parseResponseParameters() : ResponseParametersFrom = parseUrlSafe(this)
+    private fun String.parseResponseParameters(): ResponseParametersFrom = parseUrlSafe(this)
         ?: parsePostBodySafe(this)
         ?: throw IllegalArgumentException("Can't parse input: $this")
 
@@ -94,8 +95,4 @@ class ResponseParser(
 
     private fun JweDecrypted<String>.parseResponseParams(): AuthenticationResponseParameters =
         joseCompliantSerializer.decodeFromString<AuthenticationResponseParameters>(payload)
-
-    private fun String.fromJws(): JwsSigned<AuthenticationResponseParameters>? =
-        JwsSigned.deserialize(AuthenticationResponseParameters.serializer(), this, joseCompliantSerializer).getOrNull()
-
 }

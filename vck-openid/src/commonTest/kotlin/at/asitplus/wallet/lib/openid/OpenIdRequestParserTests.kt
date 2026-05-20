@@ -3,8 +3,9 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.dcapi.request.DCAPIWalletRequest
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.invoke
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
@@ -179,11 +180,11 @@ val OpenIdRequestParserTests by testSuite {
 
         "unsigned request from DCAPI" { requestParser ->
             val input = DCAPIWalletRequest.OpenId4VpUnsigned(
-                    request = joseCompliantSerializer.decodeFromString(authnRequestSerialized),
-                    credentialIds = listOf("1"),
-                    callingPackageName = "com.example.app",
-                    callingOrigin = "https://example.com"
-                )
+                request = joseCompliantSerializer.decodeFromString(authnRequestSerialized),
+                credentialIds = listOf("1"),
+                callingPackageName = "com.example.app",
+                callingOrigin = "https://example.com"
+            )
 
             requestParser.parseRequestParameters(input).getOrThrow().apply {
                 shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()

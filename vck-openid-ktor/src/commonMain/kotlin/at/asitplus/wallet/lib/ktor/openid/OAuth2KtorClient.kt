@@ -5,7 +5,6 @@ import at.asitplus.catching
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.JarRequestParameters
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.OpenIdConstants
@@ -20,6 +19,8 @@ import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
@@ -477,8 +478,8 @@ class OAuth2KtorClient(
     ): HttpRequestBuilder.() -> Unit {
         val (clientAttJwt, clientAttPop) = if (loadInstanceAttestation != null && loadInstanceAttestationPop != null) {
             loadInstanceAttestation.invoke().getOrNull()?.jws?.toString() to
-                        loadInstanceAttestationPop.invoke().getOrNull()?.jws?.toString()
-            } else (null to null)
+                    loadInstanceAttestationPop.invoke().getOrNull()?.jws?.toString()
+        } else (null to null)
 
         val dpopHeader = useDpop.takeIf { it }?.let {
             BuildDPoPHeader(
