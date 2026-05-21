@@ -22,7 +22,7 @@ typealias DCAPIWalletRequest = RequestParametersFrom.DcApiRequest
     ),
     level = DeprecationLevel.WARNING
 )
-typealias DCAPIWalletOpenId4VpSigned = RequestParametersFrom.OpenId4VpSigned
+typealias DCAPIWalletOpenId4VpSigned = RequestParametersFrom.OpenId4VpDcApiSigned
 
 @Deprecated(
     message = "Use RequestParametersFrom.OpenId4VpMultiSigned instead.",
@@ -32,7 +32,7 @@ typealias DCAPIWalletOpenId4VpSigned = RequestParametersFrom.OpenId4VpSigned
     ),
     level = DeprecationLevel.WARNING
 )
-typealias DCAPIWalletOpenId4VpMultiSigned = RequestParametersFrom.OpenId4VpMultiSigned
+typealias DCAPIWalletOpenId4VpMultiSigned = RequestParametersFrom.OpenId4VpDcApiMultiSigned
 
 @Deprecated(
     message = "Use RequestParametersFrom.OpenId4VpUnsigned instead.",
@@ -42,7 +42,7 @@ typealias DCAPIWalletOpenId4VpMultiSigned = RequestParametersFrom.OpenId4VpMulti
     ),
     level = DeprecationLevel.WARNING
 )
-typealias DCAPIWalletOpenId4VpUnsigned = RequestParametersFrom.OpenId4VpUnsigned
+typealias DCAPIWalletOpenId4VpUnsigned = RequestParametersFrom.OpenId4VpDcApiUnsigned
 
 @Deprecated(
     message = "Use RequestParametersFrom.IsoMdoc instead.",
@@ -52,4 +52,4 @@ typealias DCAPIWalletOpenId4VpUnsigned = RequestParametersFrom.OpenId4VpUnsigned
     ),
     level = DeprecationLevel.WARNING
 )
-typealias DCAPIWalletIsoMdoc = RequestParametersFrom.IsoMdoc
+typealias DCAPIWalletIsoMdoc = RequestParametersFrom.IsoMdocDcApi

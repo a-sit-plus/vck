@@ -159,7 +159,7 @@ val OpenIdRequestParserTests by testSuite {
         }
 
         "signed request from DCAPI" { requestParser ->
-            val input = RequestParametersFrom.OpenId4VpSigned(
+            val input = RequestParametersFrom.OpenId4VpDcApiSigned(
                 jwsTyped = JwsTyped<AuthenticationRequestParameters>(jws),
                 verified = false,
                 credentialIds = listOf("1"),
@@ -169,7 +169,7 @@ val OpenIdRequestParserTests by testSuite {
 
             requestParser.parseRequestParameters(input).getOrThrow().apply {
                 shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
-                val dcApiRequest = shouldBeInstanceOf<RequestParametersFrom.OpenId4VpSigned>()
+                val dcApiRequest = shouldBeInstanceOf<RequestParametersFrom.OpenId4VpDcApiSigned>()
                 dcApiRequest.jwsTyped.toString() shouldBe jws
                 parameters.assertParams()
 
@@ -180,7 +180,7 @@ val OpenIdRequestParserTests by testSuite {
         }
 
         "unsigned request from DCAPI" { requestParser ->
-            val input = RequestParametersFrom.OpenId4VpUnsigned(
+            val input = RequestParametersFrom.OpenId4VpDcApiUnsigned(
                 parameters = joseCompliantSerializer.decodeFromString(authnRequestSerialized),
                 jsonString = authnRequestSerialized,
                 credentialIds = listOf("1"),
@@ -190,7 +190,7 @@ val OpenIdRequestParserTests by testSuite {
 
             requestParser.parseRequestParameters(input).getOrThrow().apply {
                 shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
-                shouldBeInstanceOf<RequestParametersFrom.OpenId4VpUnsigned>()
+                shouldBeInstanceOf<RequestParametersFrom.OpenId4VpDcApiUnsigned>()
                 //jsonString shouldBe authnRequestSerialized // TODO Don't know why this is not the same
                 parameters.assertParams()
 

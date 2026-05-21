@@ -63,7 +63,7 @@ sealed class RequestParametersFrom<S : RequestParameters> {
 
     @Serializable
     @SerialName(SerialNames.TYPE_DCAPI_MULTISIGNED)
-    data class OpenId4VpMultiSigned(
+    data class OpenId4VpDcApiMultiSigned(
         @Serializable(with = JwsGeneralAuthParamSerializer::class)
         @SerialName(SerialNames.JWS)
         override val jwsTyped: JwsGeneralTyped<AuthenticationRequestParameters>,
@@ -92,7 +92,7 @@ sealed class RequestParametersFrom<S : RequestParameters> {
 
     @Serializable
     @SerialName(SerialNames.TYPE_DCAPI_SIGNED)
-    data class OpenId4VpSigned(
+    data class OpenId4VpDcApiSigned(
         @Serializable(JwsCompactAuthParamSerializer::class)
         @SerialName(SerialNames.JWS)
         override val jwsTyped: JwsCompactTyped<AuthenticationRequestParameters>,
@@ -122,7 +122,7 @@ sealed class RequestParametersFrom<S : RequestParameters> {
 
     @Serializable
     @SerialName(SerialNames.TYPE_DCAPI_UNSIGNED)
-    data class OpenId4VpUnsigned(
+    data class OpenId4VpDcApiUnsigned(
         @SerialName(SerialNames.PARAMETERS)
         override val parameters: AuthenticationRequestParameters,
         @SerialName(SerialNames.JSON_STRING)
@@ -142,7 +142,7 @@ sealed class RequestParametersFrom<S : RequestParameters> {
 
     @Serializable
     @SerialName(SerialNames.TYPE_DCAPI_ISO_MDOC)
-    data class IsoMdoc(
+    data class IsoMdocDcApi(
         override val parameters: IsoMdocRequestWrapper,
         @SerialName(SerialNames.JSON_STRING)
         val jsonString: String,
@@ -152,7 +152,7 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         override val callingPackageName: String,
         @SerialName("callingOrigin")
         override val callingOrigin: String
-    ) : DcApiRequest, RequestParametersFrom<IsoMdoc.IsoMdocRequestWrapper>() {
+    ) : DcApiRequest, RequestParametersFrom<IsoMdocDcApi.IsoMdocRequestWrapper>() {
 
         @Serializable(with = IsoMdocRequestWrapper.Serializer::class)
         data class IsoMdocRequestWrapper(

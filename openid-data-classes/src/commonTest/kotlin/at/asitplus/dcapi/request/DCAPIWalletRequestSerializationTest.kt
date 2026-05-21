@@ -19,12 +19,12 @@ import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 private typealias IsoMdocRequestParametersFrom =
-    RequestParametersFrom<RequestParametersFrom.IsoMdoc.IsoMdocRequestWrapper>
+    RequestParametersFrom<RequestParametersFrom.IsoMdocDcApi.IsoMdocRequestWrapper>
 
 val DCAPIWalletRequestSerializationTest by testSuite {
     test("openid4vp unsigned request round-trips") {
         val parameters = testUnsignedOpenId4VpRequest.data
-        val request = RequestParametersFrom.OpenId4VpUnsigned(
+        val request = RequestParametersFrom.OpenId4VpDcApiUnsigned(
             parameters = parameters,
             jsonString = joseCompliantSerializer.encodeToString(parameters),
             credentialIds = listOf("044c78be429198ffc2a66d935ff86e4e2bdb8ca2ab0cd1bacc85f3a73d8347b4"),
@@ -44,7 +44,7 @@ val DCAPIWalletRequestSerializationTest by testSuite {
 
     test("openid4vp signed request round-trips") {
         val request: JwsCompactTyped<AuthenticationRequestParameters> = testSignedOpenId4VpRequest.data.request.typed()
-        val walletRequest = RequestParametersFrom.OpenId4VpSigned(
+        val walletRequest = RequestParametersFrom.OpenId4VpDcApiSigned(
             jwsTyped = request,
             verified = false,
             credentialIds = listOf("044c78be429198ffc2a66d935ff86e4e2bdb8ca2ab0cd1bacc85f3a73d8347b4"),
@@ -66,7 +66,7 @@ val DCAPIWalletRequestSerializationTest by testSuite {
         val requestElement: JwsFlattened = testSignedOpenId4VpRequest.data.request.toJwsFlattened()
         val request: JwsGeneralTyped<AuthenticationRequestParameters> =
             (0..5).map { requestElement }.toJwsGeneral().typed()
-        val walletRequest = RequestParametersFrom.OpenId4VpMultiSigned(
+        val walletRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
             jwsTyped = request,
             verified = false,
             credentialIds = listOf("044c78be429198ffc2a66d935ff86e4e2bdb8ca2ab0cd1bacc85f3a73d8347b4"),
@@ -107,9 +107,9 @@ val DCAPIWalletRequestSerializationTest by testSuite {
         decoded.shouldBeInstanceOf<DCAPIWalletRequest.OpenId4VpMultiSigned>()
     }
 
-        test("iso mdoc request round-trips") {
-        val request = RequestParametersFrom.IsoMdoc(
-            parameters = RequestParametersFrom.IsoMdoc.IsoMdocRequestWrapper(testIsoMdocRequest.data),
+    test("iso mdoc request round-trips") {
+        val request = RequestParametersFrom.IsoMdocDcApi(
+            parameters = RequestParametersFrom.IsoMdocDcApi.IsoMdocRequestWrapper(testIsoMdocRequest.data),
             jsonString = joseCompliantSerializer.encodeToString(testIsoMdocRequest.data),
             credentialIds = listOf("044c78be429198ffc2a66d935ff86e4e2bdb8ca2ab0cd1bacc85f3a73d8347b4"),
             callingPackageName = "com.android.chrome",

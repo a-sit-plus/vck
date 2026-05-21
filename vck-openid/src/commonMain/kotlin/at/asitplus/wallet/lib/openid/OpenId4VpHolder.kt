@@ -437,7 +437,7 @@ private fun RequestParameters.state() = when (this) {
     is JarRequestParameters -> this.state
     is RequestObjectParameters -> null
     is SignatureRequestParameters -> this.state
-    is RequestParametersFrom.IsoMdoc.IsoMdocRequestWrapper -> null
+    is RequestParametersFrom.IsoMdocDcApi.IsoMdocRequestWrapper -> null
 }
 
 fun Throwable.toOAuth2Error(

@@ -60,10 +60,10 @@ class RequestParser(
         input: RequestParametersFrom.DcApiRequest,
     ): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> = catching {
         when (input) {
-            is RequestParametersFrom.OpenId4VpSigned -> input
-            is RequestParametersFrom.OpenId4VpUnsigned -> input
-            is RequestParametersFrom.OpenId4VpMultiSigned -> input
-            is RequestParametersFrom.IsoMdoc -> throw InvalidRequest("ISO mdoc DC API requests are not OpenID4VP requests")
+            is RequestParametersFrom.OpenId4VpDcApiSigned -> input
+            is RequestParametersFrom.OpenId4VpDcApiUnsigned -> input
+            is RequestParametersFrom.OpenId4VpDcApiMultiSigned -> input
+            is RequestParametersFrom.IsoMdocDcApi -> throw InvalidRequest("ISO mdoc DC API requests are not OpenID4VP requests")
         }
     }
 

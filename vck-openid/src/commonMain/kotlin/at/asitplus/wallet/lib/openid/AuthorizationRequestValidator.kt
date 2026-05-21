@@ -56,16 +56,17 @@ internal class AuthorizationRequestValidator(
 
     private fun RequestParametersFrom<AuthenticationRequestParameters>.validateDcApi() {
         when (this) {
-            is RequestParametersFrom.OpenId4VpSigned,
-            is RequestParametersFrom.OpenId4VpMultiSigned -> {
+            is RequestParametersFrom.OpenId4VpDcApiSigned,
+            is RequestParametersFrom.OpenId4VpDcApiMultiSigned -> {
                 val dcApiRequest = this as RequestParametersFrom.DcApiRequest
                 if (this.parameters.clientId == null)
                     throw InvalidRequest("client_id must be set for DC API signed request")
-                if (this.parameters.expectedOrigins != null &&
-                    !this.parameters.verifyExpectedOrigin(dcApiRequest.callingOrigin)
-                ) throw InvalidRequest(
-                    "callingOrigin '${dcApiRequest.callingOrigin}' does not match expected_origins"
-                )
+                this.parameters.verifyExpectedOrigin(dcApiRequest.callingOrigin)
+            }
+
+            is RequestParametersFrom.OpenId4VpDcApiUnsigned -> {
+                if (this.parameters.clientId != null)
+                    throw InvalidRequest("client_id not allowed for DC API unsigned request")
             }
 
             else -> throw InvalidRequest("DC API request not set even though response mode is ${parameters.responseMode}")

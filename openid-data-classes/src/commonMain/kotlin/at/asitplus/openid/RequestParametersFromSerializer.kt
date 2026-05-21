@@ -74,8 +74,8 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
             else -> null
         },
         jsonString = when (value) {
-            is RequestParametersFrom.OpenId4VpUnsigned -> value.jsonString
-            is RequestParametersFrom.IsoMdoc -> value.jsonString
+            is RequestParametersFrom.OpenId4VpDcApiUnsigned -> value.jsonString
+            is RequestParametersFrom.IsoMdocDcApi -> value.jsonString
             is RequestParametersFrom.Json -> value.jsonString
             else -> null
         },
@@ -87,10 +87,10 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
         },
         verified = (value as? RequestParametersFrom.RequestParametersSigned<*>)?.verified,
         protocol = when (value) {
-            is RequestParametersFrom.OpenId4VpMultiSigned -> ExchangeProtocolIdentifier.OpenId4VpV1Multisigned
-            is RequestParametersFrom.OpenId4VpSigned -> ExchangeProtocolIdentifier.OpenId4VpV1Signed
-            is RequestParametersFrom.OpenId4VpUnsigned -> ExchangeProtocolIdentifier.OpenId4VpV1Unsigned
-            is RequestParametersFrom.IsoMdoc -> ExchangeProtocolIdentifier.IsoMdocAnnexC
+            is RequestParametersFrom.OpenId4VpDcApiMultiSigned -> ExchangeProtocolIdentifier.OpenId4VpV1Multisigned
+            is RequestParametersFrom.OpenId4VpDcApiSigned -> ExchangeProtocolIdentifier.OpenId4VpV1Signed
+            is RequestParametersFrom.OpenId4VpDcApiUnsigned -> ExchangeProtocolIdentifier.OpenId4VpV1Unsigned
+            is RequestParametersFrom.IsoMdocDcApi -> ExchangeProtocolIdentifier.IsoMdocAnnexC
             else -> null
         },
         credentialIds = (value as? RequestParametersFrom.DcApiRequest)?.credentialIds,
@@ -100,7 +100,7 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
 
     fun toRequestParametersFrom(): RequestParametersFrom<T> = when {
         protocol == ExchangeProtocolIdentifier.OpenId4VpV1Multisigned ->
-            RequestParametersFrom.OpenId4VpMultiSigned(
+            RequestParametersFrom.OpenId4VpDcApiMultiSigned(
                 jwsTyped = JwsTyped(requireJwsGeneral(), requireAuthenticationRequestParameters()),
                 verified = verified ?: false,
                 credentialIds = requireCredentialIds(),
@@ -109,7 +109,7 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
             ).cast()
 
         protocol == ExchangeProtocolIdentifier.OpenId4VpV1Signed ->
-            RequestParametersFrom.OpenId4VpSigned(
+            RequestParametersFrom.OpenId4VpDcApiSigned(
                 jwsTyped = JwsTyped(requireJwsCompact(), requireAuthenticationRequestParameters()),
                 verified = verified ?: false,
                 credentialIds = requireCredentialIds(),
@@ -118,7 +118,7 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
             ).cast()
 
         protocol == ExchangeProtocolIdentifier.OpenId4VpV1Unsigned ->
-            RequestParametersFrom.OpenId4VpUnsigned(
+            RequestParametersFrom.OpenId4VpDcApiUnsigned(
                 parameters = requireAuthenticationRequestParameters(),
                 jsonString = requireJsonString(),
                 credentialIds = requireCredentialIds(),
@@ -127,7 +127,7 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
             ).cast()
 
         protocol == ExchangeProtocolIdentifier.IsoMdocAnnexC ->
-            RequestParametersFrom.IsoMdoc(
+            RequestParametersFrom.IsoMdocDcApi(
                 parameters = requireIsoMdocRequestWrapper(),
                 jsonString = requireJsonString(),
                 credentialIds = requireCredentialIds(),
@@ -165,8 +165,8 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
         parameters as? AuthenticationRequestParameters
             ?: throw SerializationException("Expected AuthenticationRequestParameters for protocol $protocol")
 
-    private fun requireIsoMdocRequestWrapper(): RequestParametersFrom.IsoMdoc.IsoMdocRequestWrapper =
-        parameters as? RequestParametersFrom.IsoMdoc.IsoMdocRequestWrapper
+    private fun requireIsoMdocRequestWrapper(): RequestParametersFrom.IsoMdocDcApi.IsoMdocRequestWrapper =
+        parameters as? RequestParametersFrom.IsoMdocDcApi.IsoMdocRequestWrapper
             ?: throw SerializationException("Expected IsoMdocRequestWrapper for protocol $protocol")
 
     private fun requireJwsCompact(): JwsCompact =

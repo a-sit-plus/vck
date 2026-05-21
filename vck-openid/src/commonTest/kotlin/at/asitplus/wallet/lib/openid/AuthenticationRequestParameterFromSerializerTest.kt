@@ -80,7 +80,7 @@ val AuthenticationRequestParameterFromSerializerTest by testSuite {
 
         "DcApiUnsigned test $representation" {
             val parameters = verifierOid4vp.createAuthnRequest(requestOptions = reqOptions)
-            val authnRequest = RequestParametersFrom.OpenId4VpUnsigned(
+            val authnRequest = RequestParametersFrom.OpenId4VpDcApiUnsigned(
                 parameters = parameters,
                 jsonString = joseCompliantSerializer.encodeToString(parameters),
                 credentialIds = listOf("1"),
@@ -89,7 +89,7 @@ val AuthenticationRequestParameterFromSerializerTest by testSuite {
             )
 
             val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow().request
-                .shouldBeInstanceOf<RequestParametersFrom.OpenId4VpUnsigned>()
+                .shouldBeInstanceOf<RequestParametersFrom.OpenId4VpDcApiUnsigned>()
 
             val serialized =
                 joseCompliantSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(params)
@@ -122,7 +122,7 @@ val AuthenticationRequestParameterFromSerializerTest by testSuite {
             val jarRequest: JarRequestParameters = Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
             jarRequest.clientId shouldBe clientId
             val serializedRequest = jarRequest.request.shouldNotBeNull()
-            val authnRequest = RequestParametersFrom.OpenId4VpSigned(
+            val authnRequest = RequestParametersFrom.OpenId4VpDcApiSigned(
                 jwsTyped = JwsTyped(serializedRequest),
                 verified = false,
                 credentialIds = listOf("1"),
@@ -131,7 +131,7 @@ val AuthenticationRequestParameterFromSerializerTest by testSuite {
             )
 
             val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow().request
-                .shouldBeInstanceOf<RequestParametersFrom.OpenId4VpSigned>()
+                .shouldBeInstanceOf<RequestParametersFrom.OpenId4VpDcApiSigned>()
 
             val serialized =
                 joseCompliantSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(params)

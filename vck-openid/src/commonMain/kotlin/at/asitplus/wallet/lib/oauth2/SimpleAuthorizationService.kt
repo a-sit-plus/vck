@@ -395,7 +395,7 @@ class SimpleAuthorizationService(
 
         is RequestObjectParameters -> throw InvalidRequest("could not parse request object from request")
         is SignatureRequestParameters -> throw InvalidRequest("could not parse request object from request")
-        is RequestParametersFrom.IsoMdoc.IsoMdocRequestWrapper ->
+        is RequestParametersFrom.IsoMdocDcApi.IsoMdocRequestWrapper ->
             throw InvalidRequest("could not parse request object from request")
     }
 

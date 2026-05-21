@@ -421,7 +421,7 @@ val OpenId4VpWalletTest by testSuite {
                        "response_type" : "vp_token"
                     }
                     """.trimIndent()
-            val dcApiRequest = RequestParametersFrom.OpenId4VpUnsigned(
+            val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiUnsigned(
                 parameters = joseCompliantSerializer.decodeFromString(request),
                 jsonString = request,
                 credentialIds = listOf("c72a2a8a6e94564cd8dea6ef0c7eb47b31a31947620ebcc0f07177bb71078def"),
