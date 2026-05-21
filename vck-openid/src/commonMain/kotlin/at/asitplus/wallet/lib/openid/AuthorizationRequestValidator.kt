@@ -56,29 +56,16 @@ internal class AuthorizationRequestValidator(
 
     private fun RequestParametersFrom<AuthenticationRequestParameters>.validateDcApi() {
         when (this) {
-            is RequestParametersFrom.DcApiSigned<*> -> {
+            is RequestParametersFrom.OpenId4VpSigned,
+            is RequestParametersFrom.OpenId4VpMultiSigned -> {
+                val dcApiRequest = this as RequestParametersFrom.DcApiRequest
                 if (this.parameters.clientId == null)
                     throw InvalidRequest("client_id must be set for DC API signed request")
                 if (this.parameters.expectedOrigins != null &&
-                    !this.parameters.verifyExpectedOrigin(this.dcApiRequest.callingOrigin)
+                    !this.parameters.verifyExpectedOrigin(dcApiRequest.callingOrigin)
                 ) throw InvalidRequest(
-                    "callingOrigin '${this.dcApiRequest.callingOrigin}' does not match expected_origins"
+                    "callingOrigin '${dcApiRequest.callingOrigin}' does not match expected_origins"
                 )
-            }
-
-            is RequestParametersFrom.DcApiMultiSigned<*> -> {
-                if (this.parameters.clientId == null)
-                    throw InvalidRequest("client_id must be set for DC API multisigned request")
-                if (this.parameters.expectedOrigins != null &&
-                    !this.parameters.verifyExpectedOrigin(this.dcApiRequest.callingOrigin)
-                ) throw InvalidRequest(
-                    "callingOrigin '${this.dcApiRequest.callingOrigin}' does not match expected_origins"
-                )
-            }
-
-            is RequestParametersFrom.DcApiUnsigned<*> -> {
-                if (this.parameters.clientId != null)
-                    throw InvalidRequest("client_id not allowed for DC API unsigned request")
             }
 
             else -> throw InvalidRequest("DC API request not set even though response mode is ${parameters.responseMode}")
@@ -105,7 +92,7 @@ internal class AuthorizationRequestValidator(
         val signedRequest = this as? RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>
             ?: throw InvalidRequest("x509 client_id_scheme requires a signed request object")
 
-        val certChain = when (val jws = signedRequest.jws) {
+        val certChain = when (val jws = signedRequest.jwsTyped.jws) {
             is JwsCompact -> jws.jwsHeader.certificateChain
             is JwsGeneral -> jws.signatureElements.firstOrNull()?.jwsHeader?.certificateChain
             else -> null

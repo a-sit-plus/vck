@@ -48,11 +48,12 @@ internal class AuthenticationResponseFactory(
         response: AuthenticationResponse,
     ) = AuthenticationResponseResult.DcApi(
         when (request) {
-            is RequestParametersFrom.DcApiUnsigned<*> -> OpenId4VpResponseUnsigned(
+            is RequestParametersFrom.OpenId4VpUnsigned -> OpenId4VpResponseUnsigned(
                 buildResponseParametersDcApi(request, response),
             )
 
-            is RequestParametersFrom.DcApiSigned<*> -> OpenId4VpResponseSigned(
+            is RequestParametersFrom.OpenId4VpSigned,
+            is RequestParametersFrom.OpenId4VpMultiSigned -> OpenId4VpResponseSigned(
                 buildResponseParametersDcApi(request, response)
             )
 

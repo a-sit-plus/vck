@@ -94,25 +94,29 @@ class RequestParser(
     private fun DCAPIWalletRequest.OpenId4Vp.parseAsDcApiRequest(): RequestParametersFrom<AuthenticationRequestParameters>? =
         catchingUnwrapped {
             when (this) {
-                is DCAPIWalletRequest.OpenId4VpSigned -> RequestParametersFrom.DcApiSigned(
-                    this,
-                    this.request.request.payload,
-                    this.request.request.jws,
-                    false
+                is DCAPIWalletRequest.OpenId4VpSigned -> RequestParametersFrom.OpenId4VpSigned(
+                    jwsTyped = this.request.request,
+                    verified = false,
+                    credentialIds = credentialIds,
+                    callingPackageName = callingPackageName,
+                    callingOrigin = callingOrigin,
                 )
 
                 is DCAPIWalletRequest.OpenId4VpUnsigned ->
-                    RequestParametersFrom.DcApiUnsigned(
-                        this,
-                        this.request.request,
-                        joseCompliantSerializer.encodeToString(this.request.request)
+                    RequestParametersFrom.OpenId4VpUnsigned(
+                        parameters = this.request.request,
+                        jsonString = joseCompliantSerializer.encodeToString(this.request.request),
+                        credentialIds = credentialIds,
+                        callingPackageName = callingPackageName,
+                        callingOrigin = callingOrigin,
                     )
 
-                is DCAPIWalletRequest.OpenId4VpMultiSigned -> RequestParametersFrom.DcApiMultiSigned(
-                    this,
-                    this.request.request.payload,
-                    this.request.request.jws,
-                    false
+                is DCAPIWalletRequest.OpenId4VpMultiSigned -> RequestParametersFrom.OpenId4VpMultiSigned(
+                    jwsTyped = this.request.request,
+                    verified = false,
+                    credentialIds = credentialIds,
+                    callingPackageName = callingPackageName,
+                    callingOrigin = callingOrigin,
                 )
             }
         }.getOrNull()
@@ -154,4 +158,3 @@ class RequestParser(
             }
 
 }
-

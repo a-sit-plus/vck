@@ -19,6 +19,7 @@ import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.RequestParameters
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.SignatureRequestParameters
 import at.asitplus.openid.TokenIntrospectionJwtResponse
 import at.asitplus.openid.TokenIntrospectionRequest
@@ -394,6 +395,8 @@ class SimpleAuthorizationService(
 
         is RequestObjectParameters -> throw InvalidRequest("could not parse request object from request")
         is SignatureRequestParameters -> throw InvalidRequest("could not parse request object from request")
+        is RequestParametersFrom.IsoMdoc.IsoMdocRequestWrapper ->
+            throw InvalidRequest("could not parse request object from request")
     }
 
     /**

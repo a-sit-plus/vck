@@ -170,8 +170,8 @@ val OpenIdRequestParserTests by testSuite {
 
             requestParser.parseRequestParameters(input).getOrThrow().apply {
                 shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
-                shouldBeInstanceOf<RequestParametersFrom.DcApiSigned<*>>()
-                this.jws.toString() shouldBe jws
+                val dcApiRequest = shouldBeInstanceOf<RequestParametersFrom.OpenId4VpSigned>()
+                dcApiRequest.jwsTyped.toString() shouldBe jws
                 parameters.assertParams()
 
                 joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
@@ -190,7 +190,7 @@ val OpenIdRequestParserTests by testSuite {
 
             requestParser.parseRequestParameters(input).getOrThrow().apply {
                 shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
-                shouldBeInstanceOf<RequestParametersFrom.DcApiUnsigned<*>>()
+                shouldBeInstanceOf<RequestParametersFrom.OpenId4VpUnsigned>()
                 //jsonString shouldBe authnRequestSerialized // TODO Don't know why this is not the same
                 parameters.assertParams()
 

@@ -407,7 +407,7 @@ class OpenId4VpHolder(
     private fun RequestParametersFrom<AuthenticationRequestParameters>.extractAudience(
         clientJsonWebKeySet: Collection<JsonWebKey>?,
     ) = when (this) {
-        is RequestParametersFrom.DcApiRequest -> "origin:${dcApiRequest.callingOrigin}"
+        is RequestParametersFrom.DcApiRequest -> "origin:$callingOrigin"
         else -> parameters.extractAudience(clientJsonWebKeySet)
     }
 
@@ -420,19 +420,11 @@ class OpenId4VpHolder(
             ?.let { it.keyId ?: it.didEncoded ?: it.jwkThumbprint }
         ?: throw InvalidRequest("could not parse audience")
 
-    private fun RequestParametersFrom<AuthenticationRequestParameters>.callingOrigin() = when (this) {
-        is RequestParametersFrom.DcApiSigned -> dcApiRequest.callingOrigin
-        is RequestParametersFrom.DcApiUnsigned -> dcApiRequest.callingOrigin
-        is RequestParametersFrom.DcApiMultiSigned -> dcApiRequest.callingOrigin
-        else -> null
-    }
+    private fun RequestParametersFrom<AuthenticationRequestParameters>.callingOrigin() =
+        (this as? RequestParametersFrom.DcApiRequest)?.callingOrigin
 
-    private fun RequestParametersFrom<AuthenticationRequestParameters>.credentialIds() = when (this) {
-        is RequestParametersFrom.DcApiSigned -> dcApiRequest.credentialIds
-        is RequestParametersFrom.DcApiUnsigned -> dcApiRequest.credentialIds
-        is RequestParametersFrom.DcApiMultiSigned -> dcApiRequest.credentialIds
-        else -> null
-    }
+    private fun RequestParametersFrom<AuthenticationRequestParameters>.credentialIds() =
+        (this as? RequestParametersFrom.DcApiRequest)?.credentialIds
 
     private suspend fun RelyingPartyMetadata.loadJsonWebKeySet(): JsonWebKeySet? =
         jsonWebKeySet ?: jsonWebKeySetUrl
@@ -464,6 +456,7 @@ private fun RequestParameters.state() = when (this) {
     is JarRequestParameters -> this.state
     is RequestObjectParameters -> null
     is SignatureRequestParameters -> this.state
+    is RequestParametersFrom.IsoMdoc.IsoMdocRequestWrapper -> null
 }
 
 fun Throwable.toOAuth2Error(

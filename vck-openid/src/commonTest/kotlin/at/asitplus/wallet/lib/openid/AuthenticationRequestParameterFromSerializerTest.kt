@@ -59,7 +59,8 @@ val AuthenticationRequestParameterFromSerializerTest by testSuite {
             val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow().request
                 .shouldBeInstanceOf<RequestParametersFrom.Uri<AuthenticationRequestParameters>>()
 
-            val serialized = joseCompliantSerializer.encodeToString(params)
+            val serialized =
+                joseCompliantSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(params)
             joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
                 .shouldBe(params)
         }
@@ -72,7 +73,8 @@ val AuthenticationRequestParameterFromSerializerTest by testSuite {
             val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow().request
                 .shouldBeInstanceOf<RequestParametersFrom.Json<AuthenticationRequestParameters>>()
 
-            val serialized = joseCompliantSerializer.encodeToString(params)
+            val serialized =
+                joseCompliantSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(params)
             joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
                 .shouldBe(params)
         }
@@ -90,9 +92,10 @@ val AuthenticationRequestParameterFromSerializerTest by testSuite {
             )
 
             val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow().request
-                .shouldBeInstanceOf<RequestParametersFrom.DcApiUnsigned<AuthenticationRequestParameters>>()
+                .shouldBeInstanceOf<RequestParametersFrom.OpenId4VpUnsigned>()
 
-            val serialized = joseCompliantSerializer.encodeToString(params)
+            val serialized =
+                joseCompliantSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(params)
             joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
                 .shouldBe(params)
         }
@@ -108,7 +111,8 @@ val AuthenticationRequestParameterFromSerializerTest by testSuite {
             val params = holderOid4vp.startAuthorizationResponsePreparation(serializedRequest).getOrThrow().request
                 .shouldBeInstanceOf<RequestParametersFrom.Jws<AuthenticationRequestParameters>>()
 
-            val serialized = joseCompliantSerializer.encodeToString(params)
+            val serialized =
+                joseCompliantSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(params)
             joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
                 .shouldBe(params)
         }
@@ -129,9 +133,10 @@ val AuthenticationRequestParameterFromSerializerTest by testSuite {
             )
 
             val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow().request
-                .shouldBeInstanceOf<RequestParametersFrom.DcApiSigned<AuthenticationRequestParameters>>()
+                .shouldBeInstanceOf<RequestParametersFrom.OpenId4VpSigned>()
 
-            val serialized = joseCompliantSerializer.encodeToString(params)
+            val serialized =
+                joseCompliantSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(params)
             joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
                 .shouldBe(params)
         }
