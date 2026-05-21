@@ -22,7 +22,7 @@ interface OtherId
 @Serializable
 data class ServiceDigitalIdentity(
     @SerialName(SerialNames.X509_CERTIFICATE)
-    val x509Certificates: List<@Serializable(with = EtsiX509CertificateSerializer::class) X509Certificate>? = null,
+    val x509Certificates: List<@Serializable(with = EtsiX509CertificateSerializer::class) X509Certificate?> = emptyList(),
     @SerialName(SerialNames.X509_SUBJECT_NAMES)
     val x509SubjectNames: List<Rfc4514DistinguishedName>? = null,
     @SerialName(SerialNames.PUBLIC_KEY_VALUE)
@@ -33,9 +33,9 @@ data class ServiceDigitalIdentity(
     val otherIds: List<OtherId>? = null,
 ) {
     init {
-        require(x509Certificates?.isNotEmpty() != false) {
-            "Expected at least 1 X509Certificate, but got 0."
-        }
+//        require(x509Certificates?.isNotEmpty() != false) {
+//            "Expected at least 1 X509Certificate, but got 0."
+//        }
         require(x509SubjectNames?.isNotEmpty() != false) {
             "Expected at least 1 X509SubjectName, but got 0."
         }

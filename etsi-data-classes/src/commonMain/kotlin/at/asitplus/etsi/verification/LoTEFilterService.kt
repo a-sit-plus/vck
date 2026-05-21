@@ -1,11 +1,13 @@
 package at.asitplus.etsi.verification
 
+import at.asitplus.etsi.EtsiX509CertificateSerializer
 import at.asitplus.etsi.ListOfTrustedEntities
 import at.asitplus.etsi.TEName
 import at.asitplus.signum.indispensable.asn1.Asn1Primitive
 import at.asitplus.signum.indispensable.asn1.Asn1String
 import at.asitplus.signum.indispensable.pki.AttributeTypeAndValue
 import at.asitplus.signum.indispensable.pki.X509Certificate
+import kotlinx.serialization.Serializable
 
 class LoTEFilterService {
 
@@ -18,7 +20,7 @@ class LoTEFilterService {
             entity.trustedEntityServices
                 .filter { it.serviceInformation.serviceTypeIdentifier?.string == criteria.expectedServiceType }
                 .flatMap { service -> service.serviceInformation.serviceDigitalIdentity.x509Certificates ?: emptyList() }
-                .filter { cert -> cert.hasMatchingOrganization(providerName) }
+                .filter { cert -> cert?.hasMatchingOrganization(providerName) == true }
                 .map { cert -> TrustedCertificate(cert, providerName, criteria.expectedServiceType) }
         }
     }
@@ -40,7 +42,7 @@ class LoTEFilterService {
 }
 
 data class TrustedCertificate(
-    val certificate: X509Certificate,
+    val certificate: @Serializable(with = EtsiX509CertificateSerializer::class) X509Certificate?,
     val providerName: TEName,
     val serviceType: String
 )

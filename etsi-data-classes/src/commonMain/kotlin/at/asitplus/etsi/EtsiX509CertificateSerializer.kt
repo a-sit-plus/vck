@@ -9,7 +9,7 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
-class EtsiX509CertificateSerializer : KSerializer<X509Certificate> {
+class EtsiX509CertificateSerializer : KSerializer<X509Certificate?> {
     private val delegate = EtsiX509CertificateSerializationSurrogate.serializer()
     override val descriptor: SerialDescriptor
         get() = SerialDescriptor(
@@ -19,8 +19,10 @@ class EtsiX509CertificateSerializer : KSerializer<X509Certificate> {
 
     override fun serialize(
         encoder: Encoder,
-        value: X509Certificate
+        value: X509Certificate?
     ) {
+        if (value == null) return encoder.encodeNull()
+
         encoder.encodeSerializableValue(
             EtsiX509CertificateSerializationSurrogate.serializer(),
             EtsiX509CertificateSerializationSurrogate(
@@ -29,9 +31,13 @@ class EtsiX509CertificateSerializer : KSerializer<X509Certificate> {
         )
     }
 
-    override fun deserialize(decoder: Decoder) = decoder.decodeSerializableValue(
-        EtsiX509CertificateSerializationSurrogate.serializer(),
-    ).value
+    override fun deserialize(decoder: Decoder) : X509Certificate? = try {
+        decoder.decodeSerializableValue(
+            EtsiX509CertificateSerializationSurrogate.serializer(),
+        ).value
+    } catch (_: Exception) {
+        null
+    }
 
     @Serializable
     private data class EtsiX509CertificateSerializationSurrogate(
