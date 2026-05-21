@@ -1,6 +1,6 @@
 package at.asitplus.openid
 
-import at.asitplus.openid.RequestParametersFrom.SerialNames.DC_API_REQUEST
+import at.asitplus.dcapi.request.ExchangeProtocolIdentifier
 import at.asitplus.openid.RequestParametersFrom.SerialNames.JSON_STRING
 import at.asitplus.openid.RequestParametersFrom.SerialNames.JWS
 import at.asitplus.openid.RequestParametersFrom.SerialNames.PARAMETERS
@@ -12,15 +12,12 @@ import at.asitplus.signum.indispensable.josef.JWS
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsFlattened
 import at.asitplus.signum.indispensable.josef.JwsGeneral
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.signum.indispensable.josef.JwsTyped
 import io.ktor.http.*
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.decodeFromJsonElement
-import kotlinx.serialization.json.encodeToJsonElement
 
 /**
  * In order to de-/serialize generic types we need a kind of factory approach.
@@ -29,13 +26,10 @@ import kotlinx.serialization.json.encodeToJsonElement
  * [RequestParametersFrom] subtype.
  *
  * During serialization, the subtype is flattened into that surrogate. During
- * deserialization, the field combination determines the subtype again. The
- * surrogate represents the nested DC API request as a [JsonObject] until the
- * concrete [RequestParametersFrom] branch is known: [JwsGeneral] plus a DC API
- * request becomes [RequestParametersFrom.DcApiMultiSigned], [JwsCompact] plus a
- * DC API request becomes [RequestParametersFrom.DcApiSigned], and a JSON string
- * plus a DC API request becomes [RequestParametersFrom.DcApiUnsigned]. Plain
- * JSON, JWS, and URI requests are selected from their respective fields.
+ * deserialization, the field combination determines the subtype again. DC API
+ * request metadata is represented directly on the surrogate, matching
+ * [RequestParametersFrom.DcApiRequest]. Plain JSON, JWS, and URI requests are
+ * selected from their respective fields.
  * Missing [RequestParametersFrom.RequestParametersSigned.verified] values
  * default to `false`; [JwsFlattened] is recognized but not implemented.
  */
@@ -61,19 +55,27 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
     @Serializable(UrlSerializer::class)
     @SerialName(PARENT)
     val parent: Url? = null,
-    @SerialName(DC_API_REQUEST)
-    val dcApiRequest: JsonObject? = null,
     @SerialName(VERIFIED)
     val verified: Boolean? = null,
+    @SerialName(PROTOCOL)
+    val protocol: ExchangeProtocolIdentifier? = null,
+    @SerialName(CREDENTIAL_IDS)
+    val credentialIds: Collection<String>? = null,
+    @SerialName(CALLING_PACKAGE_NAME)
+    val callingPackageName: String? = null,
+    @SerialName(CALLING_ORIGIN)
+    val callingOrigin: String? = null,
 ) {
     constructor(value: RequestParametersFrom<T>) : this(
         parameters = value.parameters,
         jws = when (value) {
-            is RequestParametersFrom.RequestParametersSigned -> value.jws
+            is RequestParametersFrom.Jws -> value.jws
+            is RequestParametersFrom.RequestParametersSigned -> value.jwsTyped.jws
             else -> null
         },
         jsonString = when (value) {
-            is RequestParametersFrom.DcApiUnsigned<*> -> value.jsonString
+            is RequestParametersFrom.OpenId4VpUnsigned -> value.jsonString
+            is RequestParametersFrom.IsoMdoc -> value.jsonString
             is RequestParametersFrom.Json -> value.jsonString
             else -> null
         },
@@ -83,40 +85,57 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
             is RequestParametersFrom.Json -> value.parent
             else -> null
         },
-        dcApiRequest = when (value) {
-            is RequestParametersFrom.DcApiSigned<*> -> joseCompliantSerializer.encodeToJsonElement(value.dcApiRequest) as JsonObject
-            is RequestParametersFrom.DcApiUnsigned<*> -> joseCompliantSerializer.encodeToJsonElement(value.dcApiRequest) as JsonObject
-            is RequestParametersFrom.DcApiMultiSigned<*> -> joseCompliantSerializer.encodeToJsonElement(value.dcApiRequest) as JsonObject
+        verified = (value as? RequestParametersFrom.RequestParametersSigned<*>)?.verified,
+        protocol = when (value) {
+            is RequestParametersFrom.OpenId4VpMultiSigned -> ExchangeProtocolIdentifier.OpenId4VpV1Multisigned
+            is RequestParametersFrom.OpenId4VpSigned -> ExchangeProtocolIdentifier.OpenId4VpV1Signed
+            is RequestParametersFrom.OpenId4VpUnsigned -> ExchangeProtocolIdentifier.OpenId4VpV1Unsigned
+            is RequestParametersFrom.IsoMdoc -> ExchangeProtocolIdentifier.IsoMdocAnnexC
             else -> null
         },
-        verified = (value as? RequestParametersFrom.RequestParametersSigned<*>)?.verified,
+        credentialIds = (value as? RequestParametersFrom.DcApiRequest)?.credentialIds,
+        callingPackageName = (value as? RequestParametersFrom.DcApiRequest)?.callingPackageName,
+        callingOrigin = (value as? RequestParametersFrom.DcApiRequest)?.callingOrigin,
     )
 
     fun toRequestParametersFrom(): RequestParametersFrom<T> = when {
-        jws is JwsGeneral && dcApiRequest != null ->
-            RequestParametersFrom.DcApiMultiSigned(
-                dcApiRequest = joseCompliantSerializer.decodeFromJsonElement(dcApiRequest),
-                parameters = parameters,
-                jws = jws,
-                verified = verified ?: false
-            )
+        protocol == ExchangeProtocolIdentifier.OpenId4VpV1Multisigned ->
+            RequestParametersFrom.OpenId4VpMultiSigned(
+                jwsTyped = JwsTyped(requireJwsGeneral(), requireAuthenticationRequestParameters()),
+                verified = verified ?: false,
+                credentialIds = requireCredentialIds(),
+                callingPackageName = requireCallingPackageName(),
+                callingOrigin = requireCallingOrigin(),
+            ).cast()
 
-        jws is JwsCompact && dcApiRequest != null ->
-            RequestParametersFrom.DcApiSigned(
-                dcApiRequest = joseCompliantSerializer.decodeFromJsonElement(dcApiRequest),
-                parameters = parameters,
-                jws = jws,
-                verified = verified ?: false
-            )
+        protocol == ExchangeProtocolIdentifier.OpenId4VpV1Signed ->
+            RequestParametersFrom.OpenId4VpSigned(
+                jwsTyped = JwsTyped(requireJwsCompact(), requireAuthenticationRequestParameters()),
+                verified = verified ?: false,
+                credentialIds = requireCredentialIds(),
+                callingPackageName = requireCallingPackageName(),
+                callingOrigin = requireCallingOrigin(),
+            ).cast()
+
+        protocol == ExchangeProtocolIdentifier.OpenId4VpV1Unsigned ->
+            RequestParametersFrom.OpenId4VpUnsigned(
+                parameters = requireAuthenticationRequestParameters(),
+                jsonString = requireJsonString(),
+                credentialIds = requireCredentialIds(),
+                callingPackageName = requireCallingPackageName(),
+                callingOrigin = requireCallingOrigin(),
+            ).cast()
+
+        protocol == ExchangeProtocolIdentifier.IsoMdocAnnexC ->
+            RequestParametersFrom.IsoMdoc(
+                parameters = requireIsoMdocRequestWrapper(),
+                jsonString = requireJsonString(),
+                credentialIds = requireCredentialIds(),
+                callingPackageName = requireCallingPackageName(),
+                callingOrigin = requireCallingOrigin(),
+            ).cast()
 
         jws is JwsFlattened -> throw UnsupportedOperationException("Not implemented yet")
-
-        jsonString != null && dcApiRequest != null ->
-            RequestParametersFrom.DcApiUnsigned(
-                dcApiRequest = joseCompliantSerializer.decodeFromJsonElement(dcApiRequest),
-                parameters = parameters,
-                jsonString = jsonString,
-            )
 
         jsonString != null ->
             RequestParametersFrom.Json(
@@ -141,4 +160,40 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
 
         else -> throw SerializationException("Unknown RequestParametersFrom surrogate. Input: $this")
     }
+
+    private fun requireAuthenticationRequestParameters(): AuthenticationRequestParameters =
+        parameters as? AuthenticationRequestParameters
+            ?: throw SerializationException("Expected AuthenticationRequestParameters for protocol $protocol")
+
+    private fun requireIsoMdocRequestWrapper(): RequestParametersFrom.IsoMdoc.IsoMdocRequestWrapper =
+        parameters as? RequestParametersFrom.IsoMdoc.IsoMdocRequestWrapper
+            ?: throw SerializationException("Expected IsoMdocRequestWrapper for protocol $protocol")
+
+    private fun requireJwsCompact(): JwsCompact =
+        jws as? JwsCompact
+            ?: throw SerializationException("Expected compact JWS for protocol $protocol")
+
+    private fun requireJwsGeneral(): JwsGeneral =
+        jws as? JwsGeneral
+            ?: throw SerializationException("Expected general JWS for protocol $protocol")
+
+    private fun requireJsonString(): String =
+        jsonString ?: throw SerializationException("Missing $JSON_STRING for protocol $protocol")
+
+    private fun requireCredentialIds(): Collection<String> =
+        credentialIds ?: throw SerializationException("Missing $CREDENTIAL_IDS for protocol $protocol")
+
+    private fun requireCallingPackageName(): String =
+        callingPackageName ?: throw SerializationException("Missing $CALLING_PACKAGE_NAME for protocol $protocol")
+
+    private fun requireCallingOrigin(): String =
+        callingOrigin ?: throw SerializationException("Missing $CALLING_ORIGIN for protocol $protocol")
+
+    @Suppress("UNCHECKED_CAST")
+    private fun RequestParametersFrom<*>.cast(): RequestParametersFrom<T> = this as RequestParametersFrom<T>
 }
+
+private const val PROTOCOL = "protocol"
+private const val CREDENTIAL_IDS = "credentialIds"
+private const val CALLING_PACKAGE_NAME = "callingPackageName"
+private const val CALLING_ORIGIN = "callingOrigin"

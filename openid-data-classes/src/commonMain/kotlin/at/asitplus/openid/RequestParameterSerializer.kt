@@ -13,6 +13,7 @@ object RequestParametersSerializer : JsonContentPolymorphicSerializer<RequestPar
     override fun selectDeserializer(element: JsonElement): DeserializationStrategy<RequestParameters> {
         val parameters = element.jsonObject
         return when {
+            "deviceRequest" in parameters -> RequestParametersFrom.IsoMdoc.IsoMdocRequestWrapper.serializer()
             "documentDigests" in parameters -> SignatureRequestParameters.serializer()
             ("request" in parameters) || ("request_uri" in parameters) -> JarRequestParameters.serializer()
             else -> AuthenticationRequestParameters.serializer()
