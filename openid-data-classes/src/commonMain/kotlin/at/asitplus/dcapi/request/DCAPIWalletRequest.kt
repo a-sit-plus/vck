@@ -17,7 +17,7 @@ typealias DCAPIWalletRequest = RequestParametersFrom.DcApiRequest
 @Deprecated(
     message = "Use RequestParametersFrom.OpenId4VpSigned instead.",
     replaceWith = ReplaceWith(
-        expression = "RequestParametersFrom.OpenId4VpSigned",
+        expression = "RequestParametersFrom.OpenId4VpDcApiSigned",
         imports = ["at.asitplus.openid.RequestParametersFrom"]
     ),
     level = DeprecationLevel.WARNING
@@ -27,7 +27,7 @@ typealias DCAPIWalletOpenId4VpSigned = RequestParametersFrom.OpenId4VpDcApiSigne
 @Deprecated(
     message = "Use RequestParametersFrom.OpenId4VpMultiSigned instead.",
     replaceWith = ReplaceWith(
-        expression = "RequestParametersFrom.OpenId4VpMultiSigned",
+        expression = "RequestParametersFrom.OpenId4VpDcApiMultiSigned",
         imports = ["at.asitplus.openid.RequestParametersFrom"]
     ),
     level = DeprecationLevel.WARNING
@@ -37,7 +37,7 @@ typealias DCAPIWalletOpenId4VpMultiSigned = RequestParametersFrom.OpenId4VpDcApi
 @Deprecated(
     message = "Use RequestParametersFrom.OpenId4VpUnsigned instead.",
     replaceWith = ReplaceWith(
-        expression = "RequestParametersFrom.OpenId4VpUnsigned",
+        expression = "RequestParametersFrom.OpenId4VpDcApiUnsigned",
         imports = ["at.asitplus.openid.RequestParametersFrom"]
     ),
     level = DeprecationLevel.WARNING
@@ -47,7 +47,7 @@ typealias DCAPIWalletOpenId4VpUnsigned = RequestParametersFrom.OpenId4VpDcApiUns
 @Deprecated(
     message = "Use RequestParametersFrom.IsoMdoc instead.",
     replaceWith = ReplaceWith(
-        expression = "RequestParametersFrom.IsoMdoc",
+        expression = "RequestParametersFrom.IsoMdocDcApi",
         imports = ["at.asitplus.openid.RequestParametersFrom"]
     ),
     level = DeprecationLevel.WARNING
