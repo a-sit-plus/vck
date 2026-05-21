@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
-import at.asitplus.dcapi.request.DCAPIWalletRequest
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.OpenIdConstants
@@ -58,9 +57,14 @@ class RequestParser(
      * Pass in the data received by the DC API in signed or unsigned form. Will return [RequestParametersFrom].
      */
     suspend fun parseRequestParameters(
-        input: DCAPIWalletRequest.OpenId4Vp,
+        input: RequestParametersFrom.DcApiRequest,
     ): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> = catching {
-        input.parseAsDcApiRequest() ?: throw InvalidRequest("parse error: $input")
+        when (input) {
+            is RequestParametersFrom.OpenId4VpSigned -> input
+            is RequestParametersFrom.OpenId4VpUnsigned -> input
+            is RequestParametersFrom.OpenId4VpMultiSigned -> input
+            is RequestParametersFrom.IsoMdoc -> throw InvalidRequest("ISO mdoc DC API requests are not OpenID4VP requests")
+        }
     }
 
     private suspend fun String.parseParameters(): RequestParametersFrom<out RequestParameters> =
@@ -90,36 +94,6 @@ class RequestParser(
         val params = joseCompliantSerializer.decodeFromString(RequestParameters.serializer(), this)
         RequestParametersFrom.Json(this, params, (parent as? RequestParametersFrom.Uri)?.url)
     }.getOrNull()
-
-    private fun DCAPIWalletRequest.OpenId4Vp.parseAsDcApiRequest(): RequestParametersFrom<AuthenticationRequestParameters>? =
-        catchingUnwrapped {
-            when (this) {
-                is DCAPIWalletRequest.OpenId4VpSigned -> RequestParametersFrom.OpenId4VpSigned(
-                    jwsTyped = this.request.request,
-                    verified = false,
-                    credentialIds = credentialIds,
-                    callingPackageName = callingPackageName,
-                    callingOrigin = callingOrigin,
-                )
-
-                is DCAPIWalletRequest.OpenId4VpUnsigned ->
-                    RequestParametersFrom.OpenId4VpUnsigned(
-                        parameters = this.request.request,
-                        jsonString = joseCompliantSerializer.encodeToString(this.request.request),
-                        credentialIds = credentialIds,
-                        callingPackageName = callingPackageName,
-                        callingOrigin = callingOrigin,
-                    )
-
-                is DCAPIWalletRequest.OpenId4VpMultiSigned -> RequestParametersFrom.OpenId4VpMultiSigned(
-                    jwsTyped = this.request.request,
-                    verified = false,
-                    credentialIds = credentialIds,
-                    callingPackageName = callingPackageName,
-                    callingOrigin = callingOrigin,
-                )
-            }
-        }.getOrNull()
 
     suspend fun extractRequest(
         parameters: JarRequestParameters,

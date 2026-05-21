@@ -3,13 +3,13 @@ package at.asitplus.wallet.lib.ktor.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
-import at.asitplus.dcapi.request.DCAPIWalletRequest
 import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants.ResponseMode
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.NameSegment
@@ -421,8 +421,9 @@ val OpenId4VpWalletTest by testSuite {
                        "response_type" : "vp_token"
                     }
                     """.trimIndent()
-            val dcApiRequest = DCAPIWalletRequest.OpenId4VpUnsigned(
-                request = joseCompliantSerializer.decodeFromString(request),
+            val dcApiRequest = RequestParametersFrom.OpenId4VpUnsigned(
+                parameters = joseCompliantSerializer.decodeFromString(request),
+                jsonString = request,
                 credentialIds = listOf("c72a2a8a6e94564cd8dea6ef0c7eb47b31a31947620ebcc0f07177bb71078def"),
                 callingPackageName = "com.android.chrome",
                 callingOrigin = "https://apps.egiz.gv.at/customverifier"

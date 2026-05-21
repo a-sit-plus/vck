@@ -2,7 +2,6 @@ package at.asitplus.openid
 
 import at.asitplus.dcapi.request.ExchangeProtocolIdentifier
 import at.asitplus.dcapi.request.IsoMdocRequest
-import at.asitplus.dcapi.request.JwsTypedSerializerTemplate
 import at.asitplus.signum.indispensable.io.TransformingSerializerTemplate
 import at.asitplus.signum.indispensable.josef.JWS
 import at.asitplus.signum.indispensable.josef.JwsCompactStringSerializer
@@ -31,7 +30,7 @@ sealed class RequestParametersFrom<S : RequestParameters> {
     }
 
     /**
-     * Common ancestor for request parameters that are [DCAPIWalletRequest.OpenId4Vp] subtypes
+     * Common ancestor for request parameters that are DC-API subtypes
      */
     @JsonClassDiscriminator("protocol")
     sealed interface DcApiRequest {
@@ -142,7 +141,7 @@ sealed class RequestParametersFrom<S : RequestParameters> {
     }
 
     @Serializable
-    @SerialName(SerialNames.TYPE_DCAPI_UNSIGNED)
+    @SerialName(SerialNames.TYPE_DCAPI_ISO_MDOC)
     data class IsoMdoc(
         override val parameters: IsoMdocRequestWrapper,
         @SerialName(SerialNames.JSON_STRING)
@@ -168,7 +167,7 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         }
 
         override val protocol: ExchangeProtocolIdentifier
-            get() = ExchangeProtocolIdentifier.OpenId4VpV1Unsigned
+            get() = ExchangeProtocolIdentifier.IsoMdocAnnexC
 
     }
 
@@ -199,6 +198,7 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         const val TYPE_DCAPI_UNSIGNED = "DcApiUnsigned"
         const val TYPE_DCAPI_SIGNED = "DcApiSigned"
         const val TYPE_DCAPI_MULTISIGNED = "DcApiMultiSigned"
+        const val TYPE_DCAPI_ISO_MDOC = "IsoMdoc"
         const val TYPE_URI = "Uri"
 
         const val JWS = "jws"

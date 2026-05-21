@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.ktor.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
-import at.asitplus.dcapi.request.DCAPIWalletRequest
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
@@ -134,11 +133,6 @@ class OpenId4VpWallet(
 
     suspend fun startAuthorizationResponsePreparation(
         input: String,
-    ): KmmResult<AuthorizationResponsePreparationState> =
-        openId4VpHolder.startAuthorizationResponsePreparation(input)
-
-    suspend fun startAuthorizationResponsePreparation(
-        input: DCAPIWalletRequest.OpenId4Vp,
     ): KmmResult<AuthorizationResponsePreparationState> =
         openId4VpHolder.startAuthorizationResponsePreparation(input)
 

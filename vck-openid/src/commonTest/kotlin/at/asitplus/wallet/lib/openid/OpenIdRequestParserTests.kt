@@ -1,7 +1,5 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.dcapi.request.DCAPIWalletRequest
-import at.asitplus.dcapi.request.DCAPIWalletRequest.OpenId4Vp.OpenId4VpRequest
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
@@ -161,8 +159,9 @@ val OpenIdRequestParserTests by testSuite {
         }
 
         "signed request from DCAPI" { requestParser ->
-            val input = DCAPIWalletRequest.OpenId4VpSigned(
-                request = OpenId4VpRequest.JwsCompact(JwsTyped<AuthenticationRequestParameters>(jws)),
+            val input = RequestParametersFrom.OpenId4VpSigned(
+                jwsTyped = JwsTyped<AuthenticationRequestParameters>(jws),
+                verified = false,
                 credentialIds = listOf("1"),
                 callingPackageName = "com.example.app",
                 callingOrigin = "https://example.com"
@@ -181,8 +180,9 @@ val OpenIdRequestParserTests by testSuite {
         }
 
         "unsigned request from DCAPI" { requestParser ->
-            val input = DCAPIWalletRequest.OpenId4VpUnsigned(
-                request = joseCompliantSerializer.decodeFromString(authnRequestSerialized),
+            val input = RequestParametersFrom.OpenId4VpUnsigned(
+                parameters = joseCompliantSerializer.decodeFromString(authnRequestSerialized),
+                jsonString = authnRequestSerialized,
                 credentialIds = listOf("1"),
                 callingPackageName = "com.example.app",
                 callingOrigin = "https://example.com"
