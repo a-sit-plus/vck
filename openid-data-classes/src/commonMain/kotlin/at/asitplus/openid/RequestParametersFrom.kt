@@ -1,12 +1,20 @@
 package at.asitplus.openid
 
-import at.asitplus.dcapi.request.DCAPIWalletRequest
+import at.asitplus.dcapi.request.ExchangeProtocolIdentifier
+import at.asitplus.dcapi.request.IsoMdocRequest
+import at.asitplus.dcapi.request.JwsTypedSerializerTemplate
+import at.asitplus.signum.indispensable.io.TransformingSerializerTemplate
 import at.asitplus.signum.indispensable.josef.JWS
 import at.asitplus.signum.indispensable.josef.JwsCompactStringSerializer
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.JwsGeneral
+import at.asitplus.signum.indispensable.josef.JwsGeneralTyped
+import at.asitplus.signum.indispensable.josef.JwsTyped
 import io.ktor.http.*
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonClassDiscriminator
 
 @Serializable(with = RequestParametersFromSerializer::class)
 sealed class RequestParametersFrom<S : RequestParameters> {
@@ -18,67 +26,152 @@ sealed class RequestParametersFrom<S : RequestParameters> {
      * (e.g., classic OpenID requests or DC-API signed requests).
      */
     sealed class RequestParametersSigned<T : RequestParameters> : RequestParametersFrom<T>() {
-        abstract val jws: JWS
+        abstract val jwsTyped: JwsTyped<*, T>
         abstract val verified: Boolean
     }
 
     /**
      * Common ancestor for request parameters that are [DCAPIWalletRequest.OpenId4Vp] subtypes
      */
+    @JsonClassDiscriminator("protocol")
     sealed interface DcApiRequest {
-        val dcApiRequest: DCAPIWalletRequest.OpenId4Vp
+        @SerialName("credentialIds")
+        val credentialIds: Collection<String>
+
+        @SerialName("callingPackageName")
+        val callingPackageName: String
+
+        @SerialName("callingOrigin")
+        val callingOrigin: String
+
+        val protocol: ExchangeProtocolIdentifier
     }
 
     @Serializable
     @SerialName(SerialNames.TYPE_JWS)
     data class Jws<T : RequestParameters>(
         @SerialName(SerialNames.JWS)
-        override val jws: JWS,
+        val jws: JWS,
         @SerialName(SerialNames.PARAMETERS)
         override val parameters: T,
         @SerialName(SerialNames.VERIFIED)
         override val verified: Boolean,
         @SerialName(SerialNames.PARENT)
         val parent: Url? = null,
-    ) : RequestParametersSigned<T>()
+    ) : RequestParametersSigned<T>() {
+        override val jwsTyped get() = JwsTyped(jws, parameters)
+    }
 
     @Serializable
     @SerialName(SerialNames.TYPE_DCAPI_MULTISIGNED)
-    data class DcApiMultiSigned<T : RequestParameters>(
-        @SerialName(SerialNames.DC_API_REQUEST)
-        override val dcApiRequest: DCAPIWalletRequest.OpenId4VpMultiSigned,
-        @SerialName(SerialNames.PARAMETERS)
-        override val parameters: T,
+    data class OpenId4VpMultiSigned(
+        @Serializable(with = JwsGeneralAuthParamSerializer::class)
         @SerialName(SerialNames.JWS)
-        override val jws: JwsGeneral,
+        override val jwsTyped: JwsGeneralTyped<AuthenticationRequestParameters>,
         @SerialName(SerialNames.VERIFIED)
         override val verified: Boolean,
-    ) : RequestParametersSigned<T>(), DcApiRequest
+        @SerialName("credentialIds")
+        override val credentialIds: Collection<String>,
+        @SerialName("callingPackageName")
+        override val callingPackageName: String,
+        @SerialName("callingOrigin")
+        override val callingOrigin: String
+    ) : RequestParametersSigned<AuthenticationRequestParameters>(), DcApiRequest {
+
+        @SerialName(SerialNames.PARAMETERS)
+        override val parameters: AuthenticationRequestParameters = jwsTyped.payload
+
+        override val protocol: ExchangeProtocolIdentifier
+            get() = ExchangeProtocolIdentifier.OpenId4VpV1Multisigned
+
+        object JwsGeneralAuthParamSerializer :
+            KSerializer<JwsGeneralTyped<AuthenticationRequestParameters>> by JwsTypedSerializerTemplate(
+                JwsGeneral.serializer(),
+                AuthenticationRequestParameters.serializer()
+            )
+    }
 
     @Serializable
     @SerialName(SerialNames.TYPE_DCAPI_SIGNED)
-    data class DcApiSigned<T : RequestParameters>(
-        @SerialName(SerialNames.DC_API_REQUEST)
-        override val dcApiRequest: DCAPIWalletRequest.OpenId4VpSigned,
-        @SerialName(SerialNames.PARAMETERS)
-        override val parameters: T,
-        @Serializable(JwsCompactStringSerializer::class)
+    data class OpenId4VpSigned(
+        @Serializable(JwsCompactAuthParamSerializer::class)
         @SerialName(SerialNames.JWS)
-        override val jws: at.asitplus.signum.indispensable.josef.JwsCompact,
+        override val jwsTyped: JwsCompactTyped<AuthenticationRequestParameters>,
         @SerialName(SerialNames.VERIFIED)
         override val verified: Boolean,
-    ) : RequestParametersSigned<T>(), DcApiRequest
+        @SerialName("credentialIds")
+        override val credentialIds: Collection<String>,
+        @SerialName("callingPackageName")
+        override val callingPackageName: String,
+        @SerialName("callingOrigin")
+        override val callingOrigin: String
+    ) : RequestParametersSigned<AuthenticationRequestParameters>(), DcApiRequest {
+
+        @SerialName(SerialNames.PARAMETERS)
+        override val parameters: AuthenticationRequestParameters = jwsTyped.payload
+
+        override val protocol: ExchangeProtocolIdentifier
+            get() = ExchangeProtocolIdentifier.OpenId4VpV1Signed
+
+        object JwsCompactAuthParamSerializer :
+            KSerializer<JwsCompactTyped<AuthenticationRequestParameters>> by JwsTypedSerializerTemplate(
+                JwsCompactStringSerializer,
+                AuthenticationRequestParameters.serializer()
+            )
+
+    }
 
     @Serializable
     @SerialName(SerialNames.TYPE_DCAPI_UNSIGNED)
-    data class DcApiUnsigned<T : RequestParameters>(
-        @SerialName(SerialNames.DC_API_REQUEST)
-        override val dcApiRequest: DCAPIWalletRequest.OpenId4VpUnsigned,
+    data class OpenId4VpUnsigned(
         @SerialName(SerialNames.PARAMETERS)
-        override val parameters: T,
+        override val parameters: AuthenticationRequestParameters,
         @SerialName(SerialNames.JSON_STRING)
         val jsonString: String,
-    ) : DcApiRequest, RequestParametersFrom<T>()
+        @SerialName("credentialIds")
+        override val credentialIds: Collection<String>,
+        @SerialName("callingPackageName")
+        override val callingPackageName: String,
+        @SerialName("callingOrigin")
+        override val callingOrigin: String
+    ) : DcApiRequest, RequestParametersFrom<AuthenticationRequestParameters>() {
+
+        override val protocol: ExchangeProtocolIdentifier
+            get() = ExchangeProtocolIdentifier.OpenId4VpV1Unsigned
+
+    }
+
+    @Serializable
+    @SerialName(SerialNames.TYPE_DCAPI_UNSIGNED)
+    data class IsoMdoc(
+        override val parameters: IsoMdocRequestWrapper,
+        @SerialName(SerialNames.JSON_STRING)
+        val jsonString: String,
+        @SerialName("credentialIds")
+        override val credentialIds: Collection<String>,
+        @SerialName("callingPackageName")
+        override val callingPackageName: String,
+        @SerialName("callingOrigin")
+        override val callingOrigin: String
+    ) : DcApiRequest, RequestParametersFrom<IsoMdoc.IsoMdocRequestWrapper>() {
+
+        @Serializable(with = IsoMdocRequestWrapper.Serializer::class)
+        data class IsoMdocRequestWrapper(
+            val isoMdocRequest: IsoMdocRequest
+        ) : RequestParameters() {
+            object Serializer :
+                KSerializer<IsoMdocRequestWrapper> by TransformingSerializerTemplate(
+                    parent = IsoMdocRequest.serializer(),
+                    encodeAs = { it.isoMdocRequest },
+                    decodeAs = { IsoMdocRequestWrapper(it) }
+                )
+        }
+
+        override val protocol: ExchangeProtocolIdentifier
+            get() = ExchangeProtocolIdentifier.OpenId4VpV1Unsigned
+
+    }
+
 
     @Serializable
     @SerialName(SerialNames.TYPE_URI)
