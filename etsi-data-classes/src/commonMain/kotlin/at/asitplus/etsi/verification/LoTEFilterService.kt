@@ -19,8 +19,8 @@ class LoTEFilterService {
 
             entity.trustedEntityServices
                 .filter { it.serviceInformation.serviceTypeIdentifier?.string == criteria.expectedServiceType }
-                .flatMap { service -> service.serviceInformation.serviceDigitalIdentity.x509Certificates ?: emptyList() }
-                .filter { cert -> cert?.hasMatchingOrganization(providerName) == true }
+                .flatMap { service -> service.serviceInformation.serviceDigitalIdentity.x509Certificates }
+//                .filter { cert -> cert?.hasMatchingOrganization(providerName) == true }
                 .map { cert -> TrustedCertificate(cert, providerName, criteria.expectedServiceType) }
         }
     }
@@ -48,8 +48,5 @@ data class TrustedCertificate(
 )
 
 data class LoTEFilterCriteria(
-    val expectedLoTEType: String,
     val expectedServiceType: String,
-    val enforceActiveStatus: Boolean = false, 
-    val activeStatusUri: String = "http://uri.etsi.org/19602/PubEAAProvidersList/SvcStatus/notified"
 )

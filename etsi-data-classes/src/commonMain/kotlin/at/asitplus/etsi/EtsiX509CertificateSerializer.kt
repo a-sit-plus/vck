@@ -6,8 +6,13 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlin.io.encoding.Base64
 
 class EtsiX509CertificateSerializer : KSerializer<X509Certificate?> {
     private val delegate = EtsiX509CertificateSerializationSurrogate.serializer()
@@ -31,10 +36,27 @@ class EtsiX509CertificateSerializer : KSerializer<X509Certificate?> {
         )
     }
 
-    override fun deserialize(decoder: Decoder) : X509Certificate? = try {
-        decoder.decodeSerializableValue(
-            EtsiX509CertificateSerializationSurrogate.serializer(),
-        ).value
+    override fun deserialize(decoder: Decoder): X509Certificate? = try {
+        when (decoder) {
+            is JsonDecoder -> {
+                val jsonObject = decoder
+                    .decodeJsonElement()
+                    .jsonObject
+
+                val base64 = jsonObject[
+                    EtsiX509CertificateSerializationSurrogate.SerialNames.VALUE
+                ]?.jsonPrimitive?.content ?: return null
+
+                val bytes = Base64.Default.decode(base64)
+
+                X509Certificate.decodeFromByteArray(bytes)
+            }
+            else -> {
+                decoder.decodeSerializableValue(
+                    EtsiX509CertificateSerializationSurrogate.serializer(),
+                ).value
+            }
+        }
     } catch (_: Exception) {
         null
     }

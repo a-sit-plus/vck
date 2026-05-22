@@ -1,4 +1,4 @@
-package at.asitplus.etsi.verification
+package at.asitplus.wallet.lib
 
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.pki.CertificateChain
