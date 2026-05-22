@@ -29,6 +29,7 @@ kotlin {
             dependencies {
                 api(project(":dif-data-classes"))
                 api(project(":openid-data-classes"))
+                api(project(":etsi-data-classes"))
                 api(project(":sd-jwt-type-metadata"))
                 commonImplementationAndApiDependencies()
             }

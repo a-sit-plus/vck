@@ -1,4 +1,4 @@
-package at.asitplus.etsi.verification
+package at.asitplus.wallet.lib.etsi
 
 import at.asitplus.etsi.EtsiX509CertificateSerializer
 import at.asitplus.etsi.ListOfTrustedEntities

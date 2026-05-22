@@ -1,7 +1,6 @@
-package at.asitplus.etsi
+package at.asitplus.wallet.lib.etsi
 
-import at.asitplus.etsi.verification.LoTEFilterCriteria
-import at.asitplus.etsi.verification.LoTEFilterService
+import at.asitplus.etsi.ListOfTrustedEntities
 import at.asitplus.testballoon.withData
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldNotBe
