@@ -67,6 +67,8 @@ Release 6.0.0:
    - Update Bouncy Castle 1.84
    - Update to `kotlinx.coroutines` 1.11.0
  - Matrix testing
+ - Add `LoTEFilterService` for extracting trust list certificates from `LoTE` based on `ServiceTypeIdentifier`
+ - Add signature and time validity checks of certificate against the trust list
 
 Release 5.12.0:
  - W3C JWT VC:
