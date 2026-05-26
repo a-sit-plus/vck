@@ -180,7 +180,7 @@ class OpenId4VciClient(
             )
         ).getOrThrow()
 
-        if (tokenResponse.params.tokenType == TOKEN_TYPE_DPOP) {
+        if (tokenResponse.params.tokenType.equals(other = TOKEN_TYPE_DPOP, ignoreCase = true)) {
             JwsSigned.deserialize<OpenId4VciAccessToken>(
                 it = tokenResponse.params.accessToken,
                 deserializationStrategy = OpenId4VciAccessToken.serializer(),
