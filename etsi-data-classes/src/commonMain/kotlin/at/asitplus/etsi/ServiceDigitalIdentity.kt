@@ -33,17 +33,14 @@ data class ServiceDigitalIdentity(
     val otherIds: List<OtherId>? = null,
 ) {
     init {
-//        require(x509Certificates?.isNotEmpty() != false) {
-//            "Expected at least 1 X509Certificate, but got 0."
-//        }
+        require( x509Certificates.isNotEmpty() || x509SKIs?.isNotEmpty() != false) {
+            "Expected at least 1 X509Certificate or at least 1 X509SKI, but got 0."
+        }
         require(x509SubjectNames?.isNotEmpty() != false) {
             "Expected at least 1 X509SubjectName, but got 0."
         }
         require(publicKeyValues?.isNotEmpty() != false) {
             "Expected at least 1 PublicKeyValue, but got 0."
-        }
-        require(x509SKIs?.isNotEmpty() != false) {
-            "Expected at least 1 X509SKI, but got 0."
         }
         require(otherIds?.isNotEmpty() != false) {
             "Expected at least 1 other id, but got 0."
