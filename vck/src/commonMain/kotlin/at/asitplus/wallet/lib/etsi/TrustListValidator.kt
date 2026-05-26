@@ -14,7 +14,7 @@ import kotlin.time.Instant
  * Verifies if this certificate is directly signed and trusted by any anchor in the [trustStore].
  * Enforces strict timeliness, cryptographic integrity
  */
-fun X509Certificate.isDirectlyTrustedBy(
+fun X509Certificate.isTrustedBy(
     trustStore: CertificateChain,
     date: Instant = Clock.System.now()
 ): KmmResult<Unit> = catching {
@@ -53,6 +53,9 @@ fun X509Certificate.isNotYetValid(date: Instant = Clock.System.now()): Boolean =
  */
 fun X509Certificate.isValidAt(date: Instant = Clock.System.now()): Boolean = !(isExpired(date) || isNotYetValid(date))
 
+/**
+ * Verifies that this certificate is the issuer of the given [cert].
+ */
 fun X509Certificate.isIssuerOf(cert: X509Certificate): KmmResult<Unit> = catching {
     if (cert.tbsCertificate.issuerName != this.tbsCertificate.subjectName) throw Exception("Subject of issuer cert and issuer of child certificate mismatch.")
 

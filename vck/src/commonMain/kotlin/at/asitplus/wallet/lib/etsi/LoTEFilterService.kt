@@ -20,7 +20,7 @@ class LoTEFilterService {
             entity.trustedEntityServices
                 .filter { it.serviceInformation.serviceTypeIdentifier?.string == criteria.expectedServiceType }
                 .flatMap { service -> service.serviceInformation.serviceDigitalIdentity.x509Certificates }
-//                .filter { cert -> cert?.hasMatchingOrganization(providerName) == true }
+                .filter { cert -> cert?.hasMatchingOrganization(providerName) == true }
                 .map { cert -> TrustedCertificate(cert, providerName, criteria.expectedServiceType) }
         }
     }

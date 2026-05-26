@@ -6,7 +6,7 @@ import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldNotBe
 import kotlinx.serialization.json.Json
 
-val VerificationTest by testSuite {
+val LoTEFilterTest by testSuite {
 
     val pidProvidersOriginal = """
           {

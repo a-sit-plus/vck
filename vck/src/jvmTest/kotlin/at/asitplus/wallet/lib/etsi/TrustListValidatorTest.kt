@@ -55,7 +55,7 @@ val TrustListValidatorTest by testSuite {
         val trustList = listOf(X509Certificate.decodeFromPem(trustAnchorPem).getOrThrow())
         val leaf = X509Certificate.decodeFromPem(testCertPem).getOrThrow()
 
-        leaf.isDirectlyTrustedBy(trustList).isSuccess shouldBe true
+        leaf.isTrustedBy(trustList).isSuccess shouldBe true
     }
 
     "invalid signature" {
@@ -84,7 +84,7 @@ val TrustListValidatorTest by testSuite {
         val trustList = listOf(X509Certificate.decodeFromPem(trustAnchorPem).getOrThrow())
         val leaf = X509Certificate.decodeFromPem(testCertPem).getOrThrow()
 
-        leaf.isDirectlyTrustedBy(trustList).isSuccess shouldBe false
+        leaf.isTrustedBy(trustList).isSuccess shouldBe false
     }
 
     "Invalid notBefore date" {
@@ -113,7 +113,7 @@ val TrustListValidatorTest by testSuite {
         val trustList = listOf(X509Certificate.decodeFromPem(trustAnchorPem).getOrThrow())
         val leaf = X509Certificate.decodeFromPem(testCertPem).getOrThrow()
 
-        leaf.isDirectlyTrustedBy(trustList).isSuccess shouldBe false
+        leaf.isTrustedBy(trustList).isSuccess shouldBe false
     }
 
     "invalid name chaining" {
@@ -168,7 +168,7 @@ val TrustListValidatorTest by testSuite {
         )
         val leaf = X509Certificate.decodeFromPem(testCertPem).getOrThrow()
 
-        val result = leaf.isDirectlyTrustedBy(trustList)
+        val result = leaf.isTrustedBy(trustList)
         result.isSuccess shouldBe false
         result.exceptionOrNull()?.message shouldBe "No valid trust anchor could verify certificate"
     }
