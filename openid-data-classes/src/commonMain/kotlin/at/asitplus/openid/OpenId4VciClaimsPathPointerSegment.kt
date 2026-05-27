@@ -36,8 +36,8 @@ sealed interface OpenId4VciClaimsPathPointerSegment {
             return when {
                 jsonPrimitive.isString -> OpenId4VciClaimsPathPointerSegmentString(jsonPrimitive.content)
                 else -> jsonPrimitive.longOrNull?.let {
-                    if (it < 0 || it.toULong() > UInt.MAX_VALUE) {
-                        throw UnsupportedOperationException("Expected index segment to be in range 0..${UInt.MAX_VALUE}, but was $it")
+                    require(it >= 0 && it.toULong() <= UInt.MAX_VALUE) {
+                        "Expected index segment to be in range 0..${UInt.MAX_VALUE}, but was $it"
                     }
                     OpenId4VciClaimsPathPointerSegmentIndex(it.toUInt())
                 } ?: throw IllegalArgumentException(
