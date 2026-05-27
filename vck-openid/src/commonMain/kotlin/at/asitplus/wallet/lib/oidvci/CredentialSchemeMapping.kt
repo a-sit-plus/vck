@@ -89,9 +89,10 @@ fun CredentialScheme.toSdJwtSupportedCredentialFormat(identifier: String): Pair<
         scope = identifier,
         sdJwtVcType = sdJwtType!!,
         supportedBindingMethods = setOf(BINDING_METHOD_JWK, URN_TYPE_JWK_THUMBPRINT),
-        sdJwtClaims = claimNames.map {
-            ClaimDescription(path = OpenId4VciClaimsPathPointer(it.split(".")))
-        }.toSet()
+        sdJwtClaims = claimDescriptions.takeUnless { it.isEmpty() }?.toSet()
+            ?: claimNames.map {
+                ClaimDescription(path = OpenId4VciClaimsPathPointer(it.split(".")))
+            }.toSet()
     )
 
 class DefaultCredentialSchemeMapper : CredentialSchemeMapper {
