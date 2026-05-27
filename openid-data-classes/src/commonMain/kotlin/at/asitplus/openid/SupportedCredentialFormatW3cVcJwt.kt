@@ -14,7 +14,7 @@ data class SupportedCredentialFormatW3cVcJwt(
      * OID4VCI: W3C VC: REQUIRED. Object containing the detailed description of the Credential type.
      */
     @SerialName(SerialNames.CREDENTIAL_DEFINITION)
-    val credentialDefinition: SupportedCredentialFormatW3cVcJwtCredentailDefinition,
+    val credentialDefinition: SupportedCredentialFormatW3cVcJwtCredentialDefinition,
     @SerialName(SupportedCredentialFormat.SerialNames.SCOPE)
     override val scope: String? = null,
     @SerialName(SupportedCredentialFormat.SerialNames.CRYPTOGRAPHIC_BINDING_METHODS_SUPPORTED)

@@ -1,6 +1,5 @@
 package at.asitplus.openid
 
-import at.asitplus.openid.SupportedCredentialFormatW3cVcJsonLd.Companion.FORMAT
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import kotlinx.serialization.EncodeDefault

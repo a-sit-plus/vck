@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class SupportedCredentialFormatW3cVcJsonLdCredentailDefinition(
+data class SupportedCredentialFormatW3cVcJsonLdCredentialDefinition(
     /**
      * OID4VCI: @context: REQUIRED. Array as defined in [VC_DATA], Section 4.1.
      *
