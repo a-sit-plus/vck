@@ -148,31 +148,9 @@ sealed interface SupportedCredentialFormat {
             }
         }?.toSet()
 
-    fun withSupportedProofTypes(supportedProofTypes: Map<String, CredentialRequestProofSupported>) = when (this) {
-        is SupportedCredentialFormatMsoMdoc -> copy(supportedProofTypes = supportedProofTypes)
-        is SupportedCredentialFormatSdJwt -> copy(supportedProofTypes = supportedProofTypes)
-        is SupportedCredentialFormatW3cVcJsonLd -> copy(supportedProofTypes = supportedProofTypes)
-        is SupportedCredentialFormatW3cVcJwt -> copy(supportedProofTypes = supportedProofTypes)
-        is SupportedCredentialFormatW3cVcJwtJsonLd -> copy(supportedProofTypes = supportedProofTypes)
-    }
+    fun withSupportedProofTypes(supportedProofTypes: Map<String, CredentialRequestProofSupported>): SupportedCredentialFormat
 
-    fun withSupportedSigningAlgorithms(supportedSigningAlgorithms: Set<SignatureAlgorithm>): SupportedCredentialFormat {
-        val newSigningAlgorithms = supportedSigningAlgorithms.mapNotNull {
-            if (format == CredentialFormatEnum.MSO_MDOC) {
-                it.toCoseAlgorithm().getOrNull()?.coseValue?.let { JsonPrimitive(it) }
-            } else {
-                it.toJwsAlgorithm().getOrNull()?.identifier?.let { JsonPrimitive(it) }
-            }
-        }.toSet()
-
-        return when (this) {
-            is SupportedCredentialFormatMsoMdoc -> copy(supportedSigningAlgorithmsJson = newSigningAlgorithms)
-            is SupportedCredentialFormatSdJwt -> copy(supportedSigningAlgorithmsJson = newSigningAlgorithms)
-            is SupportedCredentialFormatW3cVcJsonLd -> copy(supportedSigningAlgorithmsJson = newSigningAlgorithms)
-            is SupportedCredentialFormatW3cVcJwt -> copy(supportedSigningAlgorithmsJson = newSigningAlgorithms)
-            is SupportedCredentialFormatW3cVcJwtJsonLd -> copy(supportedSigningAlgorithmsJson = newSigningAlgorithms)
-        }
-    }
+    fun withSupportedSigningAlgorithms(supportedSigningAlgorithms: Set<SignatureAlgorithm>): SupportedCredentialFormat
 
     class FormatDisambiguatingSerializer : KSerializer<SupportedCredentialFormat> {
         override val descriptor: SerialDescriptor
