@@ -103,7 +103,6 @@ sealed interface SupportedCredentialFormat {
             scope: String,
             supportedBindingMethods: Set<String>? = null,
             supportedProofTypes: Map<String, CredentialRequestProofSupported>? = null,
-            credentialDefinition: SupportedCredentialFormatW3cVcJwtCredentailDefinition? = null,
             sdJwtVcType: String,
             sdJwtClaims: Set<ClaimDescription>,
             display: Set<DisplayProperties>? = null,
