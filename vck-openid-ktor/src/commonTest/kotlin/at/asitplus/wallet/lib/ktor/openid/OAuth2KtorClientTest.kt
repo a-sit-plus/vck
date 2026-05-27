@@ -41,7 +41,6 @@ import kotlin.time.Duration.Companion.minutes
 val OAuth2KtorClientTest by testSuite {
 
     data class Context(
-        val dpopKeyMaterial: KeyMaterial,
         val clientAuthKeyMaterial: KeyMaterial,
         val mockEngine: MockEngine,
         val authorizationService: SimpleAuthorizationService,
@@ -54,7 +53,6 @@ val OAuth2KtorClientTest by testSuite {
         requirePAR: Boolean,
         captureAttestationInput: ((OAuth2KtorClient.LoadInstanceAttestationInput) -> Unit)? = null,
     ): Context {
-        val dpopKeyMaterial = EphemeralKeyWithoutCert()
         val clientAuthKeyMaterial = EphemeralKeyWithoutCert()
         val authorizationEndpointPath = "/authorize"
         val tokenEndpointPath = "/token"
@@ -125,7 +123,6 @@ val OAuth2KtorClientTest by testSuite {
         }
         val clientId = "https://example.com/rp"
         return Context(
-            dpopKeyMaterial = dpopKeyMaterial,
             clientAuthKeyMaterial = clientAuthKeyMaterial,
             mockEngine = mockEngine,
             authorizationService = authorizationService,
@@ -143,7 +140,6 @@ val OAuth2KtorClientTest by testSuite {
                     }
                 },
                 keyMaterial = clientAuthKeyMaterial,
-                signDpop = SignJwt(dpopKeyMaterial, JwsHeaderCertOrJwk()),
                 oAuth2Client = OAuth2Client(clientId = clientId),
                 randomSource = RandomSource.Default,
             )

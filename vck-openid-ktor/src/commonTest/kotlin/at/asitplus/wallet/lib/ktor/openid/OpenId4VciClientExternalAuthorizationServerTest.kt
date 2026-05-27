@@ -69,10 +69,8 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
 
     data class Context(
         val credentialKeyMaterial: KeyMaterial,
-        val walletDpopKeyMaterial: KeyMaterial,
         val walletClientAuthKeyMaterial: KeyMaterial,
         val mockEngine: MockEngine,
-        val issuerDpopKeyMaterial: KeyMaterial,
         val issuerPublicContext: String,
         val issuerClientAuthKeyMaterial: KeyMaterial,
         val credentialIssuer: CredentialIssuer,
@@ -87,8 +85,6 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
     ): Context {
         val credentialKeyMaterial = EphemeralKeyWithoutCert()
         val walletClientAuthKeyMaterial = EphemeralKeyWithoutCert()
-        val walletDpopKeyMaterial = walletClientAuthKeyMaterial
-        val issuerDpopKeyMaterial = EphemeralKeyWithoutCert()
         val issuerClientAuthKeyMaterial = EphemeralKeyWithoutCert()
         val credentialDataProvider = CredentialDataProviderFun {
             catching {
@@ -251,7 +247,6 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
                         }
                     },
                     keyMaterial = issuerClientAuthKeyMaterial,
-                    signDpop = SignJwt(issuerDpopKeyMaterial, JwsHeaderCertOrJwk()),
                     oAuth2Client = OAuth2Client(clientId = issuerPublicContext),
                     randomSource = RandomSource.Default,
                 ),
@@ -265,10 +260,8 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
         )
         return Context(
             credentialKeyMaterial = credentialKeyMaterial,
-            walletDpopKeyMaterial = walletDpopKeyMaterial,
             walletClientAuthKeyMaterial = walletClientAuthKeyMaterial,
             mockEngine = mockEngine,
-            issuerDpopKeyMaterial = issuerDpopKeyMaterial,
             issuerPublicContext = issuerPublicContext,
             issuerClientAuthKeyMaterial = issuerClientAuthKeyMaterial,
             credentialIssuer = credentialIssuer,
@@ -292,7 +285,6 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
                         }
                     },
                     keyMaterial = walletClientAuthKeyMaterial,
-                    signDpop = SignJwt(walletDpopKeyMaterial, JwsHeaderCertOrJwk()),
                     oAuth2Client = OAuth2Client(clientId = walletClientId),
                     randomSource = RandomSource.Default,
                 )

@@ -87,6 +87,19 @@ class OAuth2KtorClient(
     /** Additional configuration for building the HTTP client, e.g. callers may enable logging. */
     httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
     /**
+     * Used to prove possession of the key material for the instance attestation.
+     * Also used for the DPoP signing function. (ts3-wallet-unit-attestation 1.5.1)
+     */
+    val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+
+    /**
+     * DPoP sign function
+     * Uses instance attestation key material (ts3-wallet-unit-attestation 1.5.1)
+     **/
+    @Deprecated("Gets removed from the constructor in near future. Customization unnecessary because of ts3-wallet-unit-attestation 1.5.1")
+    private val signDpop: SignJwtFun<JsonWebToken> = SignJwt(keyMaterial = keyMaterial, JwsHeaderCertOrJwk()),
+
+    /**
      * Implements OAuth2 protocol, `redirectUrl` needs to be registered by the OS for this application, so redirection
      * back from browser works
      */
@@ -101,17 +114,13 @@ class OAuth2KtorClient(
     /** Returns a new instance attestation to validate the app against an authorization server. */
     val loadInstanceAttestation: (suspend (LoadInstanceAttestationInput) -> KmmResult<JwsSigned<JsonWebToken>>)? = null,
 
-    /** Used to prove possession of the key material for the instance attestation **/
-    val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-
-    /** Used to calculate DPoP, i.e. the key the access token and refresh token gets bound to. */
-    private val signDpop: SignJwtFun<JsonWebToken> = SignJwt(keyMaterial = keyMaterial, JwsHeaderCertOrJwk()),
-
 ) {
     data class LoadInstanceAttestationInput(
         val authorizationServer: String,
         val preferredClientStatusPeriod: Duration?,
     )
+
+
 
     /**
      * Stores the latest DPoP nonce per origin. RFC 9449 requires using only the most recent nonce

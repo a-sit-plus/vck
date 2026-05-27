@@ -62,7 +62,6 @@ val OpenId4VciClientWithEncryptionTest by testSuite {
 
     data class Context(
         val credentialKeyMaterial: KeyMaterial,
-        val dpopKeyMaterial: KeyMaterial,
         val clientAuthKeyMaterial: KeyMaterial,
         val mockEngine: MockEngine,
         val credentialIssuer: CredentialIssuer,
@@ -77,7 +76,6 @@ val OpenId4VciClientWithEncryptionTest by testSuite {
     ): Context {
         val credentialKeyMaterial = EphemeralKeyWithoutCert()
         val clientAuthKeyMaterial = EphemeralKeyWithoutCert()
-        val dpopKeyMaterial = clientAuthKeyMaterial
         val credentialSchemes = setOf(scheme)
         val authorizationEndpointPath = "/authorize"
         val tokenEndpointPath = "/token"
@@ -185,7 +183,6 @@ val OpenId4VciClientWithEncryptionTest by testSuite {
 
         return Context(
             credentialKeyMaterial = credentialKeyMaterial,
-            dpopKeyMaterial = dpopKeyMaterial,
             clientAuthKeyMaterial = clientAuthKeyMaterial,
             mockEngine = mockEngine,
             credentialIssuer = credentialIssuer,
@@ -209,7 +206,6 @@ val OpenId4VciClientWithEncryptionTest by testSuite {
                         }
                     },
                     keyMaterial = clientAuthKeyMaterial,
-                    signDpop = SignJwt(dpopKeyMaterial, JwsHeaderCertOrJwk()),
                     oAuth2Client = OAuth2Client(clientId = clientId),
                     randomSource = RandomSource.Default,
                 )

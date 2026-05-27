@@ -185,7 +185,10 @@ class OpenId4VciClient(
                 it = tokenResponse.params.accessToken,
                 deserializationStrategy = OpenId4VciAccessToken.serializer(),
             ).getOrNull()?.let {
-                if (!it.payload.verifyDpopThumbprint()) throw Exception("Instance attestation key not used for Dpop")
+                if (!it.payload.verifyDpopThumbprint()) {
+                    // TODO: Change to exception after 6.0 release
+                    Napier.e("Instance attestation key not used for Dpop! Please remove `signDpop` from OAuth2KtorClient")
+                }
             }
         }
 
