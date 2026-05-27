@@ -111,7 +111,7 @@ val SdJwtTypeMetadataDocumentResolverTest by testSuite {
         )
         val nameClaim = resolved.claims!!.first { it.path == SdJwtTypeMetadataClaimInformationPath("name") }
         nameClaim.isMandatory shouldBe true
-        nameClaim.selectiveDisclosureConstraints shouldBe SelectiveDisclosureConstraints.always
+        nameClaim.selectiveDisclosureConstraints shouldBe SelectiveDisclosureConstraints.ALWAYS
     }
 
     test("from examples") {
@@ -141,28 +141,28 @@ val SdJwtTypeMetadataDocumentResolverTest by testSuite {
         enSimple.textColor!!.string shouldBe "#FFFFFF"
         val enSvg = display.first { it.locale == Rfc5646LanguageTag("en-US") }.rendering!!.svgTemplates!!.single()
         enSvg.uri.string shouldBe "https://betelgeuse.example.com/public/credential-english.svg"
-        enSvg.properties!!.svgTemplatePropertyImageOrientation shouldBe SvgTemplatePropertyImageOrientation.landscape
-        enSvg.properties!!.svgTemplatePropertyColorScheme shouldBe SvgTemplatePropertyColorScheme.light
-        enSvg.properties!!.svgTemplatePropertyContrast shouldBe SvgTemplatePropertyContrast.high
+        enSvg.properties!!.imageOrientation shouldBe SvgTemplatePropertyImageOrientation.landscape
+        enSvg.properties!!.colorScheme shouldBe SvgTemplatePropertyColorScheme.light
+        enSvg.properties!!.contrast shouldBe SvgTemplatePropertyContrast.high
 
         val claims = definition.claims!!.toList()
         claims.size shouldBe 7
 
         val nameClaim = claims.first { it.path == SdJwtTypeMetadataClaimInformationPath("name") }
-        nameClaim.selectiveDisclosureConstraints shouldBe SelectiveDisclosureConstraints.always
+        nameClaim.selectiveDisclosureConstraints shouldBe SelectiveDisclosureConstraints.ALWAYS
         nameClaim.isMandatory shouldBe true
         nameClaim.display!!.first { it.locale == Rfc5646LanguageTag("en-US") }.label shouldBe "Name"
         nameClaim.display!!.first { it.locale == Rfc5646LanguageTag("de-DE") }.label shouldBe "Vor- und Nachname"
 
         val degreesWildcardPath = SdJwtTypeMetadataClaimInformationPath("degrees") + null
         claims.first { it.path == SdJwtTypeMetadataClaimInformationPath("degrees") }
-            .selectiveDisclosureConstraints shouldBe SelectiveDisclosureConstraints.never
+            .selectiveDisclosureConstraints shouldBe SelectiveDisclosureConstraints.NEVER
         claims.first { it.path == degreesWildcardPath }
-            .selectiveDisclosureConstraints shouldBe SelectiveDisclosureConstraints.always
+            .selectiveDisclosureConstraints shouldBe SelectiveDisclosureConstraints.ALWAYS
         claims.first { it.path == degreesWildcardPath + "field_of_study" }
-            .selectiveDisclosureConstraints shouldBe SelectiveDisclosureConstraints.never
+            .selectiveDisclosureConstraints shouldBe SelectiveDisclosureConstraints.NEVER
         claims.first { it.path == degreesWildcardPath + "date_awarded" }
-            .selectiveDisclosureConstraints shouldBe SelectiveDisclosureConstraints.always
+            .selectiveDisclosureConstraints shouldBe SelectiveDisclosureConstraints.ALWAYS
 
         claims.first { it.path == SdJwtTypeMetadataClaimInformationPath("address", "street_address") }
             .svgId shouldBe SvgContentPlaceholder("address_street_address")

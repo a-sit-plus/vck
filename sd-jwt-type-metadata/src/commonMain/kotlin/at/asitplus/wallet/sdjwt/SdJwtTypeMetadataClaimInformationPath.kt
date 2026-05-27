@@ -40,7 +40,7 @@ value class SdJwtTypeMetadataClaimInformationPath(
                 }
             }
 
-            is SdJwtTypeMetadataClaimInformationPathIndexSegment -> currentList.mapNotNull { (path, element) ->
+            is SdJwtTypeMetadataClaimInformationPathSegmentIndex -> currentList.mapNotNull { (path, element) ->
                 if (segment.ulong > Int.MAX_VALUE.toULong()) null
                 else element.jsonArray.getOrNull(segment.ulong.toInt())?.let {
                     (path + segment.ulong.toUInt()) to it
