@@ -50,7 +50,7 @@ data class SupportedCredentialFormatW3cVcJwt(
     companion object {
         const val FORMAT_IDENTIFIER = "jwt_vc_json"
         val FORMAT = CredentialFormatEnum.parse(FORMAT_IDENTIFIER) ?: throw IllegalStateException(
-            "Expected format identifier `${SupportedCredentialFormatSdJwt.FORMAT_IDENTIFIER}` to represent a valid format, but couldn't find it."
+            "Expected format identifier `$FORMAT_IDENTIFIER` to represent a valid format, but couldn't find it."
         )
     }
 
