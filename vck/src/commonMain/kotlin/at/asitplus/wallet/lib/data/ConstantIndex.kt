@@ -141,6 +141,7 @@ fun SdJwtTypeMetadata.toCredentialScheme() = object : ConstantIndex.CredentialSc
                         null -> null
                     }
                 }.toNonEmptyList()),
+                mandatory = it.isMandatory,
                 display = it.display?.map {
                     DisplayProperties(
                         locale = it.locale.string,
