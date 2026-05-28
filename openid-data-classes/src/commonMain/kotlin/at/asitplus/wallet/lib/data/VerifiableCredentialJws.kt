@@ -13,7 +13,7 @@ package at.asitplus.wallet.lib.data
  * see the "LICENSE" file for more details
  */
 
-import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
+import at.asitplus.signum.indispensable.io.InstantLongSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlin.time.Instant

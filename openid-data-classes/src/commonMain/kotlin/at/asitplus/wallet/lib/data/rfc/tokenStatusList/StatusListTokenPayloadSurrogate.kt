@@ -1,15 +1,19 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
 import at.asitplus.csc.xor
-import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.signum.indispensable.io.InstantLongSerializer
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.PositiveDuration
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
-import kotlinx.serialization.cbor.*
+import kotlinx.serialization.cbor.Cbor
+import kotlinx.serialization.cbor.CborConfiguration
+import kotlinx.serialization.cbor.CborDecoder
+import kotlinx.serialization.cbor.CborEncoder
+import kotlinx.serialization.cbor.CborLabel
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlin.time.Instant

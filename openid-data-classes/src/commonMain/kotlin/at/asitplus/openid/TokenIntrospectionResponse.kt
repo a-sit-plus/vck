@@ -1,6 +1,6 @@
 package at.asitplus.openid
 
-import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
+import at.asitplus.signum.indispensable.io.InstantLongSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlin.time.Instant

@@ -4,7 +4,7 @@ import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.contentEqualsIfArray
 import at.asitplus.signum.indispensable.contentHashCodeIfArray
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
-import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
+import at.asitplus.signum.indispensable.io.InstantLongSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
