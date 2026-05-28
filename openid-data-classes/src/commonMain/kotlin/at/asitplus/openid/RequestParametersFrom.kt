@@ -15,6 +15,11 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
 
+/**
+ * This class tracks Requests, their contents and their origin with relevant parameters.
+ *
+ * Used for data management. Does not follow any standard in particular
+ */
 @Serializable(with = RequestParametersFromSerializer::class)
 sealed class RequestParametersFrom<S : RequestParameters> {
 
@@ -34,16 +39,22 @@ sealed class RequestParametersFrom<S : RequestParameters> {
      */
     @JsonClassDiscriminator("protocol")
     sealed interface DcApiRequest {
-        @SerialName("credentialIds")
+        @SerialName(SerialNames.CREDENTIAL_IDS)
         val credentialIds: Collection<String>
 
-        @SerialName("callingPackageName")
+        @SerialName(SerialNames.CALLING_PACKAGE_NAME)
         val callingPackageName: String
 
-        @SerialName("callingOrigin")
+        @SerialName(SerialNames.CALLING_ORIGIN)
         val callingOrigin: String
 
         val protocol: ExchangeProtocolIdentifier
+
+        object SerialNames {
+            const val CREDENTIAL_IDS = "credentialIds"
+            const val CALLING_PACKAGE_NAME = "callingPackageName"
+            const val CALLING_ORIGIN = "callingOrigin"
+        }
     }
 
     @Serializable
@@ -69,11 +80,11 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         override val jwsTyped: JwsGeneralTyped<AuthenticationRequestParameters>,
         @SerialName(SerialNames.VERIFIED)
         override val verified: Boolean,
-        @SerialName("credentialIds")
+        @SerialName(DcApiRequest.SerialNames.CREDENTIAL_IDS)
         override val credentialIds: Collection<String>,
-        @SerialName("callingPackageName")
+        @SerialName(DcApiRequest.SerialNames.CALLING_PACKAGE_NAME)
         override val callingPackageName: String,
-        @SerialName("callingOrigin")
+        @SerialName(DcApiRequest.SerialNames.CALLING_ORIGIN)
         override val callingOrigin: String
     ) : RequestParametersSigned<AuthenticationRequestParameters>(), DcApiRequest {
 
@@ -98,11 +109,11 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         override val jwsTyped: JwsCompactTyped<AuthenticationRequestParameters>,
         @SerialName(SerialNames.VERIFIED)
         override val verified: Boolean,
-        @SerialName("credentialIds")
+        @SerialName(DcApiRequest.SerialNames.CREDENTIAL_IDS)
         override val credentialIds: Collection<String>,
-        @SerialName("callingPackageName")
+        @SerialName(DcApiRequest.SerialNames.CALLING_PACKAGE_NAME)
         override val callingPackageName: String,
-        @SerialName("callingOrigin")
+        @SerialName(DcApiRequest.SerialNames.CALLING_ORIGIN)
         override val callingOrigin: String
     ) : RequestParametersSigned<AuthenticationRequestParameters>(), DcApiRequest {
 
@@ -127,11 +138,11 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         override val parameters: AuthenticationRequestParameters,
         @SerialName(SerialNames.JSON_STRING)
         val jsonString: String,
-        @SerialName("credentialIds")
+        @SerialName(DcApiRequest.SerialNames.CREDENTIAL_IDS)
         override val credentialIds: Collection<String>,
-        @SerialName("callingPackageName")
+        @SerialName(DcApiRequest.SerialNames.CALLING_PACKAGE_NAME)
         override val callingPackageName: String,
-        @SerialName("callingOrigin")
+        @SerialName(DcApiRequest.SerialNames.CALLING_ORIGIN)
         override val callingOrigin: String
     ) : DcApiRequest, RequestParametersFrom<AuthenticationRequestParameters>() {
 
@@ -146,11 +157,11 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         override val parameters: IsoMdocRequestWrapper,
         @SerialName(SerialNames.JSON_STRING)
         val jsonString: String,
-        @SerialName("credentialIds")
+        @SerialName(DcApiRequest.SerialNames.CREDENTIAL_IDS)
         override val credentialIds: Collection<String>,
-        @SerialName("callingPackageName")
+        @SerialName(DcApiRequest.SerialNames.CALLING_PACKAGE_NAME)
         override val callingPackageName: String,
-        @SerialName("callingOrigin")
+        @SerialName(DcApiRequest.SerialNames.CALLING_ORIGIN)
         override val callingOrigin: String
     ) : DcApiRequest, RequestParametersFrom<IsoMdocDcApi.IsoMdocRequestWrapper>() {
 
@@ -206,7 +217,6 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         const val URL = "url"
         const val PARENT = "parent"
         const val PARAMETERS = "parameters"
-        const val DC_API_REQUEST = "dcApiRequest"
         const val VERIFIED = "verified"
     }
 
