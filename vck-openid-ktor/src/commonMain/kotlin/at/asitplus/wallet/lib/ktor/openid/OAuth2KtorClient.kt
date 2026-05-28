@@ -461,7 +461,7 @@ class OAuth2KtorClient(
         return {
             headers {
                 append(HttpHeaders.Authorization, tokenResponse.toHttpHeaderValue())
-                dpopHeader?.let { append(HttpHeaders.DPoP, it.jws.toString()) }
+                dpopHeader?.let { append(HttpHeaders.DPoP, it.toString()) }
             }
         }
     }
@@ -477,8 +477,7 @@ class OAuth2KtorClient(
         useDpop: Boolean,
     ): HttpRequestBuilder.() -> Unit {
         val (clientAttJwt, clientAttPop) = if (loadInstanceAttestation != null && loadInstanceAttestationPop != null) {
-            loadInstanceAttestation.invoke().getOrNull()?.jws?.toString() to
-                    loadInstanceAttestationPop.invoke().getOrNull()?.jws?.toString()
+            loadInstanceAttestation.invoke().getOrNull()?.jws?.toString() to loadInstanceAttestationPop.invoke().getOrNull()?.toString()
         } else (null to null)
 
         val dpopHeader = useDpop.takeIf { it }?.let {
@@ -495,7 +494,7 @@ class OAuth2KtorClient(
             headers {
                 clientAttJwt?.let { append(HttpHeaders.OAuthClientAttestation, it) }
                 clientAttPop?.let { append(HttpHeaders.OAuthClientAttestationPop, it) }
-                dpopHeader?.let { append(HttpHeaders.DPoP, it.jws.toString()) }
+                dpopHeader?.let { append(HttpHeaders.DPoP, it.toString()) }
             }
         }
     }
