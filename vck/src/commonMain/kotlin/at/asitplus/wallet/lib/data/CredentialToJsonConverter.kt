@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.data
 
+import at.asitplus.catching
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.agent.SdJwtDecoded
@@ -42,7 +43,7 @@ object CredentialToJsonConverter {
         is SubjectCredentialStore.StoreEntry.SdJwt -> {
             val sdJwtSigned = SdJwtSigned.parseCatching(credential.vcSerialized).getOrNull()
             val payloadVc = sdJwtSigned?.jws?.getPayload<JsonObject>()?.getOrNull()
-            val reconstructed = sdJwtSigned?.let { SdJwtDecoded(it).reconstructedJsonObject }
+            val reconstructed = catching { sdJwtSigned?.let { SdJwtDecoded(it).reconstructedJsonObject } }.getOrNull()
             val simpleDisclosureMap = credential.disclosures.map { entry ->
                 entry.value?.let { it.claimName to it.claimValue }
             }.filterNotNull().toMap()

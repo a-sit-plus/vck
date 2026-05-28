@@ -7,6 +7,9 @@ Release 6.0.0 (unreleased):
    - BREAKING Change: Replace `JwsSigned` with `JwsCompact` and `JwsCompactTyped` in signing, verification, OpenID request/response, OAuth 2.0 DPoP/client attestation, OID4VCI proof, JWT VC, status list JWT, and SD-JWT APIs
    - Remove `JwsSignedSerializer`, use `JwsCompactStringSerializer`
  - SD-JWT:
+   - Change: `String.toDigest()` annotated with @Throws
+   - Change: `Digest.toIanaName()` annotated with @Throws
+   - Change: `SdJwtDecoded` throws if payload is not a valid `JsonObject`
    - Change: `SdJwtSigned` now stores the issuer JWS as `JwsCompact` and key binding JWS as `JwsCompactTyped<KeyBindingJws>`
    - Deprecate `SdJwtSigned.getPayloadAsVerifiableCredentialSdJwt()` and `SdJwtSigned.getPayloadAsJsonObject()`, use `SdJwtSigned.jws.getPayload<...>()`
  - Add: ETSI data classes for list of trusted entities, [ETSI TS 119 602](https://www.etsi.org/deliver/etsi_ts/119600_119699/119602/01.01.01_60/ts_119602v010101p.pdf)

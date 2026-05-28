@@ -24,15 +24,17 @@ internal fun getCommonHashesAlgorithms(transactionData: List<TransactionDataBase
     }
 }
 
+@Throws(IllegalArgumentException::class)
 fun Digest.toIanaName(): String =
     when (this) {
         Digest.SHA256 -> SdJwtConstants.SHA_256
         Digest.SHA384 -> SdJwtConstants.SHA_384
         Digest.SHA512 -> SdJwtConstants.SHA_512
-        Digest.SHA1 -> throw Exception("SHA1 not supported")
+        Digest.SHA1 -> throw IllegalArgumentException("SHA1 not supported")
     }
 
 // see https://www.iana.org/assignments/named-information/named-information.xhtml
+@Throws(IllegalArgumentException::class)
 internal fun String?.toDigest(): Digest? =
     when (this?.toLowerCasePreservingASCIIRules()) {
         SdJwtConstants.SHA_256 -> Digest.SHA256

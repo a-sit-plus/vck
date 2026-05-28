@@ -42,10 +42,9 @@ class SdJwtDecoded(sdJwtSigned: SdJwtSigned) {
     val reconstructedJsonObject: JsonObject?
 
     init {
-        sdJwtSigned.jws.getPayload<JsonObject>().getOrThrow().let {
-            val digest = it[SdJwtConstants.SD_ALG]?.jsonPrimitive?.content.toDigest() ?: Digest.SHA256
-            reconstructedJsonObject = it.reconstructValues(digest)
-        }
+        val payload = sdJwtSigned.jws.getPayload<JsonObject>().getOrThrow()
+        val digest = payload[SdJwtConstants.SD_ALG]?.jsonPrimitive?.content.toDigest() ?: Digest.SHA256
+        reconstructedJsonObject = payload.reconstructValues(digest)
         validDisclosures = _validDisclosures.toMap()
     }
 
