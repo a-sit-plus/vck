@@ -28,7 +28,7 @@ data class SdJwtTypeMetadataClaimInformation(
     @SerialName(SerialNames.MANDATORY)
     val isMandatory: Boolean? = null,
     @SerialName(SerialNames.SD)
-    val selectiveDisclosureConstraints: SelectiveDisclosureConstraints = SelectiveDisclosureConstraints.ALLOWED,
+    val selectiveDisclosureConstraints: SelectiveDisclosureConstraints? = null,
     @SerialName(SerialNames.SVG_ID)
     val svgId: SvgContentPlaceholder? = null,
 ) {
