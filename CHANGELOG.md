@@ -1,33 +1,32 @@
 # Changelog
 
 Release 6.0.0 (unreleased):
- - Dependencies:
-   - Update to [Signum 3.23.0](https://github.com/a-sit-plus/signum/releases/tag/3.23.0)
- - VCK-OpenID:
-   - Change: `RequestInfo.dpop`/`RequestInfo.clientAttestation`/`RequestInfo.clientAttestationDpop` now `JwsCompactTyped` instead of `String`
-   - Change: `BuildDPoPHeader`/`BuildClientAttestationJwt`/`BuildClientAttestationPoPJwt` objects now return `JwsCompactTyped` instead of `String`
  - JWS:
    - BREAKING Change: Replace `JwsSigned` with `JwsCompact` and `JwsCompactTyped` in signing, verification, OpenID request/response, OAuth 2.0 DPoP/client attestation, OID4VCI proof, JWT VC, status list JWT, and SD-JWT APIs
    - Remove `JwsSignedSerializer`, use `JwsCompactStringSerializer`
  - SD-JWT:
-   - Change: `String.toDigest()` annotated with @Throws
-   - Change: `Digest.toIanaName()` annotated with @Throws
+   - BREAKING CHANGE: Removed dot-notation shorthand for nested claims in `ClaimToBeIssued`. Claims with dots in their names (e.g. `address.region`) are now issued as flat claims with a literal dot in the key. Use a `Collection<ClaimToBeIssued>` in `value` to create nested structures.
+   - Change: `String.toDigest()` annotated with `@Throws`
+   - Change: `Digest.toIanaName()` annotated with `@Throws`
    - Change: `SdJwtDecoded` throws if payload is not a valid `JsonObject`
    - Change: `SdJwtSigned` now stores the issuer JWS as `JwsCompact` and key binding JWS as `JwsCompactTyped<KeyBindingJws>`
    - Deprecate `SdJwtSigned.getPayloadAsVerifiableCredentialSdJwt()` and `SdJwtSigned.getPayloadAsJsonObject()`, use `SdJwtSigned.jws.getPayload<...>()`
- - Add: ETSI data classes for list of trusted entities, [ETSI TS 119 602](https://www.etsi.org/deliver/etsi_ts/119600_119699/119602/01.01.01_60/ts_119602v010101p.pdf)
+ - OpenID for Verifiable Presentations:
+   - Add `attributePaths` and `optionalAttributePaths` to `RequestOptionsCredential` for requesting literal claim names containing dots with `DCQLClaimsPathPointer`, while keeping the deprecated string attributes as nested dot-notation shorthand. ISO mdoc requests also accept explicit namespace/name paths and prefix single claim names with the credential scheme namespace.
+   - Change: `RequestInfo.dpop`/`RequestInfo.clientAttestation`/`RequestInfo.clientAttestationDpop` now `JwsCompactTyped` instead of `String`
+   - Change: `BuildDPoPHeader`/`BuildClientAttestationJwt`/`BuildClientAttestationPoPJwt` objects now return `JwsCompactTyped` instead of `String`
  - Deprecations:
    - Remove code deprecated in 5.12.0, e.g. `CredentialSubject` as base class for JWT VC
    - Deprecate `vckJsonSerializer`, should be replaced with `joseCompliantSerializer` (Signum)
- - SD-JWT:
-   - BREAKING CHANGE: Removed dot-notation shorthand for nested claims in `ClaimToBeIssued`. Claims with dots in their names (e.g. `address.region`) are now issued as flat claims with a literal dot in the key. Use a `Collection<ClaimToBeIssued>` in `value` to create nested structures.
-- OpenID for Verifiable Presentations:
-   - Add `attributePaths` and `optionalAttributePaths` to `RequestOptionsCredential` for requesting literal claim names containing dots with `DCQLClaimsPathPointer`, while keeping the deprecated string attributes as nested dot-notation shorthand. ISO mdoc requests also accept explicit namespace/name paths and prefix single claim names with the credential scheme namespace.
- - Add: SD-JWT VC Type Metadata ([draft-ietf-oauth-sd-jwt-vc-16](https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/):
-   - `SdJwtTypeMetadataDocument`: stores and verifies raw document bytes for W3C SRI integrity checks (integrity is computed over the original response bytes, not re-serialized JSON)
-   - `KtorSdJwtTypeMetadataDocumentRetriever`: HTTP retrieval with two-tier caching (static/indefinite for integrity-pinned documents; Cache-Control–based TTL otherwise); integrity-pinned lookups bypass the dynamic cache and vice versa; integrity and `vct` are validated before a fetched document enters the static cache
-   - `DelegatingSdJwtTypeMetadataDocumentResolver`: resolves full inheritance chains, merging display and claim metadata from all ancestors
- - Add [RFC 3986 URI Syntax](https://datatracker.ietf.org/doc/html/rfc3986) as module
+ - New modules:
+   - `etsi-data-classes` implements list of trusted entities from [ETSI TS 119 602](https://www.etsi.org/deliver/etsi_ts/119600_119699/119602/01.01.01_60/ts_119602v010101p.pdf)
+   - `sd-jwt-type-metadata` implements SD-JWT VC Type Metadata from [draft-ietf-oauth-sd-jwt-vc-16](https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/):
+     - `SdJwtTypeMetadataDocument`: stores and verifies raw document bytes for W3C SRI integrity checks (integrity is computed over the original response bytes, not re-serialized JSON)
+     - `KtorSdJwtTypeMetadataDocumentRetriever`: HTTP retrieval with two-tier caching (static/indefinite for integrity-pinned documents; Cache-Control–based TTL otherwise); integrity-pinned lookups bypass the dynamic cache and vice versa; integrity and `vct` are validated before a fetched document enters the static cache
+     - `DelegatingSdJwtTypeMetadataDocumentResolver`: resolves full inheritance chains, merging display and claim metadata from all ancestors
+   - `rfc3986-uri-syntax` implements [RFC 3986 URI Syntax](https://datatracker.ietf.org/doc/html/rfc3986)
+ - Dependencies:
+   - Update to [Signum 3.23.0](https://github.com/a-sit-plus/signum/releases/tag/3.23.0)
 
 Release 5.12.0:
  - W3C JWT VC:

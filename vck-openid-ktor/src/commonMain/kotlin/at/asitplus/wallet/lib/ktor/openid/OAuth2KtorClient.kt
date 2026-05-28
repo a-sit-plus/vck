@@ -477,7 +477,7 @@ class OAuth2KtorClient(
         useDpop: Boolean,
     ): HttpRequestBuilder.() -> Unit {
         val (clientAttJwt, clientAttPop) = if (loadInstanceAttestation != null && loadInstanceAttestationPop != null) {
-            loadInstanceAttestation.invoke().getOrNull()?.jws?.toString() to loadInstanceAttestationPop.invoke().getOrNull()?.toString()
+            loadInstanceAttestation.loadJwsString() to loadInstanceAttestationPop.loadJwsString()
         } else (null to null)
 
         val dpopHeader = useDpop.takeIf { it }?.let {
@@ -498,6 +498,9 @@ class OAuth2KtorClient(
             }
         }
     }
+
+    private suspend fun (suspend () -> KmmResult<JwsCompactTyped<JsonWebToken>>).loadJwsString(): String? =
+        invoke().getOrNull()?.jws?.toString()
 
 }
 

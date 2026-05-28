@@ -126,12 +126,6 @@ sealed interface CreatePresentationResult {
         val jwsSigned: JwsCompactTyped<VerifiablePresentationJws>,
     ) : VcJwsPresentationData
 
-    @Deprecated("Replaced with class using more expressive name `VpJws`.", ReplaceWith("VpJws"))
-    data class Signed(
-        val serialized: String,
-        val jwsSigned: JwsCompactTyped<VerifiablePresentationJws>,
-    ) : VcJwsPresentationData
-
     data class SdJwt(
         val serialized: String,
         val sdJwt: SdJwtSigned,
