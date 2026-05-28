@@ -27,7 +27,8 @@ import kotlinx.serialization.json.jsonPrimitive
  *
  * See [Selective Disclosure for JSON Web Tokens](https://www.rfc-editor.org/rfc/rfc9901.html)
  */
-class SdJwtDecoded(sdJwtSigned: SdJwtSigned) {
+class SdJwtDecoded @Throws(IllegalArgumentException::class)
+constructor(sdJwtSigned: SdJwtSigned) {
 
     private val disclosures: Collection<String> = sdJwtSigned.rawDisclosures
     private val _validDisclosures = mutableMapOf<String, SelectiveDisclosureItem>()
