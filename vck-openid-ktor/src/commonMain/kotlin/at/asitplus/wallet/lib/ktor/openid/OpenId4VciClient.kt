@@ -180,7 +180,7 @@ class OpenId4VciClient(
         val tokenResponse = oauth2Client.requestTokenWithAuthCode(
             oauthMetadata = context.oauthMetadata,
             url = url,
-            authorizationServer = context.issuerMetadata.credentialIssuer,
+            authorizationServer = context.oauthMetadata.issuer,
             state = context.state,
             scope = context.credential.supportedCredentialFormat.scope,
             authorizationDetails = oid4vciService.buildAuthorizationDetails(

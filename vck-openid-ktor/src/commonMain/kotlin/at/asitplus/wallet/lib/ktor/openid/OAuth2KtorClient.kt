@@ -241,7 +241,7 @@ class OAuth2KtorClient(
                 scope = scope,
                 authorizationDetails = if (!hasScope) authorizationDetails else null
             ),
-            popAudience = credentialIssuer,
+            popAudience = oauthMetadata.issuer,
         )
         Napier.i("Received token response")
         Napier.d("Received token response $tokenResponse")

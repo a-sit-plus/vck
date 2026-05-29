@@ -82,6 +82,7 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
         scheme: ConstantIndex.CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation,
         attributes: Map<String, String>,
+        validatePopAudience: Boolean = false,
     ): Context {
         val credentialKeyMaterial = EphemeralKeyWithoutCert()
         val walletClientAuthKeyMaterial = EphemeralKeyWithoutCert()
@@ -137,6 +138,7 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
             introspectionEndpointPath = introspectionEndpointPath,
             clientAuthenticationService = ClientAuthenticationService(
                 enforceClientAuthentication = true,
+                issuerIdentifier = if (validatePopAudience) authServerPublicContext else null,
             ),
             tokenService = tokenService,
         )
@@ -327,6 +329,41 @@ val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
                     expectedAttributeValue,
                     credentialKeyMaterial.publicKey
                 )
+            }
+        }
+    }
+
+    test("WIA PoP audience matches AS issuer for auth code and refresh token flows") {
+        // The AS enforces that aud in the WIA PoP equals its own issuer identifier (authServerPublicContext),
+        // not the credential issuer URL (issuerPublicContext). Without the fix, both token calls send
+        // aud = issuerPublicContext and the AS rejects them with InvalidClient.
+        val expectedAttributeValue = uuid4().toString()
+        val expectedAttributeName = EuPidSdJwtScheme.SdJwtAttributes.FAMILY_NAME
+        with(setup(EuPidSdJwtScheme, SD_JWT, mapOf(expectedAttributeName to expectedAttributeValue), validatePopAudience = true)) {
+            var refreshTokenStore: CredentialRenewalInfo? = null
+            val credentialIdentifierInfos = client.loadCredentialMetadata(issuerPublicContext).getOrThrow()
+            val selectedCredential = credentialIdentifierInfos
+                .first { it.supportedCredentialFormat.format == CredentialFormatEnum.DC_SD_JWT }
+
+            client.startProvisioningWithAuthRequestReturningResult(
+                credentialIssuerUrl = issuerPublicContext,
+                credentialIdentifierInfo = selectedCredential,
+            ).getOrThrow().also {
+                val httpClient = HttpClient(mockEngine) { followRedirects = false }
+                val authCode = httpClient.get(it.url).headers[HttpHeaders.Location]
+                // Without fix: aud = issuerPublicContext → AS rejects with InvalidClient (aud mismatch)
+                // With fix: aud = authServerPublicContext → AS accepts
+                client.resumeWithAuthCode(authCode!!, it.context).getOrThrow().also { result ->
+                    refreshTokenStore = result.refreshToken!!
+                    result.verifySdJwtCredential(expectedAttributeName, expectedAttributeValue, credentialKeyMaterial.publicKey)
+                }
+            }
+
+            refreshTokenStore.shouldNotBeNull()
+            // Without fix: aud = issuerPublicContext → AS rejects with InvalidClient (aud mismatch)
+            // With fix: aud = authServerPublicContext → AS accepts
+            client.refreshCredentialReturningResult(refreshTokenStore).getOrThrow().also {
+                it.verifySdJwtCredential(expectedAttributeName, expectedAttributeValue, credentialKeyMaterial.publicKey)
             }
         }
     }

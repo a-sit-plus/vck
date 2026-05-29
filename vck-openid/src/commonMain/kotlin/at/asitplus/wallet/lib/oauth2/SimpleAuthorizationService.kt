@@ -124,7 +124,8 @@ class SimpleAuthorizationService(
     /** Handles client authentication in [par] and [token]. */
     private val clientAuthenticationService: ClientAuthenticationService = ClientAuthenticationService(
         enforceClientAuthentication = false,
-        verifyClientAttestationJwt = { true }
+        verifyClientAttestationJwt = { true },
+        issuerIdentifier = publicContext
     ),
     /** Used to parse requests from clients, e.g., when using JWT-Secured Authorization Requests (RFC 9101) */
     private val requestParser: RequestParser = RequestParser(

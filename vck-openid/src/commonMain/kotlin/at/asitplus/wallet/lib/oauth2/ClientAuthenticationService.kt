@@ -35,6 +35,11 @@ class ClientAuthenticationService(
     private val clock: Clock = Clock.System,
     /** Time leeway for verification of WIA and WIA PoP timestamps. */
     private val timeLeeway: Duration = 5.minutes,
+    /**
+     * The RFC 8414 issuer identifier of this authorization server.
+     * When set, the `aud` claim of incoming WIA PoP JWTs is validated against this value.
+     */
+    private val issuerIdentifier: String? = null,
 ) {
 
     /**
@@ -135,6 +140,11 @@ class ClientAuthenticationService(
         }
         if (payload.issuer == null || payload.issuer != clientId) {
             throw InvalidClient("client attestation PoP iss not equal to client_id")
+        }
+        if (issuerIdentifier != null && payload.audience != issuerIdentifier) {
+            throw InvalidClient(
+                "client attestation PoP aud '${payload.audience}' does not match issuer '$issuerIdentifier'"
+            )
         }
         if (payload.issuedAt == null || payload.issuedAt!! > (clock.now() + timeLeeway)) {
             throw InvalidClient("client attestation PoP iat in future: ${payload.issuedAt}")
