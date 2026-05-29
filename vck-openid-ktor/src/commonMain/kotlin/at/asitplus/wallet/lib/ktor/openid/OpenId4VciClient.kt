@@ -7,8 +7,11 @@ import at.asitplus.openid.ClientNonceResponse
 import at.asitplus.openid.CredentialOffer
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
+import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.OpenIdConstants.WellKnownPaths
 import at.asitplus.openid.SupportedCredentialFormat
+import at.asitplus.signum.indispensable.josef.JsonWebKey
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.agent.CredentialRenewalInfo
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.data.AttributeIndex
@@ -19,6 +22,7 @@ import at.asitplus.wallet.lib.data.SdJwtFallbackCredentialScheme
 import at.asitplus.wallet.lib.data.VcFallbackCredentialScheme
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
+import at.asitplus.wallet.lib.oauth2.OpenId4VciAccessToken
 import at.asitplus.wallet.lib.oidvci.WalletService
 import at.asitplus.wallet.lib.oidvci.toRepresentation
 import com.benasher44.uuid.uuid4
@@ -184,6 +188,17 @@ class OpenId4VciClient(
                 context.issuerMetadata.authorizationServers
             )
         ).getOrThrow()
+
+        if (tokenResponse.params.tokenType.equals(other = TOKEN_TYPE_DPOP, ignoreCase = true)) {
+            catching {
+                JwsCompactTyped<OpenId4VciAccessToken>(tokenResponse.params.accessToken)
+            }.getOrNull()?.let {
+                if (!it.payload.verifyDpopThumbprint()) {
+                    // TODO: Change to exception after 6.0 release
+                    Napier.e("Instance attestation key not used for Dpop! Please remove `signDpop` from OAuth2KtorClient")
+                }
+            }
+        }
 
         val credentialScheme = context.credential.supportedCredentialFormat.resolveCredentialScheme()
             ?: throw Exception("Unknown credential scheme in ${context.credential}")
@@ -443,6 +458,15 @@ class OpenId4VciClient(
         oauth2Client.client
             .get(insertWellKnownPath(publicContext, WellKnownPaths.OpenidConfiguration))
             .body<OAuth2AuthorizationServerMetadata>()
+
+    /**
+     * ts3-wallet-unit-attestation 1.5.1
+     * Use instance attestation key for Dpop
+     * Verify access token `cnf.jkt` matches instance attestation `cnf` key
+     */
+    private fun OpenId4VciAccessToken.verifyDpopThumbprint() =
+        this.confirmationClaim?.jsonWebKeyThumbprint == oauth2Client.keyMaterial.jsonWebKey.jwkThumbprintPlain
+
 }
 
 /**
@@ -495,3 +519,6 @@ data class CredentialIdentifierInfo(
 private suspend inline fun <R> IntermediateResult<R>.onSuccessCredential(
     block: String.(httpResponse: HttpResponse) -> R,
 ) = onSuccess<String, R>(block)
+
+private val JsonWebKey.jwkThumbprintPlain: String
+    get() = jwkThumbprint.removePrefix("urn:ietf:params:oauth:jwk-thumbprint:sha256:")

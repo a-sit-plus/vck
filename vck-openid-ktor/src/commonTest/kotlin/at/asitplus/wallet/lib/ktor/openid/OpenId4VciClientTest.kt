@@ -69,7 +69,6 @@ val OpenId4VciClientTest by testSuite {
 
     data class Context(
         val credentialKeyMaterial: KeyMaterial,
-        val dpopKeyMaterial: KeyMaterial,
         val clientAuthKeyMaterial: KeyMaterial,
         val mockEngine: MockEngine,
         val credentialIssuer: CredentialIssuer,
@@ -85,7 +84,6 @@ val OpenId4VciClientTest by testSuite {
         revocationKind: RevocationList.Kind = RevocationList.Kind.STATUS_LIST,
     ): Context {
         val credentialKeyMaterial = EphemeralKeyWithoutCert()
-        val dpopKeyMaterial = EphemeralKeyWithoutCert()
         val clientAuthKeyMaterial = EphemeralKeyWithoutCert()
         val credentialSchemes = setOf(scheme)
         val authorizationEndpointPath = "/authorize"
@@ -194,7 +192,6 @@ val OpenId4VciClientTest by testSuite {
 
         return Context(
             credentialKeyMaterial = credentialKeyMaterial,
-            dpopKeyMaterial = dpopKeyMaterial,
             clientAuthKeyMaterial = clientAuthKeyMaterial,
             mockEngine = mockEngine,
             credentialIssuer = credentialIssuer,
@@ -218,17 +215,7 @@ val OpenId4VciClientTest by testSuite {
                             )
                         }
                     },
-                    loadInstanceAttestationPop = {
-                        catching {
-                            BuildClientAttestationPoPJwt(
-                                SignJwt(clientAuthKeyMaterial, JwsHeaderNone()),
-                                clientId = clientId,
-                                audience = it.authorizationServer,
-                                lifetime = 10.minutes,
-                            )
-                        }
-                    },
-                    signDpop = SignJwt(dpopKeyMaterial, JwsHeaderCertOrJwk()),
+                    keyMaterial = clientAuthKeyMaterial,
                     oAuth2Client = OAuth2Client(clientId = clientId),
                     randomSource = RandomSource.Default,
                 )
