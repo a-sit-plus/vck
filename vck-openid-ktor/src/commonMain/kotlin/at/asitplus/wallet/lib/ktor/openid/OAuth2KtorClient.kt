@@ -514,13 +514,25 @@ class OAuth2KtorClient(
     ): HttpRequestBuilder.() -> Unit {
         val (clientAttJwt, clientAttPop) = when (loadInstanceAttestation != null) {
             true -> {
-                loadInstanceAttestation.invoke(
+                val wia = loadInstanceAttestation.invoke(
                     LoadInstanceAttestationInput(
                         authorizationServer = authorizationServer,
                         preferredClientStatusPeriod = preferredClientStatusPeriod,
                     )
                 ).getOrElse { throw Exception("Unable to load instance attestation $it") }
-                    .jws to catching {
+
+                val cnfKey = wia.payload.confirmationClaim?.jsonWebKey
+                    ?: throw Exception("Instance attestation has no cnf.jwk — PoP key cannot be verified")
+                if (cnfKey.jwkThumbprint != keyMaterial.jsonWebKey.jwkThumbprint) {
+                    throw Exception(
+                        "keyMaterial does not match the cnf key in the instance attestation. " +
+                        "The PoP JWT will not verify on the server. " +
+                        "Expected cnf thumbprint: ${cnfKey.jwkThumbprint}, " +
+                        "got keyMaterial thumbprint: ${keyMaterial.jsonWebKey.jwkThumbprint}"
+                    )
+                }
+
+                wia.jws to catching {
                     BuildClientAttestationPoPJwt.invoke(
                         signJwt = SignJwt(keyMaterial, JwsHeaderNone()),
                         clientId = oAuth2Client.clientId,

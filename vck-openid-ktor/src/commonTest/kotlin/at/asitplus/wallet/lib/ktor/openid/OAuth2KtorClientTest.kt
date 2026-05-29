@@ -29,8 +29,10 @@ import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import de.infix.testBalloon.framework.core.testSuite
 import io.github.aakira.napier.Napier
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.ktor.client.*
 import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
@@ -209,6 +211,39 @@ val OAuth2KtorClientTest by testSuite {
                 popAudience = authorizationService.publicContext,
             ).active shouldBe true
         }
+    }
+
+    test("applyAuthnForToken throws when keyMaterial does not match cnf key in instance attestation") {
+        val differentKey: KeyMaterial = EphemeralKeyWithoutCert()
+        val clientAuthKey: KeyMaterial = EphemeralKeyWithoutCert()
+        val mockEngine = MockEngine { respondOk() }
+        val clientId = "https://example.com/rp-mismatch"
+
+        val client = OAuth2KtorClient(
+            engine = mockEngine,
+            loadInstanceAttestation = {
+                catching {
+                    BuildClientAttestationJwt(
+                        SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
+                        clientId = clientId,
+                        clientKey = differentKey.jsonWebKey,  // WIA attests a different key
+                    )
+                }
+            },
+            keyMaterial = clientAuthKey,  // PoP signed with this key — does not match cnf
+            oAuth2Client = OAuth2Client(clientId = clientId),
+            randomSource = RandomSource.Default,
+        )
+
+        shouldThrow<Exception> {
+            client.applyAuthnForToken(
+                resourceUrl = "https://example.com/token",
+                httpMethod = HttpMethod.Post,
+                useDpop = false,
+                authorizationServer = "https://example.com",
+                preferredClientStatusPeriod = null,
+            )
+        }.message shouldContain "does not match"
     }
 
     test("instance attestation callbacks receive authorization server context") {
